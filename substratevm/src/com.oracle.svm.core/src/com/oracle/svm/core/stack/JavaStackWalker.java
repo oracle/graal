@@ -176,15 +176,10 @@ public final class JavaStackWalker {
 
         DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sp);
         if (deoptFrame == null) {
-            lookupCodeInfoInterruptible(info, walk.getPossiblyStaleIP(), queryResult);
+            CodeInfoAccess.lookupCodeInfo(info, CodeInfoAccess.relativeIP(info, walk.getPossiblyStaleIP()), queryResult);
         }
 
         return continueWalk(walk, queryResult, deoptFrame);
-    }
-
-    @Uninterruptible(reason = "Wrap call to interruptible code.", calleeMustBe = false)
-    private static void lookupCodeInfoInterruptible(CodeInfo codeInfo, CodePointer ip, SimpleCodeInfoQueryResult queryResult) {
-        CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), queryResult);
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
@@ -298,6 +293,7 @@ public final class JavaStackWalker {
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
     public static boolean walkThread(IsolateThread thread, Pointer endSP, ParameterizedStackFrameVisitor visitor, Object data) {
+        assert thread.isNonNull();
         JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
         if (initWalk(walk, thread)) {
             walk.setEndSP(endSP);

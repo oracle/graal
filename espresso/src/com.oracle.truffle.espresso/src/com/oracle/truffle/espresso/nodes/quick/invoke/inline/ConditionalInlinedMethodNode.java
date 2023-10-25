@@ -52,7 +52,7 @@ public class ConditionalInlinedMethodNode extends InlinedMethodNode {
 
     public ConditionalInlinedMethodNode(Method.MethodVersion inlinedMethod, int top, int opcode, int callerBCI, int statementIndex, Recipes recipes, InlinedMethodPredicate condition) {
         super(inlinedMethod, top, opcode, callerBCI, statementIndex, null);
-        this.fallbackNode = insert(getFallback(inlinedMethod.getMethod(), top, callerBCI, opcode));
+        this.fallbackNode = getFallback(inlinedMethod.getMethod(), top, callerBCI, opcode);
         this.condition = condition;
         this.recipes = recipes;
     }

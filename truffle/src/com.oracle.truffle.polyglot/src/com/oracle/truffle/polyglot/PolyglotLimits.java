@@ -43,10 +43,6 @@ package com.oracle.truffle.polyglot;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-import org.graalvm.polyglot.ResourceLimitEvent;
-import org.graalvm.polyglot.ResourceLimits;
-import org.graalvm.polyglot.Source;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -68,10 +64,10 @@ import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 final class PolyglotLimits {
 
     final long statementLimit;
-    final Predicate<Source> statementLimitSourcePredicate;
-    final Consumer<ResourceLimitEvent> onEvent;
+    final Predicate<Object> statementLimitSourcePredicate;
+    final Consumer<Object> onEvent;
 
-    PolyglotLimits(long statementLimit, Predicate<Source> statementLimitSourcePredicate, Consumer<ResourceLimitEvent> onEvent) {
+    PolyglotLimits(long statementLimit, Predicate<Object> statementLimitSourcePredicate, Consumer<Object> onEvent) {
         this.statementLimit = statementLimit;
         this.statementLimitSourcePredicate = statementLimitSourcePredicate;
         this.onEvent = onEvent;
@@ -169,8 +165,8 @@ final class PolyglotLimits {
      */
     static final class EngineLimits {
 
-        private static final Predicate<Source> NO_PREDICATE = new Predicate<>() {
-            public boolean test(Source t) {
+        private static final Predicate<Object> NO_PREDICATE = new Predicate<>() {
+            public boolean test(Object t) {
                 return true;
             }
         };
@@ -178,7 +174,7 @@ final class PolyglotLimits {
         final PolyglotEngineImpl engine;
         @CompilationFinal long statementLimit = -1;
         @CompilationFinal Assumption sameStatementLimit;
-        @CompilationFinal Predicate<Source> statementLimitSourcePredicate;
+        @CompilationFinal Predicate<Object> statementLimitSourcePredicate;
         EventBinding<?> statementLimitBinding;
 
         EngineLimits(PolyglotEngineImpl engine) {
@@ -187,7 +183,7 @@ final class PolyglotLimits {
 
         void validate(PolyglotLimits limits) {
             if (limits != null && limits.statementLimit != 0) {
-                Predicate<Source> newPredicate = limits.statementLimitSourcePredicate;
+                Predicate<Object> newPredicate = limits.statementLimitSourcePredicate;
                 if (newPredicate == null) {
                     newPredicate = NO_PREDICATE;
                 }
@@ -203,7 +199,7 @@ final class PolyglotLimits {
             assert Thread.holdsLock(engine.lock);
 
             if (limits.statementLimit != 0) {
-                Predicate<Source> newPredicate = limits.statementLimitSourcePredicate;
+                Predicate<Object> newPredicate = limits.statementLimitSourcePredicate;
                 if (newPredicate == null) {
                     newPredicate = NO_PREDICATE;
                 }
@@ -256,11 +252,11 @@ final class PolyglotLimits {
             if (limits == null) {
                 return null;
             }
-            Consumer<ResourceLimitEvent> onEvent = limits.onEvent;
+            Consumer<Object> onEvent = limits.onEvent;
             if (onEvent == null) {
                 return null;
             }
-            ResourceLimitEvent event = engine.getImpl().getAPIAccess().newResourceLimitsEvent(context.api);
+            Object event = engine.getImpl().getAPIAccess().newResourceLimitsEvent(context.api);
             try {
                 onEvent.accept(event);
             } catch (Throwable t) {

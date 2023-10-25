@@ -29,14 +29,15 @@ public final class FieldBuilder extends AbstractCodeBuilder {
     private final String name;
     private final String type;
     private ModifierBuilder modifierBuilder = new ModifierBuilder();
-    private final List<String> annotations = new ArrayList<>();
+    private final List<AnnotationBuilder> annotations = new ArrayList<>();
+    private StatementBuilder declaration;
 
     public FieldBuilder(Object type, Object name) {
         this.name = name.toString();
         this.type = type.toString();
     }
 
-    public FieldBuilder withAnnotation(String annotation) {
+    public FieldBuilder withAnnotation(AnnotationBuilder annotation) {
         annotations.add(annotation);
         return this;
     }
@@ -50,13 +51,22 @@ public final class FieldBuilder extends AbstractCodeBuilder {
         return this;
     }
 
+    public FieldBuilder withDeclaration(StatementBuilder statement) {
+        this.declaration = statement;
+        return this;
+    }
+
     @Override
     void buildImpl(IndentingStringBuilder sb) {
-        for (String annotation : annotations) {
-            sb.append(annotation);
-            sb.appendLine();
+        for (AnnotationBuilder annotation : annotations) {
+            annotation.buildImpl(sb);
         }
         modifierBuilder.buildImpl(sb);
-        sb.appendSpace(type).append(name).appendLine(SEMICOLON);
+        sb.appendSpace(type).append(name);
+        if (declaration != null) {
+            sb.append(" = ");
+            declaration.buildImpl(sb);
+        }
+        sb.appendLine(SEMICOLON);
     }
 }

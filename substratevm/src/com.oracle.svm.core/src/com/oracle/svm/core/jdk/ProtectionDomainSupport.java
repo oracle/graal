@@ -32,8 +32,8 @@ import java.security.ProtectionDomain;
 import java.security.cert.Certificate;
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionType;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.nativemode.runtime;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -63,6 +64,8 @@ import com.oracle.truffle.nfi.api.SignatureLibrary;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -210,12 +213,37 @@ public final class NFIContextExtension extends NativeContextExtension {
         this.wellKnownFunctionCache = new WellKnownNativeFunctionAndSignature[WELL_KNOWN_CACHE_INITIAL_SIZE];
     }
 
+    private static TruffleFile locateLibsulongNative(LLVMContext context) {
+        String sulongNative = getNativeLibrary("sulong-native");
+
+        String home = context.getLanguage().getLLVMLanguageHome();
+        if (home != null) {
+            Path libPath = Path.of(home, "native", "lib", sulongNative);
+            TruffleFile file = context.getEnv().getInternalTruffleFile(libPath.toString());
+            try {
+                if (file.exists()) {
+                    return file;
+                }
+            } catch (SecurityException e) {
+                // ignore, fall back to resource
+            }
+        }
+
+        TruffleFile resourceBase;
+        try {
+            resourceBase = context.getEnv().getInternalResource("libsulong-native");
+            return resourceBase.resolve(sulongNative);
+        } catch (IOException ex) {
+            throw CompilerDirectives.shouldNotReachHere(ex);
+        }
+    }
+
     @Override
     public void initialize(LLVMContext context) {
         assert !isInitialized();
         if (!internalLibrariesAdded) {
-            TruffleFile file = locateInternalLibrary(context, getNativeLibrary("sulong-native"), "<default nfi library>");
-            Object lib = loadLibrary(file.getPath(), context);
+            TruffleFile libsulongNative = locateLibsulongNative(context);
+            Object lib = loadLibrary(libsulongNative.getAbsoluteFile().getPath(), context);
             if (lib instanceof CallTarget) {
                 libraryHandles.add(((CallTarget) lib).call());
             }

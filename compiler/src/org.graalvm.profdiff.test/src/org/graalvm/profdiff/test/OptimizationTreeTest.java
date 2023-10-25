@@ -28,7 +28,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.profdiff.core.OptionValues;
 import org.graalvm.profdiff.core.TreeNode;
+import org.graalvm.profdiff.core.Writer;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
@@ -38,6 +40,7 @@ import org.graalvm.profdiff.core.optimization.Position;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 public class OptimizationTreeTest {
     private static final class MockCompilationUnit {
@@ -158,5 +161,51 @@ public class OptimizationTreeTest {
 
         List<Optimization> expected = List.of(optimization1, optimization2, optimization3, optimization4, optimization5);
         assertEquals(expected, rootPhase.getOptimizationsRecursive());
+    }
+
+    @Test
+    public void optimizationEqualsAndHashCode() {
+        Optimization opt1 = new Optimization("Opt", "Event", null, EconomicMap.create());
+        assertEquals(opt1, opt1);
+        assertNotEquals(opt1, null);
+        Optimization opt2 = new Optimization("Opt", "Event", Position.EMPTY, null);
+        assertEquals(opt1, opt2);
+        assertEquals(opt1.hashCode(), opt1.hashCode());
+        Optimization opt3 = new Optimization("Opt", "Event", null, EconomicMap.of("prop", 1));
+        assertNotEquals(opt1, opt3);
+    }
+
+    @Test
+    public void writeOptimizationTree() {
+        OptimizationPhase root = new OptimizationPhase("RootPhase");
+        OptimizationPhase child = new OptimizationPhase("ChildPhase");
+        root.addChild(child);
+        child.addChild(new Optimization("Opt", "Foo", Position.create(List.of("foo()", "bar()"), List.of(1, 2)), null));
+        root.addChild(new Optimization("Opt", "Bar", Position.create(List.of("baz()", "bar()"), List.of(3, 4)), EconomicMap.of("prop1", 1, "prop2", "value")));
+        root.addChild(new Optimization("Opt", "Baz", null, EconomicMap.of("prop1", null, "prop2", false)));
+
+        OptimizationTree tree = new OptimizationTree(root);
+
+        var writer = Writer.stringBuilder(new OptionValues());
+        tree.write(writer);
+        assertEquals("""
+                        Optimization tree
+                            RootPhase
+                                ChildPhase
+                                    Opt Foo at bci 2
+                                Opt Bar at bci 4 with {prop1: 1, prop2: value}
+                                Opt Baz with {prop1: null, prop2: false}
+                        """, writer.getOutput());
+
+        writer = Writer.stringBuilder(OptionValues.builder().withBCILongForm(true).build());
+        tree.write(writer);
+        assertEquals("""
+                        Optimization tree
+                            RootPhase
+                                ChildPhase
+                                    Opt Foo at bci {foo(): 1, bar(): 2}
+                                Opt Bar at bci {baz(): 3, bar(): 4} with {prop1: 1, prop2: value}
+                                Opt Baz with {prop1: null, prop2: false}
+                        """, writer.getOutput());
     }
 }

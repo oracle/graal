@@ -48,7 +48,7 @@ public class DumpThreadStacksOnSignalFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.DumpThreadStacksOnSignal.getValue();
+        return VMInspectionOptions.hasThreadDumpSupport();
     }
 
     @Override

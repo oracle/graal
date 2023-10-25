@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,12 +56,12 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 
 @ExportLibrary(InteropLibrary.class)
-@SuppressWarnings({"unused", "static-method"})
-public class WasmScope implements TruffleObject {
-    private Map<String, WasmInstance> instances;
+@SuppressWarnings({"static-method"})
+public final class WasmScope implements TruffleObject {
+    private final WasmContext context;
 
-    public WasmScope(Map<String, WasmInstance> instances) {
-        this.instances = instances;
+    public WasmScope(WasmContext context) {
+        this.context = context;
     }
 
     @ExportMessage
@@ -79,9 +79,14 @@ public class WasmScope implements TruffleObject {
         return true;
     }
 
+    private Map<String, WasmInstance> instances() {
+        return context.moduleInstances();
+    }
+
     @ExportMessage
     @CompilerDirectives.TruffleBoundary
     Object readMember(String member) throws UnknownIdentifierException {
+        var instances = instances();
         Object value = instances.get(member);
         if (value != null) {
             return value;
@@ -92,13 +97,16 @@ public class WasmScope implements TruffleObject {
     @ExportMessage
     @CompilerDirectives.TruffleBoundary
     boolean isMemberReadable(String member) {
+        var instances = instances();
         return instances.containsKey(member);
     }
 
     @ExportMessage
     @CompilerDirectives.TruffleBoundary
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return new InstanceNamesObject(instances.keySet().toArray());
+        var instances = instances();
+        String[] keys = instances.keySet().toArray(new String[instances.size()]);
+        return new InstanceNamesObject(keys);
     }
 
     @ExportMessage
@@ -109,15 +117,15 @@ public class WasmScope implements TruffleObject {
     @ExportMessage
     @CompilerDirectives.TruffleBoundary
     Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return "wasm-global-scope" + instances.keySet();
+        return "wasm-global-scope" + instances().keySet();
     }
 
     @ExportLibrary(InteropLibrary.class)
     static final class InstanceNamesObject implements TruffleObject {
 
-        private final Object[] names;
+        private final String[] names;
 
-        InstanceNamesObject(Object[] names) {
+        InstanceNamesObject(String[] names) {
             this.names = names;
         }
 

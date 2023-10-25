@@ -48,23 +48,25 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import org.graalvm.compiler.options.Option;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.TypeResult;
@@ -72,7 +74,6 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.FallbackFeature;
@@ -87,6 +88,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -155,6 +157,9 @@ public final class ReflectionPlugins {
         rp.registerClassPlugins(plugins);
     }
 
+    private static final Class<?> VAR_FORM_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.VarForm");
+    private static final Class<?> MEMBER_NAME_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.MemberName");
+
     /**
      * Classes that are allowed to be constant folded for Object parameters. We must be careful and
      * return only objects of classes that are "immutable enough", i.e., cannot change their
@@ -173,7 +178,7 @@ public final class ReflectionPlugins {
                     Class.class, String.class, ClassLoader.class,
                     Method.class, Constructor.class, Field.class,
                     MethodHandle.class, MethodHandles.Lookup.class, MethodType.class,
-                    VarHandle.class,
+                    VarHandle.class, VAR_FORM_CLASS, MEMBER_NAME_CLASS,
                     ByteOrder.class);
 
     private void registerMethodHandlesPlugins(InvocationPlugins plugins) {
@@ -201,15 +206,50 @@ public final class ReflectionPlugins {
                         "changeReturnType", "erase", "generic", "wrap", "unwrap",
                         "parameterType", "parameterCount", "returnType", "lastParameterType");
 
+        registerFoldInvocationPlugins(plugins, MethodHandle.class, "asType");
+
+        registerFoldInvocationPlugins(plugins, VAR_FORM_CLASS, "resolveMemberName");
+
         registerConditionalFoldInvocationPlugins(plugins);
 
-        Registration r = new Registration(plugins, MethodHandles.class);
-        r.register(new RequiredInlineOnlyInvocationPlugin("lookup") {
+        Registration mh = new Registration(plugins, MethodHandles.class);
+        mh.register(new RequiredInlineOnlyInvocationPlugin("lookup") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 return processMethodHandlesLookup(b, targetMethod);
             }
         });
+
+        Registration dmh = new Registration(plugins, "java.lang.invoke.MemberName");
+        dmh.register(new RequiredInvocationPlugin("getDeclaringClass", Receiver.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                JavaConstant constReceiver = receiver.get().asJavaConstant();
+                if (constReceiver == null || constReceiver.isNull()) {
+                    return false;
+                }
+                /*
+                 * The clazz field of MemberName qualifies as stable except when an object is cloned
+                 * and the new object's field is nulled. We should not observe it in that state.
+                 */
+                ResolvedJavaField clazzField = findField(targetMethod.getDeclaringClass(), "clazz");
+                JavaConstant clazz = b.getConstantReflection().readFieldValue(clazzField, constReceiver);
+                if (clazz == null || clazz.isNull()) {
+                    return false;
+                }
+                b.push(JavaKind.Object, ConstantNode.forConstant(clazz, b.getMetaAccess(), b.getGraph()));
+                return true;
+            }
+        });
+    }
+
+    private static ResolvedJavaField findField(ResolvedJavaType type, String name) {
+        for (ResolvedJavaField field : type.getInstanceFields(false)) {
+            if (field.getName().equals(name)) {
+                return field;
+            }
+        }
+        throw GraalError.shouldNotReachHere("Required field " + name + " not found in " + type); // ExcludeFromJacocoGeneratedReport
     }
 
     /**
@@ -264,7 +304,7 @@ public final class ReflectionPlugins {
                         "getField", "getMethod", "getConstructor",
                         "getDeclaredField", "getDeclaredMethod", "getDeclaredConstructor");
 
-        if (MissingReflectionRegistrationUtils.throwMissingRegistrationErrors() && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
+        if (MissingRegistrationUtils.throwMissingRegistrationErrors() && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
             registerBulkInvocationPlugin(plugins, Class.class, "getClasses", RuntimeReflection::registerAllClasses);
             registerBulkInvocationPlugin(plugins, Class.class, "getDeclaredClasses", RuntimeReflection::registerAllDeclaredClasses);
             registerBulkInvocationPlugin(plugins, Class.class, "getConstructors", RuntimeReflection::registerAllConstructors);
@@ -369,7 +409,7 @@ public final class ReflectionPlugins {
         }
 
         if (initialize) {
-            classInitializationPlugin.apply(b, b.getMetaAccess().lookupJavaType(clazz), () -> null, null);
+            classInitializationPlugin.apply(b, b.getMetaAccess().lookupJavaType(clazz), () -> null);
         }
         return true;
     }
@@ -389,6 +429,8 @@ public final class ReflectionPlugins {
         if (PredefinedClassesSupport.isPredefined(clazz)) {
             return false;
         }
+        receiver.requireNonNull();
+
         return pushConstant(b, targetMethod, clazz::getName, JavaKind.Object, clazz.getClassLoader(), true) != null;
     }
 
@@ -476,6 +518,9 @@ public final class ReflectionPlugins {
         Supplier<String> targetParameters = () -> (receiverValue == null ? "" : receiverValue + "; ") +
                         Stream.of(argValues).map(arg -> arg instanceof Object[] ? Arrays.toString((Object[]) arg) : Objects.toString(arg)).collect(Collectors.joining(", "));
 
+        if (receiver != null) {
+            receiver.requireNonNull();
+        }
         Object returnValue;
         try {
             returnValue = reflectionMethod.invoke(receiverValue, argValues);
@@ -523,6 +568,7 @@ public final class ReflectionPlugins {
         if (receiverValue == null || receiverValue == NULL_MARKER) {
             return false;
         }
+        receiver.requireNonNull();
 
         b.add(ReachabilityRegistrationNode.create(() -> registerForRuntimeReflection((T) receiverValue, registrationCallback), reason));
         return true;

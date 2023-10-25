@@ -3,7 +3,7 @@ layout: docs
 toc_group: debugging-and-diagnostics
 link_title: Debug Info Feature
 permalink: /reference-manual/native-image/debugging-and-diagnostics/DebugInfo/
-redirect_from: /$version/reference-manual/native-image/DebugInfo/
+redirect_from: /reference-manual/native-image/DebugInfo/
 ---
 
 # Debug Info Feature
@@ -638,7 +638,7 @@ If the sources cache is not located in the directory in which you run GDB, you c
 
 The argument to the set directories command should identify the location of the sources cache as an absolute path or a relative path from the working directory of the `gdb` session.
 
-Note that the current implementation does not yet find some sources for the GraalVM JIT compiler in the _org.graalvm.compiler*_ package subspace.
+Note that the current implementation does not yet find some sources for the GraalVM JIT compiler in the _jdk.graal.compiler*_ package subspace.
 
 You can supplement the files cached in `sources` by unzipping application source JAR files or copying application source trees into the cache.
 You will need to ensure that any new subdirectory you add to `sources` corresponds to the top level package for the classes whose sources are being included.

@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.graal;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.api.runtime.GraalRuntime;
-import org.graalvm.compiler.core.target.Backend;
-import org.graalvm.compiler.runtime.RuntimeProvider;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.api.runtime.GraalRuntime;
+import jdk.graal.compiler.core.target.Backend;
+import jdk.graal.compiler.runtime.RuntimeProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

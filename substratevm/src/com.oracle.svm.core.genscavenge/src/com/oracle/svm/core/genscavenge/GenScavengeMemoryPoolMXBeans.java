@@ -38,9 +38,14 @@ import com.oracle.svm.core.util.VMError;
 
 public class GenScavengeMemoryPoolMXBeans {
 
-    private static final String YOUNG_GEN_SCAVENGER = "young generation scavenger";
-    private static final String COMPLETE_SCAVENGER = "complete scavenger";
-    private static final String EPSILON_SCAVENGER = "epsilon scavenger";
+    static final String YOUNG_GEN_SCAVENGER = "young generation scavenger";
+    static final String COMPLETE_SCAVENGER = "complete scavenger";
+    static final String EPSILON_SCAVENGER = "epsilon scavenger";
+
+    static final String EDEN_SPACE = "eden space";
+    static final String SURVIVOR_SPACE = "survivor space";
+    static final String OLD_GEN_SPACE = "old generation space";
+    static final String EPSILON_HEAP = "epsilon heap";
 
     private static AbstractMemoryPoolMXBean[] mxBeans;
 
@@ -61,9 +66,15 @@ public class GenScavengeMemoryPoolMXBeans {
         return mxBeans;
     }
 
-    public static void notifyAfterCollection(GCAccounting accounting) {
+    public static void notifyBeforeCollection() {
         for (AbstractMemoryPoolMXBean mxBean : mxBeans) {
-            mxBean.afterCollection(accounting);
+            mxBean.beforeCollection();
+        }
+    }
+
+    public static void notifyAfterCollection() {
+        for (AbstractMemoryPoolMXBean mxBean : mxBeans) {
+            mxBean.afterCollection();
         }
     }
 
@@ -71,7 +82,17 @@ public class GenScavengeMemoryPoolMXBeans {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         EdenMemoryPoolMXBean(String... managerNames) {
-            super("eden space", managerNames);
+            super(EDEN_SPACE, managerNames);
+        }
+
+        @Override
+        void beforeCollection() {
+            updatePeakUsage(HeapImpl.getAccounting().getEdenUsedBytes());
+        }
+
+        @Override
+        void afterCollection() {
+            /* Nothing to do. */
         }
 
         @Override
@@ -82,11 +103,6 @@ public class GenScavengeMemoryPoolMXBeans {
         @Override
         UnsignedWord getMaximumValue() {
             return UNDEFINED;
-        }
-
-        @Override
-        void afterCollection(GCAccounting accounting) {
-            updatePeakUsage(accounting.getEdenChunkBytesBefore());
         }
 
         @Override
@@ -106,7 +122,7 @@ public class GenScavengeMemoryPoolMXBeans {
         }
 
         private static UnsignedWord getCurrentUsage() {
-            return HeapImpl.getHeapImpl().getAccounting().getEdenUsedBytes();
+            return HeapImpl.getAccounting().getEdenUsedBytes();
         }
     }
 
@@ -114,7 +130,17 @@ public class GenScavengeMemoryPoolMXBeans {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         SurvivorMemoryPoolMXBean(String... managerNames) {
-            super("survivor space", managerNames);
+            super(SURVIVOR_SPACE, managerNames);
+        }
+
+        @Override
+        void beforeCollection() {
+            /* Nothing to do. */
+        }
+
+        @Override
+        void afterCollection() {
+            updatePeakUsage(HeapImpl.getAccounting().getSurvivorUsedBytes());
         }
 
         @Override
@@ -128,11 +154,6 @@ public class GenScavengeMemoryPoolMXBeans {
         }
 
         @Override
-        void afterCollection(GCAccounting accounting) {
-            updatePeakUsage(accounting.getYoungChunkBytesAfter());
-        }
-
-        @Override
         public MemoryUsage getUsage() {
             return getCollectionUsage();
         }
@@ -144,7 +165,7 @@ public class GenScavengeMemoryPoolMXBeans {
 
         @Override
         public MemoryUsage getCollectionUsage() {
-            return memoryUsage(GCImpl.getGCImpl().getAccounting().getYoungChunkBytesAfter());
+            return memoryUsage(HeapImpl.getAccounting().getSurvivorUsedBytes());
         }
     }
 
@@ -152,7 +173,17 @@ public class GenScavengeMemoryPoolMXBeans {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         OldGenerationMemoryPoolMXBean(String... managerNames) {
-            super("old generation space", managerNames);
+            super(OLD_GEN_SPACE, managerNames);
+        }
+
+        @Override
+        void beforeCollection() {
+            /* Nothing to do. */
+        }
+
+        @Override
+        void afterCollection() {
+            updatePeakUsage(HeapImpl.getAccounting().getOldUsedBytes());
         }
 
         @Override
@@ -166,11 +197,6 @@ public class GenScavengeMemoryPoolMXBeans {
         }
 
         @Override
-        void afterCollection(GCAccounting accounting) {
-            updatePeakUsage(accounting.getOldGenerationAfterChunkBytes());
-        }
-
-        @Override
         public MemoryUsage getUsage() {
             return getCollectionUsage();
         }
@@ -182,7 +208,7 @@ public class GenScavengeMemoryPoolMXBeans {
 
         @Override
         public MemoryUsage getCollectionUsage() {
-            return memoryUsage(GCImpl.getGCImpl().getAccounting().getOldGenerationAfterChunkBytes());
+            return memoryUsage(HeapImpl.getAccounting().getOldUsedBytes());
         }
     }
 
@@ -190,7 +216,17 @@ public class GenScavengeMemoryPoolMXBeans {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         EpsilonMemoryPoolMXBean(String... managerNames) {
-            super("epsilon heap", managerNames);
+            super(EPSILON_HEAP, managerNames);
+        }
+
+        @Override
+        void beforeCollection() {
+            throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
+        }
+
+        @Override
+        void afterCollection() {
+            throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -204,14 +240,9 @@ public class GenScavengeMemoryPoolMXBeans {
         }
 
         @Override
-        void afterCollection(GCAccounting accounting) {
-            throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
-        }
-
-        @Override
         public MemoryUsage getUsage() {
-            HeapImpl heapImpl = HeapImpl.getHeapImpl();
-            return memoryUsage(heapImpl.getUsedBytes(), heapImpl.getCommittedBytes());
+            HeapAccounting accounting = HeapImpl.getAccounting();
+            return memoryUsage(accounting.getUsedBytes(), accounting.getCommittedBytes());
         }
 
         @Override

@@ -24,9 +24,6 @@
  */
 package org.graalvm.tools.lsp.server;
 
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
-
 import java.io.IOException;
 import java.net.URI;
 import java.time.Instant;
@@ -37,6 +34,8 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.logging.Level;
 
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
 import org.graalvm.tools.lsp.server.types.CodeLensOptions;
 import org.graalvm.tools.lsp.server.types.CompletionOptions;
 import org.graalvm.tools.lsp.server.types.DocumentLinkOptions;

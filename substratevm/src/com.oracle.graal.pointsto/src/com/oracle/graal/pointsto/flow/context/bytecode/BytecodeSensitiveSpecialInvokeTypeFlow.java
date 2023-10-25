@@ -75,14 +75,28 @@ final class BytecodeSensitiveSpecialInvokeTypeFlow extends AbstractSpecialInvoke
 
     @Override
     public void onObservedUpdate(PointsToAnalysis bb) {
-        /* The receiver state must contain only types that receiverType is assignable from. */
-        assert allAssignable(bb, receiverType, getReceiver().getState());
+        /*
+         * Filter types not compatible with the receiver type and determine which types have been
+         * added.
+         */
+        TypeState receiverState = filterReceiverState(bb, getReceiver().getState());
+        if (seenReceiverTypes.equals(receiverState)) {
+            // No new types have been added - nothing to do
+            return;
+        }
 
-        /* The receiver state has changed. Process the invoke. */
+        /* The receiver state has changed. */
+        seenReceiverTypes = receiverState;
+        if (receiverState.isNull()) {
+            // no types have been recorded
+            return;
+        }
+
+        /* Process the invoke. */
+
         initializeCallees(bb);
 
-        TypeState invokeState = filterReceiverState(bb, getReceiver().getState());
-        for (AnalysisObject receiverObject : invokeState.objects(bb)) {
+        for (AnalysisObject receiverObject : receiverState.objects(bb)) {
             LightImmutableCollection.forEach(this, CALLEES_ACCESSOR, (PointsToAnalysisMethod callee) -> {
                 CallSiteSensitiveMethodTypeFlow calleeTypeFlow = (CallSiteSensitiveMethodTypeFlow) callee.getTypeFlow();
 
@@ -99,7 +113,7 @@ final class BytecodeSensitiveSpecialInvokeTypeFlow extends AbstractSpecialInvoke
     }
 
     @Override
-    protected Collection<MethodFlowsGraph> getAllCalleesFlows(PointsToAnalysis bb) {
+    public Collection<MethodFlowsGraph> getAllNonStubCalleesFlows(PointsToAnalysis bb) {
         return calleesFlows;
     }
 }

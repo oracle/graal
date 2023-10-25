@@ -48,25 +48,27 @@ public final class IncrementalGarbageCollectorMXBean implements com.sun.manageme
 
     @Override
     public long getCollectionCount() {
-        return HeapImpl.getGCImpl().getAccounting().getIncrementalCollectionCount();
+        return GCImpl.getAccounting().getIncrementalCollectionCount();
     }
 
     @Override
     public long getCollectionTime() {
-        long nanos = HeapImpl.getGCImpl().getAccounting().getIncrementalCollectionTotalNanos();
+        long nanos = GCImpl.getAccounting().getIncrementalCollectionTotalNanos();
         return TimeUtils.roundNanosToMillis(nanos);
     }
 
     @Override
     public String[] getMemoryPoolNames() {
         /* Return a new array each time because arrays are not immutable. */
-        return new String[]{"young generation space"};
+        return new String[]{
+                        GenScavengeMemoryPoolMXBeans.EDEN_SPACE,
+                        GenScavengeMemoryPoolMXBeans.SURVIVOR_SPACE};
     }
 
     @Override
     public String getName() {
         /* Changing this name will break assumptions we take in the object replacer. */
-        return "young generation scavenger";
+        return GenScavengeMemoryPoolMXBeans.YOUNG_GEN_SCAVENGER;
     }
 
     @Override

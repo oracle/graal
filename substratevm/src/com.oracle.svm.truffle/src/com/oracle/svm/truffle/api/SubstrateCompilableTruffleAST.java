@@ -24,10 +24,9 @@
  */
 package com.oracle.svm.truffle.api;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
-
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.graal.meta.SubstrateCodeCacheProvider;
+import com.oracle.truffle.compiler.TruffleCompilable;
 
 import jdk.vm.ci.code.InstalledCode;
 

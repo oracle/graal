@@ -26,15 +26,15 @@ package com.oracle.svm.hosted;
 
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.DeoptimizeNode;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.DeoptimizeNode;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.extended.ForeignCallNode;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.nodes.spi.SimplifierTool;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.infrastructure.Universe;
@@ -96,12 +96,13 @@ public class SubstrateStrengthenGraphs extends StrengthenGraphs {
          * Uninterruptible methods might not be able to access the heap yet for the error message
          * constant, so we skip it for such methods too.
          *
-         * We also do not print out this message for runtime compiled methods because it would
-         * require us to preserve additional graph state.
+         * We also do not print out this message for runtime compiled methods and methods which can
+         * deopt for testing because it would require us to preserve additional graph state.
          */
         boolean insertMessage = SubstrateUtil.assertionsEnabled() &&
                         !Uninterruptible.Utils.isUninterruptible(graph.method()) &&
-                        !SubstrateCompilationDirectives.isRuntimeCompiledMethod(graph.method());
+                        !SubstrateCompilationDirectives.isRuntimeCompiledMethod(graph.method()) &&
+                        !SubstrateCompilationDirectives.singleton().isRegisteredForDeoptTesting(graph.method());
         if (insertMessage) {
             ConstantNode messageNode = ConstantNode.forConstant(providers.getConstantReflection().forString(message.get()), providers.getMetaAccess(), graph);
             ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(SnippetRuntime.UNSUPPORTED_FEATURE, messageNode));

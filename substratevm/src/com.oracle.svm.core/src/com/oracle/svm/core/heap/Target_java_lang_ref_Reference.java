@@ -29,7 +29,7 @@ import java.lang.ref.Reference;
 import java.lang.reflect.Field;
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.compiler.nodes.java.ReachabilityFenceNode;
+import jdk.graal.compiler.nodes.java.ReachabilityFenceNode;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;

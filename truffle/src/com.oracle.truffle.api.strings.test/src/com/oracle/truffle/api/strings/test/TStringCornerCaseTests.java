@@ -44,6 +44,7 @@ package com.oracle.truffle.api.strings.test;
 import static com.oracle.truffle.api.strings.test.TStringTestUtil.byteArray;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -116,5 +117,15 @@ public class TStringCornerCaseTests extends TStringTestBase {
         MutableTruffleString a = MutableTruffleString.fromByteArrayUncached(new byte[]{0}, 0, 1, TruffleString.Encoding.BYTES, false);
         Assert.assertTrue(a.isCompatibleToUncached(TruffleString.Encoding.BYTES));
         Assert.assertEquals(TruffleString.CodeRange.VALID, a.getCodeRangeImpreciseUncached(TruffleString.Encoding.BYTES));
+    }
+
+    @Test
+    public void testSafePointPollInObjectEquals() {
+        char[] chars = new char[2000000];
+        Arrays.fill(chars, 'a');
+        String s = new String(chars);
+        TruffleString t1 = TruffleString.fromConstant(s, TruffleString.Encoding.UTF_16);
+        TruffleString t2 = TruffleString.fromConstant(s, TruffleString.Encoding.UTF_16);
+        Assert.assertEquals(t1, t2);
     }
 }

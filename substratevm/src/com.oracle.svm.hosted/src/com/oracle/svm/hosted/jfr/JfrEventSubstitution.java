@@ -28,23 +28,25 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
-import com.oracle.svm.core.jfr.JfrEventWriterAccess;
 import com.oracle.svm.core.jfr.JfrJavaEvents;
+import com.oracle.svm.core.jfr.JfrJdkCompatibility;
+import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.misc.Unsafe;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.SecuritySupport;
+import jdk.jfr.internal.event.EventWriter;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -62,11 +64,11 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
     private final ConcurrentHashMap<ResolvedJavaType, Boolean> typeSubstitution;
     private final ConcurrentHashMap<ResolvedJavaMethod, ResolvedJavaMethod> methodSubstitutions;
     private final ConcurrentHashMap<ResolvedJavaField, ResolvedJavaField> fieldSubstitutions;
-    private final EconomicMap<String, Class<? extends jdk.jfr.Event>> mirrorEventMapping;
+    private final Map<String, Class<? extends jdk.jfr.Event>> mirrorEventMapping;
 
     JfrEventSubstitution(MetaAccessProvider metaAccess) {
         baseEventType = metaAccess.lookupJavaType(jdk.internal.event.Event.class);
-        ResolvedJavaType jdkJfrEventWriter = metaAccess.lookupJavaType(JfrEventWriterAccess.getEventWriterClass());
+        ResolvedJavaType jdkJfrEventWriter = metaAccess.lookupJavaType(EventWriter.class);
         changeWriterResetMethod(jdkJfrEventWriter);
         typeSubstitution = new ConcurrentHashMap<>();
         methodSubstitutions = new ConcurrentHashMap<>();
@@ -159,7 +161,7 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
             JfrJavaEvents.registerEventClass(newEventClass);
             // the reflection registration for the event handler field is delayed to the JfrFeature
             // duringAnalysis callback so it does not race/interfere with other retransforms
-            JVM.getJVM().retransformClasses(new Class<?>[]{newEventClass});
+            JfrJdkCompatibility.retransformClasses(new Class<?>[]{newEventClass});
             return Boolean.TRUE;
         } catch (Throwable ex) {
             throw VMError.shouldNotReachHere(ex);
@@ -224,8 +226,8 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
      * mirror event is registered as well. Otherwise, incorrect JFR metadata would be emitted.
      */
     @SuppressWarnings("unchecked")
-    private static EconomicMap<String, Class<? extends jdk.jfr.Event>> createMirrorEventsMapping() {
-        EconomicMap<String, Class<? extends jdk.jfr.Event>> result = EconomicMap.create();
+    private static Map<String, Class<? extends jdk.jfr.Event>> createMirrorEventsMapping() {
+        Map<String, Class<? extends jdk.jfr.Event>> result = ObservableImageHeapMapProvider.create();
         Class<? extends Annotation> mirrorEventAnnotationClass = (Class<? extends Annotation>) ReflectionUtil.lookupClass(false, "jdk.jfr.internal.MirrorEvent");
         Class<?> jdkEventsClass = ReflectionUtil.lookupClass(false, "jdk.jfr.internal.instrument.JDKEvents");
         Class<?>[] mirrorEventClasses = ReflectionUtil.readStaticField(jdkEventsClass, "mirrorEventClasses");

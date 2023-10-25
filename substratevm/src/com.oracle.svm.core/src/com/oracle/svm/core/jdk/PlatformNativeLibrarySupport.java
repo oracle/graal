@@ -34,8 +34,8 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.VMError;
 
 public abstract class PlatformNativeLibrarySupport {
@@ -65,6 +65,7 @@ public abstract class PlatformNativeLibrarySupport {
                     "javax_net",
                     "javax_script",
                     "javax_security",
+                    "jdk_internal_io",
                     "jdk_internal_jimage",
                     "jdk_internal_misc",
                     "jdk_internal_org",
@@ -148,6 +149,8 @@ public abstract class PlatformNativeLibrarySupport {
         boolean isBuiltin();
 
         boolean load();
+
+        boolean unload();
 
         boolean isLoaded();
 

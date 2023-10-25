@@ -35,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ExitStatus;
+import org.graalvm.nativeimage.ImageSingletons;
 
 public class DeadlockWatchdog implements Closeable {
 
@@ -57,6 +58,10 @@ public class DeadlockWatchdog implements Closeable {
         } else {
             thread = null;
         }
+    }
+
+    public static DeadlockWatchdog singleton() {
+        return ImageSingletons.lookup(DeadlockWatchdog.class);
     }
 
     public void recordActivity() {

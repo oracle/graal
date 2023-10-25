@@ -359,7 +359,7 @@ public final class SubprocessTestUtils {
 
     }
 
-    // Methods and constants copied from org.graalvm.compiler.test.SubprocessUtil
+    // Methods and constants copied from jdk.graal.compiler.test.SubprocessUtil
 
     /**
      * The name of the boolean system property that can be set to preserve temporary files created
@@ -547,7 +547,7 @@ public final class SubprocessTestUtils {
     }
 
     private static boolean hasArg(String optionName) {
-        if (optionName.equals("-cp") || optionName.equals("-classpath")) {
+        if (optionName.equals("-cp") || optionName.equals("-classpath") || optionName.equals("-p")) {
             return true;
         }
         if (optionName.equals("--version") ||

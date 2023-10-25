@@ -27,9 +27,9 @@ package com.oracle.svm.core;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionType;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionType;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.heap.HeapSizeVerifier;
@@ -74,6 +74,9 @@ public class SubstrateGCOptions {
             super.onValueUpdate(values, oldValue, newValue);
         }
     };
+
+    @Option(help = "Default size in bytes of the address space to reserve.", type = OptionType.Expert)//
+    public static final RuntimeOptionKey<Long> ReservedAddressSpaceSize = new RuntimeOptionKey<>(0L);
 
     @Option(help = "Exit on the first occurrence of an out-of-memory error that is thrown because the Java heap is out of memory.", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Boolean> ExitOnOutOfMemoryError = new NotifyGCRuntimeOptionKey<>(false);

@@ -3,7 +3,7 @@ layout: docs
 toc_group: reference-manual
 link_title: Reference Manuals
 permalink: /reference-manual/
-redirect_from: /$version/docs/reference-manual/
+redirect_from: /docs/reference-manual/
 ---
 
 # GraalVM Reference Manuals
@@ -16,8 +16,6 @@ These manuals are aimed at software engineers and developers who already work wi
 [Native Image](native-image/README.md) - learn in detail about Native Image: GraalVM's innovative technology that can ahead-of-time compile Java code to a self-contained native executable.
 
 [Java on Truffle](java-on-truffle/README.md) - learn how to run Java via a Java bytecode interpreter, implemented with the [Truffle framework](../../truffle/docs/README.md).
-
-[GraalVM Updater](graalvm-updater.md) - learn how to add more capabilities and upgrade the core GraalVM installation.
 
 [Polyglot Programming](polyglot-programming.md) - learn how to write polyglot applications and allow languages to directly interoperate with each other in the same memory space.
 

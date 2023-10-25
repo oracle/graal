@@ -8,7 +8,7 @@ local examples   = (import "run-spec-examples.libsonnet").examples;
   // Supported platforms
   supported_oss_names:: ["linux", "darwin", "windows"],
   supported_archs_names:: ["amd64", "aarch64"],
-  supported_jdks_names:: ["jdk17", "jdk19", "jdk20", "jdk21"],
+  supported_jdks_names:: ["jdk17", "jdk19", "jdk20", "jdk21", "jdk-latest"],
 
   // This will turn a task dictionary into a list of build objects.
   process(task_dict)::
@@ -181,6 +181,7 @@ local examples   = (import "run-spec-examples.libsonnet").examples;
   // Generates a variants entry using a feature map.
   // See the example for a detailed explanation.
   assert examples.generate_variants,
+  assert examples.generate_variants_exclude,
   generate_variants(variant_spec, feature_map, order=null):: {
     local SEE_ALSO = [$.run_job],
   } + _impl.generate_variants(variant_spec, feature_map, order=order),

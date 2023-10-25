@@ -38,6 +38,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PRIVATE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PROTECTED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_SCOPED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_STATIC;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_STRICT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SUPER;
@@ -99,7 +100,7 @@ import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.verifier.MethodVerifier;
 
 @SuppressWarnings("try")
@@ -143,9 +144,6 @@ public final class ClassfileParser {
     public static final int JAVA_16_VERSION = 60;
     public static final int JAVA_17_VERSION = 61;
 
-    @SuppressWarnings("unused") private static final int MAJOR_VERSION_JAVA_MIN = 0;
-    @SuppressWarnings("unused") private static final int MAJOR_VERSION_JAVA_MAX = JAVA_17_VERSION;
-
     public static final int STRICTER_ACCESS_CTRL_CHECK_VERSION = JAVA_1_5_VERSION;
     public static final int STACKMAP_ATTRIBUTE_MAJOR_VERSION = JAVA_6_VERSION;
     public static final int INVOKEDYNAMIC_MAJOR_VERSION = JAVA_7_VERSION;
@@ -153,7 +151,6 @@ public final class ClassfileParser {
     public static final int DYNAMICCONSTANT_MAJOR_VERSION = JAVA_11_VERSION;
 
     public static final char JAVA_MIN_SUPPORTED_VERSION = JAVA_1_1_VERSION;
-    public static final char JAVA_MAX_SUPPORTED_VERSION = JAVA_11_VERSION;
     public static final char JAVA_MAX_SUPPORTED_MINOR_VERSION = 0;
     public static final char JAVA_PREVIEW_MINOR_VERSION = 65535;
 
@@ -266,7 +263,7 @@ public final class ClassfileParser {
         } else if (env.getJavaVersion().java11OrEarlier()) {
             versionCheck11OrEarlier(env.getJavaVersion().classFileVersion(), major, minor);
         } else {
-            versionCheck12OrLater(env.getJavaVersion().classFileVersion(), major, minor);
+            versionCheck12OrLater(env.getJavaVersion().classFileVersion(), major, minor, env.isPreviewEnabled());
         }
     }
 
@@ -317,14 +314,14 @@ public final class ClassfileParser {
      * --enable-preview is present.
      *
      */
-    private static void versionCheck12OrLater(int maxMajor, int major, int minor) {
+    private static void versionCheck12OrLater(int maxMajor, int major, int minor, boolean previewEnabled) {
         if (major >= JAVA_12_VERSION && major <= maxMajor && minor == 0) {
             return;
         }
         if (major >= JAVA_MIN_SUPPORTED_VERSION && major < JAVA_12_VERSION) {
             return;
         }
-        if (major == maxMajor && minor == JAVA_PREVIEW_MINOR_VERSION) {
+        if (major == maxMajor && minor == JAVA_PREVIEW_MINOR_VERSION && previewEnabled) {
             return;
         }
         throw unsupportedClassVersionError("Unsupported major.minor version " + major + "." + minor);
@@ -840,6 +837,8 @@ public final class ClassfileParser {
                         } else if (Type.java_lang_invoke_ForceInline.equals(annotType) ||
                                         Type.jdk_internal_vm_annotation_ForceInline.equals(annotType)) {
                             methodFlags |= ACC_FORCE_INLINE;
+                        } else if (Type.jdk_internal_misc_ScopedMemoryAccess$Scoped.equals(annotType)) {
+                            methodFlags |= ACC_SCOPED;
                         }
                     }
                     methodAttributes[i] = runtimeVisibleAnnotations = new Attribute(attributeName, data);

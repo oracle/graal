@@ -21,16 +21,13 @@ language-launcher --help:internal
 In addition, the Graal Compiler options can be listed with:
 
 ```shell
-language-launcher --jvm --vm.XX:+JVMCIPrintProperties
+language-launcher --vm.XX:+JVMCIPrintProperties
 ```
 See [graalvm_ce_jdk8_options](https://chriswhocodes.com/graalvm_ce_jdk8_options.html) for a list of Graal Compiler options.
 
 ## Default Language Launcher Options
 
-- `--polyglot` : Run with all other guest languages accessible.
-- `--native` : Run using the native launcher with limited Java access (default).
-- `--jvm` : Run on the Java Virtual Machine with Java access.
-- `--vm.[option]` : Pass options to the host VM. To see available options, use '--help:vm'.
+- `--vm.[option]` : Pass options to the host VM. To see available options, use `--help:vm`.
 - `--log.file=<String>` : Redirect guest languages logging into a given file.
 - `--log.[logger].level=<String>` : Set language log level to OFF, SEVERE, WARNING, INFO, CONFIG, FINE, FINER, FINEST or ALL.
 - `--help` : Print this help message.
@@ -93,9 +90,11 @@ They are useful to users and language and tool implementers.
 These are internal options for debugging language implementations and tools.
 
 <!-- BEGIN: internal-engine-options -->
+- `--engine.AssertProbes=true|false` : Asserts that enter and return are always called in pairs on ProbeNode, verifies correct behavior of wrapper nodes. Java asserts need to be turned on for this option to have an effect. (default: false)
 - `--engine.DisableCodeSharing` : Option to force disable code sharing for this engine, even if the context was created with an explicit engine. This option is intended for testing purposes only.
 - `--engine.ForceCodeSharing` : Option to force enable code sharing for this engine, even if the context was created with a bound engine. This option is intended for testing purposes only.
 - `--engine.InstrumentExceptionsAreThrown=true|false` : Propagates exceptions thrown by instruments. (default: true)
+- `--engine.PrintInternalStackTrace` : Printed PolyglotException stacktrace unconditionally contains the stacktrace of the original internal exception as well as the stacktrace of the creation of the PolyglotException instance.
 - `--engine.SafepointALot` : Repeadly submits thread local actions and collects statistics about safepoint intervals in the process. Prints event and interval statistics when the context is closed for each thread. This option significantly slows down execution and is therefore intended for testing purposes only.
 - `--engine.ShowInternalStackFrames` : Show internal frames specific to the language implementation in stack traces.
 - `--engine.SpecializationStatistics` : Enables specialization statistics for nodes generated with Truffle DSL and prints the result on exit. In order for this flag to be functional -Atruffle.dsl.GenerateSpecializationStatistics=true needs to be set at build time. Enabling this flag and the compiler option has major implications on the performance and footprint of the interpreter. Do not use in production environments.

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.methodhandles;
 
+import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Constructor;
@@ -33,11 +35,14 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 
+import com.oracle.svm.core.LinkToNativeSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.invoke.MethodHandleUtils;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
@@ -59,7 +64,8 @@ final class Target_java_lang_invoke_MethodHandle {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private MethodHandle asTypeCache;
 
-    @Alias MethodType type;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
+    MethodType type;
 
     @Alias
     native Target_java_lang_invoke_MemberName internalMemberName();
@@ -72,9 +78,24 @@ final class Target_java_lang_invoke_MethodHandle {
     Object invokeBasic(Object... args) throws Throwable {
         Target_java_lang_invoke_MemberName memberName = internalMemberName();
         Object ret;
-        if (memberName != null) { /* Direct method handle */
+        if (memberName != null) {
+            /* Method handles associated with a member, typically direct method handles. */
+            boolean delegates = Target_java_lang_invoke_DelegatingMethodHandle.class.isInstance(this);
+            if (delegates && Util_java_lang_invoke_MethodHandleNatives.resolve(memberName, null, true) == null) {
+                /*
+                 * Method handles can get associated with a member that we cannot resolve and use
+                 * directly, but interpreting the target handle's lambda form can still succeed. For
+                 * example, VarHandles create MethodHandleImpl.WrappedMember method handle objects
+                 * that are associated with universal methods such as VarHandle.getVolatile() which
+                 * are unsuitable for reflection because of their signature polymorphism, but their
+                 * lambda forms call implementation methods in VarHandle subclasses that we can use.
+                 */
+                var delegating = SubstrateUtil.cast(this, Target_java_lang_invoke_DelegatingMethodHandle.class);
+                return delegating.getTarget().invokeBasic(args);
+            }
             ret = Util_java_lang_invoke_MethodHandle.invokeInternal(memberName, type, args);
-        } else { /* Interpretation mode */
+        } else {
+            /* Interpretation mode */
             Target_java_lang_invoke_LambdaForm form = internalForm();
             Object[] interpreterArguments = new Object[args.length + 1];
             interpreterArguments[0] = this;
@@ -114,6 +135,26 @@ final class Target_java_lang_invoke_MethodHandle {
     static Object linkToSpecial(Object... args) throws Throwable {
         return Util_java_lang_invoke_MethodHandle.linkTo(true, args);
     }
+
+    @Substitute(polymorphicSignature = true)
+    static Object linkToNative(Object... args) throws Throwable {
+        if (LinkToNativeSupport.isAvailable()) {
+            return LinkToNativeSupport.singleton().linkToNative(args);
+        } else {
+            throw unsupportedFeature("The foreign downcalls feature is not available. Please make sure that preview features are enabled with '--enable-preview'.");
+        }
+    }
+
+    @Substitute
+    void maybeCustomize() {
+        /*
+         * JDK 8 update 60 added an additional customization possibility for method handles. For all
+         * use cases that we care about, that seems to be unnecessary, so we can just do nothing.
+         */
+    }
+
+    @Delete
+    native void customize();
 }
 
 final class Util_java_lang_invoke_MethodHandle {
@@ -230,6 +271,24 @@ final class Util_java_lang_invoke_MethodHandle {
             }
         }
     }
+}
+
+@TargetClass(className = "java.lang.invoke.DirectMethodHandle")
+final class Target_java_lang_invoke_DirectMethodHandle {
+    @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
+    Target_java_lang_invoke_MemberName member;
+
+    @Substitute
+    void ensureInitialized() {
+        // This method is also intrinsified to avoid initialization altogether whenever possible.
+        EnsureClassInitializedNode.ensureClassInitialized(member.getDeclaringClass());
+    }
+}
+
+@TargetClass(className = "java.lang.invoke.DelegatingMethodHandle")
+final class Target_java_lang_invoke_DelegatingMethodHandle {
+    @Alias
+    native Target_java_lang_invoke_MethodHandle getTarget();
 }
 
 @TargetClass(className = "java.lang.invoke.MethodHandleImpl")

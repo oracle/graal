@@ -61,8 +61,8 @@ import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.ToReference;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.dispatch.ForeignExceptionInterop;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.ForeignExceptionInterop;
 import com.oracle.truffle.espresso.vm.VM;
 
 @EspressoSubstitutions
@@ -987,12 +987,6 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @Cached BranchProfile exceptionProfile) {
             try {
                 Object value = interop.readArrayElement(InteropUtils.unwrapForeign(getLanguage(), receiver), index);
-                /*
-                 * The foreign object *could* be wrapped into a more precise Java type, but
-                 * inferring this Java type from the interop "kind" (string, primitive, exception,
-                 * array...) is ambiguous and inefficient. The caller is responsible to re-wrap or
-                 * convert the result as needed.
-                 */
                 return InteropUtils.maybeWrapAsObject(value, valueInterop, getContext());
             } catch (InteropException e) {
                 exceptionProfile.enter();
@@ -1081,7 +1075,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         long index,
                         @JavaType(Object.class) StaticObject value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
+                        @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached BranchProfile exceptionProfile,
                         @Cached ConditionProfile isForeignProfile) {
             try {
@@ -1095,6 +1091,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             } catch (InteropException e) {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);
+            } catch (AbstractTruffleException ex) {
+                throw handleAbstractTruffleException(exceptionInterop, getContext(), lookupTypeConverterNode, exceptionProfile, ex);
             }
         }
     }
@@ -1971,9 +1969,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(String.class) StaticObject member,
                         @JavaType(Object[].class) StaticObject arguments,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary valueInterop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
                         @Bind("getMeta()") Meta meta,
-                        @Cached ToReference.DynamicToReference toEspressoNode,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached ToHostArguments toHostArguments,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
@@ -1984,7 +1982,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             try {
                 Object[] hostArguments = toHostArguments.execute(receiver.isForeignObject(), arguments);
                 Object result = interop.invokeMember(InteropUtils.unwrapForeign(getLanguage(), receiver), hostMember, hostArguments);
-                return toEspressoNode.execute(result, meta.java_lang_Object);
+                return InteropUtils.maybeWrapAsObject(result, valueInterop, getContext());
             } catch (InteropException e) {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);
@@ -1992,32 +1990,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 // make sure we don't try to convert espresso exceptions
                 throw e;
             } catch (AbstractTruffleException ex) {
-                exceptionProfile.enter();
-                StaticObject foreignException = getAllocator().createForeignException(getContext(), ex, exceptionInterop);
-                try {
-                    Object metaObject = exceptionInterop.getMetaObject(ex);
-                    PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(ToEspressoNode.getMetaName(metaObject, exceptionInterop));
-                    if (converter != null) {
-                        StaticObject converted = (StaticObject) converter.convert(foreignException);
-                        /*
-                         * The back trace of the foreign exception wrapper must be set to the
-                         * foreign exception object, then the back trace is retained in the guest
-                         * code and the stackTrace field set to null to trigger backtrace lookups
-                         */
-                        meta.java_lang_Throwable_backtrace.setObject(converted, meta.java_lang_Throwable_backtrace.getObject(foreignException));
-                        if (meta.getJavaVersion().java9OrLater()) {
-                            meta.java_lang_Throwable_depth.setInt(converted, meta.java_lang_Throwable_depth.getInt(foreignException));
-                        }
-                        meta.java_lang_Throwable_stackTrace.setObject(converted, StaticObject.NULL);
-                        meta.HIDDEN_FRAMES.setHiddenObject(converted, VM.StackTrace.FOREIGN_MARKER_STACK_TRACE);
-
-                        throw EspressoException.wrap(converted, meta);
-                    }
-                } catch (UnsupportedMessageException e) {
-                    // throw the original exception then
-                    throw ex;
-                }
-                throw EspressoException.wrap(foreignException, meta);
+                throw handleAbstractTruffleException(exceptionInterop, getContext(), lookupTypeConverterNode, exceptionProfile, ex);
             }
         }
     }
@@ -2070,32 +2043,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 // make sure we don't try to convert espresso exceptions
                 throw e;
             } catch (AbstractTruffleException ex) {
-                exceptionProfile.enter();
-                StaticObject foreignException = getAllocator().createForeignException(getContext(), ex, exceptionInterop);
-                try {
-                    Object metaObject = exceptionInterop.getMetaObject(ex);
-                    PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(ToEspressoNode.getMetaName(metaObject, exceptionInterop));
-                    if (converter != null) {
-                        StaticObject converted = (StaticObject) converter.convert(foreignException);
-                        /*
-                         * The back trace of the foreign exception wrapper must be set to the
-                         * foreign exception object, then the back trace is retained in the guest
-                         * code and the stackTrace field set to null to trigger backtrace lookups
-                         */
-                        meta.java_lang_Throwable_backtrace.setObject(converted, meta.java_lang_Throwable_backtrace.getObject(foreignException));
-                        if (meta.getJavaVersion().java9OrLater()) {
-                            meta.java_lang_Throwable_depth.setInt(converted, meta.java_lang_Throwable_depth.getInt(foreignException));
-                        }
-                        meta.java_lang_Throwable_stackTrace.setObject(converted, StaticObject.NULL);
-                        meta.HIDDEN_FRAMES.setHiddenObject(converted, VM.StackTrace.FOREIGN_MARKER_STACK_TRACE);
-
-                        throw EspressoException.wrap(converted, meta);
-                    }
-                } catch (UnsupportedMessageException e) {
-                    // throw the original exception then
-                    throw ex;
-                }
-                throw EspressoException.wrap(foreignException, getMeta());
+                throw handleAbstractTruffleException(exceptionInterop, getContext(), lookupTypeConverterNode, exceptionProfile, ex);
             }
         }
     }
@@ -2309,20 +2257,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);
             } catch (AbstractTruffleException ex) {
-                exceptionProfile.enter();
-                try {
-                    Object metaObject = exceptionInterop.getMetaObject(ex);
-                    PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(ToEspressoNode.getMetaName(metaObject, exceptionInterop));
-                    if (converter == null) {
-                        // no conversion, so throw the original exception
-                        throw ex;
-                    }
-                    StaticObject converted = (StaticObject) converter.convert(getAllocator().createForeignException(getContext(), ex, exceptionInterop));
-                    throw EspressoException.wrap(converted, getMeta());
-                } catch (UnsupportedMessageException e) {
-                    // throw the original exception then
-                }
-                throw ex;
+                throw handleAbstractTruffleException(exceptionInterop, getContext(), lookupTypeConverterNode, exceptionProfile, ex);
             }
         }
     }
@@ -3420,15 +3355,19 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedLibrary(limit = "LIMIT") InteropLibrary elementInterop,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary valueInterop,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
+                        @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 Object element = interop.getIteratorNextElement(InteropUtils.unwrapForeign(getLanguage(), receiver));
-                return InteropUtils.maybeWrapAsObject(element, elementInterop, getContext());
+                return InteropUtils.maybeWrapAsObject(element, valueInterop, getContext());
             } catch (InteropException e) {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);
+            } catch (AbstractTruffleException ex) {
+                throw handleAbstractTruffleException(exceptionInterop, getContext(), lookupTypeConverterNode, exceptionProfile, ex);
             }
         }
     }
@@ -3563,19 +3502,19 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(Object.class) StaticObject key,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedLibrary(limit = "LIMIT") InteropLibrary resultInterop,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary valueInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile,
                         @Cached ConditionProfile isForeignProfile) {
             try {
-                Object result = null;
+                Object result;
                 if (isForeignProfile.profile(receiver.isForeignObject())) {
                     EspressoLanguage language = getLanguage();
                     result = interop.readHashValue(InteropUtils.unwrapForeign(language, receiver), InteropUtils.unwrap(language, key, getMeta()));
                 } else {
                     result = interop.readHashValue(receiver, key);
                 }
-                return InteropUtils.maybeWrapAsObject(result, resultInterop, getContext());
+                return InteropUtils.maybeWrapAsObject(result, valueInterop, getContext());
             } catch (InteropException e) {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);
@@ -3611,7 +3550,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject key,
                         @JavaType(Object.class) StaticObject defaultValue,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedLibrary(limit = "LIMIT") InteropLibrary resultInterop,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary valueInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile,
                         @Cached ConditionProfile isForeignProfile) {
@@ -3624,10 +3563,10 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     if (result == unwrappedDefaultValue) {
                         return defaultValue;
                     }
-                    return InteropUtils.maybeWrapAsObject(result, resultInterop, getContext());
+                    return InteropUtils.maybeWrapAsObject(result, valueInterop, getContext());
                 } else {
                     Object result = interop.readHashValueOrDefault(receiver, key, defaultValue);
-                    return InteropUtils.maybeWrapAsObject(result, resultInterop, getContext());
+                    return InteropUtils.maybeWrapAsObject(result, valueInterop, getContext());
                 }
             } catch (InteropException e) {
                 exceptionProfile.enter();
@@ -3761,7 +3700,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject key,
                         @JavaType(Object.class) StaticObject value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
+                        @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached BranchProfile exceptionProfile,
                         @Cached ConditionProfile isForeignProfile) {
             try {
@@ -3775,6 +3716,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             } catch (InteropException e) {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);
+            } catch (AbstractTruffleException ex) {
+                throw handleAbstractTruffleException(exceptionInterop, getContext(), lookupTypeConverterNode, exceptionProfile, ex);
             }
         }
     }
@@ -3839,6 +3782,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(Object.class) StaticObject key,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
+                        @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile,
                         @Cached ConditionProfile isForeignProfile) {
@@ -3853,6 +3798,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             } catch (InteropException e) {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);
+            } catch (AbstractTruffleException ex) {
+                throw handleAbstractTruffleException(exceptionInterop, getContext(), lookupTypeConverterNode, exceptionProfile, ex);
             }
         }
     }
@@ -4012,6 +3959,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * argument.
      */
     abstract static class ToHostArguments extends SubstitutionNode {
+        private static final Object[] EMPTY_ARRAY = new Object[0];
 
         abstract Object[] execute(boolean unwrapArguments, @JavaType(Object[].class) StaticObject arguments);
 
@@ -4034,6 +3982,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object[].class) StaticObject arguments) {
             EspressoLanguage language = getLanguage();
             Object[] rawArgs = arguments.unwrap(language);
+            if (rawArgs.length == 0) {
+                return EMPTY_ARRAY;
+            }
             Object[] hostArgs = new Object[rawArgs.length];
             for (int i = 0; i < rawArgs.length; ++i) {
                 hostArgs[i] = InteropUtils.unwrap(language, (StaticObject) rawArgs[i], getMeta());
@@ -4051,6 +4002,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @Cached ReadArrayElement readArrayElement) {
             EspressoLanguage language = getLanguage();
             int argsLength = Math.toIntExact(getArraySize.execute(arguments));
+            if (argsLength == 0) {
+                return EMPTY_ARRAY;
+            }
             Object[] hostArgs = new Object[argsLength];
             for (int i = 0; i < argsLength; ++i) {
                 StaticObject elem = readArrayElement.execute(arguments, i);
@@ -4241,4 +4195,34 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         }
     }
 
+    private static EspressoException handleAbstractTruffleException(InteropLibrary exceptionInterop, EspressoContext context, LookupTypeConverterNode lookupTypeConverterNode,
+                    BranchProfile exceptionProfile, AbstractTruffleException ex) {
+        exceptionProfile.enter();
+        Meta meta = context.getMeta();
+        StaticObject foreignException = context.getAllocator().createForeignException(context, ex, exceptionInterop);
+        try {
+            Object metaObject = exceptionInterop.getMetaObject(ex);
+            PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(ToEspressoNode.getMetaName(metaObject, exceptionInterop));
+            if (converter != null) {
+                StaticObject converted = (StaticObject) converter.convert(foreignException);
+                /*
+                 * The back trace of the foreign exception wrapper must be set to the foreign
+                 * exception object, then the back trace is retained in the guest code and the
+                 * stackTrace field set to null to trigger backtrace lookups
+                 */
+                meta.java_lang_Throwable_backtrace.setObject(converted, meta.java_lang_Throwable_backtrace.getObject(foreignException));
+                if (meta.getJavaVersion().java9OrLater()) {
+                    meta.java_lang_Throwable_depth.setInt(converted, meta.java_lang_Throwable_depth.getInt(foreignException));
+                }
+                meta.java_lang_Throwable_stackTrace.setObject(converted, StaticObject.NULL);
+                meta.HIDDEN_FRAMES.setHiddenObject(converted, VM.StackTrace.FOREIGN_MARKER_STACK_TRACE);
+
+                throw EspressoException.wrap(converted, meta);
+            }
+        } catch (UnsupportedMessageException e) {
+            // throw the original exception then
+            throw ex;
+        }
+        throw EspressoException.wrap(foreignException, meta);
+    }
 }

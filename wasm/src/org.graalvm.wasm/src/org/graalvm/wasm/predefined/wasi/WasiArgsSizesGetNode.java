@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,11 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
@@ -52,18 +54,18 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 
 public final class WasiArgsSizesGetNode extends WasmBuiltinRootNode {
 
-    public WasiArgsSizesGetNode(WasmLanguage language, WasmInstance module) {
+    public WasiArgsSizesGetNode(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         final Object[] args = frame.getArguments();
-        return argsSizesGet((int) args[0], (int) args[1]);
+        return argsSizesGet(memory(frame), (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1));
     }
 
     @TruffleBoundary
-    private int argsSizesGet(int argcAddress, int argvBufSizeAddress) {
+    private int argsSizesGet(WasmMemory memory, int argcAddress, int argvBufSizeAddress) {
         final String[] arguments = getContext().environment().getApplicationArguments();
         final int argc = arguments.length;
         int argvBufSize = 0;
@@ -72,8 +74,8 @@ public final class WasiArgsSizesGetNode extends WasmBuiltinRootNode {
             argvBufSize += 1; // extra byte needed for the trailing null character
         }
 
-        memory().store_i32(this, argcAddress, argc);
-        memory().store_i32(this, argvBufSizeAddress, argvBufSize);
+        memory.store_i32(this, argcAddress, argc);
+        memory.store_i32(this, argvBufSizeAddress, argvBufSize);
         return Errno.Success.ordinal();
     }
 

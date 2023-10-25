@@ -89,6 +89,18 @@ public interface VersionFilter {
         }
     }
 
+    final class Java18OrEarlier implements VersionFilter {
+        public static final Java18OrEarlier INSTANCE = new Java18OrEarlier();
+
+        private Java18OrEarlier() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java18OrEarlier();
+        }
+    }
+
     final class Java19OrLater implements VersionFilter {
         public static final Java19OrLater INSTANCE = new Java19OrLater();
 

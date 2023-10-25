@@ -46,11 +46,13 @@ import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
 
 import java.io.BufferedOutputStream;
+import java.io.Console;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.lang.ref.WeakReference;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.channels.FileChannel;
 import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.AccessDeniedException;
@@ -63,7 +65,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.Formatter;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -81,13 +82,10 @@ import org.graalvm.home.HomeFinder;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.RuntimeOptions;
-import org.graalvm.nativeimage.RuntimeOptions.OptionClass;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
-import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionStability;
-import org.graalvm.options.OptionType;
 import org.graalvm.shadowed.org.jline.terminal.Terminal;
 import org.graalvm.shadowed.org.jline.terminal.TerminalBuilder;
 
@@ -979,13 +977,44 @@ public abstract class Launcher {
         return builder.toString();
     }
 
+    private static final Method IS_TERMINAL_METHOD = getIsTerminalMethod();
+
+    private static Method getIsTerminalMethod() {
+        try {
+            return Console.class.getMethod("isTerminal");
+        } catch (NoSuchMethodException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Returns true if stdin and stdout are both TTY, false otherwise.
+     *
+     * @since 24.0
+     */
+    protected static boolean isTTY() {
+        Console console = System.console();
+        if (console == null) {
+            return false;
+        }
+        if (IS_TERMINAL_METHOD != null) {
+            try {
+                return (boolean) IS_TERMINAL_METHOD.invoke(console);
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                throw new Error(e);
+            }
+        } else {
+            return true;
+        }
+    }
+
     private static final int FALLBACK_TERMINAL_WIDTH = 120;
     private int terminalWidth = -1;
 
     int getTerminalWidth() {
         if (terminalWidth == -1) {
             int width;
-            if (System.console() != null) {
+            if (isTTY()) {
                 try (Terminal terminal = createSystemTerminal()) {
                     width = terminal.getWidth();
                 } catch (IOException exception) {
@@ -1347,32 +1376,6 @@ public abstract class Launcher {
     class Native {
         // execve() to JVM/polyglot from native if needed.
         // Only parses --jvm/--native to find the VMType and --vm.* to pass/set the VM options.
-        private WeakReference<OptionDescriptors> compilerOptionDescriptors;
-        private WeakReference<OptionDescriptors> vmOptionDescriptors;
-
-        private OptionDescriptors getCompilerOptions() {
-            OptionDescriptors descriptors = null;
-            if (compilerOptionDescriptors != null) {
-                descriptors = compilerOptionDescriptors.get();
-            }
-            if (descriptors == null) {
-                descriptors = RuntimeOptions.getOptions(EnumSet.of(OptionClass.Compiler));
-                compilerOptionDescriptors = new WeakReference<>(descriptors);
-            }
-            return descriptors;
-        }
-
-        private OptionDescriptors getVMOptions() {
-            OptionDescriptors descriptors = null;
-            if (vmOptionDescriptors != null) {
-                descriptors = vmOptionDescriptors.get();
-            }
-            if (descriptors == null) {
-                descriptors = RuntimeOptions.getOptions(EnumSet.of(OptionClass.VM));
-                vmOptionDescriptors = new WeakReference<>(descriptors);
-            }
-            return descriptors;
-        }
 
         private void setNativeOption(String arg) {
             if (arg.startsWith("Dgraal.")) {
@@ -1406,24 +1409,12 @@ public abstract class Launcher {
                 key = arg.substring(0, eqIdx);
                 value = arg.substring(eqIdx + 1);
             }
-            OptionDescriptor descriptor = getCompilerOptions().get(key);
-            if (descriptor == null) {
-                descriptor = getVMOptions().get(key);
-                if (descriptor != null) {
-                    if (isBooleanOption(descriptor)) {
-                        warn("VM options such as '%s' should be set with '--vm.XX:\u00b1%<s'.%n" +
-                                        "Support for setting them with '--vm.Dgraal.%<s=<value>' is deprecated and will be removed.%n", key);
-                    } else {
-                        warn("VM options such as '%s' should be set with '--vm.XX:%<s=<value>'.%n" +
-                                        "Support for setting them with '--vm.Dgraal.%<s=<value>' is deprecated and will be removed.%n", key);
-                    }
-                }
-            }
+            RuntimeOptions.Descriptor descriptor = RuntimeOptions.getDescriptor(key);
             if (descriptor == null) {
                 throw unknownOption(key);
             }
             try {
-                RuntimeOptions.set(key, descriptor.getKey().getType().convert(value));
+                RuntimeOptions.set(key, descriptor.convertValue(value));
             } catch (IllegalArgumentException iae) {
                 throw abort("Invalid argument: '--vm." + arg + "': " + iae.getMessage());
             }
@@ -1452,19 +1443,19 @@ public abstract class Launcher {
                 if (eqIdx >= 0) {
                     throw abort("Invalid argument: '--vm." + arg + "': Use either +/- or =, but not both");
                 }
-                OptionDescriptor descriptor = getVMOptionDescriptor(key);
+                RuntimeOptions.Descriptor descriptor = getVMOptionDescriptor(key);
                 if (!isBooleanOption(descriptor)) {
                     throw abort("Invalid argument: " + key + " is not a boolean option, set it with --vm.XX:" + key + "=<value>.");
                 }
                 value = arg.startsWith("+");
             } else if (eqIdx > 0) {
                 key = arg.substring(0, eqIdx);
-                OptionDescriptor descriptor = getVMOptionDescriptor(key);
+                RuntimeOptions.Descriptor descriptor = getVMOptionDescriptor(key);
                 if (isBooleanOption(descriptor)) {
                     throw abort("Boolean option '" + key + "' must be set with +/- prefix, not <name>=<value> format.");
                 }
                 try {
-                    value = descriptor.getKey().getType().convert(arg.substring(eqIdx + 1));
+                    value = descriptor.convertValue(arg.substring(eqIdx + 1));
                 } catch (IllegalArgumentException iae) {
                     throw abort("Invalid argument: '--vm." + arg + "': " + iae.getMessage());
                 }
@@ -1474,15 +1465,8 @@ public abstract class Launcher {
             RuntimeOptions.set(key, value);
         }
 
-        private OptionDescriptor getVMOptionDescriptor(String key) {
-            OptionDescriptor descriptor = getVMOptions().get(key);
-            if (descriptor == null) {
-                descriptor = getCompilerOptions().get(key);
-                if (descriptor != null) {
-                    warn("compiler options such as '%s' should be set with '--vm.Dgraal.%<s=<value>'.%n" +
-                                    "Support for setting them with '--vm.XX:...' is deprecated and will be removed.%n", key);
-                }
-            }
+        private RuntimeOptions.Descriptor getVMOptionDescriptor(String key) {
+            RuntimeOptions.Descriptor descriptor = RuntimeOptions.getDescriptor(key);
             if (descriptor == null) {
                 throw unknownOption(key);
             }
@@ -1503,8 +1487,8 @@ public abstract class Launcher {
             }
         }
 
-        private boolean isBooleanOption(OptionDescriptor descriptor) {
-            return descriptor.getKey().getType().equals(OptionType.defaultType(Boolean.class));
+        private boolean isBooleanOption(RuntimeOptions.Descriptor descriptor) {
+            return descriptor.valueType() == Boolean.class;
         }
 
         private AbortException unknownOption(String key) {
@@ -1513,17 +1497,17 @@ public abstract class Launcher {
 
         private void printNativeHelp() {
             System.out.println("Native VM options:");
-            SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
-            for (OptionDescriptor descriptor : getVMOptions()) {
-                if (!descriptor.isDeprecated()) {
-                    sortedOptions.put(descriptor.getName(), descriptor);
+            SortedMap<String, RuntimeOptions.Descriptor> sortedOptions = new TreeMap<>();
+            for (RuntimeOptions.Descriptor descriptor : RuntimeOptions.listDescriptors()) {
+                if (!descriptor.deprecated()) {
+                    sortedOptions.put(descriptor.name(), descriptor);
                 }
             }
-            for (Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
-                OptionDescriptor descriptor = entry.getValue();
-                String helpMsg = descriptor.getHelp();
+            for (Entry<String, RuntimeOptions.Descriptor> entry : sortedOptions.entrySet()) {
+                RuntimeOptions.Descriptor descriptor = entry.getValue();
+                String helpMsg = descriptor.help();
                 if (isBooleanOption(descriptor)) {
-                    Boolean val = (Boolean) descriptor.getKey().getDefaultValue();
+                    Boolean val = (Boolean) descriptor.defaultValue();
                     if (helpMsg.length() != 0) {
                         helpMsg += ' ';
                     }
@@ -1534,34 +1518,14 @@ public abstract class Launcher {
                     }
                     launcherOption("--vm.XX:\u00b1" + entry.getKey(), helpMsg);
                 } else {
-                    Object def = descriptor.getKey().getDefaultValue();
+                    Object def = descriptor.defaultValue();
                     if (def instanceof String) {
                         def = "\"" + def + "\"";
                     }
                     launcherOption("--vm.XX:" + entry.getKey() + "=" + def, helpMsg);
                 }
             }
-            printCompilerOptions();
             printBasicNativeHelp();
-        }
-
-        private void printCompilerOptions() {
-            System.out.println("Compiler options:");
-            SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
-            for (OptionDescriptor descriptor : getCompilerOptions()) {
-                if (!descriptor.isDeprecated()) {
-                    sortedOptions.put(descriptor.getName(), descriptor);
-                }
-            }
-            for (Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
-                OptionDescriptor descriptor = entry.getValue();
-                String helpMsg = descriptor.getHelp();
-                Object def = descriptor.getKey().getDefaultValue();
-                if (def instanceof String) {
-                    def = '"' + (String) def + '"';
-                }
-                launcherOption("--vm.Dgraal." + entry.getKey() + "=" + def, helpMsg);
-            }
         }
 
         private void executePolyglot(List<String> args, boolean forceNative) {

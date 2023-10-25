@@ -24,18 +24,19 @@
  */
 package com.oracle.svm.core.genscavenge.graal;
 
-import com.oracle.svm.core.heap.Pod;
-import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
-import com.oracle.svm.core.thread.Continuation;
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.ThreadLocalAllocation;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.GCAllocationSupport;
+import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
+import com.oracle.svm.core.thread.ContinuationSupport;
+
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.word.Word;
 
 public class GenScavengeAllocationSupport implements GCAllocationSupport {
     private static final SubstrateForeignCallDescriptor SLOW_NEW_INSTANCE = SnippetRuntime.findForeignCall(ThreadLocalAllocation.class, "slowPathNewInstance", true);
@@ -46,7 +47,7 @@ public class GenScavengeAllocationSupport implements GCAllocationSupport {
 
     public static void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
         foreignCalls.register(UNCONDITIONAL_FOREIGN_CALLS);
-        if (Continuation.isSupported()) {
+        if (ContinuationSupport.isSupported()) {
             foreignCalls.register(SLOW_NEW_STORED_CONTINUATION);
         }
         if (Pod.RuntimeSupport.isPresent()) {

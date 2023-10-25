@@ -26,8 +26,6 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
-import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_OP_implicit_value;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -36,8 +34,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.range.SubRange;
-import org.graalvm.compiler.debug.DebugContext;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
+import jdk.graal.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
@@ -71,14 +72,16 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
      */
     private int dwarfStackRegister;
 
-    public DwarfLocSectionImpl(DwarfDebugInfo dwarfSections) {
-        super(dwarfSections);
-        initDwarfRegMap();
-    }
+    private static final LayoutDecision.Kind[] targetLayoutKinds = {
+                    LayoutDecision.Kind.CONTENT,
+                    LayoutDecision.Kind.SIZE,
+                    /* Add this so we can use the text section base address for debug. */
+                    LayoutDecision.Kind.VADDR};
 
-    @Override
-    public String getSectionName() {
-        return DwarfDebugInfo.DW_LOC_SECTION_NAME;
+    public DwarfLocSectionImpl(DwarfDebugInfo dwarfSections) {
+        // debug_loc section depends on text section
+        super(dwarfSections, DwarfSectionName.DW_LOC_SECTION, DwarfSectionName.TEXT_SECTION, targetLayoutKinds);
+        initDwarfRegMap();
     }
 
     @Override
@@ -125,24 +128,42 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
 
     private int generateContent(DebugContext context, byte[] buffer) {
         Cursor cursor = new Cursor();
-        compiledMethodsStream().forEach(compiledMethod -> {
-            cursor.set(writeCompiledMethodLocations(context, compiledMethod, buffer, cursor.get()));
+        // n.b. We could do this by iterating over the compiled methods sequence. the
+        // reason for doing it in class entry order is to because it mirrors the
+        // order in which entries appear in the info section. That stops objdump
+        // posting spurious messages about overlaps and holes in the var ranges.
+        instanceClassStream().filter(ClassEntry::hasCompiledEntries).forEachOrdered(classEntry -> {
+            classEntry.compiledEntries().forEachOrdered(compiledMethodEntry -> {
+                cursor.set(writeCompiledMethodLocations(context, compiledMethodEntry, buffer, cursor.get()));
+            });
         });
         return cursor.get();
     }
 
     private int writeCompiledMethodLocations(DebugContext context, CompiledMethodEntry compiledEntry, byte[] buffer, int p) {
         int pos = p;
-        pos = writeTopLevelLocations(context, compiledEntry, buffer, pos);
-        pos = writeInlineLocations(context, compiledEntry, buffer, pos);
+        Range primary = compiledEntry.getPrimary();
+        /*
+         * Note that offsets are written relative to the primary range base. This requires writing a
+         * base address entry before each of the location list ranges. It is possible to default the
+         * base address to the low_pc value of the compile unit for the compiled method's owning
+         * class, saving two words per location list. However, that forces the debugger to do a lot
+         * more up-front cross-referencing of CUs when it needs to resolve code addresses e.g. to
+         * set a breakpoint, leading to a very slow response for the user.
+         */
+        int base = primary.getLo();
+        log(context, "  [0x%08x] top level locations [0x%x, 0x%x] method %s", pos, primary.getLo(), primary.getHi(), primary.getFullMethodNameWithParams());
+        pos = writeTopLevelLocations(context, compiledEntry, base, buffer, pos);
+        if (!primary.isLeaf()) {
+            log(context, "  [0x%08x] inline locations %s", pos, primary.getFullMethodNameWithParams());
+            pos = writeInlineLocations(context, compiledEntry, base, buffer, pos);
+        }
         return pos;
     }
 
-    private int writeTopLevelLocations(DebugContext context, CompiledMethodEntry compiledEntry, byte[] buffer, int p) {
+    private int writeTopLevelLocations(DebugContext context, CompiledMethodEntry compiledEntry, int base, byte[] buffer, int p) {
         int pos = p;
         Range primary = compiledEntry.getPrimary();
-        long base = primary.getLo();
-        log(context, "  [0x%08x] top level locations [0x%x,0x%x] %s", pos, primary.getLo(), primary.getHi(), primary.getFullMethodNameWithParams());
         HashMap<DebugLocalInfo, List<SubRange>> varRangeMap = primary.getVarRangeMap();
         for (DebugLocalInfo local : varRangeMap.keySet()) {
             List<SubRange> rangeList = varRangeMap.get(local);
@@ -154,14 +175,10 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeInlineLocations(DebugContext context, CompiledMethodEntry compiledEntry, byte[] buffer, int p) {
+    private int writeInlineLocations(DebugContext context, CompiledMethodEntry compiledEntry, int base, byte[] buffer, int p) {
         int pos = p;
         Range primary = compiledEntry.getPrimary();
-        if (primary.isLeaf()) {
-            return p;
-        }
-        long base = primary.getLo();
-        log(context, "  [0x%08x] inline locations [0x%x,0x%x] %s", pos, primary.getLo(), primary.getHi(), primary.getFullMethodNameWithParams());
+        assert !primary.isLeaf();
         Iterator<SubRange> iterator = compiledEntry.topDownRangeIterator();
         while (iterator.hasNext()) {
             SubRange subrange = iterator.next();
@@ -180,22 +197,17 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeVarLocations(DebugContext context, DebugLocalInfo local, long base, List<SubRange> rangeList, byte[] buffer, int p) {
+    private int writeVarLocations(DebugContext context, DebugLocalInfo local, int base, List<SubRange> rangeList, byte[] buffer, int p) {
         assert !rangeList.isEmpty();
         int pos = p;
         // collect ranges and values, merging adjacent ranges that have equal value
         List<LocalValueExtent> extents = LocalValueExtent.coalesce(local, rangeList);
 
-        // TODO - currently we use the start address of the range's compiled method as
-        // a base from which to write location offsets. This means we need to explicitly
-        // write a (relocatable) base address as a prefix to each location list. If instead
-        // we rebased relative to the start of the enclosing compilation unit then we
-        // could omit writing the base address prefix, saving two long words per location list.
-
-        // write the base address
+        // write start of primary range as base address - see comment above for reasons why
+        // we choose ot do this rather than use the relevant compile unit low_pc
         pos = writeAttrData8(-1L, buffer, pos);
         pos = writeAttrAddress(base, buffer, pos);
-        // now write ranges as offsets from base
+        // write ranges as offsets from base
         for (LocalValueExtent extent : extents) {
             DebugLocalValueInfo value = extent.value;
             assert (value != null);
@@ -233,23 +245,23 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
 
     private int writeRegisterLocation(DebugContext context, int regIndex, byte[] buffer, int p) {
         int targetIdx = mapToDwarfReg(regIndex);
+        assert targetIdx >= 0;
         int pos = p;
-        if (targetIdx < 32) {
+        if (targetIdx < 0x20) {
             // can write using DW_OP_reg<n>
             short byteCount = 1;
-            byte regOp = (byte) (DwarfDebugInfo.DW_OP_reg0 + targetIdx);
+            byte reg = (byte) targetIdx;
             pos = writeShort(byteCount, buffer, pos);
-            pos = writeByte(regOp, buffer, pos);
-            verboseLog(context, "  [0x%08x]     REGOP count %d op 0x%x", pos, byteCount, regOp);
+            pos = writeExprOpcodeReg(reg, buffer, pos);
+            verboseLog(context, "  [0x%08x]     REGOP count %d op 0x%x", pos, byteCount, DwarfExpressionOpcode.DW_OP_reg0.value() + reg);
         } else {
             // have to write using DW_OP_regx + LEB operand
             assert targetIdx < 128 : "unexpectedly high reg index!";
             short byteCount = 2;
-            byte regOp = DwarfDebugInfo.DW_OP_regx;
             pos = writeShort(byteCount, buffer, pos);
-            pos = writeByte(regOp, buffer, pos);
+            pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_regx, buffer, pos);
             pos = writeULEB(targetIdx, buffer, pos);
-            verboseLog(context, "  [0x%08x]     REGOP count %d op 0x%x reg %d", pos, byteCount, regOp, targetIdx);
+            verboseLog(context, "  [0x%08x]     REGOP count %d op 0x%x reg %d", pos, byteCount, DwarfExpressionOpcode.DW_OP_regx.value(), targetIdx);
             // target idx written as ULEB should fit in one byte
             assert pos == p + 4 : "wrote the wrong number of bytes!";
         }
@@ -259,32 +271,26 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
     private int writeStackLocation(DebugContext context, int offset, byte[] buffer, int p) {
         int pos = p;
         short byteCount = 0;
-        int sp = getDwarfStackRegister();
-        byte stackOp;
-        if (sp < 32) {
-            // fold the base reg index into the op
-            stackOp = DwarfDebugInfo.DW_OP_breg0;
-            stackOp += (byte) sp;
-        } else {
-            // pass base reg index as a ULEB operand
-            stackOp = DwarfDebugInfo.DW_OP_bregx;
-        }
+        byte sp = (byte) getDwarfStackRegister();
         int patchPos = pos;
         pos = writeShort(byteCount, buffer, pos);
         int zeroPos = pos;
-        pos = writeByte(stackOp, buffer, pos);
-        if (stackOp == DwarfDebugInfo.DW_OP_bregx) {
-            // need to pass base reg index as a ULEB operand
+        if (sp < 0x20) {
+            // fold the base reg index into the op
+            pos = writeExprOpcodeBReg(sp, buffer, pos);
+        } else {
+            pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_bregx, buffer, pos);
+            // pass base reg index as a ULEB operand
             pos = writeULEB(sp, buffer, pos);
         }
         pos = writeSLEB(offset, buffer, pos);
         // now backpatch the byte count
         byteCount = (byte) (pos - zeroPos);
         writeShort(byteCount, buffer, patchPos);
-        if (stackOp == DwarfDebugInfo.DW_OP_bregx) {
-            verboseLog(context, "  [0x%08x]     STACKOP count %d op 0x%x offset %d", pos, byteCount, stackOp, 0 - offset);
+        if (sp < 0x20) {
+            verboseLog(context, "  [0x%08x]     STACKOP count %d op 0x%x offset %d", pos, byteCount, (DwarfExpressionOpcode.DW_OP_breg0.value() + sp), 0 - offset);
         } else {
-            verboseLog(context, "  [0x%08x]     STACKOP count %d op 0x%x reg %d offset %d", pos, byteCount, stackOp, sp, 0 - offset);
+            verboseLog(context, "  [0x%08x]     STACKOP count %d op 0x%x reg %d offset %d", pos, byteCount, DwarfExpressionOpcode.DW_OP_bregx.value(), sp, 0 - offset);
         }
         return pos;
     }
@@ -292,13 +298,13 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
     private int writePrimitiveConstantLocation(DebugContext context, JavaConstant constant, byte[] buffer, int p) {
         assert constant instanceof PrimitiveConstant;
         int pos = p;
-        byte op = DW_OP_implicit_value;
+        DwarfExpressionOpcode op = DwarfExpressionOpcode.DW_OP_implicit_value;
         JavaKind kind = constant.getJavaKind();
         int dataByteCount = kind.getByteCount();
         // total bytes is op + uleb + dataByteCount
         int byteCount = 1 + 1 + dataByteCount;
         pos = writeShort((short) byteCount, buffer, pos);
-        pos = writeByte(op, buffer, pos);
+        pos = writeExprOpcode(op, buffer, pos);
         pos = writeULEB(dataByteCount, buffer, pos);
         if (dataByteCount == 1) {
             if (kind == JavaKind.Boolean) {
@@ -322,12 +328,12 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
     private int writeNullConstantLocation(DebugContext context, JavaConstant constant, byte[] buffer, int p) {
         assert constant.isNull();
         int pos = p;
-        byte op = DW_OP_implicit_value;
+        DwarfExpressionOpcode op = DwarfExpressionOpcode.DW_OP_implicit_value;
         int dataByteCount = 8;
         // total bytes is op + uleb + dataByteCount
         int byteCount = 1 + 1 + dataByteCount;
         pos = writeShort((short) byteCount, buffer, pos);
-        pos = writeByte(op, buffer, pos);
+        pos = writeExprOpcode(op, buffer, pos);
         pos = writeULEB(dataByteCount, buffer, pos);
         pos = writeAttrData8(0, buffer, pos);
         verboseLog(context, "  [0x%08x]     CONSTANT (null) %s", pos, constant.toValueString());
@@ -404,28 +410,6 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
             }
             return extents;
         }
-    }
-
-    /**
-     * The debug_loc section depends on text section.
-     */
-    protected static final String TARGET_SECTION_NAME = DwarfDebugInfo.TEXT_SECTION_NAME;
-
-    @Override
-    public String targetSectionName() {
-        return TARGET_SECTION_NAME;
-    }
-
-    private final LayoutDecision.Kind[] targetSectionKinds = {
-                    LayoutDecision.Kind.CONTENT,
-                    LayoutDecision.Kind.SIZE,
-                    /* Add this so we can use the text section base address for debug. */
-                    LayoutDecision.Kind.VADDR
-    };
-
-    @Override
-    public LayoutDecision.Kind[] targetSectionKinds() {
-        return targetSectionKinds;
     }
 
     private int getDwarfStackRegister() {

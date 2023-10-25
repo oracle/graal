@@ -24,7 +24,7 @@
  */
 package com.oracle.graal.reachability;
 
-import org.graalvm.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.StructuredGraph;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -37,7 +37,7 @@ import jdk.vm.ci.meta.JavaConstant;
 /**
  * This handler analyzes methods using method summaries, which are obtained via an instance of
  * MethodSummaryProvider.
- * 
+ *
  * @see MethodSummaryProvider
  */
 public class MethodSummaryBasedHandler implements ReachabilityMethodProcessingHandler {
@@ -102,7 +102,7 @@ public class MethodSummaryBasedHandler implements ReachabilityMethodProcessingHa
             bb.handleEmbeddedConstant(method, constant, method);
         }
         for (AnalysisMethod rootMethod : summary.foreignCallTargets) {
-            bb.addRootMethod(rootMethod, false);
+            bb.addRootMethod(rootMethod, false, method);
         }
     }
 }

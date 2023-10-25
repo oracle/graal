@@ -26,18 +26,15 @@ package com.oracle.svm.core;
 
 import static com.oracle.svm.core.Containers.Options.UseContainerSupport;
 
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.ImageSingletons;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.internal.platform.Container;
+import jdk.internal.platform.Metrics;
 
 /**
  * Provides container awareness to the rest of the VM.
@@ -50,9 +47,6 @@ public class Containers {
         @Option(help = "Enable detection and runtime container configuration support.")//
         public static final HostedOptionKey<Boolean> UseContainerSupport = new HostedOptionKey<>(true);
     }
-
-    /** Sentinel used when the value is unknown. */
-    public static final int UNKNOWN = -1;
 
     /**
      * Calculates an appropriate number of active processors for the VM to use. The calculation is
@@ -85,10 +79,10 @@ public class Containers {
 
         int limitCount = cpuCount;
         if (UseContainerSupport.getValue() && Platform.includedIn(Platform.LINUX.class)) {
-            ContainerInfo info = new ContainerInfo();
-            if (info.isContainerized()) {
-                long quota = info.getCpuQuota();
-                long period = info.getCpuPeriod();
+            Metrics metrics = Container.metrics();
+            if (metrics != null) {
+                long quota = metrics.getCpuQuota();
+                long period = metrics.getCpuPeriod();
 
                 int quotaCount = 0;
                 if (quota > -1 && period > 0) {
@@ -110,8 +104,7 @@ public class Containers {
      */
     public static boolean isContainerized() {
         if (UseContainerSupport.getValue() && Platform.includedIn(Platform.LINUX.class)) {
-            ContainerInfo info = new ContainerInfo();
-            return info.isContainerized();
+            return Container.metrics() != null;
         }
         return false;
     }
@@ -119,55 +112,20 @@ public class Containers {
     /**
      * Returns the limit of available memory for this process.
      *
-     * @return memory limit in bytes or {@link Containers#UNKNOWN}
+     * @return memory limit in bytes or -1 for unlimited
      */
     public static long memoryLimitInBytes() {
         if (UseContainerSupport.getValue() && Platform.includedIn(Platform.LINUX.class)) {
-            ContainerInfo info = new ContainerInfo();
-            if (info.isContainerized()) {
-                long memoryLimit = info.getMemoryLimit();
-                if (memoryLimit > 0) {
-                    return memoryLimit;
-                }
+            Metrics metrics;
+            try {
+                metrics = Container.metrics();
+            } catch (StackOverflowError e) {
+                throw VMError.shouldNotReachHere("Could not get container metrics, likely due to using NIO in the container code of the JDK (JDK-8309191).", e);
+            }
+            if (metrics != null) {
+                return metrics.getMemoryLimit();
             }
         }
-        return UNKNOWN;
-    }
-}
-
-/** A simple wrapper around the Container Metrics API that abstracts over the used JDK. */
-@SuppressWarnings("static-method")
-final class ContainerInfo {
-    private static final String ERROR_MSG = "JDK " + JavaVersionUtil.JAVA_SPEC + " specific overlay is missing.";
-
-    boolean isContainerized() {
-        throw VMError.shouldNotReachHere(ERROR_MSG);
-    }
-
-    long getCpuQuota() {
-        throw VMError.shouldNotReachHere(ERROR_MSG);
-    }
-
-    long getCpuPeriod() {
-        throw VMError.shouldNotReachHere(ERROR_MSG);
-    }
-
-    long getCpuShares() {
-        throw VMError.shouldNotReachHere(ERROR_MSG);
-    }
-
-    long getMemoryLimit() {
-        throw VMError.shouldNotReachHere(ERROR_MSG);
-    }
-}
-
-@AutomaticallyRegisteredFeature
-@Platforms(Platform.LINUX.class)
-class ContainersFeature implements InternalFeature {
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        RuntimeClassInitializationSupport classInitSupport = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
-        classInitSupport.initializeAtRunTime("com.oracle.svm.core.containers.cgroupv1.CgroupV1Subsystem", "for cgroup support");
-        classInitSupport.initializeAtRunTime("com.oracle.svm.core.containers.cgroupv2.CgroupV2Subsystem", "for cgroup support");
+        return -1;
     }
 }

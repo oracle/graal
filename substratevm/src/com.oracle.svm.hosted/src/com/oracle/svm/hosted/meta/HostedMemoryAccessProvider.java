@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import org.graalvm.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.type.CompressibleConstant;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.meta.SubstrateMemoryAccessProvider;
 import com.oracle.svm.core.meta.CompressedNullConstant;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.Constant;
@@ -90,7 +90,7 @@ public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider
         if (JavaConstant.NULL_POINTER.equals(result)) {
             return CompressedNullConstant.COMPRESSED_NULL;
         }
-        return ((SubstrateObjectConstant) result).compress();
+        return ((CompressibleConstant) result).compress();
     }
 
     /**

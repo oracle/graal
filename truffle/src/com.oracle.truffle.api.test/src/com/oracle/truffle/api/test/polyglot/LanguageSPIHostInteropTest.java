@@ -98,7 +98,7 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
         assertThat(value, CoreMatchers.anyOf(CoreMatchers.equalTo("/"), CoreMatchers.equalTo("\\")));
     }
 
-    static class TestClass {
+    public static class TestClass {
     }
 
     @Test

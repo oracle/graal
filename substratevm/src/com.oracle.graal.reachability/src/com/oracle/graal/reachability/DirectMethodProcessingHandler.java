@@ -27,27 +27,27 @@ package com.oracle.graal.reachability;
 import java.lang.reflect.Modifier;
 import java.util.Optional;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.CallTargetNode;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.extended.ForeignCall;
-import org.graalvm.compiler.nodes.java.InstanceOfNode;
-import org.graalvm.compiler.nodes.java.LoadFieldNode;
-import org.graalvm.compiler.nodes.java.NewArrayNode;
-import org.graalvm.compiler.nodes.java.NewInstanceNode;
-import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
-import org.graalvm.compiler.nodes.java.StoreFieldNode;
-import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
-import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
-import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
-import org.graalvm.compiler.replacements.nodes.MacroInvokable;
-import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.CallTargetNode;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.extended.ForeignCall;
+import jdk.graal.compiler.nodes.java.InstanceOfNode;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.nodes.java.NewArrayNode;
+import jdk.graal.compiler.nodes.java.NewInstanceNode;
+import jdk.graal.compiler.nodes.java.NewMultiArrayNode;
+import jdk.graal.compiler.nodes.java.StoreFieldNode;
+import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
+import jdk.graal.compiler.nodes.virtual.VirtualInstanceNode;
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
+import jdk.graal.compiler.replacements.nodes.MacroInvokable;
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
@@ -177,24 +177,24 @@ public class DirectMethodProcessingHandler implements ReachabilityMethodProcessi
             } else if (n instanceof ForeignCall) {
                 MultiMethod.MultiMethodKey key = method == null ? MultiMethod.ORIGINAL_METHOD : method.getMultiMethodKey();
                 ForeignCallsProvider foreignCallsProvider = bb.getProviders(key).getForeignCalls();
-                handleForeignCall(bb, ((ForeignCall) n).getDescriptor(), foreignCallsProvider);
+                handleForeignCall(bb, ((ForeignCall) n).getDescriptor(), foreignCallsProvider, graph.method());
             } else if (n instanceof UnaryMathIntrinsicNode) {
                 ForeignCallSignature signature = ((UnaryMathIntrinsicNode) n).getOperation().foreignCallSignature;
                 MultiMethod.MultiMethodKey key = method == null ? MultiMethod.ORIGINAL_METHOD : method.getMultiMethodKey();
                 ForeignCallsProvider foreignCallsProvider = bb.getProviders(key).getForeignCalls();
-                handleForeignCall(bb, foreignCallsProvider.getDescriptor(signature), foreignCallsProvider);
+                handleForeignCall(bb, foreignCallsProvider.getDescriptor(signature), foreignCallsProvider, graph.method());
             } else if (n instanceof BinaryMathIntrinsicNode) {
                 ForeignCallSignature signature = ((BinaryMathIntrinsicNode) n).getOperation().foreignCallSignature;
                 MultiMethod.MultiMethodKey key = method == null ? MultiMethod.ORIGINAL_METHOD : method.getMultiMethodKey();
                 ForeignCallsProvider foreignCallsProvider = bb.getProviders(key).getForeignCalls();
-                handleForeignCall(bb, foreignCallsProvider.getDescriptor(signature), foreignCallsProvider);
+                handleForeignCall(bb, foreignCallsProvider.getDescriptor(signature), foreignCallsProvider, graph.method());
 
             }
         }
     }
 
-    private static void handleForeignCall(ReachabilityAnalysisEngine bb, ForeignCallDescriptor descriptor, ForeignCallsProvider foreignCallsProvider) {
+    private static void handleForeignCall(ReachabilityAnalysisEngine bb, ForeignCallDescriptor descriptor, ForeignCallsProvider foreignCallsProvider, ResolvedJavaMethod from) {
         Optional<AnalysisMethod> targetMethod = bb.getHostVM().handleForeignCall(descriptor, foreignCallsProvider);
-        targetMethod.ifPresent(method -> bb.addRootMethod(method, false));
+        targetMethod.ifPresent(method -> bb.addRootMethod(method, false, from));
     }
 }

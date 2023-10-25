@@ -26,7 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
-import org.graalvm.compiler.nodes.UnreachableNode;
+import jdk.graal.compiler.nodes.UnreachableNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platforms;
@@ -164,9 +164,8 @@ public class VMErrorSubstitutions {
                 }
                 if (ex != null) {
                     log.string(": ").exception(ex);
-                } else {
-                    log.newline();
                 }
+                log.newline();
 
                 SubstrateDiagnostics.printFatalError(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
 

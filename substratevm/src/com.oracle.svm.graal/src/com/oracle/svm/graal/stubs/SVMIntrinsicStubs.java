@@ -24,28 +24,33 @@
  */
 package com.oracle.svm.graal.stubs;
 
-import org.graalvm.compiler.lir.GeneratedStubsHolder;
-import org.graalvm.compiler.replacements.StringLatin1InflateNode;
-import org.graalvm.compiler.replacements.StringUTF16CompressNode;
-import org.graalvm.compiler.replacements.nodes.AESNode;
-import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
-import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
-import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
-import org.graalvm.compiler.replacements.nodes.ArrayIndexOfNode;
-import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToNode;
-import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
-import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsWithMaskNode;
-import org.graalvm.compiler.replacements.nodes.BigIntegerMulAddNode;
-import org.graalvm.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
-import org.graalvm.compiler.replacements.nodes.BigIntegerSquareToLenNode;
-import org.graalvm.compiler.replacements.nodes.CalcStringAttributesNode;
-import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
-import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
-import org.graalvm.compiler.replacements.nodes.EncodeArrayNode;
-import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
-import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
-import org.graalvm.compiler.replacements.nodes.VectorizedHashCodeNode;
-import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
+import jdk.graal.compiler.lir.GeneratedStubsHolder;
+import jdk.graal.compiler.replacements.StringLatin1InflateNode;
+import jdk.graal.compiler.replacements.StringUTF16CompressNode;
+import jdk.graal.compiler.replacements.nodes.AESNode;
+import jdk.graal.compiler.replacements.nodes.ArrayCompareToNode;
+import jdk.graal.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
+import jdk.graal.compiler.replacements.nodes.ArrayEqualsNode;
+import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
+import jdk.graal.compiler.replacements.nodes.ArrayRegionCompareToNode;
+import jdk.graal.compiler.replacements.nodes.ArrayRegionEqualsNode;
+import jdk.graal.compiler.replacements.nodes.ArrayRegionEqualsWithMaskNode;
+import jdk.graal.compiler.replacements.nodes.BigIntegerMulAddNode;
+import jdk.graal.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
+import jdk.graal.compiler.replacements.nodes.BigIntegerSquareToLenNode;
+import jdk.graal.compiler.replacements.nodes.CalcStringAttributesNode;
+import jdk.graal.compiler.replacements.nodes.CipherBlockChainingAESNode;
+import jdk.graal.compiler.replacements.nodes.CountPositivesNode;
+import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
+import jdk.graal.compiler.replacements.nodes.EncodeArrayNode;
+import jdk.graal.compiler.replacements.nodes.GHASHProcessBlocksNode;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.MD5Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA3Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
+import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
+import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
 
 @GeneratedStubsHolder(targetVM = "substrate", sources = {
                 ArrayIndexOfNode.class,
@@ -56,7 +61,7 @@ import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
                 ArrayCopyWithConversionsNode.class,
                 StringUTF16CompressNode.class,
                 StringLatin1InflateNode.class,
-                HasNegativesNode.class,
+                CountPositivesNode.class,
                 EncodeArrayNode.class,
                 VectorizedMismatchNode.class,
                 VectorizedHashCodeNode.class,
@@ -69,6 +74,11 @@ import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
                 BigIntegerMultiplyToLenNode.class,
                 BigIntegerMulAddNode.class,
                 BigIntegerSquareToLenNode.class,
+                SHA1Node.class,
+                SHA256Node.class,
+                SHA3Node.class,
+                SHA512Node.class,
+                MD5Node.class,
 })
 public final class SVMIntrinsicStubs {
 }

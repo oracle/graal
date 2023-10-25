@@ -34,7 +34,7 @@ import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.function.Function;
 
-import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
+import jdk.graal.compiler.core.common.util.UnsafeArrayTypeReader;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -245,7 +245,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     }
 
     @Override
-    public long getMetadataByteLength() {
+    public int getMetadataByteLength() {
         return ImageSingletons.lookup(ReflectionMetadataEncoding.class).getEncoding().length;
     }
 
@@ -307,7 +307,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      *     StringIndex name
      * }
      * </pre>
-     * 
+     *
      * Negative query field encoding.
      *
      * <pre>
@@ -466,7 +466,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      *     ClassIndex[] parameterTypes
      * }
      * </pre>
-     * 
+     *
      * Negative query constructor encoding.
      *
      * <pre>

@@ -41,7 +41,7 @@ import jdk.vm.ci.code.BytecodePosition;
 
 final class DefaultSpecialInvokeTypeFlow extends AbstractSpecialInvokeTypeFlow {
 
-    private volatile boolean calleesLinked = false;
+    private boolean calleesLinked = false;
     private final boolean isDeoptInvokeTypeFlow;
 
     DefaultSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
@@ -57,12 +57,26 @@ final class DefaultSpecialInvokeTypeFlow extends AbstractSpecialInvokeTypeFlow {
 
     @Override
     public void onObservedUpdate(PointsToAnalysis bb) {
-        assert !isSaturated();
+        assert !isSaturated() : this;
 
-        /* The receiver state must contain only types that receiverType is assignable from. */
-        assert allAssignable(bb, receiverType, getReceiver().getState());
+        /*
+         * Filter types not compatible with the receiver type and determine which types have been
+         * added.
+         */
+        TypeState receiverState = filterReceiverState(bb, getReceiver().getState());
+        if (seenReceiverTypes.equals(receiverState)) {
+            // No new types have been added - nothing to do
+            return;
+        }
 
-        /* The receiver state has changed. Process the invoke. */
+        /* The receiver state has changed. */
+        seenReceiverTypes = receiverState;
+        if (receiverState.isNull()) {
+            // no types have been recorded
+            return;
+        }
+
+        /* Process the invoke. */
 
         /*
          * If this is the first time the invoke is updated then set the callee and link the callee's
@@ -72,7 +86,7 @@ final class DefaultSpecialInvokeTypeFlow extends AbstractSpecialInvokeTypeFlow {
         initializeCallees(bb);
         LightImmutableCollection.forEach(this, CALLEES_ACCESSOR, (PointsToAnalysisMethod callee) -> {
             MethodFlowsGraphInfo calleeFlows = callee.getTypeFlow().getOrCreateMethodFlowsGraphInfo(bb, this);
-            assert calleeFlows.getMethod().equals(callee);
+            assert calleeFlows.getMethod().equals(callee) : callee;
 
             if (!calleesLinked) {
                 linkCallee(bb, false, calleeFlows);
@@ -86,15 +100,14 @@ final class DefaultSpecialInvokeTypeFlow extends AbstractSpecialInvokeTypeFlow {
              * See InvokeTypeFlow#linkCallee for a more thorough explanation of the receiver
              * linking.
              */
-            TypeState invokeState = filterReceiverState(bb, getReceiver().getState());
-            updateReceiver(bb, calleeFlows, invokeState);
+            updateReceiver(bb, calleeFlows, receiverState);
         });
         calleesLinked = true;
     }
 
     @Override
-    protected Collection<MethodFlowsGraph> getAllCalleesFlows(PointsToAnalysis bb) {
-        return DefaultInvokeTypeFlowUtil.getAllCalleesFlows(this);
+    public Collection<MethodFlowsGraph> getAllNonStubCalleesFlows(PointsToAnalysis bb) {
+        return DefaultInvokeTypeFlowUtil.getAllNonStubCalleesFlows(this);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package org.graalvm.profdiff.diff;
 import java.util.Objects;
 
 import org.graalvm.profdiff.core.TreeNode;
-import org.graalvm.profdiff.core.Writer;
 
 /**
  * Represents a sequence of operations that modify a rooted, ordered and labeled tree.
@@ -42,7 +41,7 @@ import org.graalvm.profdiff.core.Writer;
  * <li>the order of operations in the edit script is the dfs preorder of the delta tree</li>
  * </ul>
  */
-public class EditScript<T extends TreeNode<T>> implements TreeMatching {
+public class EditScript<T extends TreeNode<T>> {
     /**
      * The prefix of an identity operation.
      */
@@ -124,11 +123,7 @@ public class EditScript<T extends TreeNode<T>> implements TreeMatching {
 
         @Override
         public int hashCode() {
-            int result = operationType.hashCode();
-            result = 31 * result + depth;
-            result = 31 * result + (left != null ? left.hashCode() : 0);
-            result = 31 * result + (right != null ? right.hashCode() : 0);
-            return result;
+            return Objects.hash(operationType, depth, left, right);
         }
     }
 
@@ -185,17 +180,6 @@ public class EditScript<T extends TreeNode<T>> implements TreeMatching {
     public void transferFrom(EditScript<T> otherScript) {
         operations = otherScript.operations.transferFrom(operations);
         otherScript.operations = null;
-    }
-
-    /**
-     * Writes the delta subtree represented by this edit script in dfs preorder to the destination
-     * writer.
-     *
-     * @param writer the destination writer
-     */
-    @Override
-    public void write(Writer writer) {
-        DeltaTree.fromEditScript(this).accept(new DeltaTreeWriterVisitor<>(writer));
     }
 
     /**

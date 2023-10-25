@@ -39,64 +39,64 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
-import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.graph.Edges;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeList;
-import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.java.BytecodeParser;
-import org.graalvm.compiler.java.LambdaUtils;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.BeginNode;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.DynamicPiNode;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.FullInfopointNode;
-import org.graalvm.compiler.nodes.LogicNode;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.PiNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.NarrowNode;
-import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
-import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
-import org.graalvm.compiler.nodes.extended.LoadHubNode;
-import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
-import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
-import org.graalvm.compiler.nodes.java.NewArrayNode;
-import org.graalvm.compiler.nodes.java.StoreIndexedNode;
-import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.spi.Replacements;
-import org.graalvm.compiler.nodes.type.NarrowOopStamp;
-import org.graalvm.compiler.nodes.type.StampTool;
-import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
-import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
-import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
-import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
-import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AllocateUninitializedArrayPlugin;
-import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.CounterModeCryptPlugin;
-import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.ReachabilityFencePlugin;
-import org.graalvm.compiler.replacements.nodes.AESNode;
-import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
-import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
-import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
-import org.graalvm.compiler.word.WordCastNode;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
+import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.Edges;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeList;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.java.BytecodeParser;
+import jdk.graal.compiler.java.LambdaUtils;
+import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.BeginNode;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.DynamicPiNode;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.FullInfopointNode;
+import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.PiNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.NarrowNode;
+import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
+import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
+import jdk.graal.compiler.nodes.extended.LoadHubNode;
+import jdk.graal.compiler.nodes.extended.StateSplitProxyNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import jdk.graal.compiler.nodes.java.DynamicNewInstanceNode;
+import jdk.graal.compiler.nodes.java.InstanceOfDynamicNode;
+import jdk.graal.compiler.nodes.java.NewArrayNode;
+import jdk.graal.compiler.nodes.java.StoreIndexedNode;
+import jdk.graal.compiler.nodes.spi.ArrayLengthProvider;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.nodes.spi.Replacements;
+import jdk.graal.compiler.nodes.type.NarrowOopStamp;
+import jdk.graal.compiler.nodes.type.StampTool;
+import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
+import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
+import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
+import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins;
+import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.AllocateUninitializedArrayPlugin;
+import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.CounterModeCryptPlugin;
+import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.ReachabilityFencePlugin;
+import jdk.graal.compiler.replacements.nodes.AESNode;
+import jdk.graal.compiler.replacements.nodes.CipherBlockChainingAESNode;
+import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
+import jdk.graal.compiler.replacements.nodes.MacroNode.MacroParams;
+import jdk.graal.compiler.word.WordCastNode;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -329,7 +329,7 @@ public class SubstrateGraphBuilderPlugins {
                     if (!negate) {
                         if (className.endsWith(LambdaUtils.SERIALIZATION_TEST_LAMBDA_CLASS_SUBSTRING)) {
                             try {
-                                String lambdaHolderName = className.split(LambdaUtils.SERIALIZATION_TEST_LAMBDA_CLASS_SPLIT_PATTERN)[0];
+                                String lambdaHolderName = LambdaUtils.capturingClass(className);
                                 RuntimeSerialization.registerLambdaCapturingClass(Class.forName(lambdaHolderName, false, Thread.currentThread().getContextClassLoader()));
                             } catch (ClassNotFoundException e) {
                                 // no class, no registration
@@ -338,13 +338,17 @@ public class SubstrateGraphBuilderPlugins {
                     }
                 }
             } else {
-                final String name = p.substring(poffset);
+                String name = p.substring(poffset);
                 if (name.isEmpty()) {
                     return;
                 }
                 // Pattern is a class name
                 if (!negate) {
                     try {
+                        /* Support arrays of non-primitive types */
+                        if (name.startsWith("[") && name.contains("[L") && !name.endsWith(";")) {
+                            name += ";";
+                        }
                         RuntimeSerialization.register(Class.forName(name, false, Thread.currentThread().getContextClassLoader()));
                     } catch (ClassNotFoundException e) {
                         // no class, no registration
@@ -768,6 +772,9 @@ public class SubstrateGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classNode, ValueNode nameNode) {
                 if (classNode.isConstant() && nameNode.isConstant()) {
+                    // Emits a null-check for the otherwise unused receiver
+                    receiver.get();
+
                     /* If the class and field name arguments are constant. */
                     Class<?> clazz = snippetReflection.asObject(Class.class, classNode.asJavaConstant());
                     String fieldName = snippetReflection.asObject(String.class, nameNode.asJavaConstant());
@@ -794,6 +801,9 @@ public class SubstrateGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode fieldNode) {
                 if (fieldNode.isConstant()) {
+                    // Emits a null-check for the otherwise unused receiver
+                    receiver.get();
+
                     Field targetField = snippetReflection.asObject(Field.class, fieldNode.asJavaConstant());
                     return processFieldOffset(b, targetField, reason, metaAccess, isSunMiscUnsafe);
                 }
@@ -804,6 +814,9 @@ public class SubstrateGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode fieldNode) {
                 if (fieldNode.isConstant()) {
+                    // Emits a null-check for the otherwise unused receiver
+                    receiver.get();
+
                     Field targetField = snippetReflection.asObject(Field.class, fieldNode.asJavaConstant());
                     return processStaticFieldBase(b, targetField, isSunMiscUnsafe);
                 }
@@ -815,6 +828,9 @@ public class SubstrateGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode fieldNode) {
                 if (fieldNode.isConstant()) {
+                    // Emits a null-check for the otherwise unused receiver
+                    receiver.get();
+
                     Field targetField = snippetReflection.asObject(Field.class, fieldNode.asJavaConstant());
                     return processFieldOffset(b, targetField, reason, metaAccess, isSunMiscUnsafe);
                 }
@@ -1015,15 +1031,10 @@ public class SubstrateGraphBuilderPlugins {
 
                 ResolvedJavaMethod method = b.getGraph().method();
                 if (SubstrateOptions.parseOnce()) {
-                    throw VMError.unimplemented("Intrinsification of isDeoptimizationTarget not done yet");
-
+                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(MultiMethod.isDeoptTarget(method)));
                 } else {
                     if (method instanceof SharedMethod) {
-                        if (MultiMethod.isDeoptTarget(method)) {
-                            b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
-                        } else {
-                            b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(false));
-                        }
+                        b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(MultiMethod.isDeoptTarget(method)));
                     } else {
                         // In analysis the value is always true.
                         b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
@@ -1122,6 +1133,7 @@ public class SubstrateGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 JavaConstant constantReceiver = receiver.get(false).asJavaConstant();
                 if (constantReceiver != null) {
+                    receiver.requireNonNull();
                     ResolvedJavaType type = b.getConstantReflection().asJavaType(constantReceiver);
                     if (type != null) {
                         /*
@@ -1267,7 +1279,8 @@ public class SubstrateGraphBuilderPlugins {
         Registration r = new Registration(plugins, ReferenceAccessImpl.class);
         r.register(new RequiredInvocationPlugin("getCompressedRepresentation", Receiver.class, Object.class) {
             @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode objectNode) {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode objectNode) {
+                receiver.requireNonNull();
                 if (ReferenceAccess.singleton().haveCompressedReferences()) {
                     ValueNode compressedObj = SubstrateCompressionNode.compress(b.getGraph(), objectNode, ImageSingletons.lookup(CompressEncoding.class));
                     JavaKind compressedIntKind = JavaKind.fromWordSize(ConfigurationValues.getObjectLayout().getReferenceSize());
@@ -1281,7 +1294,8 @@ public class SubstrateGraphBuilderPlugins {
         });
         r.register(new RequiredInvocationPlugin("uncompressReference", Receiver.class, UnsignedWord.class) {
             @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode wordNode) {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode wordNode) {
+                receiver.requireNonNull();
                 if (ReferenceAccess.singleton().haveCompressedReferences()) {
                     CompressEncoding encoding = ImageSingletons.lookup(CompressEncoding.class);
                     JavaKind compressedIntKind = JavaKind.fromWordSize(ConfigurationValues.getObjectLayout().getReferenceSize());

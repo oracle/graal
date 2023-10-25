@@ -45,9 +45,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.Indent;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -76,6 +76,7 @@ import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.ExcludeFromReferenceMap;
+import com.oracle.svm.core.heap.FillerArray;
 import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
@@ -88,10 +89,12 @@ import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
+import com.oracle.svm.core.reflect.serialize.SerializationRegistry;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.ameta.ReadableJavaField;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.heap.PodSupport;
@@ -394,7 +397,8 @@ public class UniverseBuilder {
                     StoredContinuation.class,
                     SubstrateMethodAccessor.class,
                     SubstrateConstructorAccessor.class,
-                    FillerObject.class));
+                    FillerObject.class,
+                    FillerArray.class));
 
     private void collectMonitorFieldInfo(BigBang bb) {
         if (!SubstrateOptions.MultiThreaded.getValue()) {
@@ -1013,7 +1017,7 @@ public class UniverseBuilder {
 
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
         for (HostedType type : hUniverse.getTypes()) {
-            hUniverse.bb.getHeartbeatCallback().run();
+            hUniverse.hostVM().recordActivity();
 
             int layoutHelper;
             boolean canInstantiateAsInstance = false;
@@ -1069,8 +1073,10 @@ public class UniverseBuilder {
             boolean isProxyClass = ImageSingletons.lookup(DynamicProxyRegistry.class).isProxyClass(type.getJavaClass());
 
             DynamicHub hub = type.getHub();
+            SerializationRegistry s = ImageSingletons.lookup(SerializationRegistry.class);
             hub.setData(layoutHelper, type.getTypeID(), monitorOffset, optionalIdHashOffset, type.getTypeCheckStart(), type.getTypeCheckRange(),
-                            type.getTypeCheckSlot(), type.getTypeCheckSlots(), vtable, referenceMapIndex, type.isInstantiated(), canInstantiateAsInstance, isProxyClass);
+                            type.getTypeCheckSlot(), type.getTypeCheckSlots(), vtable, referenceMapIndex, type.isInstantiated(), canInstantiateAsInstance, isProxyClass,
+                            s.isRegisteredForSerialization(type.getJavaClass()));
         }
     }
 
@@ -1111,7 +1117,7 @@ public class UniverseBuilder {
                 ((ComputedValueField) aField.wrapped).processSubstrate(hMetaAccess);
             }
 
-            if (!hField.hasLocation() && Modifier.isStatic(hField.getModifiers()) && !aField.isWritten() && aField.isValueAvailable()) {
+            if (!hField.hasLocation() && Modifier.isStatic(hField.getModifiers()) && !aField.isWritten() && ReadableJavaField.isValueAvailable(aField)) {
                 hField.setUnmaterializedStaticConstant();
             }
         }
@@ -1124,6 +1130,6 @@ final class InvalidVTableEntryFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
-        access.registerAsRoot(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD, true);
+        access.registerAsRoot(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD, true, "Registered in " + InvalidVTableEntryFeature.class);
     }
 }

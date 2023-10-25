@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -127,6 +127,11 @@ public final class HeapParameters {
     @Fold
     static UnsignedWord getAlignedHeapChunkAlignment() {
         return getAlignedHeapChunkSize();
+    }
+
+    @Fold
+    public static UnsignedWord getMinUnalignedChunkSize() {
+        return UnalignedHeapChunk.getChunkSizeForObject(HeapParameters.getLargeArrayThreshold());
     }
 
     @Fold

@@ -45,13 +45,11 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -64,8 +62,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawPointerTo;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.ComparableWord;
@@ -74,6 +72,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
@@ -88,7 +87,7 @@ import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.jfr.events.ThreadSleepEventJDK17;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -99,12 +98,12 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.internal.event.ThreadSleepEvent;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -114,11 +113,8 @@ import jdk.internal.misc.Unsafe;
  * @see JavaThreads
  */
 public abstract class PlatformThreads {
-    private static final Field FIELDHOLDER_STATUS_FIELD = (JavaVersionUtil.JAVA_SPEC >= 19 && ImageInfo.inImageCode())
+    private static final Field FIELDHOLDER_STATUS_FIELD = ImageInfo.inImageCode()
                     ? ReflectionUtil.lookupField(Target_java_lang_Thread_FieldHolder.class, "threadStatus")
-                    : null;
-    private static final Field THREAD_STATUS_FIELD = (JavaVersionUtil.JAVA_SPEC < 19 && ImageInfo.inImageCode())
-                    ? ReflectionUtil.lookupField(Target_java_lang_Thread.class, "threadStatus")
                     : null;
 
     @Fold
@@ -128,23 +124,6 @@ public abstract class PlatformThreads {
 
     /** The platform {@link java.lang.Thread} for the {@link IsolateThread}. */
     static final FastThreadLocalObject<Thread> currentThread = FastThreadLocalFactory.createObject(Thread.class, "PlatformThreads.currentThread").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
-
-    /**
-     * The {@linkplain JavaThreads#getThreadId thread id} of the {@link Thread#currentThread()},
-     * which can be a {@linkplain Target_java_lang_Thread#vthread virtual thread} or the
-     * {@linkplain #currentThread platform thread itself}.
-     *
-     * As the value of the thread local can change over the thread lifetime (see carrier threads),
-     * it should only be accessed by the owning thread (via {@link FastThreadLocalLong#get()} and
-     * {@link FastThreadLocalLong#set(long)}).
-     */
-    static final FastThreadLocalLong currentVThreadId = FastThreadLocalFactory.createLong("PlatformThreads.currentVThreadId").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
-
-    /**
-     * A thread-local helper object for locking. Use only if each {@link Thread} corresponds to an
-     * {@link IsolateThread}, otherwise use {@link Target_java_lang_Thread#lockHelper}.
-     */
-    static final FastThreadLocalObject<Object> lockHelper = FastThreadLocalFactory.createObject(Object.class, "PlatformThreads.lockHelper").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
 
     /**
      * The number of running non-daemon threads. The initial value accounts for the main thread,
@@ -300,10 +279,12 @@ public abstract class PlatformThreads {
      * Returns the isolate thread associated with a Java thread. The caller must own the
      * {@linkplain VMThreads#THREAD_MUTEX threads mutex} and release it only after it has finished
      * using the returned {@link IsolateThread} pointer.
+     *
+     * This method can return {@code NULL} if the thread is not alive or if it has been recently
+     * started but has not completed initialization yet.
      */
     public static IsolateThread getIsolateThread(Thread t) {
         VMThreads.guaranteeOwnsThreadMutex("Threads mutex must be locked before accessing/iterating the thread list.");
-        VMError.guarantee(t.isAlive(), "Only running java.lang.Thread objects have a IsolateThread");
         return getIsolateThreadUnsafe(t);
     }
 
@@ -315,27 +296,6 @@ public abstract class PlatformThreads {
         if (javaThread != null) {
             ThreadListenerSupport.get().afterThreadExit(thread, javaThread);
         }
-    }
-
-    static void join(Thread thread, long millis) throws InterruptedException {
-        assert !isVirtual(thread);
-        // Checkstyle: allow synchronization
-        synchronized (thread) {
-            if (millis > 0) {
-                if (thread.isAlive()) {
-                    final long startTime = System.nanoTime();
-                    long delay = millis;
-                    do {
-                        thread.wait(delay);
-                    } while (thread.isAlive() && (delay = millis - TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime)) > 0);
-                }
-            } else {
-                while (thread.isAlive()) {
-                    thread.wait(0);
-                }
-            }
-        }
-        // Checkstyle: disallow synchronization
     }
 
     /**
@@ -389,8 +349,8 @@ public abstract class PlatformThreads {
         /* Return a stack size based on parameters and command line flags. */
         long stackSize;
         Target_java_lang_Thread tjlt = toTarget(thread);
-        long threadSpecificStackSize = (JavaVersionUtil.JAVA_SPEC >= 19) ? tjlt.holder.stackSize : tjlt.stackSize;
-        if (threadSpecificStackSize != 0) {
+        long threadSpecificStackSize = tjlt.holder.stackSize;
+        if (threadSpecificStackSize > 0) {
             /* If the user set a thread stack size at thread creation, then use that. */
             stackSize = threadSpecificStackSize;
         } else {
@@ -471,12 +431,6 @@ public abstract class PlatformThreads {
 
         /* If the thread was manually started, finish initializing it. */
         if (manuallyStarted) {
-            final ThreadGroup group = thread.getThreadGroup();
-            if (JavaVersionUtil.JAVA_SPEC < 19 && !(VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(thread))) {
-                toTarget(group).addUnstarted();
-                toTarget(group).add(thread);
-            }
-
             if (!thread.isDaemon()) {
                 nonDaemonThreads.incrementAndGet();
             }
@@ -486,7 +440,7 @@ public abstract class PlatformThreads {
     @Uninterruptible(reason = "Ensure consistency of vthread and cached vthread id.")
     private static void assignCurrent0(Thread thread) {
         VMError.guarantee(currentThread.get() == null, "overwriting existing java.lang.Thread");
-        currentVThreadId.set(JavaThreads.getThreadId(thread));
+        JavaThreads.currentVThreadId.set(JavaThreads.getThreadId(thread));
         currentThread.set(thread);
 
         assert toTarget(thread).isolateThread.isNull();
@@ -494,17 +448,14 @@ public abstract class PlatformThreads {
         ThreadListenerSupport.get().beforeThreadStart(CurrentIsolate.getCurrentThread(), thread);
     }
 
-    @Uninterruptible(reason = "Ensure consistency of vthread and cached vthread id.")
-    static void setCurrentThread(Thread carrier, Thread thread) {
-        assert carrier == currentThread.get();
-        assert thread == carrier || (VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(thread));
-        toTarget(carrier).vthread = (thread != carrier) ? thread : null;
-        currentVThreadId.set(JavaThreads.getThreadId(thread));
-    }
-
-    /** Returns the mounted virtual thread if one exists, otherwise null. */
+    /**
+     * Returns the virtual thread that is mounted on the given platform thread, or {@code null} if
+     * no virtual thread is mounted.
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static Thread getVThread(Thread thread) {
+    public static Thread getMountedVirtualThread(Thread thread) {
+        assert thread == currentThread.get() || VMOperation.isInProgressAtSafepoint();
+        assert !isVirtual(thread);
         return toTarget(thread).vthread;
     }
 
@@ -627,7 +578,7 @@ public abstract class PlatformThreads {
             try {
                 thread.interrupt(); // not final and subclasses can unexpectedly throw
             } catch (Throwable t) {
-                trace.string(" threw (ignored): ").exception(t);
+                trace.string(" threw (ignored): ").exception(t).newline();
             }
             trace.newline().flush();
 
@@ -648,7 +599,7 @@ public abstract class PlatformThreads {
                 }
             } else {
                 Target_java_lang_Thread tjlt = toTarget(thread);
-                Runnable target = JavaVersionUtil.JAVA_SPEC >= 19 ? tjlt.holder.task : tjlt.target;
+                Runnable target = tjlt.holder.task;
                 if (Target_java_util_concurrent_ThreadPoolExecutor_Worker.class.isInstance(target)) {
                     ThreadPoolExecutor executor = SubstrateUtil.cast(target, Target_java_util_concurrent_ThreadPoolExecutor_Worker.class).executor;
                     if (executor != null && (executor.getClass() == ThreadPoolExecutor.class || executor.getClass() == ScheduledThreadPoolExecutor.class)) {
@@ -668,7 +619,7 @@ public abstract class PlatformThreads {
                     pool.shutdownNow();
                 }
             } catch (Throwable t) {
-                trace.string(" threw (ignored): ").exception(t);
+                trace.string(" threw (ignored): ").exception(t).newline();
             }
             trace.newline().flush();
             trace.string("  shutdown initiated: ").object(pool).newline().flush();
@@ -861,7 +812,8 @@ public abstract class PlatformThreads {
     static StackTraceElement[] getStackTrace(boolean filterExceptions, Thread thread, Pointer callerSP) {
         assert !isVirtual(thread);
         if (thread == currentThread.get()) {
-            return StackTraceUtils.getStackTrace(filterExceptions, callerSP, WordFactory.nullPointer());
+            Pointer startSP = getCarrierSPOrElse(thread, callerSP);
+            return StackTraceUtils.getStackTrace(filterExceptions, startSP, WordFactory.nullPointer());
         }
         assert !filterExceptions : "exception stack traces can be taken only for the current thread";
         return StackTraceUtils.asyncGetStackTrace(thread);
@@ -869,20 +821,38 @@ public abstract class PlatformThreads {
 
     static void visitCurrentStackFrames(Pointer callerSP, StackFrameVisitor visitor) {
         assert !isVirtual(Thread.currentThread());
-        StackTraceUtils.visitCurrentThreadStackFrames(callerSP, WordFactory.nullPointer(), visitor);
+        Pointer startSP = getCarrierSPOrElse(Thread.currentThread(), callerSP);
+        StackTraceUtils.visitCurrentThreadStackFrames(startSP, WordFactory.nullPointer(), visitor);
     }
 
-    public static StackTraceElement[] getStackTraceAtSafepoint(Thread thread, Pointer callerSP) {
+    static StackTraceElement[] getStackTraceAtSafepoint(Thread thread, Pointer callerSP) {
         assert !isVirtual(thread);
+        Pointer carrierSP = getCarrierSPOrElse(thread, WordFactory.nullPointer());
         IsolateThread isolateThread = getIsolateThread(thread);
         if (isolateThread == CurrentIsolate.getCurrentThread()) {
+            Pointer startSP = carrierSP.isNonNull() ? carrierSP : callerSP;
             /*
              * Internal frames from the VMOperation handling show up in the stack traces, but we are
              * OK with that.
              */
-            return StackTraceUtils.getStackTrace(false, callerSP, WordFactory.nullPointer());
+            return StackTraceUtils.getStackTrace(false, startSP, WordFactory.nullPointer());
+        }
+        if (carrierSP.isNonNull()) { // mounted virtual thread, skip its frames
+            CodePointer carrierIP = FrameAccess.singleton().readReturnAddress(carrierSP);
+            return StackTraceUtils.getThreadStackTraceAtSafepoint(carrierSP, WordFactory.nullPointer(), carrierIP);
         }
         return StackTraceUtils.getThreadStackTraceAtSafepoint(isolateThread, WordFactory.nullPointer());
+    }
+
+    static Pointer getCarrierSPOrElse(Thread carrier, Pointer other) {
+        Target_jdk_internal_vm_Continuation cont = toTarget(carrier).cont;
+        while (cont != null) {
+            if (cont.getScope() == Target_java_lang_VirtualThread.VTHREAD_SCOPE) {
+                return ContinuationInternals.getBaseSP(cont);
+            }
+            cont = cont.getParent();
+        }
+        return other;
     }
 
     static Map<Thread, StackTraceElement[]> getAllStackTraces() {
@@ -964,24 +934,17 @@ public abstract class PlatformThreads {
      */
     static void sleep(long nanos) throws InterruptedException {
         assert !isCurrentThreadVirtual();
-        /* Starting with JDK 19, the thread sleep event is implemented as a Java-level event. */
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            if (com.oracle.svm.core.jfr.HasJfrSupport.get() && Target_jdk_internal_event_ThreadSleepEvent.isTurnedOn()) {
-                Target_jdk_internal_event_ThreadSleepEvent event = new Target_jdk_internal_event_ThreadSleepEvent();
-                try {
-                    event.time = nanos;
-                    event.begin();
-                    sleep0(nanos);
-                } finally {
-                    event.commit();
-                }
-            } else {
+        if (HasJfrSupport.get() && ThreadSleepEvent.isTurnedOn()) {
+            ThreadSleepEvent event = new ThreadSleepEvent();
+            try {
+                event.time = nanos;
+                event.begin();
                 sleep0(nanos);
+            } finally {
+                event.commit();
             }
         } else {
-            long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
             sleep0(nanos);
-            ThreadSleepEventJDK17.emit(TimeUtils.roundNanosToMillis(nanos), startTicks);
         }
     }
 
@@ -1060,25 +1023,17 @@ public abstract class PlatformThreads {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int getThreadStatus(Thread thread) {
         assert !isVirtual(thread);
-        return (JavaVersionUtil.JAVA_SPEC >= 19) ? toTarget(thread).holder.threadStatus : toTarget(thread).threadStatus;
+        return toTarget(thread).holder.threadStatus;
     }
 
     public static void setThreadStatus(Thread thread, int threadStatus) {
         assert !isVirtual(thread);
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            toTarget(thread).holder.threadStatus = threadStatus;
-        } else {
-            toTarget(thread).threadStatus = threadStatus;
-        }
+        toTarget(thread).holder.threadStatus = threadStatus;
     }
 
     static boolean compareAndSetThreadStatus(Thread thread, int expectedStatus, int newStatus) {
         assert !isVirtual(thread);
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            return Unsafe.getUnsafe().compareAndSetInt(toTarget(thread).holder, Unsafe.getUnsafe().objectFieldOffset(FIELDHOLDER_STATUS_FIELD), expectedStatus, newStatus);
-        } else {
-            return Unsafe.getUnsafe().compareAndSetInt(thread, Unsafe.getUnsafe().objectFieldOffset(THREAD_STATUS_FIELD), expectedStatus, newStatus);
-        }
+        return Unsafe.getUnsafe().compareAndSetInt(toTarget(thread).holder, Unsafe.getUnsafe().objectFieldOffset(FIELDHOLDER_STATUS_FIELD), expectedStatus, newStatus);
     }
 
     static boolean isAlive(Thread thread) {
@@ -1107,7 +1062,9 @@ public abstract class PlatformThreads {
         protected void operate() {
             for (IsolateThread cur = VMThreads.firstThread(); cur.isNonNull(); cur = VMThreads.nextThread(cur)) {
                 Thread thread = PlatformThreads.fromVMThread(cur);
-                result.put(thread, StackTraceUtils.getStackTraceAtSafepoint(thread));
+                if (!thread.isVirtual()) { // filter BoundVirtualThread
+                    result.put(thread, StackTraceUtils.getStackTraceAtSafepoint(thread));
+                }
             }
         }
     }
@@ -1124,7 +1081,7 @@ public abstract class PlatformThreads {
         protected void operate() {
             for (IsolateThread cur = VMThreads.firstThread(); cur.isNonNull(); cur = VMThreads.nextThread(cur)) {
                 Thread thread = PlatformThreads.fromVMThread(cur);
-                if (thread != null) {
+                if (thread != null && !thread.isVirtual()) { // filter BoundVirtualThread
                     result.add(thread);
                 }
             }
@@ -1230,26 +1187,13 @@ public abstract class PlatformThreads {
     static void blockedOn(Target_sun_nio_ch_Interruptible b) {
         assert !isCurrentThreadVirtual();
         Target_java_lang_Thread me = toTarget(currentThread.get());
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            synchronized (me.interruptLock) {
-                me.nioBlocker = b;
-            }
-        } else {
-            synchronized (me.blockerLock) {
-                me.blocker = b;
-            }
+        synchronized (me.interruptLock) {
+            me.nioBlocker = b;
         }
     }
 
     @RawStructure
     public interface OSThreadHandle extends PointerBase {
-    }
-
-    @RawPointerTo(OSThreadHandle.class)
-    public interface OSThreadHandlePointer extends PointerBase {
-        void write(int index, OSThreadHandle value);
-
-        OSThreadHandle read(int index);
     }
 
     public interface ThreadLocalKey extends ComparableWord {

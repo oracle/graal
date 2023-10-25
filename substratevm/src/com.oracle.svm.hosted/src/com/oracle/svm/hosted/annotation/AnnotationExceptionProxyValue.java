@@ -28,7 +28,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 
 import jdk.vm.ci.meta.JavaConstant;
 import sun.reflect.annotation.ExceptionProxy;
@@ -63,7 +63,7 @@ public final class AnnotationExceptionProxyValue extends AnnotationMemberValue {
     @Override
     public List<JavaConstant> getExceptionProxies(SnippetReflectionProvider snippetReflection) {
         if (objectConstant == null) {
-            objectConstant = snippetReflection.forObject(exceptionProxy);
+            objectConstant = snippetReflection.unwrapConstant(snippetReflection.forObject(exceptionProxy));
         }
         return Collections.singletonList(objectConstant);
     }

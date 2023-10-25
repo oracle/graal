@@ -32,7 +32,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import org.graalvm.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.GraalError;
 
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.api.HostVM;
@@ -129,7 +129,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     @SuppressWarnings("this-escape")
     public AnalysisField(AnalysisUniverse universe, ResolvedJavaField wrappedField) {
-        assert !wrappedField.isInternal();
+        assert !wrappedField.isInternal() : wrappedField;
 
         this.position = -1;
 
@@ -238,14 +238,14 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     public FieldTypeFlow getStaticFieldFlow() {
-        assert Modifier.isStatic(this.getModifiers());
+        assert Modifier.isStatic(this.getModifiers()) : this;
 
         return staticFieldFlow;
     }
 
     /** Get the field type flow, stripped of any context. */
     public ContextInsensitiveFieldTypeFlow getInstanceFieldFlow() {
-        assert !Modifier.isStatic(this.getModifiers());
+        assert !Modifier.isStatic(this.getModifiers()) : this;
 
         return instanceFieldFlow;
     }
@@ -313,7 +313,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     public void registerAsFolded(Object reason) {
         assert isValidReason(reason) : "Registering a field as folded needs to provide a valid reason.";
         if (AtomicUtils.atomicSet(this, reason, isFoldedUpdater)) {
-            assert getDeclaringClass().isReachable();
+            assert getDeclaringClass().isReachable() : this;
             onReachable();
         }
     }
@@ -383,6 +383,10 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         return isReadUpdater.get(this);
     }
 
+    public Object getAccessedReason() {
+        return isAccessed;
+    }
+
     /**
      * Returns true if the field is reachable. Fields that are read or manually registered as
      * reachable are always reachable. For fields that are write-only, more cases need to be
@@ -407,12 +411,24 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         return AtomicUtils.isSet(this, isAccessedUpdater) || AtomicUtils.isSet(this, isReadUpdater);
     }
 
+    public Object getReadReason() {
+        return isRead;
+    }
+
     public boolean isWritten() {
         return AtomicUtils.isSet(this, isAccessedUpdater) || AtomicUtils.isSet(this, isWrittenUpdater);
     }
 
+    public Object getWrittenReason() {
+        return isWritten;
+    }
+
     public boolean isFolded() {
         return AtomicUtils.isSet(this, isFoldedUpdater);
+    }
+
+    public Object getFoldedReason() {
+        return isFolded;
     }
 
     @Override
@@ -511,7 +527,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     @Override
     public String toString() {
         return "AnalysisField<" + format("%h.%n") + " -> " + wrapped.toString() + ", accessed: " + (isAccessed != null) +
-                        ", read: " + (isRead != null) + ", written: " + (isWritten != null) + ", folded: " + (isFolded != null) + ">";
+                        ", read: " + (isRead != null) + ", written: " + (isWritten != null) + ", folded: " + isFolded() + ">";
     }
 
     @Override

@@ -25,6 +25,7 @@
 package com.oracle.svm.core.graal.aarch64;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
+import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 import static jdk.vm.ci.aarch64.AArch64.allRegisters;
 import static jdk.vm.ci.aarch64.AArch64.r0;
 import static jdk.vm.ci.aarch64.AArch64.r1;
@@ -69,7 +70,7 @@ import static jdk.vm.ci.aarch64.AArch64.zr;
 
 import java.util.ArrayList;
 
-import org.graalvm.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.ReservedRegisters;
@@ -277,6 +278,10 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
     @Override
     public CallingConvention getCallingConvention(Type t, JavaType returnType, JavaType[] parameterTypes, ValueKindFactory<?> valueKindFactory) {
         SubstrateCallingConventionType type = (SubstrateCallingConventionType) t;
+        if (type.fixedParameterAssignment != null || type.returnSaving != null) {
+            throw unsupportedFeature("Fixed parameter assignments and return saving are not yet supported on this platform.");
+        }
+
         boolean isEntryPoint = type.nativeABI() && !type.outgoing;
 
         AllocatableValue[] locations = new AllocatableValue[parameterTypes.length];

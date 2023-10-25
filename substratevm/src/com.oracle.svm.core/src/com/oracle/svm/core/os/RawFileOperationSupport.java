@@ -26,8 +26,10 @@ package com.oracle.svm.core.os;
 
 import java.io.File;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
@@ -71,6 +73,15 @@ public interface RawFileOperationSupport {
     }
 
     /**
+     * Tries to allocate a platform-dependent C string for the given path. Note that the returned
+     * value needs to be freed manually once it is no longer needed (see
+     * {@link UnmanagedMemorySupport#free}).
+     *
+     * @return If the allocation is successful, a non-null value is returned.
+     */
+    CCharPointer allocateCPath(String path);
+
+    /**
      * Creates a file with the specified {@link FileCreationMode creation} and {@link FileAccessMode
      * access modes}.
      *
@@ -89,6 +100,16 @@ public interface RawFileOperationSupport {
     RawFileDescriptor create(File file, FileCreationMode creationMode, FileAccessMode accessMode);
 
     /**
+     * Creates a file with the specified {@link FileCreationMode creation} and {@link FileAccessMode
+     * access modes}.
+     *
+     * @return If the operation is successful, it returns the file descriptor. Otherwise, it returns
+     *         a value where {@link #isValid} will return false.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    RawFileDescriptor create(CCharPointer path, FileCreationMode creationMode, FileAccessMode accessMode);
+
+    /**
      * Opens a file with the specified {@link FileAccessMode access mode}.
      *
      * @return If the operation is successful, it returns the file descriptor. Otherwise, it returns
@@ -103,6 +124,15 @@ public interface RawFileOperationSupport {
      *         a value where {@link #isValid} will return false.
      */
     RawFileDescriptor open(File file, FileAccessMode accessMode);
+
+    /**
+     * Opens a file with the specified {@link FileAccessMode access mode}.
+     *
+     * @return If the operation is successful, it returns the file descriptor. Otherwise, it returns
+     *         a value where {@link #isValid} will return false.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    RawFileDescriptor open(CCharPointer path, FileAccessMode accessMode);
 
     /**
      * Checks if a file descriptor is valid or if it represents an error value.

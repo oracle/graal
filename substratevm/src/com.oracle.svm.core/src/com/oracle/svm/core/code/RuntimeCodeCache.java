@@ -28,9 +28,9 @@ import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.R
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionType;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionType;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -160,7 +160,7 @@ public class RuntimeCodeCache {
     }
 
     public void addMethod(CodeInfo info) {
-        assert VMOperation.isInProgressAtSafepoint();
+        assert VMOperation.isInProgressAtSafepoint() : "invalid state";
         InstalledCodeObserverSupport.activateObservers(RuntimeCodeInfoAccess.getCodeObserverHandles(info));
         addMethod0(info);
         RuntimeCodeInfoHistory.singleton().logAdd(info);
@@ -201,7 +201,7 @@ public class RuntimeCodeCache {
     }
 
     protected void invalidateMethod(CodeInfo info) {
-        assert VMOperation.isInProgressAtSafepoint();
+        assert VMOperation.isInProgressAtSafepoint() : "illegal state";
         prepareInvalidation(info);
 
         /*
@@ -226,7 +226,7 @@ public class RuntimeCodeCache {
 
         SubstrateInstalledCode installedCode = RuntimeCodeInfoAccess.getInstalledCode(info);
         if (installedCode != null) {
-            assert !installedCode.isAlive() || CodeInfoAccess.getCodeStart(info).rawValue() == installedCode.getAddress();
+            assert !installedCode.isAlive() || CodeInfoAccess.getCodeStart(info).rawValue() == installedCode.getAddress() : installedCode;
             /*
              * Until here, the InstalledCode may be valid (can be invoked) or alive (frames can be
              * on the stack). All the metadata must be valid until this point. Ensure it is
@@ -310,7 +310,7 @@ public class RuntimeCodeCache {
 
         @Override
         public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo currentCodeInfo, DeoptimizedFrame deoptimizedFrame) {
-            assert currentCodeInfo != codeInfoToCheck;
+            assert currentCodeInfo != codeInfoToCheck : currentCodeInfo.rawValue();
             return true;
         }
     }

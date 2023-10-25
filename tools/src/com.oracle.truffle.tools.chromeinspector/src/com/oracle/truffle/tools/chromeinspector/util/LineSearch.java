@@ -28,8 +28,8 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 public final class LineSearch {
 

@@ -1,8 +1,0 @@
-org.graalvm.compiler.replacements.processor.ReplacementsAnnotationProcessor
-org.graalvm.compiler.nodeinfo.processor.GraphNodeProcessor
-org.graalvm.compiler.lir.processor.IntrinsicStubProcessor
-org.graalvm.compiler.lir.processor.StubPortProcessor
-org.graalvm.compiler.truffle.compiler.hotspot.libgraal.processor.TruffleFromLibGraalProcessor
-org.graalvm.compiler.core.match.processor.MatchProcessor
-org.graalvm.compiler.options.processor.OptionProcessor
-org.graalvm.compiler.serviceprovider.processor.ServiceProviderProcessor

@@ -26,8 +26,8 @@ package com.oracle.svm.core.genscavenge;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.nodes.PauseNode;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.nodes.PauseNode;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -35,7 +35,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
@@ -50,7 +49,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     static int getMaxSurvivorSpaces(Integer userValue) {
-        assert userValue == null || userValue >= 0;
+        assert userValue == null || userValue >= 0 : userValue;
         return (userValue != null) ? userValue : AbstractCollectionPolicy.MAX_TENURING_THRESHOLD;
     }
 
@@ -91,13 +90,14 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         if (sizes == null) {
             return false; // updateSizeParameters() has never been called
         }
-        UnsignedWord edenUsed = HeapImpl.getHeapImpl().getAccounting().getEdenUsedBytes();
+        UnsignedWord edenUsed = HeapImpl.getAccounting().getEdenUsedBytes();
         return edenUsed.aboveOrEqual(edenSize);
     }
 
     @Override
-    public boolean shouldCollectOnRequest(GCCause cause, boolean fullGC) {
-        return cause == GCCause.JavaLangSystemGC && !SubstrateGCOptions.DisableExplicitGC.getValue();
+    public boolean shouldCollectOnHint(boolean fullGC) {
+        /* Collection hints are not supported. */
+        return false;
     }
 
     @Fold
@@ -144,8 +144,6 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
 
     @Override
     public void updateSizeParameters() {
-        PhysicalMemory.tryInitialize();
-
         SizeParameters params = computeSizeParameters(sizes);
         SizeParameters previous = sizes;
         if (previous != null && params.equal(previous)) {
@@ -301,7 +299,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     public void onCollectionBegin(boolean completeCollection, long requestingNanoTime) {
         // Capture the fraction of bytes in aligned chunks at the start to include all allocated
         // (also dead) objects, because we use it to reserve aligned chunks for future allocations
-        UnsignedWord youngChunkBytes = GCImpl.getGCImpl().getAccounting().getYoungChunkBytesBefore();
+        UnsignedWord youngChunkBytes = GCImpl.getAccounting().getYoungChunkBytesBefore();
         if (youngChunkBytes.notEqual(0)) {
             UnsignedWord youngAlignedChunkBytes = HeapImpl.getHeapImpl().getYoungGeneration().getAlignedChunkBytes();
             avgYoungGenAlignedChunkFraction.sample(UnsignedUtils.toDouble(youngAlignedChunkBytes) / UnsignedUtils.toDouble(youngChunkBytes));

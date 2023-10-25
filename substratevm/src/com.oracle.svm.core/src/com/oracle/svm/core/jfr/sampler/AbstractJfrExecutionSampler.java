@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.jfr.sampler;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -52,6 +53,7 @@ import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.thread.JavaVMOperation;
+import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
@@ -77,7 +79,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
  * encountered during the stack walk, or the thread holds the pool's lock when the signal arrives).
  * If such a situation is detected, the sample is omitted.
  */
-public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler {
+public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler implements ThreadListener {
     private static final FastThreadLocalInt samplerState = FastThreadLocalFactory.createInt("JfrSampler.samplerState");
     private static final FastThreadLocalInt isDisabledForCurrentThread = FastThreadLocalFactory.createInt("JfrSampler.isDisabledForCurrentThread");
 
@@ -156,6 +158,14 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler {
         assert value >= 0;
     }
 
+    @Override
+    @Uninterruptible(reason = "Prevent VM operations that modify execution sampler state.")
+    public void afterThreadRun() {
+        IsolateThread thread = CurrentIsolate.getCurrentThread();
+        uninstall(thread);
+        ExecutionSamplerInstallation.disallow(thread);
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static boolean isExecutionSamplingAllowedInCurrentThread() {
         boolean disallowed = singleton().isSignalHandlerDisabledGlobally.get() > 0 ||
@@ -170,6 +180,8 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler {
     protected abstract void stopSampling();
 
     protected abstract void updateInterval();
+
+    protected abstract void uninstall(IsolateThread thread);
 
     @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
     protected static void tryUninterruptibleStackWalk(CodePointer ip, Pointer sp) {
@@ -221,6 +233,11 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler {
             }
         }
 
+        if (!isSPInsideStackBoundaries(ip, sp)) {
+            JfrThreadLocal.increaseUnparseableStacks();
+            return;
+        }
+
         /* Try to do a stack walk. */
         SamplerSampleWriterData data = StackValue.get(SamplerSampleWriterData.class);
         if (SamplerSampleWriterDataAccess.initialize(data, 0, false)) {
@@ -244,6 +261,21 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler {
     }
 
     /**
+     * Verify whether the stack pointer (SP) lies within the limits of the thread's stack. If not,
+     * attempting a stack walk might result in a segmentation fault (SEGFAULT). The stack pointer
+     * might be positioned outside the stack's boundaries if a signal interrupted the execution at
+     * the beginning of a method, before the SP was adjusted to its correct value.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static boolean isSPInsideStackBoundaries(CodePointer ip, Pointer sp) {
+        CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
+        long totalFrameSize = CodeInfoAccess.lookupTotalFrameSize(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip));
+        Pointer returnAddressAddress = FrameAccess.singleton().getReturnAddressLocation(sp.add(WordFactory.unsigned(totalFrameSize)))
+                        .add(FrameAccess.returnAddressSize());
+        return returnAddressAddress.aboveThan(VMThreads.StackEnd.get()) && returnAddressAddress.belowOrEqual(VMThreads.StackBase.get());
+    }
+
+    /**
      * Starts/Stops execution sampling and updates the sampling interval.
      *
      * This needs to be a VM operation, because a lot of different races could happen otherwise.
@@ -262,8 +294,8 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler {
             boolean shouldSample = shouldSample();
             if (sampler.isSampling != shouldSample) {
                 if (shouldSample) {
-                    sampler.startSampling();
                     sampler.isSampling = true;
+                    sampler.startSampling();
                 } else {
                     sampler.stopSampling();
                     sampler.isSampling = false;

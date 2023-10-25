@@ -24,14 +24,13 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
-import org.graalvm.compiler.core.amd64.AMD64SuitesCreator;
-import org.graalvm.compiler.core.phases.EconomyCompilerConfiguration;
+import jdk.graal.compiler.core.phases.EconomyCompilerConfiguration;
 
 import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
 
 public class SubstrateAMD64SuitesCreatorProvider extends SubstrateSuitesCreatorProvider {
     public SubstrateAMD64SuitesCreatorProvider() {
-        super(new AMD64SuitesCreator(getHostedCompilerConfiguration()),
-                        new AMD64SuitesCreator(new EconomyCompilerConfiguration()));
+        super(new AMD64SubstrateSuitesCreator(getHostedCompilerConfiguration()),
+                        new AMD64SubstrateSuitesCreator(new EconomyCompilerConfiguration()));
     }
 }

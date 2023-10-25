@@ -24,7 +24,6 @@
 #define _NESPRESSO_H
 
 #include <jni.h>
-#include <trufflenfi.h>
 
 struct Varargs {
     const struct VarargsInterface* functions;
@@ -187,7 +186,8 @@ JNIEXPORT jlong JNICALL get_SIZE_MAX();
     V(NewWeakGlobalRef) \
     V(DeleteWeakGlobalRef) \
     V(NewDirectByteBuffer) \
-    V(GetModule)
+    V(GetModule) \
+    V(IsVirtualThread)
 
 
 #endif // _NESPRESSO_H

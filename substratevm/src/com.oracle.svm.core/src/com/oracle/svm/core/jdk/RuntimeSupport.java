@@ -28,7 +28,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -115,6 +115,12 @@ public final class RuntimeSupport implements VMRuntimeSupport {
         executeHooks(getRuntimeSupport().shutdownHooks);
     }
 
+    /**
+     * Initialization hooks are executed during isolate initialization, before runtime options are
+     * parsed. The executed code should therefore not try to access any runtime options. If it is
+     * necessary to access a runtime option, then its value must be accessed via
+     * {@link com.oracle.svm.core.IsolateArgumentParser}.
+     */
     public void addInitializationHook(Hook initHook) {
         addHook(initializationHooks, initHook);
     }

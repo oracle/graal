@@ -30,7 +30,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.function.Function;
 
-import org.graalvm.compiler.options.Option;
+import jdk.graal.compiler.options.Option;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;

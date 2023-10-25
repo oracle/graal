@@ -43,8 +43,6 @@ package com.oracle.truffle.polyglot;
 import java.util.ConcurrentModificationException;
 import java.util.NoSuchElementException;
 
-import org.graalvm.polyglot.Context;
-
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 

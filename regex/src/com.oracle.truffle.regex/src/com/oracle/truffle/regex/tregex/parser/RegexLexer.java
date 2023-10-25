@@ -40,7 +40,9 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
@@ -77,7 +79,7 @@ public abstract class RegexLexer {
      * The index of the next character in {@link #pattern} to be parsed.
      */
     protected int position = 0;
-    protected Map<String, Integer> namedCaptureGroups = null;
+    protected Map<String, List<Integer>> namedCaptureGroups = null;
     private int curStartIndex = 0;
     private int charClassCurAtomStartIndex = 0;
     private int nGroups = 1;
@@ -300,7 +302,7 @@ public abstract class RegexLexer {
      */
     protected abstract RegexSyntaxException handleEmptyGroupName();
 
-    protected abstract RegexSyntaxException handleGroupRedefinition(String name, int newId, int oldId);
+    protected abstract void handleGroupRedefinition(String name, int newId, int oldId);
 
     /**
      * Handle incomplete hex escapes, e.g. {@code \x1}.
@@ -637,7 +639,7 @@ public abstract class RegexLexer {
         return nGroups;
     }
 
-    public Map<String, Integer> getNamedCaptureGroups() throws RegexSyntaxException {
+    public Map<String, List<Integer>> getNamedCaptureGroups() throws RegexSyntaxException {
         if (!identifiedAllGroups) {
             identifyCaptureGroups();
             identifiedAllGroups = true;
@@ -664,12 +666,18 @@ public abstract class RegexLexer {
     protected void registerNamedCaptureGroup(String name) {
         if (!identifiedAllGroups) {
             if (namedCaptureGroups == null) {
-                namedCaptureGroups = new HashMap<>();
+                // use a LinkedHashMap so that the order of capture groups is preserved
+                namedCaptureGroups = new LinkedHashMap<>();
             }
-            if (namedCaptureGroups.containsKey(name)) {
-                throw handleGroupRedefinition(name, nGroups, namedCaptureGroups.get(name));
+            List<Integer> groupsWithSameName = namedCaptureGroups.get(name);
+            if (groupsWithSameName != null) {
+                handleGroupRedefinition(name, nGroups, groupsWithSameName.get(0));
+                groupsWithSameName.add(nGroups);
+            } else {
+                groupsWithSameName = new ArrayList<>();
+                groupsWithSameName.add(nGroups);
+                namedCaptureGroups.put(name, groupsWithSameName);
             }
-            namedCaptureGroups.put(name, nGroups);
         }
         registerCaptureGroup();
     }

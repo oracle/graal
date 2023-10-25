@@ -48,25 +48,28 @@ public final class CompleteGarbageCollectorMXBean implements com.sun.management.
 
     @Override
     public long getCollectionCount() {
-        return HeapImpl.getGCImpl().getAccounting().getCompleteCollectionCount();
+        return GCImpl.getAccounting().getCompleteCollectionCount();
     }
 
     @Override
     public long getCollectionTime() {
-        long nanos = HeapImpl.getGCImpl().getAccounting().getCompleteCollectionTotalNanos();
+        long nanos = GCImpl.getAccounting().getCompleteCollectionTotalNanos();
         return TimeUtils.roundNanosToMillis(nanos);
     }
 
     @Override
     public String[] getMemoryPoolNames() {
         /* Return a new array each time because arrays are not immutable. */
-        return new String[]{"young generation space", "old generation space"};
+        return new String[]{
+                        GenScavengeMemoryPoolMXBeans.EDEN_SPACE,
+                        GenScavengeMemoryPoolMXBeans.SURVIVOR_SPACE,
+                        GenScavengeMemoryPoolMXBeans.OLD_GEN_SPACE};
     }
 
     @Override
     public String getName() {
         /* Changing this name will break assumptions we take in the object replacer. */
-        return "complete scavenger";
+        return GenScavengeMemoryPoolMXBeans.COMPLETE_SCAVENGER;
     }
 
     @Override

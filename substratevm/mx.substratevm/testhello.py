@@ -1,3 +1,4 @@
+#
 # Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
 # Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -43,6 +44,7 @@
 # Note that the helper routines defined in gdb_utils.py are loaded
 # using gdb -x rather than being imported. That avoids having to update
 # PYTHON_PATH which gdb needs to use to locate any imported code.
+#
 
 import re
 import sys
@@ -124,12 +126,13 @@ def test():
     # expect "#1  0x[0-9a-f]+ in com.oracle.svm.core.code.IsolateEnterStub.JavaMainWrapper_run_.* at [a-z/]+/JavaMainWrapper.java:[0-9]+"
     exec_string = execute("backtrace")
     stacktraceRegex = [r"#0%shello\.Hello::main%s %s at hello/Hello\.java:%d"%(spaces_pattern, param_types_pattern, arg_values_pattern, main_start),
-                       r"#1%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::invokeMain%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
-                       r"#2%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::runCore0%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
-                       r"#3%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
-                       r"#4%scom\.oracle\.svm\.core\.JavaMainWrapper::doRun%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, param_types_pattern, arg_values_pattern, package_pattern),
-                       r"#5%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::run%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
-                       r"#6%scom\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s %s"%(spaces_pattern, hex_digits_pattern, param_types_pattern, arg_values_pattern)
+                       r"#1%s(%s in )?java\.lang\.invoke\.LambdaForm\$DMH/s%s::invokeStatic(Init)?%s %s( at java/lang/invoke/%s:[0-9]+)?"%(spaces_pattern, address_pattern, hex_digits_pattern, param_types_pattern, arg_values_pattern, package_file_pattern),
+                       r"#2%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::invokeMain%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
+                       r"#3%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::runCore0%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
+                       r"#4%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
+                       r"#5%scom\.oracle\.svm\.core\.JavaMainWrapper::doRun%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, param_types_pattern, arg_values_pattern, package_pattern),
+                       r"#6%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::run%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
+                       r"#7%scom\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s %s"%(spaces_pattern, hex_digits_pattern, param_types_pattern, arg_values_pattern)
                       ]
     if musl:
         # musl has a different entry point - drop the last two frames
@@ -153,7 +156,7 @@ def test():
         rexp = [r"%s = {"%(wildcard_pattern),
                 r"%s<java.lang.Object> = {"%(spaces_pattern),
                 r"%s<_objhdr> = {"%(spaces_pattern),
-                r"%shub = %s,"%(spaces_pattern, address_pattern),
+                r"%shub = %s"%(spaces_pattern, address_pattern),
                 r"%sidHash = %s"%(spaces_pattern, address_pattern) if fixed_idhash_field else None,
                 r"%s}, <No data fields>}, "%(spaces_pattern),
                 r"%smembers of java\.lang\.String\[\]:"%(spaces_pattern),
@@ -172,7 +175,7 @@ def test():
                     r"%s<java.lang.Class> = {"%(spaces_pattern),
                     r"%s<java.lang.Object> = {"%(spaces_pattern),
                     r"%s<_objhdr> = {"%(spaces_pattern),
-                    r"%shub = %s,"%(spaces_pattern, address_pattern),
+                    r"%shub = %s"%(spaces_pattern, address_pattern),
                     r"%sidHash = %s"%(spaces_pattern, address_pattern) if fixed_idhash_field else None,
                     r"%s}, <No data fields>},"%(spaces_pattern),
                     r"%smembers of java\.lang\.Class:"%(spaces_pattern),
@@ -182,7 +185,7 @@ def test():
             rexp = [r"%s = {"%(wildcard_pattern),
                     r"%s<java.lang.Object> = {"%(spaces_pattern),
                     r"%s<_objhdr> = {"%(spaces_pattern),
-                    r"%shub = %s,"%(spaces_pattern, address_pattern),
+                    r"%shub = %s"%(spaces_pattern, address_pattern),
                     r"%sidHash = %s"%(spaces_pattern, address_pattern) if fixed_idhash_field else None,
                     r"%s}, <No data fields>},"%(spaces_pattern),
                     r"%smembers of java\.lang\.Class:"%(spaces_pattern),
@@ -222,7 +225,7 @@ def test():
         rexp = [r"%s = {"%(wildcard_pattern),
                 r"%s<java.lang.Object> = {"%(spaces_pattern),
                 r"%s<_objhdr> = {"%(spaces_pattern),
-                r"%shub = %s,"%(spaces_pattern, address_pattern),
+                r"%shub = %s"%(spaces_pattern, address_pattern),
                 r"%sidHash = %s"%(spaces_pattern, address_pattern) if fixed_idhash_field else None,
                 r"%s}, <No data fields>},"%(spaces_pattern),
                 r"%smembers of java\.lang\.Class:"%(spaces_pattern),
@@ -235,21 +238,21 @@ def test():
 
         # ensure we can access fields of class constants
         exec_string = execute("print 'java.lang.String[].class'.name->value->data")
-        rexp = r'%s = %s "\[Ljava.lang.String;"'%(wildcard_pattern, address_pattern)
+        rexp = r'%s = %s "\[Ljava.lang.String;'%(wildcard_pattern, address_pattern)
 
         checker = Checker("print 'java.lang.String[].class'.name->value->data", rexp)
 
         checker.check(exec_string)
 
         exec_string = execute("print 'long.class'.name->value->data")
-        rexp = r'%s = %s "long"'%(wildcard_pattern, address_pattern)
+        rexp = r'%s = %s "long'%(wildcard_pattern, address_pattern)
 
         checker = Checker("print 'long.class'.name->value->data", rexp)
 
         checker.check(exec_string)
 
         exec_string = execute("print 'byte[].class'.name->value->data")
-        rexp = r'%s = %s "\[B"'%(wildcard_pattern, address_pattern)
+        rexp = r'%s = %s "\[B'%(wildcard_pattern, address_pattern)
 
         checker = Checker("print 'byte[].class'.name->value->data", rexp)
 
@@ -369,12 +372,13 @@ def test():
     exec_string = execute("backtrace")
     stacktraceRegex = [r"#0%shello\.Hello\$Greeter::greeter%s %s at hello/Hello\.java:38"%(spaces_pattern, param_types_pattern, arg_values_pattern),
                        r"#1%s%s in hello\.Hello::main%s %s at hello/Hello\.java:%d"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, main_start),
-                       r"#2%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::invokeMain%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
-                       r"#3%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::runCore0%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
-                       r"#4%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
-                       r"#5%scom\.oracle\.svm\.core\.JavaMainWrapper::doRun%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, param_types_pattern, arg_values_pattern, package_pattern),
-                       r"#6%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::run%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
-                       r"#7%scom\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s %s"%(spaces_pattern, hex_digits_pattern, param_types_pattern, arg_values_pattern)
+                       r"#2%s(%s in )?java\.lang\.invoke\.LambdaForm\$DMH/s%s::invokeStatic(Init)?%s %s( at java/lang/invoke/%s:[0-9]+)?"%(spaces_pattern, address_pattern, hex_digits_pattern, param_types_pattern, arg_values_pattern, package_file_pattern),
+                       r"#3%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::invokeMain%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
+                       r"#4%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::runCore0%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
+                       r"#5%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
+                       r"#6%scom\.oracle\.svm\.core\.JavaMainWrapper::doRun%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, param_types_pattern, arg_values_pattern, package_pattern),
+                       r"#7%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::run%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
+                       r"#8%scom\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s %s"%(spaces_pattern, hex_digits_pattern, param_types_pattern, arg_values_pattern)
                       ]
     if musl:
         # musl has a different entry point - drop the last two frames
@@ -476,7 +480,7 @@ def test():
             r"%sprivate:"%spaces_pattern,
             r"%sstatic void noInlineFoo\(void\);"%spaces_pattern,
             r"%sstatic void noInlineHere\(int\);"%spaces_pattern,
-            r"%sstatic void noInlineManyArgs\(int, int, int, int, boolean, int, int, long, int, long, float, float, float, float, double, float, float, float, float, double, boolean, float\);"%spaces_pattern,
+            r"%sstatic void noInlineManyArgs\(int, byte, short, char, boolean, int, int, long, int, long, float, float, float, float, double, float, float, float, float, double, boolean, float\);"%spaces_pattern,
             r"%sstatic void noInlinePassConstants\(void\);"%spaces_pattern,
             r"%sstatic void noInlineTest\(void\);"%spaces_pattern,
             r"%sstatic void noInlineThis\(void\);"%spaces_pattern,
@@ -567,7 +571,7 @@ def test():
 
     execute("delete breakpoints")
     exec_string = execute("break Hello.java:135")
-    rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line 135\."%(digits_pattern, address_pattern)
+    rexp = r"Breakpoint %s at %s: (Hello\.java:135\. \(2 locations\)|file hello/Hello\.java, line 135\.)"%(digits_pattern, address_pattern)
     checker = Checker('break Hello.java:135', rexp)
     checker.check(exec_string)
 
@@ -671,9 +675,9 @@ def test():
     execute("continue")
     exec_string = execute("info args")
     rexp =[r"i0 = 0",
-           r"i1 = 1",
-           r"i2 = 2",
-           r"i3 = 3",
+           r"b1 = 1 '\\001'",
+           r"s2 = 2",
+           r"c3 = 51",
            r"b4 = true",
            r"i5 = 5",
            r"i6 = 6",
@@ -723,9 +727,9 @@ def test():
 
     exec_string = execute("info args")
     rexp =[r"i0 = 0",
-           r"i1 = 1",
-           r"i2 = 2",
-           r"i3 = 3",
+           r"b1 = 1 '\\001'",
+           r"s2 = 2",
+           r"c3 = 51",
            r"b4 = true",
            r"i5 = 5",
            r"i6 = 6",

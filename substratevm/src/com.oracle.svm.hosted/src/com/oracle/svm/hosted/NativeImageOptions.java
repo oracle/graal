@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.hosted;
 
-import static org.graalvm.compiler.options.OptionType.Debug;
-import static org.graalvm.compiler.options.OptionType.User;
+import static jdk.graal.compiler.options.OptionType.Debug;
+import static jdk.graal.compiler.options.OptionType.User;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -33,10 +33,11 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionStability;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
@@ -62,7 +63,7 @@ public class NativeImageOptions {
                     "environment. Note that enabling features not present within the target environment " +
                     "may result in application crashes. The specific options available are target " +
                     "platform dependent. See --list-cpu-features for feature list. These features " +
-                    "are in addition to -march.", type = User)//
+                    "are in addition to -march.", type = User, stability = OptionStability.STABLE)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> CPUFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @APIOption(name = "list-cpu-features")//
@@ -99,7 +100,7 @@ public class NativeImageOptions {
     };
 
     @Option(help = "Uses the native architecture, i.e., the architecture of a machine that builds an image.", type = User, //
-                    deprecated = true, deprecationMessage = "Please use -march=native instead. See --help for details.") //
+                    deprecated = true, deprecationMessage = "Please use '-march=native' instead. See '--help' for details.") //
     public static final HostedOptionKey<Boolean> NativeArchitecture = new HostedOptionKey<>(false) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
@@ -149,6 +150,9 @@ public class NativeImageOptions {
     @Option(help = "Deprecated", type = User)//
     static final HostedOptionKey<Boolean> AllowIncompleteClasspath = new HostedOptionKey<>(false);
 
+    @Option(help = "Disable substitution return type checking", type = Debug, deprecated = true, stability = OptionStability.EXPERIMENTAL, deprecationMessage = "This option will be removed soon and the return type check will be mandatory.")//
+    public static final HostedOptionKey<Boolean> DisableSubstitutionReturnTypeCheck = new HostedOptionKey<>(false);
+
     @SuppressWarnings("all")
     private static boolean areAssertionsEnabled() {
         boolean assertsEnabled = false;
@@ -189,13 +193,16 @@ public class NativeImageOptions {
      */
     @APIOption(name = "parallelism")//
     @Option(help = "The maximum number of threads to use concurrently during native image generation.")//
-    public static final HostedOptionKey<Integer> NumberOfThreads = new HostedOptionKey<>(Math.min(Runtime.getRuntime().availableProcessors(), 32));
+    public static final HostedOptionKey<Integer> NumberOfThreads = new HostedOptionKey<>(Math.max(2, Math.min(Runtime.getRuntime().availableProcessors(), 32)), key -> {
+        int numberOfThreads = key.getValue();
+        VMError.guarantee(numberOfThreads >= 2, "Number of threads must be at least 2. Validation should have happened in driver.");
+    });
 
     /*
      * Analysis scales well up to 12 cores and gives slight improvements until 18 cores. We set the
      * default value to 16 to minimize wasted resources in large machines.
      */
-    @Option(help = "The number of threads to use for analysis during native image generation. The number must be smaller than the NumberOfThreads.")//
+    @Option(help = "The number of threads to use for analysis during native image generation. The number must be smaller than the NumberOfThreads.", deprecated = true, deprecationMessage = "Please use '--parallelism' instead.")//
     public static final HostedOptionKey<Integer> NumberOfAnalysisThreads = new HostedOptionKey<>(-1);
 
     @Option(help = "Return after analysis")//
@@ -241,7 +248,7 @@ public class NativeImageOptions {
     @Option(help = "If an error occurs, save a build error report to this file [default: " + DEFAULT_ERROR_FILE_NAME + "] (%p replaced with pid, %t with timestamp).)")//
     public static final HostedOptionKey<String> ErrorFile = new HostedOptionKey<>(DEFAULT_ERROR_FILE_NAME);
 
-    @Option(help = "Show exception stack traces for exceptions during image building.)")//
+    @Option(help = "Show exception stack traces for exceptions during image building.)", stability = OptionStability.STABLE)//
     public static final HostedOptionKey<Boolean> ReportExceptionStackTraces = new HostedOptionKey<>(areAssertionsEnabled());
 
     @Option(help = "Maximum number of types allowed in the image. Used for tests where small number of types is necessary.", type = Debug)//
@@ -266,23 +273,19 @@ public class NativeImageOptions {
         }
     };
 
-    public static int getMaximumNumberOfConcurrentThreads(OptionValues optionValues) {
-        int maxNumberOfThreads = NativeImageOptions.NumberOfThreads.getValue(optionValues);
-        VMError.guarantee(maxNumberOfThreads > 0, "Number of threads must be greater than zero. Validation should have happened in driver.");
-        return maxNumberOfThreads;
-    }
-
-    public static int getMaximumNumberOfAnalysisThreads(OptionValues optionValues) {
-        int optionValue = NativeImageOptions.NumberOfAnalysisThreads.getValue(optionValues);
-        int analysisThreads = NumberOfAnalysisThreads.hasBeenSet(optionValues) ? optionValue : Math.min(getMaximumNumberOfConcurrentThreads(optionValues), DEFAULT_MAX_ANALYSIS_SCALING);
-        if (analysisThreads <= 0) {
-            throw UserError.abort("Number of analysis threads was set to '" + analysisThreads + "'. Please set the NumberOfAnalysisThreads flag to a number greater than 0.");
+    public static int getNumberOfAnalysisThreads(int maxNumberOfThreads, OptionValues optionValues) {
+        int analysisThreads;
+        if (NumberOfAnalysisThreads.hasBeenSet(optionValues)) {
+            analysisThreads = NumberOfAnalysisThreads.getValue(optionValues);
+        } else {
+            analysisThreads = Math.min(maxNumberOfThreads, DEFAULT_MAX_ANALYSIS_SCALING);
         }
-
-        Integer maxNumberOfThreads = NumberOfThreads.getValue(optionValues);
+        if (analysisThreads < 2) {
+            throw UserError.abort("Number of analysis threads was set to " + analysisThreads + ". Please set the '-H:NumberOfAnalysisThreads' option to at least 2.");
+        }
         if (analysisThreads > maxNumberOfThreads) {
             throw UserError.abort(
-                            "NumberOfAnalysisThreads is not allowed to be larger than the number of threads set with the --parallelism option. Please set the NumberOfAnalysisThreads flag to a value between 0 and " +
+                            "NumberOfAnalysisThreads is not allowed to be larger than the number of threads set with the '--parallelism' option. Please set the '-H:NumberOfAnalysisThreads' option to a value between 1 and " +
                                             (maxNumberOfThreads + 1) + ".");
         }
         return analysisThreads;

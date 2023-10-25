@@ -97,7 +97,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
      * Possibly wrapped root for NFA generation (see {@link #createPrefix()}).
      */
     private Group wrappedRoot;
-    private Group[] captureGroups;
+    private List<Group> captureGroups = new ArrayList<>();
     private final List<QuantifiableTerm> zeroWidthQuantifiables = new ArrayList<>();
     private final GlobalSubTreeIndex subtrees = new GlobalSubTreeIndex();
     private final List<PositionAssertion> reachableCarets = new ArrayList<>();
@@ -187,16 +187,12 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return zeroWidthQuantifiables;
     }
 
+    public Group getGroup(int index) {
+        return captureGroups.get(index);
+    }
+
     public Group getGroupByBoundaryIndex(int index) {
-        if (captureGroups == null) {
-            captureGroups = new Group[getNumberOfCaptureGroups()];
-            for (RegexASTNode n : nodes) {
-                if (n instanceof Group && ((Group) n).isCapturing()) {
-                    captureGroups[((Group) n).getGroupNumber()] = (Group) n;
-                }
-            }
-        }
-        return captureGroups[index / 2];
+        return captureGroups.get(index / 2);
     }
 
     public RegexProperties getProperties() {
@@ -279,9 +275,11 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return node;
     }
 
-    public BackReference createBackReference(int groupNumber) {
-        referencedGroups.set(groupNumber);
-        return register(new BackReference(groupNumber));
+    public BackReference createBackReference(int[] groupNumbers) {
+        for (int groupNumber : groupNumbers) {
+            referencedGroups.set(groupNumber);
+        }
+        return register(new BackReference(groupNumbers));
     }
 
     public boolean isGroupReferenced(int groupNumber) {
@@ -306,7 +304,10 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     }
 
     public Group createCaptureGroup(int groupNumber) {
-        return register(new Group(groupNumber));
+        Group group = register(new Group(groupNumber));
+        assert captureGroups.size() == groupNumber;
+        captureGroups.add(group);
+        return group;
     }
 
     public Group createConditionalBackReferenceGroup(int referencedGroupNumber) {
@@ -625,7 +626,13 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
             cc.extractSingleChar(literal, mask);
             hasMask |= cc.getCharSet().matches2CharsWith1BitDifference();
         }
-        return new InnerLiteral(literal.materialize(), hasMask ? mask.materialize() : null, root.getFirstAlternative().get(literalStart).getMaxPath() - 1);
+        int maxPrefixSize = root.getFirstAlternative().get(literalStart).getMaxPath() - 1;
+        for (int i = 0; i < literalStart; i++) {
+            if (root.getFirstAlternative().getTerms().get(i).hasLoops()) {
+                maxPrefixSize = -1;
+            }
+        }
+        return new InnerLiteral(literal.materialize(), hasMask ? mask.materialize() : null, maxPrefixSize);
     }
 
     public boolean canTransformToDFA() {

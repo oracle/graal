@@ -24,27 +24,30 @@
  */
 package com.oracle.svm.core.jni.functions;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.c.CIsolateData;
+import com.oracle.svm.core.c.CIsolateDataFactory;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jni.headers.JNIInvokeInterface;
 import com.oracle.svm.core.jni.headers.JNIJavaVM;
 import com.oracle.svm.core.jni.headers.JNINativeInterface;
-import com.oracle.svm.core.jni.headers.JNINativeInterfaceJDK19OrLater;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.internal.misc.Unsafe;
 
 /**
  * Performs the initialization of the JNI function table structures at runtime.
@@ -63,17 +66,20 @@ public final class JNIFunctionTables {
      * Space for C data structures that are passed out to C code at run time. Because these arrays
      * are in the image heap, they are never moved by the GC at run time.
      */
-    private final WordBase[] javaVMData;
-    private final WordBase[] invokeInterfaceDataMutable;
     private final CFunctionPointer[] invokeInterfaceDataPrototype;
     private final CFunctionPointer[] functionTableData;
 
+    private final CIsolateData<JNIInvokeInterface> jniInvokeInterface = CIsolateDataFactory.createStruct("jniInvokeInterface", JNIInvokeInterface.class);
+    private final CIsolateData<JNIJavaVM> jniJavaVM = CIsolateDataFactory.createStruct("jniJavaVM", JNIJavaVM.class);
+
+    private static int getFunctionTableSize() {
+        return SizeOf.get(JNINativeInterface.class);
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     private JNIFunctionTables() {
-        javaVMData = new WordBase[wordArrayLength(SizeOf.get(JNIJavaVM.class))];
-        invokeInterfaceDataMutable = new WordBase[wordArrayLength(SizeOf.get(JNIInvokeInterface.class))];
         invokeInterfaceDataPrototype = new CFunctionPointer[wordArrayLength(SizeOf.get(JNIInvokeInterface.class))];
-        functionTableData = new CFunctionPointer[wordArrayLength(JavaVersionUtil.JAVA_SPEC <= 17 ? SizeOf.get(JNINativeInterface.class) : SizeOf.get(JNINativeInterfaceJDK19OrLater.class))];
+        functionTableData = new CFunctionPointer[wordArrayLength(getFunctionTableSize())];
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -88,6 +94,8 @@ public final class JNIFunctionTables {
     public JNIJavaVM getGlobalJavaVM() {
         JNIJavaVM javaVM = globalJavaVM;
         if (javaVM.isNull()) {
+            JNIInvokeInterface invokeInterface = jniInvokeInterface.get();
+
             /*
              * The function pointer table filled during image generation must be in the read-only
              * part of the image heap, because code relocations are needed for it. To work around
@@ -95,13 +103,14 @@ public final class JNIFunctionTables {
              * writable table of the same size.
              */
             for (int i = 0; i < invokeInterfaceDataPrototype.length; i++) {
-                invokeInterfaceDataMutable[i] = invokeInterfaceDataPrototype[i];
+                ((WordPointer) invokeInterface).write(i, invokeInterfaceDataPrototype[i]);
             }
 
-            javaVM = (JNIJavaVM) dataAddress(javaVMData);
-            JNIInvokeInterface invokes = (JNIInvokeInterface) dataAddress(invokeInterfaceDataMutable);
-            invokes.setIsolate(CurrentIsolate.getIsolate());
-            javaVM.setFunctions(invokes);
+            javaVM = jniJavaVM.get();
+            invokeInterface.setIsolate(CurrentIsolate.getIsolate());
+            javaVM.setFunctions(invokeInterface);
+
+            Unsafe.getUnsafe().storeFence();
 
             globalJavaVM = javaVM;
         }

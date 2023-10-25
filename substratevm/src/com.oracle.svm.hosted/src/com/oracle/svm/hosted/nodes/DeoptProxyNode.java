@@ -24,29 +24,25 @@
  */
 package com.oracle.svm.hosted.nodes;
 
-import org.graalvm.compiler.graph.IterableNodeType;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.Node.ValueNumberable;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
-import org.graalvm.compiler.nodeinfo.InputType;
-import org.graalvm.compiler.nodeinfo.NodeCycles;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.ParameterNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
-import org.graalvm.compiler.nodes.spi.LimitedValueProxy;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.graph.IterableNodeType;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.Node.ValueNumberable;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.InputType;
+import jdk.graal.compiler.nodeinfo.NodeCycles;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodeinfo.NodeSize;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.FloatingNode;
+import jdk.graal.compiler.nodes.spi.Canonicalizable;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
+import jdk.graal.compiler.nodes.spi.LIRLowerable;
+import jdk.graal.compiler.nodes.spi.LimitedValueProxy;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import com.oracle.svm.core.deopt.Deoptimizer;
-
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 
 /**
  * Wraps locals and bytecode stack elements at deoptimization points. DeoptProxyNodes are inserted
@@ -56,9 +52,14 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
  * This is needed to ensure that the values, which are set by the {@link Deoptimizer} at the
  * deoptimization point, are really read from their locations (and not held in a temporary register,
  * etc.)
+ *
+ * Note the {@link #value} of the DeoptProxyNode may be another DeoptProxyNode (i.e., there may be a
+ * chain of DeoptProxyNodes leading to the original value). This is by design: linking to the
+ * preceding DeoptProxyNode allows a given DeoptEntry and its corresponding DeoptProxyNodes to be
+ * easily removed without causing correctness issues.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
-public final class DeoptProxyNode extends FloatingNode implements LimitedValueProxy, ValueNumberable, LIRLowerable, Canonicalizable, IterableNodeType, ArrayLengthProvider {
+public final class DeoptProxyNode extends FloatingNode implements LimitedValueProxy, ValueNumberable, LIRLowerable, Canonicalizable, IterableNodeType {
     public static final NodeClass<DeoptProxyNode> TYPE = NodeClass.create(DeoptProxyNode.class);
 
     /**
@@ -126,11 +127,5 @@ public final class DeoptProxyNode extends FloatingNode implements LimitedValuePr
 
     public ValueNode getProxyPoint() {
         return proxyPoint;
-    }
-
-    @Override
-    public ValueNode findLength(FindLengthMode mode, ConstantReflectionProvider constantReflection) {
-        ValueNode length = GraphUtil.arrayLength(value, mode, constantReflection);
-        return length != null && length.isConstant() ? length : null;
     }
 }

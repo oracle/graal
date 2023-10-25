@@ -23,7 +23,6 @@
 #include "management.h"
 #include "jmm_common.h"
 
-#include <trufflenfi.h>
 #include <jni.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -37,6 +36,8 @@ JNIEXPORT void* JNICALL initializeManagementContext(void* (*fetch_by_name)(const
 		return initializeManagementContext2(fetch_by_name);
 	} else if (version == JMM_VERSION_3) {
 		return initializeManagementContext3(fetch_by_name);
+	} else if (version == JMM_VERSION_4) {
+		return initializeManagementContext4(fetch_by_name);
 	} else {
 		return (void*)0;
 	}
@@ -49,6 +50,8 @@ JNIEXPORT void JNICALL disposeManagementContext(void* management_ptr, int versio
 		disposeManagementContext2(management_ptr, release_closure);
 	} else if (version == JMM_VERSION_3) {
 		disposeManagementContext3(management_ptr, release_closure);
+	} else if (version == JMM_VERSION_4) {
+		disposeManagementContext4(management_ptr, release_closure);
 	}
 }
 

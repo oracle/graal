@@ -24,13 +24,11 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.nio.charset.Charset;
 import java.util.function.BooleanSupplier;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.localization.substitutions.Target_java_nio_charset_Charset;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.util.StaticProperty;
@@ -125,27 +123,17 @@ final class Target_jdk_internal_util_StaticProperty {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class)
     public static String fileEncoding() {
         return SystemPropertiesSupport.singleton().savedProperties.get("file.encoding");
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class)
     public static String javaPropertiesDate() {
         return SystemPropertiesSupport.singleton().savedProperties.getOrDefault("java.properties.date", null);
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class)
     public static String jnuEncoding() {
         return SystemPropertiesSupport.singleton().savedProperties.get("sun.jnu.encoding");
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = {JDK19OrLater.class, JDK20OrEarlier.class})
-    public static Charset jnuCharset() {
-        String jnuEncoding = SystemPropertiesSupport.singleton().savedProperties.get("sun.jnu.encoding");
-        return Target_java_nio_charset_Charset.forName(jnuEncoding, Charset.defaultCharset());
     }
 }

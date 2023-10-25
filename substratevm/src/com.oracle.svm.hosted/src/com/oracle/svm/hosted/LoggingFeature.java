@@ -27,8 +27,8 @@ package com.oracle.svm.hosted;
 import java.lang.reflect.Field;
 import java.util.Optional;
 
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionType;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -73,8 +73,12 @@ public class LoggingFeature implements InternalFeature {
     }
 
     @Override
-    public void duringSetup(DuringSetupAccess access) {
+    public void afterRegistration(AfterRegistrationAccess access) {
         LoggingFeature.class.getModule().addReads(requiredModule().get());
+    }
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
         try {
             /* Ensure that the log manager is initialized and the initial configuration is read. */
             ReflectionUtil.lookupMethod(access.findClassByName("java.util.logging.LogManager"), "getLogManager").invoke(null);
@@ -115,5 +119,4 @@ public class LoggingFeature implements InternalFeature {
             System.out.println("LoggingFeature: " + msg);
         }
     }
-
 }

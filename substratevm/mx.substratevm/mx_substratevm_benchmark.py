@@ -1,7 +1,5 @@
 #
-# ----------------------------------------------------------------------------------------------------
-#
-# Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -24,7 +22,6 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
-# ----------------------------------------------------------------------------------------------------
 
 from __future__ import print_function
 
@@ -38,6 +35,7 @@ import mx
 import mx_benchmark
 import mx_sdk_benchmark
 import mx_java_benchmarks
+import mx_sdk_vm_impl
 
 _suite = mx.suite("substratevm")
 _successful_stage_pattern = re.compile(r'Successfully finished the last specified stage:.*$', re.MULTILINE)
@@ -117,9 +115,9 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
                             force_buildtime_init_slf4j_1_7_73,
                             force_runtime_init_netty_4_1_72
                           ],
-    'dotty'             : [
+    'dotty'             : mx_sdk_vm_impl.svm_experimental_options([
                             '-H:+AllowJRTFileSystem'
-                          ]
+                          ])
 }
 
 _renaissance_pre014_config = {
@@ -824,7 +822,7 @@ class SpecJVM2008NativeImageBenchmarkSuite(mx_java_benchmarks.SpecJvm2008Benchma
         return args
 
     def extra_image_build_argument(self, benchmark, args):
-        return super(SpecJVM2008NativeImageBenchmarkSuite, self).extra_image_build_argument(benchmark, args) + ["-H:-ParseRuntimeOptions", "-Djava.awt.headless=false"]
+        return super(SpecJVM2008NativeImageBenchmarkSuite, self).extra_image_build_argument(benchmark, args) + mx_sdk_vm_impl.svm_experimental_options(['-H:-ParseRuntimeOptions']) + ['-Djava.awt.headless=false']
 
 
 mx_benchmark.add_bm_suite(SpecJVM2008NativeImageBenchmarkSuite())

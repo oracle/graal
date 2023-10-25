@@ -27,106 +27,113 @@ package com.oracle.svm.core.graal.amd64;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_DECD_RSP;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_END;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rbp;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
-import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.graal.compiler.lir.LIRValueUtil.asConstantValue;
+import static jdk.graal.compiler.lir.LIRValueUtil.differentRegisters;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.function.BiConsumer;
 
-import org.graalvm.compiler.asm.Label;
-import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.asm.amd64.AMD64Assembler;
-import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler;
-import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.core.amd64.AMD64ArithmeticLIRGenerator;
-import org.graalvm.compiler.core.amd64.AMD64LIRGenerator;
-import org.graalvm.compiler.core.amd64.AMD64LIRKindTool;
-import org.graalvm.compiler.core.amd64.AMD64MoveFactory;
-import org.graalvm.compiler.core.amd64.AMD64MoveFactoryBase;
-import org.graalvm.compiler.core.amd64.AMD64NodeLIRBuilder;
-import org.graalvm.compiler.core.amd64.AMD64NodeMatchRules;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.Stride;
-import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
-import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
-import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
-import org.graalvm.compiler.core.common.spi.LIRKindTool;
-import org.graalvm.compiler.core.common.type.CompressibleConstant;
-import org.graalvm.compiler.core.gen.DebugInfoBuilder;
-import org.graalvm.compiler.core.gen.LIRGenerationProvider;
-import org.graalvm.compiler.core.gen.NodeLIRBuilder;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.lir.ConstantValue;
-import org.graalvm.compiler.lir.LIR;
-import org.graalvm.compiler.lir.LIRFrameState;
-import org.graalvm.compiler.lir.LIRInstruction;
-import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.LabelRef;
-import org.graalvm.compiler.lir.Opcode;
-import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
-import org.graalvm.compiler.lir.StandardOp.LoadConstantOp;
-import org.graalvm.compiler.lir.Variable;
-import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
-import org.graalvm.compiler.lir.amd64.AMD64BreakpointOp;
-import org.graalvm.compiler.lir.amd64.AMD64Call;
-import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.BranchOp;
-import org.graalvm.compiler.lir.amd64.AMD64FrameMap;
-import org.graalvm.compiler.lir.amd64.AMD64FrameMapBuilder;
-import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
-import org.graalvm.compiler.lir.amd64.AMD64Move;
-import org.graalvm.compiler.lir.amd64.AMD64Move.MoveFromConstOp;
-import org.graalvm.compiler.lir.amd64.AMD64Move.PointerCompressionOp;
-import org.graalvm.compiler.lir.amd64.AMD64PrefetchOp;
-import org.graalvm.compiler.lir.amd64.AMD64ReadProcid;
-import org.graalvm.compiler.lir.amd64.AMD64ReadTimestampCounterWithProcid;
-import org.graalvm.compiler.lir.amd64.AMD64VZeroUpper;
-import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
-import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
-import org.graalvm.compiler.lir.asm.DataBuilder;
-import org.graalvm.compiler.lir.asm.EntryPointDecorator;
-import org.graalvm.compiler.lir.asm.FrameContext;
-import org.graalvm.compiler.lir.framemap.FrameMap;
-import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
-import org.graalvm.compiler.lir.framemap.FrameMapBuilderTool;
-import org.graalvm.compiler.lir.framemap.ReferenceMapBuilder;
-import org.graalvm.compiler.lir.gen.LIRGenerationResult;
-import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
-import org.graalvm.compiler.lir.gen.MoveFactory;
-import org.graalvm.compiler.lir.gen.MoveFactory.BackupSlotProvider;
-import org.graalvm.compiler.nodes.BreakpointNode;
-import org.graalvm.compiler.nodes.CallTargetNode;
-import org.graalvm.compiler.nodes.DirectCallTargetNode;
-import org.graalvm.compiler.nodes.IndirectCallTargetNode;
-import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.LogicNode;
-import org.graalvm.compiler.nodes.LoweredCallTargetNode;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.ParameterNode;
-import org.graalvm.compiler.nodes.SafepointNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.compiler.nodes.spi.NodeValueMap;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.common.AddressLoweringByNodePhase;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.amd64.AMD64IntrinsicStubs;
+import jdk.graal.compiler.asm.Label;
+import jdk.graal.compiler.asm.amd64.AMD64Address;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler;
+import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
+import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.amd64.AMD64ArithmeticLIRGenerator;
+import jdk.graal.compiler.core.amd64.AMD64LIRGenerator;
+import jdk.graal.compiler.core.amd64.AMD64LIRKindTool;
+import jdk.graal.compiler.core.amd64.AMD64MoveFactory;
+import jdk.graal.compiler.core.amd64.AMD64MoveFactoryBase;
+import jdk.graal.compiler.core.amd64.AMD64NodeLIRBuilder;
+import jdk.graal.compiler.core.amd64.AMD64NodeMatchRules;
+import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.Stride;
+import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
+import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
+import jdk.graal.compiler.core.common.spi.LIRKindTool;
+import jdk.graal.compiler.core.common.type.CompressibleConstant;
+import jdk.graal.compiler.core.gen.DebugInfoBuilder;
+import jdk.graal.compiler.core.gen.LIRGenerationProvider;
+import jdk.graal.compiler.core.gen.NodeLIRBuilder;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.lir.ConstantValue;
+import jdk.graal.compiler.lir.LIR;
+import jdk.graal.compiler.lir.LIRFrameState;
+import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.LabelRef;
+import jdk.graal.compiler.lir.Opcode;
+import jdk.graal.compiler.lir.StandardOp.BlockEndOp;
+import jdk.graal.compiler.lir.StandardOp.LabelOp;
+import jdk.graal.compiler.lir.StandardOp.LoadConstantOp;
+import jdk.graal.compiler.lir.Variable;
+import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
+import jdk.graal.compiler.lir.amd64.AMD64BreakpointOp;
+import jdk.graal.compiler.lir.amd64.AMD64Call;
+import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.BranchOp;
+import jdk.graal.compiler.lir.amd64.AMD64FrameMap;
+import jdk.graal.compiler.lir.amd64.AMD64FrameMapBuilder;
+import jdk.graal.compiler.lir.amd64.AMD64LIRInstruction;
+import jdk.graal.compiler.lir.amd64.AMD64Move;
+import jdk.graal.compiler.lir.amd64.AMD64Move.MoveFromConstOp;
+import jdk.graal.compiler.lir.amd64.AMD64Move.PointerCompressionOp;
+import jdk.graal.compiler.lir.amd64.AMD64PrefetchOp;
+import jdk.graal.compiler.lir.amd64.AMD64ReadProcid;
+import jdk.graal.compiler.lir.amd64.AMD64ReadTimestampCounterWithProcid;
+import jdk.graal.compiler.lir.amd64.AMD64VZeroUpper;
+import jdk.graal.compiler.lir.amd64.EndbranchOp;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
+import jdk.graal.compiler.lir.asm.DataBuilder;
+import jdk.graal.compiler.lir.asm.EntryPointDecorator;
+import jdk.graal.compiler.lir.asm.FrameContext;
+import jdk.graal.compiler.lir.framemap.FrameMap;
+import jdk.graal.compiler.lir.framemap.FrameMapBuilder;
+import jdk.graal.compiler.lir.framemap.FrameMapBuilderTool;
+import jdk.graal.compiler.lir.framemap.ReferenceMapBuilder;
+import jdk.graal.compiler.lir.gen.LIRGenerationResult;
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
+import jdk.graal.compiler.lir.gen.MoveFactory;
+import jdk.graal.compiler.lir.gen.MoveFactory.BackupSlotProvider;
+import jdk.graal.compiler.nodes.BreakpointNode;
+import jdk.graal.compiler.nodes.CallTargetNode;
+import jdk.graal.compiler.nodes.DirectCallTargetNode;
+import jdk.graal.compiler.nodes.IndirectCallTargetNode;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.LoweredCallTargetNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.SafepointNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.cfg.HIRBlock;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.nodes.spi.NodeValueMap;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.common.AddressLoweringByNodePhase;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.amd64.AMD64IntrinsicStubs;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CPUFeatureAccess;
@@ -140,6 +147,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.cpufeature.Stubs;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.RuntimeCompilation;
+import com.oracle.svm.core.graal.code.AssignedLocation;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -173,6 +181,7 @@ import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -270,9 +279,18 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         @Temp({REG, OperandFlag.ILLEGAL}) private Value exceptionTemp;
         private final BiConsumer<CompilationResultBuilder, Integer> offsetRecorder;
 
+        @Def({REG}) private Value[] multipleResults;
+
         public SubstrateAMD64IndirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress,
                         LIRFrameState state, Value javaFrameAnchor, Value javaFrameAnchorTemp, int newThreadStatus, boolean destroysCallerSavedRegisters, Value exceptionTemp,
                         BiConsumer<CompilationResultBuilder, Integer> offsetRecorder) {
+            this(callTarget, result, parameters, temps, targetAddress, state, javaFrameAnchor, javaFrameAnchorTemp, newThreadStatus, destroysCallerSavedRegisters, exceptionTemp, offsetRecorder,
+                            new Value[0]);
+        }
+
+        public SubstrateAMD64IndirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress,
+                        LIRFrameState state, Value javaFrameAnchor, Value javaFrameAnchorTemp, int newThreadStatus, boolean destroysCallerSavedRegisters, Value exceptionTemp,
+                        BiConsumer<CompilationResultBuilder, Integer> offsetRecorder, Value[] multipleResults) {
             super(TYPE, callTarget, result, parameters, temps, targetAddress, state);
             this.newThreadStatus = newThreadStatus;
             this.javaFrameAnchor = javaFrameAnchor;
@@ -280,6 +298,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             this.destroysCallerSavedRegisters = destroysCallerSavedRegisters;
             this.exceptionTemp = exceptionTemp;
             this.offsetRecorder = offsetRecorder;
+            this.multipleResults = multipleResults;
 
             assert differentRegisters(parameters, temps, targetAddress, javaFrameAnchor, javaFrameAnchorTemp);
         }
@@ -635,17 +654,32 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         protected void emitForeignCallOp(ForeignCallLinkage linkage, Value targetAddress, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
             SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
             SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
-            vzeroupperBeforeCall(this, arguments, info, targetMethod);
+            Value exceptionTemp = getExceptionTemp(info != null && info.exceptionEdge != null);
 
+            vzeroupperBeforeCall(this, arguments, info, targetMethod);
             if (shouldEmitOnlyIndirectCalls()) {
                 AllocatableValue targetRegister = AMD64.rax.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRKindTool()));
                 emitMove(targetRegister, targetAddress);
                 append(new SubstrateAMD64IndirectCallOp(targetMethod, result, arguments, temps, targetRegister, info,
-                                Value.ILLEGAL, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), Value.ILLEGAL, null));
+                                Value.ILLEGAL, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), exceptionTemp, null));
             } else {
                 assert targetAddress == null;
                 append(new SubstrateAMD64DirectCallOp(targetMethod, result, arguments, temps, info, Value.ILLEGAL,
-                                Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), Value.ILLEGAL));
+                                Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), exceptionTemp));
+            }
+        }
+
+        /**
+         * For invokes that have an exception handler, the register used for the incoming exception
+         * is destroyed at the call site even when registers are caller saved. The normal object
+         * return register is used in {@link NodeLIRBuilder#emitReadExceptionObject} also for the
+         * exception.
+         */
+        private Value getExceptionTemp(boolean hasExceptionEdge) {
+            if (hasExceptionEdge) {
+                return getRegisterConfig().getReturnRegister(JavaKind.Object).asValue();
+            } else {
+                return Value.ILLEGAL;
             }
         }
 
@@ -721,8 +755,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
         @Override
         public void emitProcid(AllocatableValue dst) {
-            // GR-43733: Replace string by feature when we remove support for Java 17
-            if (supportsCPUFeature("RDPID")) {
+            if (supportsCPUFeature(CPUFeature.RDPID)) {
                 append(new AMD64ReadProcid(dst));
             } else {
                 AMD64ReadTimestampCounterWithProcid procid = new AMD64ReadTimestampCounterWithProcid();
@@ -741,12 +774,40 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         public Register getHeapBaseRegister() {
             return ReservedRegisters.singleton().getHeapBaseRegister();
         }
+
+        @Override
+        protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue key) {
+            super.emitRangeTableSwitch(lowKey, defaultTarget, targets, key);
+            markIndirectBranchTargets(targets);
+        }
+
+        @Override
+        protected void emitHashTableSwitch(JavaConstant[] keys, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue value, Value hash) {
+            super.emitHashTableSwitch(keys, defaultTarget, targets, value, hash);
+            markIndirectBranchTargets(targets);
+        }
+
+        private void markIndirectBranchTargets(LabelRef[] labels) {
+            for (LabelRef label : labels) {
+                label.getTargetBlock().setIndirectBranchTarget();
+            }
+        }
     }
 
     public class SubstrateAMD64NodeLIRBuilder extends AMD64NodeLIRBuilder implements SubstrateNodeLIRBuilder {
 
         public SubstrateAMD64NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, AMD64NodeMatchRules nodeMatchRules) {
             super(graph, gen, nodeMatchRules);
+        }
+
+        @Override
+        public void doBlockPrologue(@SuppressWarnings("unused") HIRBlock block, @SuppressWarnings("unused") OptionValues options) {
+            if (SubstrateOptions.IndirectBranchTargetMarker.getValue() && block.isIndirectBranchTarget()) {
+                List<LIRInstruction> lir = gen.getResult().getLIR().getLIRforBlock(block);
+                GraalError.guarantee(lir.size() == 1 && lir.get(0) instanceof LabelOp, "block may only contain an initial LabelOp before emitting endbranch");
+                gen.append(EndbranchOp.create());
+            }
+            super.doBlockPrologue(block, options);
         }
 
         @Override
@@ -767,7 +828,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
         @Override
         protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeValueMap nodeValueMap) {
-            return new SubstrateDebugInfoBuilder(graph, gen.getProviders().getMetaAccessExtensionProvider(), nodeValueMap);
+            return new SubstrateDebugInfoBuilder(graph, getProviders().getSnippetReflection(), gen.getProviders().getMetaAccessExtensionProvider(), nodeValueMap);
         }
 
         @Override
@@ -802,21 +863,40 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         @Override
         public Value[] visitInvokeArguments(CallingConvention invokeCc, Collection<ValueNode> arguments) {
             Value[] values = super.visitInvokeArguments(invokeCc, arguments);
-
             SubstrateCallingConventionType type = (SubstrateCallingConventionType) ((SubstrateCallingConvention) invokeCc).getType();
+
+            if (type.usesReturnBuffer()) {
+                /*
+                 * We save the return buffer so that it can be accessed after the call.
+                 */
+                assert values.length > 0;
+                Value returnBuffer = values[0];
+                Variable saved = gen.newVariable(returnBuffer.getValueKind());
+                gen.append(gen.getSpillMoveFactory().createMove(saved, returnBuffer));
+                values[0] = saved;
+            }
+
             if (type.nativeABI()) {
+                VMError.guarantee(values.length == invokeCc.getArgumentCount() - 1, "The last argument should be missing.");
+                AllocatableValue raxValue = invokeCc.getArgument(values.length);
+                VMError.guarantee(raxValue instanceof RegisterValue && ((RegisterValue) raxValue).getRegister().equals(rax));
+
+                values = Arrays.copyOf(values, values.length + 1);
+
                 // Native functions might have varargs, in which case we need to set %al to the
                 // number of XMM registers used for passing arguments
                 int xmmCount = 0;
-                for (Value v : values) {
+                for (int i = 0; i < values.length - 1; ++i) {
+                    Value v = values[i];
                     if (isRegister(v) && asRegister(v).getRegisterCategory().equals(AMD64.XMM)) {
                         xmmCount++;
                     }
                 }
                 assert xmmCount <= 8;
-                AllocatableValue xmmCountRegister = AMD64.rax.asValue(LIRKind.value(AMD64Kind.DWORD));
-                gen.emitMoveConstant(xmmCountRegister, JavaConstant.forInt(xmmCount));
+                gen.emitMoveConstant(raxValue, JavaConstant.forInt(xmmCount));
+                values[values.length - 1] = raxValue;
             }
+
             return values;
         }
 
@@ -831,24 +911,51 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
          * exception.
          */
         private Value getExceptionTemp(CallTargetNode callTarget) {
-            if (callTarget.invoke() instanceof InvokeWithExceptionNode) {
-                return gen.getRegisterConfig().getReturnRegister(JavaKind.Object).asValue();
-            } else {
-                return Value.ILLEGAL;
-            }
+            return ((SubstrateAMD64LIRGenerator) gen).getExceptionTemp(callTarget.invoke() instanceof InvokeWithExceptionNode);
         }
 
         public BiConsumer<CompilationResultBuilder, Integer> getOffsetRecorder(@SuppressWarnings("unused") IndirectCallTargetNode callTargetNode) {
             return null;
         }
 
+        private static AllocatableValue asReturnedValue(AssignedLocation assignedLocation) {
+            assert assignedLocation.assignsToRegister();
+            Register.RegisterCategory category = assignedLocation.register().getRegisterCategory();
+            LIRKind kind;
+            if (category.equals(AMD64.CPU)) {
+                kind = LIRKind.value(AMD64Kind.QWORD);
+            } else if (category.equals(AMD64.XMM)) {
+                kind = LIRKind.value(AMD64Kind.V128_DOUBLE);
+            } else {
+                throw unsupportedFeature("Register category " + category + " should not be used for returns spanning multiple registers.");
+            }
+            return assignedLocation.register().asValue(kind);
+        }
+
         @Override
         protected void emitInvoke(LoweredCallTargetNode callTarget, Value[] parameters, LIRFrameState callState, Value result) {
+            var cc = (SubstrateCallingConventionType) callTarget.callType();
             verifyCallTarget(callTarget);
             if (callTarget instanceof ComputedIndirectCallTargetNode) {
+                assert !cc.customABI();
                 emitComputedIndirectCall((ComputedIndirectCallTargetNode) callTarget, result, parameters, AllocatableValue.NONE, callState);
             } else {
                 super.emitInvoke(callTarget, parameters, callState, result);
+            }
+
+            if (cc.usesReturnBuffer()) {
+                /*
+                 * The buffer argument was saved in visitInvokeArguments, so that the value was not
+                 * killed by the call.
+                 */
+                Value returnBuffer = parameters[0];
+                long offset = 0;
+                for (AssignedLocation ret : cc.returnSaving) {
+                    Value saveLocation = gen.getArithmetic().emitAdd(returnBuffer, gen.emitJavaConstant(JavaConstant.forLong(offset)), false);
+                    AllocatableValue returnedValue = asReturnedValue(ret);
+                    gen.getArithmetic().emitStore(returnedValue.getValueKind(), saveLocation, returnedValue, callState, MemoryOrderMode.PLAIN);
+                    offset += returnedValue.getPlatformKind().getSizeInBytes();
+                }
             }
         }
 
@@ -873,9 +980,18 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             gen.emitMove(targetAddress, operand(callTarget.computedAddress()));
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
             vzeroupperBeforeCall((SubstrateAMD64LIRGenerator) getLIRGeneratorTool(), parameters, callState, (SharedMethod) targetMethod);
+
+            Value[] multipleResults = new Value[0];
+            var cc = (SubstrateCallingConventionType) callTarget.callType();
+            if (cc.customABI() && cc.usesReturnBuffer()) {
+                multipleResults = Arrays.stream(cc.returnSaving)
+                                .map(SubstrateAMD64NodeLIRBuilder::asReturnedValue)
+                                .toList().toArray(new Value[0]);
+            }
+
             append(new SubstrateAMD64IndirectCallOp(targetMethod, result, parameters, temps, targetAddress, callState,
                             setupJavaFrameAnchor(callTarget), setupJavaFrameAnchorTemp(callTarget), getNewThreadStatus(callTarget),
-                            getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget), getOffsetRecorder(callTarget)));
+                            getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget), getOffsetRecorder(callTarget), multipleResults));
         }
 
         protected void emitComputedIndirectCall(ComputedIndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
@@ -988,7 +1104,22 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             crb.recordMark(PROLOGUE_END);
         }
 
+        protected void emitEndBranch(CompilationResultBuilder crb) {
+            /*
+             * Emit an endbranch instruction if we are runtime compiling or the method can be
+             * dynamically bound.
+             */
+            if (SubstrateOptions.IndirectBranchTargetMarker.getValue() && (ImageInfo.inImageRuntimeCode() || !method.canBeStaticallyBound())) {
+                ((AMD64Assembler) crb.asm).endbranch();
+            }
+        }
+
         protected void makeFrame(CompilationResultBuilder crb, AMD64MacroAssembler asm) {
+            emitEndBranch(crb);
+            reserveStackFrame(crb, asm);
+        }
+
+        protected final void reserveStackFrame(CompilationResultBuilder crb, AMD64MacroAssembler asm) {
             maybePushBasePointer(crb, asm);
             asm.decrementq(rsp, crb.frameMap.frameSize());
         }
@@ -1276,7 +1407,9 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     @Override
     public LIRGenerationResult newLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, RegisterAllocationConfig registerAllocationConfig, StructuredGraph graph, Object stub) {
         SharedMethod method = (SharedMethod) graph.method();
-        CallingConvention callingConvention = CodeUtil.getCallingConvention(getCodeCache(), method.getCallingConventionKind().toType(false), method, this);
+        SubstrateCallingConventionKind ccKind = method.getCallingConventionKind();
+        SubstrateCallingConventionType ccType = ccKind.isCustom() ? method.getCustomCallingConventionType() : ccKind.toType(false);
+        CallingConvention callingConvention = CodeUtil.getCallingConvention(getCodeCache(), ccType, method, this);
         return new SubstrateLIRGenerationResult(compilationId, lir, newFrameMapBuilder(registerAllocationConfig.getRegisterConfig()), callingConvention, registerAllocationConfig, method);
     }
 
@@ -1388,6 +1521,12 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         AMD64Assembler asm = new AMD64Assembler(getTarget());
         if (SubstrateOptions.SpawnIsolates.getValue()) { // method id is offset from heap base
             asm.movq(rax, new AMD64Address(threadArg.getRegister(), threadIsolateOffset));
+            /*
+             * Load the isolate pointer from the JNIEnv argument (same as the isolate thread). The
+             * isolate pointer is equivalent to the heap base address (which would normally be
+             * provided via Isolate.getHeapBase which is a no-op), which we then use to access the
+             * method object and read the entry point.
+             */
             asm.addq(rax, methodIdArg.getRegister()); // address of JNIAccessibleMethod
             asm.jmp(new AMD64Address(rax, methodObjEntryPointOffset));
         } else { // methodId is absolute address

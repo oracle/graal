@@ -67,8 +67,8 @@ public interface CollectionPolicy {
         switch (name) {
             case "Adaptive":
                 return AdaptiveCollectionPolicy.class;
-            case "AggressiveShrink":
-                return AggressiveShrinkCollectionPolicy.class;
+            case "LibGraal":
+                return LibGraalCollectionPolicy.class;
             case "Proportionate":
                 return ProportionateSpacesPolicy.class;
             case "BySpaceAndTime":
@@ -122,11 +122,10 @@ public interface CollectionPolicy {
     boolean shouldCollectOnAllocation();
 
     /**
-     * Return true if a user-requested GC (e.g., call to {@link System#gc()} or
-     * {@link org.graalvm.compiler.serviceprovider.GraalServices#notifyLowMemoryPoint(boolean)})
-     * should be performed.
+     * Called when an application provides a hint to the GC that it might be a good time to do a
+     * collection. Returns true if the GC decides to do a collection.
      */
-    boolean shouldCollectOnRequest(GCCause cause, boolean fullGC);
+    boolean shouldCollectOnHint(boolean fullGC);
 
     /**
      * At a safepoint, decides whether to do a complete collection (returning {@code true}) or an

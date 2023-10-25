@@ -32,7 +32,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
-import com.oracle.truffle.espresso.runtime.JavaVersion;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
@@ -42,6 +41,7 @@ import org.graalvm.options.OptionType;
 
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
+import com.oracle.truffle.espresso.runtime.JavaVersion;
 
 @Option.Group(EspressoLanguage.ID)
 public final class EspressoOptions {
@@ -147,6 +147,12 @@ public final class EspressoOptions {
                     usageSyntax = "<module>" + PATH_SEPARATOR_INSERT + "<module>" + PATH_SEPARATOR_INSERT + "...") //
     public static final OptionKey<List<String>> AddOpens = new OptionKey<>(Collections.emptyList(), STRINGS_OPTION_TYPE);
 
+    @Option(help = "A '" + PATH_SEPARATOR_INSERT + "' separated list of modules that are permitted to perform restricted native operations.\\nEquivalent to '--enable-native-access=<module>'", //
+                    category = OptionCategory.USER, //
+                    stability = OptionStability.STABLE, //
+                    usageSyntax = "<module>" + PATH_SEPARATOR_INSERT + "<module>" + PATH_SEPARATOR_INSERT + "...") //
+    public static final OptionKey<List<String>> EnableNativeAccess = new OptionKey<>(Collections.emptyList(), STRINGS_OPTION_TYPE);
+
     @Option(help = "Installation directory for Java Runtime Environment (JRE).", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.STABLE, //
@@ -224,6 +230,12 @@ public final class EspressoOptions {
                     stability = OptionStability.STABLE, //
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> EnableSystemAssertions = new OptionKey<>(false);
+
+    @Option(help = "Enable extended NullPointerException message.", //
+                    category = OptionCategory.USER, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "true|false") //
+    public static final OptionKey<Boolean> ShowCodeDetailsInExceptionMessages = new OptionKey<>(true);
 
     public static List<Path> parsePaths(String paths) {
         List<Path> list = new ArrayList<>();
@@ -472,6 +484,12 @@ public final class EspressoOptions {
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> Polyglot = new OptionKey<>(false);
 
+    @Option(help = "Enable built in polyglot collection support in Espresso.", //
+                    category = OptionCategory.EXPERT, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> BuiltInPolyglotCollections = new OptionKey<>(false);
+
     @Option(help = "Enable hotspot extension API.", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL, //
@@ -630,6 +648,18 @@ public final class EspressoOptions {
     @Option(help = "Selects the jimage reader.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<JImageMode> JImage = new OptionKey<>(JImageMode.JAVA, JIMAGE_MODE_OPTION_TYPE);
+
+    @Option(help = "Enables preview features.", //
+                    category = OptionCategory.USER, //
+                    stability = OptionStability.STABLE, //
+                    usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> EnablePreview = new OptionKey<>(false);
+
+    @Option(help = "Enables the WhiteBox API.", //
+                    category = OptionCategory.INTERNAL, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> WhiteBoxAPI = new OptionKey<>(false);
 
     // These are host properties e.g. use --vm.Despresso.DebugCounters=true .
     public static final boolean DebugCounters = booleanProperty("espresso.DebugCounters", false);

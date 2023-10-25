@@ -28,7 +28,7 @@ import java.util.Collection;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import org.graalvm.compiler.graph.Node;
+import jdk.graal.compiler.graph.Node;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -103,6 +103,14 @@ public abstract class TypeFlow<T> {
      * The initial value is false, i.e., the flow is initially not saturated.
      */
     private volatile boolean isSaturated;
+
+    /**
+     * A TypeFlow is invalidated when the flowsgraph it belongs to is updated due to
+     * {@link MethodTypeFlow#updateFlowsGraph}. Once a flow is invalided it no longer needs to be
+     * updated and its links can be removed. Note delaying the removal of invalid flows does not
+     * affect correctness, so they can be removed lazily.
+     */
+    private boolean isValid = true;
 
     @SuppressWarnings("rawtypes")//
     private static final AtomicReferenceFieldUpdater<TypeFlow, TypeState> STATE_UPDATER = AtomicReferenceFieldUpdater.newUpdater(TypeFlow.class, TypeState.class, "state");
@@ -259,6 +267,20 @@ public abstract class TypeFlow<T> {
     }
 
     /**
+     * Return true is the flow is valid and should be updated.
+     */
+    public boolean isValid() {
+        return isValid;
+    }
+
+    /**
+     * Invalidating the typeflow will cause the flow to be lazily removed in the future.
+     */
+    public void invalidate() {
+        isValid = false;
+    }
+
+    /**
      * Return true if this flow is saturated. When an observer becomes saturated it doesn't
      * immediately remove itself from all its inputs. The inputs lazily remove it on next update.
      */
@@ -304,7 +326,7 @@ public abstract class TypeFlow<T> {
 
         PointsToStats.registerTypeFlowSuccessfulUpdate(bb, this, add);
 
-        assert !bb.extendedAsserts() || checkTypeState(bb, before, after);
+        assert checkTypeState(bb, before, after);
 
         if (checkSaturated(bb, after)) {
             onSaturated(bb);
@@ -316,7 +338,9 @@ public abstract class TypeFlow<T> {
     }
 
     private boolean checkTypeState(PointsToAnalysis bb, TypeState before, TypeState after) {
-        assert bb.extendedAsserts();
+        if (!bb.extendedAsserts()) {
+            return true;
+        }
 
         if (bb.analysisPolicy().relaxTypeFlowConstraints()) {
             return true;
@@ -392,6 +416,9 @@ public abstract class TypeFlow<T> {
         if (use.equals(this)) {
             return false;
         }
+        if (!use.isValid()) {
+            return false;
+        }
         /* Input is always tracked. */
         registerInput(bb, use);
         if (use.isSaturated()) {
@@ -464,7 +491,7 @@ public abstract class TypeFlow<T> {
          * An observer is linked even if it is already saturated itself, hence no
          * 'observer.isSaturated()' check is performed here. For observers the saturation state is
          * that of the values flowing through and not that of the objects they observe.
-         * 
+         *
          * Some observers may need to continue to observe the state of their receiver object until
          * the receiver object saturates itself, e.g., instance field stores, other observers may
          * deregister themselves from observing the receiver object when they saturate, e.g.,
@@ -473,6 +500,10 @@ public abstract class TypeFlow<T> {
         if (observer.equals(this)) {
             return false;
         }
+        if (!observer.isValid()) {
+            return false;
+        }
+
         registerObservee(bb, observer);
         return ConcurrentLightHashSet.addElement(this, OBSERVERS_UPDATER, observer);
     }
@@ -562,7 +593,7 @@ public abstract class TypeFlow<T> {
      *
      * Places where interface types need to be filtered: method parameters, method return values,
      * and field loads (including unsafe memory loads).
-     * 
+     *
      * Places where interface types need not be filtered: array element loads (because all array
      * stores have an array store check).
      */
@@ -579,7 +610,7 @@ public abstract class TypeFlow<T> {
     public void update(PointsToAnalysis bb) {
         TypeState curState = getState();
         for (TypeFlow<?> use : getUses()) {
-            if (use.isSaturated()) {
+            if (!use.isValid() || use.isSaturated()) {
                 removeUse(use);
             } else {
                 use.addState(bb, curState);
@@ -587,7 +618,11 @@ public abstract class TypeFlow<T> {
         }
 
         for (TypeFlow<?> observer : getObservers()) {
-            observer.onObservedUpdate(bb);
+            if (observer.isValid()) {
+                observer.onObservedUpdate(bb);
+            } else {
+                removeObserver(observer);
+            }
         }
     }
 
@@ -644,11 +679,11 @@ public abstract class TypeFlow<T> {
     /*** Notify the uses and observers that this flow is saturated and unlink them. */
     private void notifySaturated(PointsToAnalysis bb) {
         for (TypeFlow<?> use : getUses()) {
-            use.onInputSaturated(bb, this);
+            notifyUseOfSaturation(bb, use);
             removeUse(use);
         }
         for (TypeFlow<?> observer : getObservers()) {
-            observer.onObservedSaturated(bb, this);
+            notifyObserverOfSaturation(bb, observer);
             removeObserver(observer);
         }
     }
@@ -704,10 +739,10 @@ public abstract class TypeFlow<T> {
      * approximation, e.g., the flow of the receiver type for a special invoke operation or of the
      * field declaring class for a field access operation. By default the observers don't use the
      * null state of the observed, therefore the non-null type flow is used.
-     * 
+     *
      * The overloaded {@link #replacedObservedWith(PointsToAnalysis, TypeFlow)} can be used for
      * replacing the observed with a custom type flow.
-     * 
+     *
      */
     public void replaceObservedWith(PointsToAnalysis bb, AnalysisType newObservedType) {
         replacedObservedWith(bb, newObservedType.getTypeFlow(bb, false));

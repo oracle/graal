@@ -60,9 +60,10 @@ public class TruffleTypes {
     // Checkstyle: stop
 
     // Testing API
-    private static final String[] EXPECT_ERROR_TYPES = new String[]{TruffleTypes.EXPECT_ERROR_CLASS_NAME1, TruffleTypes.EXPECT_ERROR_CLASS_NAME2};
+    private static final String[] EXPECT_ERROR_TYPES = new String[]{TruffleTypes.EXPECT_ERROR_CLASS_NAME1, TruffleTypes.EXPECT_ERROR_CLASS_NAME2, TruffleTypes.EXPECT_WARNING_CLASS_NAME1};
     public static final String ALWAYS_SLOW_PATH_MODE_NAME = "com.oracle.truffle.api.dsl.test.AlwaysGenerateOnlySlowPath";
     public static final String DISABLE_STATE_BITWIDTH_MODIFICATION = "com.oracle.truffle.api.dsl.test.DisableStateBitWidthModfication";
+    public static final String EXPECT_WARNING_CLASS_NAME1 = "com.oracle.truffle.api.dsl.test.ExpectWarning";
     public static final String EXPECT_ERROR_CLASS_NAME1 = "com.oracle.truffle.api.dsl.test.ExpectError";
     public static final String EXPECT_ERROR_CLASS_NAME2 = "com.oracle.truffle.api.test.ExpectError";
     public static final List<String> TEST_PACKAGES = List.of("com.oracle.truffle.api.test", "com.oracle.truffle.api.instrumentation.test");
@@ -114,6 +115,9 @@ public class TruffleTypes {
     public static final String FrameDescriptor_Name = "com.oracle.truffle.api.frame.FrameDescriptor";
     public static final String FinalBitSet_Name = "com.oracle.truffle.api.utilities.FinalBitSet";
     public static final String HostCompilerDirectives_Name = "com.oracle.truffle.api.HostCompilerDirectives";
+
+    public static final String InternalResource_Name = "com.oracle.truffle.api.InternalResource";
+    public static final String InternalResource_Id_Name = "com.oracle.truffle.api.InternalResource.Id";
     public static final String InvalidAssumptionException_Name = "com.oracle.truffle.api.nodes.InvalidAssumptionException";
     public static final String MaterializedFrame_Name = "com.oracle.truffle.api.frame.MaterializedFrame";
     public static final String Node_Child_Name = "com.oracle.truffle.api.nodes.Node.Child";
@@ -128,6 +132,7 @@ public class TruffleTypes {
     public static final String Profile_Name = "com.oracle.truffle.api.profiles.Profile";
     public static final String IndirectCallNode_Name = "com.oracle.truffle.api.nodes.IndirectCallNode";
     public static final String InlinedProfile_Name = "com.oracle.truffle.api.profiles.InlinedProfile";
+    public static final String InternalResourceProvider_Name = "com.oracle.truffle.api.provider.InternalResourceProvider";
     public static final String SlowPathException_Name = "com.oracle.truffle.api.nodes.SlowPathException";
     public static final String SourceSection_Name = "com.oracle.truffle.api.source.SourceSection";
     public static final String TruffleFile_FileTypeDetector_Name = "com.oracle.truffle.api.TruffleFile.FileTypeDetector";
@@ -156,6 +161,8 @@ public class TruffleTypes {
     public final DeclaredType FrameDescriptor = c.getDeclaredType(FrameDescriptor_Name);
     public final DeclaredType FinalBitSet = c.getDeclaredType(FinalBitSet_Name);
     public final DeclaredType HostCompilerDirectives = c.getDeclaredType(HostCompilerDirectives_Name);
+    public final DeclaredType InternalResource = c.getDeclaredType(InternalResource_Name);
+    public final DeclaredType InternalResource_Id = c.getDeclaredType(InternalResource_Id_Name);
     public final DeclaredType InvalidAssumptionException = c.getDeclaredType(InvalidAssumptionException_Name);
     public final DeclaredType MaterializedFrame = c.getDeclaredType(MaterializedFrame_Name);
     public final DeclaredType Node = c.getDeclaredType(Node_Name);
@@ -168,6 +175,7 @@ public class TruffleTypes {
     public final DeclaredType Profile = c.getDeclaredTypeOptional(Profile_Name);
     public final DeclaredType IndirectCallNode = c.getDeclaredType(IndirectCallNode_Name);
     public final DeclaredType InlinedProfile = c.getDeclaredTypeOptional(InlinedProfile_Name);
+    public final DeclaredType InternalResourceProvider = c.getDeclaredType(InternalResourceProvider_Name);
     public final DeclaredType SlowPathException = c.getDeclaredType(SlowPathException_Name);
     public final DeclaredType SourceSection = c.getDeclaredType(SourceSection_Name);
     public final DeclaredType TruffleLanguage = c.getDeclaredType(TruffleLanguage_Name);
@@ -349,6 +357,7 @@ public class TruffleTypes {
     public static final String GenerateWrapper_IncomingConverter_Name = "com.oracle.truffle.api.instrumentation.GenerateWrapper.IncomingConverter";
     public static final String GenerateWrapper_Name = "com.oracle.truffle.api.instrumentation.GenerateWrapper";
     public static final String GenerateWrapper_OutgoingConverter_Name = "com.oracle.truffle.api.instrumentation.GenerateWrapper.OutgoingConverter";
+    public static final String GenerateWrapper_YieldException_Name = "com.oracle.truffle.api.instrumentation.GenerateWrapper.YieldException";
     public static final String InstrumentableNode_Name = "com.oracle.truffle.api.instrumentation.InstrumentableNode";
     public static final String InstrumentableNode_WrapperNode_Name = "com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode";
     public static final String ProbeNode_Name = "com.oracle.truffle.api.instrumentation.ProbeNode";
@@ -364,6 +373,7 @@ public class TruffleTypes {
     public final DeclaredType GenerateWrapper_Ignore = c.getDeclaredTypeOptional(GenerateWrapper_Ignore_Name);
     public final DeclaredType GenerateWrapper_IncomingConverter = c.getDeclaredTypeOptional(GenerateWrapper_IncomingConverter_Name);
     public final DeclaredType GenerateWrapper_OutgoingConverter = c.getDeclaredTypeOptional(GenerateWrapper_OutgoingConverter_Name);
+    public final DeclaredType GenerateWrapper_YieldException = c.getDeclaredTypeOptional(GenerateWrapper_YieldException_Name);
     public final DeclaredType InstrumentableNode = c.getDeclaredTypeOptional(InstrumentableNode_Name);
     public final DeclaredType InstrumentableNode_WrapperNode = c.getDeclaredTypeOptional(InstrumentableNode_WrapperNode_Name);
     public final DeclaredType ProbeNode = c.getDeclaredTypeOptional(ProbeNode_Name);

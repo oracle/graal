@@ -56,10 +56,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.logging.Level;
 
-import org.graalvm.collections.UnmodifiableEconomicSet;
-import org.graalvm.polyglot.PolyglotAccess;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.Proxy;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -131,10 +128,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             boolean embedderAllAccess = config.allowedPublicLanguages.isEmpty();
             PolyglotEngineImpl engine = languageInstance.getEngine();
             Set<String> configuredAccess = null;
-            UnmodifiableEconomicSet<String> configured = engine.getAPIAccess().getEvalAccess(config.polyglotAccess, thisLanguage.getId());
+            Set<String> configured = engine.getAPIAccess().getEvalAccess(config.polyglotAccess, thisLanguage.getId());
             if (configured != null) {
-                configuredAccess = new HashSet<>();
-                configuredAccess.addAll(Arrays.asList(configured.toArray(new String[configured.size()])));
+                configuredAccess = new HashSet<>(configured);
             }
 
             Set<String> resolveLanguages;
@@ -220,7 +216,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     private boolean initializing;
     volatile boolean finalized;
     volatile TruffleLanguage.ExitMode exited;
-    @CompilationFinal private volatile Value hostBindings;
+    @CompilationFinal private volatile Object hostBindings;
     @CompilationFinal private volatile Lazy lazy;
     @CompilationFinal volatile Env env; // effectively final
     @CompilationFinal private volatile List<Object> languageServices = Collections.emptyList();
@@ -232,11 +228,11 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     }
 
     boolean isPolyglotBindingsAccessAllowed() {
-        if (context.config.polyglotAccess == PolyglotAccess.ALL) {
+        if (context.config.polyglotAccess == language.getAPIAccess().getPolyglotAccessAll()) {
             return true;
         }
 
-        UnmodifiableEconomicSet<String> accessibleLanguages = getAPIAccess().getBindingsAccess(context.config.polyglotAccess);
+        Set<String> accessibleLanguages = getAPIAccess().getBindingsAccess(context.config.polyglotAccess);
         if (accessibleLanguages == null) {
             return true;
         }
@@ -244,12 +240,12 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     }
 
     boolean isPolyglotEvalAllowed(String targetLanguage) {
-        if (context.config.polyglotAccess == PolyglotAccess.ALL) {
+        if (context.config.polyglotAccess == language.getAPIAccess().getPolyglotAccessAll()) {
             return true;
         } else if (targetLanguage != null && language.getId().equals(targetLanguage)) {
             return true;
         }
-        UnmodifiableEconomicSet<String> accessibleLanguages = getAPIAccess().getEvalAccess(context.config.polyglotAccess,
+        Set<String> accessibleLanguages = getAPIAccess().getEvalAccess(context.config.polyglotAccess,
                         language.getId());
         if (accessibleLanguages == null || accessibleLanguages.isEmpty()) {
             return false;
@@ -333,7 +329,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         }
     }
 
-    Value getHostBindings() {
+    Object getHostBindings() {
         assert initialized;
         if (this.hostBindings == null) {
             synchronized (this) {
@@ -874,11 +870,23 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     @Override
     public PolyglotEngineImpl getEngine() {
-        return context.getEngine();
+        return context.engine;
+    }
+
+    @Override
+    public APIAccess getAPIAccess() {
+        return context.engine.apiAccess;
+    }
+
+    @Override
+    public PolyglotImpl getImpl() {
+        return context.engine.impl;
     }
 
     boolean patch(PolyglotContextConfig newConfig) {
-        if (isCreated()) {
+        Set<PolyglotLanguage> configuredLanguages = newConfig.getConfiguredLanguages();
+        boolean requested = language.isHost() || language.cache.isInternal() || configuredLanguages.isEmpty() || configuredLanguages.contains(language);
+        if (requested && isCreated()) {
             try {
                 OptionValuesImpl newOptionValues = newConfig.getLanguageOptionValues(language).copy();
                 lazy.computeAccessPermissions(newConfig);
@@ -900,6 +908,10 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 throw silenceException(RuntimeException.class, t);
             }
         } else {
+            if (LOG.isLoggable(Level.FINER)) {
+                LOG.log(Level.FINER, "The language context patching for {0} is being skipped due to requested: {1}, created: {2}.",
+                                new Object[]{this.language.getId(), requested, isCreated()});
+            }
             return true;
         }
     }
@@ -925,13 +937,14 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     }
 
     @TruffleBoundary
-    Value asValue(Object guestValue) {
+    Object asValue(Object guestValue) {
+        APIAccess api = context.getAPIAccess();
         assert lazy != null;
         assert guestValue != null;
-        assert !(guestValue instanceof Value);
-        assert !(guestValue instanceof Proxy);
+        assert !(api.isValue(guestValue));
+        assert !(api.isProxy(guestValue));
         PolyglotValueDispatch cache = getLanguageInstance().lookupValueCache(context, guestValue);
-        return context.engine.getAPIAccess().newValue(cache, this, guestValue);
+        return api.newValue(cache, this, guestValue);
     }
 
     public Object toGuestValue(Node node, Object receiver) {
@@ -942,10 +955,10 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     @GenerateCached(false)
     abstract static class ToHostValueNode extends Node {
 
-        abstract Value execute(Node node, PolyglotLanguageContext languageContext, Object value);
+        abstract Object execute(Node node, PolyglotLanguageContext languageContext, Object value);
 
         @Specialization(guards = "value.getClass() == cachedClass", limit = "3")
-        Value doCached(PolyglotLanguageContext languageContext, Object value,
+        Object doCached(PolyglotLanguageContext languageContext, Object value,
                         @Cached("value.getClass()") Class<?> cachedClass,
                         @Cached("lookupDispatch(languageContext, value)") PolyglotValueDispatch cachedValue) {
             Object receiver = CompilerDirectives.inInterpreter() ? value : CompilerDirectives.castExact(value, cachedClass);
@@ -953,7 +966,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         }
 
         @Specialization(replaces = "doCached")
-        Value doGeneric(PolyglotLanguageContext languageContext, Object value) {
+        Object doGeneric(PolyglotLanguageContext languageContext, Object value) {
             return languageContext.asValue(value);
         }
 
@@ -973,8 +986,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     }
 
     @TruffleBoundary
-    Value[] toHostValues(Object[] values, int startIndex) {
-        Value[] args = new Value[values.length - startIndex];
+    Object[] toHostValues(Object[] values, int startIndex) {
+        Object[] args = getAPIAccess().newValueArray(values.length - startIndex);
         for (int i = startIndex; i < values.length; i++) {
             args[i - startIndex] = asValue(values[i]);
         }
@@ -982,8 +995,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     }
 
     @TruffleBoundary
-    Value[] toHostValues(Object[] values) {
-        Value[] args = new Value[values.length];
+    Object[] toHostValues(Object[] values) {
+        Object[] args = getAPIAccess().newValueArray(values.length);
         for (int i = 0; i < args.length; i++) {
             args[i] = asValue(values[i]);
         }

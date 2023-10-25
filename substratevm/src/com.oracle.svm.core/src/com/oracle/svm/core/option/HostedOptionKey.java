@@ -27,9 +27,9 @@ package com.oracle.svm.core.option;
 import com.oracle.svm.common.option.LocatableOption;
 import com.oracle.svm.common.option.MultiOptionValue;
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
 
 import java.util.function.Consumer;
 
@@ -41,6 +41,7 @@ import java.util.function.Consumer;
  */
 public class HostedOptionKey<T> extends OptionKey<T> implements SubstrateOptionKey<T> {
     private final Consumer<HostedOptionKey<T>> validation;
+    private OptionOrigin lastOrigin;
 
     public HostedOptionKey(T defaultValue) {
         this(defaultValue, null);
@@ -94,6 +95,8 @@ public class HostedOptionKey<T> extends OptionKey<T> implements SubstrateOptionK
             value.valueUpdate(boxedValue);
             super.update(values, value);
         } else {
+            /* store origin, last option update wins. */
+            lastOrigin = OptionOrigin.from(LocatableOption.valueOrigin(boxedValue), false);
             super.update(values, LocatableOption.rawValue(boxedValue));
         }
     }
@@ -103,5 +106,9 @@ public class HostedOptionKey<T> extends OptionKey<T> implements SubstrateOptionK
         if (validation != null) {
             validation.accept(this);
         }
+    }
+
+    public OptionOrigin getLastOrigin() {
+        return lastOrigin;
     }
 }

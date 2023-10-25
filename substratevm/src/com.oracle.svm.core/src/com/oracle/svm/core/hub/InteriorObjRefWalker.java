@@ -26,8 +26,8 @@ package com.oracle.svm.core.hub;
 
 import java.util.function.IntConsumer;
 
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -43,7 +43,7 @@ import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.heap.PodReferenceMapDecoder;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
-import com.oracle.svm.core.thread.Continuation;
+import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -130,7 +130,7 @@ public class InteriorObjRefWalker {
     @AlwaysInline("Performance critical version")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean walkStoredContinuation(Object obj, ObjectReferenceVisitor visitor) {
-        if (!Continuation.isSupported()) {
+        if (!ContinuationSupport.isSupported()) {
             throw VMError.shouldNotReachHere("Stored continuation objects cannot be in the heap if the continuation support is disabled.");
         }
         return StoredContinuationAccess.walkReferences(obj, visitor);

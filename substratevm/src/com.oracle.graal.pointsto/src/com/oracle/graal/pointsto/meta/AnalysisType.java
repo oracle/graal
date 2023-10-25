@@ -40,7 +40,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import org.graalvm.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.word.WordBase;
 
@@ -186,9 +186,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private final AnalysisFuture<Void> initializeMetaDataTask;
 
     /**
-     * Additional information that is only available for types that are marked as reachable.
+     * Additional information that is only available for types that are marked as reachable. It is
+     * preserved after analysis.
      */
-    private AnalysisFuture<TypeData> typeData;
+    private final AnalysisFuture<TypeData> typeData;
 
     /**
      * Contains reachability handlers that are notified when any of the subtypes are marked as
@@ -211,6 +212,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      */
     List<AnalysisFuture<Void>> scheduledTypeReachableNotifications;
 
+    /**
+     * Contains callbacks that are notified when this type is marked as instantiated. Each callback
+     * is called at least once, but there are no guarantees that it will be called exactly once.
+     */
     @SuppressWarnings("unused") private volatile Object typeInstantiatedNotifications;
 
     @SuppressWarnings("this-escape")
@@ -343,7 +348,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         constantObjectsCache = null;
         uniqueConstant = null;
         unsafeAccessedFields = null;
-        typeData = null;
         scheduledTypeReachableNotifications = null;
     }
 
@@ -366,7 +370,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
          * cache in the policy, but it is simpler to store the cache for each type.
          */
         assert bb.analysisPolicy().needsConstantCache() : "The analysis policy doesn't specify the need for a constants cache.";
-        assert bb.trackConcreteAnalysisObjects(this);
+        assert bb.trackConcreteAnalysisObjects(this) : this;
         assert !(constant instanceof PrimitiveConstant) : "The analysis should not model PrimitiveConstant.";
 
         if (uniqueConstant != null) {
@@ -591,7 +595,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     public void registerOverrideReachabilityNotification(AnalysisMethod declaredMethod, MethodOverrideReachableNotification notification) {
-        assert declaredMethod.getDeclaringClass() == this;
+        assert declaredMethod.getDeclaringClass() == this : declaredMethod;
         Set<MethodOverrideReachableNotification> overrideNotifications = ConcurrentLightHashMap.computeIfAbsent(this,
                         overrideReachableNotificationsUpdater, declaredMethod, m -> ConcurrentHashMap.newKeySet());
         overrideNotifications.add(notification);
@@ -803,7 +807,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     public boolean isInstantiated() {
         boolean instantiated = isInHeap() || isAllocated();
-        assert !instantiated || isReachable();
+        assert !instantiated || isReachable() : this;
         return instantiated;
     }
 
@@ -824,6 +828,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @Override
     public boolean isReachable() {
         return AtomicUtils.isSet(this, isReachableUpdater);
+    }
+
+    public Object getReachableReason() {
+        return isReachable;
     }
 
     /**
@@ -1267,8 +1275,16 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return AtomicUtils.isSet(this, isInHeapUpdater);
     }
 
+    public Object getInHeapReason() {
+        return isInHeap;
+    }
+
     public boolean isAllocated() {
         return AtomicUtils.isSet(this, isAllocatedUpdater);
+    }
+
+    public Object getAllocatedReason() {
+        return isAllocated;
     }
 
     @Override

@@ -29,7 +29,6 @@ import static com.oracle.graal.pointsto.util.AnalysisError.shouldNotReachHere;
 import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
-import java.lang.ref.WeakReference;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -52,31 +51,31 @@ import java.util.function.BiPredicate;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.MethodFilter;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
-import org.graalvm.compiler.nodes.StaticDeoptimizingNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import org.graalvm.compiler.nodes.java.AccessFieldNode;
-import org.graalvm.compiler.nodes.java.AccessMonitorNode;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.phases.common.BoxNodeIdentityPhase;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.MethodFilter;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.java.GraphBuilderPhase.Instance;
+import jdk.graal.compiler.nodes.StaticDeoptimizingNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.UnsafeAccessNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import jdk.graal.compiler.nodes.java.AccessFieldNode;
+import jdk.graal.compiler.nodes.java.AccessMonitorNode;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.phases.common.BoxNodeIdentityPhase;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.RelocatedPointer;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -119,7 +118,7 @@ import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.thread.Continuation;
+import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.analysis.CustomTypeFieldHandler;
@@ -134,6 +133,7 @@ import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.hosted.meta.RelocatableConstant;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisGraphDecoderImpl;
@@ -271,8 +271,13 @@ public class SVMHost extends HostVM {
     }
 
     @Override
+    public void recordActivity() {
+        DeadlockWatchdog.singleton().recordActivity();
+    }
+
+    @Override
     public boolean isRelocatedPointer(UniverseMetaAccess metaAccess, JavaConstant constant) {
-        return metaAccess.isInstanceOf(constant, RelocatedPointer.class);
+        return constant instanceof RelocatableConstant;
     }
 
     @Override
@@ -419,10 +424,21 @@ public class SVMHost extends HostVM {
         boolean isSealed = javaClass.isSealed();
         boolean isVMInternal = type.isAnnotationPresent(InternalVMMethod.class);
         boolean isLambdaFormHidden = type.isAnnotationPresent(LambdaFormHiddenMethod.class);
+        boolean isLinked = type.isLinked();
 
         return new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type), superHub, componentHub, sourceFileName, modifiers, hubClassLoader,
-                        isHidden, isRecord, nestHost, assertionStatus, type.hasDefaultMethods(), type.declaresDefaultMethods(), isSealed, isVMInternal, isLambdaFormHidden, simpleBinaryName,
-                        getDeclaringClass(javaClass));
+                        isHidden, isRecord, nestHost, assertionStatus, type.hasDefaultMethods(), type.declaresDefaultMethods(), isSealed, isVMInternal, isLambdaFormHidden, isLinked, simpleBinaryName,
+                        getDeclaringClass(javaClass), getSignature(javaClass));
+    }
+
+    private static final Method getSignature = ReflectionUtil.lookupMethod(Class.class, "getGenericSignature0");
+
+    private String getSignature(Class<?> javaClass) {
+        try {
+            return (String) getSignature.invoke(javaClass);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw GraalError.shouldNotReachHere(e); // ExcludeFromJacocoGeneratedReport
+        }
     }
 
     private final Method getDeclaringClass0 = ReflectionUtil.lookupMethod(Class.class, "getDeclaringClass0");
@@ -497,7 +513,7 @@ public class SVMHost extends HostVM {
                 return HubType.REFERENCE_INSTANCE;
             } else if (PodSupport.isPresent() && PodSupport.singleton().isPodClass(type.getJavaClass())) {
                 return HubType.POD_INSTANCE;
-            } else if (Continuation.isSupported() && type.getJavaClass() == StoredContinuation.class) {
+            } else if (ContinuationSupport.isSupported() && type.getJavaClass() == StoredContinuation.class) {
                 return HubType.STORED_CONTINUATION_INSTANCE;
             }
             assert !Target_java_lang_ref_Reference.class.isAssignableFrom(type.getJavaClass()) : "should not see substitution type here";
@@ -508,14 +524,15 @@ public class SVMHost extends HostVM {
 
     private static ReferenceType computeReferenceType(AnalysisType type) {
         Class<?> clazz = type.getJavaClass();
-        if (PhantomReference.class.isAssignableFrom(clazz)) {
-            return ReferenceType.Phantom;
-        } else if (WeakReference.class.isAssignableFrom(clazz)) {
-            return ReferenceType.Weak;
-        } else if (SoftReference.class.isAssignableFrom(clazz)) {
-            return ReferenceType.Soft;
-        } else if (Reference.class.isAssignableFrom(clazz)) {
-            return ReferenceType.Other;
+        if (Reference.class.isAssignableFrom(clazz)) {
+            if (PhantomReference.class.isAssignableFrom(clazz)) {
+                return ReferenceType.Phantom;
+            } else if (SoftReference.class.isAssignableFrom(clazz)) {
+                return ReferenceType.Soft;
+            } else {
+                /* Treat all other java.lang.Reference subclasses as weak references. */
+                return ReferenceType.Weak;
+            }
         }
         return ReferenceType.None;
     }
@@ -902,6 +919,14 @@ public class SVMHost extends HostVM {
     }
 
     @Override
+    public boolean recordInlinedMethods(AnalysisMethod method) {
+        if (parsingSupport != null) {
+            return parsingSupport.recordInlinedMethods(method);
+        }
+        return super.recordInlinedMethods(method);
+    }
+
+    @Override
     public HostedProviders getProviders(MultiMethod.MultiMethodKey key) {
         if (parsingSupport != null) {
             HostedProviders providers = parsingSupport.getHostedProviders(key);
@@ -940,6 +965,16 @@ public class SVMHost extends HostVM {
             }
         }
         return super.getStrengthenGraphsToTargetFunction(key);
+    }
+
+    @Override
+    public boolean allowConstantFolding(AnalysisMethod method) {
+        /*
+         * Currently constant folding is only enabled for original methods which do not deoptimize.
+         * More work is needed to support it within deoptimization targets and runtime-compiled
+         * methods.
+         */
+        return method.isOriginalMethod() && !SubstrateCompilationDirectives.singleton().isRegisteredForDeoptTesting(method);
     }
 
     @Override

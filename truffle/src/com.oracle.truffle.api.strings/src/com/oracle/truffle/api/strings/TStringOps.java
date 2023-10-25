@@ -46,7 +46,6 @@ import static com.oracle.truffle.api.strings.Encodings.isUTF8ContinuationByte;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 
@@ -809,7 +808,7 @@ final class TStringOps {
             long attrs = runCalcStringAttributesUTF8(location, stubArray, stubOffset, length, isNative, false);
             if (brokenProfile.profile(location, TStringGuards.isBrokenMultiByte(StringAttributes.getCodeRange(attrs)))) {
                 int codePointLength = 0;
-                for (int i = 0; i < length; i += Encodings.utf8GetCodePointLength(array, offset, length, i, TruffleString.ErrorHandling.BEST_EFFORT)) {
+                for (int i = 0; i < length; i += Encodings.utf8GetCodePointLength(array, offset, length, i, DecodingErrorHandler.DEFAULT)) {
                     codePointLength++;
                     TStringConstants.truffleSafePointPoll(location, codePointLength);
                 }
@@ -1431,34 +1430,6 @@ final class TStringOps {
     }
 
     /**
-     * Copyright (c) 2008-2010 Bjoern Hoehrmann <bjoern@hoehrmann.de> See
-     * http://bjoern.hoehrmann.de/utf-8/decoder/dfa/ for details.
-     *
-     * LICENCE: MIT
-     */
-    @CompilationFinal(dimensions = 1) private static final byte[] UTF_8_STATE_MACHINE = {
-                    // The first part of the table maps bytes to character classes
-                    // to reduce the size of the transition table and create bitmasks.
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
-                    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-                    8, 8, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                    10, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 3, 3, 11, 6, 6, 6, 5, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-
-                    // The second part is a transition table that maps a combination
-                    // of a state of the automaton and a character class to a state.
-                    0, 12, 24, 36, 60, 96, 84, 12, 12, 12, 48, 72, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
-                    12, 0, 12, 12, 12, 12, 12, 0, 12, 0, 12, 12, 12, 24, 12, 12, 12, 12, 12, 24, 12, 24, 12, 12,
-                    12, 12, 12, 12, 12, 12, 12, 24, 12, 12, 12, 12, 12, 24, 12, 12, 12, 12, 12, 12, 12, 24, 12, 12,
-                    12, 12, 12, 12, 12, 12, 12, 36, 12, 36, 12, 12, 12, 36, 12, 12, 12, 12, 12, 36, 12, 36, 12, 12,
-                    12, 36, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
-    };
-    private static final byte UTF8_ACCEPT = 0;
-
-    /**
      * Intrinsic candidate.
      */
     private static long runCalcStringAttributesUTF8(Node location, byte[] array, long offset, int length, boolean isNative, boolean assumeValid) {
@@ -1488,20 +1459,18 @@ final class TStringOps {
              * Copyright (c) 2008-2010 Bjoern Hoehrmann <bjoern@hoehrmann.de> See
              * http://bjoern.hoehrmann.de/utf-8/decoder/dfa/ for details.
              */
-            int state = UTF8_ACCEPT;
+            int state = Encodings.UTF8_ACCEPT;
             // int codepoint = 0;
             for (; i < length; i++) {
                 int b = readValueS0(array, offset, i, isNative);
                 if (!Encodings.isUTF8ContinuationByte(b)) {
                     nCodePoints++;
                 }
-                int type = UTF_8_STATE_MACHINE[b];
-                // codepoint = (state != UTF8_ACCEPT) ? (b & 0x3f) | (codepoint << 6) : (0xff >>
-                // type) & (b);
-                state = UTF_8_STATE_MACHINE[256 + state + type];
+                int type = Encodings.UTF_8_STATE_MACHINE[b];
+                state = Encodings.UTF_8_STATE_MACHINE[256 + state + type];
                 TStringConstants.truffleSafePointPoll(location, i + 1);
             }
-            if (state != UTF8_ACCEPT) {
+            if (state != Encodings.UTF8_ACCEPT) {
                 codeRange = TSCodeRange.getBrokenMultiByte();
             }
             return StringAttributes.create(nCodePoints, codeRange);

@@ -134,7 +134,7 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString.CompactionLevel;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
-@SuppressWarnings({"truffle-neverdefault", "truffle-sharing"})
+@SuppressWarnings({"truffle-neverdefault", "truffle-sharing", "truffle-interpreted-performance"})
 public class GenerateInlineTest extends AbstractPolyglotTest {
 
     @GenerateInline
@@ -1640,7 +1640,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         public abstract Object execute(Object arg0);
 
-        @Specialization(guards = "sharedNode.execute(this, arg0)", limit = "3")
+        @Specialization(guards = "sharedNode.execute(this, arg0)")
         @SuppressWarnings("unused")
         static String s0(Object arg0,
                         @Bind("this") Node inliningTarget,

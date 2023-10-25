@@ -29,8 +29,8 @@ import java.util.Map;
 import java.util.StringJoiner;
 import java.util.function.Function;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.options.Option;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -91,15 +91,16 @@ public final class RuntimeAssertionsSupport {
 
         private static final char VALUE_SEPARATOR = ':';
 
-        @APIOption(name = {"-ea", "-enableassertions"}, valueSeparator = VALUE_SEPARATOR, valueTransformer = RuntimeAssertionsOptionTransformer.Enable.class, defaultValue = "", //
+        @APIOption(name = {"-ea", "-enableassertions"}, launcherOption = true, valueSeparator = VALUE_SEPARATOR, valueTransformer = RuntimeAssertionsOptionTransformer.Enable.class, defaultValue = "", //
                         customHelp = "also -ea[:[packagename]...|:classname] or -enableassertions[:[packagename]...|:classname]. Enable assertions with specified granularity at run time.")//
-        @APIOption(name = {"-da", "-disableassertions"}, valueSeparator = VALUE_SEPARATOR, valueTransformer = RuntimeAssertionsOptionTransformer.Disable.class, defaultValue = "", //
+        @APIOption(name = {"-da",
+                        "-disableassertions"}, launcherOption = true, valueSeparator = VALUE_SEPARATOR, valueTransformer = RuntimeAssertionsOptionTransformer.Disable.class, defaultValue = "", //
                         customHelp = "also -da[:[packagename]...|:classname] or -disableassertions[:[packagename]...|:classname]. Disable assertions with specified granularity at run time.")//
         @Option(help = "Enable or disable Java assert statements at run time") //
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> RuntimeAssertions = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
-        @APIOption(name = {"-esa", "-enablesystemassertions"}, customHelp = "also -enablesystemassertions. Enables assertions in all system classes at run time.") //
-        @APIOption(name = {"-dsa", "-disablesystemassertions"}, kind = APIOption.APIOptionKind.Negated, //
+        @APIOption(name = {"-esa", "-enablesystemassertions"}, launcherOption = true, customHelp = "also -enablesystemassertions. Enables assertions in all system classes at run time.") //
+        @APIOption(name = {"-dsa", "-disablesystemassertions"}, launcherOption = true, kind = APIOption.APIOptionKind.Negated, //
                         customHelp = "also -disablesystemassertions. Disables assertions in all system classes at run time.") //
         @Option(help = "Enable or disable Java system assertions at run time") //
         public static final HostedOptionKey<Boolean> RuntimeSystemAssertions = new HostedOptionKey<>(false);

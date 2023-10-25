@@ -40,32 +40,37 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.api.runtime.GraalRuntime;
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
-import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.lir.phases.LIRSuites;
-import org.graalvm.compiler.nodes.GraphEncoder;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.phases.tiers.Suites;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.word.WordTypes;
+import jdk.graal.compiler.api.runtime.GraalRuntime;
+import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.phases.LIRSuites;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.GraphEncoder;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionStability;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.phases.tiers.Suites;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.word.WordTypes;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.AfterCompilationAccess;
 import org.graalvm.nativeimage.hosted.Feature.AfterHeapLayoutAccess;
 import org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess;
+import org.graalvm.nativeimage.hosted.Feature.BeforeHeapLayoutAccess;
 import org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -99,6 +104,7 @@ import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.graal.meta.SubstrateUniverseFactory;
 import com.oracle.svm.hosted.FeatureHandler;
+import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterHeapLayoutAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
@@ -116,10 +122,10 @@ import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.services.Services;
 
 /**
  * The main handler for running the Graal compiler in the Substrate VM at run time. This feature
@@ -138,7 +144,7 @@ public abstract class RuntimeCompilationFeature {
         @Option(help = "Print call tree of methods reachable for runtime compilation")//
         public static final HostedOptionKey<Boolean> PrintRuntimeCompilationCallTree = new HostedOptionKey<>(false);
 
-        @Option(help = "Maximum number of methods allowed for runtime compilation.")//
+        @Option(help = "Maximum number of methods allowed for runtime compilation.", stability = OptionStability.STABLE)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> MaxRuntimeCompileMethods = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
         @Option(help = "Enforce checking of maximum number of methods allowed for runtime compilation. Useful for checking in the gate that the number of methods does not go up without a good reason.")//
@@ -173,11 +179,7 @@ public abstract class RuntimeCompilationFeature {
     }
 
     public static Class<? extends Feature> getRuntimeCompilationFeature() {
-        if (SubstrateOptions.ParseOnceJIT.getValue()) {
-            return ParseOnceRuntimeCompilationFeature.class;
-        } else {
-            return LegacyRuntimeCompilationFeature.class;
-        }
+        return ParseOnceRuntimeCompilationFeature.class;
     }
 
     public interface RuntimeCompilationCandidatePredicate {
@@ -350,6 +352,7 @@ public abstract class RuntimeCompilationFeature {
     protected GraphBuilderConfiguration graphBuilderConfig;
     protected OptimisticOptimizations optimisticOpts;
     protected RuntimeCompilationCandidatePredicate runtimeCompilationCandidatePredicate;
+    private boolean runtimeCompilationCandidatePredicateUpdated = false;
     protected Predicate<ResolvedJavaMethod> deoptimizeOnExceptionPredicate;
 
     private SubstrateUniverseFactory universeFactory = new SubstrateUniverseFactory();
@@ -363,10 +366,11 @@ public abstract class RuntimeCompilationFeature {
     }
 
     protected static List<Class<? extends Feature>> getRequiredFeaturesHelper() {
-        if (Services.IS_BUILDING_NATIVE_IMAGE) {
+        if (SubstrateUtil.isBuildingLibgraal()) {
             return List.of(FieldsOffsetsFeature.class);
+        } else {
+            return List.of(RuntimeCompilationCanaryFeature.class, DeoptimizationFeature.class, FieldsOffsetsFeature.class);
         }
-        return List.of(RuntimeCompilationCanaryFeature.class, DeoptimizationFeature.class, FieldsOffsetsFeature.class);
     }
 
     public void setUniverseFactory(SubstrateUniverseFactory universeFactory) {
@@ -454,6 +458,7 @@ public abstract class RuntimeCompilationFeature {
 
         SubstrateGraalRuntime graalRuntime = new SubstrateGraalRuntime();
         objectReplacer.setGraalRuntime(graalRuntime);
+        objectReplacer.setAnalysisAccess(config);
         ImageSingletons.add(GraalRuntime.class, graalRuntime);
         RuntimeSupport.getRuntimeSupport().addShutdownHook(new GraalSupport.GraalShutdownHook());
 
@@ -469,6 +474,12 @@ public abstract class RuntimeCompilationFeature {
         SubstrateReplacements replacements = (SubstrateReplacements) GraalSupport.getRuntimeConfig().getProviders().getReplacements();
         for (NodeClass<?> nodeClass : replacements.getSnippetNodeClasses()) {
             config.getMetaAccess().lookupJavaType(nodeClass.getClazz()).registerAsAllocated("All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
+        }
+        /*
+         * Ensure runtime snippet graphs are analyzed.
+         */
+        if (!SubstrateUtil.isBuildingLibgraal()) {
+            NativeImageGenerator.performSnippetGraphAnalysis(config.getBigBang(), replacements, config.getBigBang().getOptions());
         }
 
         /*
@@ -490,8 +501,13 @@ public abstract class RuntimeCompilationFeature {
         return false;
     }
 
-    public void initializeRuntimeCompilationConfiguration(RuntimeCompilationCandidatePredicate newRuntimeCompilationCandidatePredicate) {
+    public void initializeRuntimeCompilationForTesting(FeatureImpl.BeforeAnalysisAccessImpl config, RuntimeCompilationCandidatePredicate newRuntimeCompilationCandidatePredicate) {
         initializeRuntimeCompilationConfiguration(hostedProviders, graphBuilderConfig, newRuntimeCompilationCandidatePredicate, deoptimizeOnExceptionPredicate);
+        initializeRuntimeCompilationForTesting(config);
+    }
+
+    public void initializeRuntimeCompilationForTesting(BeforeAnalysisAccessImpl config) {
+        initializeAnalysisProviders(config.getBigBang(), provider -> provider);
     }
 
     public void initializeRuntimeCompilationConfiguration(HostedProviders newHostedProviders, GraphBuilderConfiguration newGraphBuilderConfig,
@@ -502,24 +518,26 @@ public abstract class RuntimeCompilationFeature {
 
         hostedProviders = newHostedProviders;
         graphBuilderConfig = newGraphBuilderConfig;
+        assert !runtimeCompilationCandidatePredicateUpdated : "Updated compilation predicate multiple times";
         runtimeCompilationCandidatePredicate = newRuntimeCompilationCandidatePredicate;
+        runtimeCompilationCandidatePredicateUpdated = true;
         deoptimizeOnExceptionPredicate = newDeoptimizeOnExceptionPredicate;
 
-        if (SubstrateOptions.IncludeNodeSourcePositions.getValue()) {
+        if (SubstrateOptions.IncludeNodeSourcePositions.getValue() || SubstrateOptions.parseOnce()) {
             graphBuilderConfig = graphBuilderConfig.withNodeSourcePosition(true);
         }
     }
 
-    public SubstrateMethod requireFrameInformationForMethod(ResolvedJavaMethod method) {
+    public SubstrateMethod requireFrameInformationForMethod(ResolvedJavaMethod method, BeforeAnalysisAccessImpl config, boolean registerAsRoot) {
         AnalysisMethod aMethod = (AnalysisMethod) method;
         SubstrateMethod sMethod = objectReplacer.createMethod(aMethod);
 
-        requireFrameInformationForMethodHelper(aMethod);
+        requireFrameInformationForMethodHelper(aMethod, config, registerAsRoot);
 
         return sMethod;
     }
 
-    protected abstract void requireFrameInformationForMethodHelper(AnalysisMethod aMethod);
+    protected abstract void requireFrameInformationForMethodHelper(AnalysisMethod aMethod, BeforeAnalysisAccessImpl config, boolean registerAsRoot);
 
     public SubstrateMethod prepareMethodForRuntimeCompilation(Executable method, BeforeAnalysisAccessImpl config) {
         return prepareMethodForRuntimeCompilation(config.getMetaAccess().lookupJavaMethod(method), config);
@@ -642,10 +660,12 @@ public abstract class RuntimeCompilationFeature {
         HostedMetaAccess hMetaAccess = config.getMetaAccess();
         HostedUniverse hUniverse = hMetaAccess.getUniverse();
         objectReplacer.updateSubstrateDataAfterCompilation(hUniverse, config.getProviders());
+    }
 
-        objectReplacer.registerImmutableObjects(config);
-        GraalSupport.registerImmutableObjects(config);
-        ((SubstrateReplacements) GraalSupport.getRuntimeConfig().getProviders().getReplacements()).registerImmutableObjects(config);
+    protected final void beforeHeapLayoutHelper(BeforeHeapLayoutAccess a) {
+        objectReplacer.registerImmutableObjects(a);
+        GraalSupport.registerImmutableObjects(a);
+        ((SubstrateReplacements) GraalSupport.getRuntimeConfig().getProviders().getReplacements()).registerImmutableObjects(a);
     }
 
     protected final void afterHeapLayoutHelper(AfterHeapLayoutAccess a) {
@@ -655,6 +675,20 @@ public abstract class RuntimeCompilationFeature {
         objectReplacer.updateSubstrateDataAfterHeapLayout(hUniverse);
     }
 
+    /**
+     * Unwrap the hosted constant from an {@link ImageHeapConstant} before encoding the graph for
+     * run time compilation. {@link ImageHeapConstant} is a hosted only constant representation.
+     */
+    public static void unwrapImageHeapConstants(StructuredGraph graph, MetaAccessProvider metaAccess) {
+        for (Node n : graph.getNodes()) {
+            if (n instanceof ConstantNode constantNode) {
+                if (constantNode.getValue() instanceof ImageHeapConstant heapConstant) {
+                    VMError.guarantee(heapConstant.isBackedByHostedObject(), "Expected to find a heap object backed by a hosted object, found %s", heapConstant);
+                    constantNode.replace(graph, ConstantNode.forConstant(heapConstant.getHostedObject(), metaAccess, graph));
+                }
+            }
+        }
+    }
 }
 
 /**

@@ -22,9 +22,19 @@
  */
 package com.oracle.truffle.espresso.ffi.nfi;
 
-import com.oracle.truffle.api.CompilerAsserts;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.graalvm.home.HomeFinder;
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
@@ -32,14 +42,6 @@ import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.substitutions.Collect;
-import org.graalvm.options.OptionValues;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public final class NFISulongNativeAccess extends NFINativeAccess {
 
@@ -57,11 +59,7 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
     }
 
     @Override
-    public @Pointer TruffleObject loadLibrary(Path libraryPath) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (!Files.exists(libraryPath)) {
-            return null;
-        }
+    protected @Pointer TruffleObject loadLibrary0(Path libraryPath) {
         String nfiSource = String.format("with llvm load(RTLD_LAZY|RTLD_LOCAL) '%s'", libraryPath);
         return loadLibraryHelper(nfiSource);
     }
@@ -105,11 +103,11 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
      * version. First checks the 'default' folder, as it matches the Java version of the parent
      * GraalVM. Then checks remaining folders under llvmRoot.
      */
-    private Path llvmBootLibraryPath(String javaVersion, Path llvmRoot) {
+    private Path legacyGraalvmllvmBootLibraryPath(String javaVersion, Path llvmRoot) {
         // Try $ESPRESSO_HOME/lib/llvm/default first.
         Path llvmDefault = llvmRoot.resolve("default");
         if (!Files.exists(llvmDefault)) {
-            getLogger().warning(() -> "espresso-llvm (default) component not found. Run 'gu install espresso-llvm' to install it, if available for your platform.");
+            getLogger().warning(() -> "espresso-llvm (default) component not found. Install it, if available for your platform.");
         }
         String llvmDefaultVersion = getJavaVersion(llvmDefault);
         getLogger().fine(() -> "Check " + llvmDefault + " with Java version: " + llvmDefaultVersion);
@@ -163,12 +161,22 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
             if (targetJavaVersion == null) {
                 getLogger().warning("Cannot determine the Java version for '" + builder.javaHome() + "'. The default --java.BootLibraryPath will be used.");
             } else {
-                Path llvmRoot = builder.espressoHome().resolve("lib").resolve("llvm");
-                Path llvmBootLibraryPath = llvmBootLibraryPath(targetJavaVersion, llvmRoot);
-                if (llvmBootLibraryPath == null) {
-                    getLogger().warning("Couldn't find libraries with LLVM bitcode for Java version '" + targetJavaVersion + "'. The default --java.BootLibraryPath will be used.");
+                Path espressoHome = HomeFinder.getInstance().getLanguageHomes().get(EspressoLanguage.ID);
+                if (espressoHome != null && Files.isDirectory(espressoHome)) {
+                    Path llvmRoot = espressoHome.resolve("lib").resolve("llvm");
+                    Path llvmBootLibraryPath = legacyGraalvmllvmBootLibraryPath(targetJavaVersion, llvmRoot);
+                    if (llvmBootLibraryPath == null) {
+                        getLogger().warning("Couldn't find libraries with LLVM bitcode for Java version '" + targetJavaVersion + "'. The default --java.BootLibraryPath will be used.");
+                    } else {
+                        builder.bootLibraryPath(Collections.singletonList(llvmBootLibraryPath));
+                    }
                 } else {
-                    builder.bootLibraryPath(Collections.singletonList(llvmBootLibraryPath));
+                    Path llvmRoot = builder.javaHome().resolve("lib").resolve("llvm");
+                    if (Files.isDirectory(llvmRoot)) {
+                        builder.bootLibraryPath(Collections.singletonList(llvmRoot));
+                    } else {
+                        getLogger().warning("Couldn't find libraries with LLVM bitcode. The default --java.BootLibraryPath will be used.");
+                    }
                 }
             }
         }
@@ -181,7 +189,7 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
         if (options.hasBeenSet(EspressoOptions.JVMLibraryPath)) {
             getLogger().info("--java.JVMLibraryPath was set by the user, skipping override for " + Provider.ID);
         } else {
-            builder.jvmLibraryPath(Collections.singletonList(builder.espressoHome().resolve("lib")));
+            builder.jvmLibraryPath(Collections.singletonList(builder.espressoLibs()));
         }
     }
 

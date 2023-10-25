@@ -118,6 +118,11 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
     }
 
     @Override
+    public Collection<AnalysisMethod> getCalleesForReturnLinking() {
+        return getAllCallees();
+    }
+
+    @Override
     public String toString() {
         return "VirtualInvoke<" + targetMethod.format("%h.%n") + ">" + ":" + getState();
     }

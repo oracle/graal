@@ -223,13 +223,15 @@ abstract class CallSignatureNode extends Node {
             return preparedArgs;
         }
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization(limit = "1")
         @GenerateAOT.Exclude
         Object doCall(NFISignature signature, Object function, Object[] args,
+                        @Bind("this") Node node,
                         @Cached InlinedBranchProfile exception,
                         @CachedLibrary("function") InteropLibrary interop) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
             if (args.length != convertArgs.length) {
-                exception.enter(this);
+                exception.enter(node);
                 throw ArityException.create(convertArgs.length, convertArgs.length, args.length);
             }
             Object[] preparedArgs = prepareArgs(signature, args);

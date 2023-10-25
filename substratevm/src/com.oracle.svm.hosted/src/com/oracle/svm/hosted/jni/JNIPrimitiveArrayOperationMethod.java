@@ -28,12 +28,12 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.java.FrameStateBuilder;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.MergeNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.java.FrameStateBuilder;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.MergeNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 import org.graalvm.nativeimage.c.function.CEntryPoint.FatalExceptionHandler;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -197,7 +197,7 @@ public final class JNIPrimitiveArrayOperationMethod extends EntryPointCallStubMe
             case RELEASE_ELEMENTS: {
                 ValueNode address = arguments.get(2);
                 ValueNode mode = arguments.get(3);
-                kit.destroyArrayViewByAddress(address, mode);
+                kit.destroyNewestArrayViewByAddress(address, mode);
                 break;
             }
             case GET_REGION:

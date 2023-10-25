@@ -70,4 +70,10 @@ typedef poly_value (*poly_callback)(poly_thread thread, poly_callback_info info)
 
 typedef void (*poly_output_handler)(const char* bytes, size_t length, void* data);
 
+typedef void (*poly_log_callback)(const char* bytes, size_t length, void* data);
+
+typedef void (*poly_flush_callback)(void* data);
+
+typedef void (*poly_fatal_error_callback)(void* data);
+
 #endif

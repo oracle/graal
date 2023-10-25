@@ -24,9 +24,7 @@
  */
 package com.oracle.truffle.tools.dap.test;
 
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
-
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -49,6 +47,9 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONException;
+import org.graalvm.shadowed.org.json.JSONObject;
 import org.junit.Assert;
 
 public final class DAPTester {
@@ -104,6 +105,7 @@ public final class DAPTester {
                 throw new AssertionError("Last eval(...) has not finished yet", ex);
             } catch (ExecutionException ex) {
                 // Guest language execution failed
+                throw new AssertionError(ex);
             }
         }
         if (handler.getInputStream().available() > 0) {
@@ -113,7 +115,16 @@ public final class DAPTester {
 
     public Future<Value> eval(Source source) {
         lastValue = CompletableFuture.supplyAsync(() -> {
-            return context.eval(source);
+            try {
+                return context.eval(source);
+            } catch (Throwable t) {
+                // Async exceptions are not visible till we check the future.
+                // We might never check the future
+                // if we're blocked by waiting for an expected output,
+                // which does not come due to the exception.
+                t.printStackTrace(System.err);
+                throw t;
+            }
         }, executor);
         return lastValue;
     }
@@ -172,7 +183,15 @@ public final class DAPTester {
     }
 
     public boolean compareReceivedMessages(String... messages) throws Exception {
-        List<JSONObject> expectedObjects = Arrays.stream(messages).map(message -> new JSONObject(message)).collect(Collectors.toList());
+        List<JSONObject> expectedObjects = Arrays.stream(messages).map(message -> {
+            JSONObject json;
+            try {
+                json = new JSONObject(message);
+            } catch (JSONException jex) {
+                throw new RuntimeException(message, jex);
+            }
+            return json;
+        }).collect(Collectors.toList());
         int size = expectedObjects.size();
         while (size > 0) {
             final String receivedMessage = getMessage();
@@ -234,6 +253,18 @@ public final class DAPTester {
             }
         }
         return true;
+    }
+
+    public static String getFilePath(File file) {
+        String path;
+        try {
+            path = file.getCanonicalPath();
+        } catch (IOException ex) {
+            path = file.getAbsolutePath();
+        }
+        // We need to escape backlash for correct JSON:
+        path = path.replace("\\", "\\\\");
+        return path;
     }
 
     private static final class ProxyOutputStream extends OutputStream {

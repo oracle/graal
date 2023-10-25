@@ -73,7 +73,7 @@ public abstract class RegexFlavor {
 
     public abstract RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer);
 
-    public abstract RegexValidator createValidator(RegexSource source);
+    public abstract RegexValidator createValidator(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer);
 
     public abstract BiPredicate<Integer, Integer> getEqualsIgnoreCasePredicate(RegexAST ast);
 

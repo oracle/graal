@@ -495,7 +495,7 @@ public interface FileSystem {
      * @since 20.2.0
      */
     static FileSystem newDefaultFileSystem() {
-        return IOHelper.IMPL.newDefaultFileSystem(System.getProperty("java.io.tmpdir"));
+        return IOHelper.ImplHolder.IMPL.newDefaultFileSystem(System.getProperty("java.io.tmpdir"));
     }
 
     /**
@@ -514,7 +514,7 @@ public interface FileSystem {
      * @since 22.2
      */
     static FileSystem allowLanguageHomeAccess(FileSystem fileSystem) {
-        return IOHelper.IMPL.allowLanguageHomeAccess(fileSystem);
+        return IOHelper.ImplHolder.IMPL.allowLanguageHomeAccess(fileSystem);
     }
 
     /**
@@ -526,7 +526,7 @@ public interface FileSystem {
      * @since 22.2
      */
     static FileSystem newReadOnlyFileSystem(FileSystem fileSystem) {
-        return IOHelper.IMPL.newReadOnlyFileSystem(fileSystem);
+        return IOHelper.ImplHolder.IMPL.newReadOnlyFileSystem(fileSystem);
     }
 
     /**
@@ -552,6 +552,6 @@ public interface FileSystem {
      * @since 23.0
      */
     static FileSystem newFileSystem(java.nio.file.FileSystem fileSystem) {
-        return IOHelper.IMPL.newNIOFileSystem(fileSystem);
+        return IOHelper.ImplHolder.IMPL.newNIOFileSystem(fileSystem);
     }
 }

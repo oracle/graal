@@ -1,0 +1,2 @@
+wasm.Threads=true
+wasm.UseUnsafeMemory=true

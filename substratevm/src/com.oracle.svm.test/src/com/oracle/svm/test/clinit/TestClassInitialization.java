@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Vector;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -424,9 +425,21 @@ class ReflectionMustBeSafeEarly {
             m1 = c1Local.getDeclaredMethod("foo", int.class);
             f2 = c2Local.getDeclaredField("field");
 
+            /*
+             * Check that reflective class lookup and the elimination of the class initialization
+             * check also works when the class name is not constant yet during bytecode parsing.
+             */
+            if (c1Local != Class.forName(forNameMustBeSafeEarly(), true, ReflectionMustBeSafeEarly.class.getClassLoader())) {
+                throw new Error("wrong class");
+            }
+
         } catch (ReflectiveOperationException ex) {
             throw new Error(ex);
         }
+    }
+
+    private static String forNameMustBeSafeEarly() {
+        return "com.oracle.svm.test.clinit.ForNameMustBeSafeEarly";
     }
 }
 
@@ -714,8 +727,8 @@ abstract class TestClassInitializationFeature implements Feature {
 }
 
 /**
- * For testing with {@link ClassInitializationOptions#UseNewExperimentalClassInitialization} set to
- * false and simulation of class initializer disabled.
+ * For testing with {@link ClassInitializationOptions#StrictImageHeap} set to false and simulation
+ * of class initializer disabled.
  */
 class TestClassInitializationFeatureOldPolicyFeature extends TestClassInitializationFeature {
 
@@ -752,8 +765,8 @@ class TestClassInitializationFeatureOldPolicyFeature extends TestClassInitializa
 }
 
 /**
- * For testing with {@link ClassInitializationOptions#UseNewExperimentalClassInitialization} set to
- * true and simulation of class initializer enabled.
+ * For testing with {@link ClassInitializationOptions#StrictImageHeap} set to true and simulation of
+ * class initializer enabled.
  */
 class TestClassInitializationFeatureNewPolicyFeature extends TestClassInitializationFeature {
     @Override
@@ -823,6 +836,16 @@ public class TestClassInitialization {
         return 42;
     }
 
+    /*
+     * Since {@link Function} is a core JDK type that is always marked as
+     * "initialize at build time", it is allowed to have a lambda for it in the image heap.
+     */
+    static Function<String, String> buildTimeLambda = TestClassInitialization::duplicate;
+
+    static String duplicate(String s) {
+        return s + s;
+    }
+
     public static void main(String[] args) {
         for (var checkedClass : checkedClasses) {
             boolean nameHasSimulated = checkedClass.getName().contains("MustBeSimulated");
@@ -832,6 +855,8 @@ public class TestClassInitialization {
                 throw new RuntimeException("Class " + checkedClass.getName() + ": nameHasSimulated=" + nameHasSimulated + ", nameHasDelayed=" + nameHasDelayed + ", initialized=" + initialized);
             }
         }
+
+        assertTrue("123123".equals(buildTimeLambda.apply("123")));
 
         assertSame(42, PureMustBeSafeEarly.v);
         assertSame(84, PureCallMustBeSafeEarly.v);

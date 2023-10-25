@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -236,14 +236,18 @@ public class ProcessHarnessManager {
 
     }
 
-    private static String copyProperty(String property) {
-        return String.format("-D%s=%s", property, System.getProperty(property));
+    private static void copyProperty(List<String> args, String property) {
+        String value = System.getProperty(property);
+        if (value != null) {
+            args.add(String.format("-D%s=%s", property, System.getProperty(property)));
+        }
     }
 
     private ProcessHarnessInstance startInstance() throws IOException {
         String java = ProcessHandle.current().info().command().get();
         String testHarness = System.getProperty("test.sulongtest.harness");
-        String classpath = System.getProperty("java.class.path") + ":" + testHarness;
+        String classpath = System.getProperty("java.class.path") + System.getProperty("path.separator") + testHarness;
+        String modulepath = System.getProperty("jdk.module.path");
 
         // Set to true if a debugger should be attached to the process
         boolean debug = false;
@@ -253,12 +257,15 @@ public class ProcessHarnessManager {
         if (debug) {
             commandArgs.add("-agentlib:jdwp=transport=dt_socket,server=y,address=8000,suspend=y");
         }
-        Collections.addAll(commandArgs, "-Xss56m", "-Xms4g", "-Xmx4g", "-esa", "-ea", "-Djava.awt.headless=true", "-cp", classpath,
-                        copyProperty("polyglot.engine.WarnInterpreterOnly"),
-                        copyProperty("truffle.nfi.library"),
-                        copyProperty("org.graalvm.language.llvm.home"),
-                        copyProperty("test.pipe.lib"),
-                        "com.oracle.truffle.llvm.tests.harness.TestHarness");
+        Collections.addAll(commandArgs, "-Xss56m", "-Xms4g", "-Xmx4g", "-esa", "-ea", "-Djava.awt.headless=true",
+                        "-cp", classpath, "-p", modulepath, "--add-modules", "org.graalvm.polyglot");
+
+        copyProperty(commandArgs, "polyglot.engine.WarnInterpreterOnly");
+        copyProperty(commandArgs, "truffle.nfi.library");
+        copyProperty(commandArgs, "org.graalvm.language.llvm.home");
+        copyProperty(commandArgs, "test.pipe.lib");
+
+        commandArgs.add("com.oracle.truffle.llvm.tests.harness.TestHarness");
 
         ProcessBuilder builder = new ProcessBuilder().command(commandArgs);
         builder.redirectInput();

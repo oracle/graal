@@ -172,7 +172,7 @@ public abstract class Source {
      * If no one is referencing the polyglot source anymore we can assume that no one relies on the
      * identity of the original polyglot source. So we can just as well free it.
      */
-    volatile WeakReference<org.graalvm.polyglot.Source> cachedPolyglotSource;
+    volatile WeakReference<Object> cachedPolyglotSource;
 
     abstract Object getSourceId();
 
@@ -1088,10 +1088,18 @@ public abstract class Source {
         useContent = enforceInterfaceContracts(useContent);
         String relativePathInLanguageHome = null;
         if (useTruffleFile != null) {
-            // The relativePathInLanguageHome has to be calculated also for Sources created in the
-            // image execution time. They have to have the same hash code as sources created during
-            // the context pre-initialization.
-            relativePathInLanguageHome = SourceAccessor.ACCESSOR.engineSupport().getRelativePathInLanguageHome(useTruffleFile);
+            TruffleFile relativeFileInResourceCache = SourceAccessor.ACCESSOR.engineSupport().relativizeToInternalResourceCache(useTruffleFile);
+            if (relativeFileInResourceCache != null) {
+                useTruffleFile = relativeFileInResourceCache;
+                relativePathInLanguageHome = relativeFileInResourceCache.getPath();
+            } else {
+                /*
+                 * The relativePathInLanguageHome has to be calculated also for Sources created in
+                 * the image execution time. They have to have the same hash code as sources created
+                 * during the context pre-initialization.
+                 */
+                relativePathInLanguageHome = SourceAccessor.ACCESSOR.engineSupport().getRelativePathInLanguageHome(useTruffleFile);
+            }
             if (relativePathInLanguageHome != null) {
                 Object fsEngineObject = SourceAccessor.ACCESSOR.languageSupport().getFileSystemEngineObject(SourceAccessor.ACCESSOR.languageSupport().getFileSystemContext(useTruffleFile));
                 if (SourceAccessor.ACCESSOR.engineSupport().inContextPreInitialization(fsEngineObject)) {

@@ -1,8 +1,8 @@
 [
     {
-        "name": "graalvm-community-java17",
+        "name": "graalvm-community-java21",
         "core": true,
-        "jdk": "jdk_17",
+        "jdk": "jdk_21",
         "artifacts": [
             {
                 "os": "linux",
@@ -27,69 +27,154 @@
         ]
     },
     {
-        "name": "graalvm-community-java20",
+        "name": "maven-ce-resource-bundle",
         "core": true,
-        "jdk": "jdk_20",
+        "jdk": "jdk_21",
+        "override_name":"maven-resource-bundle",
         "artifacts": [
             {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
-            },
-            {
-                "os": "windows",
-                "arch": "amd64"
+                "os": "any",
+                "arch": "any",
+                "name_template": "{name}-community-{version}"
             }
         ]
     },
     {
-        "name": "js-standalone-svm-java17",
+        "name": "js-native-standalone-svm-java21",
         "core": true,
-        "jdk": "jdk_17",
+        "jdk": "jdk_21",
         "override_name":"graaljs",
         "artifacts": [
             {
                 "os": "linux",
                 "arch": "amd64",
-                "name_template": "{name}-{version}-{os}-{arch}"
+                "name_template": "{name}-community-{version}-{os}-{arch}"
             },
             {
                 "os": "linux",
                 "arch": "aarch64",
-                "name_template": "{name}-{version}-{os}-{arch}"
+                "name_template": "{name}-community-{version}-{os}-{arch}"
             },
             {
                 "os": "darwin",
                 "arch": "amd64",
-                "name_template": "{name}-{version}-macos-{arch}"
+                "name_template": "{name}-community-{version}-macos-{arch}"
             },
             {
                 "os": "darwin",
                 "arch": "aarch64",
-                "name_template": "{name}-{version}-macos-{arch}"
+                "name_template": "{name}-community-{version}-macos-{arch}"
             },
             {
                 "os": "windows",
                 "arch": "amd64",
-                "name_template": "{name}-{version}-{os}-{arch}"
+                "name_template": "{name}-community-{version}-{os}-{arch}"
             }
-	]
+        ]
     },
     {
-        "name": "ruby-standalone-svm-java17",
+        "name": "js-java-standalone-svm-java21",
         "core": true,
-        "jdk": "jdk_17",
+        "jdk": "jdk_21",
+        "override_name":"graaljs",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64",
+                "name_template": "{name}-community-jvm-{version}-{os}-{arch}"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64",
+                "name_template": "{name}-community-jvm-{version}-{os}-{arch}"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64",
+                "name_template": "{name}-community-jvm-{version}-macos-{arch}"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64",
+                "name_template": "{name}-community-jvm-{version}-macos-{arch}"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64",
+                "name_template": "{name}-community-jvm-{version}-{os}-{arch}"
+            }
+        ]
+    },
+    {
+        "name": "nodejs-native-standalone-svm-java21",
+        "core": true,
+        "jdk": "jdk_21",
+        "override_name":"graalnodejs",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64",
+                "name_template": "{name}-community-{version}-{os}-{arch}"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64",
+                "name_template": "{name}-community-{version}-{os}-{arch}"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64",
+                "name_template": "{name}-community-{version}-macos-{arch}"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64",
+                "name_template": "{name}-community-{version}-macos-{arch}"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64",
+                "name_template": "{name}-community-{version}-{os}-{arch}"
+            }
+        ]
+    },
+    {
+        "name": "nodejs-java-standalone-svm-java21",
+        "core": true,
+        "jdk": "jdk_21",
+        "override_name":"graalnodejs",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64",
+                "name_template": "{name}-community-jvm-{version}-{os}-{arch}"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64",
+                "name_template": "{name}-community-jvm-{version}-{os}-{arch}"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64",
+                "name_template": "{name}-community-jvm-{version}-macos-{arch}"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64",
+                "name_template": "{name}-community-jvm-{version}-macos-{arch}"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64",
+                "name_template": "{name}-community-jvm-{version}-{os}-{arch}"
+            }
+        ]
+    },
+    {
+        "name": "ruby-native-standalone-svm-java21",
+        "core": true,
+        "jdk": "jdk_21",
         "override_name":"truffleruby",
         "artifacts": [
             {
@@ -115,760 +200,195 @@
         ]
     },
     {
-        "name": "python-standalone-svm-java17",
+        "name": "ruby-java-standalone-svm-java21",
         "core": true,
-        "jdk": "jdk_17",
-        "override_name":"graalpython",
+        "jdk": "jdk_21",
+        "override_name":"truffleruby",
         "artifacts": [
             {
                 "os": "linux",
                 "arch": "amd64",
-                "name_template": "{name}-{version}-{os}-{arch}"
+                "name_template": "{name}-community-jvm-{version}-{os}-{arch}"
             },
             {
                 "os": "linux",
                 "arch": "aarch64",
-                "name_template": "{name}-{version}-{os}-{arch}"
+                "name_template": "{name}-community-jvm-{version}-{os}-{arch}"
             },
             {
                 "os": "darwin",
                 "arch": "amd64",
-                "name_template": "{name}-{version}-macos-{arch}"
+                "name_template": "{name}-community-jvm-{version}-macos-{arch}"
             },
             {
                 "os": "darwin",
                 "arch": "aarch64",
-                "name_template": "{name}-{version}-macos-{arch}"
+                "name_template": "{name}-community-jvm-{version}-macos-{arch}"
             }
         ]
     },
     {
-        "name": "llvm-installable-svm-java17",
-        "core": false,
-        "jdk": "jdk_17",
+        "name": "python-native-standalone-svm-java21",
+        "core": true,
+        "jdk": "jdk_21",
+        "override_name":"graalpy",
         "artifacts": [
             {
                 "os": "linux",
-                "arch": "amd64"
+                "arch": "amd64",
+                "name_template": "{name}-community-{version}-{os}-{arch}"
             },
             {
                 "os": "linux",
-                "arch": "aarch64"
+                "arch": "aarch64",
+                "name_template": "{name}-community-{version}-{os}-{arch}"
             },
             {
                 "os": "darwin",
-                "arch": "amd64"
+                "arch": "amd64",
+                "name_template": "{name}-community-{version}-macos-{arch}"
             },
             {
                 "os": "darwin",
-                "arch": "aarch64"
+                "arch": "aarch64",
+                "name_template": "{name}-community-{version}-macos-{arch}"
             },
             {
                 "os": "windows",
-                "arch": "amd64"
+                "arch": "amd64",
+                "name_template": "{name}-community-{version}-{os}-{arch}"
             }
         ]
     },
     {
-        "name": "llvm-installable-svm-java20",
-        "core": false,
-        "jdk": "jdk_20",
+        "name": "python-java-standalone-svm-java21",
+        "core": true,
+        "jdk": "jdk_21",
+        "override_name":"graalpy",
         "artifacts": [
             {
                 "os": "linux",
-                "arch": "amd64"
+                "arch": "amd64",
+                "name_template": "{name}-community-jvm-{version}-{os}-{arch}"
             },
             {
                 "os": "linux",
-                "arch": "aarch64"
+                "arch": "aarch64",
+                "name_template": "{name}-community-jvm-{version}-{os}-{arch}"
             },
             {
                 "os": "darwin",
-                "arch": "amd64"
+                "arch": "amd64",
+                "name_template": "{name}-community-jvm-{version}-macos-{arch}"
             },
             {
                 "os": "darwin",
-                "arch": "aarch64"
+                "arch": "aarch64",
+                "name_template": "{name}-community-jvm-{version}-macos-{arch}"
             },
             {
                 "os": "windows",
-                "arch": "amd64"
+                "arch": "amd64",
+                "name_template": "{name}-community-jvm-{version}-{os}-{arch}"
             }
         ]
     },
     {
-        "name": "llvm-toolchain-installable-ce-java17",
-        "core": false,
-        "jdk": "jdk_17",
+        "name": "wasm-native-standalone-svm-java21",
+        "core": true,
+        "jdk": "jdk_21",
+        "override_name": "graalwasm",
         "artifacts": [
             {
                 "os": "linux",
-                "arch": "amd64"
+                "arch": "amd64",
+                "name_template": "{name}-community-{version}-{os}-{arch}"
             },
             {
                 "os": "linux",
-                "arch": "aarch64"
+                "arch": "aarch64",
+                "name_template": "{name}-community-{version}-{os}-{arch}"
             },
             {
                 "os": "darwin",
-                "arch": "amd64"
+                "arch": "amd64",
+                "name_template": "{name}-community-{version}-macos-{arch}"
             },
             {
                 "os": "darwin",
-                "arch": "aarch64"
+                "arch": "aarch64",
+                "name_template": "{name}-community-{version}-macos-{arch}"
             },
             {
                 "os": "windows",
-                "arch": "amd64"
+                "arch": "amd64",
+                "name_template": "{name}-community-{version}-{os}-{arch}"
             }
         ]
     },
     {
-        "name": "llvm-toolchain-installable-ce-java20",
-        "core": false,
-        "jdk": "jdk_20",
+        "name": "wasm-java-standalone-svm-java21",
+        "core": true,
+        "jdk": "jdk_21",
+        "override_name": "graalwasm",
         "artifacts": [
             {
                 "os": "linux",
-                "arch": "amd64"
+                "arch": "amd64",
+                "name_template": "{name}-community-jvm-{version}-{os}-{arch}"
             },
             {
                 "os": "linux",
-                "arch": "aarch64"
+                "arch": "aarch64",
+                "name_template": "{name}-community-jvm-{version}-{os}-{arch}"
             },
             {
                 "os": "darwin",
-                "arch": "amd64"
+                "arch": "amd64",
+                "name_template": "{name}-community-jvm-{version}-macos-{arch}"
             },
             {
                 "os": "darwin",
-                "arch": "aarch64"
+                "arch": "aarch64",
+                "name_template": "{name}-community-jvm-{version}-macos-{arch}"
             },
             {
                 "os": "windows",
-                "arch": "amd64"
+                "arch": "amd64",
+                "name_template": "{name}-community-jvm-{version}-{os}-{arch}"
             }
         ]
     },
     {
-        "name": "native-image-llvm-backend-installable-ce-java17",
-        "core": false,
-        "jdk": "jdk_17",
+        "name": "graalvm-espresso-community-java21",
+        "core": true,
+        "jdk": "jdk_21",
+        "override_name":"espresso",
         "artifacts": [
             {
                 "os": "linux",
-                "arch": "amd64"
+                "arch": "amd64",
+                "name_template": "{name}-community-{version}-{os}-{arch}"
             },
             {
                 "os": "linux",
-                "arch": "aarch64"
+                "arch": "aarch64",
+                "name_template": "{name}-community-{version}-{os}-{arch}"
             },
             {
                 "os": "darwin",
-                "arch": "amd64"
-            }
-        ]
-    },
-    {
-        "name": "native-image-llvm-backend-installable-ce-java20",
-        "core": false,
-        "jdk": "jdk_20",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64"
+                "arch": "amd64",
+                "name_template": "{name}-community-{version}-macos-{arch}"
             },
             {
                 "os": "darwin",
-                "arch": "amd64"
-            }
-        ]
-    },
-    {
-        "name": "python-installable-svm-java17",
-        "core": false,
-        "jdk": "jdk_17",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
-            }
-        ]
-    },
-    {
-        "name": "python-installable-svm-java20",
-        "core": false,
-        "jdk": "jdk_20",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
-            }
-        ]
-    },
-    {
-        "name": "r-installable-ce-java17",
-        "core": false,
-        "jdk": "jdk_17",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            }
-        ]
-    },
-    {
-        "name": "r-installable-ce-java20",
-        "core": false,
-        "jdk": "jdk_20",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            }
-        ]
-    },
-    {
-        "name": "ruby-installable-svm-java17",
-        "core": false,
-        "jdk": "jdk_17",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
-            }
-        ]
-    },
-    {
-        "name": "ruby-installable-svm-java20",
-        "core": false,
-        "jdk": "jdk_20",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
-            }
-        ]
-    },
-    {
-        "name": "wasm-installable-svm-java17",
-        "core": false,
-        "jdk": "jdk_17",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
+                "arch": "aarch64",
+                "name_template": "{name}-community-{version}-macos-{arch}"
             },
             {
                 "os": "windows",
-                "arch": "amd64"
-            }
-        ]
-    },
-    {
-        "name": "wasm-installable-svm-java20",
-        "core": false,
-        "jdk": "jdk_20",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
-            },
-            {
-                "os": "windows",
-                "arch": "amd64"
-            }
-        ]
-    },
-    {
-        "name": "espresso-installable-svm-java17",
-        "core": false,
-        "jdk": "jdk_17",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
-            },
-            {
-                "os": "windows",
-                "arch": "amd64"
-            }
-        ]
-    },
-    {
-        "name": "espresso-installable-svm-java20",
-        "core": false,
-        "jdk": "jdk_20",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
-            },
-            {
-                "os": "windows",
-                "arch": "amd64"
-            }
-        ]
-    },
-    {
-        "name": "espresso-llvm-installable-ce-java17",
-        "core": false,
-        "jdk": "jdk_17",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            }
-        ]
-    },
-    {
-        "name": "espresso-llvm-installable-ce-java20",
-        "core": false,
-        "jdk": "jdk_20",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            }
-        ]
-    },
-    {
-        "name": "nodejs-installable-svm-java17",
-        "core": false,
-        "jdk": "jdk_17",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
-            },
-            {
-                "os": "windows",
-                "arch": "amd64"
-            }
-        ]
-    },
-    {
-        "name": "nodejs-installable-svm-java20",
-        "core": false,
-        "jdk": "jdk_20",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
-            },
-            {
-                "os": "windows",
-                "arch": "amd64"
-            }
-        ]
-    },
-    {
-        "name": "js-installable-svm-java17",
-        "core": false,
-        "jdk": "jdk_17",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
-            },
-            {
-                "os": "windows",
-                "arch": "amd64"
-            }
-        ]
-    },
-    {
-        "name": "js-installable-svm-java20",
-        "core": false,
-        "jdk": "jdk_20",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
-            },
-            {
-                "os": "windows",
-                "arch": "amd64"
-            }
-        ]
-    },
-    {
-        "name": "icu4j-installable-ce-java17",
-        "core": false,
-        "jdk": "jdk_17",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
-            },
-            {
-                "os": "windows",
-                "arch": "amd64"
-            }
-        ]
-    },
-    {
-        "name": "icu4j-installable-ce-java20",
-        "core": false,
-        "jdk": "jdk_20",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
-            },
-            {
-                "os": "windows",
-                "arch": "amd64"
-            }
-        ]
-    },
-    {
-        "name": "regex-installable-ce-java17",
-        "core": false,
-        "jdk": "jdk_17",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
-            },
-            {
-                "os": "windows",
-                "arch": "amd64"
-            }
-        ]
-    },
-    {
-        "name": "regex-installable-ce-java20",
-        "core": false,
-        "jdk": "jdk_20",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
-            },
-            {
-                "os": "windows",
-                "arch": "amd64"
-            }
-        ]
-    },
-    {
-        "name": "visualvm-installable-ce-java17",
-        "core": false,
-        "jdk": "jdk_17",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
-            },
-            {
-                "os": "windows",
-                "arch": "amd64"
-            }
-        ]
-    },
-    {
-        "name": "visualvm-installable-ce-java20",
-        "core": false,
-        "jdk": "jdk_20",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
-            },
-            {
-                "os": "windows",
-                "arch": "amd64"
-            }
-        ]
-    },
-    {
-        "name": "antlr4-installable-ce-java17",
-        "core": false,
-        "jdk": "jdk_17",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
-            },
-            {
-                "os": "windows",
-                "arch": "amd64"
-            }
-        ]
-    },
-    {
-        "name": "antlr4-installable-ce-java20",
-        "core": false,
-        "jdk": "jdk_20",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
-            },
-            {
-                "os": "windows",
-                "arch": "amd64"
+                "arch": "amd64",
+                "name_template": "{name}-community-{version}-{os}-{arch}"
             }
         ]
     }

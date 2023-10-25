@@ -5,86 +5,104 @@ link_title: Container Images
 permalink: /docs/getting-started/container-images/
 ---
 
-## GraalVM Community Images
+## GraalVM Community Edition Container Images
 
-To support container-based development, GraalVM Community container images are published in the [GitHub Container Registry](https://github.com/orgs/graalvm/packages).
-Learn here how to start using GraalVM Community images for Docker containers.
+To support container-based development, GraalVM Community Edition container images are published in the [GitHub Container Registry](https://github.com/orgs/graalvm/packages).
 
-You can pull a package by name or by name and version tag. To install GraalVM JDK from the command line, use:
-```shell
-docker pull ghcr.io/graalvm/jdk:ol8-java17-<version>
+## Repositories
+
+There are different GraalVM Community Edition container images provided depending on the architecture and the Java version.
+The container image repositories for the latest GraalVM versions (GraalVM for JDK 17, GraalVM for JDK 20, and GraalVM for JDK 21) have a `-community` suffix. 
+These are: **native-image-community**, **jdk-community**, **truffleruby-community**, **nodejs-community**, and **graalpy-community**.
+The container images are multi-arch, for AMD64 and AArch64 processor architectures, with a choice of Oracle Linux versions 7, 8, or 9. 
+
+GraalVM is installed in `/usr/lib64/graalvm/graalvm-java<$FeatureVersion>` where `<$FeatureVersion>` is `17`, `21`, etc. 
+For instance, GraalVM for JDK 21 is installed in `/usr/lib64/graalvm/graalvm-java21`. 
+All binaries, including `java`, `javac`, `native-image`, and other binaries are available as global commands via the `alternatives` command.
+
+See a full list of GraalVM Community Edition container images [here](https://github.com/graalvm/container).
+
+## Tags
+
+Each repository provides multiple tags that let you choose the level of stability you need including the Java version, build number, and the Oracle Linux version. 
+Image tags use the following naming convention:
+
+```bash
+$version[-muslib(for native image only)][-$platform][-$buildnumber]
 ```
 
-Alternatively, use GraalVM JDK as a base image in [Dockerfile](https://docs.docker.com/engine/reference/builder/):
-```shell
-FROM ghcr.io/graalvm/jdk:ol8-java17-<version>
+The following tags are listed from the most-specific tag (at the top) to the least-specific tag (at the bottom). 
+The most-specific tag is unique and always points to the same image, while the less-specific tags point to newer image variants over time.
+
+```
+21.0.0-ol9-20230919
+21.0.0-ol9
+21.0.0
+21-ol9
+21
 ```
 
-There are different images provided depending on the platforms, the architecture, and the Java version.
-GraalVM binaries are built for Linux, macOS, and Windows platforms on x64 systems, and for Linux on AArch64 architecture.
-The images are multi-arch (`aarch64` or `x64` will be pulled depending on Docker host architecture), and tagged with the format `ghcr.io/graalvm/$IMAGE_NAME[:][$os_version][-$java_version][-$version][-$build_number]`.
-The version tag defines the level of specificity.
-It is recommended that the most specific tag be used, for example, `java17-22.3.1` or `java17-22.3.1-b1`, where the `-b1` means the image required a patch and this specific build will never change.
-See what types of container images are available [here](https://github.com/graalvm/container).
+## Pulling Images
 
-## Get Started
-
-1. Start a container and enter the `bash` session with the following run command:
-    ```shell
-    docker run -it --rm ghcr.io/graalvm/jdk:ol8-java17-22.3.1 bash
+1. To pull the container image for GraalVM JDK for a specific JDK feature version, e.g, _21_, run:
+    ```bash
+    docker pull ghcr.io/graalvm/jdk-community:21
     ```
-2. Check the `java` version:
-    ```shell
-    →docker run -it --rm ghcr.io/graalvm/jdk:ol8-java17-22.3.1 bash
-    bash-4.4# java -version
+    
+    Alternatively, to use the container image as the base image in your Dockerfile, use:
+    ```bash
+    FROM ghcr.io/graalvm/jdk-community:21
     ```
 
-You have pulled a size compact GraalVM Community container image with the GraalVM JDK pre-installed and the Graal compiler.
+    You have pulled a size compact GraalVM Community Edition container image with the GraalVM JDK and the Graal compiler pre-installed.
 
-Size compact images are based on GraalVM's component RPMs that are available for Oracle Linux 7, Oracle Linux 8, and Oracle Linux 9. Similar to any other available packages, you can install these components using `yum` on Oracle Linux 7 or `microdnf` on the Oracle Linux 8 and Oracle Linux 9 based images.
+2. To pull the container image with the `native-image` utility for a specific JDK feature version, e.g, _21_, run: 
+    ```bash
+    docker pull ghcr.io/graalvm/native-image-community:21
+    ```
 
-To pull a GraalVM Community Edition container image containing the [`gu` utility](../../../reference-manual/graalvm-updater.md) for installing additional components, run this command:
-```
-docker pull ghcr.io/graalvm/graalvm-ce:22.3.1 
-```
+	Alternatively, to pull the container image with the `native-image` utility with the `musl libc` toolchain to create fully statically linked executables, use:
+    ```bash
+    docker pull ghcr.io/graalvm/native-image-community:21-muslib
+    ```
+    
+    Alternatively, to use the container image as the base image in your Dockerfile, use:
+    ```bash
+    FROM ghcr.io/graalvm/native-image-community:21-muslib
+    ```
 
-GraalVM Updater, `gu`, can be used to install additional GraalVM language runtimes like JavaScript, Node.js, LLVM, Ruby, R, Python, and WebAssembly. For example, to add the Ruby support, run the following command (the output below is truncated for brevity):
+3. To verify, start the container and enter the Bash session:
+    ```bash
+    docker run -it --rm --entrypoint /bin/bash ghcr.io/graalvm/native-image-community:21
+    ```
 
-```shell
-docker run -it --rm ghcr.io/graalvm/graalvm-ce:22.3.1  bash
-bash-4.4# gu install ruby
-Downloading: Component catalog
-Processing component archive: Component ruby
-Downloading: Component ruby
-[######              ]
-...
-```
-Here is a sample command that maps the `/absolute/path/to/directory/no/trailing/slash` directory from the host system to the `/path/inside/container` inside the container.
+	To check the version of GraalVM and its installed location, run the `env` command from the Bash prompt:
+    ```bash
+    env
+    ```
 
-```shell
-docker run -it --rm -v /absolute/path/to/directory/no/trailing/slash:/path/inside/container ghcr.io/graalvm/graalvm-ce:22.3.1 bash
-```
+    The output shows the environment variable `JAVA_HOME` pointing to the installed GraalVM version and location.
 
-If you want to create Docker images that contain GraalVM with Ruby, R, or Python, you can use a Dockerfile like the example below, which uses `ghcr.io/graalvm/graalvm-ce:22.3.1` as the base image, installs the Ruby support using the `gu` utility, then creates and runs a sample Ruby program.
+	To check the Java version, run:
+    ```bash
+    java -version
+    ```
+    
+    To check the `native-image` version, run:
+    ```bash
+    native-image --version
+    ```
 
-```shell
-FROM ghcr.io/graalvm/graalvm-ce:22.3.1
-RUN gu install ruby
-WORKDIR /workdir
-RUN echo 'puts "Hello from Ruby!\nVersion: #{RUBY_DESCRIPTION}"' > app.rb
-CMD ruby app.rb
-```
+4. Calling `docker pull` without specifying a processor architecture pulls container images for the processor architecture that matches your Docker client. To pull container images for a different platform architecture, specify the desired platform architecture with the `--platform` option and either `linux/amd64` or `linux/aarch64` as follows:
+    ```bash
+    docker pull --platform linux/aarch64 ghcr.io/graalvm/native-image-community:21
+    ```
 
-If you put the above snippet in a Dockerfile in the current directory, you can build and run it with the following commands:
+## Oracle GraalVM Container Images 
 
-```shell
-docker build -t ruby-demo .
-...
-docker run -it --rm ruby-demo
-Hello from Ruby!
-Version: truffleruby 22.3.1, like ruby 3.0.3, GraalVM CE Native [x86_64-darwin]
-```
+Oracle GraalVM container images are published in the [Oracle Container Registry](https://container-registry.oracle.com/ords/ocr/ba/graalvm) under the [GraalVM Free Terms and Conditions (GFTC) license](https://www.oracle.com/downloads/licenses/graal-free-license.html). 
+Learn more at [Oracle Help Center](https://docs.oracle.com/en/graalvm/jdk/21/docs/getting-started/container-images/#oracle-graalvm-container-images).
 
-Check what other configuration types of container images are available [here](https://github.com/graalvm/container). 
+### Learn More
 
-If you are looking for Oracle GraalVM container images, they are published in the [Oracle Container Registry](https://container-registry.oracle.com/ords/f?p=113:10::::::).
+- [GraalVM Native Image, Spring and Containerisation](https://luna.oracle.com/lab/fdfd090d-e52c-4481-a8de-dccecdca7d68): Learn how GraalVM Native Image can generate native executables ideal for containerization.

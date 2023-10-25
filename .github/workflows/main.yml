@@ -56,44 +56,39 @@ jobs:
         include:
           # /compiler
           - env:
-              # Code quality tools are only guaranteed to support a
-              # released JDK so run style checks on JDK 20.
-              JDK_VERSION: "20"
+              JDK_VERSION: "21"
               GATE_TAGS: "style,fullbuild,test"
               PRIMARY: "compiler"
           - env:
-              JDK_VERSION: "21"
+              JDK_VERSION: "latest"
               GATE_TAGS: "build,bootstraplite"
               PRIMARY: "compiler"
           # /espresso
           - env:
-              # See note for compiler style checks above.
-              JDK_VERSION: "20"
+              JDK_VERSION: "21"
               GATE_TAGS: "style,fullbuild"
               PRIMARY: "espresso"
           # /substratevm
           - env:
-              # See note for compiler style checks above.
-              JDK_VERSION: "20"
+              JDK_VERSION: "21"
               GATE_TAGS: "style,fullbuild"
               PRIMARY: "substratevm"
           - env:
-              JDK_VERSION: "21"
+              JDK_VERSION: "latest"
               GATE_TAGS: "build,helloworld,native_unittests"
               PRIMARY: "substratevm"
               PIP_PACKAGES: "jsonschema==4.6.1"
           - env:
-              JDK_VERSION: "21"
+              JDK_VERSION: "latest"
               GATE_TAGS: "build,debuginfotest"
               PRIMARY: "substratevm"
           - env:
-              JDK_VERSION: "21"
+              JDK_VERSION: "latest"
               GATE_TAGS: "hellomodule"
               PRIMARY: "substratevm"
           # /sulong
           - env:
-              # See note for compiler style checks above.
-              JDK_VERSION: "20"
+              JDK_VERSION: "21"
               GATE_TAGS: "style,fullbuild,sulongBasic"
               PRIMARY: "sulong"
           # /truffle
@@ -103,7 +98,7 @@ jobs:
               PRIMARY: "truffle"
           # /vm
           - env:
-              JDK_VERSION: "21"
+              JDK_VERSION: "latest"
               GATE_TAGS: "build,sulong"
               GATE_OPTS: "--no-warning-as-error"
               PRIMARY: "vm"
@@ -112,7 +107,7 @@ jobs:
               DISABLE_POLYGLOT: true
               DISABLE_LIBPOLYGLOT: true
           - env:
-              JDK_VERSION: "21"
+              JDK_VERSION: "latest"
               GATE_TAGS: "build"
               GATE_OPTS: "--no-warning-as-error"
               PRIMARY: "vm"

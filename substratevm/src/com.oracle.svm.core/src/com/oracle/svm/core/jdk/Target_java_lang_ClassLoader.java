@@ -27,9 +27,12 @@ package com.oracle.svm.core.jdk;
 import java.io.File;
 import java.net.URL;
 import java.security.ProtectionDomain;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.Set;
 import java.util.Vector;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
@@ -85,7 +88,7 @@ public final class Target_java_lang_ClassLoader {
     }
 
     @Delete
-    private static native void initSystemClassLoader();
+    private static native ClassLoader initSystemClassLoader();
 
     @Alias
     public native Enumeration<URL> findResources(String name);
@@ -251,8 +254,13 @@ public final class Target_java_lang_ClassLoader {
     @Delete
     private static native void registerNatives();
 
-    @Delete
-    private static native long findNative(ClassLoader loader, String entryName);
+    /**
+     * Ignores {@code loader}, as {@link Target_java_lang_ClassLoader#loadLibrary}.
+     */
+    @Substitute
+    private static long findNative(@SuppressWarnings("unused") ClassLoader loader, String entryName) {
+        return NativeLibrarySupport.singleton().findSymbol(entryName).rawValue();
+    }
 
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
@@ -355,4 +363,12 @@ class PackageFieldTransformer implements FieldValueTransformerWithAvailability {
 final class ClassLoaderUtil {
 
     public static final LazyFinalReference<Target_java_lang_Module> unnamedModuleReference = new LazyFinalReference<>(Target_java_lang_Module::new);
+}
+
+@TargetClass(className = "java.lang.ClassLoader", innerClass = "ParallelLoaders")
+final class Target_java_lang_ClassLoader_ParallelLoaders {
+
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
+    private static Set<Class<? extends ClassLoader>> loaderTypes = Collections.newSetFromMap(new WeakHashMap<>());
 }

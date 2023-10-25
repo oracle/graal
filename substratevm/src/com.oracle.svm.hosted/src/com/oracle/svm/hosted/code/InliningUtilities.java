@@ -24,15 +24,16 @@
  */
 package com.oracle.svm.hosted.code;
 
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.FullInfopointNode;
-import org.graalvm.compiler.nodes.ParameterNode;
-import org.graalvm.compiler.nodes.StartNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.spi.ValueProxy;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.FullInfopointNode;
+import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.StartNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.spi.ValueProxy;
+import jdk.graal.compiler.replacements.nodes.MethodHandleWithExceptionNode;
 
 import com.oracle.svm.core.SubstrateOptions;
 
@@ -45,7 +46,7 @@ public class InliningUtilities {
             if (n instanceof StartNode || n instanceof ParameterNode || n instanceof FullInfopointNode || n instanceof ValueProxy || n instanceof ValueAnchorNode || n instanceof FrameState) {
                 continue;
             }
-            if (n instanceof MethodCallTargetNode) {
+            if (n instanceof MethodCallTargetNode || n instanceof MethodHandleWithExceptionNode) {
                 numInvokes++;
             } else {
                 numOthers++;

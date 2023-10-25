@@ -24,18 +24,21 @@
  */
 package com.oracle.svm.core.code;
 
-import org.graalvm.compiler.word.Word;
+import java.util.List;
+
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.c.CIsolateData;
+import com.oracle.svm.core.c.CIsolateDataFactory;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
@@ -46,8 +49,7 @@ import com.oracle.svm.core.util.VMError;
 public class ImageCodeInfo {
     public static final String CODE_INFO_NAME = "image code";
 
-    /** Memory in the image heap to contain our {@link CodeInfo} structure at runtime. */
-    private final byte[] runtimeCodeInfoData;
+    private final CIsolateData<CodeInfoImpl> runtimeCodeInfo = CIsolateDataFactory.createStruct("runtimeCodeInfo", CodeInfoImpl.class);
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     private final HostedImageCodeInfo hostedImageCodeInfo = new HostedImageCodeInfo();
@@ -76,14 +78,11 @@ public class ImageCodeInfo {
         NonmovableArrays.setObject(objfields, CodeInfoImpl.TETHER_OBJFIELD, new CodeInfoTether(true));
         // no InstalledCode for image code
         objectFields = NonmovableArrays.getHostedArray(objfields);
-
-        int runtimeInfoSize = SizeOf.get(CodeInfoImpl.class);
-        runtimeCodeInfoData = new byte[runtimeInfoSize];
     }
 
     @Uninterruptible(reason = "Executes during isolate creation.")
     CodeInfo prepareCodeInfo() {
-        CodeInfoImpl info = NonmovableArrays.addressOf(NonmovableArrays.fromImageHeap(runtimeCodeInfoData), 0);
+        CodeInfoImpl info = runtimeCodeInfo.get();
         assert info.getCodeStart().isNull() : "already initialized";
 
         info.setObjectFields(NonmovableArrays.fromImageHeap(objectFields));
@@ -131,8 +130,8 @@ public class ImageCodeInfo {
         return hostedImageCodeInfo;
     }
 
-    public long getTotalByteArraySize() {
-        return codeInfoIndex.length + codeInfoEncodings.length + referenceMapEncoding.length + frameInfoEncodings.length;
+    public List<Integer> getTotalByteArrayLengths() {
+        return List.of(codeInfoIndex.length, codeInfoEncodings.length, referenceMapEncoding.length, frameInfoEncodings.length);
     }
 
     /**

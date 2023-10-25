@@ -35,12 +35,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugContext.Activation;
-import org.graalvm.compiler.debug.DebugContext.Description;
-import org.graalvm.compiler.debug.DebugContext.Scope;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.options.OptionValues;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext.Activation;
+import jdk.graal.compiler.debug.DebugContext.Description;
+import jdk.graal.compiler.debug.DebugContext.Scope;
+import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.BigBang;
 
@@ -65,7 +65,6 @@ public class CompletionExecutor {
     private final CopyOnWriteArrayList<Throwable> exceptions = new CopyOnWriteArrayList<>();
 
     private ExecutorService executorService;
-    private final Runnable heartbeatCallback;
 
     private final BigBang bb;
     private Timing timing;
@@ -83,9 +82,8 @@ public class CompletionExecutor {
         void print();
     }
 
-    public CompletionExecutor(BigBang bb, ForkJoinPool forkJoin, Runnable heartbeatCallback) {
+    public CompletionExecutor(BigBang bb, ForkJoinPool forkJoin) {
         this.bb = bb;
-        this.heartbeatCallback = heartbeatCallback;
         executorService = forkJoin;
         state = new AtomicReference<>(State.UNUSED);
         postedOperations = new LongAdder();
@@ -150,7 +148,7 @@ public class CompletionExecutor {
                 }
 
                 if (isSequential()) {
-                    heartbeatCallback.run();
+                    bb.getHostVM().recordActivity();
                     try (DebugContext debug = command.getDebug(bb.getOptions(), bb.getDebugHandlerFactories());
                                     Scope s = debug.scope("Operation")) {
                         command.run(debug);
@@ -179,7 +177,7 @@ public class CompletionExecutor {
         if (timing != null) {
             startTime = System.nanoTime();
         }
-        heartbeatCallback.run();
+        bb.getHostVM().recordActivity();
         Throwable thrown = null;
         try (DebugContext debug = command.getDebug(bb.getOptions(), bb.getDebugHandlerFactories());
                         Scope s = debug.scope("Operation");
@@ -202,7 +200,7 @@ public class CompletionExecutor {
     }
 
     public void start() {
-        assert state.get() == State.BEFORE_START;
+        assert state.get() == State.BEFORE_START : state.get();
 
         setState(State.STARTED);
         postedBeforeStart.forEach(this::execute);
@@ -218,7 +216,7 @@ public class CompletionExecutor {
         if (isSequential()) {
             long completed = completedOperations.sum();
             long posted = postedOperations.sum();
-            assert completed == posted;
+            assert completed == posted : completed + ", " + posted;
             return posted;
         }
 
@@ -230,7 +228,7 @@ public class CompletionExecutor {
         }
 
         while (true) {
-            assert state.get() == State.STARTED;
+            assert state.get() == State.STARTED : state.get();
 
             boolean quiescent;
             if (executorService instanceof ForkJoinPool) {
@@ -248,7 +246,7 @@ public class CompletionExecutor {
 
             long completed = completedOperations.sum();
             long posted = postedOperations.sum();
-            assert completed <= posted;
+            assert completed <= posted : completed + ", " + posted;
             if (completed == posted && exceptions.isEmpty()) {
                 if (timing != null) {
                     timing.print();
@@ -277,8 +275,16 @@ public class CompletionExecutor {
         setState(State.UNUSED);
     }
 
+    public boolean isBeforeStart() {
+        return state.get() == State.BEFORE_START;
+    }
+
     public boolean isStarted() {
         return state.get() == State.STARTED;
+    }
+
+    public State getState() {
+        return state.get();
     }
 
     public int parallelism() {

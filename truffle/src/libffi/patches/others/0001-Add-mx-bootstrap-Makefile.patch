@@ -1,4 +1,4 @@
-From 3d47fd21f5a6a67c5c65068224d395303b6f2e4c Mon Sep 17 00:00:00 2001
+From 7c9a81783f63d37fb68131d6e0621e9476e7b11c Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Aleksandar=20Pejovi=C4=87?= <aleksandar.pejovic@oracle.com>
 Date: Tue, 15 Jan 2019 00:40:01 +0100
 Subject: [PATCH] Add mx bootstrap Makefile
@@ -29,5 +29,5 @@ index 0000000..da887c1
 +	$(QUIETLY) echo MAKE libffi
 +	$(QUIETLY) $(MAKE) -C ../$(OUTPUT) > ../libffi.build.log
 -- 
-2.28.0
+2.38.4
 

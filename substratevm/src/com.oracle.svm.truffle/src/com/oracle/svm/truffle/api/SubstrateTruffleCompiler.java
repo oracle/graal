@@ -24,11 +24,12 @@
  */
 package com.oracle.svm.truffle.api;
 
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.phases.TruffleTier;
+import jdk.graal.compiler.truffle.PartialEvaluator;
+import jdk.graal.compiler.truffle.phases.TruffleTier;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.truffle.compiler.TruffleCompiler;
 
 public interface SubstrateTruffleCompiler extends TruffleCompiler {
 

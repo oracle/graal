@@ -27,11 +27,6 @@ package com.oracle.svm.truffle.isolated;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
-import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
-import org.graalvm.compiler.truffle.runtime.OptimizedAssumption;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
@@ -50,6 +45,11 @@ import com.oracle.svm.graal.isolated.IsolatedObjectConstant;
 import com.oracle.svm.truffle.api.SubstrateCompilableTruffleAST;
 import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
 import com.oracle.truffle.api.utilities.TriState;
+import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.runtime.OptimizedAssumption;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedDirectCallNode;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -74,16 +74,19 @@ public final class IsolatedTruffleRuntimeSupport {
         if (consumerHandle.equal(IsolatedHandles.nullHandle())) {
             return null;
         }
-        return codeInstallBridge -> {
-            ClientHandle<? extends SubstrateInstalledCode> installedCodeHandle = IsolatedHandles.nullHandle();
-            if (codeInstallBridge != null) {
-                installedCodeHandle = ((IsolatedCodeInstallBridge) codeInstallBridge).getSubstrateInstalledCodeHandle();
+        return new Consumer<>() {
+            @Override
+            public void accept(OptimizedAssumptionDependency codeInstallBridge) {
+                ClientHandle<? extends SubstrateInstalledCode> installedCodeHandle = IsolatedHandles.nullHandle();
+                if (codeInstallBridge != null) {
+                    installedCodeHandle = ((IsolatedCodeInstallBridge) codeInstallBridge).getSubstrateInstalledCodeHandle();
+                }
+
+                @SuppressWarnings("unchecked")
+                ClientHandle<? extends OptimizedAssumptionDependency> dependencyAccessHandle = (ClientHandle<? extends OptimizedAssumptionDependency>) installedCodeHandle;
+
+                notifyAssumption0(IsolatedCompileContext.get().getClient(), consumerHandle, dependencyAccessHandle);
             }
-
-            @SuppressWarnings("unchecked")
-            ClientHandle<? extends OptimizedAssumptionDependency> dependencyAccessHandle = (ClientHandle<? extends OptimizedAssumptionDependency>) installedCodeHandle;
-
-            notifyAssumption0(IsolatedCompileContext.get().getClient(), consumerHandle, dependencyAccessHandle);
         };
     }
 
@@ -172,9 +175,12 @@ public final class IsolatedTruffleRuntimeSupport {
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static boolean isSuppressedFailure0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> ast,
                     CompilerHandle<Supplier<String>> serializedExceptionHandle) {
-        Supplier<String> serializedException = () -> {
-            ClientHandle<String> resultHandle = getReasonAndStackTrace0(IsolatedCompileClient.get().getCompiler(), serializedExceptionHandle);
-            return IsolatedCompileClient.get().unhand(resultHandle);
+        Supplier<String> serializedException = new Supplier<>() {
+            @Override
+            public String get() {
+                ClientHandle<String> resultHandle = getReasonAndStackTrace0(IsolatedCompileClient.get().getCompiler(), serializedExceptionHandle);
+                return IsolatedCompileClient.get().unhand(resultHandle);
+            }
         };
         SubstrateTruffleRuntime runtime = (SubstrateTruffleRuntime) SubstrateTruffleRuntime.getRuntime();
         return runtime.isSuppressedFailure(IsolatedCompileClient.get().unhand(ast), serializedException);

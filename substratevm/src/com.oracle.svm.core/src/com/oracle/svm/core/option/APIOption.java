@@ -31,7 +31,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.function.Function;
 
-import org.graalvm.compiler.options.Option;
+import jdk.graal.compiler.options.Option;
 
 import com.oracle.svm.core.util.VMError;
 
@@ -60,6 +60,12 @@ public @interface APIOption {
      * This option should only be shown with --help-extra.
      */
     boolean extra() default false;
+
+    /**
+     * This option should be stored in a native image bundle and passed to the jvm when executed
+     * with {@code com.oracle.svm.driver.launcher.BundleLauncher}.
+     */
+    boolean launcherOption() default false;
 
     /**
      * Make a boolean option part of a group of boolean options.
@@ -132,6 +138,10 @@ public @interface APIOption {
             } else {
                 return "--" + name;
             }
+        }
+
+        public static String valueSeparatorToString(char valueSeparator) {
+            return valueSeparator != APIOption.NO_SEPARATOR ? Character.toString(valueSeparator) : "";
         }
 
         public static String groupName(APIOptionGroup group) {

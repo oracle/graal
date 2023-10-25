@@ -28,7 +28,7 @@ package com.oracle.svm.hosted;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.options.Option;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
@@ -87,6 +87,14 @@ public final class LinkAtBuildTimeSupport {
 
     public boolean linkAtBuildTime(Class<?> clazz) {
         return isIncluded(clazz) != null;
+    }
+
+    public boolean moduleLinkAtBuildTime(String module) {
+        return classFilter.isModuleIncluded(module) != null;
+    }
+
+    public boolean packageOrClassAtBuildTime(String packageName) {
+        return classFilter.isPackageOrClassIncluded(packageName) != null;
     }
 
     private Object isIncluded(Class<?> clazz) {

@@ -408,6 +408,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             if (tag.equals("CONSTANT")) {
                 maybeQuotedStringLiteralIndex = 0;
             }
+            if (tag.equals("THROW")) {
+                maybeQuotedStringLiteralIndex = 1;
+            }
             List<String> multipleTags = null;
             if (tag.equals("MULTIPLE")) {
                 multipleTags = multipleTags();

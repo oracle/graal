@@ -69,6 +69,8 @@ public final class JUnitFeature implements Feature {
     public void afterRegistration(AfterRegistrationAccess access) {
         /* Open up builder to allow whitebox testing */
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, null, true, "org.graalvm.nativeimage.builder");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, null, true, "jdk.graal.compiler");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, null, true, "jdk.internal.vm.ci");
         SVMJUnitRunner svmRunner = new SVMJUnitRunner(access);
         ImageSingletons.add(SVMJUnitRunner.class, svmRunner);
     }

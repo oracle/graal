@@ -25,32 +25,25 @@
 package com.oracle.svm.core.option;
 
 import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.options.EnumMultiOptionKey;
-import org.graalvm.compiler.options.ModifiableOptionValues;
-import org.graalvm.compiler.options.NestedBooleanOptionKey;
-import org.graalvm.compiler.options.OptionDescriptor;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionValues;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.options.ModifiableOptionValues;
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.options.OptionsParser;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.RuntimeOptions.OptionClass;
+import org.graalvm.nativeimage.RuntimeOptions.Descriptor;
 import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
-import org.graalvm.options.OptionDescriptors;
-import org.graalvm.options.OptionType;
 
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ClassUtil;
 
 /**
@@ -113,96 +106,50 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
         return optionKey.getValue(RuntimeOptionValues.singleton());
     }
 
-    @SuppressWarnings({"unchecked", "deprecation"})
+    record DescriptorImpl(String name, String help, Class<?> valueType, Object defaultValue, boolean deprecated, String deprecatedMessage) implements Descriptor {
+
+        @Override
+        public Object convertValue(String value) throws IllegalArgumentException {
+            Optional<OptionDescriptor> descriptor = RuntimeOptionParser.singleton().getDescriptor(name);
+            return OptionsParser.parseOptionValue(descriptor.get(), value);
+        }
+
+    }
+
     @Override
-    public OptionDescriptors getOptions(EnumSet<OptionClass> classes) {
+    public List<Descriptor> listDescriptors() {
+        List<Descriptor> options = new ArrayList<>();
         Iterable<OptionDescriptor> descriptors = RuntimeOptionParser.singleton().getDescriptors();
-        List<org.graalvm.options.OptionDescriptor> graalvmDescriptors = new ArrayList<>();
         for (OptionDescriptor descriptor : descriptors) {
-            if (classes.contains(getOptionClass(descriptor))) {
-                org.graalvm.options.OptionDescriptor.Builder builder = org.graalvm.options.OptionDescriptor.newBuilder(asGraalVMOptionKey(descriptor), descriptor.getName());
-                String helpMsg = descriptor.getHelp();
-                int helpLen = helpMsg.length();
-                if (helpLen > 0 && helpMsg.charAt(helpLen - 1) != '.') {
-                    helpMsg += '.';
-                }
-                builder.help(helpMsg);
-                builder.deprecated(descriptor.isDeprecated());
-                builder.deprecationMessage(descriptor.getDeprecationMessage());
-                graalvmDescriptors.add(builder.build());
+            DescriptorImpl option = asDescriptor(descriptor);
+            if (option != null) {
+                options.add(option);
             }
         }
-        return OptionDescriptors.create(graalvmDescriptors);
+        return options;
     }
 
-    @SuppressWarnings("deprecation")
-    private static OptionClass getOptionClass(OptionDescriptor descriptor) {
-        if (descriptor.getOptionKey() instanceof RuntimeOptionKey) {
-            return OptionClass.VM;
+    private static DescriptorImpl asDescriptor(OptionDescriptor descriptor) {
+        if (descriptor == null || !(descriptor.getOptionKey() instanceof RuntimeOptionKey)) {
+            return null;
         }
-        return OptionClass.Compiler;
+        String help = descriptor.getHelp();
+        int helpLen = help.length();
+        if (helpLen > 0 && help.charAt(helpLen - 1) != '.') {
+            help += '.';
+        }
+        return new DescriptorImpl(descriptor.getName(), help, descriptor.getOptionValueType(), descriptor.getOptionKey().getDefaultValue(), descriptor.isDeprecated(),
+                        descriptor.getDeprecationMessage());
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private static <T> org.graalvm.options.OptionKey<T> asGraalVMOptionKey(OptionDescriptor descriptor) {
-        Class<T> clazz = (Class<T>) descriptor.getOptionValueType();
-        OptionType<T> type;
-        if (clazz.isEnum()) {
-            type = (OptionType<T>) ENUM_TYPE_CACHE.computeIfAbsent(clazz, c -> new OptionType<>(ClassUtil.getUnqualifiedName(c), s -> (T) Enum.valueOf((Class<? extends Enum>) c, s)));
-        } else if (clazz == Long.class) {
-            type = (OptionType<T>) LONG_OPTION_TYPE;
-        } else if (clazz == EconomicSet.class) {
-            EnumMultiOptionKey<?> multiOptionKey = (EnumMultiOptionKey<?>) descriptor.getOptionKey();
-            type = (OptionType<T>) ENUM_MULTI_TYPE_CACHE.computeIfAbsent(multiOptionKey.getEnumClass(),
-                            c -> new OptionType<>("Multi" + ClassUtil.getUnqualifiedName(multiOptionKey.getEnumClass()), s -> (T) multiOptionKey.valueOf(s)));
-        } else {
-            type = OptionType.defaultType(clazz);
-            if (type == null) {
-                throw VMError.shouldNotReachHere("unsupported type: " + clazz);
-            }
-        }
-        OptionKey<T> optionKey = (OptionKey<T>) descriptor.getOptionKey();
-        while (optionKey instanceof NestedBooleanOptionKey) {
-            optionKey = (OptionKey<T>) ((NestedBooleanOptionKey) optionKey).getParentOption();
-        }
-        T defaultValue = optionKey.getDefaultValue();
-        return new org.graalvm.options.OptionKey<>(defaultValue, type);
-    }
-
-    private static final Map<Class<?>, OptionType<?>> ENUM_TYPE_CACHE = new HashMap<>();
-
-    private static final Map<Class<?>, OptionType<?>> ENUM_MULTI_TYPE_CACHE = new HashMap<>();
-
-    private static final OptionType<Long> LONG_OPTION_TYPE = new OptionType<>("long", RuntimeOptionsSupportImpl::parseLong);
-
-    private static long parseLong(String v) {
-        String valueString = v.toLowerCase();
-        long scale = 1;
-        if (valueString.endsWith("k")) {
-            scale = 1024L;
-        } else if (valueString.endsWith("m")) {
-            scale = 1024L * 1024L;
-        } else if (valueString.endsWith("g")) {
-            scale = 1024L * 1024L * 1024L;
-        } else if (valueString.endsWith("t")) {
-            scale = 1024L * 1024L * 1024L * 1024L;
-        }
-
-        if (scale != 1) {
-            /* Remove trailing scale character. */
-            valueString = valueString.substring(0, valueString.length() - 1);
-        }
-
-        try {
-            return Long.parseLong(valueString) * scale;
-        } catch (NumberFormatException nfe) {
-            throw new IllegalArgumentException(String.format("Invalid value \"%s\". Allowed values are [1, inf)(|<k>|<m>|<g>|<t>).", v));
-        }
+    @Override
+    public Descriptor getDescriptor(String optionName) {
+        return asDescriptor(RuntimeOptionParser.singleton().getDescriptor(optionName).orElse(null));
     }
 }
 
-@TargetClass(org.graalvm.compiler.options.OptionKey.class)
-final class Target_org_graalvm_compiler_options_OptionKey {
+@TargetClass(OptionKey.class)
+final class Target_jdk_graal_compiler_options_OptionKey {
 
     @AnnotateOriginal
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Static analysis imprecision makes all hashCode implementations reachable from this method")

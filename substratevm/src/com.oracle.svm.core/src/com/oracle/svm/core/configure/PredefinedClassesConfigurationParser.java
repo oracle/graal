@@ -33,7 +33,7 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.util.json.JSONParserException;
+import jdk.graal.compiler.util.json.JSONParserException;
 
 public class PredefinedClassesConfigurationParser extends ConfigurationParser {
     public static InputStream openClassdataStream(URI baseUri, String providedHash) throws IOException {

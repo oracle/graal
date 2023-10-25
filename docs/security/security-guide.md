@@ -5,15 +5,13 @@ link_title: Security Guide
 permalink: /security-guide/
 redirect_from:
 - /docs/security-guide/
-- /$version/docs/security-guide/
 ---
 
 # Security Guide
 
 This security guide provides developers and embedders with information on the security model and features of GraalVM for developers and embedders who seek to build a secure application on top of it.
 It assumes that readers are familiar with the GraalVM architecture.
-This guide does not replace but rather supplements the Java security documentation with aspects unique to GraalVM.
-It also provides security researchers with information on GraalVM's security model.
+This guide does not replace but rather supplements the Java security documentation such as the [Secure Coding Guidelines for Java SE](https://www.oracle.com/java/technologies/javase/seccodeguide.html) with aspects unique to GraalVM.
 
 ## Security Model
 
@@ -72,8 +70,7 @@ For further information please refer to the [native image security guide](native
 ## Security Manager
 
 Security manager has been deprecated in [JEP-411](https://openjdk.java.net/jeps/411).
-The OpenJDK vulnerability group strongly discourages running untrusted code under a security manager.
-This also applies to GraalVM, which does not support untrusted code execution in Java.
+GraalVM does not support untrusted code execution in Java.
 
 ## GraalVM Community Edition Downgrade
 

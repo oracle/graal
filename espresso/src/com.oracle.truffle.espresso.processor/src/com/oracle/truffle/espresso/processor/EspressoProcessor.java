@@ -50,6 +50,7 @@ import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
 
+import com.oracle.truffle.espresso.processor.builders.AnnotationBuilder;
 import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
 import com.oracle.truffle.espresso.processor.builders.ClassFileBuilder;
 import com.oracle.truffle.espresso.processor.builders.FieldBuilder;
@@ -99,7 +100,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
      * import com.oracle.truffle.espresso.substitutions.Collect;
      *
      * import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
-     * import com.oracle.truffle.espresso.runtime.StaticObject;
+     * import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
      * import com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Resolve;
      *
      * /**
@@ -228,7 +229,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
     private static final String SUBSTITUTION_PROFILER = "com.oracle.truffle.espresso.substitutions.SubstitutionProfiler";
 
     TypeElement staticObject;
-    private static final String STATIC_OBJECT = "com.oracle.truffle.espresso.runtime.StaticObject";
+    protected static final String STATIC_OBJECT = "com.oracle.truffle.espresso.runtime.staticobject.StaticObject";
 
     TypeElement javaType;
     private static final String JAVA_TYPE = "com.oracle.truffle.espresso.substitutions.JavaType";
@@ -248,7 +249,8 @@ public abstract class EspressoProcessor extends BaseProcessor {
     // Global constants
     protected static final String FACTORY = "Factory";
 
-    static final String SUPPRESS_UNUSED = "@SuppressWarnings(\"unused\")";
+    static final String SUPPRESS_WARNINGS = "SuppressWarnings";
+    static final String UNUSED = "unused";
 
     static final String IS_TRIVIAL = "isTrivial";
     static final String GUARD = "guard";
@@ -256,11 +258,11 @@ public abstract class EspressoProcessor extends BaseProcessor {
     static final String STATIC_OBJECT_NULL = "StaticObject.NULL";
 
     static final String IMPORT_INTEROP_LIBRARY = "com.oracle.truffle.api.interop.InteropLibrary";
-    static final String IMPORT_STATIC_OBJECT = "com.oracle.truffle.espresso.runtime.StaticObject";
+    static final String IMPORT_STATIC_OBJECT = STATIC_OBJECT;
     static final String IMPORT_TRUFFLE_OBJECT = "com.oracle.truffle.api.interop.TruffleObject";
-    static final String IMPORT_ESPRESSO_LANGUAGE = "com.oracle.truffle.espresso.EspressoLanguage";
+    static final String IMPORT_ESPRESSO_LANGUAGE = ESPRESSO_LANGUAGE;
     static final String IMPORT_META = "com.oracle.truffle.espresso.meta.Meta";
-    static final String IMPORT_ESPRESSO_CONTEXT = "com.oracle.truffle.espresso.runtime.EspressoContext";
+    static final String IMPORT_ESPRESSO_CONTEXT = ESPRESSO_CONTEXT;
     static final String IMPORT_PROFILE = "com.oracle.truffle.espresso.substitutions.SubstitutionProfiler";
     static final String IMPORT_COLLECT = "com.oracle.truffle.espresso.substitutions.Collect";
 
@@ -568,7 +570,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
             return javadocBuilder;
         }
 
-        SignatureBuilder linkSignature = new SignatureBuilder(className + "#" + helper.getMethodTarget().getSimpleName());
+        SignatureBuilder linkSignature = new SignatureBuilder().withName(className + "#" + helper.getMethodTarget().getSimpleName());
 
         for (String param : parameterTypes) {
             linkSignature.addParam(param);
@@ -595,7 +597,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
     }
 
     static SignatureBuilder generateNativeSignature(NativeType[] signature) {
-        SignatureBuilder sb = new SignatureBuilder("NativeSignature.create");
+        SignatureBuilder sb = new SignatureBuilder().withName("NativeSignature.create");
         for (NativeType t : signature) {
             sb.addParam("NativeType." + t);
         }
@@ -628,8 +630,8 @@ public abstract class EspressoProcessor extends BaseProcessor {
     // @formatter:on
     private ClassBuilder generateFactory(String className, String substitutorName, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         ClassBuilder factory = new ClassBuilder(FACTORY) //
-                        .withAnnotation("@Collect(", helper.getImplAnnotation().getQualifiedName().toString(), ".class)") //
-                        .withQualifiers(new ModifierBuilder().asPublic().asStatic().asFinal()) //
+                        .withAnnotation(new AnnotationBuilder("Collect").withValue("value", helper.getImplAnnotation().getQualifiedName().toString() + ".class", false)).withQualifiers(
+                                        new ModifierBuilder().asPublic().asStatic().asFinal()) //
                         .withSuperClass(substitutor + "." + FACTORY);
         generateFactoryConstructor(factory, substitutorName, targetMethodName, parameterTypeName, helper);
         generateAdditionalFactoryMethods(factory, className, targetMethodName, parameterTypeName, helper);
@@ -644,7 +646,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
     private static void generateChildInstanceField(ClassBuilder cb, SubstitutionHelper helper) {
         if (helper.isNodeTarget()) {
             FieldBuilder field = new FieldBuilder(helper.getNodeTarget().getSimpleName(), "node") //
-                            .withAnnotation("@Child") //
+                            .withAnnotation(new AnnotationBuilder("Child")) //
                             .withQualifiers(new ModifierBuilder().asPrivate());
             cb.withField(field);
         }
@@ -760,7 +762,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
         }
 
         MethodBuilder constructor = generateConstructor(substitutorName, helper) //
-                        .withAnnotation(SUPPRESS_UNUSED);
+                        .withAnnotation(new AnnotationBuilder(SUPPRESS_WARNINGS).withValue("value", UNUSED));
         substitutorClass.withMethod(constructor);
 
         substitutorClass.withMethod(generateSplit());

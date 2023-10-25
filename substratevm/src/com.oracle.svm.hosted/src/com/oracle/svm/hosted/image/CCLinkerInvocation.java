@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,19 +31,19 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionStability;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.macho.MachOSymtab;
+import com.oracle.svm.core.BuildDirectoryProvider;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
@@ -68,7 +68,8 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
     }
 
     public static class Options {
-        @Option(help = "Pass the provided raw option that will be appended to the linker command to produce the final binary. The possible options are platform specific and passed through without any validation.")//
+        @Option(help = "Pass the provided raw option that will be appended to the linker command to produce the final binary. The possible options are platform specific and passed through without any validation.", //
+                        stability = OptionStability.STABLE)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> NativeLinkerOption = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
     }
 
@@ -248,13 +249,22 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
 
     private static class BinutilsCCLinkerInvocation extends CCLinkerInvocation {
 
-        private final boolean staticExecWithDynamicallyLinkLibC = SubstrateOptions.StaticExecutableWithDynamicLibC.getValue();
-        private final Set<String> libCLibaries = new HashSet<>(Arrays.asList("pthread", "dl", "rt", "m"));
+        private final boolean dynamicLibC = SubstrateOptions.StaticExecutableWithDynamicLibC.getValue();
+        private final boolean staticLibCpp = SubstrateOptions.StaticLibStdCpp.getValue();
+        private final boolean customStaticLibs = dynamicLibC || staticLibCpp;
 
         BinutilsCCLinkerInvocation(AbstractImage.NativeImageKind imageKind, NativeLibraries nativeLibs, List<ObjectFile.Symbol> symbols) {
             super(imageKind, nativeLibs, symbols);
             additionalPreOptions.add("-z");
             additionalPreOptions.add("noexecstack");
+
+            /*
+             * This is needed if the default linker is ld.lld from LLVM. On the GNU linker this
+             * option is the default, so we can just set it unconditionally.
+             */
+            additionalPreOptions.add("-z");
+            additionalPreOptions.add("notext");
+
             if (SubstrateOptions.ForceNoROSectionRelocations.getValue()) {
                 additionalPreOptions.add("-fuse-ld=gold");
                 additionalPreOptions.add("-Wl,--rosegment");
@@ -304,7 +314,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                     cmd.add("-Wl,--export-dynamic");
                     break;
                 case STATIC_EXECUTABLE:
-                    if (!staticExecWithDynamicallyLinkLibC) {
+                    if (!customStaticLibs) {
                         cmd.add("-static");
                     }
                     break;
@@ -316,21 +326,32 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             }
         }
 
+        private static final Set<String> LIB_C_NAMES = Set.of("pthread", "dl", "rt", "m");
+
         @Override
         protected List<String> getLibrariesCommand() {
             List<String> cmd = new ArrayList<>();
+            if (customStaticLibs) {
+                cmd.add("-Wl,--push-state");
+            }
             for (String lib : libs) {
-                if (staticExecWithDynamicallyLinkLibC) {
-                    String linkingMode = libCLibaries.contains(lib)
-                                    ? "dynamic"
-                                    : "static";
+                String linkingMode = null;
+                if (dynamicLibC) {
+                    linkingMode = LIB_C_NAMES.contains(lib) ? "dynamic" : "static";
+                } else if (staticLibCpp) {
+                    linkingMode = lib.equals("stdc++") ? "static" : "dynamic";
+                }
+                if (linkingMode != null) {
                     cmd.add("-Wl,-B" + linkingMode);
                 }
                 cmd.add("-l" + lib);
             }
+            if (customStaticLibs) {
+                cmd.add("-Wl,--pop-state");
+            }
 
             // Make sure libgcc gets statically linked
-            if (staticExecWithDynamicallyLinkLibC) {
+            if (customStaticLibs) {
                 cmd.add("-static-libgcc");
             }
             return cmd;
@@ -350,12 +371,12 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
 
             boolean useLld = false;
             if (useFallback) {
-                Path lld = LLVMToolchain.getLLVMBinDir().resolve("ld64.lld").toAbsolutePath();
+                Path lld = BuildDirectoryProvider.singleton().getHome().resolve("lib").resolve("svm").resolve("bin").resolve("ld64.lld").toAbsolutePath();
                 if (Files.exists(lld)) {
                     useLld = true;
                     additionalPreOptions.add("-fuse-ld=" + lld);
                 } else {
-                    throw new RuntimeException("The Native Image build ran into a ld64 limitation. Please use ld64.lld via `gu install llvm-toolchain` and run the same command again.");
+                    throw new RuntimeException("This should not happen. ld64.lld should be shipped as part of Native Image, please report.");
                 }
             }
 
@@ -405,7 +426,13 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         public boolean shouldRunFallback(String message) {
             if (Platform.includedIn(Platform.AARCH64.class)) {
                 /* detect ld64 limitation around inserting branch islands, retry with LLVM linker */
-                return message.contains("branch out of range") || message.contains("Unable to insert branch island");
+                if (message.contains("branch out of range") || message.contains("Unable to insert branch island")) {
+                    return true;
+                }
+
+                // slightly different message with "the new linker" (~Xcode 15), e.g.:
+                // > ld: B/BL out of range -178777824 (max +/-128MB) to '_throw_internal_error'
+                return message.contains("out of range");
             }
             return false;
         }
@@ -517,10 +544,8 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             cmd.add("secur32.lib");
             cmd.add("iphlpapi.lib");
             cmd.add("userenv.lib");
-            if (JavaVersionUtil.JAVA_SPEC >= 20) {
-                /* JDK-8295231 removed implicit linking via pragma directives in source files. */
-                cmd.add("mswsock.lib");
-            }
+            /* JDK-8295231 removed implicit linking via pragma directives in source files. */
+            cmd.add("mswsock.lib");
 
             if (SubstrateOptions.EnableWildcardExpansion.getValue() && imageKind == AbstractImage.NativeImageKind.EXECUTABLE) {
                 /*

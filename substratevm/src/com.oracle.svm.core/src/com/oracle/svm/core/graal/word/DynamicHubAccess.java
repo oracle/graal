@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.word;
 
-import org.graalvm.compiler.nodes.extended.GuardingNode;
+import jdk.graal.compiler.nodes.extended.GuardingNode;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.graal.word.SubstrateOperation.SubstrateOpcode;

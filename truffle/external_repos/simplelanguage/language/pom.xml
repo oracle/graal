@@ -47,48 +47,11 @@
     <version>${graalvm.version}</version>
   </parent>
   <artifactId>simplelanguage</artifactId>
-    <properties>
-      <antlr.version>4.12.0</antlr.version>
-      <jar.dir>${project.build.directory}/jars</jar.dir>
-      <test.argLine>--upgrade-module-path='${jar.dir}/truffle-api.jar' --add-opens org.graalvm.sdk/org.graalvm.polyglot=ALL-UNNAMED --add-exports java.base/jdk.internal.module=ALL-UNNAMED</test.argLine>
-    </properties>
-  <build>
+  <properties>
+    <antlr.version>4.12.0</antlr.version>
+  </properties>
+  <build> 
     <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-dependency-plugin</artifactId>
-        <version>2.10</version>
-        <executions>
-          <execution>
-            <id>copy</id>
-            <phase>generate-resources</phase>
-            <goals>
-              <goal>copy</goal>
-            </goals>
-            <configuration>
-              <artifactItems>
-                <artifactItem>
-                  <groupId>org.graalvm.truffle</groupId>
-                  <artifactId>truffle-api</artifactId>
-                  <version>${graalvm.version}</version>
-                  <type>jar</type>
-                  <overWrite>true</overWrite>
-                  <destFileName>truffle-api.jar</destFileName>
-                </artifactItem>
-                <artifactItem>
-                  <groupId>org.antlr</groupId>
-                  <artifactId>antlr4-runtime</artifactId>
-                  <version>${antlr.version}</version>
-                  <type>jar</type>
-                  <overWrite>true</overWrite>
-                  <destFileName>antlr-runtime.jar</destFileName>
-                </artifactItem>
-              </artifactItems>
-              <outputDirectory>${jar.dir}</outputDirectory>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-eclipse-plugin</artifactId>
@@ -100,13 +63,11 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.9</version>
+        <version>3.1.2</version>
         <configuration>
-          <includes>
-            <include>**/*TestSuite.java</include>
-            <include>**/*Test.java</include>
-          </includes>
-          <argLine>-Dgraalvm.locatorDisabled=true ${test.argLine}</argLine>
+           <argLine>
+               --add-exports=java.base/jdk.internal.module=truffle.tck
+            </argLine>
         </configuration>
       </plugin>
     </plugins>
@@ -118,10 +79,13 @@
           <configuration>
             <source>17</source>
             <target>17</target>
-            <fork>true</fork>
-            <compilerArgs>
-              <arg>--upgrade-module-path=${jar.dir}/truffle-api.jar</arg>
-            </compilerArgs>
+	     <annotationProcessorPaths>
+	       <path>
+	        <groupId>org.graalvm.truffle</groupId>
+	            <artifactId>truffle-dsl-processor</artifactId>
+	            <version>${graalvm.version}</version>
+	          </path>
+	        </annotationProcessorPaths>
           </configuration>
         </plugin>
       </plugins>
@@ -129,6 +93,11 @@
     <finalName>simplelanguage</finalName>
   </build>
   <dependencies>
+	<dependency>
+      <groupId>org.graalvm.polyglot</groupId>
+      <artifactId>polyglot</artifactId>
+      <version>${graalvm.version}</version>
+    </dependency>
     <dependency>
       <groupId>org.graalvm.truffle</groupId>
       <artifactId>truffle-api</artifactId>
@@ -136,20 +105,20 @@
     </dependency>
     <dependency>
       <groupId>org.graalvm.truffle</groupId>
-      <artifactId>truffle-dsl-processor</artifactId>
+      <artifactId>truffle-runtime</artifactId>
       <version>${graalvm.version}</version>
-      <scope>provided</scope>
+      <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>org.graalvm.truffle</groupId>
       <artifactId>truffle-tck</artifactId>
       <version>${graalvm.version}</version>
-      <scope>provided</scope>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.13.1</version>
+      <version>4.13.2</version>
       <scope>test</scope>
     </dependency>
     <dependency>

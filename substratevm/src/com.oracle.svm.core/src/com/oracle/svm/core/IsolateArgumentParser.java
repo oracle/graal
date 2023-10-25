@@ -28,7 +28,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -54,7 +54,7 @@ import com.oracle.svm.core.util.VMError;
  */
 @AutomaticallyRegisteredImageSingleton
 public class IsolateArgumentParser {
-    private static final RuntimeOptionKey<?>[] OPTIONS = {SubstrateGCOptions.MinHeapSize, SubstrateGCOptions.MaxHeapSize, SubstrateGCOptions.MaxNewSize,
+    private static final RuntimeOptionKey<?>[] OPTIONS = {SubstrateGCOptions.MinHeapSize, SubstrateGCOptions.MaxHeapSize, SubstrateGCOptions.MaxNewSize, SubstrateGCOptions.ReservedAddressSpaceSize,
                     SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling, SubstrateOptions.ConcealedOptions.UsePerfData};
     private static final int OPTION_COUNT = OPTIONS.length;
     private static final CGlobalData<CCharPointer> OPTION_NAMES = CGlobalDataFactory.createBytes(IsolateArgumentParser::createOptionNames);
@@ -206,7 +206,7 @@ public class IsolateArgumentParser {
         Class<?> optionValueType = OPTIONS[index].getDescriptor().getOptionValueType();
         long value = PARSED_OPTION_VALUES[index];
         if (optionValueType == Boolean.class) {
-            assert value == 0 || value == 1;
+            assert value == 0 || value == 1 : value;
             return value == 1;
         } else if (optionValueType == Integer.class) {
             return (int) value;

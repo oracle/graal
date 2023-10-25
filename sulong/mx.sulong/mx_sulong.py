@@ -45,6 +45,7 @@ import mx_sulong_benchmarks
 import mx_sulong_fuzz #pylint: disable=unused-import
 import mx_sulong_gen #pylint: disable=unused-import
 import mx_sulong_gate
+import mx_sulong_unittest #pylint: disable=unused-import
 import mx_sulong_llvm_config
 
 # re-export custom mx project classes so they can be used from suite.py
@@ -92,14 +93,6 @@ def _lib_versioned(arg):
         mx.abort('unsupported os')
 
 mx_subst.results_substitutions.register_with_arg('libv', _lib_versioned)
-
-
-def set_sulong_test_config_root(root):
-    mx_sulong_gate.set_sulong_test_config_root(root)
-
-
-def get_test_distribution_path_properties(suite):
-    return mx_sulong_gate.get_test_distribution_path_properties(suite)
 
 
 def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True, test=None, unittestArgs=None):
@@ -213,22 +206,31 @@ def llvm_extra_tool(args=None, out=None, **kwargs):
 
 def getClasspathOptions(extra_dists=None):
     """gets the classpath of the Sulong distributions"""
-    return mx.get_runtime_jvm_args(['SULONG_CORE', 'SULONG_NATIVE', 'SULONG_LAUNCHER', 'TRUFFLE_NFI'] + (extra_dists or []))
+    args = mx.get_runtime_jvm_args(['SULONG_CORE', 'SULONG_NATIVE', 'SULONG_LAUNCHER', 'TRUFFLE_NFI'] + (extra_dists or []))
+    args += ["--add-modules", "org.graalvm.llvm.launcher"]
+    return args
 
 
-def _get_sulong_home():
-    return mx_subst.path_substitutions.substitute('<path:SULONG_HOME>')
+_the_sulong_home_dist = "SULONG_HOME_NATIVEMODE"
 
-_the_get_sulong_home = _get_sulong_home
-
-def get_sulong_home():
-    return _the_get_sulong_home()
+def mx_register_dynamic_suite_constituents(register_project, register_distribution):
+    sulongHome = mx.LayoutTARDistribution(_suite,
+                                          name="SULONG_HOME",
+                                          deps=[],
+                                          layout={
+                                                "./": f"extracted-dependency:{_the_sulong_home_dist}",
+                                              },
+                                          path=None,
+                                          excludedLibs=[],
+                                          platformDependent=True,
+                                          theLicense="BSD-new",
+                                          relpath=True,
+                                          distDependencies=[_the_sulong_home_dist])
+    register_distribution(sulongHome)
 
 def update_sulong_home(new_home):
-    global _the_get_sulong_home
-    _the_get_sulong_home = new_home
-
-mx_subst.path_substitutions.register_no_arg('sulong_home', get_sulong_home)
+    global _the_sulong_home_dist
+    _the_sulong_home_dist = new_home
 
 
 @mx.command(_suite.name, "lli-legacy")
@@ -249,14 +251,41 @@ def runLLVMMul(args=None, out=None, err=None, timeout=None, nonZeroIsFatal=True,
         dists.append('CHROMEINSPECTOR')
     return mx.run_java(getCommonOptions(False) + vmArgs + get_classpath_options(dists) + ["com.oracle.truffle.llvm.launcher.LLVMMultiContextLauncher"] + sulongArgs, timeout=timeout, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
 
+
+mx.add_argument('--use-llvm-standalone', action='store', metavar='<mode>', choices=['jvm', 'native'],
+                help='Use the LLVM standalone instead of the full GraalVM for `mx lli` or `mx unittest`.')
+
+def get_lli_path(fatalIfMissing=True):
+    standaloneMode = mx.get_opts().use_llvm_standalone
+    if standaloneMode is None:
+        # on Windows <GRAALVM_HOME>/bin/lli is always a .cmd file because it is a "fake symlink"
+        path = mx_sdk_vm_impl.graalvm_home(fatalIfMissing=fatalIfMissing)
+        if path is None:
+            return None
+        else:
+            return os.path.join(path, 'bin', mx_subst.path_substitutions.substitute('<cmd:lli>'))
+    else:
+        useJvm = None
+        if standaloneMode == "jvm":
+            useJvm = True
+        elif standaloneMode == "native":
+            useJvm = False
+        else:
+            mx.abort(f"Unknown standalone type {standaloneMode}.")
+        path = mx_sdk_vm_impl.standalone_home("llvm", useJvm)
+        return os.path.join(path, 'bin', mx_subst.path_substitutions.substitute('<exe:lli>'))
+
+
+mx_subst.path_substitutions.register_no_arg('lli_path', get_lli_path)
+mx_subst.path_substitutions.register_no_arg('llvm_standalone_mode', lambda: mx.get_opts().use_llvm_standalone or "none")
+
 @mx.command(_suite.name, "lli")
 def lli(args=None, out=None, err=None, timeout=None, nonZeroIsFatal=True):
     """run lli via the current GraalVM"""
     debug_args = mx.java_debug_args()
     if debug_args and not mx.is_debug_disabled():
         args = ['--vm.' + arg.lstrip('-') for arg in debug_args] + args
-    # on Windows <GRAALVM_HOME>/bin/lli is always a .cmd file because it is a "fake symlink"
-    mx.run([os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', mx_subst.path_substitutions.substitute('<cmd:lli>'))] + args, timeout=timeout, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
+    mx.run([get_lli_path()] + args, timeout=timeout, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
 
 
 @mx.command(_suite.name, "extract-bitcode")
@@ -381,7 +410,7 @@ class ToolchainConfig(object):
         "BINUTIL": ["graalvm-{name}-binutil"] + _llvm_tool_map + ["llvm-" + i for i in _llvm_tool_map]
     }
 
-    def __init__(self, name, dist, bootstrap_dist, tools, suite):
+    def __init__(self, name, dist, bootstrap_dist, tools, suite, select_flags=None):
         self.name = name
         self.dist = dist if isinstance(dist, list) else [dist]
         self.bootstrap_provider = create_toolchain_root_provider(name, bootstrap_dist)
@@ -389,6 +418,7 @@ class ToolchainConfig(object):
         self.tools = tools
         self.llvm_binutil_tools = [tool.upper() for tool in ToolchainConfig._llvm_tool_map]
         self.suite = suite
+        self.select_flags = select_flags or []
         self.mx_command = self.name + '-toolchain'
         self.tool_map = {tool: [_exe_sub(alias.format(name=name)) for alias in aliases] for tool, aliases in ToolchainConfig._tool_map.items()}
         self.path_map = {_exe_sub(path): tool for tool, aliases in self.tool_map.items() for path in aliases}
@@ -437,7 +467,19 @@ class ToolchainConfig(object):
         if tool not in self._supported_tools():
             mx.abort("The {} toolchain (defined by {}) does not support tool '{}'".format(self.name, self.dist[0], tool))
 
-    def get_toolchain_tool(self, tool):
+    def get_toolchain_tool(self, tool, allow_bootstrap=False):
+        standaloneMode = mx.get_opts().use_llvm_standalone
+        if standaloneMode is not None:
+            lli_path = get_lli_path(fatalIfMissing=False)
+            if lli_path and os.path.exists(lli_path):
+                toolPathCapture = mx.OutputCapture()
+                mx.run([lli_path] + self.select_flags + ["--print-toolchain-api-tool", tool], out=toolPathCapture)
+                return toolPathCapture.data.strip()
+
+            if not allow_bootstrap:
+                mx.abort(f"Could not query toolchain tool {tool} from the standalone. Maybe the standalone isn't built yet?")
+
+        # fall back to picking up the tool from the bootstrap toolchain
         if tool in self._supported_tools():
             ret = os.path.join(self.bootstrap_provider(), 'bin', self._tool_to_bin(tool))
             if mx.is_windows() and ret.endswith('.exe') and not os.path.exists(ret):
@@ -460,9 +502,10 @@ class ToolchainConfig(object):
                 main_class=self._tool_to_main(tool),
                 build_args=[
                     '--initialize-at-build-time=com.oracle.truffle.llvm.toolchain.launchers',
-                    '-H:-ParseRuntimeOptions',  # we do not want `-D` options parsed by SVM
                     '--gc=epsilon',
-                ],
+                ] + mx_sdk_vm_impl.svm_experimental_options([
+                    '-H:-ParseRuntimeOptions',  # we do not want `-D` options parsed by SVM
+                ]),
                 is_main_launcher=False,
                 default_symlinks=False,
                 links=[os.path.join(self.name, 'bin', e) for e in self._tool_to_aliases(tool)[1:]],
@@ -489,23 +532,43 @@ _suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'sulo
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
-    name='LLVM Runtime Core',
-    short_name='llrc',
+    name='LLVM Runtime License Files',
+    short_name='llrlf',
     dir_name='llvm',
-    license_files=['sulong:SULONG_GRAALVM_LICENSES/LICENSE_SULONG.txt'],
-    third_party_license_files=['sulong:SULONG_GRAALVM_LICENSES/THIRD_PARTY_LICENSE_SULONG.txt'],
-    dependencies=['ANTLR4', 'Truffle', 'Truffle NFI'],
-    truffle_jars=['sulong:SULONG_CORE', 'sulong:SULONG_API', 'sulong:SULONG_NFI'],
+    license_files=['LICENSE_SULONG.txt'],
+    third_party_license_files=['THIRD_PARTY_LICENSE_SULONG.txt'],
+    dependencies=[],
+    truffle_jars=[],
     support_distributions=[
-        'sulong:SULONG_CORE_HOME',
-        'sulong:SULONG_GRAALVM_DOCS',
         'sulong:SULONG_GRAALVM_LICENSES',
     ],
     installable=True,
     standalone=False,
+    has_relative_home=False,
     stability='experimental' if mx.get_os() == 'windows' else 'supported',
-    priority=0,  # this is the main component of the llvm installable
+    priority=1,  # this component is part of the llvm installable but it's not the main one
 ))
+
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=_suite,
+    name='LLVM Runtime Core',
+    short_name='llrc',
+    dir_name='llvm',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['ANTLR4', 'Truffle', 'Truffle NFI', 'llrlf'],  # `llrlf`: short name so that the dependency can be overridden
+    truffle_jars=['sulong:SULONG_CORE', 'sulong:SULONG_API', 'sulong:SULONG_NFI'],
+    support_distributions=[
+        'sulong:SULONG_CORE_HOME',
+        'sulong:SULONG_GRAALVM_DOCS',
+    ],
+    installable=True,
+    standalone=False,
+    stability='experimental' if mx.get_os() == 'windows' else 'supported',
+    priority=1,  # this component is part of the llvm installable but it's not the main one
+))
+
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
@@ -526,14 +589,36 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     priority=1,  # this component is part of the llvm installable but it's not the main one
 ))
 
+
+standalone_dependencies_common = {
+    'LLVM Runtime Core': ('lib/sulong', []),
+    'LLVM Runtime Native': ('lib/sulong', []),
+    'LLVM.org toolchain': ('lib/llvm-toolchain', []),
+}
+
+
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name='LLVM Runtime Launcher',
     short_name='llrl',
     dir_name='llvm',
+    standalone_dir_name='llvm-community-<version>-<graalvm_os>-<arch>',
+    standalone_dir_name_enterprise='llvm-<version>-<graalvm_os>-<arch>',
     license_files=[],
     third_party_license_files=[],
-    dependencies=[],
+    dependencies=['ANTLR4', 'Truffle', 'Truffle NFI', 'Truffle NFI LIBFFI', 'LLVM Runtime Core'],
+    standalone_dependencies={**standalone_dependencies_common, **{
+        'LLVM Runtime License Files': ('', []),
+    }},
+    standalone_dependencies_enterprise={**standalone_dependencies_common, **{
+        'LLVM Runtime Enterprise': ('lib/sulong', []),
+        'LLVM Runtime Native Enterprise': ('lib/sulong', []),
+        **({} if mx.is_windows() else {
+            'LLVM Runtime Managed': ('lib/sulong', []),
+        }),
+        'LLVM Runtime License Files EE': ('', []),
+        'GraalVM enterprise license files': ('', ['LICENSE.txt', 'GRAALVM-README.md']),
+    }},
     truffle_jars=[],
     support_distributions=[],
     library_configs=[
@@ -547,9 +632,13 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
                 '-H:ReservedAuxiliaryImageBytes=2145482548',
             ] if not mx.is_windows() else [],
             language='llvm',
-        ),
+            # When building a GraalVM, we do not need to set a default relative home path.
+            # When building a Standalone, it would be wrong to set it since the default
+            # value (`..`) is overridden by the standalone dependency (`./sulong`).
+            set_default_relative_home_path=False,
+        )
     ],
     installable=True,
-    standalone=False,
-    priority=1,  # this component is part of the llvm installable but it's not the main one
+    standalone=True,
+    priority=0,  # this is the main component of the llvm installable and standalone
 ))

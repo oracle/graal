@@ -33,24 +33,24 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput
 
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
-import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.nodes.PauseNode;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.SnippetTemplate;
-import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
-import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
-import org.graalvm.compiler.replacements.Snippets;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.nodes.PauseNode;
+import jdk.graal.compiler.nodes.extended.ForeignCallNode;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.SnippetTemplate;
+import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
+import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
+import jdk.graal.compiler.replacements.Snippets;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -73,6 +73,7 @@ import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateDiagnostics;
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
@@ -89,6 +90,7 @@ import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -205,7 +207,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static int createIsolate(CEntryPointCreateIsolateParameters parameters, int vmThreadSize) {
+    private static int createIsolate(CEntryPointCreateIsolateParameters providedParameters, int vmThreadSize) {
         CPUFeatureAccess cpuFeatureAccess = ImageSingletons.lookup(CPUFeatureAccess.class);
         if (cpuFeatureAccess.verifyHostSupportsArchitectureEarly() != 0) {
             return CEntryPointErrors.CPU_FEATURE_CHECK_FAILED;
@@ -219,15 +221,25 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             return CEntryPointErrors.PAGE_SIZE_CHECK_FAILED;
         }
         CLongPointer parsedArgs = StackValue.get(IsolateArgumentParser.getStructSize());
+        CEntryPointCreateIsolateParameters parameters = providedParameters;
+        if (parameters.isNull() || parameters.version() < 1) {
+            parameters = StackValue.get(CEntryPointCreateIsolateParameters.class);
+            parameters.setReservedSpaceSize(WordFactory.zero());
+            parameters.setVersion(1);
+        }
         IsolateArgumentParser.parse(parameters, parsedArgs);
+        if (parameters.reservedSpaceSize().equal(0)) {
+            parameters.setReservedSpaceSize(WordFactory.unsigned(parsedArgs.read(IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.ReservedAddressSpaceSize))));
+        }
 
-        WordPointer isolate = StackValue.get(WordPointer.class);
-        int error = Isolates.create(isolate, parameters);
+        WordPointer isolatePtr = StackValue.get(WordPointer.class);
+        int error = Isolates.create(isolatePtr, parameters);
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
+        Isolate isolate = isolatePtr.read();
         if (SpawnIsolates.getValue()) {
-            setHeapBase(Isolates.getHeapBase(isolate.read()));
+            setHeapBase(Isolates.getHeapBase(isolate));
         }
 
         return createIsolate0(parsedArgs, isolate, vmThreadSize);
@@ -235,9 +247,10 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Uninterruptible(reason = "Thread state not yet set up.")
     @NeverInline(value = "Ensure this code cannot rise above where heap base is set.")
-    private static int createIsolate0(CLongPointer parsedArgs, WordPointer isolate, int vmThreadSize) {
+    private static int createIsolate0(CLongPointer parsedArgs, Isolate isolate, int vmThreadSize) {
+
         IsolateArgumentParser.singleton().persistOptions(parsedArgs);
-        IsolateListenerSupport.singleton().afterCreateIsolate(isolate.read());
+        IsolateListenerSupport.singleton().afterCreateIsolate(isolate);
 
         CodeInfoTable.prepareImageCodeInfo();
         if (MultiThreaded.getValue()) {
@@ -245,7 +258,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 return CEntryPointErrors.THREADING_INITIALIZATION_FAILED;
             }
         }
-        int error = attachThread(isolate.read(), false, false, vmThreadSize, true);
+        int error = attachThread(isolate, false, false, vmThreadSize, true);
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
@@ -294,6 +307,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             }
         }
         Isolates.setCurrentIsFirstIsolate(firstIsolate);
+        Isolates.setCurrentStartTime();
 
         /*
          * The VM operation thread must be started early as no VM operations can be scheduled before
@@ -356,6 +370,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
         /* Adjust stack overflow boundary of main thread. */
         StackOverflowCheck.singleton().updateStackOverflowBoundary();
+
+        /* Initialize the physical memory size. */
+        PhysicalMemory.size();
 
         assert !isolateInitialized;
         isolateInitialized = true;
@@ -431,7 +448,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 }
             }
         } else {
-            StackOverflowCheck.singleton().initialize(WordFactory.nullPointer());
+            StackOverflowCheck.singleton().initialize();
         }
         CEntryPointListenerSupport.singleton().afterThreadAttach();
         return CEntryPointErrors.NO_ERROR;
@@ -441,10 +458,12 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     private static int attachUnattachedThread(Isolate isolate, boolean startedByIsolate, boolean inCrashHandler, int vmThreadSize) {
         IsolateThread thread = VMThreads.singleton().allocateIsolateThread(vmThreadSize);
         if (thread.isNull()) {
-            return CEntryPointErrors.THREADING_INITIALIZATION_FAILED;
+            return CEntryPointErrors.ALLOCATION_FAILED;
         }
-        StackOverflowCheck.singleton().initialize(thread);
         writeCurrentVMThread(thread);
+        if (!StackOverflowCheck.singleton().initialize()) {
+            return CEntryPointErrors.UNKNOWN_STACK_BOUNDARIES;
+        }
 
         if (inCrashHandler) {
             // If we are in the crash handler then we only want to make sure that this thread can
@@ -654,7 +673,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
     private static void logException(Throwable exception) {
         try {
-            Log.log().exception(exception);
+            Log.log().exception(exception).newline();
         } catch (Throwable ex) {
             /* Logging failed, so there is nothing we can do anymore to log. */
         }

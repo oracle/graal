@@ -35,9 +35,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.graalvm.polyglot.io.MessageEndpoint;
 
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONException;
-import com.oracle.truffle.tools.utils.json.JSONObject;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -58,6 +55,9 @@ import com.oracle.truffle.tools.chromeinspector.events.EventHandler;
 import com.oracle.truffle.tools.chromeinspector.types.CallArgument;
 import com.oracle.truffle.tools.chromeinspector.types.Location;
 import com.oracle.truffle.tools.utils.java_websocket.exceptions.WebsocketNotConnectedException;
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONException;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 public final class InspectServerSession implements MessageEndpoint {
 

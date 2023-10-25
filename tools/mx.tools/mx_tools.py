@@ -1,8 +1,6 @@
 #
 # mx_tools.py - the GraalVM specific commands
 #
-# ----------------------------------------------------------------------------------------------------
-#
 # Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
@@ -26,7 +24,6 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
-# ----------------------------------------------------------------------------------------------------
 
 import os
 from os.path import exists, join
@@ -212,6 +209,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     dir_name='lsp',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['Truffle JSON Library'],
     truffle_jars=['tools:LSP_API', 'tools:LSP'],
     support_distributions=['tools:LSP_GRAALVM_SUPPORT'],
     include_by_default=True,
@@ -224,7 +222,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     dir_name='dap',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle'],
+    dependencies=['Truffle JSON Library'],
     truffle_jars=['tools:DAP'],
     support_distributions=['tools:DAP_GRAALVM_SUPPORT'],
     include_by_default=True,
@@ -237,7 +235,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     dir_name='chromeinspector',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle'],
+    dependencies=['Truffle JSON Library'],
     truffle_jars=['tools:CHROMEINSPECTOR'],
     support_distributions=['tools:CHROMEINSPECTOR_GRAALVM_SUPPORT'],
     include_by_default=True,
@@ -278,7 +276,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     dir_name='profiler',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle'],
+    dependencies=['Truffle JSON Library'],
     truffle_jars=['tools:TRUFFLE_PROFILER'],
     support_distributions=['tools:TRUFFLE_PROFILER_GRAALVM_SUPPORT'],
     include_by_default=True,
@@ -291,7 +289,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     dir_name='coverage',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle'],
+    dependencies=['Truffle JSON Library'],
     truffle_jars=['tools:TRUFFLE_COVERAGE'],
     support_distributions=['tools:TRUFFLE_COVERAGE_GRAALVM_SUPPORT'],
     include_by_default=True,

@@ -24,16 +24,15 @@
  */
 package com.oracle.svm.core.thread;
 
-import org.graalvm.compiler.api.directives.GraalDirectives;
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.replacements.ReplacementsUtil;
-import org.graalvm.compiler.replacements.nodes.AssertionNode;
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.replacements.ReplacementsUtil;
+import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.ComparableWord;
@@ -127,8 +126,13 @@ public abstract class VMThreads {
      */
     protected static final VMCondition THREAD_LIST_CONDITION = new VMCondition(THREAD_MUTEX);
 
-    /** The first element in the linked list of {@link IsolateThread}s. */
+    /**
+     * The first element in the linked list of {@link IsolateThread}s. Protected by
+     * {@link #THREAD_MUTEX}.
+     */
     private static IsolateThread head;
+    /** The number of attached threads. Protected by {@link #THREAD_MUTEX}. */
+    private static int numAttachedThreads = 0;
     /**
      * This field is used to guarantee that all isolate threads that were started by SVM have exited
      * on the operating system level before tearing down an isolate. This is necessary to prevent
@@ -321,6 +325,9 @@ public abstract class VMThreads {
         try {
             nextTL.set(thread, head);
             head = thread;
+            numAttachedThreads++;
+            assert numAttachedThreads > 0;
+
             Heap.getHeap().attachThread(CurrentIsolate.getCurrentThread());
             /* On the initial transition to java code this thread should be synchronized. */
             ActionOnTransitionToJavaSupport.setSynchronizeCode(thread);
@@ -460,6 +467,8 @@ public abstract class VMThreads {
                 }
                 // Set to the sentinel value denoting the thread is detached
                 nextTL.set(thread, thread);
+                numAttachedThreads--;
+                assert numAttachedThreads >= 0;
                 break;
             } else {
                 previous = current;
@@ -623,21 +632,26 @@ public abstract class VMThreads {
     }
 
     public static boolean printLocationInfo(Log log, UnsignedWord value, boolean allowUnsafeOperations) {
+        if (!allowUnsafeOperations && !VMOperation.isInProgressAtSafepoint()) {
+            /*
+             * Iterating the threads or accessing thread locals of other threads is unsafe if we are
+             * outside a VM operation because the IsolateThread data structure could be freed at any
+             * time (we can't use any locking to prevent races).
+             */
+            return false;
+        }
+
         for (IsolateThread thread = firstThreadUnsafe(); thread.isNonNull(); thread = nextThread(thread)) {
             if (thread.equal(value)) {
                 log.string("is a thread");
                 return true;
             }
 
-            if (allowUnsafeOperations || VMOperation.isInProgressAtSafepoint()) {
-                // If we are not at a safepoint, then it is unsafe to access thread locals of
-                // another thread as the IsolateThread could be freed at any time.
-                UnsignedWord stackBase = StackBase.get(thread);
-                UnsignedWord stackEnd = StackEnd.get(thread);
-                if (value.belowThan(stackBase) && value.aboveOrEqual(stackEnd)) {
-                    log.string("points into the stack for thread ").zhex(thread);
-                    return true;
-                }
+            UnsignedWord stackBase = StackBase.get(thread);
+            UnsignedWord stackEnd = StackEnd.get(thread);
+            if (value.belowThan(stackBase) && value.aboveOrEqual(stackEnd)) {
+                log.string("points into the stack for thread ").zhex(thread);
+                return true;
             }
 
             if (SubstrateOptions.MultiThreaded.getValue()) {
@@ -908,7 +922,7 @@ public abstract class VMThreads {
          */
         @Uninterruptible(reason = "May only be called from uninterruptible code to prevent races with the safepoint handling.", callerMustBe = true)
         public static void preventSafepoints() {
-            // It would be nice if we could retire the TLAB here but that wouldn't work reliably.
+            // It would be nice if we could retire the TLAB but that wouldn't work reliably.
             safepointBehaviorTL.setVolatile(PREVENT_VM_FROM_REACHING_SAFEPOINT);
         }
 
@@ -988,65 +1002,6 @@ public abstract class VMThreads {
                 }
                 setSynchronizeCode(vmThread);
             }
-        }
-    }
-
-    /**
-     * This follows {@link ActionOnTransitionToJavaSupport}, but only for exiting safepoint.
-     */
-    public static class ActionOnExitSafepointSupport {
-
-        private static final FastThreadLocalInt actionTL = FastThreadLocalFactory.createInt("ActionOnExitSafepointSupport.actionTL");
-        private static final int NO_ACTION = 0;
-        /**
-         * The thread needs to start execution from a different stack, used for preempting a
-         * continuation.
-         */
-        private static final int SWITCH_STACK = NO_ACTION + 1;
-
-        /** Target of stack switching. */
-        private static final FastThreadLocalWord<Pointer> returnSP = FastThreadLocalFactory.createWord("ActionOnExitSafepointSupport.returnSP");
-        private static final FastThreadLocalWord<CodePointer> returnIP = FastThreadLocalFactory.createWord("ActionOnExitSafepointSupport.returnIP");
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static boolean isActionPending() {
-            return actionTL.getVolatile() != NO_ACTION;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static boolean isSwitchStackPending() {
-            return actionTL.getVolatile() == SWITCH_STACK;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static void setSwitchStack(IsolateThread vmThread) {
-            assert VMOperation.isInProgressAtSafepoint() : "Invariant to avoid races between setting and clearing.";
-            actionTL.setVolatile(vmThread, SWITCH_STACK);
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static void setSwitchStackTarget(IsolateThread vmThread, Pointer sp, CodePointer ip) {
-            returnSP.setVolatile(vmThread, sp);
-            returnIP.setVolatile(vmThread, ip);
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected static Pointer getSwitchStackSP() {
-            Pointer sp = returnSP.getVolatile();
-            assert sp.isNonNull();
-            return sp;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected static CodePointer getSwitchStackIP() {
-            CodePointer ip = returnIP.getVolatile();
-            assert ip.isNonNull();
-            return ip;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static void clearActions() {
-            actionTL.setVolatile(NO_ACTION);
         }
     }
 

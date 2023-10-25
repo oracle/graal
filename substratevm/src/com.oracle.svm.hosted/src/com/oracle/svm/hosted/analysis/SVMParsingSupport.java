@@ -26,9 +26,9 @@ package com.oracle.svm.hosted.analysis;
 
 import java.util.function.Function;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -55,6 +55,8 @@ public interface SVMParsingSupport {
     boolean validateGraph(PointsToAnalysis bb, StructuredGraph graph);
 
     boolean allowAssumptions(AnalysisMethod method);
+
+    boolean recordInlinedMethods(AnalysisMethod method);
 
     HostedProviders getHostedProviders(MultiMethod.MultiMethodKey key);
 

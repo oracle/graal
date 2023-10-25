@@ -40,21 +40,6 @@
 # SOFTWARE.
 #
 
-function printUsage() {
-    echo "Usage:"
-    echo "$0 <GraalVM launcher> <launcher args>"
-    echo "Example:"
-    echo "$0 js example.js"
-    exit 0
-}
-
-[ -z "$1" ] || [ "$1" == "--help" ] || [ "$1" == "-help" ] && printUsage
-
-LAUNCHER=$1
-shift
-
-"$JAVA_HOME/bin/$LAUNCHER" \
-    --jvm \
-    --vm.Dtruffle.class.path.append=target/simpletool.jar \
-    --simple-code-coverage \
-    "$@"
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+    
+"$JAVA_HOME/bin/java" -p "${DIR}/target/modules:${DIR}/target/classes" -m org.graalvm.js.launcher/com.oracle.truffle.js.shell.JSLauncher --simple-code-coverage "$@"

@@ -30,9 +30,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.word.WordTypes;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.HostVM;
@@ -46,14 +46,13 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 
 public class StandalonePointsToAnalysis extends PointsToAnalysis {
-    private Set<AnalysisMethod> addedClinits = ConcurrentHashMap.newKeySet();
+    private final Set<AnalysisMethod> addedClinits = ConcurrentHashMap.newKeySet();
 
     public StandalonePointsToAnalysis(OptionValues options, AnalysisUniverse universe, HostVM hostVM,
                     AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
                     ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes,
-                    ForkJoinPool executorService, Runnable heartbeatCallback,
-                    TimerCollection timerCollection) {
-        super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, executorService, heartbeatCallback, new UnsupportedFeatures(), timerCollection,
+                    ForkJoinPool executorService, TimerCollection timerCollection) {
+        super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, executorService, new UnsupportedFeatures(), timerCollection,
                         true);
     }
 
@@ -78,7 +77,7 @@ public class StandalonePointsToAnalysis extends PointsToAnalysis {
     public void onTypeReachable(AnalysisType type) {
         AnalysisMethod clinitMethod = type.getClassInitializer();
         if (clinitMethod != null && !addedClinits.contains(clinitMethod)) {
-            addRootMethod(clinitMethod, true);
+            addRootMethod(clinitMethod, true, "Class initializer added onTypeReachable, in " + StandalonePointsToAnalysis.class);
             addedClinits.add(clinitMethod);
         }
     }

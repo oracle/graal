@@ -42,7 +42,7 @@
           for f in _fields
         ],
         mxgate_name:: outer.task_name,
-        name: std.join("-", [outer.target, suite_short, self.mxgate_name] + config + ["jdk" + outer.jdk_version] + target_arch_suffix + [outer.os, outer.arch]) + batch_suffix,
+        name: std.join("-", [outer.target, suite_short, self.mxgate_name] + config + [outer.jdk_name] + target_arch_suffix + [outer.os, outer.arch]) + batch_suffix,
         run+: [["mx", "--kill-with-sigquit", "--strict-compliance"] + dynamic_imports + ["gate", "--strict-mode", "--tags", std.join(",", outer.mxgate_tags)] + outer.mxgate_extra_args],
       }
     })),
@@ -79,9 +79,14 @@
       mxgate_extra_args+: ["--extra-image-builder-arguments=-Ob"],
   }),
 
+  add_o3:: task_spec({
+      mxgate_config+::["O3"],
+      mxgate_extra_args+: ["--extra-image-builder-arguments=-O3"],
+  }),
+
   use_llvm:: task_spec({
       mxgate_config+::["llvm"],
-      mxgate_extra_args+: ["--extra-image-builder-arguments=-H:CompilerBackend=llvm"],
+      mxgate_extra_args+: ["--extra-image-builder-arguments=-H:+UnlockExperimentalVMOptions -H:CompilerBackend=llvm -H:-UnlockExperimentalVMOptions"],
   }),
 
   use_ecj:: task_spec({
@@ -111,7 +116,7 @@
     downloads+: {
       QEMU_HOME          : {name : "qemu-riscv64", version : "1.0"},
       C_LIBRARY_PATH     : {name : "riscv-static-libraries", version : "1.0"},
-      JAVA_HOME_RISCV    : {name : "labsjdk", version : "ce-20+24-jvmci-23.0-b02-linux-riscv64" }
+      JAVA_HOME_RISCV    : {name : "labsjdk", version : common.labsjdk21.downloads.JAVA_HOME.version + "-linux-riscv64" }
     },
   }),
 }

@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.truffle.api;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
+import jdk.graal.compiler.truffle.KnownTruffleTypes;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;

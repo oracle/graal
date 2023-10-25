@@ -36,8 +36,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -57,7 +57,6 @@ import jdk.jfr.internal.Logger;
 import jdk.jfr.internal.OldObjectSample;
 import jdk.jfr.internal.PrivateAccess;
 import jdk.jfr.internal.SecuritySupport;
-import jdk.jfr.internal.Utils;
 import jdk.jfr.internal.jfc.JFC;
 
 /**
@@ -86,8 +85,8 @@ public class JfrManager {
     public RuntimeSupport.Hook startupHook() {
         return isFirstIsolate -> {
             parseFlightRecorderLogging(SubstrateOptions.FlightRecorderLogging.getValue());
+            periodicEventSetup();
             if (isJFREnabled()) {
-                periodicEventSetup();
                 initRecording();
             }
         };
@@ -240,7 +239,7 @@ public class JfrManager {
                 recording.scheduleStart(dDelay);
 
                 msg.append("Recording " + recording.getId() + " scheduled to start in ");
-                msg.append(Utils.formatTimespan(dDelay, " "));
+                msg.append(JfrJdkCompatibility.formatTimespan(dDelay, " "));
                 msg.append(".");
             } else {
                 recording.start();
@@ -276,7 +275,7 @@ public class JfrManager {
     }
 
     private static SecuritySupport.SafePath makeGenerated(Recording recording, Path directory) {
-        return new SecuritySupport.SafePath(directory.toAbsolutePath().resolve(Utils.makeFilename(recording)).normalize());
+        return new SecuritySupport.SafePath(directory.toAbsolutePath().resolve(JfrJdkCompatibility.makeFilename(recording)).normalize());
     }
 
     private static String getPath(SecuritySupport.SafePath path) {

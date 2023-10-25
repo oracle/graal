@@ -27,6 +27,7 @@ package com.oracle.svm.hosted;
 
 import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATOR;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -47,16 +48,16 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.regex.Pattern;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.phases.util.Providers;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
@@ -64,6 +65,7 @@ import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.ClassLoaderSupport.ResourceCollector;
+import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.configure.ConfigurationFile;
@@ -156,7 +158,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
-            Resources.registerResource(module, resourcePath, resourceContent);
+            Resources.singleton().registerResource(module, resourcePath, resourceContent);
         }
 
         @Override
@@ -229,18 +231,16 @@ public final class ResourcesFeature implements InternalFeature {
         private static final int WATCHDOG_RESET_AFTER_EVERY_N_RESOURCES = 1000;
         private static final int WATCHDOG_INITIAL_WARNING_AFTER_N_SECONDS = 60;
         private static final int WATCHDOG_WARNING_AFTER_EVERY_N_SECONDS = 20;
-        private final Runnable heartbeatCallback;
         private final LongAdder reachedResourceEntries;
         private boolean initialReport;
         private volatile String currentlyProcessedEntry;
         ScheduledExecutorService scheduledExecutor;
 
-        private ResourceCollectorImpl(DebugContext debugContext, ResourcePattern[] includePatterns, ResourcePattern[] excludePatterns, Runnable heartbeatCallback) {
+        private ResourceCollectorImpl(DebugContext debugContext, ResourcePattern[] includePatterns, ResourcePattern[] excludePatterns) {
             this.debugContext = debugContext;
             this.includePatterns = includePatterns;
             this.excludePatterns = excludePatterns;
 
-            this.heartbeatCallback = heartbeatCallback;
             this.reachedResourceEntries = new LongAdder();
             this.initialReport = true;
             this.currentlyProcessedEntry = null;
@@ -272,7 +272,7 @@ public final class ResourcesFeature implements InternalFeature {
 
             this.reachedResourceEntries.increment();
             if (this.reachedResourceEntries.longValue() % WATCHDOG_RESET_AFTER_EVERY_N_RESOURCES == 0) {
-                this.heartbeatCallback.run();
+                DeadlockWatchdog.singleton().recordActivity();
             }
 
             String relativePathWithTrailingSlash = resourceName + RESOURCES_INTERNAL_PATH_SEPARATOR;
@@ -308,6 +308,16 @@ public final class ResourcesFeature implements InternalFeature {
         public void addDirectoryResource(Module module, String dir, String content, boolean fromJar) {
             registerDirectoryResource(debugContext, module, dir, content, fromJar);
         }
+
+        @Override
+        public void registerIOException(Module module, String resourceName, IOException e, boolean linkAtBuildTime) {
+            Resources.singleton().registerIOException(module, resourceName, e, linkAtBuildTime);
+        }
+
+        @Override
+        public void registerNegativeQuery(Module module, String resourceName) {
+            Resources.singleton().registerNegativeQuery(module, resourceName);
+        }
     }
 
     @Override
@@ -321,9 +331,14 @@ public final class ResourcesFeature implements InternalFeature {
 
         DuringAnalysisAccessImpl duringAnalysisAccess = ((DuringAnalysisAccessImpl) access);
         ResourcePattern[] includePatterns = compilePatterns(resourcePatternWorkSet);
+        if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
+            for (ResourcePattern resourcePattern : includePatterns) {
+                Resources.singleton().registerIncludePattern(resourcePattern.moduleName, resourcePattern.pattern.pattern());
+            }
+        }
         ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
         DebugContext debugContext = duringAnalysisAccess.getDebugContext();
-        ResourceCollectorImpl collector = new ResourceCollectorImpl(debugContext, includePatterns, excludePatterns, duringAnalysisAccess.bb.getHeartbeatCallback());
+        ResourceCollectorImpl collector = new ResourceCollectorImpl(debugContext, includePatterns, excludePatterns);
         try {
             collector.prepareProgressReporter();
             ImageSingletons.lookup(ClassLoaderSupport.class).collectResources(collector);
@@ -347,12 +362,7 @@ public final class ResourcesFeature implements InternalFeature {
             return new ResourcePattern(null, Pattern.compile(moduleNameWithPattern[0]));
         } else {
             String moduleName = moduleNameWithPattern[0];
-            boolean acceptModuleName = MODULE_NAME_ALL_UNNAMED.equals(moduleName) ? true : imageClassLoader.findModule(moduleName).isPresent();
-            if (acceptModuleName) {
-                return new ResourcePattern(moduleName, Pattern.compile(moduleNameWithPattern[1]));
-            } else {
-                throw UserError.abort("Resource pattern \"" + rawPattern + "\"s specifies unknown module " + moduleName);
-            }
+            return new ResourcePattern(moduleName, Pattern.compile(moduleNameWithPattern[1]));
         }
     }
 
@@ -399,7 +409,7 @@ public final class ResourcesFeature implements InternalFeature {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
             String moduleNamePrefix = module == null ? "" : module.getName() + ":";
             debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: %s%s", moduleNamePrefix, resourceName);
-            Resources.registerResource(module, resourceName, resourceStream, fromJar);
+            Resources.singleton().registerResource(module, resourceName, resourceStream, fromJar);
         }
     }
 
@@ -408,7 +418,7 @@ public final class ResourcesFeature implements InternalFeature {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
             String moduleNamePrefix = module == null ? "" : module.getName() + ":";
             debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: %s%s", moduleNamePrefix, dir);
-            Resources.registerDirectoryResource(module, dir, content, fromJar);
+            Resources.singleton().registerDirectoryResource(module, dir, content, fromJar);
         }
     }
 

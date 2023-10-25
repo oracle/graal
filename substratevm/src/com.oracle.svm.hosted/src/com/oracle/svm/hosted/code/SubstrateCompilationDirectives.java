@@ -28,9 +28,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.compiler.debug.Assertions;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.ValueNode;
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.ValueNode;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -150,7 +150,8 @@ public class SubstrateCompilationDirectives {
 
     private final Set<AnalysisMethod> forcedCompilations = ConcurrentHashMap.newKeySet();
     private final Set<AnalysisMethod> frameInformationRequired = ConcurrentHashMap.newKeySet();
-    private final Map<AnalysisMethod, Map<Long, DeoptSourceFrameInfo>> deoptEntries = new ConcurrentHashMap<>();
+    private Map<AnalysisMethod, Map<Long, DeoptSourceFrameInfo>> deoptEntries = new ConcurrentHashMap<>();
+    private final Set<AnalysisMethod> deoptForTestingMethods = ConcurrentHashMap.newKeySet();
     private final Set<AnalysisMethod> deoptInliningExcludes = ConcurrentHashMap.newKeySet();
 
     public static SubstrateCompilationDirectives singleton() {
@@ -207,9 +208,27 @@ public class SubstrateCompilationDirectives {
         return newEntry;
     }
 
+    /*
+     * Register a method which can deopt for testing
+     */
+    public void registerForDeoptTesting(ResolvedJavaMethod method) {
+        assert deoptInfoModifiable();
+        deoptForTestingMethods.add((AnalysisMethod) method);
+    }
+
+    public boolean isRegisteredForDeoptTesting(ResolvedJavaMethod method) {
+        assert deoptInfoQueryable();
+        return deoptForTestingMethods.contains(toAnalysisMethod(method));
+    }
+
     public boolean isRegisteredDeoptTarget(ResolvedJavaMethod method) {
         assert deoptInfoQueryable();
         return deoptEntries.containsKey(toAnalysisMethod(method));
+    }
+
+    public void registerDeoptTarget(ResolvedJavaMethod method) {
+        assert deoptInfoModifiable();
+        deoptEntries.computeIfAbsent(toAnalysisMethod(method), m -> new ConcurrentHashMap<>());
     }
 
     public boolean isDeoptEntry(MultiMethod method, int bci, boolean duringCall, boolean rethrowException) {
@@ -281,8 +300,22 @@ public class SubstrateCompilationDirectives {
      */
     public void resetDeoptEntries() {
         assert !deoptInfoSealed;
-        deoptEntries.clear();
+        assert SubstrateOptions.parseOnce();
+        // all methods which are registered for deopt testing cannot be cleared
+        Map<AnalysisMethod, Map<Long, DeoptSourceFrameInfo>> newDeoptEntries = new ConcurrentHashMap<>();
+        for (var deoptForTestingMethod : deoptForTestingMethods) {
+            var key = deoptForTestingMethod.getMultiMethod(MultiMethod.DEOPT_TARGET_METHOD);
+            var value = deoptEntries.get(key);
+            assert key != null && value != null : "Unexpected null value " + key + ", " + value;
+            newDeoptEntries.put(key, value);
+        }
+        deoptEntries = newDeoptEntries;
         // all methods which require frame information must have a deoptimization entry
-        frameInformationRequired.forEach(m -> deoptEntries.computeIfAbsent(m, n -> new ConcurrentHashMap<>()));
+        frameInformationRequired.forEach(m -> {
+            assert m.isOriginalMethod();
+            var deoptMethod = m.getMultiMethod(MultiMethod.DEOPT_TARGET_METHOD);
+            assert deoptMethod != null;
+            deoptEntries.computeIfAbsent(deoptMethod, n -> new ConcurrentHashMap<>());
+        });
     }
 }

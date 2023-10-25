@@ -47,14 +47,13 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.Indent;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.Indent;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
@@ -73,7 +72,6 @@ import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
 import com.oracle.svm.core.graal.llvm.util.LLVMStackMapInfo;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
-import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.hosted.image.NativeImage.NativeTextSectionImpl;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageHeap;
@@ -89,7 +87,6 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private HostedMethod[] methodIndex;
     private final Path basePath;
     private int batchSize;
-    private long codeAreaSize;
     private final LLVMObjectFileReader objectFileReader;
     private final List<ObjectFile.Symbol> globalSymbols = new ArrayList<>();
     private final StackMapDumper stackMapDumper;
@@ -114,12 +111,6 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     }
 
     @Override
-    public int getCodeAreaSize() {
-        assert codeAreaSize > 0 && ((int) codeAreaSize) == codeAreaSize : "not a positive, exact int";
-        return (int) codeAreaSize;
-    }
-
-    @Override
     public int codeSizeFor(HostedMethod method) {
         return compilationResultFor(method).getTargetCodeSize();
     }
@@ -140,7 +131,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
                 compileBitcodeBatches(executor, debug, numBatches);
             }
             try (StopTimer t = TimerCollection.createTimerAndStart("(postlink)")) {
-                linkCompiledBatches(debug, threadPool, executor, numBatches);
+                linkCompiledBatches(debug, executor, numBatches);
             }
         }
     }
@@ -198,7 +189,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         });
     }
 
-    private void linkCompiledBatches(DebugContext debug, ForkJoinPool threadPool, BatchExecutor executor, int numBatches) {
+    private void linkCompiledBatches(DebugContext debug, BatchExecutor executor, int numBatches) {
         List<String> compiledBatches = IntStream.range(0, numBatches).mapToObj(this::getBatchCompiledFilename).collect(Collectors.toList());
         nativeLink(debug, getLinkedFilename(), compiledBatches, basePath, this::getFunctionName);
 
@@ -220,9 +211,9 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         stackMapDumper.close();
 
         llvmCleanupStackMaps(debug, getLinkedFilename(), basePath);
-        codeAreaSize = textSectionInfo.getCodeSize();
-
-        buildRuntimeMetadata(threadPool, new MethodPointer(getFirstCompilation().getLeft()), WordFactory.signed(codeAreaSize));
+        long codeAreaSize = textSectionInfo.getCodeSize();
+        assert codeAreaSize <= Integer.MAX_VALUE;
+        setCodeAreaSize((int) textSectionInfo.getCodeSize());
     }
 
     private Path getBitcodePath(int id) {

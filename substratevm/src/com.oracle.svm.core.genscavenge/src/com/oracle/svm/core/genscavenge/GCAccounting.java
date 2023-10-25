@@ -33,7 +33,10 @@ import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
 
 /**
- * This data is only updated during a GC.
+ * Note that this data may be updated up to 3 times during a single VM operation (incremental GC,
+ * full GC, full GC that treats soft references as weak). Therefore, this class should only be used
+ * by GC internal code that is aware of this (could result in incorrect "before"/"after" values
+ * otherwise). Non-GC code should use the class {@link HeapAccounting} instead.
  *
  * ChunkBytes refer to bytes reserved (but maybe not occupied). ObjectBytes refer to bytes occupied
  * by objects.
@@ -50,10 +53,7 @@ public final class GCAccounting {
     private boolean lastIncrementalCollectionOverflowedSurvivors = false;
 
     /* Before and after measures. */
-    private UnsignedWord edenChunkBytesBefore = WordFactory.zero();
-    private UnsignedWord edenChunkBytesAfter = WordFactory.zero();
     private UnsignedWord youngChunkBytesBefore = WordFactory.zero();
-    private UnsignedWord youngChunkBytesAfter = WordFactory.zero();
     private UnsignedWord oldChunkBytesBefore = WordFactory.zero();
     private UnsignedWord oldChunkBytesAfter = WordFactory.zero();
 
@@ -78,16 +78,17 @@ public final class GCAccounting {
         return incrementalCollectionTotalNanos;
     }
 
-    UnsignedWord getTotalAllocatedChunkBytes() {
-        return totalAllocatedChunkBytes;
-    }
-
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getCompleteCollectionCount() {
         return completeCollectionCount;
     }
 
     public long getCompleteCollectionTotalNanos() {
         return completeCollectionTotalNanos;
+    }
+
+    UnsignedWord getTotalAllocatedChunkBytes() {
+        return totalAllocatedChunkBytes;
     }
 
     UnsignedWord getTotalCollectedChunkBytes() {
@@ -102,24 +103,12 @@ public final class GCAccounting {
         return allocatedObjectBytes;
     }
 
-    public UnsignedWord getOldGenerationAfterChunkBytes() {
+    UnsignedWord getOldGenerationAfterChunkBytes() {
         return oldChunkBytesAfter;
-    }
-
-    UnsignedWord getEdenChunkBytesBefore() {
-        return edenChunkBytesBefore;
-    }
-
-    UnsignedWord getEdenChunkBytesAfter() {
-        return edenChunkBytesAfter;
     }
 
     UnsignedWord getYoungChunkBytesBefore() {
         return youngChunkBytesBefore;
-    }
-
-    UnsignedWord getYoungChunkBytesAfter() {
-        return youngChunkBytesAfter;
     }
 
     UnsignedWord getLastIncrementalCollectionPromotedChunkBytes() {
@@ -136,7 +125,6 @@ public final class GCAccounting {
         YoungGeneration youngGen = heap.getYoungGeneration();
         OldGeneration oldGen = heap.getOldGeneration();
 
-        edenChunkBytesBefore = youngGen.getEden().getChunkBytes();
         youngChunkBytesBefore = youngGen.getChunkBytes();
         oldChunkBytesBefore = oldGen.getChunkBytes();
 
@@ -192,8 +180,7 @@ public final class GCAccounting {
         YoungGeneration youngGen = heap.getYoungGeneration();
         OldGeneration oldGen = heap.getOldGeneration();
 
-        edenChunkBytesAfter = youngGen.getEden().getChunkBytes();
-        youngChunkBytesAfter = youngGen.getChunkBytes();
+        UnsignedWord youngChunkBytesAfter = youngGen.getChunkBytes();
         oldChunkBytesAfter = oldGen.getChunkBytes();
 
         UnsignedWord beforeChunkBytes = youngChunkBytesBefore.add(oldChunkBytesBefore);
@@ -211,9 +198,14 @@ public final class GCAccounting {
         if (SerialGCOptions.PrintGCSummary.getValue()) {
             UnsignedWord afterObjectBytesAfter = youngGen.computeObjectBytes().add(oldGen.computeObjectBytes());
             UnsignedWord beforeObjectBytes = youngObjectBytesBefore.add(oldObjectBytesBefore);
-            assert beforeObjectBytes.aboveOrEqual(afterObjectBytesAfter);
-            UnsignedWord collectedObjectBytes = beforeObjectBytes.subtract(afterObjectBytesAfter);
-            totalCollectedObjectBytes = totalCollectedObjectBytes.add(collectedObjectBytes);
+            /*
+             * Object size may increase (e.g., identity hashcode field may be added to promoted
+             * objects).
+             */
+            if (beforeObjectBytes.aboveOrEqual(afterObjectBytesAfter)) {
+                UnsignedWord collectedObjectBytes = beforeObjectBytes.subtract(afterObjectBytesAfter);
+                totalCollectedObjectBytes = totalCollectedObjectBytes.add(collectedObjectBytes);
+            }
         }
     }
 }

@@ -28,7 +28,7 @@ import java.util.Arrays;
 
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 // Represents ClassInfo instances for classes about to be hotswapped
 public final class HotSwapClassInfo extends ClassInfo {

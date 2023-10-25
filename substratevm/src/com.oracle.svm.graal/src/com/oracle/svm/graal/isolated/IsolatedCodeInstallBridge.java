@@ -24,11 +24,10 @@
  */
 package com.oracle.svm.graal.isolated;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
-import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
-
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
+import com.oracle.truffle.compiler.TruffleCompilable;
 
 import jdk.vm.ci.code.InstalledCode;
 

@@ -30,6 +30,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,10 +47,10 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.core.riscv64.ShadowedRISCV64;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.core.riscv64.ShadowedRISCV64;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
@@ -102,23 +103,23 @@ public class NativeImageGeneratorRunner {
         arguments = extractDriverArguments(arguments);
         final String[] classPath = extractImagePathEntries(arguments, SubstrateOptions.IMAGE_CLASSPATH_PREFIX);
         final String[] modulePath = extractImagePathEntries(arguments, SubstrateOptions.IMAGE_MODULEPATH_PREFIX);
-        int watchPID = extractWatchPID(arguments);
+        String keepAliveFile = extractKeepAliveFile(arguments);
         TimerTask timerTask = null;
-        if (watchPID >= 0) {
-            UserError.guarantee(OS.getCurrent().hasProcFS, "%s <pid> requires system with /proc", SubstrateOptions.WATCHPID_PREFIX);
+        if (keepAliveFile != null) {
             timerTask = new TimerTask() {
-                int cmdlineHashCode = 0;
+                Path file = Paths.get(keepAliveFile);
+                int fileHashCode = 0;
 
                 @Override
                 public void run() {
                     try {
-                        int currentCmdlineHashCode = Arrays.hashCode(Files.readAllBytes(Paths.get("/proc/" + watchPID + "/cmdline")));
-                        if (cmdlineHashCode == 0) {
-                            cmdlineHashCode = currentCmdlineHashCode;
-                        } else if (currentCmdlineHashCode != cmdlineHashCode) {
-                            System.exit(ExitStatus.WATCHDOG_EXIT.getValue());
+                        int currentFileHashCode = Arrays.hashCode(Files.readAllBytes(file));
+                        if (fileHashCode == 0) {
+                            fileHashCode = currentFileHashCode;
+                        } else if (currentFileHashCode != fileHashCode) {
+                            throw new RuntimeException();
                         }
-                    } catch (IOException e) {
+                    } catch (Exception e) {
                         System.exit(ExitStatus.WATCHDOG_EXIT.getValue());
                     }
                 }
@@ -192,16 +193,17 @@ public class NativeImageGeneratorRunner {
         Set<String> expectedBuilderDependencies = Set.of(
                         "java.base",
                         "java.management",
+                        "java.logging",
+                        // workaround for GR-47773 on the module-path which requires java.sql (like
+                        // truffle) or java.xml
+                        "java.sql",
+                        "java.xml",
+                        "java.transaction.xa",
                         "jdk.management",
-                        "jdk.management.agent", // READ-BY org.graalvm.nativeimage.builder
-                        "java.management.rmi", // READ-BY jdk.management.agent
-                        "java.rmi",
-                        "java.logging", // READ-BY java.rmi READ-BY java.management.rmi
-                        "java.naming",
-                        "java.security.sasl", // READ-BY java.naming READ-BY java.management.rmi
                         "java.compiler",
-                        "jdk.management.jfr",
-                        "jdk.jfr");
+                        "jdk.jfr",
+                        "jdk.zipfs",
+                        "jdk.management.jfr");
 
         Set<String> unexpectedBuilderDependencies = modulesBuilderDependsOn.stream().map(Module::getName).collect(Collectors.toSet());
         unexpectedBuilderDependencies.removeAll(expectedBuilderDependencies);
@@ -224,11 +226,14 @@ public class NativeImageGeneratorRunner {
         for (Module potentialNeedModule : potentialNeededModules) {
             if (requiringModule.canRead(potentialNeedModule)) {
                 /* Filter out GraalVM modules */
-                if (potentialNeedModule.getName().startsWith("jdk.internal.vm.c") || /* JVMCI */
+                if (potentialNeedModule.getName().equals("jdk.internal.vm.ci") || /* JVMCI */
                                 /* graal */
                                 potentialNeedModule.getName().startsWith("org.graalvm.") ||
+                                potentialNeedModule.getName().startsWith("jdk.graal.compiler") ||
                                 /* enterprise graal */
                                 potentialNeedModule.getName().startsWith("com.oracle.graal.") ||
+                                /* exclude all truffle modules */
+                                potentialNeedModule.getName().startsWith("com.oracle.truffle.") ||
                                 /* llvm-backend optional dependencies */
                                 potentialNeedModule.getName().startsWith("com.oracle.svm.shadowed.")) {
                     continue;
@@ -325,18 +330,18 @@ public class NativeImageGeneratorRunner {
         }
     }
 
-    public static int extractWatchPID(List<String> arguments) {
-        int cpIndex = arguments.indexOf(SubstrateOptions.WATCHPID_PREFIX);
+    public static String extractKeepAliveFile(List<String> arguments) {
+        int cpIndex = arguments.indexOf(SubstrateOptions.KEEP_ALIVE_PREFIX);
         if (cpIndex >= 0) {
             if (cpIndex + 1 >= arguments.size()) {
-                throw UserError.abort("ProcessID must be provided after the '%s' argument", SubstrateOptions.WATCHPID_PREFIX);
+                throw UserError.abort("Path to keep-alive file must be provided after the '%s' argument", SubstrateOptions.KEEP_ALIVE_PREFIX);
             }
             arguments.remove(cpIndex);
             String pidStr = arguments.get(cpIndex);
             arguments.remove(cpIndex);
-            return Integer.parseInt(pidStr);
+            return pidStr;
         }
-        return -1;
+        return null;
     }
 
     private static void reportToolUserError(String msg) {
@@ -435,14 +440,15 @@ public class NativeImageGeneratorRunner {
                     } catch (ClassNotFoundException ex) {
                         throw UserError.abort(classLoader.getMainClassNotFoundErrorMessage(className));
                     } catch (UnsupportedClassVersionError ex) {
-                        if (ex.getMessage().startsWith("Preview features are not enabled")) {
-                            throw UserError.abort(ex.getMessage());
-                        } else {
+                        if (ex.getMessage().contains("compiled by a more recent version of the Java Runtime")) {
                             throw UserError.abort("Unable to load '%s' due to a Java version mismatch.%n" +
                                             "Please take one of the following actions:%n" +
                                             " 1) Recompile the source files for your application using Java %s, then try running native-image again%n" +
-                                            " 2) Use a version of native-image corresponding to the version of Java with which you compiled the source files for your application%n",
-                                            className, Runtime.version().feature());
+                                            " 2) Use a version of native-image corresponding to the version of Java with which you compiled the source files for your application%n%n" +
+                                            "Root cause: %s",
+                                            className, Runtime.version().feature(), ex);
+                        } else {
+                            throw UserError.abort(ex.getMessage());
                         }
                     }
                     String mainEntryPointName = SubstrateOptions.Method.getValue(parsedHostedOptions);
@@ -518,9 +524,18 @@ public class NativeImageGeneratorRunner {
                     mainEntryPointData = createMainEntryPointData(imageKind, mainEntryPoint);
                 }
 
-                int maxConcurrentThreads = NativeImageOptions.getMaximumNumberOfConcurrentThreads(parsedHostedOptions);
-                analysisExecutor = NativeImagePointsToAnalysis.createExecutor(debug, NativeImageOptions.getMaximumNumberOfAnalysisThreads(parsedHostedOptions));
-                compilationExecutor = NativeImagePointsToAnalysis.createExecutor(debug, maxConcurrentThreads);
+                /*
+                 * Since the main thread helps to process analysis and compilation tasks (see use of
+                 * awaitQuiescence() in CompletionExecutor), subtract one to determine the number of
+                 * dedicated threads in ForkJoinPools.
+                 */
+                final int numberOfHelpingThreads = 1; // main thread
+                int numberOfThreads = NativeImageOptions.NumberOfThreads.getValue(parsedHostedOptions);
+                int numberOfAnalysisThreads = NativeImageOptions.getNumberOfAnalysisThreads(numberOfThreads, parsedHostedOptions) - numberOfHelpingThreads;
+                int numberOfCompilationThreads = numberOfThreads - numberOfHelpingThreads;
+                analysisExecutor = NativeImagePointsToAnalysis.createExecutor(debug, numberOfAnalysisThreads);
+                compilationExecutor = NativeImagePointsToAnalysis.createExecutor(debug, numberOfCompilationThreads);
+
                 generator = createImageGenerator(classLoader, optionParser, mainEntryPointData, reporter);
                 generator.run(entryPoints, javaMainSupport, imageName, imageKind, SubstitutionProcessor.IDENTITY,
                                 compilationExecutor, analysisExecutor, optionParser.getRuntimeOptionNames(), timerCollection);
@@ -700,9 +715,6 @@ public class NativeImageGeneratorRunner {
         }
         if (parsedHostedOptions != null && NativeImageOptions.ReportExceptionStackTraces.getValue(parsedHostedOptions)) {
             e.printStackTrace();
-        } else {
-            report.accept("Use " + SubstrateOptionsParser.commandArgument(NativeImageOptions.ReportExceptionStackTraces, "+") +
-                            " to print stacktrace of underlying exception");
         }
     }
 
@@ -725,11 +737,14 @@ public class NativeImageGeneratorRunner {
         }
 
         public static void setModuleAccesses() {
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.sdk");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.word");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.nativeimage");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.collections");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.polyglot");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.truffle");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.internal.vm.ci");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.internal.vm.compiler");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, true, "jdk.internal.vm.compiler.management");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.graal.compiler");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, true, "jdk.graal.compiler.management");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, true, "com.oracle.graal.graal_enterprise");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.loader");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.misc");
@@ -738,6 +753,9 @@ public class NativeImageGeneratorRunner {
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.reflect.annotation");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.security.jca");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.jdeps", "com.sun.tools.classfile");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.truffle.runtime");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.truffle.compiler");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, true, "com.oracle.truffle.enterprise");
         }
     }
 }

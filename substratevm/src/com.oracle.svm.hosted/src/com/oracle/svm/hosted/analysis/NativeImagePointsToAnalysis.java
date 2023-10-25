@@ -29,9 +29,9 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.concurrent.ForkJoinPool;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.word.WordTypes;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -66,9 +66,9 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     public NativeImagePointsToAnalysis(OptionValues options, AnalysisUniverse universe,
                     AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
                     ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes,
-                    AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ForkJoinPool executor, Runnable heartbeatCallback, UnsupportedFeatures unsupportedFeatures,
+                    AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ForkJoinPool executor, UnsupportedFeatures unsupportedFeatures,
                     TimerCollection timerCollection) {
-        super(options, universe, universe.hostVM(), metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, executor, heartbeatCallback, unsupportedFeatures, timerCollection,
+        super(options, universe, universe.hostVM(), metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, executor, unsupportedFeatures, timerCollection,
                         SubstrateOptions.parseOnce());
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
 

@@ -98,6 +98,7 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.IOAccess;
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -140,6 +141,12 @@ import com.oracle.truffle.tck.tests.ValueAssert;
 public class LanguageSPITest {
 
     static LanguageContext langContext;
+
+    @BeforeClass
+    public static void beforeClass() {
+        // shared static state
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
+    }
 
     @After
     public void cleanup() {
@@ -234,7 +241,7 @@ public class LanguageSPITest {
 
         c.close();
         engine.close();
-        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+        if (TruffleTestAssumptions.isNoIsolateEncapsulation()) {
             assertEquals(1, context1.disposeCalled);
             assertEquals(1, context2.disposeCalled);
         } else {
@@ -259,7 +266,7 @@ public class LanguageSPITest {
         });
         t.start();
         t.join(10000);
-        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+        if (TruffleTestAssumptions.isNoIsolateEncapsulation()) {
             assertEquals(1, langContext.disposeCalled);
         } else {
             // We cannot obtain any information from a closed isolate.
@@ -283,7 +290,7 @@ public class LanguageSPITest {
         t.start();
         t.join(10000);
         engine.close();
-        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+        if (TruffleTestAssumptions.isNoIsolateEncapsulation()) {
             assertEquals(1, langContext.disposeCalled);
         } else {
             // We cannot obtain any information from a closed isolate.
@@ -310,7 +317,7 @@ public class LanguageSPITest {
         context.initialize(LanguageSPITestLanguage.ID);
         evalTestLanguage(context, ExecuteFirstContextArgumentTestLanguage.class, "", (Runnable) context::close);
         context.close();
-        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+        if (TruffleTestAssumptions.isNoIsolateEncapsulation()) {
             assertEquals(1, langContext.disposeCalled);
         } else {
             // We cannot obtain any information from a closed isolate.
@@ -372,7 +379,7 @@ public class LanguageSPITest {
         context.initialize(LanguageSPITestLanguage.ID);
         evalTestLanguage(context, ExecuteFirstContextArgumentTestLanguage.class, "", (Runnable) engine::close);
         engine.close();
-        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+        if (TruffleTestAssumptions.isNoIsolateEncapsulation()) {
             assertEquals(1, langContext.disposeCalled);
         } else {
             // We cannot obtain any information from a closed isolate.
@@ -397,7 +404,7 @@ public class LanguageSPITest {
             }
         }
         engine.close();
-        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+        if (TruffleTestAssumptions.isNoIsolateEncapsulation()) {
             assertEquals(1, langContext.disposeCalled);
         } else {
             // We cannot obtain any information from a closed isolate.
@@ -431,7 +438,7 @@ public class LanguageSPITest {
             }
         }
         engine.close();
-        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+        if (TruffleTestAssumptions.isNoIsolateEncapsulation()) {
             assertEquals(1, langContext.disposeCalled);
         } else {
             // We cannot obtain any information from a closed isolate.

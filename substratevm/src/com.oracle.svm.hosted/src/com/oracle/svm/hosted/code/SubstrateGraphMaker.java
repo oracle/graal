@@ -26,18 +26,18 @@ package com.oracle.svm.hosted.code;
 
 import java.util.BitSet;
 
-import org.graalvm.compiler.bytecode.BytecodeProvider;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.ReplacementsImpl;
-import org.graalvm.compiler.replacements.ReplacementsImpl.GraphMaker;
-import org.graalvm.compiler.word.WordTypes;
+import jdk.graal.compiler.bytecode.BytecodeProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.java.GraphBuilderPhase.Instance;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.ReplacementsImpl;
+import jdk.graal.compiler.replacements.ReplacementsImpl.GraphMaker;
+import jdk.graal.compiler.word.WordTypes;
 
 import com.oracle.svm.hosted.phases.SubstrateGraphBuilderPhase;
 
@@ -47,7 +47,7 @@ public class SubstrateGraphMaker extends GraphMaker {
 
     private final WordTypes wordTypes;
 
-    protected SubstrateGraphMaker(ReplacementsImpl replacements, ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod, WordTypes wordTypes) {
+    public SubstrateGraphMaker(ReplacementsImpl replacements, ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod, WordTypes wordTypes) {
         super(replacements, substitute, substitutedMethod);
         this.wordTypes = wordTypes;
     }

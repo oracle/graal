@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
+import static com.oracle.svm.core.graal.llvm.objectfile.LLVMObjectFile.getLld;
+
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,8 +33,8 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
@@ -112,6 +114,7 @@ public class LLVMToolchainUtils {
             case O0, BUILD_TIME -> 0;
             case O1 -> 1;
             case O2 -> 2;
+            case O3 -> 3;
         };
     }
 
@@ -131,14 +134,20 @@ public class LLVMToolchainUtils {
 
     public static void nativeLink(DebugContext debug, String outputPath, List<String> inputPaths, Path basePath, Function<String, String> outputPathFormat) {
         List<String> cmd = new ArrayList<>();
-        cmd.add((LLVMOptions.CustomLD.hasBeenSet()) ? LLVMOptions.CustomLD.getValue() : "ld");
+        if (LLVMOptions.CustomLD.hasBeenSet()) {
+            cmd.add(LLVMOptions.CustomLD.getValue());
+        }
         cmd.add("-r");
         cmd.add("-o");
         cmd.add(outputPath);
         cmd.addAll(inputPaths);
 
         try {
-            LLVMToolchain.runCommand(basePath, cmd);
+            if (LLVMOptions.CustomLD.hasBeenSet()) {
+                LLVMToolchain.runCommand(basePath, cmd);
+            } else {
+                LLVMToolchain.runLLVMCommand(getLld(), basePath, cmd);
+            }
         } catch (LLVMToolchain.RunFailureException e) {
             debug.log("%s", e.getOutput());
             throw new GraalError("Native linking failed into " + outputPathFormat.apply(outputPath) + ": " + e.getStatus());
@@ -162,7 +171,7 @@ public class LLVMToolchainUtils {
         private CompletionExecutor executor;
 
         public BatchExecutor(BigBang bb, ForkJoinPool threadPool) {
-            this.executor = new CompletionExecutor(bb, threadPool, bb.getHeartbeatCallback());
+            this.executor = new CompletionExecutor(bb, threadPool);
             executor.init();
         }
 

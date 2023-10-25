@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,7 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.TimerCollection;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public class ClassLoadingEnv implements LanguageAccess {
     private final AtomicLong klassIdProvider = new AtomicLong();
@@ -69,9 +69,28 @@ public class ClassLoadingEnv implements LanguageAccess {
         return timers;
     }
 
+    private static boolean shouldCacheClass(ClassRegistry.ClassDefinitionInfo info) {
+        /*
+         * Cached class representations must not contain context-dependent objects that cannot be
+         * shared on a language level. Anonymous classes, by definition, contain a Klass
+         * self-reference in the constant pool.
+         */
+        return !info.isAnonymousClass() && !info.isHidden();
+    }
+
+    public boolean shouldCacheClass(ClassRegistry.ClassDefinitionInfo info, StaticObject loader) {
+        return shouldCacheClass(info) && // No cached hidden class
+                        (loaderIsBootOrPlatform(loader) || loaderIsAppLoader(loader));
+    }
+
     public boolean loaderIsBootOrPlatform(StaticObject loader) {
         return StaticObject.isNull(loader) ||
                         (language.getJavaVersion().java9OrLater() && meta.jdk_internal_loader_ClassLoaders$PlatformClassLoader.isAssignableFrom(loader.getKlass()));
+    }
+
+    public boolean loaderIsAppLoader(StaticObject loader) {
+        return !StaticObject.isNull(loader) &&
+                        (meta.jdk_internal_loader_ClassLoaders$AppClassLoader.isAssignableFrom(loader.getKlass()));
     }
 
     public long getNewKlassId() {

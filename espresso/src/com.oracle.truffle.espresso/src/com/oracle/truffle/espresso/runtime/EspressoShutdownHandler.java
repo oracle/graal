@@ -34,6 +34,7 @@ import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
 
@@ -117,7 +118,7 @@ final class EspressoShutdownHandler extends ContextAccessImpl {
             return;
         }
         getContext().getLogger().fine(() -> {
-            StaticObject currentThread = getContext().getCurrentThread();
+            StaticObject currentThread = getContext().getCurrentPlatformThread();
             String guestName = getThreadAccess().getThreadName(currentThread);
             return "doExit(" + code + ") from " + guestName;
         });

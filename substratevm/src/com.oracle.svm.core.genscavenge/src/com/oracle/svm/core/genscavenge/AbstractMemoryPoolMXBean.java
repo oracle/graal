@@ -71,7 +71,9 @@ public abstract class AbstractMemoryPoolMXBean extends AbstractMXBean implements
 
     abstract UnsignedWord getMaximumValue();
 
-    abstract void afterCollection(GCAccounting accounting);
+    abstract void beforeCollection();
+
+    abstract void afterCollection();
 
     MemoryUsage memoryUsage(UnsignedWord usedAndCommitted) {
         return new MemoryUsage(getInitialValue().rawValue(), usedAndCommitted.rawValue(), usedAndCommitted.rawValue(), getMaximumValue().rawValue());

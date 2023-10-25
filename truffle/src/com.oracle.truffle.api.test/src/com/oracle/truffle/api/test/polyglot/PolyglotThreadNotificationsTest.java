@@ -950,6 +950,9 @@ public class PolyglotThreadNotificationsTest {
 
     @Test
     public void testLanguageInitializationDeadlock() {
+        // TODO GR-47643 too slow with isolates
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         for (int i = 0; i < 1000; i++) {
             try (Context ctx = Context.newBuilder().allowCreateThread(true).build()) {
                 ctx.eval(DeadlockLanguageInitializationTestLanguage.ID, "");

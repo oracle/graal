@@ -44,7 +44,7 @@ import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.ToPrimitive;
 import com.oracle.truffle.espresso.nodes.interop.ToReference;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public abstract class AbstractGetFieldNode extends EspressoNode {
     final Field field;
@@ -571,10 +571,10 @@ abstract class ObjectGetFieldNode extends AbstractGetFieldNode {
         return field.getObject(receiver);
     }
 
-    @Specialization(guards = "receiver.isForeignObject()", limit = "CACHED_LIBRARY_LIMIT")
+    @Specialization(guards = "receiver.isForeignObject()")
     StaticObject doForeign(StaticObject receiver,
                     @Bind("getLanguage()") EspressoLanguage language,
-                    @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
+                    @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
                     @Cached("createToEspressoNode()") ToReference toEspressoNode,
                     @Cached BranchProfile error) {
         Meta meta = getMeta();

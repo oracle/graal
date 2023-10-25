@@ -35,6 +35,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.InternalResource.OS;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
@@ -49,7 +50,6 @@ import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.LLVMThreadLocalValue;
-import com.oracle.truffle.llvm.runtime.PlatformCapability.OS;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
@@ -108,8 +108,23 @@ public final class LLVMContext {
     private final Object libraryPathsLock = new Object();
     private final Object truffleFilesLock = new Object();
     private final Toolchain toolchain;
-    @CompilationFinal private Path internalLibraryPath;
-    @CompilationFinal private TruffleFile internalLibraryPathFile;
+
+    public static final class InternalLocator {
+
+        private InternalLocator() {
+        }
+
+        public static LibraryLocator INSTANCE = new LibraryLocator() {
+
+            @Override
+            protected Object locateLibrary(LLVMContext context, String lib, Object reason) {
+                return context.internalLibraryLocator.locateLibrary(context, lib, reason);
+            }
+        };
+    }
+
+    private InternalLibraryLocator internalLibraryLocator;
+
     private final List<TruffleFile> truffleFiles = new ArrayList<>();
     private final List<String> internalLibraryNames;
 
@@ -235,7 +250,7 @@ public final class LLVMContext {
 
         this.mainArguments = getMainArguments(env);
 
-        this.windowsContext = language.getCapability(PlatformCapability.class).getOS().equals(OS.Windows) ? new LLVMContextWindows() : null;
+        this.windowsContext = language.getCapability(PlatformCapability.class).getOS().equals(OS.WINDOWS) ? new LLVMContextWindows() : null;
 
         addLibraryPaths(SulongEngineOption.getPolyglotOptionSearchPaths(env));
 
@@ -295,14 +310,7 @@ public final class LLVMContext {
 
         this.threadingStack = new LLVMThreadingStack(Thread.currentThread(), parseStackSize(env.getOptions().get(SulongEngineOption.STACK_SIZE)));
 
-        String languageHome = language.getLLVMLanguageHome();
-        if (languageHome != null) {
-            PlatformCapability<?> sysContextExt = language.getCapability(PlatformCapability.class);
-            internalLibraryPath = Paths.get(languageHome).resolve(sysContextExt.getSulongLibrariesPath());
-            internalLibraryPathFile = env.getInternalTruffleFile(internalLibraryPath.toUri());
-            // add internal library location also to the external library lookup path
-            addLibraryPath(internalLibraryPath.toString());
-        }
+        internalLibraryLocator = language.getCapability(InternalLibraryLocator.class);
 
         for (ContextExtension ext : contextExtensions) {
             ext.initialize(this);
@@ -315,11 +323,16 @@ public final class LLVMContext {
              * and the llvm language cache will return the call target of future parsing of these
              * libraries.
              */
-            String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
+            PlatformCapability<?> platformCapability = language.getCapability(PlatformCapability.class);
+            String[] sulongLibraryNames = platformCapability.getSulongDefaultLibraries();
             if (language.isDefaultInternalLibraryCacheEmpty()) {
                 for (int i = sulongLibraryNames.length - 1; i >= 0; i--) {
-                    TruffleFile file = InternalLibraryLocator.INSTANCE.locateLibrary(this, sulongLibraryNames[i], "<default bitcode library>");
-                    Source librarySource = Source.newBuilder("llvm", file).internal(isInternalLibraryFile(file)).build();
+                    String libraryName = sulongLibraryNames[i];
+                    Source librarySource = internalLibraryLocator.locateSource(this, libraryName, "<default bitcode library>");
+                    if (librarySource == null) {
+                        throw new InternalError("Could not locate library " + libraryName + " with locator " + internalLibraryLocator + ".");
+                    }
+
                     // use the source cache in the language.
                     env.parseInternal(librarySource);
                     language.setDefaultInternalLibraryCache(librarySource);
@@ -328,8 +341,8 @@ public final class LLVMContext {
             setLibsulongAuxFunction(SULONG_INIT_CONTEXT);
             setLibsulongAuxFunction(SULONG_DISPOSE_CONTEXT);
             setLibsulongAuxFunction(START_METHOD_NAME);
-            CallTarget builtinsLibrary = env.parseInternal(Source.newBuilder("llvm",
-                            env.getInternalTruffleFile(internalLibraryPath.resolve(language.getCapability(PlatformCapability.class).getBuiltinsLibrary()).toUri())).internal(true).build());
+            Source builtinsSource = internalLibraryLocator.locateSource(this, platformCapability.getBuiltinsLibrary(), "<builtins library>");
+            CallTarget builtinsLibrary = env.parseInternal(builtinsSource);
             builtinsLibrary.call();
         } catch (IOException e) {
             throw new IllegalStateException(e);
@@ -406,11 +419,6 @@ public final class LLVMContext {
         } else {
             return key.get(this);
         }
-    }
-
-    public Path getInternalLibraryPath() {
-        assert isInitialized();
-        return internalLibraryPath;
     }
 
     private static long parseStackSize(String v) {
@@ -660,33 +668,8 @@ public final class LLVMContext {
      * @param libraries a (potentially unmodifiable) list of dependencies
      */
     @SuppressWarnings("unchecked")
-    public List<String> preprocessDependencies(List<String> libraries, TruffleFile file) {
-        return language.getCapability(PlatformCapability.class).preprocessDependencies(this, file, libraries);
-    }
-
-    public static final class InternalLibraryLocator extends LibraryLocator {
-
-        public static final InternalLibraryLocator INSTANCE = new InternalLibraryLocator();
-
-        @Override
-        protected TruffleFile locateLibrary(LLVMContext context, String lib, Object reason) {
-            if (context.internalLibraryPath == null) {
-                throw new LLVMLinkerException(String.format("Cannot load \"%s\". Internal library path not set", lib));
-            }
-            TruffleFile absPath = context.internalLibraryPathFile.resolve(lib);
-            if (absPath.exists()) {
-                return absPath;
-            }
-            return context.env.getInternalTruffleFile(lib);
-        }
-    }
-
-    public boolean isInternalLibraryFile(TruffleFile file) {
-        return file.normalize().startsWith(internalLibraryPathFile);
-    }
-
-    public boolean isInternalLibraryPath(Path path) {
-        return path.normalize().startsWith(internalLibraryPath);
+    public List<String> preprocessDependencies(List<String> libraries, String libraryName, boolean isInternal) {
+        return language.getCapability(PlatformCapability.class).preprocessDependencies(this, libraryName, isInternal, libraries);
     }
 
     public TruffleFile getOrAddTruffleFile(TruffleFile file) {

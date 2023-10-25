@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -81,6 +82,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.InternalResource;
+import com.oracle.truffle.api.InternalResource.Id;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.TruffleContext;
@@ -354,7 +357,7 @@ public abstract class TruffleInstrument {
      * {@link org.graalvm.polyglot.Engine engines} is not called, and so in case the instrument is
      * supposed to do some specific action before its disposal, e.g. print some kind of summary, it
      * should be done in this method.
-     * 
+     *
      * @param env environment information for the instrument
      * @since 19.0
      */
@@ -1058,6 +1061,54 @@ public abstract class TruffleInstrument {
         }
 
         /**
+         * Returns the {@link TruffleFile} representing the target directory of an internal
+         * resource. The internal resource is guaranteed to be fully
+         * {@link InternalResource#unpackFiles(InternalResource.Env, Path)} unpacked} before this
+         * method returns. When this method is called for the first time and the resource is not
+         * cached than the resource will be unpacked. Unpacking an internal resource can be an
+         * expensive operation, but the implementation makes sure that unpacked internal resources
+         * are cached.
+         * <p>
+         * The returned {@link TruffleFile} will only grant read-only access to the target
+         * directory, but access is provided even if IO access is disabled.
+         * <p>
+         * On a HotSpot VM the internal resource is typically cached in the user directory, so
+         * unpacking would be repeated once per operating system user. When the language was
+         * compiled using native-image internal resources are unpacked at native-image compile time
+         * and stored relative to the native-image.
+         *
+         * @param resource the resource class to load
+         * @throws IllegalArgumentException if {@code resource} is not associated with this
+         *             instrument
+         * @throws IOException in case of IO error
+         * @since 23.1
+         */
+        public TruffleFile getInternalResource(Class<? extends InternalResource> resource) throws IOException {
+            return InstrumentAccessor.ENGINE.getInternalResource(polyglotInstrument, resource);
+        }
+
+        /**
+         * Returns the {@link TruffleFile} representing the target directory of an internal
+         * resource. Unlike the {@link #getInternalResource(Class)}, this method can be used for
+         * optional resources whose classes may not exist at runtime. In this case the optional
+         * resource must be unpacked at build time, see
+         * {@link Engine#copyResources(Path, String...)}. If the resource with the specified
+         * {@code resourceId} is not associated to this instrument, the function returns
+         * {@code null}.
+         *
+         * @param resourceId unique id of the resource to be loaded
+         * @return internal resource directory or {@code null} if resource with the
+         *         {@code resourceId} is not associated with this instrument
+         * @throws IOException in case of IO error
+         * @see #getInternalResource(Class)
+         * @see Engine#copyResources(Path, String...)
+         * @since 23.1
+         */
+        public TruffleFile getInternalResource(String resourceId) throws IOException {
+            return InstrumentAccessor.ENGINE.getInternalResource(polyglotInstrument, resourceId);
+        }
+
+        /**
          * Find or create an engine bound logger for an instrument. When a logging is required from
          * a thread which entered a context the context's logging handler and options are used.
          * Otherwise the engine's logging handler and options are used.
@@ -1112,6 +1163,17 @@ public abstract class TruffleInstrument {
          */
         public TruffleLogger getLogger(Class<?> forClass) {
             return getLogger(forClass.getName());
+        }
+
+        /**
+         * Tests if two frames are the same. This method is mainly used by instruments in case of
+         * <code>yield</code> of the execution and later resume. Frame comparison is used to match
+         * the particular yielded and resumed execution. The frames must correspond to the root.
+         *
+         * @since 24.0
+         */
+        public boolean isSameFrame(RootNode root, Frame frame1, Frame frame2) {
+            return InstrumentAccessor.nodesAccess().isSameFrame(root, frame1, frame2);
         }
 
         private static class MessageTransportProxy implements MessageTransport {
@@ -1420,6 +1482,19 @@ public abstract class TruffleInstrument {
          * @since 23.0
          */
         SandboxPolicy sandbox() default SandboxPolicy.TRUSTED;
+
+        /**
+         * Declarative list of {@link InternalResource} classes that is associated with this
+         * instrument. Use the {@code internalResources} attribute solely for registering required
+         * internal resources. Optional internal resources should provide the associated instrument
+         * identifier using the {@link Id#componentId()} method. To unpack all resources of an
+         * instrument embedders may use {@link Engine#copyResources(Path, String...)}.
+         *
+         * @see InternalResource
+         * @see Id
+         * @since 23.1
+         */
+        Class<? extends InternalResource>[] internalResources() default {};
     }
 
     /**

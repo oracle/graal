@@ -23,7 +23,7 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import static com.oracle.truffle.espresso.runtime.StaticObject.CLASS_TO_STATIC;
+import static com.oracle.truffle.espresso.runtime.staticobject.StaticObject.CLASS_TO_STATIC;
 import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 
 import java.lang.reflect.Modifier;
@@ -38,11 +38,13 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.api.dsl.NonIdempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
@@ -51,11 +53,14 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.utilities.TriState;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
@@ -72,18 +77,25 @@ import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.InteropKlassesDispatch;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.nodes.interop.CandidateMethodWithArgs;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
+import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNodeGen;
 import com.oracle.truffle.espresso.nodes.interop.LookupDeclaredMethod;
+import com.oracle.truffle.espresso.nodes.interop.LookupDeclaredMethodNodeGen;
 import com.oracle.truffle.espresso.nodes.interop.LookupFieldNode;
+import com.oracle.truffle.espresso.nodes.interop.LookupFieldNodeGen;
 import com.oracle.truffle.espresso.nodes.interop.MethodArgsUtils;
 import com.oracle.truffle.espresso.nodes.interop.OverLoadedMethodSelectorNode;
+import com.oracle.truffle.espresso.nodes.interop.OverLoadedMethodSelectorNodeGen;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
+import com.oracle.truffle.espresso.nodes.interop.ToEspressoNodeFactory;
 import com.oracle.truffle.espresso.nodes.interop.ToPrimitive;
+import com.oracle.truffle.espresso.nodes.interop.ToPrimitiveFactory;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -91,9 +103,9 @@ import com.oracle.truffle.espresso.runtime.EspressoFunction;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
-import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.BaseInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.EspressoInterop;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
@@ -108,87 +120,138 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     private static final String COMPONENT = "component";
     private static final String SUPER = "super";
 
+    @NonIdempotent
+    static EspressoLanguage getLang(Node node) {
+        return EspressoLanguage.get(node);
+    }
+
+    public static final byte UN_INITIALIZED = -1;
+    public static final byte NOT_MAPPED = 0;
+    public static final byte TYPE_MAPPED = 1;
+    public static final byte INTERNAL_MAPPED = 2;
+    public static final byte INTERFACE_MAPPED = 3;
+    public static final byte INTERNAL_COLLECTION_MAPPED = 4;
+
+    @CompilationFinal public byte typeConversionState = UN_INITIALIZED;
+
     @ExportMessage
-    boolean isMemberReadable(String member,
-                    @Shared("lookupField") @Cached LookupFieldNode lookupField,
-                    @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod) {
-        Field field = lookupField.execute(this, member, true);
-        if (field != null) {
-            return true;
-        }
-        if (isMemberInvocable(member, lookupMethod)) {
-            return true;
-        }
-        if (STATIC_TO_CLASS.equals(member)) {
-            return true;
-        }
-        if (CLASS_TO_STATIC.equals(member)) {
-            return true;
-        }
-        if (getMeta()._void != this && ARRAY.equals(member)) {
-            return true;
-        }
-        if (isArray() && COMPONENT.equals(member)) {
-            return true;
-        }
-        if (getSuperKlass() != null && SUPER.equals(member)) {
-            return true;
+    abstract static class IsMemberReadable {
+        // Specialization prevents caching a node that would leak the context
+        @Specialization(guards = "language.isShared()")
+        static boolean doShared(Klass receiver, String member,
+                        @CachedLibrary("receiver") InteropLibrary lib,
+                        @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) {
+            return isMemberReadable(receiver, member, LookupFieldNodeGen.getUncached(), lib);
         }
 
-        return false;
+        @Specialization
+        static boolean isMemberReadable(Klass receiver, String member,
+                        @Shared("lookupField") @Cached LookupFieldNode lookupField,
+                        @CachedLibrary("receiver") InteropLibrary lib) {
+            EspressoContext ctx = EspressoContext.get(lib);
+            Field field = lookupField.execute(receiver, member, true);
+            if (field != null) {
+                return true;
+            }
+            if (lib.isMemberInvocable(receiver, member)) {
+                return true;
+            }
+            if (STATIC_TO_CLASS.equals(member)) {
+                return true;
+            }
+            if (CLASS_TO_STATIC.equals(member)) {
+                return true;
+            }
+            if (ctx.getMeta()._void != receiver && ARRAY.equals(member)) {
+                return true;
+            }
+            if (receiver.isArray() && COMPONENT.equals(member)) {
+                return true;
+            }
+            if (receiver.getSuperKlass() != null && SUPER.equals(member)) {
+                return true;
+            }
+
+            return false;
+        }
     }
 
     @ExportMessage
-    Object readMember(String member,
-                    @Shared("lookupField") @Cached LookupFieldNode lookupFieldNode,
-                    @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
-                    @Shared("error") @Cached BranchProfile error) throws UnknownIdentifierException {
-
-        Field field = lookupFieldNode.execute(this, member, true);
-        if (field != null) {
-            Object result = field.get(this.tryInitializeAndGetStatics());
-            if (result instanceof StaticObject) {
-                result = InteropUtils.unwrap((StaticObject) result, getMeta(), lookupFieldNode);
-            }
-            return result;
+    abstract static class ReadMember {
+        // Specialization prevents caching a node that would leak the context
+        @Specialization(guards = "language.isShared()")
+        static Object doShared(Klass receiver, String member,
+                        @CachedLibrary("receiver") InteropLibrary lib,
+                        @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) throws UnknownIdentifierException {
+            return readMember(receiver, member, LookupFieldNodeGen.getUncached(), LookupDeclaredMethodNodeGen.getUncached(), BranchProfile.getUncached(), lib);
         }
-        try {
-            Method[] candidates = lookupMethod.execute(this, member, true, true, -1 /*- skip */);
-            if (candidates != null) {
-                if (candidates.length == 1) {
-                    return EspressoFunction.createStaticInvocable(candidates[0]);
+
+        @Specialization
+        static Object readMember(Klass receiver, String member,
+                        @Shared("lookupField") @Cached LookupFieldNode lookupFieldNode,
+                        @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
+                        @Shared("error") @Cached BranchProfile error,
+                        @CachedLibrary("receiver") InteropLibrary lib) throws UnknownIdentifierException {
+            EspressoContext ctx = EspressoContext.get(lib);
+            Meta meta = ctx.getMeta();
+            Field field = lookupFieldNode.execute(receiver, member, true);
+            if (field != null) {
+                Object result = field.get(receiver.tryInitializeAndGetStatics());
+                if (result instanceof StaticObject) {
+                    result = InteropUtils.unwrap((StaticObject) result, meta, lookupFieldNode);
                 }
+                return result;
             }
-        } catch (ArityException e) {
-            /* ignore and continue */
-        }
+            try {
+                Method[] candidates = lookupMethod.execute(receiver, member, true, true, -1 /*- skip */);
+                if (candidates != null) {
+                    if (candidates.length == 1) {
+                        return EspressoFunction.createStaticInvocable(candidates[0]);
+                    }
+                }
+            } catch (ArityException e) {
+                /* ignore and continue */
+            }
 
-        // Klass<T>.class == Class<T>
-        if (STATIC_TO_CLASS.equals(member)) {
-            return mirror();
-        }
-        // Klass<T>.static == Klass<T>
-        if (CLASS_TO_STATIC.equals(member)) {
-            return this;
-        }
-        if (getMeta()._void != this && ARRAY.equals(member)) {
-            return array();
-        }
-        if (isArray() && COMPONENT.equals(member)) {
-            return ((ArrayKlass) this).getComponentType();
-        }
-        if (getSuperKlass() != null && SUPER.equals(member)) {
-            return getSuperKlass();
-        }
+            // Klass<T>.class == Class<T>
+            if (STATIC_TO_CLASS.equals(member)) {
+                return receiver.mirror();
+            }
+            // Klass<T>.static == Klass<T>
+            if (CLASS_TO_STATIC.equals(member)) {
+                return receiver;
+            }
+            if (meta._void != receiver && ARRAY.equals(member)) {
+                return receiver.array();
+            }
+            if (receiver.isArray() && COMPONENT.equals(member)) {
+                return ((ArrayKlass) receiver).getComponentType();
+            }
+            if (receiver.getSuperKlass() != null && SUPER.equals(member)) {
+                return receiver.getSuperKlass();
+            }
 
-        error.enter();
-        throw UnknownIdentifierException.create(member);
+            error.enter();
+            throw UnknownIdentifierException.create(member);
+        }
     }
 
     @ExportMessage
-    boolean isMemberModifiable(String member, @Shared("lookupField") @Cached LookupFieldNode lookupField) {
-        Field field = lookupField.execute(this, member, true);
-        return field != null && !field.isFinalFlagSet();
+    abstract static class IsMemberModifiable {
+        // Specialization prevents caching a node that would leak the context
+        @Specialization(guards = "language.isShared()")
+        static boolean doShared(Klass receiver, String member,
+                        @CachedLibrary("receiver") @SuppressWarnings("unused") InteropLibrary lib,
+                        @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) {
+            return isMemberModifiable(receiver, member, LookupFieldNodeGen.getUncached());
+        }
+
+        @Specialization
+        static boolean isMemberModifiable(Klass receiver, String member,
+                        @Shared("lookupField") @Cached LookupFieldNode lookupField) {
+            Field field = lookupField.execute(receiver, member, true);
+            return field != null && !field.isFinalFlagSet();
+        }
     }
 
     @SuppressWarnings("static-method")
@@ -198,68 +261,103 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     }
 
     @ExportMessage
-    final void writeMember(String member, Object value,
-                    @Shared("lookupField") @Cached LookupFieldNode lookupFieldNode,
-                    @Exclusive @Cached ToEspressoNode.DynamicToEspresso toEspressoNode,
-                    @Shared("error") @Cached BranchProfile error) throws UnknownIdentifierException, UnsupportedTypeException {
-        Field field = lookupFieldNode.execute(this, member, true);
-        // Can only write to non-final fields.
-        if (field != null && !field.isFinalFlagSet()) {
-            Object espressoValue = toEspressoNode.execute(value, field.resolveTypeKlass());
-            field.set(tryInitializeAndGetStatics(), espressoValue);
-        } else {
-            error.enter();
-            throw UnknownIdentifierException.create(member);
+    abstract static class WriteMember {
+        // Specialization prevents caching a node that would leak the context
+        @Specialization(guards = "language.isShared()")
+        static void doShared(Klass receiver, String member, Object value,
+                        @Shared("error") @Cached BranchProfile error,
+                        @CachedLibrary("receiver") @SuppressWarnings("unused") InteropLibrary lib,
+                        @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) throws UnknownIdentifierException, UnsupportedTypeException {
+            writeMember(receiver, member, value, LookupFieldNodeGen.getUncached(), ToEspressoNodeFactory.DynamicToEspressoNodeGen.getUncached(), error);
+        }
+
+        @Specialization
+        static void writeMember(Klass receiver, String member, Object value,
+                        @Shared("lookupField") @Cached LookupFieldNode lookupFieldNode,
+                        @Exclusive @Cached ToEspressoNode.DynamicToEspresso toEspressoNode,
+                        @Shared("error") @Cached BranchProfile error) throws UnknownIdentifierException, UnsupportedTypeException {
+            Field field = lookupFieldNode.execute(receiver, member, true);
+            // Can only write to non-final fields.
+            if (field != null && !field.isFinalFlagSet()) {
+                Object espressoValue = toEspressoNode.execute(value, field.resolveTypeKlass());
+                field.set(receiver.tryInitializeAndGetStatics(), espressoValue);
+            } else {
+                error.enter();
+                throw UnknownIdentifierException.create(member);
+            }
         }
     }
 
     @ExportMessage
-    final boolean isMemberInvocable(String member,
-                    @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod) {
-        return lookupMethod.isInvocable(this, member, true);
+    abstract static class IsMemberInvocable {
+        // Specialization prevents caching a node that would leak the context
+        @Specialization(guards = "language.isShared()")
+        static boolean doShared(Klass receiver, String member,
+                        @CachedLibrary("receiver") @SuppressWarnings("unused") InteropLibrary lib,
+                        @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) {
+            return isMemberInvocable(receiver, member, LookupDeclaredMethodNodeGen.getUncached());
+        }
+
+        @Specialization
+        static boolean isMemberInvocable(Klass receiver, String member,
+                        @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod) {
+            return lookupMethod.isInvocable(receiver, member, true);
+        }
     }
 
     @ExportMessage
-    final Object invokeMember(String member,
-                    Object[] arguments,
-                    @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
-                    @Shared("overloadSelector") @Cached OverLoadedMethodSelectorNode overloadSelector,
-                    @Exclusive @Cached InvokeEspressoNode invoke,
-                    @Cached ToEspressoNode.DynamicToEspresso toEspressoNode)
-                    throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
-        Method[] candidates = lookupMethod.execute(this, member, true, true, arguments.length);
-        try {
-            if (candidates != null) {
-                if (candidates.length == 1) {
-                    Method method = candidates[0];
-                    assert method.isStatic() && method.isPublic();
-                    assert member.startsWith(method.getNameAsString());
-                    if (!method.isVarargs()) {
-                        assert method.getParameterCount() == arguments.length;
-                        return invoke.execute(method, null, arguments);
-                    } else {
-                        CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(method, arguments, method.resolveParameterKlasses(), toEspressoNode);
-                        if (matched != null) {
-                            matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
+    abstract static class InvokeMember {
+        // Specialization prevents caching a node that would leak the context
+        @Specialization(guards = "language.isShared()")
+        static Object doShared(Klass receiver, String member, Object[] arguments,
+                        @CachedLibrary("receiver") @SuppressWarnings("unused") InteropLibrary lib,
+                        @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
+            return invokeMember(receiver, member, arguments, LookupDeclaredMethodNodeGen.getUncached(), OverLoadedMethodSelectorNodeGen.getUncached(), InvokeEspressoNodeGen.getUncached(),
+                            ToEspressoNodeFactory.DynamicToEspressoNodeGen.getUncached());
+        }
+
+        @Specialization
+        static Object invokeMember(Klass receiver, String member,
+                        Object[] arguments,
+                        @Cached LookupDeclaredMethod lookupMethod,
+                        @Cached OverLoadedMethodSelectorNode overloadSelector,
+                        @Exclusive @Cached InvokeEspressoNode invoke,
+                        @Cached ToEspressoNode.DynamicToEspresso toEspressoNode)
+                        throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
+            Method[] candidates = lookupMethod.execute(receiver, member, true, true, arguments.length);
+            try {
+                if (candidates != null) {
+                    if (candidates.length == 1) {
+                        Method method = candidates[0];
+                        assert method.isStatic() && method.isPublic();
+                        assert member.startsWith(method.getNameAsString());
+                        if (!method.isVarargs()) {
+                            assert method.getParameterCount() == arguments.length;
+                            return invoke.execute(method, null, arguments);
+                        } else {
+                            CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(method, arguments, method.resolveParameterKlasses(), toEspressoNode);
                             if (matched != null) {
-                                return invoke.execute(matched.getMethod(), null, matched.getConvertedArgs(), true);
+                                matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
+                                if (matched != null) {
+                                    return invoke.execute(matched.getMethod(), null, matched.getConvertedArgs(), true);
+                                }
                             }
                         }
-                    }
-                } else {
-                    CandidateMethodWithArgs typeMatched = overloadSelector.execute(candidates, arguments);
-                    if (typeMatched != null) {
-                        return invoke.execute(typeMatched.getMethod(), null, typeMatched.getConvertedArgs(), true);
+                    } else {
+                        CandidateMethodWithArgs typeMatched = overloadSelector.execute(candidates, arguments);
+                        if (typeMatched != null) {
+                            return invoke.execute(typeMatched.getMethod(), null, typeMatched.getConvertedArgs(), true);
+                        }
                     }
                 }
+                throw UnknownIdentifierException.create(member);
+            } catch (EspressoException e) {
+                if (receiver.getMeta().polyglot != null && e.getGuestException().getKlass() == receiver.getMeta().polyglot.ForeignException) {
+                    // rethrow the original foreign exception when leaving espresso interop
+                    throw (AbstractTruffleException) receiver.getMeta().java_lang_Throwable_backtrace.getObject(e.getGuestException()).rawForeignObject(receiver.getLanguage());
+                }
+                throw e;
             }
-            throw UnknownIdentifierException.create(member);
-        } catch (EspressoException e) {
-            if (e.getGuestException().getKlass() == getMeta().polyglot.ForeignException) {
-                // rethrow the original foreign exception when leaving espresso interop
-                throw (AbstractTruffleException) getMeta().java_lang_Throwable_backtrace.getObject(e.getGuestException()).rawForeignObject(getLanguage());
-            }
-            throw e;
         }
     }
 
@@ -333,6 +431,29 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
     @ExportMessage
     abstract static class Instantiate {
+        // Specialization prevents caching a node that would leak the context
+        @Specialization(guards = "language.isShared()")
+        static Object doShared(Klass receiver, Object[] args,
+                        @CachedLibrary("receiver") @SuppressWarnings("unused") InteropLibrary lib,
+                        @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
+            if (receiver.isPrimitive()) {
+                return doPrimitive(receiver, args);
+            }
+            if (isPrimitiveArray(receiver)) {
+                return doPrimitiveArray(receiver, args, ToPrimitiveFactory.ToIntNodeGen.getUncached());
+            }
+            if (isReferenceArray(receiver)) {
+                return doReferenceArray(receiver, args, ToPrimitiveFactory.ToIntNodeGen.getUncached());
+            }
+            if (isMultidimensionalArray(receiver)) {
+                return doMultidimensionalArray(receiver, args, ToPrimitiveFactory.ToIntNodeGen.getUncached());
+            }
+            if (isObjectKlass(receiver)) {
+                return doObject(receiver, args, LookupDeclaredMethodNodeGen.getUncached(), OverLoadedMethodSelectorNodeGen.getUncached(), InvokeEspressoNodeGen.getUncached());
+            }
+            return false;
+        }
+
         @SuppressWarnings("unused")
         @Specialization(guards = "receiver.isPrimitive()")
         static Object doPrimitive(Klass receiver, Object[] arguments) throws UnsupportedMessageException {
@@ -415,7 +536,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         @Specialization(guards = "isObjectKlass(receiver)")
         static Object doObject(Klass receiver, Object[] arguments,
                         @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
-                        @Shared("overloadSelector") @Cached OverLoadedMethodSelectorNode overloadSelector,
+                        @Cached OverLoadedMethodSelectorNode overloadSelector,
                         @Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
             ObjectKlass objectKlass = (ObjectKlass) receiver;
             Method[] initCandidates = lookupMethod.execute(objectKlass, INIT_NAME, true, false, arguments.length);
@@ -538,6 +659,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             if (getMeta().getContext().metaInitialized()) {
                 result = getMeta().resolveDispatch(this);
                 dispatch = result;
+                dispatchId = InteropKlassesDispatch.dispatchToId(result);
             } else {
                 /*
                  * Meta is not fully initialized: return the generic interop, without updating the
@@ -548,6 +670,28 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                     return BaseInterop.class;
                 }
                 return EspressoInterop.class;
+            }
+        }
+        return result;
+    }
+
+    public int getDispatchId() {
+        int result = dispatchId;
+        if (result == -1) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (getMeta().getContext().metaInitialized()) {
+                dispatch = getMeta().resolveDispatch(this);
+                result = dispatchId = InteropKlassesDispatch.dispatchToId(dispatch);
+            } else {
+                /*
+                 * Meta is not fully initialized: return the generic interop, without updating the
+                 * dispatch cache. This is fine, as we are not expecting any meaningful interop
+                 * until context is fully initialized.
+                 */
+                if (isPrimitive()) {
+                    return InteropKlassesDispatch.BASE_INTEROP_ID;
+                }
+                return InteropKlassesDispatch.ESPRESSO_INTEROP_ID;
             }
         }
         return result;
@@ -592,6 +736,8 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
     @CompilationFinal //
     private Class<?> dispatch;
+    @CompilationFinal //
+    private int dispatchId = -1;
 
     @CompilationFinal //
     private StaticObject typeName;
@@ -667,7 +813,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             /*
              * Prevents any class inheriting from MagicAccessorImpl to have access to
              * MagicAccessorImpl just because it implements MagicAccessorImpl.
-             * 
+             *
              * Only generated accessors in the {sun|jdk.internal}.reflect package, defined by
              * {sun|jdk.internal}.reflect.DelegatingClassLoader(s) have access to MagicAccessorImpl.
              */
@@ -1590,6 +1736,44 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         } else {
             return this.getRuntimePackage().equals(other.getRuntimePackage());
         }
+    }
+
+    public final boolean isTypeMapped() {
+        if (typeConversionState == UN_INITIALIZED) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            computeTypeConversionState();
+        }
+        return typeConversionState == TYPE_MAPPED;
+    }
+
+    private void computeTypeConversionState() {
+        CompilerAsserts.neverPartOfCompilation();
+        assert typeConversionState == UN_INITIALIZED;
+        if (getContext().getPolyglotTypeMappings().mapTypeConversion(this) != null) {
+            typeConversionState = TYPE_MAPPED;
+        } else if (getContext().getPolyglotTypeMappings().mapInternalTypeConversion(this) != null) {
+            typeConversionState = INTERNAL_MAPPED;
+        } else if (getContext().getPolyglotTypeMappings().mapEspressoForeignCollection(this) != null) {
+            typeConversionState = INTERNAL_COLLECTION_MAPPED;
+        } else {
+            typeConversionState = NOT_MAPPED;
+        }
+    }
+
+    public final boolean isInternalTypeMapped() {
+        if (typeConversionState == UN_INITIALIZED) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            computeTypeConversionState();
+        }
+        return typeConversionState == INTERNAL_MAPPED;
+    }
+
+    public final boolean isInternalCollectionTypeMapped() {
+        if (typeConversionState == UN_INITIALIZED) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            computeTypeConversionState();
+        }
+        return typeConversionState == INTERNAL_COLLECTION_MAPPED;
     }
 
     // region jdwp-specific

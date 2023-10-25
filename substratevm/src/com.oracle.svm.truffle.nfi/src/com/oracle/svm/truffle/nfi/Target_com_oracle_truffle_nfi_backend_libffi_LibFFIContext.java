@@ -49,7 +49,6 @@ import com.oracle.svm.truffle.nfi.libffi.LibFFI;
 import com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_cif;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.TruffleObject;
 
 @TargetClass(className = "com.oracle.truffle.nfi.backend.libffi.LibFFIContext", onlyWith = TruffleNFIFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext {
@@ -80,7 +79,7 @@ final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext {
     native void releaseClosureRef(long codePointer);
 
     @Alias
-    native TruffleObject getClosureObject(long codePointer);
+    native Object getClosureObject(long codePointer);
 
     @Alias
     protected native void initializeSimpleType(Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType simpleType, int size, int alignment, long ffiType);
@@ -190,7 +189,7 @@ final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext {
     }
 
     @Substitute
-    private static void loadNFILib() {
+    private void loadNFILib() {
         // do nothing, the NFI library is statically linked to the SVM image
     }
 
@@ -212,9 +211,7 @@ final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext {
         if (ImageSingletons.lookup(TruffleNFISupport.class).errnoGetterFunctionName.equals(name)) {
             return new ErrnoMirror();
         } else {
-            Target_com_oracle_truffle_nfi_backend_libffi_LibFFISymbol ret = Target_com_oracle_truffle_nfi_backend_libffi_LibFFISymbol.create(library, name,
-                            lookup(nativeContext, library.handle, name));
-            return ret;
+            return Target_com_oracle_truffle_nfi_backend_libffi_LibFFISymbol.create(library, name, lookup(nativeContext, library.handle, name));
         }
     }
 

@@ -24,7 +24,6 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
@@ -35,6 +34,7 @@ import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
 import jdk.vm.ci.code.BytecodePosition;
 
 public abstract class AbstractSpecialInvokeTypeFlow extends DirectInvokeTypeFlow {
+    protected TypeState seenReceiverTypes = TypeState.forEmpty();
 
     protected AbstractSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
@@ -62,15 +62,6 @@ public abstract class AbstractSpecialInvokeTypeFlow extends DirectInvokeTypeFlow
     public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
         /* When the receiver flow saturates start observing the flow of the receiver type. */
         replaceObservedWith(bb, receiverType);
-    }
-
-    protected static boolean allAssignable(BigBang bb, AnalysisType targetType, TypeState state) {
-        for (AnalysisType type : state.types(bb)) {
-            if (!targetType.isAssignableFrom(type)) {
-                return false;
-            }
-        }
-        return true;
     }
 
     @Override

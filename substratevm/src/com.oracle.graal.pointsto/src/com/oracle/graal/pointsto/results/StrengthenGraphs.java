@@ -33,60 +33,60 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
-import org.graalvm.compiler.core.common.type.ObjectStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.TypeReference;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeBitMap;
-import org.graalvm.compiler.graph.NodeInputList;
-import org.graalvm.compiler.graph.NodeMap;
-import org.graalvm.compiler.nodeinfo.InputType;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.CallTargetNode;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FixedGuardNode;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.GraphEncoder;
-import org.graalvm.compiler.nodes.GraphState;
-import org.graalvm.compiler.nodes.IfNode;
-import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.LogicConstantNode;
-import org.graalvm.compiler.nodes.LogicNode;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.ParameterNode;
-import org.graalvm.compiler.nodes.PhiNode;
-import org.graalvm.compiler.nodes.PiNode;
-import org.graalvm.compiler.nodes.StartNode;
-import org.graalvm.compiler.nodes.StateSplit;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.ConditionalNode;
-import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
-import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
-import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
-import org.graalvm.compiler.nodes.java.InstanceOfNode;
-import org.graalvm.compiler.nodes.java.LoadFieldNode;
-import org.graalvm.compiler.nodes.java.LoadIndexedNode;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.spi.LimitedValueProxy;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
-import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase.CustomSimplification;
-import org.graalvm.compiler.phases.common.inlining.InliningUtil;
-import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
+import jdk.graal.compiler.core.common.type.ObjectStamp;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeBitMap;
+import jdk.graal.compiler.graph.NodeInputList;
+import jdk.graal.compiler.graph.NodeMap;
+import jdk.graal.compiler.nodeinfo.InputType;
+import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.CallTargetNode;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FixedGuardNode;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.GraphEncoder;
+import jdk.graal.compiler.nodes.GraphState;
+import jdk.graal.compiler.nodes.IfNode;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.LogicConstantNode;
+import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.PhiNode;
+import jdk.graal.compiler.nodes.PiNode;
+import jdk.graal.compiler.nodes.StartNode;
+import jdk.graal.compiler.nodes.StateSplit;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.ConditionalNode;
+import jdk.graal.compiler.nodes.calc.IsNullNode;
+import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
+import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
+import jdk.graal.compiler.nodes.java.ClassIsAssignableFromNode;
+import jdk.graal.compiler.nodes.java.InstanceOfNode;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.nodes.java.LoadIndexedNode;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.nodes.spi.LimitedValueProxy;
+import jdk.graal.compiler.nodes.spi.SimplifierTool;
+import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase.CustomSimplification;
+import jdk.graal.compiler.phases.common.inlining.InliningUtil;
+import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
@@ -94,7 +94,6 @@ import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
-import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -296,11 +295,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 nodeFlows.put(node, cursor.getValue());
             }
 
-            /*
-             * Currently constant folding is only enabled for original methods. More work is needed
-             * to support it within deoptimization targets and runtime-compiled methods.
-             */
-            this.allowConstantFolding = method.isOriginalMethod() && strengthenGraphWithConstants;
+            this.allowConstantFolding = strengthenGraphWithConstants && bb.getHostVM().allowConstantFolding(method);
 
             /*
              * In deoptimization target methods optimizing the return parameter can make new values
@@ -590,7 +585,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                     return;
                 }
             }
-            assert returnedParameterIndex != -1;
+            assert returnedParameterIndex != -1 : callees;
 
             ValueNode returnedActualParameter = arguments.get(returnedParameterIndex);
             tool.addToWorkList(invoke.usages());
@@ -637,7 +632,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 invoke.callTarget().replaceFirstInput(invoke.getReceiver(), piReceiver);
             }
 
-            assert invoke.getInvokeKind().isIndirect();
+            assert invoke.getInvokeKind().isIndirect() : invoke;
             invoke.callTarget().setInvokeKind(CallTargetNode.InvokeKind.Special);
             invoke.callTarget().setTargetMethod(singleCallee);
         }
@@ -689,7 +684,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             if (newStampOrConstant instanceof JavaConstant) {
                 JavaConstant constant = (JavaConstant) newStampOrConstant;
                 if (input.isConstant()) {
-                    assert bb.getConstantReflectionProvider().constantEquals(input.asConstant(), constant);
+                    assert bb.getConstantReflectionProvider().constantEquals(input.asConstant(), constant) : input.asConstant() + ", " + constant;
                     return null;
                 }
                 return ConstantNode.forConstant(constant, bb.getMetaAccess(), graph);
@@ -732,15 +727,6 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
             if (hasUsages && allowConstantFolding && !nodeTypeState.canBeNull()) {
                 JavaConstant constantValue = nodeTypeState.asConstant();
-                if (constantValue instanceof ImageHeapConstant) {
-                    /*
-                     * GR-42996: until the AOT compilation can properly constant fold also
-                     * ImageHeapConstant, we unwrap the ImageHeapConstant to the hosted object. This
-                     * also means we do not constant fold yet when the constant does not wrap a
-                     * hosted object.
-                     */
-                    constantValue = ((ImageHeapConstant) constantValue).getHostedObject();
-                }
                 if (constantValue != null) {
                     return constantValue;
                 }
@@ -781,7 +767,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 AnalysisType exactType = typeStateTypes.get(0);
                 assert getSingleImplementorType(exactType) == null || exactType.equals(getSingleImplementorType(exactType)) : "exactType=" + exactType + ", singleImplementor=" +
                                 getSingleImplementorType(exactType);
-                assert exactType.equals(getStrengthenStampType(exactType));
+                assert exactType.equals(getStrengthenStampType(exactType)) : exactType;
 
                 if (!oldStamp.isExactType() || !exactType.equals(oldType)) {
                     ResolvedJavaType targetType = toTargetFunction.apply(exactType);
@@ -792,7 +778,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 }
 
             } else if (!oldStamp.isExactType()) {
-                assert typeStateTypes.size() > 1;
+                assert typeStateTypes.size() > 1 : typeStateTypes;
                 AnalysisType baseType = typeStateTypes.get(0);
                 for (int i = 1; i < typeStateTypes.size(); i++) {
                     if (baseType.isJavaLangObject()) {
@@ -819,7 +805,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
                 AnalysisType newType = getStrengthenStampType(baseType);
 
-                assert typeStateTypes.stream().map(typeStateType -> newType.isAssignableFrom(typeStateType)).reduce(Boolean::logicalAnd).get();
+                assert typeStateTypes.stream().map(typeStateType -> newType.isAssignableFrom(typeStateType)).reduce(Boolean::logicalAnd).get() : typeStateTypes;
 
                 if (!newType.equals(oldType) && (oldType != null || !newType.isJavaLangObject())) {
                     ResolvedJavaType targetType = toTargetFunction.apply(newType);
@@ -831,7 +817,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             }
 
             if (nonNull != oldStamp.nonNull()) {
-                assert nonNull;
+                assert nonNull : oldStamp;
                 return oldStamp.asNonNull();
             }
             /* Nothing to strengthen. */

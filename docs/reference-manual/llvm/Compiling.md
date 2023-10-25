@@ -26,24 +26,24 @@ The GraalVM LLVM runtime utilizes this information to find and load dependencies
 
 ## LLVM Toolchain for Compiling C/C++
 
-To simplify compiling C/C++ to executables with embedded bitcode, GraalVM comes with a pre-built LLVM toolchain.
+To simplify compiling C/C++ to executables with embedded bitcode, the LLVM runtime comes with a prebuilt LLVM toolchain.
 The toolchain contains compilers such as `clang` for C or `clang++` for C++, but also other tools that are needed
 for building native projects such as a linker (`ld`), or an archiver (`ar`) for creating static libraries.
 
-The LLVM toolchain can be added to GraalVM on demand with the [GraalVM Updater](../graalvm-updater.md) tool:
-```shell
-$JAVA_HOME/bin/gu install llvm-toolchain
-```
+1. Get the location of the toolchain, using the `--print-toolchain-path` argument of `lli`:
+    ```shell
+    ./path/to/bin/lli --print-toolchain-path
+    ```
 
-To get the location of the toolchain, use the `--print-toolchain-path` argument of `lli`:
-```shell
-export LLVM_TOOLCHAIN=$($JAVA_HOME/bin/lli --print-toolchain-path)
-```
+2. Set the `LLVM_TOOLCHAIN` environment variable: 
+    ```shell
+    export LLVM_TOOLCHAIN=$(./path/to/bin/lli --print-toolchain-path)
+    ```
 
-See the content of the toolchain path for a list of available tools:
-```shell
-ls $LLVM_TOOLCHAIN
-```
+3. Then see the content of the toolchain path for a list of available tools:
+    ```shell
+    ls $LLVM_TOOLCHAIN
+    ```
 
 Use those tools just as you would for native compilation. For example, save this C code in a file named `hello.c`:
 ```c

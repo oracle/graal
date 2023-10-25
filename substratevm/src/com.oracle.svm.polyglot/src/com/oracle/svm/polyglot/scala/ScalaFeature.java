@@ -29,8 +29,8 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import org.graalvm.compiler.phases.util.Providers;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -67,7 +67,7 @@ public class ScalaFeature implements InternalFeature {
         RuntimeClassInitialization.initializeAtBuildTime("scala.runtime.LambdaDeserialize");
         RuntimeClassInitialization.initializeAtBuildTime("scala.runtime.StructuralCallSite");
         RuntimeClassInitialization.initializeAtBuildTime("scala.runtime.EmptyMethodCache");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, ScalaFeature.class, false, "jdk.internal.vm.compiler", "org.graalvm.compiler.nodes");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, ScalaFeature.class, false, "jdk.graal.compiler", "jdk.graal.compiler.nodes");
     }
 
     @Override
@@ -98,7 +98,7 @@ public class ScalaFeature implements InternalFeature {
 
         access.findSubclasses(scalaEnum).forEach(enumClass -> {
             /* this is based on implementation of scala.Enumeration.populateNamesMap */
-            RuntimeReflection.register(enumClass.getDeclaredFields());
+            RuntimeReflection.registerAllDeclaredFields(enumClass);
             // all method relevant for Enums
             Method[] relevantMethods = Arrays.stream(enumClass.getDeclaredMethods())
                             .filter(m -> m.getParameterTypes().length == 0 &&

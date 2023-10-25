@@ -2,15 +2,35 @@
 
 This changelog summarizes major changes to GraalVM Native Image.
 
-## Version 23.1.0
+## GraalVM for JDK 22 (Internal Version 24.0.0)
+* (GR-48304) Red Hat added support for the JFR event ThreadAllocationStatistics.
+* (GR-48343) Red Hat added support for the JFR events AllocationRequiringGC and SystemGC.
+* (GR-48612) Enable `--strict-image-heap` by default. The option is now deprecated and can be removed from your argument list. A blog post with more information will follow shortly.
+* (GR-48354) Remove native-image-agent legacy `build`-option
+* (GR-49221) Support for thread dumps can now be enabled with `--enable-monitoring=threaddump`. The option `-H:±DumpThreadStacksOnSignal` is deprecated and marked for removal.
+* (GR-48579) Options ParseOnce, ParseOnceJIT, and InlineBeforeAnalysis are deprecated and no longer have any effect.
+
+## GraalVM for JDK 21 (Internal Version 23.1.0)
 * (GR-35746) Lower the default aligned chunk size from 1 MB to 512 KB for the serial and epsilon GCs, reducing memory usage and image size in many cases.
 * (GR-45841) BellSoft added support for the JFR event ThreadCPULoad.
 * (GR-45994) Removed the option `-H:EnableSignalAPI`. Please use the runtime option `EnableSignalHandling` if it is necessary to enable or disable signal handling explicitly.
 * (GR-39406) Simulation of class initializer: Class initializer of classes that are not marked for initialization at image build time are simulated at image build time to avoid executing them at image run time.
+* (GR-39406) New option `--strict-image-heap`: All classes can now be used at image build time, even when they are not explicitly configured as `--initialize-at-build-time`. Note, however, that still only classes configured as `--initialize-at-build-time` are allowed in the image heap. Adopt this option as it will become the default in the next release of GraalVM.
 * (GR-46392) Add `--parallelism` option to control how many threads are used by the build process.
 * (GR-46392) Add build resources section to the build output that shows the memory and thread limits of the build process.
+* (GR-38994) Together with Red Hat, we added support for `-XX:+HeapDumpOnOutOfMemoryError`.
+* (GR-47365) Throw `MissingReflectionRegistrationError` when attempting to create a proxy class without having it registered at build-time, instead of a `VMError`.
+* (GR-46064) Add option `-H:±IndirectBranchTargetMarker` to mark indirect branch targets on AMD64 with an endbranch instruction. This is a prerequisite for future Intel CET support.
+* (GR-46740) Preview of [Foreign Function & Memory API downcalls](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/ForeignInterface.md) (part of "Project Panama", [JEP 442](https://openjdk.org/jeps/442)) on AMD64. Must be enabled with `--enable-preview`.
+* (GR-27034) Add `-H:ImageBuildID` option to generate Image Build ID, which is a 128-bit UUID string generated randomly, once per bundle or digest of input args when bundles are not used.
+* (GR-47647) Add `-H:±UnlockExperimentalVMOptions` for unlocking access to experimental options similar to HotSpot's `-XX:UnlockExperimentalVMOptions`. Explicit unlocking will be required in a future release, which can be tested with the env setting `NATIVE_IMAGE_EXPERIMENTAL_OPTIONS_ARE_FATAL=true`. For more details, see [issue #7105](https://github.com/oracle/graal/issues/7105).
+* (GR-47647) Add `--color[=WHEN]` option to color the output WHEN ('always', 'never', or 'auto'). This API option supersedes the experimental option `-H:+BuildOutputColorful`.
+* (GR-43920) Add support for executing native image bundles as jar files with extra options `--with-native-image-agent` and `--container`.
+* (GR-43920) Add `,container[=<container-tool>]`, `,dockerfile=<dockerfile>` and `,dry-run` options to `--bundle-create`and `--bundle-apply`.
+* (GR-46420) Switch to directly using cgroup support from the JDK.
+* (GR-29688) More sophisticated intrinsification and inlining of method handle usages, both explicit and implicit (lambdas, string concatenation and record classes), and various fixes for non-intrinsified usages.
 
-## Version 23.0.0
+## GraalVM for JDK 17 and GraalVM for JDK 20 (Internal Version 23.0.0)
 * (GR-40187) Report invalid use of SVM specific classes on image class- or module-path as error. As a temporary workaround, `-H:+AllowDeprecatedBuilderClassesOnImageClasspath` allows turning the error into a warning.
 * (GR-41196) Provide `.debug.svm.imagebuild.*` sections that contain build options and properties used in the build of the image.
 * (GR-41978) Disallow `--initialize-at-build-time` without arguments. As a temporary workaround, `-H:+AllowDeprecatedInitializeAllClassesAtBuildTime` allows turning this error into a warning.

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,7 @@
 
 package com.oracle.svm.core.jfr.events;
 
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.word.Word;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.HasJfrSupport;
@@ -36,22 +36,25 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
+import com.oracle.svm.core.jfr.Target_jdk_jfr_internal_JVM_ChunkRotationMonitor;
 
 public class JavaMonitorWaitEvent {
     public static void emit(long startTicks, Object obj, long notifier, long timeout, boolean timedOut) {
-        if (HasJfrSupport.get()) {
+        if (HasJfrSupport.get() && obj != null && !Target_jdk_jfr_internal_JVM_ChunkRotationMonitor.class.equals(obj.getClass())) {
             emit0(startTicks, obj, notifier, timeout, timedOut);
         }
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     private static void emit0(long startTicks, Object obj, long notifier, long timeout, boolean timedOut) {
-        if (JfrEvent.JavaMonitorWait.shouldEmit()) {
+        long duration = JfrTicks.duration(startTicks);
+        if (JfrEvent.JavaMonitorWait.shouldEmit(duration)) {
             JfrNativeEventWriterData data = org.graalvm.nativeimage.StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
+
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.JavaMonitorWait);
             JfrNativeEventWriter.putLong(data, startTicks);
-            JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks() - startTicks);
+            JfrNativeEventWriter.putLong(data, duration);
             JfrNativeEventWriter.putEventThread(data);
             JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.JavaMonitorWait, 0));
             JfrNativeEventWriter.putClass(data, obj.getClass());

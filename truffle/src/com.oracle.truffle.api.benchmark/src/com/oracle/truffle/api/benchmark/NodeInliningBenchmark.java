@@ -42,6 +42,8 @@ package com.oracle.truffle.api.benchmark;
 
 import org.graalvm.polyglot.Context;
 import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.CompilerControl;
+import org.openjdk.jmh.annotations.CompilerControl.Mode;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.OperationsPerInvocation;
 import org.openjdk.jmh.annotations.Scope;
@@ -51,8 +53,12 @@ import org.openjdk.jmh.annotations.TearDown;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.benchmark.NodeInliningBenchmarkFactory.CachedNodeGen;
+import com.oracle.truffle.api.benchmark.NodeInliningBenchmarkFactory.CachedSharedExclusiveNodeGen;
 import com.oracle.truffle.api.benchmark.NodeInliningBenchmarkFactory.InlinedNodeGen;
+import com.oracle.truffle.api.benchmark.NodeInliningBenchmarkFactory.InlinedSharedExclusiveNodeGen;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -77,10 +83,22 @@ public class NodeInliningBenchmark extends TruffleBenchmark {
 
         final InlinedNode[] inlinedNodes = new InlinedNode[INNER_LOOP];
         final CachedNode[] cachedNodes = new CachedNode[INNER_LOOP];
+        final InlinedSharedExclusiveNode[] sharedExclusiveInlinedNodes = new InlinedSharedExclusiveNode[INNER_LOOP];
+        final CachedSharedExclusiveNode[] sharedExclusiveCachedNodes = new CachedSharedExclusiveNode[INNER_LOOP];
         {
             for (int i = 0; i < INNER_LOOP; i++) {
                 inlinedNodes[i] = InlinedNodeGen.create();
                 cachedNodes[i] = CachedNodeGen.create();
+
+                sharedExclusiveInlinedNodes[i] = InlinedSharedExclusiveNodeGen.create();
+                sharedExclusiveCachedNodes[i] = CachedSharedExclusiveNodeGen.create();
+
+                sharedExclusiveInlinedNodes[i].execute(0, 0, 0, 0);
+                sharedExclusiveInlinedNodes[i].execute(1, 0, 0, 0);
+                sharedExclusiveInlinedNodes[i].execute(2, 0, 0, 0);
+                sharedExclusiveCachedNodes[i].execute(0, 0, 0, 0);
+                sharedExclusiveCachedNodes[i].execute(1, 0, 0, 0);
+                sharedExclusiveCachedNodes[i].execute(2, 0, 0, 0);
             }
         }
 
@@ -199,7 +217,7 @@ public class NodeInliningBenchmark extends TruffleBenchmark {
         abstract long execute(Node node, long left, long right);
 
         @Specialization
-        static long add(Node node, long left, long right,
+        static long doAdd(Node node, long left, long right,
                         @Cached InlinedAbsNode leftAbs,
                         @Cached InlinedAbsNode rightAbs) {
             return leftAbs.execute(node, left) + rightAbs.execute(node, right);
@@ -250,7 +268,7 @@ public class NodeInliningBenchmark extends TruffleBenchmark {
         abstract long execute(long left, long right);
 
         @Specialization
-        static long add(long left, long right,
+        static long doAdd(long left, long right,
                         @Cached AbsNode leftAbs,
                         @Cached AbsNode rightAbs) {
             return leftAbs.execute(left) + rightAbs.execute(right);
@@ -275,6 +293,109 @@ public class NodeInliningBenchmark extends TruffleBenchmark {
             return v;
         }
 
+    }
+
+    @SuppressWarnings({"truffle-inlining", "truffle-sharing"})
+    public abstract static class CachedSharedExclusiveNode extends Node {
+
+        abstract long execute(long v0, long v1, long v2, long v3);
+
+        @Specialization(guards = "v0 == cachedV0", limit = "3")
+        @CompilerControl(Mode.DONT_INLINE)
+        @SuppressWarnings("unused")
+        static long do0(@SuppressWarnings("unused") long v0, long v1, long v2, long v3,
+                        @Cached("v0") long cachedV0,
+                        @Shared @Cached AddAbsNode add0,
+                        @Cached AddAbsNode add1,
+                        @Cached AddAbsNode add2) {
+            long v;
+            v = add0.execute(cachedV0, v1);
+            v = add1.execute(v, v2);
+            v = add2.execute(v, v3);
+            return v;
+        }
+
+        @Specialization(guards = "v0 == cachedV0", limit = "3")
+        @CompilerControl(Mode.DONT_INLINE)
+        @SuppressWarnings("unused")
+        static long do1(long v0, long v1, long v2, long v3,
+                        @Cached("v0") long cachedV0,
+                        @Shared @Cached AddAbsNode add0,
+                        @Cached AddAbsNode add1,
+                        @Cached AddAbsNode add2) {
+            long v;
+            v = add0.execute(cachedV0, v1);
+            v = add1.execute(v, v2);
+            v = add2.execute(v, v3);
+            return v;
+        }
+    }
+
+    @SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-interpreted-performance"})
+    public abstract static class InlinedSharedExclusiveNode extends Node {
+
+        abstract long execute(long v0, long v1, long v2, long v3);
+
+        @Specialization(guards = "v0 == cachedV0", limit = "3")
+        @CompilerControl(Mode.DONT_INLINE)
+        @SuppressWarnings("unused")
+        static long do0(@SuppressWarnings("unused") long v0, long v1, long v2, long v3,
+                        @Bind("this") Node node,
+                        @Cached("v0") long cachedV0,
+                        @Shared @Cached InlinedAddAbsNode add0,
+                        @Cached InlinedAddAbsNode add1,
+                        @Cached InlinedAddAbsNode add2) {
+            long v;
+            v = add0.execute(node, cachedV0, v1);
+            v = add1.execute(node, v, v2);
+            v = add2.execute(node, v, v3);
+            return v;
+        }
+
+        @Specialization(guards = "v0 == cachedV0", limit = "3")
+        @CompilerControl(Mode.DONT_INLINE)
+        @SuppressWarnings("unused")
+        static long do1(long v0, long v1, long v2, long v3,
+                        @Bind("this") Node node,
+                        @Cached("v0") long cachedV0,
+                        @Shared @Cached InlinedAddAbsNode add0,
+                        @Cached InlinedAddAbsNode add1,
+                        @Cached InlinedAddAbsNode add2) {
+            long v;
+            v = add0.execute(node, cachedV0, v1);
+            v = add1.execute(node, v, v2);
+            v = add2.execute(node, v, v3);
+            return v;
+        }
+
+    }
+
+    /*
+     * Inlining beats a cached node by a wide margin if everything gets inlined properly. If
+     * inlining is explicitly disabled and the an inlining slow-path is triggered then inlined
+     * performs worse than cached.
+     */
+
+    @Benchmark
+    @OperationsPerInvocation(INNER_LOOP)
+    public long executeSharedExclusiveInlined(BenchmarkState state) {
+        var nodes = state.sharedExclusiveInlinedNodes;
+        long sum = 0;
+        for (int i = 0; i < nodes.length; i++) {
+            sum += nodes[i % 3].execute(0, -i, i, -i);
+        }
+        return sum;
+    }
+
+    @Benchmark
+    @OperationsPerInvocation(INNER_LOOP)
+    public long executeSharedExclusiveCached(BenchmarkState state) {
+        var nodes = state.sharedExclusiveCachedNodes;
+        long sum = 0;
+        for (int i = 0; i < nodes.length; i++) {
+            sum += nodes[i % 3].execute(0, -i, i, -i);
+        }
+        return sum;
     }
 
 }

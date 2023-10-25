@@ -26,7 +26,7 @@
 
 package com.oracle.svm.core.jfr.events;
 
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -48,13 +48,14 @@ public class JavaMonitorInflateEvent {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static void emit0(Object obj, long startTicks, MonitorInflationCause cause) {
-        if (JfrEvent.JavaMonitorInflate.shouldEmit()) {
+        long duration = JfrTicks.duration(startTicks);
+        if (JfrEvent.JavaMonitorInflate.shouldEmit(duration)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.JavaMonitorInflate);
             JfrNativeEventWriter.putLong(data, startTicks);
-            JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks() - startTicks);
+            JfrNativeEventWriter.putLong(data, duration);
             JfrNativeEventWriter.putEventThread(data);
             JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.JavaMonitorInflate, 0));
             JfrNativeEventWriter.putClass(data, obj.getClass());

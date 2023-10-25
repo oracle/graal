@@ -29,7 +29,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.java.StableMethodNameFormatter;
+import jdk.graal.compiler.java.StableMethodNameFormatter;
 import org.graalvm.profdiff.core.inlining.InliningPath;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.optimization.Optimization;
@@ -189,7 +189,7 @@ public class Method {
         writer.increaseIndent();
         Iterable<CompilationUnit> sortedCompilationUnits = () -> compilationUnits.stream().sorted(Comparator.comparingLong(compilationUnit -> -compilationUnit.getPeriod())).iterator();
         for (CompilationUnit compilationUnit : sortedCompilationUnits) {
-            writer.write(compilationUnit.getCompilationId());
+            writer.write(String.format("%5s", compilationUnit.getCompilationId()));
             if (compilationUnit.getMultiMethodKey() != null) {
                 writer.write(" of multi-method ");
                 writer.write(compilationUnit.getMultiMethodKey());
@@ -202,17 +202,16 @@ public class Method {
                 }
             }
             writer.writeln();
-            if (compilationUnit instanceof CompilationFragment) {
-                CompilationFragment fragment = (CompilationFragment) compilationUnit;
+            if (compilationUnit instanceof CompilationFragment fragment) {
                 boolean first = true;
                 for (InliningPath.PathElement element : fragment.getPathFromRoot().elements()) {
                     writer.write(first ? "  |_ a fragment of " : "                   ");
-                    writer.write(element.getMethodName());
-                    if (element.getCallsiteBCI() == Optimization.UNKNOWN_BCI) {
+                    writer.write(element.methodName());
+                    if (element.callsiteBCI() == Optimization.UNKNOWN_BCI) {
                         writer.writeln();
                     } else {
                         writer.write(" at bci ");
-                        writer.writeln(Integer.toString(element.getCallsiteBCI()));
+                        writer.writeln(Integer.toString(element.callsiteBCI()));
                     }
                     first = false;
                 }

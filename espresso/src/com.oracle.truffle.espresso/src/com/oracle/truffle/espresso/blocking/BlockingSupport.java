@@ -137,13 +137,13 @@ public final class BlockingSupport<T> {
      * {@link #enterBlockingRegion(Interruptible, Node, Object)}, meaning that the current thread
      * will still handle {@linkplain TruffleSafepoint safepoints}.
      *
-     * @param millis the length of time to sleep in milliseconds.
+     * @param nanos the length of time to sleep in nanoseconds.
      * @param location the location with which the safepoint should be polled.
      * @throws GuestInterruptedException if the current thread was guest-interrupted.
-     * @throws IllegalArgumentException if millis is negative.
+     * @throws IllegalArgumentException if nanos is negative.
      */
-    public void sleep(long millis, Node location) throws GuestInterruptedException {
-        enterBlockingRegion(sleepInterruptible(), location, TimeUnit.MILLISECONDS.toNanos(millis));
+    public void sleep(long nanos, Node location) throws GuestInterruptedException {
+        enterBlockingRegion(sleepInterruptible(), location, nanos);
     }
 
     /**
@@ -172,7 +172,10 @@ public final class BlockingSupport<T> {
             if (left <= 0) {
                 return; // fully waited.
             }
-            Thread.sleep(TimeUnit.NANOSECONDS.toMillis(left));
+            long millis = TimeUnit.NANOSECONDS.toMillis(left);
+            long nanos = left - TimeUnit.MILLISECONDS.toNanos(millis);
+            assert nanos >= 0 && nanos < 1_000_000;
+            Thread.sleep(millis, (int) nanos);
         }
     }
 }

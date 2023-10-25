@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -194,6 +194,9 @@ class NativeImageBenchmarkMixin(object):
         if mx_benchmark.mx_benchmark_compatibility().jmh_dist_benchmark_extracts_add_opens_from_manifest():
             add_opens_add_extracts = mx_benchmark._add_opens_and_exports_from_manifest(distribution.path)
         return mx.get_runtime_jvm_args([self.dist], jdk=jdk, exclude_names=mx_sdk_vm_impl.NativePropertiesBuildTask.implicit_excludes) + add_opens_add_extracts
+
+    def extra_jvm_arg(self, benchmark, args):
+        return parse_prefixed_args('-Dnative-image.benchmark.extra-jvm-arg=', args)
 
     def extra_run_arg(self, benchmark, args, image_run_args):
         """Returns all arguments passed to the final image.

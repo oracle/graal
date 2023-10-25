@@ -26,9 +26,9 @@ package com.oracle.svm.hosted.analysis;
 
 import java.util.concurrent.ForkJoinPool;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.word.WordTypes;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -55,10 +55,9 @@ public class NativeImageReachabilityAnalysisEngine extends ReachabilityAnalysisE
                     AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
                     ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes,
                     AnnotationSubstitutionProcessor annotationSubstitutionProcessor,
-                    ForkJoinPool executor,
-                    Runnable heartbeatCallback, TimerCollection timerCollection, ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler) {
-        super(options, universe, universe.hostVM(), metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, executor, heartbeatCallback, new SubstrateUnsupportedFeatures(),
-                        timerCollection, reachabilityMethodProcessingHandler);
+                    ForkJoinPool executor, TimerCollection timerCollection, ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler) {
+        super(options, universe, universe.hostVM(), metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, executor, new SubstrateUnsupportedFeatures(), timerCollection,
+                        reachabilityMethodProcessingHandler);
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
         this.strengthenGraalGraphs = SubstrateOptions.parseOnce();
         this.dynamicHubInitializer = new DynamicHubInitializer(this);

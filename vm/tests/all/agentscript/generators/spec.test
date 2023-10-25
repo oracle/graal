@@ -1,4 +1,4 @@
->[0?] ls $JAVA_HOME/lib/installer/trufflejson.jar
+>[0?] ls $JAVA_HOME/languages/truffle-json/truffle-json.jar
 >[0] cp watch.js ${TMP_DIR}/watch.js
 >[0] cp spec.ts ${TMP_DIR}/spec.in
 >[0] cp -r ../../../../../tools/generators/src ${TMP_DIR}
@@ -13,4 +13,4 @@ Generating At
 Generating Where
 Generating SOp
 Generating WOp
->[0?] javac -cp $JAVA_HOME/lib/installer/trufflejson.jar -sourcepath parser/ parser/*.java -d out
+>[0?] javac -cp $JAVA_HOME/languages/truffle-json/truffle-json.jar -sourcepath parser/ parser/*.java -d out

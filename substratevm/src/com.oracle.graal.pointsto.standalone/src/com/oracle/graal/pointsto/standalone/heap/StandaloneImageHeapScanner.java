@@ -26,7 +26,7 @@
 
 package com.oracle.graal.pointsto.standalone.heap;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
@@ -37,18 +37,25 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
+import java.util.function.Predicate;
+
 public class StandaloneImageHeapScanner extends ImageHeapScanner {
     private ClassLoader classLoader;
+    private Predicate<JavaConstant> shouldScanConstant;
+    private Predicate<AnalysisField> shouldScanField;
 
     public StandaloneImageHeapScanner(BigBang bb, ImageHeap heap, AnalysisMetaAccess aMetaAccess, SnippetReflectionProvider aSnippetReflection, ConstantReflectionProvider aConstantReflection,
                     ObjectScanningObserver aScanningObserver,
                     ClassLoader classLoader) {
         super(bb, heap, aMetaAccess, aSnippetReflection, aConstantReflection, aScanningObserver);
         this.classLoader = classLoader;
+        shouldScanConstant = constant -> isClassLoaderAllowed(metaAccess.lookupJavaType(constant).getJavaClass().getClassLoader());
+        shouldScanField = field -> isClassLoaderAllowed(field.getDeclaringClass().getJavaClass().getClassLoader());
     }
 
     @Override
@@ -74,5 +81,35 @@ public class StandaloneImageHeapScanner extends ImageHeapScanner {
         } else {
             return ret;
         }
+    }
+
+    @Override
+    public void scanEmbeddedRoot(JavaConstant root, BytecodePosition position) {
+        if (shouldScanConstant.test(root)) {
+            super.scanEmbeddedRoot(root, position);
+        }
+    }
+
+    @Override
+    public void onFieldRead(AnalysisField field) {
+        if (shouldScanField.test(field)) {
+            super.onFieldRead(field);
+        }
+    }
+
+    /**
+     * We only allow scanning analysis target classes which are loaded by platformClassloader(e.g.
+     * the JDK classes) or the classloader dedicated for analysis targets.
+     */
+    private boolean isClassLoaderAllowed(ClassLoader cl) {
+        return ClassLoader.getPlatformClassLoader().equals(cl) || this.classLoader.equals(cl);
+    }
+
+    public Predicate<JavaConstant> getShouldScanConstant() {
+        return shouldScanConstant;
+    }
+
+    public Predicate<AnalysisField> getShouldScanField() {
+        return shouldScanField;
     }
 }

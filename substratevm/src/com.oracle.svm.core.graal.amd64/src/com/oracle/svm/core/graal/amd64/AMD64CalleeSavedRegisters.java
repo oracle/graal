@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
+import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -34,17 +34,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.asm.Label;
-import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.asm.amd64.AMD64Assembler;
-import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler;
-import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
-import org.graalvm.compiler.core.common.Stride;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
-import org.graalvm.compiler.phases.util.Providers;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.asm.Label;
+import jdk.graal.compiler.asm.amd64.AMD64Address;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler;
+import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
+import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.Stride;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -105,7 +106,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         int offset = 0;
         Map<Register, Integer> calleeSavedRegisterOffsets = new HashMap<>();
         for (Register register : calleeSavedRegisters) {
-            calleeSavedRegisterOffsets.put(register, offset);
+            int reservedSize = 0;
             RegisterCategory category = register.getRegisterCategory();
             boolean isXMM = category.equals(AMD64.XMM);
             if (isXMM) {
@@ -119,13 +120,28 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
             }
             if (isXMM && isRuntimeCompilationEnabled && AMD64CPUFeatureAccess.canUpdateCPUFeatures()) {
                 // we might need to save the full 512 bit vector register
-                offset += AMD64Kind.V512_QWORD.getSizeInBytes();
+                reservedSize = AMD64Kind.V512_QWORD.getSizeInBytes();
             } else if (isMask && isRuntimeCompilationEnabled && AMD64CPUFeatureAccess.canUpdateCPUFeatures()) {
                 // we might need to save the full 64 bit mask register
-                offset += AMD64Kind.MASK64.getSizeInBytes();
+                reservedSize = AMD64Kind.MASK64.getSizeInBytes();
+            } else if (target.arch.getLargestStorableKind(category) != null) {
+                reservedSize = target.arch.getLargestStorableKind(category).getSizeInBytes();
             } else {
-                offset += target.arch.getLargestStorableKind(category).getSizeInBytes();
+                // Mask registers are not present without AVX512
+                VMError.guarantee(
+                                isMask && !target.arch.getFeatures().contains(CPUFeature.AVX512F) &&
+                                                !(isRuntimeCompilationEnabled && AMD64CPUFeatureAccess.canUpdateCPUFeatures()),
+                                "unexpected register without largest storable kind: %s", register);
             }
+            /*
+             * Make sure this register's offset is aligned to its size. When using only AVX512F, its
+             * 16-bit mask registers would otherwise mess up the alignment for larger registers.
+             */
+            if (reservedSize > 0) {
+                offset = NumUtil.roundUp(offset, reservedSize);
+            }
+            calleeSavedRegisterOffsets.put(register, offset);
+            offset += reservedSize;
         }
         int calleeSavedRegistersSizeInBytes = offset;
 

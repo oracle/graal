@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package org.graalvm.wasm;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiConsumer;
 
 import org.graalvm.wasm.api.Sequence;
 import org.graalvm.wasm.constants.GlobalModifier;
@@ -62,12 +63,14 @@ import com.oracle.truffle.api.library.ExportMessage;
 @SuppressWarnings("static-method")
 public final class WasmInstance extends RuntimeState implements TruffleObject {
 
+    private List<BiConsumer<WasmContext, WasmInstance>> linkActions;
+
     public WasmInstance(WasmContext context, WasmModule module) {
         this(context, module, module.numFunctions(), module.droppedDataInstanceOffset());
     }
 
     public WasmInstance(WasmContext context, WasmModule module, int numberOfFunctions) {
-        super(context, module, numberOfFunctions, 0);
+        this(context, module, numberOfFunctions, 0);
     }
 
     private WasmInstance(WasmContext context, WasmModule module, int numberOfFunctions, int droppedDataInstanceAddress) {
@@ -104,6 +107,27 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         WasmContext.get(null).linker().tryLink(this);
     }
 
+    public List<BiConsumer<WasmContext, WasmInstance>> linkActions() {
+        return linkActions;
+    }
+
+    public List<BiConsumer<WasmContext, WasmInstance>> createLinkActions() {
+        return linkActions = module().getOrRecreateLinkActions();
+    }
+
+    public void addLinkAction(BiConsumer<WasmContext, WasmInstance> action) {
+        linkActions.add(action);
+    }
+
+    public void removeLinkActions() {
+        this.linkActions = null;
+    }
+
+    @Override
+    protected WasmInstance instance() {
+        return this;
+    }
+
     @ExportMessage
     boolean hasMembers() {
         return true;
@@ -123,8 +147,9 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
             final WasmContext context = WasmContext.get(null);
             return context.tables().table(tableAddress(tableIndex));
         }
-        if (symbolTable.exportedMemoryNames().contains(member)) {
-            return memory();
+        final Integer memoryIndex = symbolTable.exportedMemories().get(member);
+        if (memoryIndex != null) {
+            return memory(memoryIndex);
         }
         final Integer globalIndex = symbolTable.exportedGlobals().get(member);
         if (globalIndex != null) {
@@ -163,7 +188,7 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         final SymbolTable symbolTable = symbolTable();
         try {
             return symbolTable.exportedFunctions().containsKey(member) ||
-                            symbolTable.exportedMemoryNames().contains(member) ||
+                            symbolTable.exportedMemories().containsKey(member) ||
                             symbolTable.exportedTables().containsKey(member) ||
                             symbolTable.exportedGlobals().containsKey(member);
         } catch (NumberFormatException exc) {
@@ -224,7 +249,9 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         for (String tableName : symbolTable.exportedTables().getKeys()) {
             exportNames.add(tableName);
         }
-        exportNames.addAll(symbolTable.exportedMemoryNames());
+        for (String memoryName : symbolTable.exportedMemories().getKeys()) {
+            exportNames.add(memoryName);
+        }
         for (String globalName : symbolTable.exportedGlobals().getKeys()) {
             exportNames.add(globalName);
         }

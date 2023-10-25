@@ -43,8 +43,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.nodes.ValueNode;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.nodes.ValueNode;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -365,7 +365,7 @@ public class PointsToStats {
             return;
         }
 
-        assert typeStateStats.containsKey(s1) && typeStateStats.containsKey(s2) && typeStateStats.containsKey(result);
+        assert typeStateStats.containsKey(s1) && typeStateStats.containsKey(s2) && typeStateStats.containsKey(result) : typeFlowStats;
 
         UnionOperation union = new UnionOperation(s1, s2, result);
         AtomicInteger counter = unionStats.computeIfAbsent(union, (k) -> new AtomicInteger());

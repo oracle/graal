@@ -33,8 +33,8 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionType;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
@@ -92,11 +92,11 @@ public class ServiceLoaderFeature implements InternalFeature {
                     "sun.util.locale.provider.LocaleDataMetaInfo", // see LocaleSubstitutions
                     /* Graal hotspot-specific services */
                     "jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory",
-                    "org.graalvm.compiler.hotspot.CompilerConfigurationFactory",
-                    "org.graalvm.compiler.hotspot.HotSpotBackendFactory",
-                    "org.graalvm.compiler.hotspot.meta.DefaultHotSpotLoweringProvider$Extensions",
-                    "org.graalvm.compiler.hotspot.meta.HotSpotInvocationPluginProvider",
-                    "org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory");
+                    "jdk.graal.compiler.hotspot.CompilerConfigurationFactory",
+                    "jdk.graal.compiler.hotspot.HotSpotBackendFactory",
+                    "jdk.graal.compiler.hotspot.meta.DefaultHotSpotLoweringProvider$Extensions",
+                    "jdk.graal.compiler.hotspot.meta.HotSpotInvocationPluginProvider",
+                    "jdk.graal.compiler.truffle.hotspot.TruffleCallBoundaryInstrumentationFactory");
 
     // NOTE: Platform class had to be added to this list since our analysis discovers that
     // Platform.includedIn is reachable regardless of fact that it is constant folded at
@@ -112,9 +112,9 @@ public class ServiceLoaderFeature implements InternalFeature {
 
     private static final Set<String> SKIPPED_PROVIDERS = Set.of(
                     /* Graal hotspot-specific service-providers */
-                    "org.graalvm.compiler.hotspot.meta.HotSpotDisassemblerProvider",
-                    /* Skip jline console provider until GR-44085 is fixed */
-                    "jdk.internal.org.jline.JdkConsoleProviderImpl");
+                    "jdk.graal.compiler.hotspot.meta.HotSpotDisassemblerProvider",
+                    /* Skip console providers until GR-44085 is fixed */
+                    "jdk.internal.org.jline.JdkConsoleProviderImpl", "jdk.jshell.execution.impl.ConsoleImpl$ConsoleProviderImpl");
 
     private final Set<String> serviceProvidersToSkip = new HashSet<>(SKIPPED_PROVIDERS);
 
@@ -156,6 +156,9 @@ public class ServiceLoaderFeature implements InternalFeature {
             /* Make provider reflectively instantiable */
             Class<?> providerClass = access.findClassByName(provider);
 
+            if (providerClass == null || providerClass.isArray() || providerClass.isPrimitive()) {
+                continue;
+            }
             FeatureImpl.DuringAnalysisAccessImpl accessImpl = (FeatureImpl.DuringAnalysisAccessImpl) access;
             if (!accessImpl.getHostVM().platformSupported(providerClass)) {
                 continue;
@@ -165,19 +168,18 @@ public class ServiceLoaderFeature implements InternalFeature {
                 continue;
             }
 
-            if (providerClass != null && !providerClass.isArray() && !providerClass.isPrimitive()) {
-                Constructor<?> nullaryConstructor;
-                try {
-                    nullaryConstructor = providerClass.getDeclaredConstructor();
-                } catch (NoSuchMethodException | SecurityException | LinkageError e) {
-                    /* Skip providers that do not comply with requirements */
-                    nullaryConstructor = null;
-                }
-                if (nullaryConstructor != null) {
-                    RuntimeReflection.register(providerClass);
-                    RuntimeReflection.register(nullaryConstructor);
-                    registeredProviders.add(provider);
-                }
+            Constructor<?> nullaryConstructor;
+            try {
+                nullaryConstructor = providerClass.getDeclaredConstructor();
+            } catch (NoSuchMethodException | SecurityException | LinkageError e) {
+                /* Skip providers that do not comply with requirements */
+                nullaryConstructor = null;
+            }
+            if (nullaryConstructor != null) {
+                RuntimeReflection.register(providerClass);
+                RuntimeReflection.register(nullaryConstructor);
+                RuntimeReflection.registerAllDeclaredMethods(providerClass);
+                registeredProviders.add(provider);
             }
         }
         if (!registeredProviders.isEmpty()) {
