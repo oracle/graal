@@ -667,8 +667,8 @@ local devkits = graal_common.devkits;
           ]
           + (
             # Locally deploy all relevant suites
-            self.deploy_ce(os, arch, dry_run, ['--dummy-javadoc', '--only', 'TRUFFLE_API,POLYGLOT,COLLECTIONS,NATIVEIMAGE,WORD,JS_COMMUNITY,GRAALJS,TREGEX,TRUFFLE_ICU4J,TRUFFLE_RUNTIME,JNIUTILS,TRUFFLE_COMPILER,NATIVEBRIDGE,INSIGHT_HEAP,INSIGHT,TRUFFLE_DSL_PROCESSOR', local_repo, '${LOCAL_MAVEN_REDUCED_REPO_URL}'])
-            + self.deploy_ee(os, arch, dry_run, ['--dummy-javadoc', '--only', 'JS_ENTERPRISE,TRUFFLE_ENTERPRISE,HEAP_LANGUAGE', local_repo, '${LOCAL_MAVEN_REDUCED_REPO_URL}'], extra_mx_args=['--suite', 'graal-js'])
+            self.deploy_ce(os, arch, dry_run, ['--dummy-javadoc', '--only', vm.maven_deploy_base_functions.reduced_ce_dists, local_repo, '${LOCAL_MAVEN_REDUCED_REPO_URL}'])
+            + self.deploy_ee(os, arch, dry_run, ['--dummy-javadoc', '--only', vm.maven_deploy_base_functions.reduced_ee_dists, local_repo, '${LOCAL_MAVEN_REDUCED_REPO_URL}'], extra_mx_args=['--suite', 'graal-js'])
           )
           + (
             # Archive and deploy

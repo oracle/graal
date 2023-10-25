@@ -92,6 +92,9 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
 
     ee_licenses()::
       error 'The vm suite does not define ee licenses',
+
+    reduced_ce_dists:: error 'The vm suite does not define reduced dists',
+    reduced_ee_dists:: error 'The vm suite does not define reduced dists',
   },
 
   local builds = [
