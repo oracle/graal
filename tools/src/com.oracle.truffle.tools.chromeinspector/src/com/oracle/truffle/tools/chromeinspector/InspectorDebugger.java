@@ -42,6 +42,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -105,6 +106,8 @@ public final class InspectorDebugger extends DebuggerDomain {
                                     "\\s*\\k<a>\\.push\\(Object\\.getOwnPropertyNames\\(\\k<o>\\)\\)" +
                                     "\\};\\s*return\\s+\\k<a>\\}\\)\\((?<object>.*)\\)$");
 
+    private static final AtomicLong lastUniqueId = new AtomicLong();
+
     private final InspectorExecutionContext context;
     private final Object suspendLock = new Object();
     private volatile SuspendedCallbackImpl suspendedCallback;
@@ -121,6 +124,7 @@ public final class InspectorDebugger extends DebuggerDomain {
     private final Phaser onSuspendPhaser = new Phaser();
     private final BlockingQueue<CancellableRunnable> suspendThreadExecutables = new LinkedBlockingQueue<>();
     private final ReadWriteLock domainLock;
+    private final long uniqueId = lastUniqueId.incrementAndGet();
 
     public InspectorDebugger(InspectorExecutionContext context, boolean suspend, ReadWriteLock domainLock) {
         this.context = context;
@@ -151,6 +155,11 @@ public final class InspectorDebugger extends DebuggerDomain {
             }
             debuggerSession.suspendNextExecution();
         }
+    }
+
+    @Override
+    public String getUniqueDebuggerId() {
+        return "UniqueDebuggerId." + uniqueId;
     }
 
     private void startSession() {
