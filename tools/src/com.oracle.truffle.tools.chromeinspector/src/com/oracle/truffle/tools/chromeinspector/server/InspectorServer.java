@@ -35,8 +35,14 @@ import java.io.PrintWriter;
 import java.io.PushbackInputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
+<<<<<<< HEAD
 import java.net.Socket;
 import java.net.SocketException;
+=======
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.UnknownHostException;
+>>>>>>> de48c8431b2 (Add the mandatory experimental property 'debuggerId' and handle GET of /json/list path. (GR-49664))
 import java.nio.ByteBuffer;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -258,17 +264,30 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
     private class JSONHandler implements IHandler<IHTTPSession, Response> {
 
         @Override
+<<<<<<< HEAD
         public Response handle(IHTTPSession session) {
             if (Method.GET == session.getMethod()) {
                 String uri = session.getUri();
+=======
+        public HttpResponse apply(HttpRequest request) {
+            if ("GET".equals(request.getMethod())) {
+                String uriStr = request.getUri();
+                URI uri;
+                try {
+                    uri = new URI(uriStr);
+                } catch (URISyntaxException ex) {
+                    return null;
+                }
+                String uriPath = uri.getPath();
+>>>>>>> de48c8431b2 (Add the mandatory experimental property 'debuggerId' and handle GET of /json/list path. (GR-49664))
                 String responseJson = null;
-                if ("/json/version".equals(uri)) {
+                if ("/json/version".equals(uriPath)) {
                     JSONObject version = new JSONObject();
                     version.put("Browser", "GraalVM");
                     version.put("Protocol-Version", "1.2");
                     responseJson = version.toString();
                 }
-                if ("/json".equals(uri)) {
+                if ("/json".equals(uriPath) || "/json/list".equals(uriPath)) {
                     JSONArray json = new JSONArray();
                     for (ServerPathSession serverPathSession : sessions.values()) {
                         final String path = serverPathSession.pathContainingToken;
