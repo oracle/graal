@@ -52,7 +52,7 @@ public final class DarwinLinker extends Driver {
     }
 
     public static List<String> getLinkerFlags() {
-        return Arrays.asList("-lto_library", getLLVMBinDir().resolve("..").resolve("lib").resolve("libLTO.dylib").toString());
+        return List.of();
     }
 
     public static void link(String[] args) {
@@ -63,8 +63,6 @@ public final class DarwinLinker extends Driver {
         List<String> sulongArgs = new ArrayList<>();
         sulongArgs.add(exe);
         sulongArgs.add("-L" + getSulongHome().resolve(ClangLike.NATIVE_PLATFORM).resolve("lib"));
-        sulongArgs.add("-lto_library");
-        sulongArgs.add(getLLVMBinDir().resolve("..").resolve("lib").resolve("libLTO.dylib").toString());
         List<String> userArgs = Arrays.asList(args);
         boolean verbose = userArgs.contains("-v");
         runDriver(sulongArgs, userArgs, verbose, false, false);
