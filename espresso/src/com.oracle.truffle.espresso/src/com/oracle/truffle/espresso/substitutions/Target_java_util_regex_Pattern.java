@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -87,14 +88,14 @@ public final class Target_java_util_regex_Pattern {
                 meta.java_util_regex_Pattern_HIDDEN_tregex.setHiddenObject(self, StaticObject.NULL);
             } else {
                 try {
-                    int groupCount = (Integer) regexInterop.readMember(target, "groupCount");
+                    int groupCount = regexInterop.asInt(regexInterop.readMember(target, "groupCount"));
                     meta.java_util_regex_Pattern_capturingGroupCount.setInt(self, groupCount);
                     meta.java_util_regex_Pattern_HIDDEN_tregex.setHiddenObject(self, target);
                     meta.java_util_regex_Pattern_pattern.setObject(self, p);
                     meta.java_util_regex_Pattern_flags0.setInt(self, f);
                     meta.java_util_regex_Pattern_compiled.setBoolean(self, true);
                 } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-                    throw new RuntimeException(e);
+                    throw CompilerDirectives.shouldNotReachHere(e);
                 }
             }
         }
@@ -125,14 +126,13 @@ public final class Target_java_util_regex_Pattern {
                 getMeta().java_util_HashMap_init.getCallTarget().call(guestMap, (int) size);
 
                 for (long i = 0; i < size; i++) {
-                    String key = (String) regexInterop.readArrayElement(keys, i);
+                    String key = regexInterop.asString(regexInterop.readArrayElement(keys, i));
                     Object value = regexInterop.readMember(map, key);
                     StaticObject guestKey = getMeta().toGuestString(key);
 
                     Object integerValue = getMeta().java_lang_Integer_valueOf.getCallTarget().call(value);
                     getMeta().java_util_HashMap_put.getCallTarget().call(guestMap, guestKey, integerValue);
                 }
-
                 return (StaticObject) getMeta().java_util_Map_copy_of.getCallTarget().call(guestMap);
             } catch (UnsupportedMessageException | UnknownIdentifierException | InvalidArrayIndexException e) {
                 throw new RuntimeException(e);

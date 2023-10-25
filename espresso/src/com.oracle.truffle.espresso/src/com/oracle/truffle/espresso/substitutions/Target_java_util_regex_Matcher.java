@@ -75,22 +75,22 @@ public final class Target_java_util_regex_Matcher {
                 context.getMeta().java_util_regex_Matcher_first.setInt(self, from);
 
                 Object execRes = regexInterop.invokeMember(regexObject, "exec", text, from);
-                boolean isMatch = (Boolean) regexInterop.readMember(execRes, "isMatch");
+                boolean isMatch = regexInterop.asBoolean(regexInterop.readMember(execRes, "isMatch"));
                 int modCount = context.getMeta().java_util_regex_Matcher_modCount.getInt(self);
                 context.getMeta().java_util_regex_Matcher_modCount.setInt(self, modCount + 1);
 
                 if (isMatch) {
-                    int first = (Integer) regexInterop.invokeMember(execRes, "getStart", 0);
-                    int last = (Integer) regexInterop.invokeMember(execRes, "getEnd", 0);
+                    int first = regexInterop.asInt(regexInterop.invokeMember(execRes, "getStart", 0));
+                    int last = regexInterop.asInt(regexInterop.invokeMember(execRes, "getEnd", 0));
 
                     context.getMeta().java_util_regex_Matcher_first.setInt(self, first);
                     context.getMeta().java_util_regex_Matcher_last.setInt(self, last);
 
-                    int groupCount = (Integer) regexInterop.readMember(regexObject, "groupCount");
+                    int groupCount = regexInterop.asInt(regexInterop.readMember(regexObject, "groupCount"));
 
                     for (int i = 0; i < groupCount; i++) {
-                        int start = (Integer) regexInterop.invokeMember(execRes, "getStart", i);
-                        int end = (Integer) regexInterop.invokeMember(execRes, "getEnd", i);
+                        int start = regexInterop.asInt(regexInterop.invokeMember(execRes, "getStart", i));
+                        int end = regexInterop.asInt(regexInterop.invokeMember(execRes, "getEnd", i));
 
                         StaticObject array = context.getMeta().java_util_regex_Matcher_groups.getObject(self);
                         array.<int[]>unwrap(context.getLanguage())[i * 2] = start;
@@ -98,7 +98,7 @@ public final class Target_java_util_regex_Matcher {
                     }
 
                     if (anchor == ENDANCHOR) {
-                        boolean result = last == (Integer) context.getMeta().java_util_regex_Matcher_to.get(self);
+                        boolean result = last == regexInterop.asInt(context.getMeta().java_util_regex_Matcher_to.get(self));
 
                         if (!result)
                             context.getMeta().java_util_regex_Matcher_first.setInt(self, -1);
@@ -154,22 +154,22 @@ public final class Target_java_util_regex_Matcher {
                 context.getMeta().java_util_regex_Matcher_first.setInt(self, from);
 
                 Object execRes = regexInterop.invokeMember(regexObject, "exec", text, from);
-                boolean isMatch = (Boolean) regexInterop.readMember(execRes, "isMatch");
+                boolean isMatch = regexInterop.asBoolean(regexInterop.readMember(execRes, "isMatch"));
                 int modCount = context.getMeta().java_util_regex_Matcher_modCount.getInt(self);
                 context.getMeta().java_util_regex_Matcher_modCount.setInt(self, modCount + 1);
 
                 if (isMatch) {
-                    int first = (Integer) regexInterop.invokeMember(execRes, "getStart", 0);
-                    int last = (Integer) regexInterop.invokeMember(execRes, "getEnd", 0);
+                    int first = regexInterop.asInt(regexInterop.invokeMember(execRes, "getStart", 0));
+                    int last = regexInterop.asInt(regexInterop.invokeMember(execRes, "getEnd", 0));
 
                     context.getMeta().java_util_regex_Matcher_first.setInt(self, first);
                     context.getMeta().java_util_regex_Matcher_last.setInt(self, last);
 
-                    int groupCount = (Integer) regexInterop.readMember(regexObject, "groupCount");
+                    int groupCount = regexInterop.asInt(regexInterop.readMember(regexObject, "groupCount"));
 
                     for (int i = 0; i < groupCount; i++) {
-                        int start = (Integer) regexInterop.invokeMember(execRes, "getStart", i);
-                        int end = (Integer) regexInterop.invokeMember(execRes, "getEnd", i);
+                        int start = regexInterop.asInt(regexInterop.invokeMember(execRes, "getStart", i));
+                        int end = regexInterop.asInt(regexInterop.invokeMember(execRes, "getEnd", i));
 
                         StaticObject array = context.getMeta().java_util_regex_Matcher_groups.getObject(self);
                         array.<int[]>unwrap(context.getLanguage())[i * 2] = start;
@@ -207,22 +207,22 @@ public final class Target_java_util_regex_Matcher {
                 context.getMeta().java_util_regex_Matcher_first.setInt(self, from);
 
                 Object execRes = regexInterop.invokeMember(regexObject, "exec", text, from);
-                boolean isMatch = (Boolean) regexInterop.readMember(execRes, "isMatch");
+                boolean isMatch = regexInterop.asBoolean(regexInterop.readMember(execRes, "isMatch"));
                 int modCount = context.getMeta().java_util_regex_Matcher_modCount.getInt(self);
                 context.getMeta().java_util_regex_Matcher_modCount.setInt(self, modCount + 1);
 
                 if (isMatch) {
-                    int first = (Integer) regexInterop.invokeMember(execRes, "getStart", 0);
-                    int last = (Integer) regexInterop.invokeMember(execRes, "getEnd", 0);
+                    int first = regexInterop.asInt(regexInterop.invokeMember(execRes, "getStart", 0));
+                    int last = regexInterop.asInt(regexInterop.invokeMember(execRes, "getEnd", 0));
 
                     context.getMeta().java_util_regex_Matcher_first.setInt(self, first);
                     context.getMeta().java_util_regex_Matcher_last.setInt(self, last);
 
-                    int groupCount = (Integer) regexInterop.readMember(regexObject, "groupCount");
+                    int groupCount = regexInterop.asInt(regexInterop.readMember(regexObject, "groupCount"));
 
                     for (int i = 0; i < groupCount; i++) {
-                        int start = (Integer) regexInterop.invokeMember(execRes, "getStart", i);
-                        int end = (Integer) regexInterop.invokeMember(execRes, "getEnd", i);
+                        int start = regexInterop.asInt(regexInterop.invokeMember(execRes, "getStart", i));
+                        int end = regexInterop.asInt(regexInterop.invokeMember(execRes, "getEnd", i));
 
                         StaticObject array = context.getMeta().java_util_regex_Matcher_groups.getObject(self);
                         array.<int[]>unwrap(context.getLanguage())[i * 2] = start;
