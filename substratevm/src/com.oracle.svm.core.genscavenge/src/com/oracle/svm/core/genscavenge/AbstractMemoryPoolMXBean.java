@@ -45,14 +45,13 @@ import sun.management.Util;
 
 public abstract class AbstractMemoryPoolMXBean extends AbstractMXBean implements MemoryPoolMXBean {
 
-    protected static final UnsignedWord UNDEFINED = WordFactory.signed(UNDEFINED_MEMORY_USAGE);
-    private static final UnsignedWord UNINITIALIZED = WordFactory.zero();
+    protected static final UnsignedWord UNDEFINED = WordFactory.unsigned(UNDEFINED_MEMORY_USAGE);
 
     private final String name;
     private final String[] managerNames;
     protected final UninterruptibleUtils.AtomicUnsigned peakUsage = new UninterruptibleUtils.AtomicUnsigned();
 
-    protected UnsignedWord initialValue = UNINITIALIZED;
+    private UnsignedWord initialValue = UNDEFINED;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     protected AbstractMemoryPoolMXBean(String name, String... managerNames) {
@@ -61,15 +60,13 @@ public abstract class AbstractMemoryPoolMXBean extends AbstractMXBean implements
     }
 
     UnsignedWord getInitialValue() {
-        if (initialValue.equal(UNINITIALIZED)) {
+        if (initialValue.equal(UNDEFINED)) {
             initialValue = computeInitialValue();
         }
         return initialValue;
     }
 
     abstract UnsignedWord computeInitialValue();
-
-    abstract UnsignedWord getMaximumValue();
 
     abstract void beforeCollection();
 
@@ -168,5 +165,10 @@ public abstract class AbstractMemoryPoolMXBean extends AbstractMXBean implements
         do {
             current = peakUsage.get();
         } while (value.aboveThan(current) && !peakUsage.compareAndSet(current, value));
+    }
+
+    protected UnsignedWord getMaximumValue() {
+        /* Actual usage may temporarily exceed the maximum, so we need to return UNDEFINED. */
+        return UNDEFINED;
     }
 }
