@@ -16,19 +16,19 @@ The support for WebAssembly is in the early stages of its development.
 As of GraalVM for JDK 21, the GraalVM WebAssembly runtime (known as Wasm) is available as a standalone distribution. 
 You can download a standalone based on Oracle GraalVM or GraalVM Community Edition. 
 
-1. Download the Wasm standalone for your operating system:
+1. Download the Wasm 23.1 standalone for your operating system:
    - Native standalone
-      * [Linux x64](https://gds.oracle.com/api/20220101/artifacts/05013E46CB3A93C6E0631818000A2314/content)
-      * [Linux AArch64](https://gds.oracle.com/api/20220101/artifacts/05013E46CB3F93C6E0631818000A2314/content)
-      * [macOS x64](https://gds.oracle.com/api/20220101/artifacts/04F488A062154081E0631818000A781E/content)
-      * [macOS AArch64](https://gds.oracle.com/api/20220101/artifacts/05013E46CB4493C6E0631818000A2314/content)
-      * [Windows x64](https://gds.oracle.com/api/20220101/artifacts/05013E46CB4993C6E0631818000A2314/content)
+      * [Linux x64](https://gds.oracle.com/api/20220101/artifacts/069B4EC01C4D519AE0631718000AA34D/content)
+      * [Linux AArch64](https://gds.oracle.com/api/20220101/artifacts/069B4EC01C5E519AE0631718000AA34D/content)
+      * [macOS x64](https://gds.oracle.com/api/20220101/artifacts/069B12298B9149EDE0631718000A11BC/content)
+      * [macOS AArch64](https://gds.oracle.com/api/20220101/artifacts/069B4EC01C7B519AE0631718000AA34D/content)
+      * [Windows x64](https://gds.oracle.com/api/20220101/artifacts/069B12298BB049EDE0631718000A11BC/content)
    - JVM standalone
-      * [Linux x64](https://gds.oracle.com/api/20220101/artifacts/05013E46CB4E93C6E0631818000A2314/content)
-      * [Linux AArch64](https://gds.oracle.com/api/20220101/artifacts/05013E46CB5393C6E0631818000A2314/content)
-      * [macOS x64](https://gds.oracle.com/api/20220101/artifacts/05013E46CB5893C6E0631818000A2314/content)
-      * [macOS AArch64](https://gds.oracle.com/api/20220101/artifacts/05013E46CB5D93C6E0631818000A2314/content)
-      * [Windows x64](https://gds.oracle.com/api/20220101/artifacts/05013E46CB6293C6E0631818000A2314/content)
+      * [Linux x64](https://gds.oracle.com/api/20220101/artifacts/069B4EC01C98519AE0631718000AA34D/content)
+      * [Linux AArch64](https://gds.oracle.com/api/20220101/artifacts/069B12298BDD49EDE0631718000A11BC/content)
+      * [macOS x64](https://gds.oracle.com/api/20220101/artifacts/07867F4EBC6481ADE0631718000AA7AB/content)
+      * [macOS AArch64](https://gds.oracle.com/api/20220101/artifacts/069B4EC01CB9519AE0631718000AA34D/content)
+      * [Windows x64](https://gds.oracle.com/api/20220101/artifacts/07867F4EBC7781ADE0631718000AA7AB/content)
 
 2. Unzip the archive:
 
