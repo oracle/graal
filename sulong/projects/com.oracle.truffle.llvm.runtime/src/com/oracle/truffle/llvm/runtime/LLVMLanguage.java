@@ -797,8 +797,12 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         if (ref != null) {
             if (LibraryLocator.loggingEnabled()) {
                 LibraryLocator.traceStaticInits(getContext(), "LLVMLanguage lazy cached clean up, entry", ref.key.path);
-                LibraryLocator.traceStaticInits(getContext(), "LLVMLanguage lazy cached clean up, bitcode id name", ref.id.get().getName());
-                LibraryLocator.traceStaticInits(getContext(), "LLVMLanguage lazy cached clean up, bitcode id", ref.id.get().getId());
+                if (ref.id.get() != null) {
+                    LibraryLocator.traceStaticInits(getContext(), "LLVMLanguage lazy cached clean up, bitcode id name", Objects.requireNonNull(ref.id.get()).getName());
+                    LibraryLocator.traceStaticInits(getContext(), "LLVMLanguage lazy cached clean up, bitcode id", Objects.requireNonNull(ref.id.get()).getId());
+                } else {
+                    LibraryLocator.traceStaticInits(getContext(), "LLVMLanguage lazy cached clean up, bitcode id", ref.id.get());
+                }
             }
             libraryCache.removeKey(ref.key);
         }
