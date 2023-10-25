@@ -50,6 +50,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
   * Bundle the necessary files into a jar distribution.
   * Implement the `InternalResource` interface for handling the resource file unpacking.
   * Call the `Env#getInternalResource` when the language or instrument needs the bundled resource files. This method ensures that the requested `InternalResource` is unpacked and provides a directory containing the unpacked files. Since unpacking internal resources can be an expensive operation, the implementation ensures that internal resources are cached.
+* GR-44464 Added `TruffleString.ToValidStringNode` for encoding-level string sanitization.
 
 ## Version 23.0.0
 

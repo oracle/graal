@@ -382,6 +382,10 @@ public abstract class AbstractTruffleString {
         codePointLength = -1;
     }
 
+    final boolean isCodePointLengthKnown() {
+        return codePointLength >= 0;
+    }
+
     final void invalidateHashCode() {
         hashCode = 0;
     }
@@ -1205,6 +1209,16 @@ public abstract class AbstractTruffleString {
     @TruffleBoundary
     public final void copyToNativeMemoryUncached(int byteFromIndexA, Object pointerObject, int byteFromIndexDst, int byteLength, TruffleString.Encoding expectedEncoding) {
         TruffleString.CopyToNativeMemoryNode.getUncached().execute(this, byteFromIndexA, pointerObject, byteFromIndexDst, byteLength, expectedEncoding);
+    }
+
+    /**
+     * Shorthand for calling the uncached version of {@link TruffleString.ToValidStringNode}.
+     *
+     * @since 23.1
+     */
+    @TruffleBoundary
+    public TruffleString toValidStringUncached(Encoding expectedEncoding) {
+        return TruffleString.ToValidStringNode.getUncached().execute(this, expectedEncoding);
     }
 
     /**
