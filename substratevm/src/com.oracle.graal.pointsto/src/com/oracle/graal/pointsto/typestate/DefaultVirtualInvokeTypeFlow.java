@@ -215,6 +215,7 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
         }
     }
 
+    @Override
     public Collection<AnalysisMethod> getCalleesForReturnLinking() {
         if (isSaturated()) {
             /* If the invoke has saturated, then it is not necessary to link the callees. */
