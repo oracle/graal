@@ -14,8 +14,9 @@ follows similar rules to PE when compiling the interpreter.
 
 The general high-level guideline for any Truffle interpreter code is to have as little code as possible
 in order to **minimize the native-image size**. This applies to runtime code and PE code, but is even
-more important for PE code, since native-image not only AOT compiles it, but also needs to retain
-serialized Graal IR graphs of it for runtime compilation.
+more important for PE code, since native-image also AOT compiles it, but the host-inlining greatly
+increases the amount of code the AOT compilation produces and on top of that native-image also needs
+to retain serialized Graal IR graphs of it for runtime compilation.
 
 ## Avoid subclassing for minor changes
 
@@ -112,9 +113,16 @@ class MyNode extends Node {
 
   @Specialization(guards = "guardNode.execute(this, o)")
   void doIt1(Object o,
-             @Cached GuardNode guardNode) { /* some code */ }
+             @Cached GuardNode guardNode) { helper(o); }
 }
 ```
+
+Note that if the guard needs to be used for multiple specializations, or will be used by generated fallback guard,
+we are duplicating the guard logic in the same way as we were duplicating the logic inside the specializations.
+This may be acceptable as guards tend to be simple, but the user needs to assess if that is a good trade-off.
+
+Alternative is also finding a way to restructure the code to avoid the code duplication during the PE process
+altogether, but there is no generic recipe for that.
 
 ## Avoid duplicated calls to helper methods/nodes
 
@@ -153,7 +161,7 @@ class MyNode extends Node {
   // ...
   @Specialization
   void doIt(...,
-      @Bind("this") Node owner,
+      @Bind("this") Node node,
       /* more @Cached arguments such that data-class is generated */
       @Exclusive @Cached InlinedBranchProfile b1,
       @Shared @Cached InlinedBranchProfile b2)
@@ -162,8 +170,8 @@ class MyNode extends Node {
 Why: Truffle DSL generates code that is less efficient in the interpreter.
 
 In our example: non-shared inline profile has its data stored in the data-class object, but the shared inline profile
-has its data stored in the instance of `MyNode`. However, both profiles receive the same `Node` argument (`owner`),
-which will be an instance of the generated data-class, so the shared profile must call `owner.getParent()` to access
+has its data stored in the instance of `MyNode`. However, both profiles receive the same `node` argument,
+which will be an instance of the generated data-class, so the shared profile must call `node.getParent()` to access
 its data stored in `MyNode`. In general, such inline nodes/profiles may need to traverse multiple parent pointers
 until they reach their data.
 
@@ -173,6 +181,12 @@ however, inline nodes used in one `@Specialization` should be either all shared 
 Solution: change the `@Shared` nodes/profiles to `@Exclusive` or refactor the code such that sharing is not
 necessary anymore. Usage of `@Shared` (not only inline nodes/profiles) can be a sign of
 [duplicated `@Specialization`s](#avoid-duplicated-specializations), and refactoring the `@Specialization`s will resolve the problem.
+If the footprint benefit outweighs the possible interpreter performance degradation, this guideline can be ignored.
+
+Generic solution that trades off some code readability for good interpreter performance and lower footprint at the
+same time is to split the code into two nodes, where the outer node takes only the shared inline nodes/profiles
+and the inner node takes only the non-shared. The outer node can execute some common logic and also forward the
+shared nodes along with their inlining target node to the inner node.
 
 ## Avoid unused large inline nodes
 
