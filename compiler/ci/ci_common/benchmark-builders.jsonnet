@@ -6,7 +6,8 @@
   local bench = (import 'benchmark-suites.libsonnet'),
   local hw = bc.bench_hw,
 
-  local PR_bench_libgraal = {unicorn_pull_request_benchmarking:: 'libgraal', secondary_metrics: ['top-tier-throughput', 'max-rss']},
+  # GR-49532 TODO add 'throughput' metric and 'top-tier-throughput' secondary_metrics
+  local PR_bench_libgraal = {unicorn_pull_request_benchmarking:: {name: 'libgraal', metrics: ["time"], secondary_metrics: ['max-rss']}},
 
   local main_builds = std.flattenArrays([
     [
