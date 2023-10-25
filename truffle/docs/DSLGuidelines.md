@@ -8,9 +8,9 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/DSLGuideline
 # Truffle DSL Guidelines
 
 The general high-level guideline for partially evaluated (PE) code is to **minimize code duplication during
-the PE process**. This not only helps the Truffle compilation that uses partial evaluation, but also to
-[host inlining](https://github.com/oracle/graal/blob/master/truffle/docs/HostCompilation.md), which also
-to some extent follows the PE rules when compiling the interpreter.
+the PE process**. This not only helps the Truffle compilation that uses partial evaluation, but also
+[host inlining](https://github.com/oracle/graal/blob/master/truffle/docs/HostCompilation.md), which
+follows similar rules to PE when compiling the interpreter.
 
 The general high-level guideline for any Truffle interpreter code is to have as little code as possible
 in order to **minimize the native-image size**. This applies to runtime code and PE code, but is even
@@ -92,7 +92,8 @@ to profile the individual guards, or perform the checks in the `@Specialization`
 Truffle profiles. Example of the former:
 
 ```java
-@GenerateInline(true) @GenerateCached(false)
+@GenerateInline
+@GenerateCached(false)
 class GuardNode extends Node {
   public boolean execute(Node inliningTarget, Object o);
 
