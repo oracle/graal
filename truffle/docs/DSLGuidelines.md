@@ -1,0 +1,210 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Truffle DSL Guidelines
+permalink: /graalvm-as-a-platform/language-implementation-framework/DSLGuidelines/
+---
+
+# Truffle DSL Guidelines
+
+The general high-level guideline for partially evaluated (PE) code is to **minimize code duplication during
+the PE process**. This not only helps the Truffle compilation that uses partial evaluation, but also to
+[host inlining](https://github.com/oracle/graal/blob/master/truffle/docs/HostCompilation.md), which also
+to some extent follows the PE rules when compiling the interpreter.
+
+The general high-level guideline for any Truffle interpreter code is to have as little code as possible
+in order to **minimize the native-image size**. This applies to runtime code and PE code, but is even
+more important for PE code, since native-image not only AOT compiles it, but also needs to retain
+serialized Graal IR graphs of it for runtime compilation.
+
+## Avoid subclassing for minor changes
+
+Example:
+```java
+class MyBaseNode extends Node {
+  // ...
+
+  @Specialization
+  doIt1(Object arg) { /* ... */ }
+
+  @Specialization
+  doIt2(Object arg) { /* ... */ }
+
+  // ...
+  abstract int doSomething();
+}
+
+class Node1 {
+  @Override
+  final int doSomething() { return 42; }
+}
+
+class Node2 {
+  @Override
+  final int doSomething() { return -1; }
+}
+```
+
+Why: native-image footprint.
+
+Truffle DSL will generate multiple `execute` and `executeAndSpecialize` methods,
+which will contain the same code. Native-image does not deduplicate the code.
+
+Solution: extract the common logic to an inline node and use delegation instead of inheritance.
+
+## Avoid duplicated Specializations
+
+Avoid specializations with (almost) the same method body.
+
+When two or more `@Specialization`s differ only in guards or in some minor detail. This includes `@Specialization`s
+that delegate to the same helper method. Example:
+
+```java
+class MyNode extends Node {
+  // ...
+
+  @Specialization
+  void doIt1(MyObject1 o) { helper(o); }
+
+  @Specialization
+  void doIt2(MyObject2 o) { helper(o); }
+
+  void helper(Object o) { /* some code */ }
+
+  // ... maybe more @Specializations
+}
+```
+
+Why:
+* native-image footprint
+* code duplication during PE
+
+We want to reduce code duplication as seen by PE process and not by the developer. Refactoring the code
+to a helper method does not help PE, because it explores every call separately.
+
+For instance, with host inlining and our code example, the cost of fully inlining `Node#execute` will be
+(omitting some details):
+
+`size(Node#execute) + size(Node#doIt1) + size(Node#doIt2) + 2 * size(Node#helper)`
+
+Solution: refactor the code to avoid the duplication. If this means "merging" guards, one can create an inline node
+to profile the individual guards, or perform the checks in the `@Specialization` body using appropriate inline
+Truffle profiles. Example of the former:
+
+```java
+@GenerateInline(true) @GenerateCached(false)
+class GuardNode extends Node {
+  public boolean execute(Node inliningTarget, Object o);
+
+  @Specialization
+  static boolean o1(MyObject1 o) { return true; }
+
+  @Specialization
+  static boolean o2(MyObject2 o) { return true; }
+
+  @Fallback
+  static boolean o2(Object o) { return false; }
+}
+
+class MyNode extends Node {
+  // ...
+
+  @Specialization(guards = "guardNode.execute(this, o)")
+  void doIt1(Object o,
+             @Cached GuardNode guardNode) { /* some code */ }
+}
+```
+
+## Avoid duplicated calls to helper methods/nodes
+
+Example:
+```
+@Specialization
+void foo(boolean b, Object o) {
+  if (b) {
+    helper.execute(o, 42);
+  } else {
+    helper.execute(o, -1);
+  }
+}
+```
+
+
+Why: code duplication during PE
+
+The PE process has to explore each call separately and only in later phases the Graal compiler may deduplicate the code.
+
+Solution: common-out the calls if possible
+```
+  int num = b ? 42 : -1;
+  helper.execute(o, num);
+```
+
+## Mixing @Shared and non-@Shared inline nodes/profiles
+
+Avoid mixing `@Shared` and non-`@Shared` inline nodes/profiles in one `@Specialization` if Truffle DSL generates
+"data-class" for the `@Specialization`.
+
+Example:
+```java
+@GenerateInline(false)
+class MyNode extends Node {
+  // ...
+  @Specialization
+  void doIt(...,
+      @Bind("this") Node owner,
+      /* more @Cached arguments such that data-class is generated */
+      @Exclusive @Cached InlinedBranchProfile b1,
+      @Shared @Cached InlinedBranchProfile b2)
+```
+
+Why: Truffle DSL generates code that is less efficient in the interpreter.
+
+In our example: non-shared inline profile has its data stored in the data-class object, but the shared inline profile
+has its data stored in the instance of `MyNode`. However, both profiles receive the same `Node` argument (`owner`),
+which will be an instance of the generated data-class, so the shared profile must call `owner.getParent()` to access
+its data stored in `MyNode`. In general, such inline nodes/profiles may need to traverse multiple parent pointers
+until they reach their data.
+
+Note: this does not concern any non-inline nodes, it is OK to mix those, and it is OK to mix them with inline nodes,
+however, inline nodes used in one `@Specialization` should be either all shared or all exclusive.
+
+Solution: change the `@Shared` nodes/profiles to `@Exclusive` or refactor the code such that sharing is not
+necessary anymore. Usage of `@Shared` (not only inline nodes/profiles) can be a sign of
+[duplicated `@Specialization`s](#avoid-duplicated-specializations), and refactoring the `@Specialization`s will resolve the problem.
+
+## Avoid unused large inline nodes
+
+Avoid inlining large nodes that are used only on rarely executed code-paths.
+
+Example:
+```
+@Specialization
+void s1(Object arg,
+    @Bind("this") Node inliningTarget,
+    @Cached LargeInlineNode n) {
+
+    if (arg == null) {
+        // unlikely situation
+        n.execute(inliningTarget, ...);
+    }
+}
+```
+
+Why: memory footprint.
+
+All the fields of `LargeInlineNode` node will be inlined into the caller node (or Specialization data-class)
+increasing its memory footprint significantly.
+
+For code-paths that are not performance sensitive in the interpreter, better alternative is
+the [lazily initialized nodes](https://github.com/oracle/graal/blob/master/truffle/docs/DSLNodeObjectInlining.md#lazy-initialized-nodes-with-dsl-inlining).
+
+For Code-paths that are performance sensitive in the interpreter:
+* The footprint increase may be justified by the performance
+* Use the handwritten lazily initialized `@Child` field pattern if applicable
+* Refactor the code to avoid such situation
+
+## Avoid generating cached, uncached, and inline variant of one node
+
+Nodes that have all the 3 variants generated seem to cause problems to the SVM heuristics
+and calls to their `execute` method are sometimes not devirtualized.
