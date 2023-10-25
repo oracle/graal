@@ -320,6 +320,11 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                     break;
                 case SHARED_LIBRARY:
                     cmd.add("-shared");
+                    /*
+                     * Ensure shared library name in image does not use fully qualified build-path
+                     * (GR-46837)
+                     */
+                    cmd.add("-Wl,-soname=" + outputFile.getFileName());
                     break;
                 default:
                     VMError.shouldNotReachHereUnexpectedInput(imageKind); // ExcludeFromJacocoGeneratedReport

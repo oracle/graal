@@ -1210,7 +1210,10 @@ class SvmSupport(object):
     def is_pgo_supported(self):
         return self.is_ee_supported()
 
-    def native_image(self, build_args, output_file, allow_server=False, nonZeroIsFatal=True, out=None, err=None):
+    search_tool = 'strings'
+    has_search_tool = shutil.which(search_tool) is not None
+
+    def native_image(self, build_args, output_file, out=None, err=None, find_bad_strings=False):
         assert self._svm_supported
         stage1 = get_stage1_graalvm_distribution()
         native_image_project_name = GraalVmLauncher.launcher_project_name(mx_sdk.LauncherConfig(mx.exe_suffix('native-image'), [], "", []), stage1=True)
@@ -1220,7 +1223,22 @@ class SvmSupport(object):
         native_image_command += svm_experimental_options([
             '-H:Path=' + output_directory or ".",
         ])
-        return mx.run(native_image_command, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
+
+        mx.run(native_image_command, nonZeroIsFatal=True, out=out, err=err)
+
+        if find_bad_strings and not mx.is_windows():
+            if not self.__class__.has_search_tool:
+                mx.abort(f"Searching for strings requires '{self.__class__.search_tool}' executable.")
+            try:
+                strings_in_image = subprocess.check_output([self.__class__.search_tool, output_file], stderr=None).decode().strip().split('\n')
+                bad_strings = (output_directory, dirname(native_image_bin))
+                for entry in strings_in_image:
+                    for bad_string in bad_strings:
+                        if bad_string in entry:
+                            mx.abort(f"Found forbidden string '{bad_string}' in native image {output_file}.")
+
+            except subprocess.CalledProcessError:
+                mx.abort(f"Using '{self.__class__.search_tool}' to search for strings in native image {output_file} failed.")
 
     def is_debug_supported(self):
         return self._debug_supported
@@ -2367,7 +2385,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
         mx.ensure_dir_exists(dirname(output_file))
 
         # Disable build server (different Java properties on each build prevent server reuse)
-        self.svm_support.native_image(build_args, output_file)
+        self.svm_support.native_image(build_args, output_file, find_bad_strings=True)
 
         with open(self._get_command_file(), 'w') as f:
             f.writelines((l + os.linesep for l in build_args))
