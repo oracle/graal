@@ -37,9 +37,10 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.regex.tregex.parser.flavors.java.JavaFlags;
 
 import java.util.regex.Matcher;
+
+import static com.oracle.truffle.espresso.substitutions.Target_java_util_regex_Pattern.convertFlags;
 
 /**
  * These substitutions are just for performance. Directly uses the optimized host intrinsics
@@ -194,7 +195,7 @@ public final class Target_java_util_regex_Matcher {
             String pattern = context.getMeta().toHostString(context.getMeta().java_util_regex_Pattern_pattern.getObject(patternObject));
 
             String combined = "RegressionTestMode=true,Encoding=UTF-16,Flavor=JavaUtilPattern,JavaMatch=false";
-            String sourceStr = combined + '/' + pattern + '/' + new JavaFlags(context.getMeta().java_util_regex_Pattern_flags0.getInt(patternObject));
+            String sourceStr = combined + '/' + pattern + '/' + convertFlags(context.getMeta().java_util_regex_Pattern_flags0.getInt(patternObject));
             Source src = Source.newBuilder("regex", sourceStr, "patternExpr").build();
 
             Object regexObject = context.getEnv().parseInternal(src).call();

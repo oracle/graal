@@ -37,9 +37,6 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.regex.RegexSyntaxException;
-import com.oracle.truffle.regex.tregex.parser.flavors.java.JavaFlags;
-import com.oracle.truffle.regex.util.TruffleNull;
 
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -50,10 +47,43 @@ import java.util.regex.Pattern;
  */
 @EspressoSubstitutions
 public final class Target_java_util_regex_Pattern {
+    private static boolean isSet(int flags, int flag) {
+        return (flags & flag) != 0;
+    }
+
+    public static String convertFlags(int flags) {
+        StringBuilder sb = new StringBuilder(8);
+        if (isSet(flags, Pattern.CANON_EQ)) {
+            sb.append('C');
+        }
+        if (isSet(flags, Pattern.UNICODE_CHARACTER_CLASS)) {
+            sb.append('U');
+        }
+        if (isSet(flags, Pattern.UNIX_LINES)) {
+            sb.append('d');
+        }
+        if (isSet(flags, Pattern.CASE_INSENSITIVE)) {
+            sb.append('i');
+        }
+        if (isSet(flags, Pattern.MULTILINE)) {
+            sb.append('m');
+        }
+        if (isSet(flags, Pattern.DOTALL)) {
+            sb.append('s');
+        }
+        if (isSet(flags, Pattern.UNICODE_CASE)) {
+            sb.append('u');
+        }
+        if (isSet(flags, Pattern.COMMENTS)) {
+            sb.append('x');
+        }
+        return sb.toString();
+    }
     @Substitution(hasReceiver = true, methodName = "<init>")
     abstract static class Init extends SubstitutionNode {
 
         abstract void execute(@JavaType(Pattern.class) StaticObject self, @JavaType(String.class) StaticObject p, int f);
+
 
         @Specialization
         void doDefault(
@@ -65,25 +95,29 @@ public final class Target_java_util_regex_Pattern {
             String pattern = meta.toHostString(p);
 
             String combined = "RegressionTestMode=true,Encoding=UTF-16,Flavor=JavaUtilPattern,JavaMatch=true";
-            String sourceStr = combined + '/' + pattern + '/' + new JavaFlags(f);
+            String sourceStr = combined + '/' + pattern + '/' + convertFlags(f);
             Source src = Source.newBuilder("regex", sourceStr, "patternExpr").build();
 
             Object target = null;
             try {
                 target = context.getEnv().parseInternal(src).call();
-            } catch (RegexSyntaxException e) {
+            } catch (/* RegexSyntaxException */ Exception e) {
+                /* TODO: we have to deal with RegexSyntaxException somehow */
+                throw new RuntimeException(e);
+                /*
                 StaticObject guestException = meta.java_util_regex_PatternSyntaxException.allocateInstance(context);
                 CallTarget exceptionInit = meta.java_util_regex_PatternSyntaxException_init.getCallTarget(); // TODO is this ok?
                 exceptionInit.call(guestException, meta.toGuestString(e.getMessage()), p, e.getPosition());
 
                 meta.throwException(guestException);
+                 */
             }
 
             // always null because we do not compile in search mode until it is required
             meta.java_util_regex_Pattern_HIDDEN_tregexSearch.setHiddenObject(self, StaticObject.NULL);
 
             // fallback to original implementation if feature is not supported
-            if (target == TruffleNull.INSTANCE) {
+            if (regexInterop.isNull(target)) {
                 original.call(self, p, f);
                 meta.java_util_regex_Pattern_HIDDEN_tregex.setHiddenObject(self, StaticObject.NULL);
             } else {
