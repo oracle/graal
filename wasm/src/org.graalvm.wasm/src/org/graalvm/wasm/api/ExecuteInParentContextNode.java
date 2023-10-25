@@ -70,13 +70,14 @@ public class ExecuteInParentContextNode extends WasmBuiltinRootNode {
     private final Object executable;
     @CompilationFinal private int functionTypeIndex = -1;
     private final BranchProfile errorBranch = BranchProfile.create();
-    @Child private InteropLibrary functionInterop = InteropLibrary.getFactory().createDispatched(5);
+    @Child private InteropLibrary functionInterop;
     @Child private InteropLibrary arrayInterop;
     @Child private InteropLibrary resultInterop;
 
     public ExecuteInParentContextNode(WasmLanguage language, WasmModule module, Object executable, int resultCount) {
         super(language, module);
         this.executable = executable;
+        this.functionInterop = InteropLibrary.getUncached(executable);
         if (resultCount > 1) {
             this.arrayInterop = InteropLibrary.getFactory().createDispatched(5);
         }
