@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
+import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -45,7 +46,6 @@ import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
-import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.windows.headers.FileAPI;
@@ -245,29 +245,30 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
                 break;
             }
 
-            VoidPointer versionInfo = LibC.malloc(WordFactory.unsigned(versionSize));
+            VoidPointer versionInfo = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(WordFactory.unsigned(versionSize));
             if (versionInfo.isNull()) {
                 break;
             }
+            try {
 
-            if (WinVer.GetFileVersionInfoW(kernel32Path, 0, versionSize, versionInfo) == 0) {
-                LibC.free(versionInfo);
-                break;
+                if (WinVer.GetFileVersionInfoW(kernel32Path, 0, versionSize, versionInfo) == 0) {
+                    break;
+                }
+
+                WindowsLibC.WCharPointer rootPath = NonmovableArrays.addressOf(NonmovableArrays.fromImageHeap(ROOT_PATH), 0);
+                WordPointer fileInfoPointer = UnsafeStackValue.get(WordPointer.class);
+                CIntPointer lengthPointer = UnsafeStackValue.get(CIntPointer.class);
+                if (WinVer.VerQueryValueW(versionInfo, rootPath, fileInfoPointer, lengthPointer) == 0) {
+                    break;
+                }
+
+                VerRsrc.VS_FIXEDFILEINFO fileInfo = fileInfoPointer.read();
+                majorVersion = (short) (fileInfo.dwProductVersionMS() >> 16); // HIWORD
+                minorVersion = (short) fileInfo.dwProductVersionMS(); // LOWORD
+                buildNumber = (short) (fileInfo.dwProductVersionLS() >> 16); // HIWORD
+            } finally {
+                ImageSingletons.lookup(UnmanagedMemorySupport.class).free(versionInfo);
             }
-
-            WindowsLibC.WCharPointer rootPath = NonmovableArrays.addressOf(NonmovableArrays.fromImageHeap(ROOT_PATH), 0);
-            WordPointer fileInfoPointer = UnsafeStackValue.get(WordPointer.class);
-            CIntPointer lengthPointer = UnsafeStackValue.get(CIntPointer.class);
-            if (WinVer.VerQueryValueW(versionInfo, rootPath, fileInfoPointer, lengthPointer) == 0) {
-                LibC.free(versionInfo);
-                break;
-            }
-
-            VerRsrc.VS_FIXEDFILEINFO fileInfo = fileInfoPointer.read();
-            majorVersion = (short) (fileInfo.dwProductVersionMS() >> 16); // HIWORD
-            minorVersion = (short) fileInfo.dwProductVersionMS(); // LOWORD
-            buildNumber = (short) (fileInfo.dwProductVersionLS() >> 16); // HIWORD
-            LibC.free(versionInfo);
         } while (false);
 
         String osVersion = majorVersion + "." + minorVersion;

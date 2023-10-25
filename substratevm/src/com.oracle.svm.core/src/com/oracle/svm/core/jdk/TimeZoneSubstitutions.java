@@ -100,7 +100,7 @@ final class Target_java_util_TimeZone {
             CCharPointer tzId = LibCHelper.SVM_FindJavaTZmd(tzMappingsPtr, contentLen);
             String result = CTypeConversion.toJavaString(tzId);
             // SVM_FindJavaTZmd returns a newly allocated string
-            UnmanagedMemory.free(tzId);
+            UnmanagedMemory.untrackedFree(tzId);
             return result;
         } finally {
             if (refContent != null) {
