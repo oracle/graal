@@ -227,9 +227,9 @@ public final class Resources {
     public void registerIOException(Module module, String resourceName, IOException e, boolean linkAtBuildTime) {
         if (linkAtBuildTime) {
             if (SubstrateOptions.ThrowLinkAtBuildTimeIOExceptions.getValue()) {
-                throw new RuntimeException("Resource " + resourceName + " from module " + module.getName() + " produced an IOException.", e);
+                throw new RuntimeException("Resource " + resourceName + " from module " + moduleName(module) + " produced an IOException.", e);
             } else {
-                LogUtils.warning("Resource " + resourceName + " from module " + module.getName() + " produced the following IOException: " + e.getClass().getTypeName() + ": " + e.getMessage());
+                LogUtils.warning("Resource " + resourceName + " from module " + moduleName(module) + " produced the following IOException: " + e.getClass().getTypeName() + ": " + e.getMessage());
             }
         }
         Pair<Module, String> key = createStorageKey(module, resourceName);

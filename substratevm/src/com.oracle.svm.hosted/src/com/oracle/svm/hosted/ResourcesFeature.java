@@ -189,7 +189,7 @@ public final class ResourcesFeature implements InternalFeature {
             if (module != null && module.isNamed()) {
                 processResourceFromModule(module, resourcePath);
             } else {
-                processResourceFromClasspath(module, resourcePath);
+                processResourceFromClasspath(resourcePath);
             }
         }
 
@@ -289,11 +289,11 @@ public final class ResourcesFeature implements InternalFeature {
                     registerResource(module, resourcePath, false, is);
                 }
             } catch (IOException e) {
-                // we should ignore if user failed to provide resource
+                Resources.singleton().registerIOException(module, resourcePath, e, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(resourcePath));
             }
         }
 
-        private void processResourceFromClasspath(Module module, String resourcePath) {
+        private void processResourceFromClasspath(String resourcePath) {
             Enumeration<URL> urls;
             try {
                 /*
@@ -314,12 +314,12 @@ public final class ResourcesFeature implements InternalFeature {
                     boolean isDirectory = resourceIsDirectory(url, fromJar, resourcePath);
                     if (isDirectory) {
                         String content = getDirectoryContent(fromJar ? url.toString() : Paths.get(url.toURI()).toString(), fromJar);
-                        Resources.singleton().registerDirectoryResource(module, resourcePath, content, fromJar);
+                        Resources.singleton().registerDirectoryResource(null, resourcePath, content, fromJar);
                     } else {
-                        registerResource(module, resourcePath, fromJar, is);
+                        registerResource(null, resourcePath, fromJar, is);
                     }
                 } catch (IOException e) {
-                    // we should ignore if user failed to provide resource
+                    Resources.singleton().registerIOException(null, resourcePath, e, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(resourcePath));
                     return;
                 } catch (URISyntaxException e) {
                     throw VMError.shouldNotReachHere("resourceIsDirectory for resourcePath " + resourcePath + " failed", e);
