@@ -36,12 +36,12 @@ import java.util.stream.Collectors;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.BaseProcessPropertiesSupport;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
-import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Stdlib;
@@ -103,7 +103,7 @@ public abstract class PosixProcessPropertiesSupport extends BaseProcessPropertie
         try {
             return CTypeConversion.toJavaString(realpath);
         } finally {
-            LibC.free(realpath);
+            UnmanagedMemory.untrackedFree(realpath);
         }
     }
 
@@ -164,7 +164,7 @@ public abstract class PosixProcessPropertiesSupport extends BaseProcessPropertie
             } else {
                 /* Success */
                 final String result = CTypeConversion.toJavaString(realpathPointer);
-                LibC.free(realpathPointer);
+                UnmanagedMemory.untrackedFree(realpathPointer);
                 return result;
             }
         }

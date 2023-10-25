@@ -68,26 +68,6 @@ public class LibC {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static <T extends PointerBase> T malloc(UnsignedWord size) {
-        return libc().malloc(size);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static <T extends PointerBase> T calloc(UnsignedWord nmemb, UnsignedWord size) {
-        return libc().calloc(nmemb, size);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static <T extends PointerBase> T realloc(PointerBase ptr, UnsignedWord size) {
-        return libc().realloc(ptr, size);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void free(PointerBase ptr) {
-        libc().free(ptr);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void exit(int status) {
         libc().exit(status);
     }

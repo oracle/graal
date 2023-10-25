@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.windows;
 
+import jdk.graal.compiler.api.replacements.Fold;
+
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -31,31 +34,36 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.core.headers.LibCSupport;
 
 @AutomaticallyRegisteredImageSingleton(UnmanagedMemorySupport.class)
 class WindowsUnmanagedMemorySupportImpl implements UnmanagedMemorySupport {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public <T extends PointerBase> T malloc(UnsignedWord size) {
-        return LibC.malloc(size);
+        return libc().malloc(size);
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public <T extends PointerBase> T calloc(UnsignedWord size) {
-        return LibC.calloc(WordFactory.unsigned(1), size);
+        return libc().calloc(WordFactory.unsigned(1), size);
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public <T extends PointerBase> T realloc(T ptr, UnsignedWord size) {
-        return LibC.realloc(ptr, size);
+        return libc().realloc(ptr, size);
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void free(PointerBase ptr) {
-        LibC.free(ptr);
+        libc().free(ptr);
+    }
+
+    @Fold
+    static LibCSupport libc() {
+        return ImageSingletons.lookup(LibCSupport.class);
     }
 }
