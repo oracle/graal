@@ -183,8 +183,19 @@ public class IsolateArgumentParser {
 
     public void verifyOptionValues() {
         for (int i = 0; i < OPTION_COUNT; i++) {
-            validate(OPTIONS[i], getOptionValue(i));
+            RuntimeOptionKey<?> option = OPTIONS[i];
+            if (shouldValidate(option)) {
+                validate(option, getOptionValue(i));
+            }
         }
+    }
+
+    private static boolean shouldValidate(RuntimeOptionKey<?> option) {
+        if (SubstrateOptions.UseSerialGC.getValue()) {
+            /* The serial GC supports changing the heap size at run-time to some degree. */
+            return option != SubstrateGCOptions.MinHeapSize && option != SubstrateGCOptions.MaxHeapSize && option != SubstrateGCOptions.MaxNewSize;
+        }
+        return true;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
