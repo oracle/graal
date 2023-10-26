@@ -1,3 +1,4 @@
+local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 local vm = import 'vm.jsonnet';
 local vm_common = import '../ci_common/common.jsonnet';
 
@@ -74,5 +75,5 @@ local vm_common = import '../ci_common/common.jsonnet';
     vm.vm_java_Latest + vm_common.gate_vm_linux_amd64  + truffle_maven_downloader,
   ],
 
-  builds: [{'defined_in': std.thisFile} + b  for b in builds],
+  builds: utils.add_defined_in(builds, std.thisFile),
 }

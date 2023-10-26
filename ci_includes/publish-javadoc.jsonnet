@@ -62,5 +62,5 @@
     common.post_merge + linux_amd64 + common.labsjdk21 + javadoc_publisher,
   ],
   // adds a "defined_in" field to all builds mentioning the location of this current file
-  builds:: [{ defined_in: std.thisFile } + b for b in all_builds]
+  builds:: utils.add_defined_in(all_builds, std.thisFile),
 }
