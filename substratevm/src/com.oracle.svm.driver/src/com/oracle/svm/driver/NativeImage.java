@@ -2182,12 +2182,13 @@ public class NativeImage {
 
         Path classpathEntryFinal = useBundle() ? bundleSupport.substituteClassPath(classpathEntry) : classpathEntry;
         if (!imageClasspath.contains(classpathEntryFinal) && !customImageClasspath.contains(classpathEntryFinal)) {
+            boolean added = destination.add(classpathEntryFinal);
             if (ClasspathUtils.isJar(classpathEntryFinal)) {
                 processJarManifestMainAttributes(classpathEntryFinal, (jarFilePath, attributes) -> handleClassPathAttribute(destination, jarFilePath, attributes));
             }
             boolean ignore = processClasspathNativeImageMetaInf(classpathEntryFinal);
-            if (!ignore) {
-                destination.add(classpathEntryFinal);
+            if (added && ignore) {
+                destination.remove(classpathEntryFinal);
             }
         }
     }
