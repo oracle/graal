@@ -135,7 +135,20 @@ public abstract class XMLParsersRegistration extends JNIRegistrationUtil {
 
             ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xml.internal.serializer.utils.SerializerMessages");
             ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xalan.internal.xsltc.compiler.util.ErrorMessages");
-            ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), "com.sun.*.properties");
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xml.internal.serializer.Encodings");
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xml.internal.serializer.HTMLEntities");
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xml.internal.serializer.XMLEntities");
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.xpath.regex.message");
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.DOMMessages");
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.DatatypeMessages");
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.JAXPValidationMessages");
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.SAXMessages");
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.XIncludeMessages");
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.XMLMessages");
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.XMLSchemaMessages");
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.XMLSerializerMessages");
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.XPointerMessages");
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xalan.internal.res.XSLTInfo");
 
             classInitializationSupport.setConfigurationSealed(true);
         }

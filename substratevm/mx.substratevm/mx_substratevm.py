@@ -28,6 +28,7 @@ import re
 import tempfile
 from glob import glob
 from contextlib import contextmanager
+from distutils.dir_util import mkpath  # pylint: disable=no-name-in-module
 from os.path import join, exists, dirname
 import pipes
 from argparse import ArgumentParser
@@ -475,9 +476,26 @@ def native_unittests_task(extra_build_args=None):
         # GR-24075
         mx_unittest.add_global_ignore_glob('com.oracle.svm.test.ProcessPropertiesTest')
 
+    # add resources that are not in jar but in the separate directory
+    cp_entry_name = join(svmbuild_dir(), 'cpEntryDir')
+    resources_from_dir = join(cp_entry_name, 'resourcesFromDir')
+    simple_dir = join(cp_entry_name, 'simpleDir')
+
+    mkpath(cp_entry_name)
+    mkpath(resources_from_dir)
+    mkpath(simple_dir)
+
+    for i in range(4):
+        with open(join(cp_entry_name, "resourcesFromDir", f'cond-resource{i}.txt'), 'w') as out:
+            out.write(f"Conditional file{i}" + '\n')
+
+        with open(join(cp_entry_name, "simpleDir", f'simple-resource{i}.txt'), 'w') as out:
+            out.write(f"Simple file{i}" + '\n')
+
     additional_build_args = svm_experimental_options([
         '-H:AdditionalSecurityProviders=com.oracle.svm.test.SecurityServiceTest$NoOpProvider',
         '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.SecurityServiceTest$JCACompliantNoOpService',
+        '-cp', cp_entry_name
     ])
     if extra_build_args is not None:
         additional_build_args += extra_build_args

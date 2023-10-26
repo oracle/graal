@@ -61,12 +61,6 @@ import java.util.spi.TimeZoneNameProvider;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionStability;
-import jdk.graal.compiler.options.OptionType;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -89,7 +83,14 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.ImageClassLoader;
 
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionStability;
+import jdk.graal.compiler.options.OptionType;
 import jdk.internal.access.SharedSecrets;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -161,6 +162,7 @@ public class LocalizationFeature implements InternalFeature {
     private Field localeObjectCacheMapField;
     private Field langAliasesCacheField;
     private Field parentLocalesMapField;
+    @Platforms(Platform.HOSTED_ONLY.class) private ImageClassLoader imageClassLoader;
 
     public static class Options {
         @Option(help = "Comma separated list of bundles to be included into the image.", type = OptionType.User)//
@@ -292,6 +294,8 @@ public class LocalizationFeature implements InternalFeature {
         String reason = "All ResourceBundleControlProvider that are registered as services end up as objects in the image heap, and are therefore registered to be initialized at image build time";
         ServiceLoader.load(ResourceBundleControlProvider.class).stream()
                         .forEach(provider -> ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime(provider.type(), reason));
+
+        this.imageClassLoader = access.getImageClassLoader();
     }
 
     /**
@@ -639,14 +643,14 @@ public class LocalizationFeature implements InternalFeature {
          */
         for (ResourceBundle cur = bundle; cur != null; cur = SharedSecrets.getJavaUtilResourceBundleAccess().getParent(cur)) {
             /* Register all bundles with their corresponding locales */
-            support.prepareBundle(bundleName, cur, cur.getLocale());
+            support.prepareBundle(bundleName, cur, this.imageClassLoader::findModule, cur.getLocale());
         }
 
         /*
          * Finally, register the requested bundle with requested locale (Requested might be more
          * specific than the actual bundle locale
          */
-        support.prepareBundle(bundleName, bundle, locale);
+        support.prepareBundle(bundleName, bundle, this.imageClassLoader::findModule, locale);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

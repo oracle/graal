@@ -229,8 +229,6 @@ public final class TruffleBaseFeature implements InternalFeature {
     private final Set<Class<?>> registeredClasses = new HashSet<>();
     private final Map<Class<?>, PossibleReplaceCandidatesSubtypeHandler> subtypeChecks = new HashMap<>();
     private boolean profilingEnabled;
-    private boolean needsAllEncodings;
-
     private Field uncachedDispatchField;
     private Field layoutInfoMapField;
     private Field layoutMapField;
@@ -240,6 +238,8 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     private Consumer<Field> markAsUnsafeAccessed;
     private final ConcurrentMap<Object, Boolean> processedInlinedFields = new ConcurrentHashMap<>();
+
+    private boolean needsAllEncodings;
 
     private static void initializeTruffleReflectively(ClassLoader imageClassLoader) {
         invokeStaticMethod("com.oracle.truffle.api.impl.Accessor", "getTVMCI", Collections.emptyList());
@@ -449,6 +449,10 @@ public final class TruffleBaseFeature implements InternalFeature {
         if (Options.TruffleCheckPreinitializedFiles.getValue()) {
             access.registerObjectReplacer(new TruffleFileCheck(((FeatureImpl.DuringSetupAccessImpl) access).getHostVM().getClassInitializationSupport()));
         }
+
+        if (needsAllEncodings) {
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), "org/graalvm/shadowed/org/jcodings/tables/.*bin$");
+        }
     }
 
     void setGraalGraphObjectReplacer(GraalGraphObjectReplacer graalGraphObjectReplacer) {
@@ -482,9 +486,6 @@ public final class TruffleBaseFeature implements InternalFeature {
         config.registerSubtypeReachabilityHandler(TruffleBaseFeature::registerTruffleLibrariesAsInHeap,
                         LibraryExport.class);
 
-        if (needsAllEncodings) {
-            ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), "org/graalvm/shadowed/org/jcodings/tables/.*bin$");
-        }
         Class<?> frameClass = config.findClassByName("com.oracle.truffle.api.impl.FrameWithoutBoxing");
         config.registerFieldValueTransformer(config.findField(frameClass, "ASSERTIONS_ENABLED"), new AssertionStatusFieldTransformer(frameClass));
     }
