@@ -2731,12 +2731,8 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
 
         svm_support = _get_svm_support()
         self.is_jvm = is_jvm
-<<<<<<< HEAD
-        self.main_comp_dir_name = component.dir_name
-        self.jvm_jars = []
-=======
         self.main_comp_dir_name = main_component.dir_name
->>>>>>> 20f99a6dab1 (Rename component -> main_component.)
+        self.jvm_jars = []
         self.jvm_modules = []
         self.jvm_libs = []
         self.pre_extracted_libs = {}
@@ -2799,11 +2795,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                     })
                     component_list.append(jar_dist)
 
-<<<<<<< HEAD
-        def add_files_from_component(comp, is_main, path_prefix, excluded_paths, force_modules_as_jars=False):
-=======
-        def add_files_from_component(comp, path_prefix, excluded_paths):
->>>>>>> d33cccfa009 (Infer the 'main component'.)
+        def add_files_from_component(comp, path_prefix, excluded_paths, force_modules_as_jars=False):
             """
             Add to the layout relevant files of a component.
 
@@ -3040,11 +3032,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                         # component.
                         tool_component_dependencies = GraalVmLayoutDistribution._add_dependencies([tool], excluded_components + added_components)
                         for tool_component_dependency in tool_component_dependencies:
-<<<<<<< HEAD
-                            add_files_from_component(tool_component_dependency, is_main=False, path_prefix=default_jvm_jars_dir, excluded_paths=['native-image.properties'])
-=======
-                            add_files_from_component(tool_component_dependency, path_prefix=default_jvm_modules_dir, excluded_paths=['native-image.properties'])
->>>>>>> d33cccfa009 (Infer the 'main component'.)
+                            add_files_from_component(tool_component_dependency, path_prefix=default_jvm_jars_dir, excluded_paths=['native-image.properties'])
                             added_components.append(tool_component_dependency)
 
             # `jvmci_parent_jars` and `boot_jars` of these components are added as modules of `java-standalone-jimage`.
