@@ -46,7 +46,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
@@ -159,13 +158,13 @@ public abstract class NativeImage extends AbstractImage {
     @Override
     public abstract String[] makeLaunchCommand(NativeImageKind k, String imageName, Path binPath, Path workPath, java.lang.reflect.Method method);
 
-    protected final void write(DebugContext context, Path outputFile, ForkJoinPool forkJoinPool) {
+    protected final void write(DebugContext context, Path outputFile) {
         try {
             Path outFileParent = outputFile.normalize().getParent();
             if (outFileParent != null) {
                 Files.createDirectories(outFileParent);
             }
-            objectFile.write(context, outputFile, forkJoinPool);
+            objectFile.write(context, outputFile);
         } catch (Exception ex) {
             throw shouldNotReachHere(ex);
         }

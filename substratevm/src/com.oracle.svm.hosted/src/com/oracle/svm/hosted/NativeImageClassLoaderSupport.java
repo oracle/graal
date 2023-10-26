@@ -879,6 +879,7 @@ public class NativeImageClassLoaderSupport {
                 }
                 imageClassLoader.handleClass(clazz);
             }
+            imageClassLoader.watchdog.recordActivity();
         }
     }
 

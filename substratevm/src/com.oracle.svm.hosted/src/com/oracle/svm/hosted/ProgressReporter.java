@@ -392,7 +392,7 @@ public class ProgressReporter {
             maxHeapSuffix = "set via '%s'".formatted(xmxValueOrNull);
         }
 
-        int maxNumberOfThreads = NativeImageOptions.NumberOfThreads.getValue();
+        int maxNumberOfThreads = NativeImageOptions.getActualNumberOfThreads();
         recordJsonMetric(ResourceUsageKey.PARALLELISM, maxNumberOfThreads);
         int availableProcessors = runtime.availableProcessors();
         recordJsonMetric(ResourceUsageKey.CPU_CORES_TOTAL, availableProcessors);

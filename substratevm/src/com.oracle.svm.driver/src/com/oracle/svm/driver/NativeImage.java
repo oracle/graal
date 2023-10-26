@@ -97,7 +97,6 @@ import com.oracle.svm.driver.metainf.MetaInfFileType;
 import com.oracle.svm.driver.metainf.NativeImageMetaInfResourceProcessor;
 import com.oracle.svm.driver.metainf.NativeImageMetaInfWalker;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
-import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
@@ -268,8 +267,6 @@ public class NativeImage {
 
     final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
     final String oHDeadlockWatchdogInterval = oH(SubstrateOptions.DeadlockWatchdogInterval);
-
-    static final String oHNumberOfThreads = oH(NativeImageOptions.NumberOfThreads);
 
     final Map<String, String> imageBuilderEnvironment = new HashMap<>();
     private final ArrayList<String> imageBuilderArgs = new ArrayList<>();
@@ -1096,19 +1093,6 @@ public class NativeImage {
         }
         imageClasspath.addAll(customImageClasspath);
 
-        Integer maxNumberOfThreads = getMaxNumberOfThreads();
-        if (maxNumberOfThreads != null) {
-            if (maxNumberOfThreads >= 2) {
-                /*
-                 * Set number of threads in common pool. Subtract one because the main thread helps
-                 * to process tasks.
-                 */
-                imageBuilderJavaArgs.add("-Djava.util.concurrent.ForkJoinPool.common.parallelism=" + (maxNumberOfThreads - 1));
-            } else {
-                throw showError("The number of threads was set to " + maxNumberOfThreads + ". Please set the '--parallelism' option to at least 2.");
-            }
-        }
-
         /*
          * Work around "JDK-8315810: Reimplement
          * sun.reflect.ReflectionFactory::newConstructorForSerialization with method handles"
@@ -1357,20 +1341,6 @@ public class NativeImage {
             }
         }
         return result;
-    }
-
-    private Integer getMaxNumberOfThreads() {
-        String numberOfThreadsValue = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHNumberOfThreads);
-        if (numberOfThreadsValue != null) {
-            try {
-                return Integer.parseInt(numberOfThreadsValue);
-            } catch (NumberFormatException e) {
-                /* Validated already by CommonOptionParser. */
-                throw VMError.shouldNotReachHere(e);
-            }
-        } else {
-            return null;
-        }
     }
 
     private boolean shouldAddCWDToCP() {

@@ -28,7 +28,6 @@ package com.oracle.svm.hosted.image;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.concurrent.ForkJoinPool;
 
 import jdk.graal.compiler.debug.DebugContext;
 
@@ -53,8 +52,8 @@ public class SharedLibraryImageViaCC extends NativeImageViaCC {
     }
 
     @Override
-    public LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config, ForkJoinPool forkJoinPool) {
-        LinkerInvocation inv = super.write(debug, outputDirectory, tempDirectory, imageName, config, forkJoinPool);
+    public LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config) {
+        LinkerInvocation inv = super.write(debug, outputDirectory, tempDirectory, imageName, config);
         writeHeaderFiles(outputDirectory, imageName, false);
         writeHeaderFiles(outputDirectory, imageName, true);
         return inv;

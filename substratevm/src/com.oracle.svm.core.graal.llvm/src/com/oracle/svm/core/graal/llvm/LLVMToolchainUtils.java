@@ -29,7 +29,6 @@ import static com.oracle.svm.core.graal.llvm.objectfile.LLVMObjectFile.getLld;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 
@@ -170,8 +169,8 @@ public class LLVMToolchainUtils {
     public static final class BatchExecutor {
         private CompletionExecutor executor;
 
-        public BatchExecutor(BigBang bb, ForkJoinPool threadPool) {
-            this.executor = new CompletionExecutor(bb, threadPool);
+        public BatchExecutor(DebugContext debug, BigBang bb) {
+            this.executor = new CompletionExecutor(debug, bb);
             executor.init();
         }
 
