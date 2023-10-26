@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,12 @@
  */
 package com.oracle.truffle.api.dsl;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.nodes.Node;
 import java.util.Arrays;
 import java.util.Objects;
+
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Thrown by the generated code of Truffle-DSL if no compatible Specialization could be found for
@@ -60,11 +62,25 @@ public final class UnsupportedSpecializationException extends RuntimeException {
     private final Node[] suppliedNodes;
     private final Object[] suppliedValues;
 
-    /** @since 0.8 or earlier */
+    /**
+     * Constructs a new {@link UnsupportedSpecializationException}.
+     *
+     * @param node The node that does not support the provided values in any of its specializations.
+     *            May be null.
+     * @param suppliedNodes The evaluated nodes that supplied the values. The array must much the
+     *            length of {@code suppliedValues}, and may contain null elements for values not not
+     *            provided by a child node but through an execute method parameter. If the array
+     *            would consist of only nulls, as in the case of {@link GenerateUncached uncached}
+     *            and {@link GenerateInline inlined} nodes, {@code null} may be provided instead and
+     *            will be treated as an array of nulls of the expected length.
+     * @param suppliedValues The values for which no compatible specialization could be found. The
+     *            array reference must not be {@code null}.
+     * @since 0.8 or earlier
+     */
     @TruffleBoundary
     public UnsupportedSpecializationException(Node node, Node[] suppliedNodes, Object... suppliedValues) {
-        Objects.requireNonNull(suppliedNodes, "The suppliedNodes parameter must not be null.");
-        if (suppliedNodes.length != suppliedValues.length) {
+        Objects.requireNonNull(suppliedValues, "suppliedValues");
+        if (suppliedNodes != null && suppliedNodes.length != suppliedValues.length) {
             throw new IllegalArgumentException("The length of suppliedNodes must match the length of suppliedValues.");
         }
         this.node = node;
@@ -75,10 +91,12 @@ public final class UnsupportedSpecializationException extends RuntimeException {
     /** @since 0.8 or earlier */
     @Override
     public String getMessage() {
+        CompilerAsserts.neverPartOfCompilation();
         StringBuilder str = new StringBuilder();
-        str.append("Unexpected values provided for ").append(node).append(": ").append(Arrays.toString(suppliedValues)).append(", [");
-        for (int i = 0; i < suppliedValues.length; i++) {
-            str.append(i == 0 ? "" : ",").append(suppliedValues[i] == null ? "null" : suppliedValues[i].getClass().getSimpleName());
+        Object[] values = getSuppliedValues();
+        str.append("Unexpected values provided for ").append(node).append(": ").append(Arrays.toString(values)).append(", [");
+        for (int i = 0; i < values.length; i++) {
+            str.append(i == 0 ? "" : ",").append(values[i] == null ? "null" : values[i].getClass().getSimpleName());
         }
         return str.append("]").toString();
     }
@@ -100,7 +118,12 @@ public final class UnsupportedSpecializationException extends RuntimeException {
      *
      * @since 0.8 or earlier
      */
+    @TruffleBoundary
     public Node[] getSuppliedNodes() {
+        if (suppliedNodes == null) {
+            // Return dummy array to maintain API contract.
+            return new Node[getSuppliedValues().length];
+        }
         return suppliedNodes;
     }
 
