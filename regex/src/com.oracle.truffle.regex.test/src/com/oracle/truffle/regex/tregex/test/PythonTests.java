@@ -510,6 +510,67 @@ public class PythonTests extends RegexTestBase {
     }
 
     @Test
+    public void testCasefixEquivalences() {
+        // Generated using re._casefix._EXTRA_CASES from CPython 3.11.4
+        test("\u0069", "i", "\u0131", 0, true, 0, 1);
+        test("\u0073", "i", "\u017f", 0, true, 0, 1);
+        test("\u00b5", "i", "\u03bc", 0, true, 0, 1);
+        test("\u0131", "i", "\u0069", 0, true, 0, 1);
+        test("\u017f", "i", "\u0073", 0, true, 0, 1);
+        test("\u0345", "i", "\u03b9", 0, true, 0, 1);
+        test("\u0345", "i", "\u1fbe", 0, true, 0, 1);
+        test("\u0390", "i", "\u1fd3", 0, true, 0, 1);
+        test("\u03b0", "i", "\u1fe3", 0, true, 0, 1);
+        test("\u03b2", "i", "\u03d0", 0, true, 0, 1);
+        test("\u03b5", "i", "\u03f5", 0, true, 0, 1);
+        test("\u03b8", "i", "\u03d1", 0, true, 0, 1);
+        test("\u03b9", "i", "\u0345", 0, true, 0, 1);
+        test("\u03b9", "i", "\u1fbe", 0, true, 0, 1);
+        test("\u03ba", "i", "\u03f0", 0, true, 0, 1);
+        test("\u03bc", "i", "\u00b5", 0, true, 0, 1);
+        test("\u03c0", "i", "\u03d6", 0, true, 0, 1);
+        test("\u03c1", "i", "\u03f1", 0, true, 0, 1);
+        test("\u03c2", "i", "\u03c3", 0, true, 0, 1);
+        test("\u03c3", "i", "\u03c2", 0, true, 0, 1);
+        test("\u03c6", "i", "\u03d5", 0, true, 0, 1);
+        test("\u03d0", "i", "\u03b2", 0, true, 0, 1);
+        test("\u03d1", "i", "\u03b8", 0, true, 0, 1);
+        test("\u03d5", "i", "\u03c6", 0, true, 0, 1);
+        test("\u03d6", "i", "\u03c0", 0, true, 0, 1);
+        test("\u03f0", "i", "\u03ba", 0, true, 0, 1);
+        test("\u03f1", "i", "\u03c1", 0, true, 0, 1);
+        test("\u03f5", "i", "\u03b5", 0, true, 0, 1);
+        test("\u0432", "i", "\u1c80", 0, true, 0, 1);
+        test("\u0434", "i", "\u1c81", 0, true, 0, 1);
+        test("\u043e", "i", "\u1c82", 0, true, 0, 1);
+        test("\u0441", "i", "\u1c83", 0, true, 0, 1);
+        test("\u0442", "i", "\u1c84", 0, true, 0, 1);
+        test("\u0442", "i", "\u1c85", 0, true, 0, 1);
+        test("\u044a", "i", "\u1c86", 0, true, 0, 1);
+        test("\u0463", "i", "\u1c87", 0, true, 0, 1);
+        test("\u1c80", "i", "\u0432", 0, true, 0, 1);
+        test("\u1c81", "i", "\u0434", 0, true, 0, 1);
+        test("\u1c82", "i", "\u043e", 0, true, 0, 1);
+        test("\u1c83", "i", "\u0441", 0, true, 0, 1);
+        test("\u1c84", "i", "\u0442", 0, true, 0, 1);
+        test("\u1c84", "i", "\u1c85", 0, true, 0, 1);
+        test("\u1c85", "i", "\u0442", 0, true, 0, 1);
+        test("\u1c85", "i", "\u1c84", 0, true, 0, 1);
+        test("\u1c86", "i", "\u044a", 0, true, 0, 1);
+        test("\u1c87", "i", "\u0463", 0, true, 0, 1);
+        test("\u1c88", "i", "\ua64b", 0, true, 0, 1);
+        test("\u1e61", "i", "\u1e9b", 0, true, 0, 1);
+        test("\u1e9b", "i", "\u1e61", 0, true, 0, 1);
+        test("\u1fbe", "i", "\u0345", 0, true, 0, 1);
+        test("\u1fbe", "i", "\u03b9", 0, true, 0, 1);
+        test("\u1fd3", "i", "\u0390", 0, true, 0, 1);
+        test("\u1fe3", "i", "\u03b0", 0, true, 0, 1);
+        test("\ua64b", "i", "\u1c88", 0, true, 0, 1);
+        test("\ufb05", "i", "\ufb06", 0, true, 0, 1);
+        test("\ufb06", "i", "\ufb05", 0, true, 0, 1);
+    }
+
+    @Test
     public void testSyntaxErrors() {
         // Generated using sre from CPython 3.10.8
         expectSyntaxError("()\\2", "", "invalid group reference 2", 3);
