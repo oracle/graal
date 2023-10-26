@@ -90,7 +90,8 @@ public class TransferToInterpreterTest extends TestWithPolyglotOptions {
             int x = (int) frame.getArguments()[0];
             if (x == 0) {
                 CompilerDirectives.transferToInterpreter();
-            } else {
+            }
+            if (x == 1) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
             }
             return null;

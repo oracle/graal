@@ -35,6 +35,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.LogicConstantNode;
@@ -310,14 +311,23 @@ public class CountedLoopInfo {
         }
         HIRBlock loopBlock = cfg.blockFor(loop.loopBegin());
         for (Node checkUsage : noEntryCheck.usages()) {
-            if (checkUsage instanceof IfNode) {
-                IfNode ifCheck = (IfNode) checkUsage;
-                if (cfg.getNodeToBlock().isNew(ifCheck.falseSuccessor())) {
+            ValueNode candidateCheck = null;
+            if (checkUsage instanceof IfNode ifCheck) {
+                candidateCheck = ifCheck.falseSuccessor();
+            } else if (checkUsage instanceof FixedGuardNode guard) {
+                if (!guard.isNegated()) {
                     continue;
                 }
-                if (cfg.blockFor(ifCheck.falseSuccessor()).dominates(loopBlock)) {
-                    return graph.addOrUniqueWithInputs(PiNode.create(div, positiveIntStamp.improveWith(div.stamp(NodeView.DEFAULT)), ifCheck.falseSuccessor()));
-                }
+                candidateCheck = guard;
+            } else {
+                continue;
+            }
+
+            if (cfg.getNodeToBlock().isNew(candidateCheck)) {
+                continue;
+            }
+            if (cfg.blockFor(candidateCheck).dominates(loopBlock)) {
+                return graph.addOrUniqueWithInputs(PiNode.create(div, positiveIntStamp.improveWith(div.stamp(NodeView.DEFAULT)), candidateCheck));
             }
         }
         return null;

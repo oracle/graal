@@ -126,7 +126,7 @@ public class ConditionalEliminationTest11 extends ConditionalEliminationTestBase
 
     public static int test6Snippet(int a) {
         if ((a & 8) != 0) {
-            GraalDirectives.deoptimize();
+            GraalDirectives.deoptimizeAndInvalidate();
         }
         if ((a & 15) != 15) {
             GraalDirectives.deoptimize();
@@ -135,8 +135,11 @@ public class ConditionalEliminationTest11 extends ConditionalEliminationTestBase
     }
 
     public static int reference6Snippet(int a) {
+        /*
+         * first guard needs higher priority than second guard, otherwise code folds to second guard
+         */
         if ((a & 8) != 0) {
-            GraalDirectives.deoptimize();
+            GraalDirectives.deoptimizeAndInvalidate();
         }
         GraalDirectives.deoptimize();
         return 0;

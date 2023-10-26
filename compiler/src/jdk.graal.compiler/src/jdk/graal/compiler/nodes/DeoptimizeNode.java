@@ -138,7 +138,8 @@ public final class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowe
      * high and would be executed under the wrong conditions.
      */
     public static boolean canFloat(DeoptimizationReason reason, DeoptimizationAction action) {
-        return action != DeoptimizationAction.None && reason != DeoptimizationReason.Unresolved;
+        return action != DeoptimizationAction.None && reason != DeoptimizationReason.Unresolved && reason != DeoptimizationReason.NotCompiledExceptionHandler &&
+                        reason != DeoptimizationReason.UnreachedCode;
     }
 
     @NodeIntrinsic

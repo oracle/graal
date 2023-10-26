@@ -110,9 +110,6 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
 
         for (DeoptimizeNode d : graph.getNodes(DeoptimizeNode.TYPE)) {
             assert d.isAlive();
-            if (!d.canFloat()) {
-                continue;
-            }
             try (DebugCloseable closable = d.withNodeSourcePosition()) {
                 propagateFixed(d, d, context, lazyLoops);
             }

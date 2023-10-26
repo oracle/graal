@@ -61,6 +61,7 @@ import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.lir.asm.EntryPointDecorator;
 import jdk.graal.compiler.lir.phases.LIRSuites;
+import jdk.graal.compiler.loop.phases.SpeculativeGuardMovementPhase;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -74,6 +75,7 @@ import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.Speculative;
 import jdk.graal.compiler.phases.common.AbstractInliningPhase;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.tiers.CompilerConfiguration;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
@@ -414,6 +416,8 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         suites.getHighTier().removeSubTypePhases(Speculative.class);
         suites.getMidTier().removeSubTypePhases(Speculative.class);
         suites.getLowTier().removeSubTypePhases(Speculative.class);
+        // remove after GR-49600 is resolved:
+        suites.getMidTier().replaceAllPhases(SpeculativeGuardMovementPhase.class, () -> new SpeculativeGuardMovementPhase(CanonicalizerPhase.create(), false, false));
     }
 
     @Override

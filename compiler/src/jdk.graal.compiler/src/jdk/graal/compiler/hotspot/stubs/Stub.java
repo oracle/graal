@@ -61,6 +61,8 @@ import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.Speculative;
+import jdk.graal.compiler.loop.phases.SpeculativeGuardMovementPhase;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
@@ -321,6 +323,8 @@ public abstract class Stub {
 
         defaultSuites.getMidTier().removeSubTypePhases(Speculative.class);
         defaultSuites.getLowTier().removeSubTypePhases(Speculative.class);
+        // remove after GR-49600 is resolved:
+        defaultSuites.getMidTier().replaceAllPhases(SpeculativeGuardMovementPhase.class, () -> new SpeculativeGuardMovementPhase(CanonicalizerPhase.create(), false, false));
 
         return new Suites(emptyHighTier, defaultSuites.getMidTier(), defaultSuites.getLowTier());
     }

@@ -38,9 +38,6 @@ import java.util.Random;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
-
-import jdk.graal.compiler.core.common.GraalOptions;
-import jdk.graal.compiler.options.OptionValues;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -139,20 +136,6 @@ public class Base64SubstitutionsTest extends GraalOSRTestBase {
                 assertByteArraysEqual(tc.encoded[i], lastResults.actual.returnValue);
             }
         }
-    }
-
-    /**
-     * The test at
-     * https://github.com/openjdk/jdk/blob/f2922682688a40529df269e1551246ac8da5d7ee/src/java.base/share/classes/java/util/Base64.java#L878
-     * is converted to a guard and (too eagerly) floated outside the loop, leading to deopt even
-     * when the input byte array has a correct ending.
-     *
-     * GR-48430.
-     */
-    private static OptionValues workaroundTooEagerDeopt() {
-        return new OptionValues(getInitialOptions(),
-                        GraalOptions.OptConvertDeoptsToGuards, false,
-                        GraalOptions.SpeculativeGuardMovement, false);
     }
 
     /**
@@ -297,7 +280,6 @@ public class Base64SubstitutionsTest extends GraalOSRTestBase {
      */
     @Test
     public void testDecodeByteArray2() {
-        OptionValues options = workaroundTooEagerDeopt();
         ResolvedJavaMethod m = getResolvedJavaMethod(Decoder.class, "decode", byte[].class, byte[].class);
         for (DecoderTestCase tc : getDecoders()) {
             for (int i = 0; i < PLAIN_TEXT_BYTES.length; i++) {
@@ -305,7 +287,7 @@ public class Base64SubstitutionsTest extends GraalOSRTestBase {
                 // JDK-8273108: Test for output buffer overrun
                 byte[] suffix = {0, (byte) 167};
                 ByteArraySupplier bas = new ByteArraySupplier(srcBytes.length, suffix);
-                test(options, m, tc.decoder, srcBytes, bas);
+                test(m, tc.decoder, srcBytes, bas);
                 Assert.assertEquals(bas.supplied.size(), 2);
                 byte[] expect = Arrays.copyOfRange(bas.supplied.get(0), 0, srcBytes.length);
                 byte[] actual = Arrays.copyOfRange(bas.supplied.get(1), 0, srcBytes.length);
@@ -328,12 +310,11 @@ public class Base64SubstitutionsTest extends GraalOSRTestBase {
      */
     @Test
     public void testDecodeByteBuffer() {
-        OptionValues options = workaroundTooEagerDeopt();
         for (DecoderTestCase tc : getDecoders()) {
             for (int i = 0; i < PLAIN_TEXT_BYTES.length; i++) {
                 byte[] srcBytes = tc.encoded[i];
                 ByteBuffer srcBuf = ByteBuffer.wrap(srcBytes);
-                test(options, "decodeByteBufferSnippet", tc.decoder, srcBuf);
+                test("decodeByteBufferSnippet", tc.decoder, srcBuf);
             }
         }
     }
