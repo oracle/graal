@@ -71,7 +71,7 @@ import com.oracle.truffle.api.strings.TruffleString.ToIndexableNode;
  * @see TruffleString
  * @since 22.1
  */
-public abstract class AbstractTruffleString {
+public abstract sealed class AbstractTruffleString permits TruffleString, MutableTruffleString {
 
     static final boolean DEBUG_STRICT_ENCODING_CHECKS = Boolean.getBoolean("truffle.strings.debug-strict-encoding-checks");
     static final boolean DEBUG_NON_ZERO_OFFSET = Boolean.getBoolean("truffle.strings.debug-non-zero-offset-arrays");
