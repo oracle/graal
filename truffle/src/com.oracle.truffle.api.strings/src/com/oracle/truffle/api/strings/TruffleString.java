@@ -3632,7 +3632,7 @@ public final class TruffleString extends AbstractTruffleString {
         final int indexOfRaw(AbstractTruffleString a, int fromCharIndex, int maxCharIndex, char[] values,
                         @Cached ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetCodeRangeForIndexCalculationNode getCodeRangeNode,
-                        @Cached TStringOpsNodes.IndexOfAnyCharNode indexOfNode) {
+                        @Cached TStringOpsNodes.IndexOfAnyCharUTF16Node indexOfNode) {
             a.checkEncoding(Encoding.UTF_16);
             if (a.isEmpty()) {
                 return -1;
