@@ -459,7 +459,7 @@ final class ParserDriver {
         for (String lib : context.preprocessDependencies(binaryParserResult.getLibraries(), libraryName, isInternal)) {
             // don't add the library itself as one of it's own dependency.
             if (!libraryName.equals(lib)) {
-                libraryDependencies.add(LoadDependencyNode.create(lib, binaryParserResult.getLocator(), lib));
+                libraryDependencies.add(LoadDependencyNode.create(lib, LLVMContext.InternalLocator.INSTANCE, lib));
             }
         }
     }
