@@ -30,14 +30,14 @@ import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
-import jdk.graal.compiler.options.OptionType;
-
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 import com.oracle.svm.util.LogUtils;
+
+import jdk.graal.compiler.options.OptionType;
 
 class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
@@ -167,7 +167,7 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             /* Using agentlib to allow interoperability with other agents */
             nativeImage.addImageBuilderJavaArgs("-agentlib:jdwp=transport=dt_socket,server=y,address=" + address + ",suspend=y");
             /* Disable watchdog mechanism */
-            nativeImage.addPlainImageBuilderArg(NativeImage.injectHostedOptionOrigin(nativeImage.oHDeadlockWatchdogInterval + "0", OptionOrigin.originDriver));
+            nativeImage.addPlainImageBuilderArg(nativeImage.oHDeadlockWatchdogInterval + "0", OptionOrigin.originDriver);
             return true;
         }
 
