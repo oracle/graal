@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,6 +86,7 @@ import com.oracle.truffle.dsl.processor.generator.DSLExpressionGenerator;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.GeneratorMode;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
+import com.oracle.truffle.dsl.processor.generator.HelperMethods;
 import com.oracle.truffle.dsl.processor.generator.NodeConstants;
 import com.oracle.truffle.dsl.processor.generator.StaticConstants;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
@@ -1293,6 +1294,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
         boolean firstNode = true;
         NodeConstants nodeConstants = new NodeConstants();
+        HelperMethods helperMethods = new HelperMethods();
 
         for (ExportMessageData export : messages.values()) {
             if (export.isGenerated()) {
@@ -1320,7 +1322,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             } else {
                 FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.EXPORTED_MESSAGE, uncachedSpecializedNode, uncachedSharedNodes, Collections.emptyMap(), constants,
                                 nodeConstants);
-                CodeExecutableElement generatedUncached = factory.createUncached();
+                CodeExecutableElement generatedUncached = factory.createUncached(helperMethods);
                 if (firstNode) {
                     uncachedClass.getEnclosedElements().addAll(factory.createUncachedFields());
                     firstNode = false;
@@ -1358,6 +1360,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
         }
         nodeConstants.prependToClass(uncachedClass);
+        helperMethods.appendToClass(uncachedClass);
         return uncachedClass;
 
     }

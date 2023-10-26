@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1807,6 +1807,20 @@ public class ElementUtils {
         } else {
             return ProcessorContext.getInstance().getEnvironment().getElementUtils().getBinaryName(provider).toString();
         }
+    }
+
+    public static String basicTypeId(TypeMirror type) {
+        return switch (type.getKind()) {
+            case BOOLEAN -> "Z";
+            case BYTE -> "B";
+            case SHORT -> "S";
+            case INT -> "I";
+            case LONG -> "J";
+            case CHAR -> "C";
+            case FLOAT -> "F";
+            case DOUBLE -> "D";
+            default -> "L";
+        };
     }
 
     public static final int COMPRESSED_POINTER_SIZE = 4;
