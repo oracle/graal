@@ -44,6 +44,7 @@ import java.util.List;
 
 import javax.lang.model.element.VariableElement;
 
+import com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeDSLNodeFactory;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.ChildExecutionResult;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.LocalVariable;
@@ -77,6 +78,14 @@ public interface NodeGeneratorPlugs {
 
     default CodeTree createTransferToInterpreterAndInvalidate() {
         return GeneratorUtils.createTransferToInterpreterAndInvalidate();
+    }
+
+    @SuppressWarnings("unused")
+    default void createSlowPathBegin(FlatNodeGenFactory nodeFactory, CodeTreeBuilder builder, FrameState frameState) {
+    }
+
+    @SuppressWarnings("unused")
+    default void createSlowPathEnd(FlatNodeGenFactory nodeFactory, CodeTreeBuilder builder, FrameState frameState) {
     }
 
 }

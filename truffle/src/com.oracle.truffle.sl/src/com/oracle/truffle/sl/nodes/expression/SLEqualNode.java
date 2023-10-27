@@ -43,6 +43,7 @@ package com.oracle.truffle.sl.nodes.expression;
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.bytecode.ForceQuickening;
 import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -70,6 +71,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
 public abstract class SLEqualNode extends SLBinaryNode {
 
     @Specialization
+    @ForceQuickening
     public static boolean doLong(long left, long right) {
         return left == right;
     }

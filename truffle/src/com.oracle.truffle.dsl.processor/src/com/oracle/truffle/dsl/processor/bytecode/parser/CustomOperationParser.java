@@ -53,7 +53,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -78,12 +77,13 @@ import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.CustomOperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
-import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
-import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Signature;
+import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
+import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionModel;
+import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
@@ -92,6 +92,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedPackageElement;
+import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 import com.oracle.truffle.dsl.processor.parser.NodeParser;
@@ -180,14 +181,22 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         }
 
         CodeTypeElement generatedNode = createNodeForCustomInstruction(typeElement);
-        Signature signature = determineSignature(customOperation, generatedNode);
+        List<ExecutableElement> specializations = findSpecializations(generatedNode);
+
+        if (specializations.size() == 0) {
+            customOperation.addError("Operation class %s contains no specializations.", generatedNode.getSimpleName());
+            return null;
+        }
+
+        Signature signature = createPolymorphicSignature(specializations, customOperation);
+
         if (customOperation.hasErrors()) {
             return customOperation;
         }
         assert signature != null : "Signature could not be computed, but no error was reported";
         populateCustomOperationFields(customOperation.operation, signature);
 
-        customOperation.operation.instruction = createCustomInstruction(customOperation, typeElement, generatedNode, signature, name);
+        customOperation.operation.setInstruction(createCustomInstruction(customOperation, typeElement, generatedNode, signature, name));
 
         return customOperation;
     }
@@ -387,7 +396,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         if (shouldGenerateUncached(originalTypeElement)) {
             generatedNode.addAnnotationMirror(new CodeAnnotationMirror(types.GenerateUncached));
         }
-
         generatedNode.addAll(createExecuteMethods(signature, originalTypeElement));
 
         /*
@@ -438,7 +446,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         List<AnnotationMirror> result = new ArrayList<>();
 
         for (int i = 0; i < signature.valueCount; i++) {
-            result.add(createNodeChildAnnotation("child" + i, signature.getParameterType(i)));
+            result.add(createNodeChildAnnotation("child" + i, signature.getGenericType(i)));
         }
         for (int i = 0; i < signature.localSetterCount; i++) {
             result.add(createNodeChildAnnotation("localSetter" + i, types.LocalSetter));
@@ -483,22 +491,10 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     private List<CodeExecutableElement> createExecuteMethods(Signature signature, TypeElement typeElement) {
         List<CodeExecutableElement> result = new ArrayList<>();
 
-        if (signature.isVoid) {
-            result.add(createExecuteMethod(signature, "executeVoid", context.getType(void.class), false, false));
-        } else {
-            result.add(createExecuteMethod(signature, "executeObject", context.getType(Object.class), false, false));
-
-            for (TypeMirror ty : signature.getBoxingEliminatableReturnTypes()) {
-                result.add(createExecuteMethod(signature, "execute" + firstLetterUpperCase(getSimpleName(ty)), ty, true, false));
-            }
-        }
+        result.add(createExecuteMethod(signature, "executeObject", signature.returnType, false, false));
 
         if (shouldGenerateUncached(typeElement)) {
-            if (signature.isVoid) {
-                result.add(createExecuteMethod(signature, "executeUncached", context.getType(void.class), false, true));
-            } else {
-                result.add(createExecuteMethod(signature, "executeUncached", context.getType(Object.class), false, true));
-            }
+            result.add(createExecuteMethod(signature, "executeUncached", signature.returnType, false, true));
         }
 
         return result;
@@ -514,7 +510,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         if (uncached) {
             for (int i = 0; i < signature.valueCount; i++) {
-                ex.addParameter(new CodeVariableElement(signature.getParameterType(i), "child" + i + "Value"));
+                ex.addParameter(new CodeVariableElement(signature.getGenericType(i), "child" + i + "Value"));
             }
             for (int i = 0; i < signature.localSetterCount; i++) {
                 ex.addParameter(new CodeVariableElement(types.LocalSetter, "localSetter" + i + "Value"));
@@ -540,12 +536,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         instr.signature = signature;
         instr.nodeData = parseGeneratedNode(customOperation, originalTypeElement, generatedNode, signature);
 
-        for (int i = 0; i < signature.valueCount; i++) {
-            if (signature.canBoxingEliminateValue(i)) {
-                instr.addImmediate(ImmediateKind.BYTECODE_INDEX, "child" + i + "_bci");
-            }
-        }
-
         for (int i = 0; i < signature.localSetterCount; i++) {
             instr.addImmediate(ImmediateKind.LOCAL_SETTER, "local_setter" + i);
         }
@@ -554,6 +544,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             instr.addImmediate(ImmediateKind.LOCAL_SETTER_RANGE_START, "local_setter_range_start" + i);
             instr.addImmediate(ImmediateKind.LOCAL_SETTER_RANGE_LENGTH, "local_setter_range_length" + i);
         }
+
         // NB: Node-to-bci lookups rely on the node being the last immediate.
         instr.addImmediate(ImmediateKind.NODE, "node");
 
@@ -606,118 +597,130 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         return result;
     }
 
-    /*
+    /**
      * Computes a {@link Signature} from the node's set of specializations. Returns {@code null} if
      * there are no specializations or the specializations do not share a common signature.
      */
-    private Signature determineSignature(CustomOperationModel customOperation, CodeTypeElement generatedNode) {
-        List<ExecutableElement> specializations = findSpecializations(generatedNode);
-
-        if (specializations.size() == 0) {
-            customOperation.addError("Operation class %s contains no specializations.", generatedNode.getSimpleName());
-            return null;
-        }
-
+    public static Signature createPolymorphicSignature(List<ExecutableElement> specializations, MessageContainer errorTarget) {
         boolean isValid = true;
-        Signature signature = null;
-
-        for (ExecutableElement spec : specializations) {
-            Signature other = determineSignature(customOperation, spec);
+        Signature polymorphicSignature = null;
+        for (ExecutableElement specialization : specializations) {
+            Signature signature = createSignature(specialization, errorTarget);
             if (signature == null) {
-                // first (valid) signature
-                signature = other;
-            } else if (other == null) {
-                // invalid signature
                 isValid = false;
-            } else {
-                isValid = mergeSignatures(customOperation, signature, other, spec) && isValid;
+                continue;
             }
+            polymorphicSignature = mergeSignatures(signature, polymorphicSignature, specialization, errorTarget);
         }
 
-        if (!isValid || signature == null) {
+        if (!isValid || polymorphicSignature == null) {
             // signatures are invalid or inconsistent
             return null;
         }
-
-        return signature;
+        return polymorphicSignature;
     }
 
-    private boolean mergeSignatures(CustomOperationModel customOperation, Signature a, Signature b, Element el) {
-        boolean isValid = true;
+    private static TruffleTypes types() {
+        return ProcessorContext.types();
+    }
+
+    private static Signature mergeSignatures(Signature a, Signature b, Element el, MessageContainer errorTarget) {
+        if (b == null) {
+            return a;
+        }
         if (a.isVariadic != b.isVariadic) {
-            customOperation.addError(el, "Error calculating operation signature: either all or none of the specialization must be variadic (have a @%s annotated parameter)",
-                            getSimpleName(types.Variadic));
-            isValid = false;
+            if (errorTarget != null) {
+                errorTarget.addError(el, "Error calculating operation signature: either all or none of the specialization must be variadic (have a @%s annotated parameter)",
+                                getSimpleName(types().Variadic));
+            }
+            return null;
         }
         if (a.isVoid != b.isVoid) {
-            customOperation.addError(el, "Error calculating operation signature: either all or none of the specialization must be declared void.");
-            isValid = false;
+            if (errorTarget != null) {
+                errorTarget.addError(el, "Error calculating operation signature: either all or none of the specialization must be declared void.");
+            }
+            return null;
         }
         if (a.valueCount != b.valueCount) {
-            customOperation.addError(el, "Error calculating operation signature: all specializations must have the same number of value arguments.");
-            isValid = false;
+            if (errorTarget != null) {
+                errorTarget.addError(el, "Error calculating operation signature: all specializations must have the same number of value arguments.");
+            }
+            return null;
         }
         if (a.localSetterCount != b.localSetterCount) {
-            customOperation.addError(el, "Error calculating operation signature: all specializations must have the same number of %s arguments.", getSimpleName(types.LocalSetter));
-            isValid = false;
+            if (errorTarget != null) {
+                errorTarget.addError(el, "Error calculating operation signature: all specializations must have the same number of %s arguments.",
+                                getSimpleName(types().LocalSetter));
+            }
+            return null;
         }
         if (a.localSetterRangeCount != b.localSetterRangeCount) {
-            customOperation.addError(el, "Error calculating operation signature: all specializations must have the same number of %s arguments.", getSimpleName(types.LocalSetterRange));
-            isValid = false;
+            if (errorTarget != null) {
+                errorTarget.addError(el, "Error calculating operation signature: all specializations must have the same number of %s arguments.", getSimpleName(types().LocalSetterRange));
+            }
+            return null;
         }
 
-        if (!isValid) {
-            return false;
+        TypeMirror newReturnType = mergeIfPrimitiveType(a.context, a.returnType, b.returnType);
+        TypeMirror[] mergedTypes = new TypeMirror[a.specializedTypes.size()];
+        for (int i = 0; i < a.specializedTypes.size(); i++) {
+            mergedTypes[i] = mergeIfPrimitiveType(a.context, a.specializedTypes.get(i), b.specializedTypes.get(i));
         }
-
-        a.addBoxingEliminatableReturnTypes(b.getBoxingEliminatableReturnTypes());
-
-        for (int i = 0; i < a.valueCount; i++) {
-            a.setCanBoxingEliminateValue(i, a.canBoxingEliminateValue(i) || b.canBoxingEliminateValue(i));
-        }
-
-        return true;
+        return new Signature(newReturnType, List.of(mergedTypes), a.isVariadic, a.localSetterCount, a.localSetterRangeCount);
     }
 
-    private Signature determineSignature(CustomOperationModel customOperation, ExecutableElement spec) {
+    private static TypeMirror mergeIfPrimitiveType(ProcessorContext context, TypeMirror a, TypeMirror b) {
+        if (ElementUtils.typeEquals(ElementUtils.boxType(context, a), ElementUtils.boxType(context, b))) {
+            return a;
+        } else {
+            return context.getType(Object.class);
+        }
+    }
 
+    private static Signature createSignature(ExecutableElement specialization, MessageContainer errorTarget) {
         boolean isValid = true;
-
+        final ProcessorContext context = ProcessorContext.getInstance();
+        final TruffleTypes types = context.getTypes();
         List<VariableElement> valueParams = new ArrayList<>();
         boolean hasVariadic = false;
         int localSetterCount = 0;
         int localSetterRangeCount = 0;
-
-        boolean isFallback = ElementUtils.findAnnotationMirror(spec, types.Fallback) != null;
+        boolean isFallback = ElementUtils.findAnnotationMirror(specialization, types.Fallback) != null;
 
         // Each specialization should have parameters in the following order:
         // frame, value*, variadic, localSetter*, localSetterRange*
         // All parameters are optional, and the ones with * can be repeated multiple times.
-        for (VariableElement param : spec.getParameters()) {
+        for (VariableElement param : specialization.getParameters()) {
             if (isAssignable(param.asType(), types.Frame)) {
                 // nothing, we ignore these
                 continue;
             } else if (isAssignable(param.asType(), types.LocalSetter)) {
-                isValid = errorIfDSLParameter(customOperation, types.LocalSetter, param) && isValid;
+                isValid = errorIfDSLParameter(types.LocalSetter, param, errorTarget) && isValid;
                 if (localSetterRangeCount > 0) {
-                    customOperation.addError(param, "%s parameters must precede %s parameters.",
-                                    getSimpleName(types.LocalSetter), getSimpleName(types.LocalSetterRange));
+                    if (errorTarget != null) {
+                        errorTarget.addError(param, "%s parameters must precede %s parameters.",
+                                        getSimpleName(types.LocalSetter), getSimpleName(types.LocalSetterRange));
+                    }
                     isValid = false;
                 }
                 localSetterCount++;
             } else if (isAssignable(param.asType(), types.LocalSetterRange)) {
-                isValid = errorIfDSLParameter(customOperation, types.LocalSetterRange, param) && isValid;
+                isValid = errorIfDSLParameter(types.LocalSetterRange, param, errorTarget) && isValid;
                 localSetterRangeCount++;
             } else if (ElementUtils.findAnnotationMirror(param, types.Variadic) != null) {
-                isValid = errorIfDSLParameter(customOperation, types.Variadic, param) && isValid;
+                isValid = errorIfDSLParameter(types.Variadic, param, errorTarget) && isValid;
                 if (hasVariadic) {
-                    customOperation.addError(param, "Multiple variadic parameters not allowed to an operation. Split up the operation if such behaviour is required.");
+                    if (errorTarget != null) {
+                        errorTarget.addError(param, "Multiple variadic parameters not allowed to an operation. Split up the operation if such behaviour is required.");
+                    }
                     isValid = false;
                 }
                 if (localSetterRangeCount > 0 || localSetterCount > 0) {
-                    customOperation.addError(param, "Value parameters must precede %s and %s parameters.",
-                                    getSimpleName(types.LocalSetter),
-                                    getSimpleName(types.LocalSetterRange));
+                    if (errorTarget != null) {
+                        errorTarget.addError(param, "Value parameters must precede %s and %s parameters.",
+                                        getSimpleName(types.LocalSetter),
+                                        getSimpleName(types.LocalSetterRange));
+                    }
                     isValid = false;
                 }
                 valueParams.add(param);
@@ -726,11 +729,15 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                 // these do not affect the signature
             } else {
                 if (hasVariadic) {
-                    customOperation.addError(param, "Non-variadic value parameters must precede variadic parameters.");
+                    if (errorTarget != null) {
+                        errorTarget.addError(param, "Non-variadic value parameters must precede variadic parameters.");
+                    }
                     isValid = false;
                 }
                 if (localSetterRangeCount > 0 || localSetterCount > 0) {
-                    customOperation.addError(param, "Value parameters must precede LocalSetter and LocalSetterRange parameters.");
+                    if (errorTarget != null) {
+                        errorTarget.addError(param, "Value parameters must precede LocalSetter and LocalSetterRange parameters.");
+                    }
                     isValid = false;
                 }
                 if (isFallback) {
@@ -741,9 +748,11 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                      * specializations with non-Object parameters are unsupported.
                      */
                     if (!isObject(param.asType())) {
-                        customOperation.addError(param, "Value parameters to @%s specializations of Operation nodes must have type %s.",
-                                        getSimpleName(types.Fallback),
-                                        getSimpleName(context.getDeclaredType(Object.class)));
+                        if (errorTarget != null) {
+                            errorTarget.addError(param, "Value parameters to @%s specializations of Operation nodes must have type %s.",
+                                            getSimpleName(types.Fallback),
+                                            getSimpleName(context.getDeclaredType(Object.class)));
+                        }
                         isValid = false;
                     }
                 }
@@ -755,46 +764,28 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             return null;
         }
 
-        boolean[] canBoxingEliminateValue = new boolean[valueParams.size()];
-        for (int i = 0; i < valueParams.size(); i++) {
-            VariableElement param = valueParams.get(i);
-            if (ElementUtils.findAnnotationMirror(param, context.getTypes().Variadic) != null) {
-                canBoxingEliminateValue[i] = false;
-            } else {
-                canBoxingEliminateValue[i] = parent.isBoxingEliminated(param.asType());
-            }
-        }
-
-        boolean isVoid = false;
-        Set<TypeMirror> boxingEliminatableReturnTypes = new HashSet<>();
-        if (customOperation.operation.kind != OperationKind.CUSTOM_SHORT_CIRCUIT) {
-            // short-circuit ops are always non-void and never boxing-eliminated
-            if (ElementUtils.isVoid(spec.getReturnType())) {
-                isVoid = true;
-            } else if (parent.isBoxingEliminated(spec.getReturnType())) {
-                boxingEliminatableReturnTypes = new HashSet<>(Set.of(spec.getReturnType()));
-            }
-        }
-
-        return new Signature(valueParams.size(), hasVariadic, localSetterCount, localSetterRangeCount, isVoid, canBoxingEliminateValue, boxingEliminatableReturnTypes);
+        List<TypeMirror> argumentTypes = valueParams.stream().map(v -> v.asType()).toList();
+        return new Signature(specialization.getReturnType(), argumentTypes, hasVariadic, localSetterCount, localSetterRangeCount);
     }
 
-    private boolean isDSLParameter(VariableElement param) {
+    private static boolean isDSLParameter(VariableElement param) {
         for (AnnotationMirror mir : param.getAnnotationMirrors()) {
-            if (typeEqualsAny(mir.getAnnotationType(), types.Cached, types.CachedLibrary, types.Bind)) {
+            if (typeEqualsAny(mir.getAnnotationType(), types().Cached, types().CachedLibrary, types().Bind)) {
                 return true;
             }
         }
         return false;
     }
 
-    private boolean errorIfDSLParameter(CustomOperationModel customOperation, TypeMirror paramType, VariableElement param) {
+    private static boolean errorIfDSLParameter(TypeMirror paramType, VariableElement param, MessageContainer errorTarget) {
         if (isDSLParameter(param)) {
-            customOperation.addError(param, "%s parameters must not be annotated with @%s, @%s, or @%s.",
-                            getSimpleName(paramType),
-                            getSimpleName(types.Cached),
-                            getSimpleName(types.CachedLibrary),
-                            getSimpleName(types.Bind));
+            if (errorTarget != null) {
+                errorTarget.addError(param, "%s parameters must not be annotated with @%s, @%s, or @%s.",
+                                getSimpleName(paramType),
+                                getSimpleName(types().Cached),
+                                getSimpleName(types().CachedLibrary),
+                                getSimpleName(types().Bind));
+            }
             return false;
         }
         return true;

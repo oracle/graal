@@ -38,30 +38,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.dsl.processor.bytecode.model;
+package com.oracle.truffle.api.bytecode;
 
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.TypeElement;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Repeatable;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.model.Template;
+import com.oracle.truffle.api.bytecode.ForceQuickening.Repeat;
+import com.oracle.truffle.api.dsl.Specialization;
 
 /**
- * Model for a user-defined operation.
- *
- * We define this class using composition rather than inheritance because a custom operation is
- * generated based on some template type (an {@link Operation} or {@link OperationProxy}), and it
- * needs to accept warning/error messages when the operation is validated.
+ * Forces quickening for a {@link Specialization specialization} method. To quicken a combination of
+ * multiple specializations use the same {@link #value() name} . If no name is specified then only
+ * this one specialization is quickened. It is possible to specify multiple quickenings per
+ * specialization if a specialization is quickened individually or in a group of specializations.
  */
-public class CustomOperationModel extends Template {
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.METHOD})
+@Repeatable(Repeat.class)
+public @interface ForceQuickening {
 
-    public final BytecodeDSLModel bytecode;
-    public final OperationModel operation;
+    String value() default "";
 
-    public CustomOperationModel(ProcessorContext context, BytecodeDSLModel bytecode, TypeElement templateType, AnnotationMirror mirror, OperationModel operation) {
-        super(context, templateType, mirror);
-        this.bytecode = bytecode;
-        this.operation = operation;
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.METHOD})
+    public @interface Repeat {
+        ForceQuickening[] value();
     }
 
 }

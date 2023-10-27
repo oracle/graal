@@ -354,6 +354,7 @@ public class TruffleTypes {
     public static final String GenerateBytecode_Name = "com.oracle.truffle.api.bytecode.GenerateBytecode";
     public static final String GenerateBytecodeTestVariants_Name = "com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants";
     public static final String GenerateBytecodeTestVariants_Variant_Name = "com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant";
+    public static final String ForceQuickening_Name = "com.oracle.truffle.api.bytecode.ForceQuickening";
     public static final String LocalSetter_Name = "com.oracle.truffle.api.bytecode.LocalSetter";
     public static final String LocalSetterRange_Name = "com.oracle.truffle.api.bytecode.LocalSetterRange";
     public static final String Operation_Name = "com.oracle.truffle.api.bytecode.Operation";
@@ -395,6 +396,7 @@ public class TruffleTypes {
     public final DeclaredType GenerateBytecode = c.getDeclaredTypeOptional(GenerateBytecode_Name);
     public final DeclaredType GenerateBytecodeTestVariants = c.getDeclaredTypeOptional(GenerateBytecodeTestVariants_Name);
     public final DeclaredType GenerateBytecodeTestVariant_Variant = c.getDeclaredTypeOptional(GenerateBytecodeTestVariants_Variant_Name);
+    public final DeclaredType ForceQuickening = c.getDeclaredTypeOptional(ForceQuickening_Name);
     public final DeclaredType LocalSetter = c.getDeclaredTypeOptional(LocalSetter_Name);
     public final DeclaredType LocalSetterRange = c.getDeclaredTypeOptional(LocalSetterRange_Name);
     public final DeclaredType Operation = c.getDeclaredTypeOptional(Operation_Name);

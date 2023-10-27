@@ -51,6 +51,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -68,27 +70,33 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONException;
+import org.graalvm.shadowed.org.json.JSONObject;
+import org.graalvm.shadowed.org.json.JSONTokener;
+
 import com.oracle.truffle.dsl.processor.TruffleProcessorOptions;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModels;
 import com.oracle.truffle.dsl.processor.bytecode.model.CustomOperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
-import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
+import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel.CommonInstructionDecision;
 import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel.QuickenDecision;
 import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel.SuperInstructionDecision;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
+import com.oracle.truffle.dsl.processor.model.MessageContainer;
+import com.oracle.truffle.dsl.processor.model.NodeData;
+import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 import com.oracle.truffle.dsl.processor.parser.NodeParser;
 import com.oracle.truffle.dsl.processor.parser.TypeSystemParser;
-import org.graalvm.shadowed.org.json.JSONArray;
-import org.graalvm.shadowed.org.json.JSONException;
-import org.graalvm.shadowed.org.json.JSONObject;
-import org.graalvm.shadowed.org.json.JSONTokener;
 
 public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
@@ -185,11 +193,13 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
     @SuppressWarnings("unchecked")
     private void parseBytecodeDSLModel(TypeElement typeElement, BytecodeDSLModel model, AnnotationMirror generateBytecodeMirror) {
         model.languageClass = (DeclaredType) ElementUtils.getAnnotationValue(generateBytecodeMirror, "languageClass").getValue();
-        model.enableUncachedInterpreter = (boolean) ElementUtils.getAnnotationValue(generateBytecodeMirror, "enableUncachedInterpreter", true).getValue();
-        model.enableSerialization = (boolean) ElementUtils.getAnnotationValue(generateBytecodeMirror, "enableSerialization", true).getValue();
-        model.allowUnsafe = (boolean) ElementUtils.getAnnotationValue(generateBytecodeMirror, "allowUnsafe", true).getValue();
-        model.enableYield = (boolean) ElementUtils.getAnnotationValue(generateBytecodeMirror, "enableYield", true).getValue();
-        model.storeBciInFrame = (boolean) ElementUtils.getAnnotationValue(generateBytecodeMirror, "storeBciInFrame", true).getValue();
+        model.storeBciInFrame = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableUncachedInterpreter");
+        model.enableUncachedInterpreter = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableUncachedInterpreter");
+        model.enableSerialization = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableSerialization");
+        model.allowUnsafe = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "allowUnsafe");
+        model.enableYield = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableYield");
+        model.storeBciInFrame = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "storeBciInFrame");
+        model.enableQuickening = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableQuickening");
         model.addDefault();
 
         // check basic declaration properties
@@ -362,7 +372,19 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             decisionsOverrideFilesPath = ((List<AnnotationValue>) decisionsOverrideFilesValue.getValue()).stream().map(x -> (String) x.getValue()).toArray(String[]::new);
         }
 
-        model.enableOptimizations = (decisionsFileValue != null || decisionsOverrideFilesValue != null) && !model.enableTracing;
+        // error sync
+        if (model.hasErrors()) {
+            return;
+        }
+
+        for (OperationModel operation : model.getOperations()) {
+            if (operation.instruction != null) {
+                NodeData node = operation.instruction.nodeData;
+                if (node != null) {
+                    validateUniqueSpecializationNames(node, model);
+                }
+            }
+        }
 
         // error sync
         if (model.hasErrors()) {
@@ -430,9 +452,36 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             return;
         }
 
+        // parse force quickenings
+        List<QuickenDecision> quickenings = parseForceQuickenings(model);
+
+        boolean enableDecisionsFile = (decisionsFileValue != null || decisionsOverrideFilesValue != null) && !model.enableTracing;
+
         // apply optimization decisions
-        if (model.enableOptimizations) {
+        if (enableDecisionsFile) {
             model.optimizationDecisions = parseDecisions(model, model.decisionsFilePath, decisionsOverrideFilesPath);
+
+            for (QuickenDecision decision : model.optimizationDecisions.quickenDecisions) {
+                OperationModel operation = null;
+                for (OperationModel current : model.getOperations()) {
+                    if (current.name.equals(decision.operation())) {
+                        operation = current;
+                        break;
+                    }
+                }
+                if (operation == null) {
+                    model.addError("Error reading optimization decisions: Invalid quickened operation %s.", decision.operation());
+                    continue;
+                }
+
+                try {
+                    operation.instruction.nodeData.findSpecializationsByName(decision.specializations());
+                } catch (IllegalArgumentException e) {
+                    model.addError("Error parsing optimization decisions: %s.", e.getMessage());
+                    continue;
+                }
+                quickenings.add(decision);
+            }
 
             for (SuperInstructionDecision decision : model.optimizationDecisions.superInstructionDecisions) {
                 String resultingInstructionName = "si." + String.join(".", decision.instructions);
@@ -447,6 +496,46 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         model.addError("Error reading optimization decisions: Super-instruction '%s' cannot contain another super-instruction '%s'.", resultingInstructionName, instrName);
                     }
                     instr.subInstructions.add(subInstruction);
+                }
+            }
+
+        }
+
+        if (model.enableQuickening) {
+            Set<QuickenDecision> uniqueQuickenings = new LinkedHashSet<>(quickenings);
+            for (QuickenDecision decision : uniqueQuickenings) {
+                OperationModel operation = null;
+                for (OperationModel current : model.getOperations()) {
+                    if (current.name.equals(decision.operation())) {
+                        operation = current;
+                        break;
+                    }
+                }
+
+                List<SpecializationData> includedSpecializations = operation.instruction.nodeData.findSpecializationsByName(decision.specializations());
+                StringBuilder name = new StringBuilder(operation.instruction.name);
+                for (SpecializationData specialization : includedSpecializations) {
+                    name.append("$").append(specialization.getId());
+                }
+
+                InstructionModel baseInstruction = operation.instruction;
+                InstructionModel quickenedInstruction = model.instruction(InstructionKind.CUSTOM_QUICKENED,
+                                name.toString());
+                quickenedInstruction.inheritFrom(baseInstruction);
+                quickenedInstruction.signature = CustomOperationParser.createPolymorphicSignature(includedSpecializations.stream().map(s -> s.getMethod()).toList(), null);
+                quickenedInstruction.filteredSpecializations = includedSpecializations;
+                baseInstruction.quickenedInstructions.add(quickenedInstruction);
+            }
+        }
+
+        // add bytecode index immediates if needed
+        for (InstructionModel instruction : model.getInstructions()) {
+            if (instruction.signature == null) {
+                continue;
+            }
+            for (int i = 0; i < instruction.signature.valueCount; i++) {
+                if (instruction.needsValueBoxingElimination(model, i)) {
+                    instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, "child" + i + "_bci");
                 }
             }
         }
@@ -484,6 +573,105 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         }
 
         return;
+    }
+
+    private List<QuickenDecision> parseForceQuickenings(BytecodeDSLModel model) {
+        List<QuickenDecision> decisions = new ArrayList<>();
+
+        for (OperationModel operation : model.getOperations()) {
+            InstructionModel instruction = operation.instruction;
+            if (instruction == null) {
+                continue;
+            }
+            NodeData node = instruction.nodeData;
+            if (node == null) {
+                continue;
+            }
+            Set<Element> processedElements = new HashSet<>();
+            if (node != null) {
+                // order map for determinism
+                Map<String, Set<String>> grouping = new LinkedHashMap<>();
+                for (SpecializationData specialization : node.getSpecializations()) {
+                    if (specialization.getMethod() == null) {
+                        continue;
+                    }
+                    ExecutableElement method = specialization.getMethod();
+                    processedElements.add(method);
+
+                    Map<String, List<SpecializationData>> seenNames = new LinkedHashMap<>();
+                    for (AnnotationMirror forceQuickening : ElementUtils.getRepeatedAnnotation(method.getAnnotationMirrors(), types.ForceQuickening)) {
+                        String name = ElementUtils.getAnnotationValue(String.class, forceQuickening, "value", false);
+
+                        if (name == null) {
+                            name = "";
+                        } else if (name.equals("")) {
+                            model.addError(method, "Identifier for @%s must not be an empty string.", ElementUtils.getSimpleName(types.ForceQuickening));
+                            continue;
+                        }
+
+                        seenNames.computeIfAbsent(name, (v) -> new ArrayList<>()).add(specialization);
+                        grouping.computeIfAbsent(name, (v) -> new LinkedHashSet<>()).add(specialization.getMethodName());
+                    }
+
+                    for (var entry : seenNames.entrySet()) {
+                        if (entry.getValue().size() > 1) {
+                            model.addError(method, "Multiple @%s with the same value are not allowed for one specialization.", ElementUtils.getSimpleName(types.ForceQuickening));
+                            break;
+                        }
+                    }
+                }
+
+                for (var entry : grouping.entrySet()) {
+                    if (entry.getKey().equals("")) {
+                        for (String specialization : entry.getValue()) {
+                            decisions.add(new QuickenDecision(operation.name, Set.of(specialization)));
+                        }
+                    } else {
+                        if (entry.getValue().size() <= 1) {
+                            SpecializationData s = node.findSpecializationsByName(entry.getValue()).iterator().next();
+                            model.addError(s.getMethod(), "@%s with name '%s' does only match a single quickening, but must match more than one. " +
+                                            "Specify additional quickenings with the same name or remove the value from the annotation to resolve this.",
+                                            ElementUtils.getSimpleName(types.ForceQuickening),
+                                            entry.getKey());
+                            continue;
+                        }
+                        decisions.add(new QuickenDecision(operation.name, entry.getValue()));
+                    }
+                }
+            }
+
+            // make sure force quickening is not used in wrong locations
+            for (Element e : ElementUtils.loadFilteredMembers(node.getTemplateType())) {
+                if (processedElements.contains(e)) {
+                    // already processed
+                    continue;
+                }
+
+                if (!ElementUtils.getRepeatedAnnotation(e.getAnnotationMirrors(), types.ForceQuickening).isEmpty()) {
+                    model.addError(e, "Invalid location of @%s. The annotation can only be used on method annotated with @%s.",
+                                    ElementUtils.getSimpleName(types.ForceQuickening),
+                                    ElementUtils.getSimpleName(types.Specialization));
+                }
+            }
+        }
+
+        return decisions;
+    }
+
+    private static void validateUniqueSpecializationNames(NodeData node, MessageContainer messageTarget) {
+        Set<String> seenSpecializationNames = new HashSet<>();
+        for (SpecializationData specialization : node.getSpecializations()) {
+            if (specialization.getMethod() == null) {
+                continue;
+            }
+            String methodName = specialization.getMethodName();
+            if (!seenSpecializationNames.add(methodName)) {
+                messageTarget.addError(specialization.getMethod(),
+                                "Specialization method name %s is not unique but might be used as an identifier to refer to specializations. " + //
+                                                "Use a unqiue specialization method name unique to resolve this." + //
+                                                "It is recommended to specialization method names that use a defining characteristic of the specialization, for example 'doBelowZero'.");
+            }
+        }
     }
 
     private String errorPrefix() {
@@ -547,11 +735,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 break;
             }
             case "Quicken": {
-                QuickenDecision m = new QuickenDecision();
-                m.id = decision.optString("id");
-                m.operation = decision.getString("operation");
-                m.specializations = jsonGetStringArray(decision, "specializations");
-                result.quickenDecisions.add(m);
+                result.quickenDecisions.add(new QuickenDecision(decision.getString("operation"), Set.of(jsonGetStringArray(decision, "specializations"))));
                 break;
             }
             default:

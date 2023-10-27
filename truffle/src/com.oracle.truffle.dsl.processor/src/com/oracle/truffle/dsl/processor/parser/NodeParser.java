@@ -122,7 +122,6 @@ import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.generator.NodeCodeGenerator;
 import com.oracle.truffle.dsl.processor.generator.NodeFactoryFactory;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
-import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
@@ -317,7 +316,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
         NodeData node = parseNodeData(templateType, lookupTypes);
 
-        List<Element> declaredMembers = loadMembers(templateType);
+        List<Element> declaredMembers = ElementUtils.loadFilteredMembers(templateType);
         // ensure the processed element has at least one @Specialization annotation.
         if (!containsSpecializations(declaredMembers)) {
             return null;
@@ -539,10 +538,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
     }
 
-    private int computeInstanceSize(TypeMirror mirror) {
+    private static int computeInstanceSize(TypeMirror mirror) {
         TypeElement type = fromTypeMirror(mirror);
         if (type != null) {
-            List<Element> members = loadAllMembers(type);
+            List<Element> members = ElementUtils.loadAllMembers(type);
             int size = ElementUtils.COMPRESSED_HEADER_SIZE;
             for (VariableElement var : ElementFilter.fieldsIn(members)) {
                 size += ElementUtils.getCompressedReferenceSize(var.asType());
@@ -1756,27 +1755,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
         for (int i = 1; i < parent.getDelegatedFrom().size(); i++) {
             buildExecutableHierarchy(node, parent.getDelegatedFrom().get(i - 1), parent.getDelegatedFrom().listIterator(i));
         }
-    }
-
-    private List<Element> loadMembers(TypeElement templateType) {
-        List<Element> elements = loadAllMembers(templateType);
-        Iterator<Element> elementIterator = elements.iterator();
-        while (elementIterator.hasNext()) {
-            Element element = elementIterator.next();
-            // not interested in methods of Node
-            if (typeEquals(element.getEnclosingElement().asType(), types.Node)) {
-                elementIterator.remove();
-            }
-            // not interested in methods of Object
-            if (typeEquals(element.getEnclosingElement().asType(), context.getType(Object.class))) {
-                elementIterator.remove();
-            }
-        }
-        return elements;
-    }
-
-    private List<Element> loadAllMembers(TypeElement templateType) {
-        return newElementList(CompilerFactory.getCompiler(templateType).getAllMembersInDeclarationOrder(context.getEnvironment(), templateType));
     }
 
     private boolean containsSpecializations(List<Element> elements) {
@@ -4337,15 +4315,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
     }
 
-    /**
-     * @see "https://bugs.openjdk.java.net/browse/JDK-8039214"
-     */
-    @SuppressWarnings("unused")
-    private static List<Element> newElementList(List<? extends Element> src) {
-        List<Element> workaround = new ArrayList<Element>(src);
-        return workaround;
-    }
-
     private static void verifyMissingAbstractMethods(NodeData nodeData, List<? extends Element> originalElements) {
         if (!nodeData.needsFactory()) {
             // missing abstract methods only needs to be implemented
@@ -4353,7 +4322,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             return;
         }
 
-        List<Element> elements = newElementList(originalElements);
+        List<Element> elements = ElementUtils.newElementList(originalElements);
         Set<Element> unusedElements = new HashSet<>(elements);
         for (ExecutableElement method : nodeData.getAllTemplateMethods()) {
             unusedElements.remove(method);

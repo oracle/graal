@@ -83,13 +83,13 @@ public class TypeBoxingTest {
 
         test.executeInt();
 
-        assertEquals(0, constantNode.executeInvoked);
-        assertEquals(1, constantNode.executeIntInvoked);
+        assertEquals(1, constantNode.executeInvoked);
+        assertEquals(0, constantNode.executeIntInvoked);
 
         test.executeInt();
 
-        assertEquals(0, constantNode.executeInvoked);
-        assertEquals(2, constantNode.executeIntInvoked);
+        assertEquals(1, constantNode.executeInvoked);
+        assertEquals(1, constantNode.executeIntInvoked);
     }
 
     @NodeChild

@@ -153,6 +153,10 @@ public class OperationModel implements PrettyPrintable {
 
     public OperationModel setInstruction(InstructionModel instruction) {
         this.instruction = instruction;
+        if (instruction.operation != null) {
+            throw new AssertionError("operation already set");
+        }
+        instruction.operation = this;
         return this;
     }
 

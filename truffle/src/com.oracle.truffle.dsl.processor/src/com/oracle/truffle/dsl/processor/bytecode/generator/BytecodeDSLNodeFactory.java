@@ -82,7 +82,6 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
-import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
@@ -122,7 +121,6 @@ import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 
 public class BytecodeDSLNodeFactory implements ElementHelpers {
-    private static final Name Uncached_Name = CodeNames.of("Uncached");
 
     public static final String USER_LOCALS_START_IDX = "USER_LOCALS_START_IDX";
     public static final String BCI_IDX = "BCI_IDX";
@@ -334,19 +332,28 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         // Define the generated Node classes for custom instructions.
         StaticConstants consts = new StaticConstants();
         for (InstructionModel instr : model.getInstructions()) {
-            if (instr.nodeData == null) {
+            if (instr.nodeData == null || instr.quickeningBase != null) {
                 continue;
             }
 
             NodeConstants nodeConsts = new NodeConstants();
-            BytecodeDSLNodeGeneratorPlugs plugs = new BytecodeDSLNodeGeneratorPlugs(context, bytecodeNodeGen.asType(), model, instr);
+            BytecodeDSLNodeGeneratorPlugs plugs = new BytecodeDSLNodeGeneratorPlugs(context, this, bytecodeNodeGen.asType(), model, instr);
             FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, instr.nodeData, consts, nodeConsts, plugs);
 
             CodeTypeElement el = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, cachedDataClassName(instr));
             mergeSuppressWarnings(el, "static-method");
             el.setSuperClass(types.Node);
             factory.create(el);
-            new CustomInstructionPostProcessor().process(el);
+
+            List<ExecutableElement> cachedExecuteMethods = new ArrayList<>();
+            cachedExecuteMethods.add(createCachedExecute(plugs, factory, el, instr));
+            for (InstructionModel quickening : instr.quickenedInstructions) {
+                cachedExecuteMethods.add(createCachedExecute(plugs, factory, el, quickening));
+            }
+
+            processCachedNode(el);
+
+            el.getEnclosedElements().addAll(0, cachedExecuteMethods);
 
             nodeConsts.prependToClass(el);
             bytecodeNodeGen.add(el);
@@ -360,6 +367,30 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         bytecodeNodeGen.add(createGetBranchProfiles());
 
         return bytecodeNodeGen;
+    }
+
+    private static ExecutableElement createCachedExecute(BytecodeDSLNodeGeneratorPlugs plugs, FlatNodeGenFactory factory, CodeTypeElement el, InstructionModel instruction) {
+        plugs.setInstruction(instruction);
+
+        CodeVariableElement[] parameterTypes = new CodeVariableElement[instruction.signature.valueCount];
+        for (int i = 0; i < instruction.signature.valueCount; i++) {
+            parameterTypes[i] = new CodeVariableElement(instruction.signature.getGenericType(i), "var" + i);
+        }
+
+        CodeExecutableElement executable = new CodeExecutableElement(Set.of(),
+                        instruction.nodeData.getPolymorphicExecutable().getReturnType(), executeMethodName(instruction),
+                        new CodeVariableElement(ProcessorContext.types().VirtualFrame, "frameValue"));
+
+        List<SpecializationData> specializations = instruction.filteredSpecializations == null ? instruction.nodeData.getReachableSpecializations() : instruction.filteredSpecializations;
+        return factory.createExecuteMethod(el, executable, specializations, instruction.isQuickening());
+    }
+
+    private static String executeMethodName(InstructionModel instruction) {
+        if (instruction.isQuickening()) {
+            return "execute" + ElementUtils.firstLetterUpperCase(instruction.getQuickeningName());
+        } else {
+            return "execute";
+        }
     }
 
     private CodeExecutableElement createMapTagMaskToTagsArray() {
@@ -911,6 +942,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     buildIntrospectionArgument(b, "LOCAL", readBc("bci + 1"));
                     break;
                 case CUSTOM:
+                case CUSTOM_QUICKENED:
                     break;
                 case CUSTOM_SHORT_CIRCUIT:
                     assert !instr.getImmediates().isEmpty() : "Short circuit operations should always have branch targets.";
@@ -1228,6 +1260,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.startSwitch().string(readBc("bci")).end().startBlock();
 
         Map<Boolean, List<InstructionModel>> instructionsGroupedByHasConditionalBranch = model.getInstructions().stream() //
+                        .filter((i -> !i.isQuickening())) //
                         .collect(Collectors.partitioningBy(InstructionModel::hasConditionalBranch));
         Map<Boolean, List<InstructionModel>> instructionsGroupedByHasNode = instructionsGroupedByHasConditionalBranch.get(false).stream() //
                         .collect(Collectors.partitioningBy(InstructionModel::hasNodeImmediate));
@@ -1248,8 +1281,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         // 2. Instructions without nodes. Group by size to reduce generated code size.
         for (Map.Entry<Integer, List<InstructionModel>> entry : nodelessGroupedByLength.entrySet()) {
             for (InstructionModel instr : entry.getValue()) {
-
                 b.startCase().tree(createInstructionConstant(instr)).end();
+                for (InstructionModel quick : instr.quickenedInstructions) {
+                    b.startCase().tree(createInstructionConstant(quick)).end();
+                }
             }
             b.startBlock();
             b.statement("bci += " + entry.getKey());
@@ -1258,7 +1293,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         for (InstructionModel instr : instructionsGroupedByHasNode.get(true)) {
-            b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
+            b.startCase().tree(createInstructionConstant(instr)).end();
+            for (InstructionModel quick : instr.quickenedInstructions) {
+                b.startCase().tree(createInstructionConstant(quick)).end();
+            }
+
+            b.startBlock();
             InstructionImmediate imm = instr.getImmediate(ImmediateKind.NODE);
             b.statement("nodeIndex = " + readBc("bci + " + imm.offset));
             b.statement("node = new " + cachedDataClassName(instr) + "()");
@@ -3496,7 +3536,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         boolean elseIf = false;
                         boolean operationDataEmitted = false;
                         for (int valueIndex = 0; valueIndex < op.instruction.signature.valueCount; valueIndex++) {
-                            if (op.instruction.signature.canBoxingEliminateValue(valueIndex)) {
+                            if (op.instruction.needsValueBoxingElimination(model, valueIndex)) {
                                 if (!operationDataEmitted) {
                                     emitCastOperationData(b, "CustomOperationData", "operationSp - 1");
                                     operationDataEmitted = true;
@@ -3510,7 +3550,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         break;
                     case CUSTOM_SHORT_CIRCUIT:
                         ShortCircuitInstructionModel shortCircuitInstruction = (ShortCircuitInstructionModel) op.instruction;
-                        if (shortCircuitInstruction.booleanConverterInstruction.signature.canBoxingEliminateValue(0)) {
+                        if (shortCircuitInstruction.booleanConverterInstruction.needsValueBoxingElimination(model, 0)) {
                             emitCastOperationData(b, "CustomShortCircuitOperationData", "operationSp - 1");
                             b.statement("operationData.childBci = childBci");
                         }
@@ -4249,8 +4289,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 if (instr.isInstrumentationOnly() && !tier.isInstrumented) {
                     continue;
                 }
+                if (instr.isQuickening() && tier.isUncached) {
+                    continue;
+                }
 
-                b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
+                b.startCase().tree(createInstructionConstant(instr)).end();
+                if (tier.isUncached) {
+                    for (InstructionModel quickendInstruction : instr.quickenedInstructions) {
+                        b.startCase().tree(createInstructionConstant(quickendInstruction)).end();
+                    }
+                }
+                b.startBlock();
 
                 if (model.enableTracing) {
                     b.startStatement().startCall("tracer.traceInstruction");
@@ -4416,6 +4465,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement(setFrameObject("sp - 1", "mergeVariadic((Object[]) " + getFrameObject("sp - 1") + ")"));
                         break;
                     case CUSTOM:
+                    case CUSTOM_QUICKENED:
                         results.add(buildCustomInstructionExecute(b, instr));
                         break;
                     case CUSTOM_SHORT_CIRCUIT:
@@ -4668,10 +4718,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             if (tier.isUncached) {
                 b.staticReference(cachedType, "UNCACHED").startCall(".executeUncached");
-            } else if (isVoid) {
-                b.string("node").startCall(".executeVoid");
             } else {
-                b.string("node").startCall(".executeObject");
+                b.startCall("node", executeMethodName(instr));
             }
 
             // If we support yield, the frame forwarded to specializations should be the local frame
@@ -4681,7 +4729,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             // The tier 0 version takes all of its parameters. Other versions compute them.
             if (tier.isUncached) {
                 for (int i = 0; i < instr.signature.valueCount; i++) {
-                    TypeMirror targetType = instr.signature.getParameterType(i);
+                    TypeMirror targetType = instr.signature.getGenericType(i);
                     b.startGroup();
                     if (!ElementUtils.isObject(targetType)) {
                         b.cast(targetType);
@@ -4766,7 +4814,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private String customInstructionHelperName(InstructionModel instr) {
             String withoutPrefix = switch (instr.kind) {
-                case CUSTOM -> {
+                case CUSTOM, CUSTOM_QUICKENED -> {
                     assert instr.name.startsWith("c.");
                     yield instr.name.substring(2);
                 }
@@ -5057,66 +5105,50 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
     }
 
-    private static final Set<String> BOXING_ELIMINATED_EXECUTE_NAMES = Set.of("executeBoolean", "executeLong", "executeInt", "executeByte", "executeDouble", "executeFloat");
-    private static final Set<String> EXECUTE_NAMES = Set.of("executeBoolean", "executeLong", "executeInt", "executeByte", "executeDouble", "executeFloat", "executeObject");
-
     /**
      * Custom instructions are generated from Operations and OperationProxies. During parsing we
      * convert these definitions into Nodes for which {@link FlatNodeGenFactory} understands how to
      * generate specialization code. We clean up the result (removing unnecessary fields/methods,
      * fixing up types, etc.) here.
      */
-    private class CustomInstructionPostProcessor {
-
-        @SuppressWarnings({"unchecked", "rawtypes"})
-        private void process(CodeTypeElement el) {
-            // The parser injects @NodeChildren of dummy type "C". We do not directly execute the
-            // children (the plugs rewire child executions to stack loads), so we can remove them.
-            for (VariableElement fld : ElementFilter.fieldsIn(el.getEnclosedElements())) {
-                if (ElementUtils.getQualifiedName(fld.asType()).equals("C")) {
-                    el.getEnclosedElements().remove(fld);
-                }
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private void processCachedNode(CodeTypeElement el) {
+        // The parser injects @NodeChildren of dummy type "C". We do not directly execute the
+        // children (the plugs rewire child executions to stack loads), so we can remove them.
+        for (VariableElement fld : ElementFilter.fieldsIn(el.getEnclosedElements())) {
+            if (ElementUtils.getQualifiedName(fld.asType()).equals("C")) {
+                el.getEnclosedElements().remove(fld);
             }
+        }
 
-            for (ExecutableElement ctor : ElementFilter.constructorsIn(el.getEnclosedElements())) {
-                el.getEnclosedElements().remove(ctor);
+        for (ExecutableElement ctor : ElementFilter.constructorsIn(el.getEnclosedElements())) {
+            el.getEnclosedElements().remove(ctor);
+        }
+
+        for (ExecutableElement method : ElementFilter.methodsIn(el.getEnclosedElements())) {
+            String name = method.getSimpleName().toString();
+            if (name.equals("executeAndSpecialize")) {
+                continue;
             }
-
-            for (ExecutableElement met : ElementFilter.methodsIn(el.getEnclosedElements())) {
-                if (BOXING_ELIMINATED_EXECUTE_NAMES.contains(met.getSimpleName().toString())) {
-                    if (!met.getThrownTypes().contains(types.UnexpectedResultException)) {
-                        ((List) met.getThrownTypes()).add(types.UnexpectedResultException);
-                    }
-                }
+            if (name.startsWith("execute")) {
+                el.getEnclosedElements().remove(method);
             }
+        }
 
+        if (BytecodeDSLNodeFactory.this.model.enableUncachedInterpreter) {
+            // We do not need any other execute methods on the Uncached class.
             for (CodeTypeElement type : (List<CodeTypeElement>) (List<?>) ElementFilter.typesIn(el.getEnclosedElements())) {
-                if (type.getSimpleName() == Uncached_Name) {
+                if (type.getSimpleName().toString().equals("Uncached")) {
                     type.setSuperClass(types.Node);
-                }
-            }
-
-            if (BytecodeDSLNodeFactory.this.model.enableUncachedInterpreter) {
-                // We inject a method to ensure the uncached entrypoint is statically known. We do
-                // not need this method on the base class.
-                for (ExecutableElement met : ElementFilter.methodsIn(el.getEnclosedElements())) {
-                    if (met.getSimpleName().toString().equals("executeUncached")) {
-                        el.getEnclosedElements().remove(met);
-                    }
-                }
-                // We do not need any other execute methods on the Uncached class.
-                for (TypeElement cls : ElementFilter.typesIn(el.getEnclosedElements())) {
-                    if (cls.getSimpleName() == Uncached_Name) {
-                        for (ExecutableElement met : ElementFilter.methodsIn(cls.getEnclosedElements())) {
-                            if (EXECUTE_NAMES.contains(met.getSimpleName().toString())) {
-                                cls.getEnclosedElements().remove(met);
-                            }
+                    for (ExecutableElement ctor : ElementFilter.methodsIn(type.getEnclosedElements())) {
+                        String name = ctor.getSimpleName().toString();
+                        if (name.startsWith("execute") && !name.equals("executeUncached")) {
+                            type.getEnclosedElements().remove(ctor);
                         }
                     }
                 }
             }
         }
-
     }
 
     class BoxableInterfaceFactory {
@@ -5194,7 +5226,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return explodeLoop;
     }
 
-    private CodeTree createInstructionConstant(InstructionModel instr) {
+    CodeTree createInstructionConstant(InstructionModel instr) {
         return CodeTreeBuilder.createBuilder().staticReference(instructionsElement.asType(), instr.getConstantName()).build();
     }
 
@@ -5277,6 +5309,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     }
 
     private static String cachedDataClassName(InstructionModel instr) {
+        if (instr.quickeningBase != null) {
+            return cachedDataClassName(instr.quickeningBase);
+        }
         return instr.getInternalName() + "Gen";
     }
 

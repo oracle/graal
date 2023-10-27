@@ -65,7 +65,6 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Instruct
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.Template;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
@@ -102,6 +101,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public DeclaredType languageClass;
     public boolean enableUncachedInterpreter;
     public boolean enableSerialization;
+    public boolean enableQuickening;
     public boolean allowUnsafe;
     public boolean enableYield;
     public boolean storeBciInFrame;
@@ -117,7 +117,6 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
 
     public boolean enableTracing;
     public String decisionsFilePath;
-    public boolean enableOptimizations;
     public OptimizationDecisionsModel optimizationDecisions;
 
     public OperationModel blockOperation;
@@ -289,10 +288,6 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return new ArrayCodeTypeMirror(el);
     }
 
-    private static TypeMirror generic(DeclaredType el, TypeMirror... args) {
-        return new DeclaredCodeTypeMirror((TypeElement) el.asElement(), List.of(args));
-    }
-
     public OperationModel operation(OperationKind kind, String name) {
         if (operations.containsKey(name)) {
             addError("Multiple operations declared with name %s. Operation names must be distinct.", name);
@@ -308,7 +303,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         if (op == null) {
             return null;
         }
-        CustomOperationModel customOp = new CustomOperationModel(context, typeElement, mirror, op);
+        CustomOperationModel customOp = new CustomOperationModel(context, this, typeElement, mirror, op);
         if (customRegularOperations.containsKey(typeElement)) {
             throw new AssertionError(String.format("Type element %s was used to instantiate more than one operation. This is a bug.", typeElement));
         }
@@ -322,7 +317,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         if (op == null) {
             return null;
         }
-        CustomOperationModel customOp = new CustomOperationModel(context, null, mirror, op);
+        CustomOperationModel customOp = new CustomOperationModel(context, this, null, mirror, op);
         customShortCircuitOperations.add(customOp);
 
         return customOp;
@@ -366,7 +361,9 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         if (!isPrimitive(mirror)) {
             return false;
         }
-
+        if (ElementUtils.isVoid(mirror)) {
+            return false;
+        }
         for (TypeMirror mir : boxingEliminatedTypes) {
             if (typeEquals(mir, mirror)) {
                 return true;

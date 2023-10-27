@@ -81,6 +81,7 @@ import javax.lang.model.util.Types;
 import com.oracle.truffle.dsl.processor.CompileErrorException;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
+import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
@@ -1933,6 +1934,44 @@ public class ElementUtils {
         }
 
         return Idempotence.UNKNOWN;
+    }
+
+    /**
+     * Loads all members in declaration order but filters members of truffle Node and Object. Useful
+     * to load all members of template types.
+     */
+    public static List<Element> loadFilteredMembers(TypeElement templateType) {
+        ProcessorContext context = ProcessorContext.getInstance();
+        List<Element> elements = loadAllMembers(templateType);
+        Iterator<Element> elementIterator = elements.iterator();
+        while (elementIterator.hasNext()) {
+            Element element = elementIterator.next();
+            // not interested in methods of Node
+            if (typeEquals(element.getEnclosingElement().asType(), context.getTypes().Node)) {
+                elementIterator.remove();
+            }
+            // not interested in methods of Object
+            if (typeEquals(element.getEnclosingElement().asType(), context.getType(Object.class))) {
+                elementIterator.remove();
+            }
+        }
+        return elements;
+    }
+
+    /**
+     * Loads all members in declaration order. This returns members of the entire type hierarcy.
+     */
+    public static List<Element> loadAllMembers(TypeElement templateType) {
+        return newElementList(CompilerFactory.getCompiler(templateType).getAllMembersInDeclarationOrder(ProcessorContext.getInstance().getEnvironment(), templateType));
+    }
+
+    /**
+     * @see "https://bugs.openjdk.java.net/browse/JDK-8039214"
+     */
+    @SuppressWarnings("unused")
+    public static List<Element> newElementList(List<? extends Element> src) {
+        List<Element> workaround = new ArrayList<Element>(src);
+        return workaround;
     }
 
 }

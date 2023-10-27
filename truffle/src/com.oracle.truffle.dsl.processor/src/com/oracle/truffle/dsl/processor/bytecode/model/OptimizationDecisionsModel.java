@@ -42,13 +42,11 @@ package com.oracle.truffle.dsl.processor.bytecode.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class OptimizationDecisionsModel implements PrettyPrintable {
 
-    public static class QuickenDecision {
-        public String id;
-        public String operation;
-        public String[] specializations;
+    public record QuickenDecision(String operation, Set<String> specializations) {
     }
 
     public static class SuperInstructionDecision {
