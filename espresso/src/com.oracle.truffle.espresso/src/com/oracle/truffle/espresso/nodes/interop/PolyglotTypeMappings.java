@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.oracle.truffle.espresso.impl.ArrayKlass;
+import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.options.OptionMap;
@@ -141,6 +143,14 @@ public class PolyglotTypeMappings {
         } else {
             warn(current, meta.getContext());
         }
+        converters.put("byte[]", new PrimitiveArrayConverter(meta._byte_array));
+        converters.put("boolean[]", new PrimitiveArrayConverter(meta._boolean_array));
+        converters.put("char[]", new PrimitiveArrayConverter(meta._char_array));
+        converters.put("short[]", new PrimitiveArrayConverter(meta._short_array));
+        converters.put("int[]", new PrimitiveArrayConverter(meta._int_array));
+        converters.put("long[]", new PrimitiveArrayConverter(meta._long_array));
+        converters.put("float[]", new PrimitiveArrayConverter(meta._float_array));
+        converters.put("double[]", new PrimitiveArrayConverter(meta._double_array));
         internalTypeConverterFunctions = EconomicMap.create(converters);
     }
 
@@ -329,6 +339,20 @@ public class PolyglotTypeMappings {
         @TruffleBoundary
         private StaticObject toByteArray(BigInteger bigInteger, Meta meta) {
             return StaticObject.wrap(bigInteger.toByteArray(), meta);
+        }
+    }
+
+    public final class PrimitiveArrayConverter implements InternalTypeConverter {
+
+        private final ArrayKlass klass;
+
+        public PrimitiveArrayConverter(ArrayKlass klass) {
+            this.klass = klass;
+        }
+
+        @Override
+        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) {
+            return StaticObject.createForeign(toEspresso.getLanguage(), klass, value, interop);
         }
     }
 }
