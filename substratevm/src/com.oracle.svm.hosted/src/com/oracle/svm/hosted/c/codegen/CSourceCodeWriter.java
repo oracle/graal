@@ -42,7 +42,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.word.SignedWord;
@@ -84,13 +83,7 @@ public class CSourceCodeWriter {
 
     public void writeCStandardHeaders() {
         if (NativeImageOptions.getCStandard().compatibleWith(C99)) {
-            if (!Platform.includedIn(Platform.WINDOWS.class)) {
-                /*
-                 * CStandard says we are C99 compatible yet we cannot include stdbool.h because old
-                 * Windows native compilers do not support it. This should be fixed.
-                 */
-                includeFiles(Collections.singletonList("<stdbool.h>"));
-            }
+            includeFiles(Collections.singletonList("<stdbool.h>"));
         }
         if (NativeImageOptions.getCStandard().compatibleWith(C11)) {
             includeFiles(Collections.singletonList("<stdint.h>"));
