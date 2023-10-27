@@ -293,14 +293,12 @@ def _truffle_gate_runner(args, tasks):
         if t: sigtest(['--check', 'binary'])
     with Task('Truffle UnitTests', tasks) as t:
         if t: unittest(list(['--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25']))
-    if jdk.javaCompliance >= '21':
+    if jdk.javaCompliance >= '22':
         with Task('Truffle NFI tests with Panama Backend', tasks) as t:
             if t:
                 testPath = mx.distribution('TRUFFLE_TEST_NATIVE').output
                 args = ['-Dnative.test.backend=panama', '-Dnative.test.path.panama=' + testPath]
                 # testlibArg = mx_subst.path_substitutions.substitute('-Dnative.test.path.panama=<path:TRUFFLE_TEST_NATIVE>')
-                if mx.project('com.oracle.truffle.nfi.backend.panama').javaPreviewNeeded:
-                    args += ['--enable-preview']
                 unittest(args + ['com.oracle.truffle.nfi.test', '--enable-timing', '--verbose'])
     with Task('TruffleString UnitTests without Java String Compaction', tasks) as t:
         if t: unittest(list(['-XX:-CompactStrings', '--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25', 'com.oracle.truffle.api.strings.test']))
