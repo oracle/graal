@@ -558,10 +558,12 @@ public class NativeImage {
          */
         public List<Path> getBuilderModulePath() {
             List<Path> result = new ArrayList<>();
-            // Non-jlinked JDKs need truffle and graal-sdk on the module path since they
-            // don't have those modules as part of the JDK.
+            // Non-jlinked JDKs need truffle and word, collections, nativeimage on the
+            // module path since they don't have those modules as part of the JDK. Note
+            // that graal-sdk is now obsolete after the split in GR-43819 (#7171)
             if (libJvmciDir != null) {
-                result.addAll(getJars(libJvmciDir, "graal-sdk", "enterprise-graal"));
+                result.addAll(getJars(libJvmciDir, "enterprise-graal"));
+                result.addAll(getJars(libJvmciDir, "word", "collections", "nativeimage"));
             }
             if (modulePathBuild) {
                 result.addAll(createTruffleBuilderModulePath());
@@ -571,18 +573,36 @@ public class NativeImage {
         }
 
         private List<Path> createTruffleBuilderModulePath() {
-            List<Path> jars = getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-api", "truffle-runtime", "truffle-enterprise");
+            Path libTruffleDir = rootDir.resolve(Paths.get("lib", "truffle"));
+            List<Path> jars = getJars(libTruffleDir, "truffle-api", "truffle-runtime", "truffle-enterprise");
             if (!jars.isEmpty()) {
                 /*
                  * If Truffle is installed as part of the JDK we always add the builder modules of
                  * Truffle to the builder module path. This is legacy support and should in the
                  * future no longer be needed.
                  */
-                jars.addAll(getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-compiler"));
+                jars.addAll(getJars(libTruffleDir, "truffle-compiler"));
                 Path builderPath = rootDir.resolve(Paths.get("lib", "truffle", "builder"));
                 if (Files.exists(builderPath)) {
-                    jars.addAll(getJars(builderPath, "truffle-runtime-svm", "truffle-enterprise-svm"));
+                    List<Path> truffleRuntimeSVMJars = getJars(builderPath, "truffle-runtime-svm", "truffle-enterprise-svm");
+                    jars.addAll(truffleRuntimeSVMJars);
+                    if (libJvmciDir != null && !truffleRuntimeSVMJars.isEmpty()) {
+                        // truffle-runtime-svm depends on polyglot, which is not part of non-jlinked
+                        // JDKs
+                        jars.addAll(getJars(libJvmciDir, "polyglot"));
+                    }
                 }
+                if (libJvmciDir != null) {
+                    // truffle-runtime depends on polyglot, which is not part of non-jlinked JDKs
+                    jars.addAll(getJars(libTruffleDir, "jniutils"));
+                }
+            }
+            /*
+             * Non-Jlinked JDKs don't have truffle-compiler as part of the JDK, however the native
+             * image builder still needs it
+             */
+            if (libJvmciDir != null) {
+                jars.addAll(getJars(libTruffleDir, "truffle-compiler"));
             }
 
             return jars;
