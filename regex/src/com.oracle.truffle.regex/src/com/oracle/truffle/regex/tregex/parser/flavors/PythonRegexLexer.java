@@ -168,14 +168,6 @@ public final class PythonRegexLexer extends RegexLexer {
         super(source, compilationBuffer);
         this.mode = mode;
         this.globalFlags = new PythonFlags(source.getFlags());
-        parseInlineGlobalFlags();
-        if (globalFlags.isVerbose() && source.getFlags().indexOf('x') == -1) {
-            // The global verbose flag was set inside the expression. Let's scan it for global
-            // flags again.
-            globalFlags = new PythonFlags(source.getFlags()).addFlag('x');
-            parseInlineGlobalFlags();
-        }
-        globalFlags = globalFlags.fixFlags(source, mode);
     }
 
     private static int lookupCharacterByName(String characterName) {
@@ -206,98 +198,24 @@ public final class PythonRegexLexer extends RegexLexer {
         return localeData;
     }
 
-    private void parseInlineGlobalFlags() {
-        Deque<Boolean> groupVerbosityStack = new ArrayDeque<>();
-        groupVerbosityStack.push(globalFlags.isVerbose());
-        while (findChars('[', '(', ')', '#')) {
-            if (isEscaped()) {
-                advance();
-            } else {
-                switch (consumeChar()) {
-                    case '[':
-                        // skip first char after '[' because a ']' directly after the opening
-                        // bracket doesn't close the character class in python
-                        advance();
-                        // find end of character class
-                        while (findChars(']')) {
-                            if (!isEscaped()) {
-                                break;
-                            }
-                            advance();
-                        }
-                        break;
-                    case '(':
-                        if (consumingLookahead("?") && !atEnd()) {
-                            int ch = consumeChar();
-                            if (ch == '#') {
-                                while (findChars(')')) {
-                                    if (!isEscaped()) {
-                                        break;
-                                    }
-                                    advance();
-                                }
-                            } else {
-                                PythonFlags positiveFlags = PythonFlags.EMPTY_INSTANCE;
-                                while (!atEnd() && PythonFlags.isValidFlagChar(ch)) {
-                                    positiveFlags = addFlag(positiveFlags, ch);
-                                    ch = consumeChar();
-                                }
-                                if (!positiveFlags.equals(PythonFlags.EMPTY_INSTANCE) || ch == '-') {
-                                    switch (ch) {
-                                        case ')':
-                                            globalFlags = globalFlags.addFlags(positiveFlags);
-                                            break;
-                                        case ':':
-                                            groupVerbosityStack.push(groupVerbosityStack.peek() || positiveFlags.isVerbose());
-                                            break;
-                                        case '-':
-                                            if (atEnd()) {
-                                                // malformed local flags
-                                                continue;
-                                            }
-                                            ch = consumeChar();
-                                            PythonFlags negativeFlags = PythonFlags.EMPTY_INSTANCE;
-                                            while (!atEnd() && PythonFlags.isValidFlagChar(ch)) {
-                                                negativeFlags = negativeFlags.addFlag(ch);
-                                                ch = consumeChar();
-                                            }
-                                            groupVerbosityStack.push((groupVerbosityStack.peek() || positiveFlags.isVerbose()) && !negativeFlags.isVerbose());
-                                            break;
-                                        default:
-                                            // malformed local flags
-                                            break;
-                                    }
-                                } else {
-                                    // not inline flags after all
-                                    groupVerbosityStack.push(groupVerbosityStack.peek());
-                                }
-                            }
-                        } else {
-                            groupVerbosityStack.push(groupVerbosityStack.peek());
-                        }
-                        break;
-                    case ')':
-                        if (groupVerbosityStack.size() > 1) {
-                            groupVerbosityStack.pop();
-                        }
-                        break;
-                    case '#':
-                        if (groupVerbosityStack.peek() && findChars('\n')) {
-                            advance();
-                        }
-                        break;
-                }
-            }
-        }
-        position = 0;
+    public void fixFlags() {
+        globalFlags = globalFlags.fixFlags(source, mode);
     }
 
-    PythonFlags getGlobalFlags() {
+    public PythonFlags getGlobalFlags() {
         return globalFlags;
     }
 
-    PythonFlags getLocalFlags() {
+    public void addGlobalFlags(PythonFlags newGlobalFlags) {
+        globalFlags = globalFlags.addFlags(newGlobalFlags);
+    }
+
+    public PythonFlags getLocalFlags() {
         return flagsStack.isEmpty() ? globalFlags : flagsStack.peek();
+    }
+
+    public void pushLocalFlags(PythonFlags localFlags) {
+        flagsStack.push(localFlags);
     }
 
     public void popLocalFlags() {
@@ -924,7 +842,6 @@ public final class PythonRegexLexer extends RegexLexer {
             PythonFlags otherTypes = PythonFlags.TYPE_FLAGS_INSTANCE.delFlags(positiveFlags);
             newFlags = newFlags.delFlags(otherTypes);
         }
-        flagsStack.push(newFlags);
         return Token.createInlineFlags(newFlags, false);
     }
 
