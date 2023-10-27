@@ -91,9 +91,6 @@ import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -510,51 +507,9 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     Object[] args = createArgumentsForCall(frame, function.typeIndex(), paramCount, stackPointer);
                     stackPointer -= paramCount;
 
-                    Object result = executeDirectCall(instance, callNodeIndex, function, args);
-
-                    final int resultCount = function.resultCount();
-                    CompilerAsserts.partialEvaluationConstant(resultCount);
-                    if (resultCount == 0) {
-                        break;
-                    } else if (resultCount == 1) {
-                        final byte resultType = function.resultTypeAt(0);
-                        CompilerAsserts.partialEvaluationConstant(resultType);
-                        switch (resultType) {
-                            case WasmType.I32_TYPE: {
-                                pushInt(frame, stackPointer, (int) result);
-                                stackPointer++;
-                                break;
-                            }
-                            case WasmType.I64_TYPE: {
-                                pushLong(frame, stackPointer, (long) result);
-                                stackPointer++;
-                                break;
-                            }
-                            case WasmType.F32_TYPE: {
-                                pushFloat(frame, stackPointer, (float) result);
-                                stackPointer++;
-                                break;
-                            }
-                            case WasmType.F64_TYPE: {
-                                pushDouble(frame, stackPointer, (double) result);
-                                stackPointer++;
-                                break;
-                            }
-                            case WasmType.FUNCREF_TYPE:
-                            case WasmType.EXTERNREF_TYPE:
-                                pushReference(frame, stackPointer, result);
-                                stackPointer++;
-                                break;
-                            default: {
-                                throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
-                            }
-                        }
-                        break;
-                    } else {
-                        extractMultiValueResult(frame, stackPointer, result, resultCount, function.typeIndex());
-                        stackPointer += resultCount;
-                        break;
-                    }
+                    stackPointer = executeDirectCall(frame, stackPointer, instance, callNodeIndex, function, args);
+                    CompilerAsserts.partialEvaluationConstant(stackPointer);
+                    break;
                 }
                 case Bytecode.CALL_INDIRECT_U8:
                 case Bytecode.CALL_INDIRECT_I32: {
@@ -650,56 +605,15 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     final Object result;
                     try {
                         result = executeIndirectCallNode(callNodeIndex, target, args);
+                        WasmLanguage language = enterContext ? functionInstanceContext.language() : WasmLanguage.get(this);
+                        stackPointer = pushIndirectCallResult(frame, stackPointer, expectedFunctionTypeIndex, result, language);
+                        CompilerAsserts.partialEvaluationConstant(stackPointer);
                     } finally {
                         if (enterContext) {
                             truffleContext.leave(this, prev);
                         }
                     }
-
-                    final int resultCount = module.symbolTable().functionTypeResultCount(expectedFunctionTypeIndex);
-                    CompilerAsserts.partialEvaluationConstant(resultCount);
-                    if (resultCount == 0) {
-                        break;
-                    } else if (resultCount == 1) {
-                        final byte resultType = module.symbolTable().functionTypeResultTypeAt(expectedFunctionTypeIndex, 0);
-                        CompilerAsserts.partialEvaluationConstant(resultType);
-                        switch (resultType) {
-                            case WasmType.I32_TYPE: {
-                                pushInt(frame, stackPointer, (int) result);
-                                stackPointer++;
-                                break;
-                            }
-                            case WasmType.I64_TYPE: {
-                                pushLong(frame, stackPointer, (long) result);
-                                stackPointer++;
-                                break;
-                            }
-                            case WasmType.F32_TYPE: {
-                                pushFloat(frame, stackPointer, (float) result);
-                                stackPointer++;
-                                break;
-                            }
-                            case WasmType.F64_TYPE: {
-                                pushDouble(frame, stackPointer, (double) result);
-                                stackPointer++;
-                                break;
-                            }
-                            case WasmType.FUNCREF_TYPE:
-                            case WasmType.EXTERNREF_TYPE: {
-                                pushReference(frame, stackPointer, result);
-                                stackPointer++;
-                                break;
-                            }
-                            default: {
-                                throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
-                            }
-                        }
-                        break;
-                    } else {
-                        extractMultiValueResult(frame, stackPointer, result, resultCount, expectedFunctionTypeIndex);
-                        stackPointer += resultCount;
-                        break;
-                    }
+                    break;
                 }
                 case Bytecode.DROP: {
                     stackPointer--;
@@ -1833,7 +1747,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private Object executeDirectCall(WasmInstance instance, int callNodeIndex, WasmFunction function, Object[] args) {
+    private int executeDirectCall(VirtualFrame frame, int stackPointer, WasmInstance instance, int callNodeIndex, WasmFunction function, Object[] args) {
         final boolean imported = function.isImported();
         CompilerAsserts.partialEvaluationConstant(imported);
         Node callNode = callNodes[callNodeIndex];
@@ -1844,7 +1758,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             WasmArguments.setModuleInstance(args, functionInstance.moduleInstance());
             Object prev = truffleContext.enter(this);
             try {
-                return indirectCallNode.execute(instance.target(function.index()), args);
+                Object result = indirectCallNode.execute(instance.target(function.index()), args);
+                return pushDirectCallResult(frame, stackPointer, function, result, functionInstance.context().language());
             } finally {
                 truffleContext.leave(this, prev);
             }
@@ -1852,7 +1767,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             DirectCallNode directCallNode = (DirectCallNode) callNode;
             WasmArguments.setModuleInstance(args, instance);
             assert assertDirectCall(instance, function, directCallNode);
-            return directCallNode.call(args);
+            Object result = directCallNode.call(args);
+            return pushDirectCallResult(frame, stackPointer, function, result, WasmLanguage.get(this));
         }
     }
 
@@ -2167,15 +2083,49 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     private int executeAtomic(VirtualFrame frame, int stackPointer, int opcode, WasmMemory memory, long memOffset, int indexType64) {
         switch (opcode) {
-            case Bytecode.ATOMIC_NOTIFY, Bytecode.ATOMIC_I32_RMW_ADD, Bytecode.ATOMIC_I64_RMW_ADD, Bytecode.ATOMIC_I32_RMW8_U_ADD, Bytecode.ATOMIC_I32_RMW16_U_ADD, Bytecode.ATOMIC_I64_RMW8_U_ADD,
-                            Bytecode.ATOMIC_I64_RMW16_U_ADD, Bytecode.ATOMIC_I64_RMW32_U_ADD, Bytecode.ATOMIC_I32_RMW_SUB, Bytecode.ATOMIC_I64_RMW_SUB, Bytecode.ATOMIC_I32_RMW8_U_SUB,
-                            Bytecode.ATOMIC_I32_RMW16_U_SUB, Bytecode.ATOMIC_I64_RMW8_U_SUB, Bytecode.ATOMIC_I64_RMW16_U_SUB, Bytecode.ATOMIC_I64_RMW32_U_SUB, Bytecode.ATOMIC_I32_RMW_AND,
-                            Bytecode.ATOMIC_I64_RMW_AND, Bytecode.ATOMIC_I32_RMW8_U_AND, Bytecode.ATOMIC_I32_RMW16_U_AND, Bytecode.ATOMIC_I64_RMW8_U_AND, Bytecode.ATOMIC_I64_RMW16_U_AND,
-                            Bytecode.ATOMIC_I64_RMW32_U_AND, Bytecode.ATOMIC_I32_RMW_OR, Bytecode.ATOMIC_I64_RMW_OR, Bytecode.ATOMIC_I32_RMW8_U_OR, Bytecode.ATOMIC_I32_RMW16_U_OR,
-                            Bytecode.ATOMIC_I64_RMW8_U_OR, Bytecode.ATOMIC_I64_RMW16_U_OR, Bytecode.ATOMIC_I64_RMW32_U_OR, Bytecode.ATOMIC_I32_RMW_XOR, Bytecode.ATOMIC_I64_RMW_XOR,
-                            Bytecode.ATOMIC_I32_RMW8_U_XOR, Bytecode.ATOMIC_I32_RMW16_U_XOR, Bytecode.ATOMIC_I64_RMW8_U_XOR, Bytecode.ATOMIC_I64_RMW16_U_XOR, Bytecode.ATOMIC_I64_RMW32_U_XOR,
-                            Bytecode.ATOMIC_I32_RMW_XCHG, Bytecode.ATOMIC_I64_RMW_XCHG, Bytecode.ATOMIC_I32_RMW8_U_XCHG, Bytecode.ATOMIC_I32_RMW16_U_XCHG, Bytecode.ATOMIC_I64_RMW8_U_XCHG,
-                            Bytecode.ATOMIC_I64_RMW16_U_XCHG, Bytecode.ATOMIC_I64_RMW32_U_XCHG: {
+            case Bytecode.ATOMIC_NOTIFY:
+            case Bytecode.ATOMIC_I32_RMW_ADD:
+            case Bytecode.ATOMIC_I64_RMW_ADD:
+            case Bytecode.ATOMIC_I32_RMW8_U_ADD:
+            case Bytecode.ATOMIC_I32_RMW16_U_ADD:
+            case Bytecode.ATOMIC_I64_RMW8_U_ADD:
+            case Bytecode.ATOMIC_I64_RMW16_U_ADD:
+            case Bytecode.ATOMIC_I64_RMW32_U_ADD:
+            case Bytecode.ATOMIC_I32_RMW_SUB:
+            case Bytecode.ATOMIC_I64_RMW_SUB:
+            case Bytecode.ATOMIC_I32_RMW8_U_SUB:
+            case Bytecode.ATOMIC_I32_RMW16_U_SUB:
+            case Bytecode.ATOMIC_I64_RMW8_U_SUB:
+            case Bytecode.ATOMIC_I64_RMW16_U_SUB:
+            case Bytecode.ATOMIC_I64_RMW32_U_SUB:
+            case Bytecode.ATOMIC_I32_RMW_AND:
+            case Bytecode.ATOMIC_I64_RMW_AND:
+            case Bytecode.ATOMIC_I32_RMW8_U_AND:
+            case Bytecode.ATOMIC_I32_RMW16_U_AND:
+            case Bytecode.ATOMIC_I64_RMW8_U_AND:
+            case Bytecode.ATOMIC_I64_RMW16_U_AND:
+            case Bytecode.ATOMIC_I64_RMW32_U_AND:
+            case Bytecode.ATOMIC_I32_RMW_OR:
+            case Bytecode.ATOMIC_I64_RMW_OR:
+            case Bytecode.ATOMIC_I32_RMW8_U_OR:
+            case Bytecode.ATOMIC_I32_RMW16_U_OR:
+            case Bytecode.ATOMIC_I64_RMW8_U_OR:
+            case Bytecode.ATOMIC_I64_RMW16_U_OR:
+            case Bytecode.ATOMIC_I64_RMW32_U_OR:
+            case Bytecode.ATOMIC_I32_RMW_XOR:
+            case Bytecode.ATOMIC_I64_RMW_XOR:
+            case Bytecode.ATOMIC_I32_RMW8_U_XOR:
+            case Bytecode.ATOMIC_I32_RMW16_U_XOR:
+            case Bytecode.ATOMIC_I64_RMW8_U_XOR:
+            case Bytecode.ATOMIC_I64_RMW16_U_XOR:
+            case Bytecode.ATOMIC_I64_RMW32_U_XOR:
+            case Bytecode.ATOMIC_I32_RMW_XCHG:
+            case Bytecode.ATOMIC_I64_RMW_XCHG:
+            case Bytecode.ATOMIC_I32_RMW8_U_XCHG:
+            case Bytecode.ATOMIC_I32_RMW16_U_XCHG:
+            case Bytecode.ATOMIC_I64_RMW8_U_XCHG:
+            case Bytecode.ATOMIC_I64_RMW16_U_XCHG:
+            case Bytecode.ATOMIC_I64_RMW32_U_XCHG: {
                 final long baseAddress;
                 if (indexType64 == 0) {
                     baseAddress = popInt(frame, stackPointer - 2);
@@ -2187,8 +2137,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 return 1;
             }
             case Bytecode.ATOMIC_WAIT32:
-            case Bytecode.ATOMIC_WAIT64, Bytecode.ATOMIC_I32_RMW_CMPXCHG, Bytecode.ATOMIC_I64_RMW_CMPXCHG, Bytecode.ATOMIC_I32_RMW8_U_CMPXCHG, Bytecode.ATOMIC_I32_RMW16_U_CMPXCHG,
-                            Bytecode.ATOMIC_I64_RMW8_U_CMPXCHG, Bytecode.ATOMIC_I64_RMW16_U_CMPXCHG, Bytecode.ATOMIC_I64_RMW32_U_CMPXCHG: {
+            case Bytecode.ATOMIC_WAIT64:
+            case Bytecode.ATOMIC_I32_RMW_CMPXCHG:
+            case Bytecode.ATOMIC_I64_RMW_CMPXCHG:
+            case Bytecode.ATOMIC_I32_RMW8_U_CMPXCHG:
+            case Bytecode.ATOMIC_I32_RMW16_U_CMPXCHG:
+            case Bytecode.ATOMIC_I64_RMW8_U_CMPXCHG:
+            case Bytecode.ATOMIC_I64_RMW16_U_CMPXCHG:
+            case Bytecode.ATOMIC_I64_RMW32_U_CMPXCHG: {
                 final long baseAddress;
                 if (indexType64 == 0) {
                     baseAddress = popInt(frame, stackPointer - 3);
@@ -4019,9 +3975,54 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         return CompilerDirectives.injectBranchProbability(probability, val);
     }
 
+    private int pushDirectCallResult(VirtualFrame frame, int stackPointer, WasmFunction function, Object result, WasmLanguage language) {
+        final int resultCount = function.resultCount();
+        CompilerAsserts.partialEvaluationConstant(resultCount);
+        if (resultCount == 0) {
+            return stackPointer;
+        } else if (resultCount == 1) {
+            final byte resultType = function.resultTypeAt(0);
+            pushResult(frame, stackPointer, resultType, result);
+            return stackPointer + 1;
+        } else {
+            final int functionTypeIndex = function.typeIndex();
+            extractMultiValueResult(frame, stackPointer, result, resultCount, functionTypeIndex, language);
+            return stackPointer + resultCount;
+        }
+    }
+
+    private int pushIndirectCallResult(VirtualFrame frame, int stackPointer, int expectedFunctionTypeIndex, Object result, WasmLanguage language) {
+        final int resultCount = module.symbolTable().functionTypeResultCount(expectedFunctionTypeIndex);
+        CompilerAsserts.partialEvaluationConstant(resultCount);
+        if (resultCount == 0) {
+            return stackPointer;
+        } else if (resultCount == 1) {
+            final byte resultType = module.symbolTable().functionTypeResultTypeAt(expectedFunctionTypeIndex, 0);
+            pushResult(frame, stackPointer, resultType, result);
+            return stackPointer + 1;
+        } else {
+            extractMultiValueResult(frame, stackPointer, result, resultCount, expectedFunctionTypeIndex, language);
+            return stackPointer + resultCount;
+        }
+    }
+
+    private void pushResult(VirtualFrame frame, int stackPointer, byte resultType, Object result) {
+        CompilerAsserts.partialEvaluationConstant(resultType);
+        switch (resultType) {
+            case WasmType.I32_TYPE -> pushInt(frame, stackPointer, (int) result);
+            case WasmType.I64_TYPE -> pushLong(frame, stackPointer, (long) result);
+            case WasmType.F32_TYPE -> pushFloat(frame, stackPointer, (float) result);
+            case WasmType.F64_TYPE -> pushDouble(frame, stackPointer, (double) result);
+            case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> pushReference(frame, stackPointer, result);
+            default -> {
+                throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
+            }
+        }
+    }
+
     /**
-     * Extracts the multi value from the multi-value stack of the context or an external source. The
-     * result values are put onto the value stack.
+     * Extracts the multi-value result from the multi-value stack of the context. The result values
+     * are put onto the value stack.
      *
      * @param frame The current frame.
      * @param stackPointer The current stack pointer.
@@ -4030,78 +4031,28 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
      * @param functionTypeIndex The function type index of the called function.
      */
     @ExplodeLoop
-    private void extractMultiValueResult(VirtualFrame frame, int stackPointer, Object result, int resultCount, int functionTypeIndex) {
+    private void extractMultiValueResult(VirtualFrame frame, int stackPointer, Object result, int resultCount, int functionTypeIndex, WasmLanguage language) {
         CompilerAsserts.partialEvaluationConstant(resultCount);
-        if (result == WasmConstant.MULTI_VALUE) {
-            final var multiValueStack = WasmLanguage.get(this).multiValueStack();
-            final long[] primitiveMultiValueStack = multiValueStack.primitiveStack();
-            final Object[] referenceMultiValueStack = multiValueStack.referenceStack();
-            for (int i = 0; i < resultCount; i++) {
-                final byte resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
-                CompilerAsserts.partialEvaluationConstant(resultType);
-                switch (resultType) {
-                    case WasmType.I32_TYPE:
-                        pushInt(frame, stackPointer + i, (int) primitiveMultiValueStack[i]);
-                        break;
-                    case WasmType.I64_TYPE:
-                        pushLong(frame, stackPointer + i, primitiveMultiValueStack[i]);
-                        break;
-                    case WasmType.F32_TYPE:
-                        pushFloat(frame, stackPointer + i, Float.intBitsToFloat((int) primitiveMultiValueStack[i]));
-                        break;
-                    case WasmType.F64_TYPE:
-                        pushDouble(frame, stackPointer + i, Double.longBitsToDouble(primitiveMultiValueStack[i]));
-                        break;
-                    case WasmType.FUNCREF_TYPE:
-                    case WasmType.EXTERNREF_TYPE:
-                        pushReference(frame, stackPointer + i, referenceMultiValueStack[i]);
-                        break;
-                    default:
-                        enterErrorBranch();
-                        throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
+        assert result == WasmConstant.MULTI_VALUE : result;
+        final var multiValueStack = language.multiValueStack();
+        final long[] primitiveMultiValueStack = multiValueStack.primitiveStack();
+        for (int i = 0; i < resultCount; i++) {
+            final byte resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
+            CompilerAsserts.partialEvaluationConstant(resultType);
+            switch (resultType) {
+                case WasmType.I32_TYPE -> pushInt(frame, stackPointer + i, (int) primitiveMultiValueStack[i]);
+                case WasmType.I64_TYPE -> pushLong(frame, stackPointer + i, primitiveMultiValueStack[i]);
+                case WasmType.F32_TYPE -> pushFloat(frame, stackPointer + i, Float.intBitsToFloat((int) primitiveMultiValueStack[i]));
+                case WasmType.F64_TYPE -> pushDouble(frame, stackPointer + i, Double.longBitsToDouble(primitiveMultiValueStack[i]));
+                case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> {
+                    final Object[] referenceMultiValueStack = multiValueStack.referenceStack();
+                    pushReference(frame, stackPointer + i, referenceMultiValueStack[i]);
+                    referenceMultiValueStack[i] = null;
                 }
-            }
-        } else {
-            // Multi-value is provided by an external source
-            final InteropLibrary lib = InteropLibrary.getUncached();
-            if (!lib.hasArrayElements(result)) {
-                enterErrorBranch();
-                throw WasmException.create(Failure.UNSUPPORTED_MULTI_VALUE_TYPE);
-            }
-            try {
-                final int size = (int) lib.getArraySize(result);
-                if (size != resultCount) {
+                default -> {
                     enterErrorBranch();
-                    throw WasmException.create(Failure.INVALID_MULTI_VALUE_ARITY);
+                    throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
                 }
-                for (int i = 0; i < size; i++) {
-                    byte resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
-                    Object value = lib.readArrayElement(result, i);
-                    switch (resultType) {
-                        case WasmType.I32_TYPE:
-                            pushInt(frame, stackPointer + i, lib.asInt(value));
-                            break;
-                        case WasmType.I64_TYPE:
-                            pushLong(frame, stackPointer + i, lib.asLong(value));
-                            break;
-                        case WasmType.F32_TYPE:
-                            pushFloat(frame, stackPointer + i, lib.asFloat(value));
-                            break;
-                        case WasmType.F64_TYPE:
-                            pushDouble(frame, stackPointer + i, lib.asDouble(value));
-                            break;
-                        case WasmType.FUNCREF_TYPE:
-                        case WasmType.EXTERNREF_TYPE:
-                            pushReference(frame, stackPointer + i, value);
-                            break;
-                        default:
-                            enterErrorBranch();
-                            throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
-                    }
-                }
-            } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
-                enterErrorBranch();
-                throw WasmException.create(Failure.INVALID_TYPE_IN_MULTI_VALUE);
             }
         }
     }
