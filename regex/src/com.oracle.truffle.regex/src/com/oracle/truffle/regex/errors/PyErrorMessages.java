@@ -75,6 +75,7 @@ public interface PyErrorMessages {
     String UNTERMINATED_NAME = "missing ), unterminated name";
     String UNTERMINATED_NAME_ANGLE_BRACKET = "missing >, unterminated name";
     String UNTERMINATED_SUBPATTERN = "missing ), unterminated subpattern";
+    String GLOBAL_FLAGS_NOT_AT_START = "global flags not at the start of the expression";
 
     @TruffleBoundary
     static String badCharacterInGroupName(String name) {

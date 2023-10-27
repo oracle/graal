@@ -110,9 +110,11 @@ public final class PythonRegexParser implements RegexParser {
         }
         List<Token.BackReference> conditionalBackReferences = new ArrayList<>();
         Token token = null;
+        Token prev;
         Token.Kind prevKind;
         while (lexer.hasNext()) {
-            prevKind = token == null ? null : token.kind;
+            prev = token;
+            prevKind = prev == null ? null : prev.kind;
             token = lexer.next();
             switch (token.kind) {
                 case A:
@@ -260,10 +262,17 @@ public final class PythonRegexParser implements RegexParser {
                     astBuilder.pushConditionalBackReferenceGroup(conditionalBackRefToken);
                     break;
                 case inlineFlags:
-                    // flagStack push is handled in the lexer
-                    if (!((Token.InlineFlags) token).isGlobal()) {
-                        astBuilder.pushGroup(token);
+                    Token.InlineFlags inlineFlags = (Token.InlineFlags) token;
+                    if (inlineFlags.isGlobal()) {
+                        boolean first = prev == null || (prevKind == Token.Kind.inlineFlags && ((Token.InlineFlags) prev).isGlobal());
+                        if (!first) {
+                            throw syntaxErrorAtAbs(PyErrorMessages.GLOBAL_FLAGS_NOT_AT_START, inlineFlags.getPosition());
+                        }
+                        lexer.addGlobalFlags((PythonFlags) inlineFlags.getFlags());
+                    } else {
+                        astBuilder.pushGroup(inlineFlags);
                         astBuilder.getCurGroup().setLocalFlags(true);
+                        lexer.pushLocalFlags((PythonFlags) inlineFlags.getFlags());
                     }
                     break;
             }
@@ -282,6 +291,7 @@ public final class PythonRegexParser implements RegexParser {
                 throw syntaxErrorAtAbs(PyErrorMessages.invalidGroupReference(Integer.toString(conditionalBackReference.getGroupNumbers()[0])), conditionalBackReference.getPosition() + 3);
             }
         }
+        lexer.fixFlags();
         return ast;
     }
 
