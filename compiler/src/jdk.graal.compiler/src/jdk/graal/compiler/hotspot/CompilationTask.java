@@ -413,7 +413,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
             }
         }
 
-        ProfileReplaySupport result = ProfileReplaySupport.profileReplayPrologue(debug, graalRuntime, entryBCI, method, profileProvider, profileSaveFilter);
+        ProfileReplaySupport result = ProfileReplaySupport.profileReplayPrologue(debug, graalRuntime.getHostProviders(), entryBCI, method, profileProvider, profileSaveFilter);
         try {
             return compilation.run(debug);
         } finally {
@@ -431,7 +431,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                     }
                 }
                 if (result != null) {
-                    result.profileReplayEpilogue(debug, compilation, profileProvider, compilationId, entryBCI, method);
+                    result.profileReplayEpilogue(debug, compilation.result, compilation.graph, profileProvider, compilationId, entryBCI, method);
                 }
             } catch (Throwable t) {
                 return compilation.handleException(t);
