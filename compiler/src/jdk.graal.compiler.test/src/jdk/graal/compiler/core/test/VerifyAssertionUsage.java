@@ -121,12 +121,20 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
      */
     private static final boolean LOG;
 
+    /*
+     * GR-49601: only check non boolean assertion calls for now.
+     */
+    private static final boolean VERIFY_BOOLEAN_ASSERTION_CONDITIONS;
+
     public static final String ENABLE_LOGGING_PROPERTY_NAME = "test.graal.assert.enableLog";
+
+    public static final String ENABLE_BOOLEAN_ASSERTION_CONDITION_CHEKING = "test.graal.assert.enableBooleabConditions";
 
     public static final String ALL_PATHS_MUST_ASSERT_PROPERTY_NAME = "test.graal.assert.allPathsMustAssert";
 
     static {
         LOG = Boolean.getBoolean(ENABLE_LOGGING_PROPERTY_NAME);
+        VERIFY_BOOLEAN_ASSERTION_CONDITIONS = Boolean.getBoolean(ENABLE_BOOLEAN_ASSERTION_CONDITION_CHEKING);
     }
 
     /**
@@ -476,7 +484,7 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
             allErrorMessages.append(String.format("Found the following assertions that need error messages %n%s%n " +
                             "This is because you added a new assertion without an error message. " +
                             "Please fix all assertions in the report above such that they have error messages." +
-                            "Consider using API from Assertions.java to format assertion error messages with more context.",
+                            "Consider using API from " + Assertions.class.getName() + " to format assertion error messages with more context.",
                             sbMissingAssertionMessages));
             allErrorMessages.append(System.lineSeparator());
         }
@@ -846,43 +854,45 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
              */
             return true;
         }
-        if (condition instanceof CompareNode c) {
-            // we are comparing something against each other, if one of the cases is a constant
-            // there is no need to check those case
-            ValueNode x = c.getX();
-            ValueNode y = c.getY();
-
-            boolean trueConstantCheckIsFailure = trueSucc;
-
-            // exclude boolean conditions - they do not contribute much to the knowledge
-            if (c.condition() == CanonicalCondition.EQ) {
-                if (x.isJavaConstant() || y.isConstant()) {
-                    if (trueConstantCheckIsFailure) {
-                        // true is false so we are a constant, enough knowledge
-                        return true;
-                    }
-                }
-
-                // boolean comparisons
-                if (x.stamp(NodeView.DEFAULT) instanceof IntegerStamp xStamp && y.stamp(NodeView.DEFAULT) instanceof IntegerStamp yStamp) {
-                    if (xStamp.getBits() == 32) {
-                        if (x.isJavaConstant()) {
-                            return yStamp.mayBeSet() == 0b1 || trueConstantCheckIsFailure;
-                        } else if (y.isJavaConstant()) {
-                            return xStamp.mayBeSet() == 0b1 || trueConstantCheckIsFailure;
-                        }
-                    }
-                }
-
-            }
-
-            return c.condition() == CanonicalCondition.EQ && !(x.stamp(NodeView.DEFAULT) instanceof PrimitiveStamp) && (x.isJavaConstant() || y.isJavaConstant());
-
-        }
         ResolvedJavaMethod target = booleanCallee(ifC);
         if (target != null) {
             if (excludeListedInvokes(target, excludeList)) {
                 return true;
+            }
+        }
+        if (!VERIFY_BOOLEAN_ASSERTION_CONDITIONS) {
+            if (condition instanceof CompareNode c) {
+                boolean trueConstantCheckIsFailure = trueSucc;
+
+                // we are comparing something against each other, if one of the cases is a constant
+                // there is no need to check those case
+                ValueNode x = c.getX();
+                ValueNode y = c.getY();
+
+                // exclude boolean conditions - they do not contribute much to the knowledge
+                if (c.condition() == CanonicalCondition.EQ) {
+                    if (x.isJavaConstant() || y.isConstant()) {
+                        if (trueConstantCheckIsFailure) {
+                            // true is false so we are a constant, enough knowledge
+                            return true;
+                        }
+                    }
+                }
+
+                // exclude boolean conditions - they do not contribute much to the knowledge
+                if (c.condition() == CanonicalCondition.EQ) {
+                    // boolean comparisons
+                    if (x.stamp(NodeView.DEFAULT) instanceof IntegerStamp xStamp && y.stamp(NodeView.DEFAULT) instanceof IntegerStamp yStamp) {
+                        if (xStamp.getBits() == 32) {
+                            if (x.isJavaConstant()) {
+                                return yStamp.mayBeSet() == 0b1;
+                            } else if (y.isJavaConstant()) {
+                                return xStamp.mayBeSet() == 0b1;
+                            }
+                        }
+                    }
+                }
+                return c.condition() == CanonicalCondition.EQ && !(x.stamp(NodeView.DEFAULT) instanceof PrimitiveStamp) && (x.isJavaConstant() || y.isJavaConstant());
             }
         }
         return false;

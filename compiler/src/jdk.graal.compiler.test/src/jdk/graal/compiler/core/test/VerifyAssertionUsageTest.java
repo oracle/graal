@@ -25,6 +25,7 @@
 package jdk.graal.compiler.core.test;
 
 import static jdk.graal.compiler.core.test.VerifyAssertionUsage.ALL_PATHS_MUST_ASSERT_PROPERTY_NAME;
+import static jdk.graal.compiler.core.test.VerifyAssertionUsage.ENABLE_BOOLEAN_ASSERTION_CONDITION_CHEKING;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -58,21 +59,30 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class VerifyAssertionUsageTest {
 
     static boolean oldPathsMustAssert;
+    static boolean oldCheckBooleanConditions;
 
     @BeforeClass
     public static void beforeClass() {
         oldPathsMustAssert = Boolean.getBoolean(ALL_PATHS_MUST_ASSERT_PROPERTY_NAME);
+
+        oldCheckBooleanConditions = Boolean.getBoolean(ENABLE_BOOLEAN_ASSERTION_CONDITION_CHEKING);
         /**
          * For testing purposes we are more strict by forcing that all paths used in callees in
          * assertion calls actually assert something. See
          * {@link VerifyAssertionUsage#allPathsMustAssert}.
          */
         System.setProperty(ALL_PATHS_MUST_ASSERT_PROPERTY_NAME, "true");
+
+        /**
+         * Will be fixed as a follow up.
+         */
+        System.setProperty(ENABLE_BOOLEAN_ASSERTION_CONDITION_CHEKING, "true");
     }
 
     @AfterClass
     public static void afterClass() {
         System.setProperty(ALL_PATHS_MUST_ASSERT_PROPERTY_NAME, String.valueOf(oldPathsMustAssert));
+        System.setProperty(ENABLE_BOOLEAN_ASSERTION_CONDITION_CHEKING, String.valueOf(oldCheckBooleanConditions));
     }
 
     /**
