@@ -378,7 +378,7 @@ public final class GraphEffectList extends EffectList {
                      * the pi will be used to improve the stamp information of the read. Such a read
                      * might later be replaced with a read with a less precise stamp.
                      */
-                    if (node.hasUsages() && !node.stamp(NodeView.DEFAULT).equals(replacementNode.stamp(NodeView.DEFAULT))) {
+                    if (node.hasUsages() && (replacementNode.stamp(NodeView.DEFAULT).tryImproveWith(node.stamp(NodeView.DEFAULT)) != null)) {
                         replacementNode = graph.unique(new PiNode(replacementNode, node.stamp(NodeView.DEFAULT)));
                     }
                     node.replaceAtUsages(replacementNode);
