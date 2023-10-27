@@ -47,14 +47,15 @@ import org.junit.Test;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.bytecode.GenerateBytecode;
-import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
-import com.oracle.truffle.api.bytecode.test.BoxingOperations.ObjectProducer;
+import com.oracle.truffle.api.bytecode.ForceQuickening;
+import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.bytecode.test.BoxingEliminationTypeSystemTest.BoxingEliminationTypeSystemRootNode.ObjectProducer;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
@@ -62,24 +63,21 @@ import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameDescriptor.Builder;
-import com.oracle.truffle.api.nodes.RootNode;
 
 // TODO: this test should be rewritten once we have something working for boxing elimination.
 @Ignore
-public class BoxingOperationsTest {
+public class BoxingEliminationTypeSystemTest extends AbstractQuickeningTest {
 
     private static final BoxingLanguage LANGUAGE = null;
 
     private static final int NUM_ITERATIONS = 10_000;
 
-    private static BoxingOperations parse(BytecodeParser<BoxingOperationsGen.Builder> parser) {
-        BytecodeNodes<BoxingOperations> nodes = BoxingOperationsGen.create(BytecodeConfig.DEFAULT, parser);
-        BoxingOperations node = nodes.getNodes().get(0);
-        // System.out.println(node.dump());
-        return node;
+    private static BoxingEliminationTypeSystemRootNode parse(BytecodeParser<BoxingEliminationTypeSystemRootNodeGen.Builder> builder) {
+        BytecodeNodes<BoxingEliminationTypeSystemRootNode> nodes = BoxingEliminationTypeSystemRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
+        return nodes.getNodes().get(nodes.getNodes().size() - 1);
     }
 
-    private static void testInvalidations(BoxingOperations node, int invalidations, Runnable r) {
+    private static void testInvalidations(BoxingEliminationTypeSystemRootNode node, int invalidations, Runnable r) {
         r.run();
         int totalInval = node.totalInvalidations;
         Assert.assertEquals(invalidations, totalInval);
@@ -87,7 +85,7 @@ public class BoxingOperationsTest {
 
     @Test
     public void testCastsPrimToPrim() {
-        BoxingOperations root = parse(b -> {
+        BoxingEliminationTypeSystemRootNode root = parse(b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -95,12 +93,14 @@ public class BoxingOperationsTest {
             b.emitIntProducer();
             b.endLongOperator();
             b.endReturn();
-
             b.endRoot();
         });
 
-        RootCallTarget callTarget = root.getCallTarget();
+        root.getCallTarget().call();
 
+        root.getCallTarget().call();
+
+        RootCallTarget callTarget = root.getCallTarget();
         testInvalidations(root, 1, () -> {
             for (int i = 0; i < NUM_ITERATIONS; i++) {
                 Assert.assertEquals(BoxingTypeSystem.INT_AS_LONG_VALUE, callTarget.call());
@@ -110,7 +110,7 @@ public class BoxingOperationsTest {
 
     // @Test
     public void testCastsRefToPrim() {
-        BoxingOperations root = parse(b -> {
+        BoxingEliminationTypeSystemRootNode root = parse(b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -133,7 +133,7 @@ public class BoxingOperationsTest {
 
     @Test
     public void testCastsPrimToRef() {
-        BoxingOperations root = parse(b -> {
+        BoxingEliminationTypeSystemRootNode root = parse(b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -156,7 +156,7 @@ public class BoxingOperationsTest {
 
     @Test
     public void testCastsRefToRef() {
-        BoxingOperations root = parse(b -> {
+        BoxingEliminationTypeSystemRootNode root = parse(b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -179,7 +179,7 @@ public class BoxingOperationsTest {
 
     @Test
     public void testCastsChangePrim() {
-        BoxingOperations root = parse(b -> {
+        BoxingEliminationTypeSystemRootNode root = parse(b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -213,7 +213,7 @@ public class BoxingOperationsTest {
 
     @Test
     public void testCastsChangeRef() {
-        BoxingOperations root = parse(b -> {
+        BoxingEliminationTypeSystemRootNode root = parse(b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -248,7 +248,7 @@ public class BoxingOperationsTest {
 
     @Test
     public void testCastsChangeSpecPrim() {
-        BoxingOperations root = parse(b -> {
+        BoxingEliminationTypeSystemRootNode root = parse(b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -284,7 +284,7 @@ public class BoxingOperationsTest {
 
     @Test
     public void testCastsChangeSpecRef() {
-        BoxingOperations root = parse(b -> {
+        BoxingEliminationTypeSystemRootNode root = parse(b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -317,7 +317,7 @@ public class BoxingOperationsTest {
 
     @Test
     public void testLBEMultipleLoads() {
-        BoxingOperations root = parse(b -> {
+        BoxingEliminationTypeSystemRootNode root = parse(b -> {
             b.beginRoot(LANGUAGE);
 
             BytecodeLocal local = b.createLocal();
@@ -345,230 +345,232 @@ public class BoxingOperationsTest {
             }
         });
     }
-}
 
-class BoxingLanguage extends TruffleLanguage<BoxingContext> {
-    @Override
-    protected BoxingContext createContext(Env env) {
-        return new BoxingContext();
-    }
-
-}
-
-class BoxingContext {
-}
-
-class ReferenceTypeA {
-}
-
-class ReferenceTypeB {
-}
-
-@TypeSystem
-@SuppressWarnings("unused")
-class BoxingTypeSystem {
-
-    public static final String STRING_VALUE = "<string>";
-    public static final String BOOLEAN_AS_STRING_VALUE = "<bool>";
-    public static final String REF_A_AS_STRING_VALUE = "<ref-a>";
-
-    public static final long LONG_VALUE = 0xf00;
-    public static final long INT_AS_LONG_VALUE = 0xba7;
-    public static final long REF_B_AS_LONG_VALUE = 0xb00;
-
-    @ImplicitCast
-    static String castString(boolean b) {
-        return BOOLEAN_AS_STRING_VALUE;
-    }
-
-    @ImplicitCast
-    static String castString(ReferenceTypeA a) {
-        return REF_A_AS_STRING_VALUE;
-    }
-
-    @ImplicitCast
-    static long castLong(int i) {
-        return INT_AS_LONG_VALUE;
-    }
-
-// @ImplicitCast
-// static long castLong(ReferenceTypeB b) {
-// return REF_B_AS_LONG_VALUE;
-// }
-}
-
-@GenerateBytecode(//
-                languageClass = BoxingLanguage.class, //
-                boxingEliminationTypes = {boolean.class, int.class, long.class})
-@TypeSystemReference(BoxingTypeSystem.class)
-@SuppressWarnings("unused")
-abstract class BoxingOperations extends RootNode implements BytecodeRootNode {
-
-    private static final boolean LOG = false;
-    int totalInvalidations = 0;
-
-    protected void transferToInterpreterAndInvalidate() {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        this.totalInvalidations++;
-        if (LOG) {
-            System.err.println("[INVAL] --------------------");
-            StackWalker.getInstance().forEach(sf -> {
-                System.err.println("   " + sf);
-            });
-        }
-    }
-
-    protected BoxingOperations(TruffleLanguage<?> language, Builder frameDescriptor) {
-        super(language, frameDescriptor.build());
-    }
-
-    protected BoxingOperations(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
-        super(language, frameDescriptor);
-    }
-
-    @Operation
+    @GenerateBytecode(//
+                    languageClass = BoxingLanguage.class, //
+                    enableQuickening = true, boxingEliminationTypes = {boolean.class, int.class, long.class})
     @TypeSystemReference(BoxingTypeSystem.class)
-    public static final class IntProducer {
-        @Specialization
-        public static int produce() {
-            return 1;
+    @SuppressWarnings("unused")
+    abstract static class BoxingEliminationTypeSystemRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
+
+        private static final boolean LOG = false;
+        int totalInvalidations = 0;
+
+        protected void transferToInterpreterAndInvalidate() {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.totalInvalidations++;
+            if (LOG) {
+                System.err.println("[INVAL] --------------------");
+                StackWalker.getInstance().forEach(sf -> {
+                    System.err.println("   " + sf);
+                });
+            }
         }
-    }
 
-    @Operation
-    @TypeSystemReference(BoxingTypeSystem.class)
-    public static final class BooleanProducer {
-        @Specialization
-        public static boolean produce() {
-            return true;
+        protected BoxingEliminationTypeSystemRootNode(TruffleLanguage<?> language, Builder frameDescriptor) {
+            super(language, frameDescriptor.build());
         }
-    }
 
-    @Operation
-    @TypeSystemReference(BoxingTypeSystem.class)
-    public static final class RefAProducer {
-        @Specialization
-        public static ReferenceTypeA produce() {
-            return new ReferenceTypeA();
+        protected BoxingEliminationTypeSystemRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
         }
-    }
 
-    @Operation
-    @TypeSystemReference(BoxingTypeSystem.class)
-    public static final class RefBProducer {
-        @Specialization
-        public static ReferenceTypeB produce() {
-            return new ReferenceTypeB();
+        @Operation
+        @TypeSystemReference(BoxingTypeSystem.class)
+        public static final class IntProducer {
+            @Specialization
+            public static int produce() {
+                return 1;
+            }
         }
-    }
 
-    @Operation
-    @TypeSystemReference(BoxingTypeSystem.class)
-    public static final class ObjectProducer {
+        @Operation
+        @TypeSystemReference(BoxingTypeSystem.class)
+        public static final class BooleanProducer {
+            @Specialization
+            public static boolean produce() {
+                return true;
+            }
+        }
 
-        public static final short PRODUCE_INT = 0;
-        public static final short PRODUCE_LONG = 1;
-        public static final short PRODUCE_STRING = 2;
-        public static final short PRODUCE_BOOLEAN = 3;
-        public static final short PRODUCE_REF_A = 4;
-        public static final short PRODUCE_REF_B = 5;
+        @Operation
+        @TypeSystemReference(BoxingTypeSystem.class)
+        public static final class RefAProducer {
+            @Specialization
+            public static ReferenceTypeA produce() {
+                return new ReferenceTypeA();
+            }
+        }
 
-        @Specialization
-        public static Object produce(short type) {
-            switch (type) {
-                case PRODUCE_INT:
-                    return 1;
-                case PRODUCE_LONG:
-                    return BoxingTypeSystem.LONG_VALUE;
-                case PRODUCE_STRING:
-                    return BoxingTypeSystem.STRING_VALUE;
-                case PRODUCE_BOOLEAN:
-                    return true;
-                case PRODUCE_REF_A:
-                    return new ReferenceTypeA();
-                case PRODUCE_REF_B:
-                    return new ReferenceTypeB();
-                default:
-                    throw CompilerDirectives.shouldNotReachHere();
+        @Operation
+        @TypeSystemReference(BoxingTypeSystem.class)
+        public static final class RefBProducer {
+            @Specialization
+            public static ReferenceTypeB produce() {
+                return new ReferenceTypeB();
+            }
+        }
+
+        @Operation
+        @TypeSystemReference(BoxingTypeSystem.class)
+        public static final class ObjectProducer {
+
+            public static final short PRODUCE_INT = 0;
+            public static final short PRODUCE_LONG = 1;
+            public static final short PRODUCE_STRING = 2;
+            public static final short PRODUCE_BOOLEAN = 3;
+            public static final short PRODUCE_REF_A = 4;
+            public static final short PRODUCE_REF_B = 5;
+
+            @Specialization
+            public static Object produce(short type) {
+                switch (type) {
+                    case PRODUCE_INT:
+                        return 1;
+                    case PRODUCE_LONG:
+                        return BoxingTypeSystem.LONG_VALUE;
+                    case PRODUCE_STRING:
+                        return BoxingTypeSystem.STRING_VALUE;
+                    case PRODUCE_BOOLEAN:
+                        return true;
+                    case PRODUCE_REF_A:
+                        return new ReferenceTypeA();
+                    case PRODUCE_REF_B:
+                        return new ReferenceTypeB();
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere();
+                }
+            }
+        }
+
+        @Operation
+        @TypeSystemReference(BoxingTypeSystem.class)
+        public static final class SpecializedObjectProducer {
+
+            public static final short PRODUCE_INT = 0;
+            public static final short PRODUCE_LONG = 1;
+            public static final short PRODUCE_STRING = 2;
+            public static final short PRODUCE_BOOLEAN = 3;
+            public static final short PRODUCE_REF_A = 4;
+            public static final short PRODUCE_REF_B = 5;
+
+            @Specialization(guards = {"type == PRODUCE_INT"})
+            @ForceQuickening
+            public static int produceInt(short type) {
+                return 1;
+            }
+
+            @Specialization(guards = {"type == PRODUCE_LONG"})
+            @ForceQuickening
+            public static long produceLong(short type) {
+                return BoxingTypeSystem.LONG_VALUE;
+            }
+
+            @Specialization(guards = {"type == PRODUCE_STRING"})
+            public static String produceString(short type) {
+                return BoxingTypeSystem.STRING_VALUE;
+            }
+
+            @Specialization(guards = {"type == PRODUCE_BOOLEAN"})
+            @ForceQuickening
+            public static boolean produceBoolean(short type) {
+                return true;
+            }
+
+            @Specialization(guards = {"type == PRODUCE_REF_A"})
+            public static ReferenceTypeA produceRefA(short type) {
+                return new ReferenceTypeA();
+            }
+
+            @Specialization(guards = {"type == PRODUCE_REF_B"})
+            public static ReferenceTypeB produceRefB(short type) {
+                return new ReferenceTypeB();
+            }
+        }
+
+        @Operation
+        @TypeSystemReference(BoxingTypeSystem.class)
+        public static final class LongOperator {
+            @Specialization
+            public static long operate(long value) {
+                return value;
+            }
+        }
+
+        @Operation
+        @TypeSystemReference(BoxingTypeSystem.class)
+        public static final class StringOperator {
+            @Specialization
+            public static String operate(String value) {
+                return value;
+            }
+        }
+
+        @Operation
+        public static final class SecondValueBoxingElim {
+            @Specialization
+            @ForceQuickening
+            public static Object doInt(Object a, int b) {
+                return null;
+            }
+
+            @Specialization
+            @ForceQuickening
+            public static Object doLong(Object a, long b) {
+                return null;
+            }
+
+            @Specialization
+            public static Object doGeneric(Object a, Object b) {
+                return null;
             }
         }
     }
 
-    @Operation
-    @TypeSystemReference(BoxingTypeSystem.class)
-    public static final class SpecializedObjectProducer {
-
-        public static final short PRODUCE_INT = 0;
-        public static final short PRODUCE_LONG = 1;
-        public static final short PRODUCE_STRING = 2;
-        public static final short PRODUCE_BOOLEAN = 3;
-        public static final short PRODUCE_REF_A = 4;
-        public static final short PRODUCE_REF_B = 5;
-
-        @Specialization(guards = {"type == PRODUCE_INT"})
-        public static int produceInt(short type) {
-            return 1;
+    static class BoxingLanguage extends TruffleLanguage<BoxingContext> {
+        @Override
+        protected BoxingContext createContext(Env env) {
+            return new BoxingContext();
         }
 
-        @Specialization(guards = {"type == PRODUCE_LONG"})
-        public static long produceLong(short type) {
-            return BoxingTypeSystem.LONG_VALUE;
-        }
-
-        @Specialization(guards = {"type == PRODUCE_STRING"})
-        public static String produceString(short type) {
-            return BoxingTypeSystem.STRING_VALUE;
-        }
-
-        @Specialization(guards = {"type == PRODUCE_BOOLEAN"})
-        public static boolean produceBoolean(short type) {
-            return true;
-        }
-
-        @Specialization(guards = {"type == PRODUCE_REF_A"})
-        public static ReferenceTypeA produceRefA(short type) {
-            return new ReferenceTypeA();
-        }
-
-        @Specialization(guards = {"type == PRODUCE_REF_B"})
-        public static ReferenceTypeB produceRefB(short type) {
-            return new ReferenceTypeB();
-        }
     }
 
-    @Operation
-    @TypeSystemReference(BoxingTypeSystem.class)
-    public static final class LongOperator {
-        @Specialization
-        public static long operate(long value) {
-            return value;
-        }
+    static class BoxingContext {
     }
 
-    @Operation
-    @TypeSystemReference(BoxingTypeSystem.class)
-    public static final class StringOperator {
-        @Specialization
-        public static String operate(String value) {
-            return value;
-        }
+    static class ReferenceTypeA {
     }
 
-    @Operation
-    public static final class SecondValueBoxingElim {
-        @Specialization
-        public static Object doInt(Object a, int b) {
-            return null;
-        }
-
-        @Specialization
-        public static Object doLong(Object a, long b) {
-            return null;
-        }
-
-        @Specialization
-        public static Object doGeneric(Object a, Object b) {
-            return null;
-        }
+    static class ReferenceTypeB {
     }
+
+    @TypeSystem
+    @SuppressWarnings("unused")
+    static class BoxingTypeSystem {
+
+        public static final String STRING_VALUE = "<string>";
+        public static final String BOOLEAN_AS_STRING_VALUE = "<bool>";
+        public static final String REF_A_AS_STRING_VALUE = "<ref-a>";
+
+        public static final long LONG_VALUE = 0xf00;
+        public static final long INT_AS_LONG_VALUE = 0xba7;
+        public static final long REF_B_AS_LONG_VALUE = 0xb00;
+
+        @ImplicitCast
+        static String castString(boolean b) {
+            return BOOLEAN_AS_STRING_VALUE;
+        }
+
+        @ImplicitCast
+        static String castString(ReferenceTypeA a) {
+            return REF_A_AS_STRING_VALUE;
+        }
+
+        @ImplicitCast
+        static long castLong(int i) {
+            return INT_AS_LONG_VALUE;
+        }
+
+    }
+
 }

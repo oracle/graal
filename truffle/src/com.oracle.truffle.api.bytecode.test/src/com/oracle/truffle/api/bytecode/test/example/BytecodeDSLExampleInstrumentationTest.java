@@ -38,43 +38,47 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode;
+package com.oracle.truffle.api.bytecode.test.example;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import static org.junit.Assert.assertEquals;
 
-import com.oracle.truffle.api.instrumentation.Tag;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
-/**
- * Declares an operation. An operation serves as a specification for a bytecode instruction in the
- * generated interpreter.
- *
- * An operation class is declared the same way as a regular Truffle AST node, with a few
- * differences:
- * <ul>
- * <li>The class should be nested inside the top-level {@link BytecodeRootNode} class.
- * <li>The class should be declared {@code public static final}. It should not extend/implement any
- * other class/interface.
- * <li>The class should not contain instance members.
- * <li>The class's specializations also have some differences:
- * <ul>
- * <li>Specializations must all have the same arity (with respect to non-special parameters). The
- * parameters of any {@link Fallback} specialization must be of type {@link Object}.
- * <li>Specializations should be {@code public static}. Any members referenced in DSL expressions
- * (e.g., {@link Cached @Cached} parameters) should also be {@code static} and visible to the
- * top-level bytecode class.
- * <li>Specializations can declare additional special parameters (e.g., {@link LocalSetter}). They
- * can also bind some special parameters (e.g., {@code @Bind("$root")}). Refer to the documentation
- * for more details.
- * </ul>
- * </ul>
- */
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.TYPE})
-public @interface Operation {
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 
-    Class<? extends Tag>[] tags() default {};
+@RunWith(Parameterized.class)
+public class BytecodeDSLExampleInstrumentationTest extends AbstractBytecodeDSLExampleTest {
+
+    @Test
+    public void testInstrumentation() {
+        // goto lbl;
+        // return 0;
+        // lbl:
+        // return 1;
+
+        RootCallTarget root = parse("branchForward", b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginTag(ExpressionTag.class);
+            b.beginAddOperation();
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadConstant(1L);
+            b.endTag();
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadConstant(2L);
+            b.endTag();
+            b.endAddOperation();
+            b.endTag();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertEquals(3L, root.call());
+    }
 
 }

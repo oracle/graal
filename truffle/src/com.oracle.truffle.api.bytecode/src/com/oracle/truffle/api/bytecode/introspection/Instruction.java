@@ -49,7 +49,7 @@ public final class Instruction {
     // [int bci, String name, short[] bytes, Object[][] arguments, Object[][] subinstructions?]
     private final Object[] data;
 
-    Instruction(Object[] data) {
+    public Instruction(Object[] data) {
         this.data = data;
     }
 
@@ -111,7 +111,7 @@ public final class Instruction {
             sb.append(String.format("%02x ", bytes[i]));
         }
 
-        sb.append(String.format("%-20s", getName()));
+        sb.append(String.format("%-30s", getName()));
 
         for (Argument a : getArgumentValues()) {
             sb.append(' ').append(a.toString());

@@ -87,6 +87,7 @@ public class TruffleTypes {
         }
         ExpectErrorTypes = Collections.unmodifiableList(types);
     }
+    public final DeclaredType SpecializationDebugListener = c.getDeclaredTypeOptional("com.oracle.truffle.api.bytecode.test.SpecializationDebugListener");
 
     // Graal SDK
     public static final String OptionCategory_Name = "org.graalvm.options.OptionCategory";
@@ -369,6 +370,7 @@ public class TruffleTypes {
     public static final String Argument_ArgumentKind_Name = "com.oracle.truffle.api.bytecode.introspection.Argument.ArgumentKind";
     public static final String BytecodeIntrospection_Name = "com.oracle.truffle.api.bytecode.introspection.BytecodeIntrospection";
     public static final String BytecodeIntrospection_Provider_Name = "com.oracle.truffle.api.bytecode.introspection.BytecodeIntrospection.Provider";
+    public static final String Instruction_Name = "com.oracle.truffle.api.bytecode.introspection.Instruction";
 
     public static final String BytecodeSerializer_Name = "com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer";
     public static final String BytecodeSerializer_SerializerContext_Name = "com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer.SerializerContext";
@@ -411,6 +413,7 @@ public class TruffleTypes {
     public final DeclaredType Argument_ArgumentKind = c.getDeclaredTypeOptional(Argument_ArgumentKind_Name);
     public final DeclaredType BytecodeIntrospection = c.getDeclaredTypeOptional(BytecodeIntrospection_Name);
     public final DeclaredType BytecodeIntrospection_Provider = c.getDeclaredTypeOptional(BytecodeIntrospection_Provider_Name);
+    public final DeclaredType Instruction = c.getDeclaredTypeOptional(Instruction_Name);
 
     public final DeclaredType BytecodeSerializer = c.getDeclaredTypeOptional(BytecodeSerializer_Name);
     public final DeclaredType BytecodeSerializer_SerializerContext = c.getDeclaredTypeOptional(BytecodeSerializer_SerializerContext_Name);

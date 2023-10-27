@@ -321,6 +321,29 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return unsafeGetObject(getIndexedLocals(), getObjectOffset(slot), condition, OBJECT_LOCATION);
     }
 
+    Object unsafeGetValue(int slot) {
+        byte tag = unsafeGetTag(slot);
+        assert (indexedTags[slot] & STATIC_TAG) == 0 : UNEXPECTED_NON_STATIC_READ;
+        switch (tag) {
+            case BOOLEAN_TAG:
+                return unsafeGetBoolean(slot);
+            case BYTE_TAG:
+                return unsafeGetByte(slot);
+            case INT_TAG:
+                return unsafeGetInt(slot);
+            case DOUBLE_TAG:
+                return unsafeGetDouble(slot);
+            case LONG_TAG:
+                return unsafeGetLong(slot);
+            case FLOAT_TAG:
+                return unsafeGetFloat(slot);
+            case OBJECT_TAG:
+                return unsafeGetObject(slot);
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+    }
+
     Object unsafeUncheckedGetObject(int slot) {
         assert getIndexedTagChecked(slot) == OBJECT_TAG;
         return unsafeGetObject(getIndexedLocals(), getObjectOffset(slot), true, OBJECT_LOCATION);
@@ -486,6 +509,11 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     double unsafeUncheckedGetDouble(int slot) throws FrameSlotTypeException {
         assert getIndexedTagChecked(slot) == DOUBLE_TAG;
         return Double.longBitsToDouble(unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), true, PRIMITIVE_LOCATION));
+    }
+
+    public void unsafeUncheckedSetObject(int slot, Object value) {
+        assert getIndexedTagChecked(slot) == OBJECT_TAG;
+        unsafePutObject(getIndexedLocals(), getObjectOffset(slot), value, OBJECT_LOCATION);
     }
 
     @Override
@@ -1137,4 +1165,5 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     private void setStaticSlotTag(int slot, byte tag) {
         indexedTags[slot] = tag;
     }
+
 }

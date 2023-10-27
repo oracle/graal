@@ -3033,8 +3033,6 @@ public class FlatNodeGenFactory {
 
         builder.tree(multiState.createLoadSlowPath(frameState, node.getReachableSpecializations(), false));
 
-        plugs.createSlowPathBegin(this, builder, frameState);
-
         if (needsAOTReset(node, sharingNodes)) {
             builder.startIf();
             builder.tree(allMultiState.createContains(frameState, AOT_PREPARED));
@@ -3070,8 +3068,6 @@ public class FlatNodeGenFactory {
             }
             builder.end();
         }
-
-        plugs.createSlowPathEnd(this, builder, frameState);
 
         return method;
     }
@@ -3647,23 +3643,7 @@ public class FlatNodeGenFactory {
         if (var == null) {
             TypeMirror targetType;
 
-            TypeGuard eliminatedGuard = null;
-            if (boxingEliminationEnabled) {
-                for (TypeGuard checkedGuard : group.getTypeGuards()) {
-                    if (!isPrimitive(checkedGuard.getType())) {
-                        // no elimination for non primitive types
-                        continue;
-                    } else if (node.getChildExecutions().get(checkedGuard.getSignatureIndex()).getChild().findExecutableType(checkedGuard.getType()) == null) {
-                        // type cannot be executed so it cannot be eliminated
-                        continue;
-                    }
-
-                    if (checkedGuard.getSignatureIndex() == execution.getIndex()) {
-                        eliminatedGuard = checkedGuard;
-                        break;
-                    }
-                }
-            }
+            TypeGuard eliminatedGuard = findBoxingEliminationGuard(group, execution);
             if (eliminatedGuard != null) {
                 // we can optimize the type guard away by executing it
                 group.getTypeGuards().remove(eliminatedGuard);
@@ -3671,6 +3651,7 @@ public class FlatNodeGenFactory {
             } else {
                 targetType = execution.getChild().findAnyGenericExecutableType(context).getReturnType();
             }
+
             var = frameState.createValue(execution, targetType).nextName();
 
             LocalVariable fallbackVar;
@@ -3730,6 +3711,21 @@ public class FlatNodeGenFactory {
         return builder.build();
     }
 
+    private TypeGuard findBoxingEliminationGuard(SpecializationGroup group, NodeExecutionData execution) {
+        if (!boxingEliminationEnabled) {
+            return null;
+        }
+        TypeGuard guard = group.getTypeGuards().stream().filter((g) -> g.getSignatureIndex() == execution.getIndex()).findFirst().orElse(null);
+        if (guard == null) {
+            return null;
+        }
+        NodeExecutionData currentExecution = node.getChildExecutions().get(guard.getSignatureIndex());
+        if (plugs.canBoxingEliminateType(currentExecution, guard.getType())) {
+            return guard;
+        }
+        return null;
+    }
+
     private CodeTree createAssignExecuteChild(FrameState originalFrameState, FrameState frameState, CodeTreeBuilder parent, NodeExecutionData execution, ExecutableTypeData forType,
                     LocalVariable targetValue) {
         CodeTreeBuilder builder = parent.create();
@@ -3740,7 +3736,7 @@ public class FlatNodeGenFactory {
         if (executeChild.throwsUnexpectedResult) {
             builder.startCatchBlock(types.UnexpectedResultException, "ex");
             builder.tree(plugs.createTransferToInterpreterAndInvalidate());
-            FrameState slowPathFrameState = originalFrameState.copy();
+            FrameState slowPathFrameState = originalFrameState.copy(NodeExecutionMode.SLOW_PATH);
             slowPathFrameState.setValue(execution, targetValue.makeGeneric(context).accessWith(CodeTreeBuilder.singleString("ex.getResult()")));
 
             ExecutableTypeData delegateType = node.getGenericExecutableType(forType);
@@ -5128,6 +5124,8 @@ public class FlatNodeGenFactory {
         builder.tree(multiState.createSet(innerFrameState, stateTransaction, StateQuery.create(SpecializationActive.class, specialization), true, false));
         builder.tree(multiState.persistTransaction(innerFrameState, stateTransaction));
 
+        plugs.notifySpecialize(this, builder, frameState, specialization);
+
         if (types.SlowPathListener != null && ElementUtils.isAssignable(specialization.getNode().getTemplateType().asType(), types.SlowPathListener)) {
             builder.startStatement().startCall("afterSpecialize").end().end();
         }
@@ -5721,6 +5719,7 @@ public class FlatNodeGenFactory {
                     }
                 }
             }
+
             builder.tree((multiState.createSet(frameState, transaction,
                             StateQuery.create(SpecializationActive.class, excludesSpecializations), false, transaction == null)));
         }
@@ -8063,7 +8062,11 @@ public class FlatNodeGenFactory {
         }
 
         public FrameState copy() {
-            FrameState copy = new FrameState(factory, mode, method);
+            return copy(this.mode);
+        }
+
+        public FrameState copy(NodeExecutionMode newMode) {
+            FrameState copy = new FrameState(factory, newMode, method);
             copy.values.putAll(values);
             copy.caughtTypes.addAll(caughtTypes);
             copy.directValues.putAll(directValues);
@@ -8295,7 +8298,7 @@ public class FlatNodeGenFactory {
 
     }
 
-    enum NodeExecutionMode {
+    public enum NodeExecutionMode {
 
         FAST_PATH,
         SLOW_PATH,
@@ -8323,6 +8326,20 @@ public class FlatNodeGenFactory {
     public CodeTree createOnlyActive(FrameState frameState, List<SpecializationData> filteredSpecializations) {
         return multiState.createContainsOnly(frameState, 0, -1, StateQuery.create(SpecializationActive.class, filteredSpecializations),
                         StateQuery.create(SpecializationActive.class, node.getReachableSpecializations()));
+    }
+
+    public void addSpecializationStateParametersTo(CodeExecutableElement method, FrameState frameState) {
+        StateQuery query = StateQuery.create(SpecializationActive.class, node.getReachableSpecializations());
+        for (BitSet set : multiState.getSets()) {
+            if (!set.contains(query)) {
+                // does not contain any specialization active bit
+                continue;
+            }
+            LocalVariable local = frameState.get(set.getName());
+            if (local != null) {
+                method.addParameter(local.createParameter());
+            }
+        }
     }
 
 }

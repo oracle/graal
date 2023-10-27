@@ -44,12 +44,13 @@ import java.util.List;
 import java.util.Set;
 
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.bytecode.introspection.BytecodeIntrospection;
 import com.oracle.truffle.api.bytecode.introspection.ExceptionHandler;
 import com.oracle.truffle.api.bytecode.introspection.Instruction;
 import com.oracle.truffle.api.bytecode.introspection.SourceInformation;
-import com.oracle.truffle.api.bytecode.introspection.BytecodeIntrospection;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.VirtualFrame;

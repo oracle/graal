@@ -45,29 +45,26 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
-import com.oracle.truffle.api.bytecode.BytecodeNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ForceQuickening;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
-import com.oracle.truffle.api.bytecode.introspection.Instruction;
 import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class QuickeningTest {
+public class QuickeningTest extends AbstractQuickeningTest {
 
     protected static final BytecodeDSLExampleLanguage LANGUAGE = null;
 
     @Test
     public void testAbs() {
         // return - (arg0)
-        QuickeningTestRootNode node = (QuickeningTestRootNode) parse(b -> {
+        QuickeningTestRootNode node = parse(b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -76,42 +73,55 @@ public class QuickeningTest {
             b.endAbs();
             b.endReturn();
             b.endRoot();
-        }).getRootNode();
+        });
 
-        assertEquals(1, countInstructions(node, "c.Abs"));
-        assertEquals(0, countInstructions(node, "c.Abs$GreaterZero"));
-        assertEquals(0, countInstructions(node, "c.Abs$LessThanZero"));
-        assertEquals(0, countInstructions(node, "c.Abs$GreaterZero$LessThanZero"));
+        assertInstructions(node,
+                        "load.argument",
+                        "c.Abs",
+                        "return",
+                        "pop");
 
         assertEquals(1L, node.getCallTarget().call(-1L));
-        assertEquals(0, countInstructions(node, "c.Abs"));
-        assertEquals(0, countInstructions(node, "c.Abs$GreaterZero"));
-        assertEquals(1, countInstructions(node, "c.Abs$LessThanZero"));
-        assertEquals(0, countInstructions(node, "c.Abs$GreaterZero$LessThanZero"));
+        assertQuickenings(node, 1, 1);
+        assertInstructions(node,
+                        "load.argument",
+                        "c.Abs$LessThanZero",
+                        "return",
+                        "pop");
 
         assertEquals(1L, node.getCallTarget().call(1L));
-        assertEquals(0, countInstructions(node, "c.Abs"));
-        assertEquals(0, countInstructions(node, "c.Abs$GreaterZero"));
-        assertEquals(0, countInstructions(node, "c.Abs$LessThanZero"));
-        assertEquals(1, countInstructions(node, "c.Abs$GreaterZero$LessThanZero"));
+        assertQuickenings(node, 2, 2);
+        assertInstructions(node,
+                        "load.argument",
+                        "c.Abs$GreaterZero#LessThanZero",
+                        "return",
+                        "pop");
 
         assertEquals("", node.getCallTarget().call(""));
-        assertEquals(1, countInstructions(node, "c.Abs"));
-        assertEquals(0, countInstructions(node, "c.Abs$GreaterZero"));
-        assertEquals(0, countInstructions(node, "c.Abs$LessThanZero"));
-        assertEquals(0, countInstructions(node, "c.Abs$GreaterZero$LessThanZero"));
+        assertQuickenings(node, 3, 3);
+        assertInstructions(node,
+                        "load.argument",
+                        "c.Abs",
+                        "return",
+                        "pop");
 
         assertEquals(1L, node.getCallTarget().call(-1L));
-        assertEquals(1, countInstructions(node, "c.Abs"));
-        assertEquals(0, countInstructions(node, "c.Abs$GreaterZero"));
-        assertEquals(0, countInstructions(node, "c.Abs$LessThanZero"));
-        assertEquals(0, countInstructions(node, "c.Abs$GreaterZero$LessThanZero"));
+        var stable = assertQuickenings(node, 3, 3);
+        assertInstructions(node,
+                        "load.argument",
+                        "c.Abs",
+                        "return",
+                        "pop");
+
+        assertStable(stable, node, -1L);
+        assertStable(stable, node, 1L);
+        assertStable(stable, node, "");
     }
 
     @Test
     public void testAddAndNegate() {
         // return - ((arg0 + arg1) + arg0)
-        QuickeningTestRootNode node = (QuickeningTestRootNode) parse(b -> {
+        QuickeningTestRootNode node = parse(b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -127,72 +137,72 @@ public class QuickeningTest {
             b.endReturn();
 
             b.endRoot();
-        }).getRootNode();
+        });
 
         // we start without quickening
-        assertEquals(2, countInstructions(node, "c.Add"));
-        assertEquals(0, countInstructions(node, "c.Add$Long"));
-        assertEquals(1, countInstructions(node, "c.Abs"));
-        assertEquals(0, countInstructions(node, "c.Abs$GreaterZero"));
-        assertEquals(0, countInstructions(node, "c.Abs$LessThanZero"));
-        assertEquals(0, countInstructions(node, "c.Abs$GreaterZero$LessThanZero"));
+        assertQuickenings(node, 0, 0);
+        assertInstructions(node,
+                        "load.argument",
+                        "load.argument",
+                        "c.Add",
+                        "load.argument",
+                        "c.Add",
+                        "c.Abs",
+                        "return",
+                        "pop");
 
         // quickening during the first execution
         assertEquals(5L, node.getCallTarget().call(2L, 1L));
-        assertEquals(0, countInstructions(node, "c.Add"));
-        assertEquals(2, countInstructions(node, "c.Add$Long"));
-        assertEquals(0, countInstructions(node, "c.Abs"));
-        assertEquals(1, countInstructions(node, "c.Abs$GreaterZero"));
-        assertEquals(0, countInstructions(node, "c.Abs$LessThanZero"));
-        assertEquals(0, countInstructions(node, "c.Abs$GreaterZero$LessThanZero"));
+
+        assertQuickenings(node, 3, 3);
+        assertInstructions(node,
+                        "load.argument",
+                        "load.argument",
+                        "c.Add$Long",
+                        "load.argument",
+                        "c.Add$Long",
+                        "c.Abs$GreaterZero",
+                        "return",
+                        "pop");
 
         // quickening remains stable
         assertEquals(5L, node.getCallTarget().call(2L, 1L));
-        assertEquals(0, countInstructions(node, "c.Add"));
-        assertEquals(2, countInstructions(node, "c.Add$Long"));
-        assertEquals(0, countInstructions(node, "c.Abs"));
-        assertEquals(1, countInstructions(node, "c.Abs$GreaterZero"));
-        assertEquals(0, countInstructions(node, "c.Abs$LessThanZero"));
-        assertEquals(0, countInstructions(node, "c.Abs$GreaterZero$LessThanZero"));
+        assertQuickenings(node, 3, 3);
+        assertInstructions(node,
+                        "load.argument",
+                        "load.argument",
+                        "c.Add$Long",
+                        "load.argument",
+                        "c.Add$Long",
+                        "c.Abs$GreaterZero",
+                        "return",
+                        "pop");
 
         // switch to strings to trigger polymorphic rewrite
         assertEquals("aba", node.getCallTarget().call("a", "b"));
-        assertEquals(2, countInstructions(node, "c.Add"));
-        assertEquals(0, countInstructions(node, "c.Add$Long"));
-        assertEquals(1, countInstructions(node, "c.Abs"));
-        assertEquals(0, countInstructions(node, "c.Abs$GreaterZero"));
-        assertEquals(0, countInstructions(node, "c.Abs$LessThanZero"));
-        assertEquals(0, countInstructions(node, "c.Abs$GreaterZero$LessThanZero"));
 
-        // no quickenings left
-        assertEquals(5L, node.getCallTarget().call(2L, 1L));
-        assertEquals(2, countInstructions(node, "c.Add"));
-        assertEquals(0, countInstructions(node, "c.Add$Long"));
-        assertEquals(1, countInstructions(node, "c.Abs"));
-        assertEquals(0, countInstructions(node, "c.Abs$GreaterZero"));
-        assertEquals(0, countInstructions(node, "c.Abs$LessThanZero"));
-        assertEquals(0, countInstructions(node, "c.Abs$GreaterZero$LessThanZero"));
+        var stable = assertQuickenings(node, 6, 6);
+        assertInstructions(node,
+                        "load.argument",
+                        "load.argument",
+                        "c.Add",
+                        "load.argument",
+                        "c.Add",
+                        "c.Abs",
+                        "return",
+                        "pop");
+
+        assertStable(stable, node, 3L, 1L);
+        assertStable(stable, node, "a", "b");
     }
 
-    private static RootCallTarget parse(BytecodeParser<QuickeningTestRootNodeGen.Builder> builder) {
-        BytecodeNodes<QuickeningTestRootNode> nodes = QuickeningTestRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
-        QuickeningTestRootNode op = nodes.getNodes().get(nodes.getNodes().size() - 1);
-        BytecodeRootNode rootNode = op;
-        return ((RootNode) rootNode).getCallTarget();
-    }
-
-    private static int countInstructions(BytecodeRootNode node, String name) {
-        int count = 0;
-        for (Instruction instruction : node.getIntrospectionData().getInstructions()) {
-            if (instruction.getName().equals(name)) {
-                count++;
-            }
-        }
-        return count;
+    private static QuickeningTestRootNode parse(BytecodeParser<QuickeningTestRootNodeGen.Builder> builder) {
+        var nodes = QuickeningTestRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
+        return nodes.getNodes().get(nodes.getNodes().size() - 1);
     }
 
     @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableQuickening = true)
-    public abstract static class QuickeningTestRootNode extends RootNode implements BytecodeRootNode {
+    public abstract static class QuickeningTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         protected QuickeningTestRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);

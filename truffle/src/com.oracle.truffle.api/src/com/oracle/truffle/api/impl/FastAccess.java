@@ -40,7 +40,10 @@
  */
 package com.oracle.truffle.api.impl;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 import sun.misc.Unsafe;
 
@@ -68,11 +71,17 @@ public abstract class FastAccess {
 
     public abstract Object getObject(Frame frame, int slot);
 
+    public abstract Object getValue(Frame frame, int slot);
+
     public abstract boolean getBoolean(Frame frame, int slot);
 
     public abstract int getInt(Frame frame, int slot);
 
     public abstract long getLong(Frame frame, int slot);
+
+    public abstract byte getByte(Frame frame, int slot);
+
+    public abstract float getFloat(Frame frame, int slot);
 
     public abstract double getDouble(Frame frame, int slot);
 
@@ -80,11 +89,95 @@ public abstract class FastAccess {
 
     public abstract boolean uncheckedGetBoolean(Frame frame, int slot);
 
+    public abstract byte uncheckedGetByte(Frame frame, int slot);
+
     public abstract int uncheckedGetInt(Frame frame, int slot);
 
     public abstract long uncheckedGetLong(Frame frame, int slot);
 
+    public abstract float uncheckedGetFloat(Frame frame, int slot);
+
     public abstract double uncheckedGetDouble(Frame frame, int slot);
+
+    public abstract void uncheckedSetObject(Frame frame, int slot, Object value);
+
+    // TODO implement this directly in the frame to avoid throwing unnecessary
+    // FrameSlotTypeException
+
+    public final boolean expectBoolean(Frame frame, int slot) throws UnexpectedResultException {
+        try {
+            return getBoolean(frame, slot);
+        } catch (FrameSlotTypeException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw unexpectedValue(frame, slot);
+        }
+    }
+
+    public final byte expectByte(Frame frame, int slot) throws UnexpectedResultException {
+        try {
+            return getByte(frame, slot);
+        } catch (FrameSlotTypeException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw unexpectedValue(frame, slot);
+        }
+    }
+
+    public final int expectInt(Frame frame, int slot) throws UnexpectedResultException {
+        try {
+            return getInt(frame, slot);
+        } catch (FrameSlotTypeException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw unexpectedValue(frame, slot);
+        }
+    }
+
+    public final long expectLong(Frame frame, int slot) throws UnexpectedResultException {
+        try {
+            return getLong(frame, slot);
+        } catch (FrameSlotTypeException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw unexpectedValue(frame, slot);
+        }
+    }
+
+    public final Object expectObject(Frame frame, int slot) throws UnexpectedResultException {
+        try {
+            return getObject(frame, slot);
+        } catch (FrameSlotTypeException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw unexpectedValue(frame, slot);
+        }
+    }
+
+    public final Object requireObject(Frame frame, int slot) {
+        try {
+            return getObject(frame, slot);
+        } catch (FrameSlotTypeException e) {
+            return frame.getValue(slot);
+        }
+    }
+
+    public final float expectFloat(Frame frame, int slot) throws UnexpectedResultException {
+        try {
+            return getFloat(frame, slot);
+        } catch (FrameSlotTypeException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw unexpectedValue(frame, slot);
+        }
+    }
+
+    public final double expectDouble(Frame frame, int slot) throws UnexpectedResultException {
+        try {
+            return getDouble(frame, slot);
+        } catch (FrameSlotTypeException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw unexpectedValue(frame, slot);
+        }
+    }
+
+    private static UnexpectedResultException unexpectedValue(Frame frame, int slot) throws UnexpectedResultException {
+        throw new UnexpectedResultException(frame.getValue(slot));
+    }
 
     public abstract void setObject(Frame frame, int slot, Object value);
 
@@ -175,6 +268,11 @@ public abstract class FastAccess {
         }
 
         @Override
+        public Object getValue(Frame frame, int slot) {
+            return ((FrameWithoutBoxing) frame).unsafeGetValue(slot);
+        }
+
+        @Override
         public int getInt(Frame frame, int slot) {
             return ((FrameWithoutBoxing) frame).unsafeGetInt(slot);
         }
@@ -195,8 +293,23 @@ public abstract class FastAccess {
         }
 
         @Override
+        public byte getByte(Frame frame, int slot) {
+            return frame.getByte(slot);
+        }
+
+        @Override
+        public float getFloat(Frame frame, int slot) {
+            return frame.getFloat(slot);
+        }
+
+        @Override
         public Object uncheckedGetObject(Frame frame, int slot) {
             return ((FrameWithoutBoxing) frame).unsafeUncheckedGetObject(slot);
+        }
+
+        @Override
+        public byte uncheckedGetByte(Frame frame, int slot) {
+            return ((FrameWithoutBoxing) frame).unsafeUncheckedGetByte(slot);
         }
 
         @Override
@@ -217,6 +330,11 @@ public abstract class FastAccess {
         @Override
         public double uncheckedGetDouble(Frame frame, int slot) {
             return ((FrameWithoutBoxing) frame).unsafeUncheckedGetDouble(slot);
+        }
+
+        @Override
+        public float uncheckedGetFloat(Frame frame, int slot) {
+            return ((FrameWithoutBoxing) frame).unsafeUncheckedGetFloat(slot);
         }
 
         @Override
@@ -293,6 +411,14 @@ public abstract class FastAccess {
         public void clear(Frame frame, int slot) {
             ((FrameWithoutBoxing) frame).unsafeClear(slot);
         }
+
+        // TODO make uncheckedSet actually unsafe
+
+        @Override
+        public void uncheckedSetObject(Frame frame, int slot, Object value) {
+            ((FrameWithoutBoxing) frame).unsafeUncheckedSetObject(slot, value);
+        }
+
     }
 
     private static final class SafeImpl extends FastAccess {
@@ -349,6 +475,11 @@ public abstract class FastAccess {
         }
 
         @Override
+        public Object getValue(Frame frame, int slot) {
+            return frame.getValue(slot);
+        }
+
+        @Override
         public boolean getBoolean(Frame frame, int slot) {
             return frame.getBoolean(slot);
         }
@@ -369,6 +500,16 @@ public abstract class FastAccess {
         }
 
         @Override
+        public byte getByte(Frame frame, int slot) {
+            return frame.getByte(slot);
+        }
+
+        @Override
+        public float getFloat(Frame frame, int slot) {
+            return frame.getFloat(slot);
+        }
+
+        @Override
         public Object uncheckedGetObject(Frame frame, int slot) {
             return frame.getObject(slot);
         }
@@ -376,6 +517,11 @@ public abstract class FastAccess {
         @Override
         public boolean uncheckedGetBoolean(Frame frame, int slot) {
             return frame.getBoolean(slot);
+        }
+
+        @Override
+        public byte uncheckedGetByte(Frame frame, int slot) {
+            return frame.getByte(slot);
         }
 
         @Override
@@ -391,6 +537,11 @@ public abstract class FastAccess {
         @Override
         public double uncheckedGetDouble(Frame frame, int slot) {
             return frame.getDouble(slot);
+        }
+
+        @Override
+        public float uncheckedGetFloat(Frame frame, int slot) {
+            return frame.getFloat(slot);
         }
 
         @Override
@@ -466,6 +617,11 @@ public abstract class FastAccess {
         @Override
         public void clear(Frame frame, int slot) {
             frame.clear(slot);
+        }
+
+        @Override
+        public void uncheckedSetObject(Frame frame, int slot, Object value) {
+            frame.setObject(slot, value);
         }
 
     }

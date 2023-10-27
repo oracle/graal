@@ -52,19 +52,19 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.bytecode.GenerateBytecode;
-import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
-import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
-import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
-import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
+import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
+import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.bytecode.OperationProxy;
+import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleLanguage;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -338,7 +338,8 @@ public class ShortCircuitTest {
 
 @GenerateBytecodeTestVariants({
                 @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class)),
-                @Variant(suffix = "WithBE", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, boxingEliminationTypes = {boolean.class, int.class}))
+                @Variant(suffix = "WithBE", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableQuickening = true, boxingEliminationTypes = {boolean.class,
+                                int.class}))
 })
 @OperationProxy(value = BooleanConverterOperationProxy.class)
 /**

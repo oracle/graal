@@ -1042,7 +1042,7 @@ public class ElementUtils {
         i = 0;
         while (i < b.length()) {
             char c = b.charAt(i);
-            if (Character.isUpperCase(c) && i != 0) {
+            if (i > 0 && Character.isUpperCase(b.charAt(i - 1)) && Character.isUpperCase(c)) {
                 b.insert(i, '_');
                 i++;
             } else if (Character.isLowerCase(c)) {
