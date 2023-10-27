@@ -28,8 +28,11 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 import static jdk.graal.compiler.nodes.calc.BinaryArithmeticNode.getArithmeticOpTable;
 
+import java.math.BigDecimal;
+
 import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
+import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.FloatConvertOp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.UnaryOp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
@@ -88,14 +91,49 @@ public final class AMD64FloatConvertNode extends UnaryArithmeticNode<FloatConver
 
     @Override
     public Stamp foldStamp(Stamp newStamp) {
-        // The semantics of the x64 CVTTSS2SI instruction allow returning 0x8000000 in the special
-        // cases.
-        Stamp foldedStamp = super.foldStamp(newStamp);
-        if (foldedStamp instanceof IntegerStamp) {
-            return foldedStamp.meet(createInexactCaseStamp());
+        Stamp resultStamp = super.foldStamp(newStamp);
+        /**
+         * The semantics of the x64 CVTTSD2SI
+         * https://frama-c.com/2013/10/09/Overflow-float-integer.html instruction allow returning
+         * MIN_VALUE (for convert to int Integer.MIN_VALUE, for covert to long Long.MIN_VALUE) in
+         * special cases. Those cases are
+         *
+         * <ul>
+         * <li>Input is NAN</li>
+         * <li>Input is infinity</li> *
+         * <li>Integral part of the floating point number is smaller MIN_VALUE or larger MAX_VALUE
+         * in which case an overflow happens during conversion</li>
+         * </ul>
+         *
+         * We must ensure during stamp folding the special cases are considered and accounted for.
+         */
+        if (resultStamp instanceof IntegerStamp && newStamp instanceof FloatStamp inputStamp) {
+            final boolean canBeNan = inputStamp.canBeNaN();
+            final boolean canBeInifity = Double.isInfinite(inputStamp.lowerBound()) || Double.isInfinite(inputStamp.upperBound());
+            final boolean conversionCanOverflow = integralPartLargerMaxValue(Long.MAX_VALUE, inputStamp.upperBound()) || integralPartSmallerMinValue(Long.MIN_VALUE, inputStamp.lowerBound());
+            final boolean canGenerateSpecialValue = canBeNan || canBeInifity || conversionCanOverflow;
+            if (canGenerateSpecialValue) {
+                return resultStamp.meet(createInexactCaseStamp());
+            } else {
+                return resultStamp;
+            }
         } else {
-            return foldedStamp.unrestricted();
+            return resultStamp.unrestricted();
         }
+    }
+
+    private static boolean integralPartLargerMaxValue(long maxValue, double d) {
+        if (Double.isInfinite(d) || Double.isNaN(d)) {
+            return true;
+        }
+        return new BigDecimal(d).compareTo(new BigDecimal(maxValue)) > 0;
+    }
+
+    private static boolean integralPartSmallerMinValue(long minValue, double d) {
+        if (Double.isInfinite(d) || Double.isNaN(d)) {
+            return true;
+        }
+        return new BigDecimal(d).compareTo(new BigDecimal(minValue)) < 0;
     }
 
     private Stamp createInexactCaseStamp() {
