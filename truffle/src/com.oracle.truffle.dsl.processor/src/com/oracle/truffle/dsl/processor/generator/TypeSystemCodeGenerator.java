@@ -136,7 +136,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
         return builder.build();
     }
 
-    static CodeExecutableElement createExpectMethod(Modifier visibility, TypeSystemData typeSystem, TypeMirror sourceTypeOriginal, TypeMirror expectedTypeOriginal) {
+    public static CodeExecutableElement createExpectMethod(Modifier visibility, TypeSystemData typeSystem, TypeMirror sourceTypeOriginal, TypeMirror expectedTypeOriginal) {
         TypeMirror expectedType = ElementUtils.fillInGenericWildcards(expectedTypeOriginal);
         TypeMirror sourceType = ElementUtils.fillInGenericWildcards(sourceTypeOriginal);
         if (ElementUtils.isObject(expectedType) || ElementUtils.isVoid(expectedType)) {

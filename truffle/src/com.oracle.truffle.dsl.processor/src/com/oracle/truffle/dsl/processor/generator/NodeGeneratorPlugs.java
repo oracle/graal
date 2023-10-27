@@ -40,9 +40,12 @@
  */
 package com.oracle.truffle.dsl.processor.generator;
 
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.isPrimitive;
+
 import java.util.List;
 
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeDSLNodeFactory;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.ChildExecutionResult;
@@ -52,6 +55,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.model.NodeChildData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
+import com.oracle.truffle.dsl.processor.model.SpecializationData;
 
 /**
  * Interface that allows node generators to customize the way {@link FlatNodeGenFactory} generates
@@ -76,16 +80,20 @@ public interface NodeGeneratorPlugs {
         return flatNodeGenFactory.createNodeChildReferenceForException(frameState, execution, child);
     }
 
+    default boolean canBoxingEliminateType(NodeExecutionData currentExecution, TypeMirror type) {
+        if (!isPrimitive(type)) {
+            return false;
+        }
+        return currentExecution.getChild().findExecutableType(type) != null;
+    }
+
     default CodeTree createTransferToInterpreterAndInvalidate() {
         return GeneratorUtils.createTransferToInterpreterAndInvalidate();
     }
 
     @SuppressWarnings("unused")
-    default void createSlowPathBegin(FlatNodeGenFactory nodeFactory, CodeTreeBuilder builder, FrameState frameState) {
-    }
+    default void notifySpecialize(FlatNodeGenFactory nodeFactory, CodeTreeBuilder builder, FrameState frameState, SpecializationData specialization) {
 
-    @SuppressWarnings("unused")
-    default void createSlowPathEnd(FlatNodeGenFactory nodeFactory, CodeTreeBuilder builder, FrameState frameState) {
     }
 
 }

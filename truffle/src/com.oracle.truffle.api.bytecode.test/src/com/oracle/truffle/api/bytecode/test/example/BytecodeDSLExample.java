@@ -60,6 +60,7 @@ import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.Variadic;
+import com.oracle.truffle.api.bytecode.test.DebugBytecodeRootNode;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
@@ -72,7 +73,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 
 @GenerateBytecodeTestVariants({
                 @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableSerialization = true)),
@@ -89,7 +89,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 @ShortCircuitOperation(booleanConverter = BytecodeDSLExample.ToBoolean.class, name = "ScAnd", continueWhen = true, returnConvertedValue = false)
 @ShortCircuitOperation(booleanConverter = BytecodeDSLExample.ToBoolean.class, name = "ScOr", continueWhen = false, returnConvertedValue = false)
 @OperationProxy(value = ContinuationResult.ContinueNode.class, name = "Continue")
-public abstract class BytecodeDSLExample extends RootNode implements BytecodeRootNode {
+public abstract class BytecodeDSLExample extends DebugBytecodeRootNode implements BytecodeRootNode {
 
     protected BytecodeDSLExample(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);

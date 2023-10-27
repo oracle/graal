@@ -46,6 +46,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 
 /**
  * Generates a bytecode interpreter using the Bytecode DSL. The Bytecode DSL automatically produces
@@ -107,6 +108,22 @@ public @interface GenerateBytecode {
      * Whether the generated interpreter should support serialization and deserialization.
      */
     boolean enableSerialization() default false;
+
+    /**
+     * Whether the generated interpreter should support instrumentation. Only if instrumentation is
+     * enabled the <code>startTag(...)</code> <code>endTag()</code>. Disabled by default.
+     *
+     * @see #enableAutomaticRootInstrumentation()
+     */
+    boolean enableInstrumentation() default false;
+
+    /**
+     * Enables automatic root tagging if {@link #enableInstrumentation() instrumentation} is
+     * enabled. Automatic root tagging automatically implements {@link RootTag} for each
+     *
+     * @return
+     */
+    boolean enableRootTagging() default true;
 
     /**
      * Whether to use Unsafe array accesses. Unsafe accesses are faster, but they do not perform

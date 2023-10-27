@@ -90,7 +90,9 @@ import com.oracle.truffle.api.nodes.RootNode;
 public class LocalHelpersTest {
     @Parameters(name = "{0}")
     public static List<Class<? extends BytecodeNodeWithLocalIntrospection>> getInterpreterClasses() {
-        return List.of(BytecodeNodeWithLocalIntrospectionBase.class, BytecodeNodeWithLocalIntrospectionWithUncached.class);
+        return List.of(BytecodeNodeWithLocalIntrospectionBase.class,
+                        BytecodeNodeWithLocalIntrospectionWithBoxingElimination.class,
+                        BytecodeNodeWithLocalIntrospectionWithUncached.class);
     }
 
     @Parameter(0) public Class<? extends BytecodeNodeWithLocalIntrospection> interpreterClass;
@@ -541,10 +543,12 @@ public class LocalHelpersTest {
 
 @GenerateBytecodeTestVariants({
                 @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true)),
+                @Variant(suffix = "WithBoxingElimination", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableQuickening = true, boxingEliminationTypes = {
+                                boolean.class, long.class}, enableYield = true)),
                 @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableUncachedInterpreter = true))
 })
 @OperationProxy(value = ContinuationResult.ContinueNode.class, name = "Continue")
-abstract class BytecodeNodeWithLocalIntrospection extends RootNode implements BytecodeRootNode {
+abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode implements BytecodeRootNode {
     protected BytecodeNodeWithLocalIntrospection(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }

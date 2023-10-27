@@ -82,7 +82,6 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Instruct
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Signature;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
-import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionModel;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
@@ -223,7 +222,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
          * operation already exists).
          */
         InstructionModel booleanConverterInstruction = getOrCreateBooleanConverterInstruction(typeElement, mirror);
-        ShortCircuitInstructionModel instruction = parent.shortCircuitInstruction("sc." + name, continueWhen, returnConvertedValue, booleanConverterInstruction);
+        InstructionModel instruction = parent.shortCircuitInstruction("sc." + name, continueWhen, returnConvertedValue, booleanConverterInstruction);
         operation.instruction = instruction;
 
         instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
@@ -531,9 +530,8 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
      * code generation} to generate code for the instruction.
      */
     private InstructionModel createCustomInstruction(CustomOperationModel customOperation, TypeElement originalTypeElement, CodeTypeElement generatedNode, Signature signature, String nameSuffix) {
-        InstructionModel instr = parent.instruction(InstructionKind.CUSTOM, "c." + nameSuffix);
+        InstructionModel instr = parent.instruction(InstructionKind.CUSTOM, "c." + nameSuffix, signature);
         instr.nodeType = generatedNode;
-        instr.signature = signature;
         instr.nodeData = parseGeneratedNode(customOperation, originalTypeElement, generatedNode, signature);
 
         for (int i = 0; i < signature.localSetterCount; i++) {
@@ -662,9 +660,9 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         }
 
         TypeMirror newReturnType = mergeIfPrimitiveType(a.context, a.returnType, b.returnType);
-        TypeMirror[] mergedTypes = new TypeMirror[a.specializedTypes.size()];
-        for (int i = 0; i < a.specializedTypes.size(); i++) {
-            mergedTypes[i] = mergeIfPrimitiveType(a.context, a.specializedTypes.get(i), b.specializedTypes.get(i));
+        TypeMirror[] mergedTypes = new TypeMirror[a.argumentTypes.size()];
+        for (int i = 0; i < a.argumentTypes.size(); i++) {
+            mergedTypes[i] = mergeIfPrimitiveType(a.context, a.argumentTypes.get(i), b.argumentTypes.get(i));
         }
         return new Signature(newReturnType, List.of(mergedTypes), a.isVariadic, a.localSetterCount, a.localSetterRangeCount);
     }

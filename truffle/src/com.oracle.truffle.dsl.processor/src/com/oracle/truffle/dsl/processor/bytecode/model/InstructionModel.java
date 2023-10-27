@@ -47,13 +47,12 @@ import java.util.List;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 
-public class InstructionModel implements PrettyPrintable {
+public final class InstructionModel implements PrettyPrintable {
     public enum InstructionKind {
         BRANCH,
         BRANCH_BACKWARD,
@@ -79,7 +78,6 @@ public class InstructionModel implements PrettyPrintable {
         THROW,
 
         CUSTOM,
-        CUSTOM_QUICKENED,
         CUSTOM_SHORT_CIRCUIT,
         SUPERINSTRUCTION,
     }
@@ -101,16 +99,8 @@ public class InstructionModel implements PrettyPrintable {
         }
     }
 
-    public static class InstructionImmediate {
-        public final int offset;
-        public final ImmediateKind kind;
-        public final String name;
+    public record InstructionImmediate(int offset, ImmediateKind kind, String name) {
 
-        public InstructionImmediate(int offset, ImmediateKind kind, String name) {
-            this.offset = offset;
-            this.kind = kind;
-            this.name = name;
-        }
     }
 
     public static final class Signature {
@@ -123,11 +113,15 @@ public class InstructionModel implements PrettyPrintable {
         public final boolean isVoid;
 
         public final TypeMirror returnType;
-        public final List<TypeMirror> specializedTypes;
+        public final List<TypeMirror> argumentTypes;
+
+        public Signature(TypeMirror returnType, List<TypeMirror> types) {
+            this(returnType, types, false, 0, 0);
+        }
 
         public Signature(TypeMirror returnType, List<TypeMirror> types, boolean hasVariadic, int localSetterCount, int localSetterRangeCount) {
             this.returnType = returnType;
-            this.specializedTypes = Collections.unmodifiableList(types);
+            this.argumentTypes = Collections.unmodifiableList(types);
             this.valueCount = types.size();
             this.isVariadic = hasVariadic;
             this.localSetterCount = localSetterCount;
@@ -143,12 +137,20 @@ public class InstructionModel implements PrettyPrintable {
             return context.getType(Object.class);
         }
 
+        public TypeMirror getGenericReturnType() {
+            if (isVoid) {
+                return context.getType(void.class);
+            } else {
+                return context.getType(Object.class);
+            }
+        }
+
         public TypeMirror getSpecializedType(int i) {
             assert i > 0 && i < valueCount;
             if (isVariadicParameter(i)) {
                 return context.getType(Object[].class);
             }
-            return specializedTypes.get(i);
+            return argumentTypes.get(i);
         }
 
         public boolean isVariadicParameter(int i) {
@@ -159,16 +161,11 @@ public class InstructionModel implements PrettyPrintable {
         public String toString() {
             StringBuilder sb = new StringBuilder();
 
-            if (isVoid) {
-                sb.append("void ");
-            } else {
-                sb.append("obj ");
-            }
-
+            sb.append(ElementUtils.getSimpleName(returnType)).append(" ");
             sb.append("(");
 
             for (int i = 0; i < valueCount; i++) {
-                sb.append("obj");
+                sb.append(ElementUtils.getSimpleName(argumentTypes.get(i)));
                 if (isVariadic && i == valueCount - 1) {
                     sb.append("...");
                 }
@@ -193,11 +190,12 @@ public class InstructionModel implements PrettyPrintable {
         }
     }
 
-    public final int id;
+    private int id = -1;
     public final InstructionKind kind;
     public final String name;
+    public final String quickeningName;
+    public final Signature signature;
     public CodeTypeElement nodeType;
-    public Signature signature;
     public NodeData nodeData;
     public int variadicPopCount = -1;
 
@@ -213,17 +211,76 @@ public class InstructionModel implements PrettyPrintable {
     // operation this instruction stems from. null if none
     public OperationModel operation;
 
-    public InstructionModel(int id, InstructionKind kind, String name) {
-        this.id = id;
+    /*
+     * Used for return type boxing elimination quickenings.
+     */
+    public boolean returnTypeQuickening;
+
+    /*
+     * Alternative argument specialization type for builtin quickenings. E.g. for loadLocal
+     * parameter types.
+     */
+    public TypeMirror specializedType;
+
+    public ShortCircuitInstructionData shortCircuitData;
+
+    public InstructionModel(InstructionKind kind, String name, Signature signature, String quickeningName) {
         this.kind = kind;
         this.name = name;
+        this.signature = signature;
+        this.quickeningName = quickeningName;
+    }
+
+    public int getId() {
+        if (id == -1) {
+            throw new IllegalStateException("Id not yet assigned");
+        }
+        return id;
+    }
+
+    void setId(int id) {
+        if (id < 0) {
+            throw new IllegalArgumentException("Invalid id.");
+        }
+        if (this.id != -1) {
+            throw new IllegalStateException("Id already assigned ");
+        }
+        this.id = id;
+    }
+
+    public List<InstructionModel> getFlattenedQuickenedInstructions() {
+        if (quickenedInstructions.isEmpty()) {
+            return quickenedInstructions;
+        }
+        List<InstructionModel> allInstructions = new ArrayList<>();
+        for (InstructionModel child : this.quickenedInstructions) {
+            allInstructions.add(child);
+            allInstructions.addAll(child.getFlattenedQuickenedInstructions());
+        }
+        return allInstructions;
     }
 
     public String getQuickeningName() {
-        if (!isQuickening()) {
-            throw new UnsupportedOperationException();
+        return quickeningName;
+    }
+
+    public InstructionModel getQuickeningRoot() {
+        if (quickeningBase != null) {
+            return quickeningBase.getQuickeningRoot();
         }
-        return getInternalName().substring(quickeningBase.getInternalName().length());
+        return this;
+    }
+
+    public String getQualifiedQuickeningName() {
+        InstructionModel current = this;
+        List<String> quickeningNames = new ArrayList<>();
+        while (current != null) {
+            if (current.quickeningName != null) {
+                quickeningNames.add(0, current.quickeningName.replace('#', '_'));
+            }
+            current = current.quickeningBase;
+        }
+        return String.join("$", quickeningNames);
     }
 
     public boolean hasQuickenings() {
@@ -234,15 +291,8 @@ public class InstructionModel implements PrettyPrintable {
         return quickeningBase != null;
     }
 
-    public void inheritFrom(InstructionModel source) {
-        getImmediates().clear();
-        getImmediates().addAll(source.getImmediates());
-        this.nodeData = source.nodeData;
-        this.nodeType = source.nodeType;
-        this.signature = source.signature;
-        this.variadicPopCount = source.variadicPopCount;
-        this.quickeningBase = source;
-        this.operation = source.operation;
+    public boolean isReturnTypeQuickening() {
+        return returnTypeQuickening;
     }
 
     @Override
@@ -289,7 +339,6 @@ public class InstructionModel implements PrettyPrintable {
         switch (kind) {
             case CUSTOM:
             case CUSTOM_SHORT_CIRCUIT:
-            case CUSTOM_QUICKENED:
                 return true;
             default:
                 return false;
@@ -299,7 +348,6 @@ public class InstructionModel implements PrettyPrintable {
     public boolean hasNodeImmediate() {
         switch (kind) {
             case CUSTOM:
-            case CUSTOM_QUICKENED:
                 return true;
             default:
                 return false;
@@ -315,6 +363,15 @@ public class InstructionModel implements PrettyPrintable {
         return this;
     }
 
+    public InstructionImmediate findImmediate(ImmediateKind immediateKind, String immediateName) {
+        for (InstructionImmediate immediate : immediates) {
+            if (immediate.kind == immediateKind && immediate.name.equals(immediateName)) {
+                return immediate;
+            }
+        }
+        return null;
+    }
+
     public List<InstructionImmediate> getImmediates() {
         return immediates;
     }
@@ -325,7 +382,9 @@ public class InstructionModel implements PrettyPrintable {
 
     public InstructionImmediate getImmediate(ImmediateKind immediateKind) {
         List<InstructionImmediate> filteredImmediates = getImmediates(immediateKind);
-        assert filteredImmediates.size() == 1;
+        if (filteredImmediates.size() != 1) {
+            throw new AssertionError("Too many immediates of kind " + immediateKind + ". Use getImmediates() instead.");
+        }
         return filteredImmediates.get(0);
     }
 
@@ -334,11 +393,37 @@ public class InstructionModel implements PrettyPrintable {
     }
 
     public String getInternalName() {
-        return name.replace('.', '_');
+        String withoutPrefix = switch (kind) {
+            case CUSTOM -> {
+                assert name.startsWith("c.");
+                yield name.substring(2) + "_";
+            }
+            case CUSTOM_SHORT_CIRCUIT -> {
+                assert name.startsWith("sc.");
+                yield name.substring(3) + "_";
+            }
+            default -> name;
+        };
+        StringBuilder b = new StringBuilder(withoutPrefix);
+        for (int i = 0; i < b.length(); i++) {
+            char c = b.charAt(i);
+            switch (c) {
+                case '.':
+                    if (i + 1 < b.length()) {
+                        b.setCharAt(i + 1, Character.toUpperCase(b.charAt(i + 1)));
+                    }
+                    b.deleteCharAt(i);
+                    break;
+                case '#':
+                    b.setCharAt(i, '$');
+                    break;
+            }
+        }
+        return b.toString();
     }
 
     public String getConstantName() {
-        return getInternalName().toUpperCase();
+        return ElementUtils.createConstantName(getInternalName());
     }
 
     @Override
@@ -348,7 +433,7 @@ public class InstructionModel implements PrettyPrintable {
 
     public String prettyPrintEncoding() {
         StringBuilder b = new StringBuilder("[");
-        b.append(id);
+        b.append(getId());
         for (InstructionImmediate imm : immediates) {
             b.append(", ");
             b.append(imm.kind.shortName);
@@ -360,7 +445,10 @@ public class InstructionModel implements PrettyPrintable {
         return b.toString();
     }
 
-    public boolean needsValueBoxingElimination(BytecodeDSLModel model, int valueIndex) {
+    public boolean needsBoxingElimination(BytecodeDSLModel model, int valueIndex) {
+        if (!model.usesBoxingElimination()) {
+            return false;
+        }
         if (signature.isVariadicParameter(valueIndex)) {
             return false;
         }
@@ -368,23 +456,7 @@ public class InstructionModel implements PrettyPrintable {
             return true;
         }
         for (InstructionModel quickenedInstruction : quickenedInstructions) {
-            if (quickenedInstruction.needsValueBoxingElimination(model, valueIndex)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public boolean needsReturnTypeBoxingElimination(BytecodeDSLModel model) {
-        if (operation != null && operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
-            return false;
-        }
-
-        if (model.isBoxingEliminated(signature.returnType)) {
-            return true;
-        }
-        for (InstructionModel quickenedInstruction : quickenedInstructions) {
-            if (quickenedInstruction.needsReturnTypeBoxingElimination(model)) {
+            if (quickenedInstruction.needsBoxingElimination(model, valueIndex)) {
                 return true;
             }
         }

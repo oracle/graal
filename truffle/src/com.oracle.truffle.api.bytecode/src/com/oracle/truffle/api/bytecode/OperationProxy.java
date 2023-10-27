@@ -46,6 +46,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.api.instrumentation.Tag;
+
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 @Repeatable(OperationProxies.class)
@@ -58,4 +60,13 @@ public @interface OperationProxy {
     @Target(ElementType.TYPE)
     @interface Proxyable {
     }
+
+    /**
+     * Automatically assigns instrumentation tags to operations.
+     *
+     * @see GenerateBytecode#enableInstrumentation()
+     * @see GenerateBytecode#enableRootTagging()
+     * @see OperationProxy#tags()
+     */
+    Class<? extends Tag>[] tags() default {};
 }

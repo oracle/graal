@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,43 +38,47 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode;
+package com.oracle.truffle.api.bytecode.test;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.bytecode.introspection.Instruction;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.nodes.RootNode;
 
-/**
- * Declares an operation. An operation serves as a specification for a bytecode instruction in the
- * generated interpreter.
- *
- * An operation class is declared the same way as a regular Truffle AST node, with a few
- * differences:
- * <ul>
- * <li>The class should be nested inside the top-level {@link BytecodeRootNode} class.
- * <li>The class should be declared {@code public static final}. It should not extend/implement any
- * other class/interface.
- * <li>The class should not contain instance members.
- * <li>The class's specializations also have some differences:
- * <ul>
- * <li>Specializations must all have the same arity (with respect to non-special parameters). The
- * parameters of any {@link Fallback} specialization must be of type {@link Object}.
- * <li>Specializations should be {@code public static}. Any members referenced in DSL expressions
- * (e.g., {@link Cached @Cached} parameters) should also be {@code static} and visible to the
- * top-level bytecode class.
- * <li>Specializations can declare additional special parameters (e.g., {@link LocalSetter}). They
- * can also bind some special parameters (e.g., {@code @Bind("$root")}). Refer to the documentation
- * for more details.
- * </ul>
- * </ul>
- */
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.TYPE})
-public @interface Operation {
+public abstract class DebugBytecodeRootNode extends RootNode implements SpecializationDebugListener {
 
-    Class<? extends Tag>[] tags() default {};
+    static boolean traceQuickening = false;
 
+    protected DebugBytecodeRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        super(language, frameDescriptor);
+    }
+
+    final AtomicInteger quickeningCount = new AtomicInteger();
+    final AtomicInteger specializeCount = new AtomicInteger();
+
+    @Override
+    public void onQuicken(Instruction before, Instruction after) {
+        if (traceQuickening) {
+            System.out.printf("Quicken %s: %n     %s%n  -> %s%n", before.getName(), before, after);
+        }
+        quickeningCount.incrementAndGet();
+    }
+
+    public void onQuickenOperand(Instruction base, int operandIndex, Instruction operandBefore, Instruction operandAfter) {
+        if (traceQuickening) {
+            System.out.printf("Quicken operand index %s for %s: %n     %s%n  -> %s%n", operandIndex, base.getName(),
+                            operandBefore, operandAfter);
+        }
+        quickeningCount.incrementAndGet();
+    }
+
+    @Override
+    public void onSpecialize(Instruction instruction, String specialization) {
+        if (traceQuickening) {
+            System.out.printf("Specialize %s: %n     %s%n", specialization, instruction);
+        }
+        specializeCount.incrementAndGet();
+    }
 }
