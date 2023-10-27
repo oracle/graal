@@ -36,7 +36,6 @@ import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
-import com.oracle.graal.pointsto.typestate.TypeStateUtils;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.ClassUtil;
@@ -250,11 +249,6 @@ public abstract class TypeFlow<T> {
         return this instanceof AllInstantiatedTypeFlow;
     }
 
-    public void setState(PointsToAnalysis bb, TypeState state) {
-        assert !bb.extendedAsserts() || state.verifyDeclaredType(bb, declaredType) : "declaredType: " + declaredType.toJavaName(true) + " state: " + state;
-        this.state = state;
-    }
-
     public void setSlot(int slot) {
         this.slot = slot;
     }
@@ -323,8 +317,6 @@ public abstract class TypeFlow<T> {
 
         PointsToStats.registerTypeFlowSuccessfulUpdate(bb, this, add);
 
-        assert checkTypeState(bb, before, after);
-
         if (checkSaturated(bb, after)) {
             onSaturated(bb);
         } else if (postFlow) {
@@ -333,36 +325,6 @@ public abstract class TypeFlow<T> {
 
         return true;
     }
-
-    private boolean checkTypeState(PointsToAnalysis bb, TypeState before, TypeState after) {
-        if (!bb.extendedAsserts()) {
-            return true;
-        }
-
-        if (bb.analysisPolicy().relaxTypeFlowConstraints()) {
-            return true;
-        }
-
-        if (this instanceof FilterTypeFlow) {
-            /*
-             * Since a FilterTypeFlow implements complex logic, i.e., the filter can be either
-             * inclusive or exclusive and it can filter exact types or complete type hierarchies,
-             * the types in its type state are not necessary assignable from its declared type.
-             */
-            return true;
-        }
-        assert after.verifyDeclaredType(bb, declaredType) : String.format("The type state of %s contains types that are not assignable from its declared type %s. " +
-                        "%nState before: %s. %nState after: %s", format(false, true), declaredType.toJavaName(true), formatState(bb, before), formatState(bb, after));
-        return true;
-    }
-
-    private static String formatState(PointsToAnalysis bb, TypeState typeState) {
-        if (TypeStateUtils.closeToAllInstantiated(bb, typeState)) {
-            return "close to AllInstantiated";
-        }
-        return typeState.toString();
-    }
-
     // manage uses
 
     public boolean addUse(PointsToAnalysis bb, TypeFlow<?> use) {
