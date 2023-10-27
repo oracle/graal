@@ -33,7 +33,7 @@ import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.graal.pointsto.results.AbstractAnalysisResultsBuilder;
+import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.typestate.TypeStateUtils;
@@ -95,9 +95,8 @@ public abstract class TypeFlow<T> {
      * individual type flows to subscribe themselves directly to the type flows of their declared
      * types if they need further updates.
      * <p/>
-     * When static analysis results are built in
-     * {@link AbstractAnalysisResultsBuilder#makeOrApplyResults} the type state is considered only
-     * if the type flow was not marked as saturated.
+     * When static analysis results are built in {@link StrengthenGraphs#applyResults} the type
+     * state is considered only if the type flow was not marked as saturated.
      * <p/>
      * The initial value is false, i.e., the flow is initially not saturated.
      */

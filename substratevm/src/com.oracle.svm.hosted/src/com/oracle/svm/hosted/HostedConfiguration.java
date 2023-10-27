@@ -42,8 +42,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccessExtensionProvider;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.graal.pointsto.results.AbstractAnalysisResultsBuilder;
-import com.oracle.graal.pointsto.results.DefaultResultsBuilder;
+import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
@@ -216,12 +215,8 @@ public class HostedConfiguration {
         }
     }
 
-    public AbstractAnalysisResultsBuilder createStaticAnalysisResultsBuilder(Inflation bb, HostedUniverse universe) {
-        if (bb instanceof PointsToAnalysis pta) {
-            return new SubstrateStrengthenGraphs(pta, universe);
-        } else {
-            return new DefaultResultsBuilder(bb, universe);
-        }
+    public StrengthenGraphs createStrengthenGraphs(Inflation bb, HostedUniverse universe) {
+        return new SubstrateStrengthenGraphs(bb, universe);
     }
 
     public void collectMonitorFieldInfo(BigBang bb, HostedUniverse hUniverse, Set<AnalysisType> immutableTypes) {
