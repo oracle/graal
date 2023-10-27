@@ -83,22 +83,24 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
         ResolvedJavaType nodeType = metaAccess.lookupJavaType(Node.class);
         ResolvedJavaType stringType = metaAccess.lookupJavaType(String.class);
         ResolvedJavaType graalErrorType = metaAccess.lookupJavaType(GraalError.class);
+        ResolvedJavaType errorType = metaAccess.lookupJavaType(Error.class);
 
         for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
             ResolvedJavaMethod callee = t.targetMethod();
             String calleeName = callee.getName();
-            if (callee.getDeclaringClass().equals(debugType)) {
+            ResolvedJavaType calleeDeclaringClass = callee.getDeclaringClass();
+            if (calleeDeclaringClass.equals(debugType)) {
                 boolean isDump = calleeName.equals("dump");
                 if (calleeName.equals("log") || calleeName.equals("logAndIndent") || calleeName.equals("verify") || isDump) {
                     verifyParameters(metaAccess, t, t.arguments(), stringType, isDump ? 2 : 1);
                 }
             }
-            if (callee.getDeclaringClass().isAssignableFrom(nodeType)) {
+            if (calleeDeclaringClass.isAssignableFrom(nodeType)) {
                 if (calleeName.equals("assertTrue") || calleeName.equals("assertFalse")) {
                     verifyParameters(metaAccess, t, t.arguments(), stringType, 1);
                 }
             }
-            if (callee.getDeclaringClass().isAssignableFrom(graalErrorType) && !graph.method().getDeclaringClass().isAssignableFrom(graalErrorType)) {
+            if (calleeDeclaringClass.isAssignableFrom(graalErrorType) && !calleeDeclaringClass.equals(errorType) && !graph.method().getDeclaringClass().isAssignableFrom(graalErrorType)) {
                 if (calleeName.equals("guarantee")) {
                     verifyParameters(metaAccess, t, t.arguments(), stringType, 0);
                 }
