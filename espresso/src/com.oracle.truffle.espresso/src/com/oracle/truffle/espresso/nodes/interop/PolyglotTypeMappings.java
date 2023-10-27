@@ -28,7 +28,6 @@ import java.util.Map;
 import java.util.Set;
 
 import com.oracle.truffle.espresso.impl.ArrayKlass;
-import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.options.OptionMap;
