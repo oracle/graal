@@ -61,7 +61,7 @@ public class InspectorMessageTransportTest extends EnginesGCedTest {
     private static final String[] MESSAGES_TO_BACKEND;
     private static final String[] MESSAGES_TO_CLIENT = {
                     "{\"result\":{},\"id\":5}",
-                    "{\"result\":{},\"id\":6}",
+                    "{\"result\":{\"debuggerId\":\"UniqueDebuggerId.",
                     "{\"result\":{},\"id\":7}",
                     "{\"result\":{},\"id\":8}",
                     "{\"result\":{},\"id\":20}",

@@ -53,7 +53,7 @@ public class DisabledDomainTest {
         tester.sendMessage("{\"id\":10," + debuggerMessage);
         assertEquals("{\"id\":10,\"error\":{\"code\":-32601,\"message\":\"Domain Debugger is disabled.\"}}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":11,\"method\":\"Debugger.enable\"}");
-        assertEquals("{\"result\":{},\"id\":11}", tester.getMessages(true).trim());
+        tester.receiveMessages("{\"result\":{\"debuggerId\":\"UniqueDebuggerId.", "},\"id\":11}\n");
         tester.sendMessage("{\"id\":12," + debuggerMessage);
         assertEquals("{\"result\":{\"breakpointId\":\"1\",\"locations\":[]},\"id\":12}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":13,\"method\":\"Debugger.disable\"}");
