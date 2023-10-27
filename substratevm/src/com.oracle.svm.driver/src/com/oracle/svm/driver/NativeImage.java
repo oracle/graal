@@ -1618,12 +1618,7 @@ public class NativeImage {
         List<String> command = new ArrayList<>();
         List<String> completeCommandList = new ArrayList<>();
 
-<<<<<<< HEAD
-        if (useBundle() && bundleSupport.useContainer) {
-=======
-        String javaExecutable;
         if (useContainer) {
->>>>>>> 14f09f94d1d (Ensure watchPID is made accessible in container that runs builder)
             ContainerSupport.replacePaths(arguments, config.getJavaHome(), bundleSupport.rootDir);
             ContainerSupport.replacePaths(finalImageBuilderArgs, config.getJavaHome(), bundleSupport.rootDir);
             Path binJava = Paths.get("bin", "java");
