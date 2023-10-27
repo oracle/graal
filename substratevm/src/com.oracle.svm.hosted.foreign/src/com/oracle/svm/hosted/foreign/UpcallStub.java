@@ -1,33 +1,31 @@
 package com.oracle.svm.hosted.foreign;
 
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_FAST_PATH_PROBABILITY;
-
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 import java.util.List;
 
-import org.graalvm.compiler.core.common.memory.BarrierType;
-import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.java.FrameStateBuilder;
-import org.graalvm.compiler.nodes.CallTargetNode;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.DeadEndNode;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.ProfileData;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
-import org.graalvm.compiler.nodes.memory.ReadNode;
-import org.graalvm.compiler.nodes.memory.address.AddressNode;
-import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
-import org.graalvm.compiler.replacements.nodes.CStringConstant;
-import org.graalvm.compiler.replacements.nodes.WriteRegisterNode;
+import jdk.graal.compiler.core.common.memory.BarrierType;
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.java.FrameStateBuilder;
+import jdk.graal.compiler.nodes.CallTargetNode;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.DeadEndNode;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ProfileData;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
+import jdk.graal.compiler.nodes.memory.ReadNode;
+import jdk.graal.compiler.nodes.memory.address.AddressNode;
+import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
+import jdk.graal.compiler.replacements.nodes.CStringConstant;
+import jdk.graal.compiler.replacements.nodes.WriteRegisterNode;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.LocationIdentity;
@@ -66,6 +64,8 @@ import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.VERY_FAST_PATH_PROBABILITY;
 
 public abstract class UpcallStub extends NonBytecodeMethod {
     protected final JavaEntryPointInfo jep;

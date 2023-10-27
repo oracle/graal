@@ -30,14 +30,13 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.java.NewArrayNode;
+import jdk.graal.compiler.replacements.nodes.ReadRegisterNode;
+import jdk.graal.compiler.replacements.nodes.WriteRegisterNode;
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.java.NewArrayNode;
-import org.graalvm.compiler.replacements.nodes.ReadRegisterNode;
-import org.graalvm.compiler.replacements.nodes.WriteRegisterNode;
-
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.hosted.phases.HostedGraphKit;

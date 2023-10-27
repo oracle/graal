@@ -45,12 +45,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.asm.amd64.AMD64Assembler;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.ReinterpretNode;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.asm.amd64.AMD64Address;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.ReinterpretNode;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.Platform;

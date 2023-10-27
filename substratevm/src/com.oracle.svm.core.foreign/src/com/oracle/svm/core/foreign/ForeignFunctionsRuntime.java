@@ -31,8 +31,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
