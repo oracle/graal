@@ -691,6 +691,8 @@ suite = {
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
             "jacoco" : "include",
+            # disable SpotBugs as long JDK 22 is unsupported [GR-49566]
+            "spotbugs" : "false",
         },
 
         "com.oracle.svm.hosted.foreign": {
@@ -719,6 +721,8 @@ suite = {
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
             "jacoco" : "include",
+            # disable SpotBugs as long JDK 22 is unsupported [GR-49566]
+            "spotbugs" : "false",
         },
 
         # Native libraries below explicitly set _FORTIFY_SOURCE to 0. This constant controls how glibc handles some
