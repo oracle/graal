@@ -41,14 +41,17 @@
 package com.oracle.truffle.dsl.processor.bytecode.model;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.model.NodeData;
+import com.oracle.truffle.dsl.processor.model.SpecializationData;
 
 public class InstructionModel implements PrettyPrintable {
     public enum InstructionKind {
@@ -111,7 +114,7 @@ public class InstructionModel implements PrettyPrintable {
     }
 
     public static final class Signature {
-        private final ProcessorContext context = ProcessorContext.getInstance();
+        public final ProcessorContext context = ProcessorContext.getInstance();
         // Number of value parameters (includes the variadic parameter, if it exists).
         public final int valueCount;
         public final boolean isVariadic;
@@ -119,46 +122,37 @@ public class InstructionModel implements PrettyPrintable {
         public final int localSetterRangeCount;
         public final boolean isVoid;
 
-        private boolean[] canBoxingEliminateValue;
-        private Set<TypeMirror> boxingEliminatableReturnTypes;
+        public final TypeMirror returnType;
+        public final List<TypeMirror> specializedTypes;
 
-        public Signature(int valueCount, boolean hasVariadic, int localSetterCount, int localSetterRangeCount, boolean isVoid, boolean[] canBoxingEliminateValue,
-                        Set<TypeMirror> boxingEliminatableReturnTypes) {
-            this.valueCount = valueCount;
+        public Signature(TypeMirror returnType, List<TypeMirror> types, boolean hasVariadic, int localSetterCount, int localSetterRangeCount) {
+            this.returnType = returnType;
+            this.specializedTypes = Collections.unmodifiableList(types);
+            this.valueCount = types.size();
             this.isVariadic = hasVariadic;
             this.localSetterCount = localSetterCount;
             this.localSetterRangeCount = localSetterRangeCount;
-            this.isVoid = isVoid;
-            this.canBoxingEliminateValue = canBoxingEliminateValue;
-            this.boxingEliminatableReturnTypes = boxingEliminatableReturnTypes;
+            this.isVoid = ElementUtils.isVoid(returnType);
         }
 
-        public TypeMirror getParameterType(int i) {
+        public TypeMirror getGenericType(int i) {
             assert i > 0 && i < valueCount;
-            if (isVariadic && i == valueCount - 1) {
+            if (isVariadicParameter(i)) {
                 return context.getType(Object[].class);
             }
             return context.getType(Object.class);
         }
 
-        public boolean canBoxingEliminateValue(int i) {
-            return canBoxingEliminateValue[i];
+        public TypeMirror getSpecializedType(int i) {
+            assert i > 0 && i < valueCount;
+            if (isVariadicParameter(i)) {
+                return context.getType(Object[].class);
+            }
+            return specializedTypes.get(i);
         }
 
-        public void setCanBoxingEliminateValue(int i, boolean b) {
-            canBoxingEliminateValue[i] = b;
-        }
-
-        public boolean canBoxingEliminateResult() {
-            return !boxingEliminatableReturnTypes.isEmpty();
-        }
-
-        public Set<TypeMirror> getBoxingEliminatableReturnTypes() {
-            return boxingEliminatableReturnTypes;
-        }
-
-        public void addBoxingEliminatableReturnTypes(Set<TypeMirror> otherTypes) {
-            boxingEliminatableReturnTypes.addAll(otherTypes);
+        public boolean isVariadicParameter(int i) {
+            return isVariadic && i == valueCount - 1;
         }
 
         @Override
@@ -167,12 +161,6 @@ public class InstructionModel implements PrettyPrintable {
 
             if (isVoid) {
                 sb.append("void ");
-            } else if (canBoxingEliminateResult()) {
-                sb.append("obj ");
-                for (TypeMirror mir : boxingEliminatableReturnTypes) {
-                    sb.append(mir);
-                    sb.append(" ");
-                }
             } else {
                 sb.append("obj ");
             }
@@ -180,7 +168,7 @@ public class InstructionModel implements PrettyPrintable {
             sb.append("(");
 
             for (int i = 0; i < valueCount; i++) {
-                sb.append(canBoxingEliminateValue(i) ? "box" : "obj");
+                sb.append("obj");
                 if (isVariadic && i == valueCount - 1) {
                     sb.append("...");
                 }
@@ -217,11 +205,44 @@ public class InstructionModel implements PrettyPrintable {
     public final List<InstructionImmediate> immediates = new ArrayList<>();
 
     public List<InstructionModel> subInstructions;
+    public final List<InstructionModel> quickenedInstructions = new ArrayList<>();
+
+    public List<SpecializationData> filteredSpecializations;
+
+    public InstructionModel quickeningBase;
+    // operation this instruction stems from. null if none
+    public OperationModel operation;
 
     public InstructionModel(int id, InstructionKind kind, String name) {
         this.id = id;
         this.kind = kind;
         this.name = name;
+    }
+
+    public String getQuickeningName() {
+        if (!isQuickening()) {
+            throw new UnsupportedOperationException();
+        }
+        return getInternalName().substring(quickeningBase.getInternalName().length());
+    }
+
+    public boolean hasQuickenings() {
+        return !quickenedInstructions.isEmpty();
+    }
+
+    public boolean isQuickening() {
+        return quickeningBase != null;
+    }
+
+    public void inheritFrom(InstructionModel source) {
+        getImmediates().clear();
+        getImmediates().addAll(source.getImmediates());
+        this.nodeData = source.nodeData;
+        this.nodeType = source.nodeType;
+        this.signature = source.signature;
+        this.variadicPopCount = source.variadicPopCount;
+        this.quickeningBase = source;
+        this.operation = source.operation;
     }
 
     @Override
@@ -338,4 +359,36 @@ public class InstructionModel implements PrettyPrintable {
         b.append("]");
         return b.toString();
     }
+
+    public boolean needsValueBoxingElimination(BytecodeDSLModel model, int valueIndex) {
+        if (signature.isVariadicParameter(valueIndex)) {
+            return false;
+        }
+        if (model.isBoxingEliminated(signature.getSpecializedType(valueIndex))) {
+            return true;
+        }
+        for (InstructionModel quickenedInstruction : quickenedInstructions) {
+            if (quickenedInstruction.needsValueBoxingElimination(model, valueIndex)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean needsReturnTypeBoxingElimination(BytecodeDSLModel model) {
+        if (operation != null && operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
+            return false;
+        }
+
+        if (model.isBoxingEliminated(signature.returnType)) {
+            return true;
+        }
+        for (InstructionModel quickenedInstruction : quickenedInstructions) {
+            if (quickenedInstruction.needsReturnTypeBoxingElimination(model)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 }

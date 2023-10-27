@@ -613,9 +613,9 @@ public class ErrorTests {
         }
     }
 
-// todo: test for bad quicken decision when we parse those
     @ExpectError({
                     "Unknown optimization decision type: 'MadeUpType'.",
+                    "Error reading optimization decisions: Invalid quickened operation MadeUpOperation.",
                     "Error reading optimization decisions: Super-instruction 'si.made.up.instruction' defines a sub-instruction 'made.up.instruction' which does not exist.",
     })
     @GenerateBytecode(languageClass = ErrorLanguage.class, decisionsFile = "bad_decisions.json")

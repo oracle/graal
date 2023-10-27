@@ -69,13 +69,19 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
     private final ProcessorContext context;
     private final TypeMirror nodeType;
     private final BytecodeDSLModel model;
-    private final InstructionModel instr;
+    private final BytecodeDSLNodeFactory bytecodeFactory;
+    private InstructionModel instruction;
 
-    public BytecodeDSLNodeGeneratorPlugs(ProcessorContext context, TypeMirror nodeType, BytecodeDSLModel model, InstructionModel instr) {
+    public BytecodeDSLNodeGeneratorPlugs(ProcessorContext context, BytecodeDSLNodeFactory bytecodeFactory, TypeMirror nodeType, BytecodeDSLModel model, InstructionModel instr) {
+        this.bytecodeFactory = bytecodeFactory;
         this.context = context;
         this.nodeType = nodeType;
         this.model = model;
-        this.instr = instr;
+        this.instruction = instr;
+    }
+
+    public void setInstruction(InstructionModel instr) {
+        this.instruction = instr;
     }
 
     @Override
@@ -110,19 +116,19 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
     private boolean buildChildExecution(CodeTreeBuilder b, String frame, int idx) {
         int index = idx;
 
-        if (index < instr.signature.valueCount) {
-            TypeMirror targetType = instr.signature.getParameterType(index);
+        if (index < instruction.signature.valueCount) {
+            TypeMirror targetType = instruction.signature.getGenericType(index);
             if (!ElementUtils.isObject(targetType)) {
                 b.cast(targetType);
             }
-            b.string("ACCESS.uncheckedGetObject(" + frame + ", $sp - " + (instr.signature.valueCount - index) + ")");
+            b.string("ACCESS.uncheckedGetObject(" + frame + ", $sp - " + (instruction.signature.valueCount - index) + ")");
             return false;
         }
 
-        index -= instr.signature.valueCount;
+        index -= instruction.signature.valueCount;
 
-        if (index < instr.signature.localSetterCount) {
-            List<InstructionImmediate> imms = instr.getImmediates(ImmediateKind.LOCAL_SETTER);
+        if (index < instruction.signature.localSetterCount) {
+            List<InstructionImmediate> imms = instruction.getImmediates(ImmediateKind.LOCAL_SETTER);
             InstructionImmediate imm = imms.get(index);
             b.startStaticCall(context.getTypes().LocalSetter, "get");
             b.string("ACCESS.shortArrayRead($bc, $bci + " + imm.offset + ")");
@@ -130,10 +136,10 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             return false;
         }
 
-        index -= instr.signature.localSetterCount;
+        index -= instruction.signature.localSetterCount;
 
-        if (index < instr.signature.localSetterRangeCount) {
-            List<InstructionImmediate> imms = instr.getImmediates(ImmediateKind.LOCAL_SETTER_RANGE_START);
+        if (index < instruction.signature.localSetterRangeCount) {
+            List<InstructionImmediate> imms = instruction.getImmediates(ImmediateKind.LOCAL_SETTER_RANGE_START);
             InstructionImmediate imm = imms.get(index);
             b.startStaticCall(context.getTypes().LocalSetterRange, "get");
             b.string("ACCESS.shortArrayRead($bc, $bci + " + imm.offset + ")"); // start
@@ -142,7 +148,40 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             return false;
         }
 
-        throw new AssertionError("index=" + index + ", signature=" + instr.signature);
+        throw new AssertionError("index=" + index + ", signature=" + instruction.signature);
+    }
+
+    public void createSlowPathBegin(FlatNodeGenFactory flatNodeGenFactory, CodeTreeBuilder builder, FrameState frameState) {
+        if (instruction.hasQuickenings()) {
+            builder.startTryBlock();
+        }
+    }
+
+    public void createSlowPathEnd(FlatNodeGenFactory factory, CodeTreeBuilder builder, FrameState frameState) {
+        if (instruction.hasQuickenings()) {
+
+            builder.end().startFinallyBlock();
+            builder.declaration(context.getType(short.class), "$newopcode");
+
+            boolean elseIf = false;
+            for (InstructionModel quickening : instruction.quickenedInstructions) {
+                elseIf = builder.startIf(elseIf);
+                builder.tree(factory.createOnlyActive(frameState, quickening.filteredSpecializations)).end().startBlock();
+                builder.startStatement();
+                builder.string("$newopcode = ").tree(bytecodeFactory.createInstructionConstant(quickening));
+                builder.end(); // statement
+                builder.end(); // if block
+            }
+            builder.startElseBlock(elseIf);
+            builder.startStatement();
+            builder.string("$newopcode = ").tree(bytecodeFactory.createInstructionConstant(instruction));
+            builder.end(); // statement
+            builder.end(); // else block
+
+            builder.statement("ACCESS.shortArrayWrite($bc, $bci, $newopcode)");
+
+            builder.end(); // finally block
+        }
     }
 
     @Override

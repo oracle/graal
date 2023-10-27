@@ -3,13 +3,6 @@
     "Do not modify, as it will be overwritten when running with tracing support.",
     "Use the overrides file to alter the optimisation decisions.",
     {
-        "specializations": ["FromBigNumber"],
-        "_comment": "value: 1.0",
-        "id": "quicken:c.SLUnbox:FromBigNumber",
-        "type": "Quicken",
-        "operation": "SLUnbox"
-    },
-    {
         "instructions": [
             "load.local",
             "c.SLUnbox"
@@ -17,16 +10,6 @@
         "_comment": "value: 0.6740247790202488",
         "id": "si:load.local,c.SLUnbox",
         "type": "SuperInstruction"
-    },
-    {
-        "specializations": [
-            "FromLong",
-            "FromBigNumber"
-        ],
-        "_comment": "value: 0.6024454429439406",
-        "id": "quicken:c.SLUnbox:FromLong,FromBigNumber",
-        "type": "Quicken",
-        "operation": "SLUnbox"
     },
     {
         "instructions": [
@@ -134,13 +117,6 @@
         "type": "SuperInstruction"
     },
     {
-        "specializations": ["FromLong"],
-        "_comment": "value: 0.31598598205871864",
-        "id": "quicken:c.SLUnbox:FromLong",
-        "type": "Quicken",
-        "operation": "SLUnbox"
-    },
-    {
         "instructions": [
             "load.local",
             "c.SLUnbox",
@@ -221,13 +197,6 @@
         "_comment": "value: 0.23308661356945248",
         "id": "si:load.local,load.constant,c.SLReadProperty,c.SLUnbox,load.constant,c.SLUnbox,c.SLAdd,c.SLUnbox",
         "type": "SuperInstruction"
-    },
-    {
-        "specializations": ["FromBoolean"],
-        "_comment": "value: 0.22454909695435232",
-        "id": "quicken:c.SLUnbox:FromBoolean",
-        "type": "Quicken",
-        "operation": "SLUnbox"
     },
     {
         "instructions": [
@@ -346,13 +315,6 @@
         "type": "SuperInstruction"
     },
     {
-        "specializations": ["Add0"],
-        "_comment": "value: 0.205657969497112",
-        "id": "quicken:c.SLAdd:Add0",
-        "type": "Quicken",
-        "operation": "SLAdd"
-    },
-    {
         "instructions": [
             "pop",
             "load.local",
@@ -365,13 +327,6 @@
         "_comment": "value: 0.19913559680171394",
         "id": "si:pop,load.local,c.SLUnbox,load.constant,c.SLUnbox,c.SLAdd,c.SLUnbox",
         "type": "SuperInstruction"
-    },
-    {
-        "specializations": ["ReadSLObject0"],
-        "_comment": "value: 0.13318932378740397",
-        "id": "quicken:c.SLReadProperty:ReadSLObject0",
-        "type": "Quicken",
-        "operation": "SLReadProperty"
     },
     {
         "_comment": "value: 3.5962197E7",

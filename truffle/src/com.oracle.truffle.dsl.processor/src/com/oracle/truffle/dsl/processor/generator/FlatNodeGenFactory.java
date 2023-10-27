@@ -2718,6 +2718,28 @@ public class FlatNodeGenFactory {
         return compatible;
     }
 
+    public CodeExecutableElement createExecuteMethod(CodeTypeElement clazz, CodeExecutableElement baseMethod,
+                    List<SpecializationData> specializations, boolean skipStateChecks) {
+        final List<SpecializationData> allSpecializations = specializations;
+        int signatureSize = node.getPolymorphicExecutable().getSignatureParameters().size();
+        ExecutableTypeData type = new ExecutableTypeData(node, baseMethod, signatureSize, List.of(node.getFrameType()), false);
+
+        List<SpecializationData> implementedSpecializations = allSpecializations;
+        CodeExecutableElement method = createExecuteMethod(type);
+        FrameState frameState = FrameState.load(this, type, Integer.MAX_VALUE, NodeExecutionMode.FAST_PATH, method);
+        if (type.getMethod() == null) {
+            frameState.addParametersTo(method, Integer.MAX_VALUE, FRAME_VALUE);
+        } else {
+            renameOriginalParameters(type, method, frameState);
+        }
+        clazz.add(method);
+        CodeTreeBuilder builder = method.createBuilder();
+        SpecializationGroup group = SpecializationGroup.create(implementedSpecializations);
+        frameState.setSkipStateChecks(skipStateChecks);
+        builder.tree(createFastPath(builder, implementedSpecializations, group, type, frameState));
+        return method;
+    }
+
     private CodeExecutableElement createExecute(CodeTypeElement clazz, ExecutableTypeData type, List<ExecutableTypeData> delegateableTypes, boolean inlined) {
         final List<SpecializationData> allSpecializations = node.getReachableSpecializations();
         final List<SpecializationData> compatibleSpecializations = filterCompatibleSpecializations(allSpecializations, type);
@@ -2989,6 +3011,8 @@ public class FlatNodeGenFactory {
 
         builder.tree(multiState.createLoadSlowPath(frameState, node.getReachableSpecializations(), false));
 
+        plugs.createSlowPathBegin(this, builder, frameState);
+
         if (needsAOTReset(node, sharingNodes)) {
             builder.startIf();
             builder.tree(allMultiState.createContains(frameState, AOT_PREPARED));
@@ -3022,6 +3046,8 @@ public class FlatNodeGenFactory {
             generateCheckNewPolymorphismState(builder, frameState, reportPolymorphismAction);
             builder.end();
         }
+
+        plugs.createSlowPathEnd(this, builder, frameState);
 
         return method;
     }
@@ -3439,7 +3465,7 @@ public class FlatNodeGenFactory {
         int parameterIndex = 0;
         for (BitSet set : multiState.getSets()) {
             LocalVariable local = frameState.get(set.getName());
-            if (local != null && MultiStateBitSet.isRelevantForFastPath(set, specializations)) {
+            if (local != null && MultiStateBitSet.isRelevantForFastPath(frameState, set, specializations)) {
                 CodeVariableElement var = (CodeVariableElement) method.getParameters().get(parameterIndex);
                 String oldName = var.getName();
                 String newName = var.getName() + "__";
@@ -4806,13 +4832,13 @@ public class FlatNodeGenFactory {
 
     private List<IfTriple> createSpecializationActive(FrameState frameState, SpecializationGroup group,
                     Collection<SpecializationData> allowedSpecializations) {
+        if (frameState.isSkipStateChecks()) {
+            return List.of();
+        }
         List<SpecializationData> specializations = group.collectSpecializations();
-        final boolean stateGuaranteed = group.isLast() && allowedSpecializations != null && allowedSpecializations.size() == 1 &&
-                        group.getAllSpecializations().size() == allowedSpecializations.size();
+        final boolean stateGuaranteed = isStateGuaranteed(group, allowedSpecializations);
         if (needsRewrites()) {
-
             CodeTree stateCheck = createSpecializationActiveCheck(frameState, specializations);
-
             CodeTree assertCheck = null;
             CodeTree stateGuard = null;
             if (stateGuaranteed) {
@@ -4822,7 +4848,12 @@ public class FlatNodeGenFactory {
             }
             return Arrays.asList(new IfTriple(null, stateGuard, assertCheck));
         }
-        return Collections.emptyList();
+        return List.of();
+    }
+
+    private static boolean isStateGuaranteed(SpecializationGroup group, Collection<SpecializationData> allowedSpecializations) {
+        return group.isLast() && allowedSpecializations != null && allowedSpecializations.size() == 1 &&
+                        group.getAllSpecializations().size() == allowedSpecializations.size();
     }
 
     private CodeTree createSpecializationActiveCheck(FrameState frameState, List<SpecializationData> specializations) {
@@ -7717,7 +7748,7 @@ public class FlatNodeGenFactory {
         CodeTree createLoadFastPath(FrameState frameState, List<SpecializationData> specializations) {
             CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
             for (BitSet bitSet : getSets()) {
-                if (isRelevantForFastPath(bitSet, specializations)) {
+                if (isRelevantForFastPath(frameState, bitSet, specializations)) {
                     builder.tree(bitSet.createLoad(frameState));
                 }
             }
@@ -7735,8 +7766,8 @@ public class FlatNodeGenFactory {
             return builder.build();
         }
 
-        static boolean isRelevantForFastPath(BitSet bitSet, Collection<SpecializationData> usedSpecializations) {
-            if (bitSet.getStates().contains(StateQuery.create(SpecializationActive.class, usedSpecializations))) {
+        static boolean isRelevantForFastPath(FrameState frameState, BitSet bitSet, Collection<SpecializationData> usedSpecializations) {
+            if (!frameState.isSkipStateChecks() && bitSet.getStates().contains(StateQuery.create(SpecializationActive.class, usedSpecializations))) {
                 return true;
             }
             if (bitSet.getStates().contains(AOT_PREPARED)) {
@@ -7793,6 +7824,14 @@ public class FlatNodeGenFactory {
             this.factory = factory;
             this.mode = mode;
             this.method = method;
+        }
+
+        public void setSkipStateChecks(boolean skipStateChecks) {
+            setBoolean("$stateChecks", skipStateChecks);
+        }
+
+        public boolean isSkipStateChecks() {
+            return getBoolean("$stateChecks", false);
         }
 
         public void addCaughtException(TypeMirror exceptionType) {
@@ -8164,6 +8203,11 @@ public class FlatNodeGenFactory {
             return this == FAST_PATH;
         }
 
+    }
+
+    public CodeTree createOnlyActive(FrameState frameState, List<SpecializationData> filteredSpecializations) {
+        return multiState.createContainsOnly(frameState, 0, -1, StateQuery.create(SpecializationActive.class, filteredSpecializations),
+                        StateQuery.create(SpecializationActive.class, node.getReachableSpecializations()));
     }
 
 }

@@ -3,7 +3,7 @@
 		"id": "test1",
 		"type": "Quicken",
 		"operation": "AddOperation",
-		"specializations": ["AddLongs"]
+		"specializations": ["addLongs"]
 	},
 	{
         "id": "test2",

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl.nodes.util;
 
+import com.oracle.truffle.api.bytecode.ForceQuickening;
 import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -59,6 +60,7 @@ public abstract class SLToBooleanNode extends SLExpressionNode {
     public abstract boolean executeBoolean(VirtualFrame vrame);
 
     @Specialization
+    @ForceQuickening
     public static boolean doBoolean(boolean value) {
         return value;
     }

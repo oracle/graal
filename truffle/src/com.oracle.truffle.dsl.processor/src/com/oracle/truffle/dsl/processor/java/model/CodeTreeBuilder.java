@@ -494,6 +494,14 @@ public class CodeTreeBuilder {
         return startGroup().string(" else if ").startParanthesesCommaGroup().endAndWhitespaceAfter().startGroup().endAfter();
     }
 
+    public CodeTreeBuilder startElseBlock(boolean elseIf) {
+        if (elseIf) {
+            return startElseBlock();
+        } else {
+            return startGroup();
+        }
+    }
+
     public CodeTreeBuilder startElseBlock() {
         clearLast(CodeTreeKind.NEW_LINE);
         return startGroup().string(" else ").startBlock().endAfter();

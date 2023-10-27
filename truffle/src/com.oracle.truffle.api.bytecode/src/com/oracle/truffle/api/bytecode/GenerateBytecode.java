@@ -120,6 +120,11 @@ public @interface GenerateBytecode {
     boolean enableYield() default false;
 
     /**
+     * Whether quickening decisions should be applied.
+     */
+    boolean enableQuickening() default true;
+
+    /**
      * Whether the generated interpreter should always store the bytecode index (bci) in the frame.
      *
      * When this flag is set, the language can use {@link BytecodeRootNode#readBciFromFrame} to read

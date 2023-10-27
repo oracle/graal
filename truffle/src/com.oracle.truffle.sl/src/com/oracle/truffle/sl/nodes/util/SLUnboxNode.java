@@ -42,6 +42,7 @@ package com.oracle.truffle.sl.nodes.util;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
+import com.oracle.truffle.api.bytecode.ForceQuickening;
 import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -81,11 +82,13 @@ public abstract class SLUnboxNode extends SLExpressionNode {
     }
 
     @Specialization
+    @ForceQuickening
     public static boolean fromBoolean(boolean value) {
         return value;
     }
 
     @Specialization
+    @ForceQuickening
     public static long fromLong(long value) {
         return value;
     }
