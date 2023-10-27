@@ -783,10 +783,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         }
     }
 
-    public MapCursor<LibraryCacheKey, LibraryCacheEntry> getLibraryCache() {
-        return libraryCache.getEntries();
-    }
-
     private void lazyCacheCleanup() {
         /*
          * Just lazily clean up one entry. We do this on every lookup. Under the assumption that
@@ -804,7 +800,9 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
                     LibraryLocator.traceStaticInits(getContext(), "LLVMLanguage lazy cached clean up, bitcode id", ref.id.get());
                 }
             }
-            libraryCache.removeKey(ref.key);
+            if (libraryCache.get(ref.key) == ref) {
+                libraryCache.removeKey(ref.key);
+            }
         }
     }
 
