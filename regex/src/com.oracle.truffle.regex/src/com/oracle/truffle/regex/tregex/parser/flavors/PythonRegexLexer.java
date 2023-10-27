@@ -817,7 +817,7 @@ public final class PythonRegexLexer extends RegexLexer {
                     groupNumber = namedCaptureGroups.get(result.groupName).get(0);
                     namedReference = true;
                 } else {
-                    throw syntaxErrorAtRel(PyErrorMessages.unknownGroupName(result.groupName), result.groupName.length() + 1);
+                    throw syntaxErrorAtRel(PyErrorMessages.unknownGroupName(result.groupName, mode), result.groupName.length() + 1);
                 }
                 break;
             default:
@@ -952,7 +952,7 @@ public final class PythonRegexLexer extends RegexLexer {
                     assert namedCaptureGroups.get(result.groupName).size() == 1;
                     return Token.createBackReference(namedCaptureGroups.get(result.groupName).get(0), true);
                 } else {
-                    throw syntaxErrorAtRel(PyErrorMessages.unknownGroupName(result.groupName), result.groupName.length() + 1);
+                    throw syntaxErrorAtRel(PyErrorMessages.unknownGroupName(result.groupName, mode), result.groupName.length() + 1);
                 }
             default:
                 throw CompilerDirectives.shouldNotReachHere();
