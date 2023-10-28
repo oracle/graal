@@ -24,6 +24,17 @@
  */
 package com.oracle.graal.pointsto.reports.causality;
 
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
+import java.util.function.Function;
+
+import org.graalvm.collections.Pair;
+
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualParameterTypeFlow;
@@ -40,19 +51,10 @@ import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
 import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import com.oracle.graal.pointsto.typestate.TypeState;
+
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.collections.Pair;
-
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
-import java.util.function.Function;
 
 class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
     private final ConcurrentHashMap<Pair<TypeFlow<?>, TypeFlow<?>>, Boolean> interflows = new ConcurrentHashMap<>();
@@ -269,18 +271,24 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
             });
         };
 
-        Map<AnalysisMethod, Pair<Set<AbstractVirtualInvokeTypeFlow>, TypeState>> virtualInvokes = new HashMap<>();
+        Map<AnalysisMethod, Pair<Set<AnalysisMethod>, TypeState>> virtualInvokes = new HashMap<>();
 
         Map<AnalysisMethod, Map<AnalysisMethod, TypeState>> implementationsAndTheirTypes = new HashMap<>();
+        Map<AnalysisMethod, Graph.FlowNode> targetMethodReceivers = new HashMap<>();
         for (var e : originalInvokeReceivers.keySet()) {
             implementationsAndTheirTypes.computeIfAbsent(e.getTargetMethod(), targetMethod -> collectImplementationWithTypes(bb, targetMethod));
+            targetMethodReceivers.computeIfAbsent(e.getTargetMethod(), targetMethod -> new Graph.FlowNode("Receiver node for " + targetMethod.getQualifiedName(), null, targetMethod.getDeclaringClass().instantiatedTypes.getState()));
         }
 
         for (var e : originalInvokeReceivers.entrySet()) {
-            PointsToAnalysisMethod targetMethod = e.getKey().getTargetMethod();
+            var invokeFlow = e.getKey();
+            PointsToAnalysisMethod targetMethod = invokeFlow.getTargetMethod();
+            var receiver = e.getValue();
+            var accumulatedReceiver = targetMethodReceivers.get(targetMethod);
+
             TypeState receiverState = bb.getAllInstantiatedTypeFlow().getState();
-            if (e.getValue() != null && !e.getValue().isSaturated()) {
-                receiverState = e.getValue().filter(bb, receiverState);
+            if (receiver != null && !receiver.isSaturated()) {
+                receiverState = receiver.filter(bb, receiverState);
             }
 
             for (var implementationWithTypes : implementationsAndTheirTypes.get(targetMethod).entrySet()) {
@@ -295,7 +303,7 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
                     assert callee.getTypeFlow().getMethod().equals(callee);
 
                     virtualInvokes.compute(callee, (m, pair) -> {
-                        Set<AbstractVirtualInvokeTypeFlow> invokes;
+                        Set<AnalysisMethod> invokes;
                         TypeState targetReachingTypes;
 
                         if (pair == null) {
@@ -306,9 +314,32 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
                             targetReachingTypes = pair.getRight();
                         }
 
-                        invokes.add(e.getKey());
+                        invokes.add(targetMethod);
                         return Pair.create(invokes, TypeState.forUnion(bb, targetReachingTypes, and));
                     });
+                }
+            }
+
+                if (invokeFlow.isContextInsensitive()) {
+                    // Root invocation
+                    Graph.FlowNode rootCallFlow = new Graph.FlowNode(
+                                    "Root call to " + invokeFlow.getTargetMethod(),
+                                    CausalityEvents.RootMethodRegistration.create(invokeFlow.getTargetMethod()),
+                                    bb.getAllInstantiatedTypeFlow().getState());
+
+                g.add(new Graph.FlowEdge(
+                        flowMapper.apply(invokeFlow.getTargetMethod().getDeclaringClass().instantiatedTypes),
+                        rootCallFlow));
+                g.add(new Graph.FlowEdge(
+                        rootCallFlow,
+                        accumulatedReceiver));
+            } else {
+                assert receiver != null;
+                Graph.FlowNode receiverNode = flowMapper.apply(receiver);
+                if (receiverNode != null) {
+                    g.add(new Graph.FlowEdge(
+                            receiverNode,
+                            accumulatedReceiver));
                 }
             }
         }
@@ -321,32 +352,8 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
             }
 
             Graph.InvocationFlowNode invocationFlowNode = new Graph.InvocationFlowNode(reason, e.getValue().getRight());
-
-            for (var invokeFlow : e.getValue().getLeft()) {
-                TypeFlow<?> receiver = originalInvokeReceivers.get(invokeFlow);
-
-                if (invokeFlow.isContextInsensitive()) {
-                    // Root invocation
-                    Graph.FlowNode rootCallFlow = new Graph.FlowNode(
-                                    "Root call to " + invokeFlow.getTargetMethod(),
-                                    CausalityEvents.RootMethodRegistration.create(invokeFlow.getTargetMethod()),
-                                    bb.getAllInstantiatedTypeFlow().getState());
-
-                    g.add(new Graph.FlowEdge(
-                                    flowMapper.apply(invokeFlow.getTargetMethod().getDeclaringClass().instantiatedTypes),
-                                    rootCallFlow));
-                    g.add(new Graph.FlowEdge(
-                                    rootCallFlow,
-                                    invocationFlowNode));
-                } else {
-                    assert receiver != null;
-                    Graph.FlowNode receiverNode = flowMapper.apply(receiver);
-                    if (receiverNode != null) {
-                        g.add(new Graph.FlowEdge(
-                                        receiverNode,
-                                        invocationFlowNode));
-                    }
-                }
+            for (AnalysisMethod targetMethod : e.getValue().getLeft()) {
+                g.add(new Graph.FlowEdge(targetMethodReceivers.get(targetMethod), invocationFlowNode));
             }
         }
 
