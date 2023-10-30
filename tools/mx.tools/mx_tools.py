@@ -41,6 +41,7 @@ import mx_gate
 import mx_unittest
 import mx_benchmark
 import mx_sdk_vm
+import mx_truffle
 
 import sys
 
@@ -184,15 +185,21 @@ def dap_types_gen(args):
     mx.run(['patch', '-p1', '-s', '-i', join(generators_dir, 'resources', 'DAP_patch.diff')], nonZeroIsFatal=True, cwd=out)
     mx.log('DAP types generated to: ' + out)
 
-def _unittest_config_participant(config):
-    vmArgs, mainClass, mainClassArgs = config
-    # This is required to access jdk.internal.module.Modules which
-    # in turn allows us to dynamically open fields/methods to reflection.
-    vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
-    vmArgs = vmArgs + ['--add-modules=ALL-MODULE-PATH']
-    return (vmArgs, mainClass, mainClassArgs)
 
-mx_unittest.add_config_participant(_unittest_config_participant)
+class ToolsUnittestConfig(mx_truffle.TruffleUnittestConfig):
+
+    def __init__(self, name='tools'):
+        super(ToolsUnittestConfig, self).__init__(name)
+
+    def apply(self, config):
+        vmArgs, mainClass, mainClassArgs = super(ToolsUnittestConfig, self).apply(config)
+        # This is required to access jdk.internal.module.Modules which
+        # in turn allows us to dynamically open fields/methods to reflection.
+        vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
+        vmArgs = vmArgs + ['--add-modules=ALL-MODULE-PATH']
+        return (vmArgs, mainClass, mainClassArgs)
+
+mx_unittest.register_unittest_config(ToolsUnittestConfig())
 
 def _tools_gate_runner(args, tasks):
     with Task('Tools Signature Tests', tasks) as t:
