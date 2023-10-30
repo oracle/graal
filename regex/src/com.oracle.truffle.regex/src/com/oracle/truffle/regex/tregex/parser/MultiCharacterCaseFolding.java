@@ -38,22 +38,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.parser.flavors;
+package com.oracle.truffle.regex.tregex.parser;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.function.BiConsumer;
+import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
-import com.oracle.truffle.regex.tregex.parser.RegexASTBuilder;
-import com.oracle.truffle.regex.tregex.parser.flavors.RubyCaseUnfoldingTrie.Unfolding;
+import com.oracle.truffle.regex.charset.Range;
+import com.oracle.truffle.regex.tregex.parser.CaseUnfoldingTrie.Unfolding;
+import org.graalvm.collections.Pair;
 
-public class RubyCaseFolding {
+import static com.oracle.truffle.regex.tregex.parser.RegexLexer.isAscii;
 
-    public static void caseFoldUnfoldString(int[] codepoints, CodePointSet encodingRange, RegexASTBuilder astBuilder) {
-        caseFoldUnfoldString(codepoints, encodingRange, false, astBuilder);
+public class MultiCharacterCaseFolding {
+
+    public static void caseFoldUnfoldString(CaseFoldData.CaseFoldAlgorithm algorithm, int[] codepoints, CodePointSet encodingRange, RegexASTBuilder astBuilder) {
+        caseFoldUnfoldString(algorithm, codepoints, encodingRange, false, astBuilder);
     }
 
     /**
@@ -66,11 +72,11 @@ public class RubyCaseFolding {
      *            the variants
      * @param astBuilder where to append the matcher
      */
-    public static void caseFoldUnfoldString(int[] codepoints, CodePointSet encodingRange, boolean dropAsciiOnStart, RegexASTBuilder astBuilder) {
-        List<Integer> caseFolded = caseFold(codepoints);
+    public static void caseFoldUnfoldString(CaseFoldData.CaseFoldAlgorithm algorithm, int[] codepoints, CodePointSet encodingRange, boolean dropAsciiOnStart, RegexASTBuilder astBuilder) {
+        List<Integer> caseFolded = caseFold(algorithm, codepoints);
 
-        List<Unfolding> unfoldings = RubyCaseUnfoldingTrie.findUnfoldings(caseFolded);
-        // We assume that if `codepoints` was in the encodingRange, than so will be `caseFolded`.
+        List<Unfolding> unfoldings = CaseUnfoldingTrie.findUnfoldings(algorithm, caseFolded);
+        // We assume that if `codepoints` was in the encodingRange, then so will be `caseFolded`.
         // The only way that we could introduce out-of-range characters is through the unfoldings,
         // so just filter those should be enough to prevent generating out-of-range matchers.
         unfoldings = unfoldings.stream().filter(u -> encodingRange.contains(u.getCodepoint())).collect(Collectors.toList());
@@ -92,7 +98,7 @@ public class RubyCaseFolding {
                     // If the following mandatory string that we would add would be at the
                     // beginning of the matcher and it would match an ASCII character, then we
                     // return a dead matcher instead (if dropAsciiOnStart is set).
-                    if (dropAsciiOnStart && end == 0 && RubyRegexParser.isAscii(caseFolded.get(end))) {
+                    if (dropAsciiOnStart && end == 0 && RegexLexer.isAscii(caseFolded.get(end))) {
                         astBuilder.popGroup();
                         astBuilder.replaceCurTermWithDeadNode();
                         return;
@@ -108,7 +114,7 @@ public class RubyCaseFolding {
 
         unfoldSegment(astBuilder, caseFolded, unfoldings.subList(unfoldingsStartIndex, unfoldingsEndIndex), start, end, 0, dropAsciiOnStart);
         if (end < caseFolded.size()) {
-            if (dropAsciiOnStart && end == 0 && RubyRegexParser.isAscii(caseFolded.get(end))) {
+            if (dropAsciiOnStart && end == 0 && RegexLexer.isAscii(caseFolded.get(end))) {
                 astBuilder.popGroup();
                 astBuilder.replaceCurTermWithDeadNode();
                 return;
@@ -119,14 +125,14 @@ public class RubyCaseFolding {
         astBuilder.popGroup();
     }
 
-    public static int[] caseFold(int codePoint) {
-        return RubyCaseFoldingData.CASE_FOLD.get(codePoint);
+    public static int[] caseFold(CaseFoldData.CaseFoldAlgorithm algorithm, int codePoint) {
+        return CaseFoldData.getTable(algorithm).caseFold(codePoint);
     }
 
-    private static List<Integer> caseFold(int[] codepoints) {
+    private static List<Integer> caseFold(CaseFoldData.CaseFoldAlgorithm algorithm, int[] codepoints) {
         List<Integer> caseFolded = new ArrayList<>();
         for (int codepoint : codepoints) {
-            int[] folded = caseFold(codepoint);
+            int[] folded = caseFold(algorithm, codepoint);
             if (folded == null) {
                 caseFolded.add(codepoint);
             } else {
@@ -198,7 +204,7 @@ public class RubyCaseFolding {
         // The only possible unfoldings at this position have length == 1. We can express all the
         // choices by using a character class.
         CodePointSetAccumulator acc = new CodePointSetAccumulator();
-        if (!dropAsciiOnStart || start != 0 || !RubyRegexParser.isAscii(caseFolded.get(start))) {
+        if (!dropAsciiOnStart || start != 0 || !RegexLexer.isAscii(caseFolded.get(start))) {
             acc.addCodePoint(caseFolded.get(start));
         }
         int unfoldingsNextIndex = 0;
@@ -207,12 +213,92 @@ public class RubyCaseFolding {
             // length > 0.
             assert unfoldings.get(unfoldingsNextIndex).getLength() == 1;
             int codepoint = unfoldings.get(unfoldingsNextIndex).getCodepoint();
-            if (!dropAsciiOnStart || start != 0 || !RubyRegexParser.isAscii(codepoint)) {
+            if (!dropAsciiOnStart || start != 0 || !RegexLexer.isAscii(codepoint)) {
                 acc.addCodePoint(codepoint);
             }
             unfoldingsNextIndex++;
         }
         astBuilder.addCharClass(acc.toCodePointSet(), false);
         unfoldSegment(astBuilder, caseFolded, unfoldings.subList(unfoldingsNextIndex, unfoldings.size()), start + 1, end, backtrackingDepth, dropAsciiOnStart);
+    }
+
+    /**
+     * Calls the argument on any element of the character class which has a case-folding.
+     */
+    private static void caseFoldCharClass(CaseFoldData.CaseFoldAlgorithm algorithm, CodePointSetAccumulator charClass, BiConsumer<Integer, int[]> caseFoldItem) {
+        CaseFoldData.getTable(algorithm).caseFold(charClass, caseFoldItem);
+    }
+
+    /**
+     * This method modifies {@code charClass} to contains its closure on case mapping.
+     */
+    public static void caseClosure(CaseFoldData.CaseFoldAlgorithm algorithm, CodePointSetAccumulator charClass, CodePointSetAccumulator tmp, BiPredicate<Integer, Integer> filter,
+                    CodePointSet allowedCodePoints) {
+        tmp.clear();
+
+        caseFoldCharClass(algorithm, charClass, (from, to) -> {
+            if (to.length == 1) {
+                // Add the case-folded version to the character class...
+                if (filter.test(from, to[0])) {
+                    tmp.addCodePoint(to[0]);
+                }
+            }
+            // ... and also any characters which case-fold to the same.
+            for (int unfolding : CaseUnfoldingTrie.findSingleCharUnfoldings(algorithm, to)) {
+                if (unfolding != from && filter.test(from, unfolding)) {
+                    tmp.addCodePoint(unfolding);
+                }
+            }
+        });
+
+        // We also handle all the characters which might have no case-folding, i.e. they case-fold
+        // to themselves.
+        for (Range r : charClass) {
+            for (int codepoint = r.lo; codepoint <= r.hi; codepoint++) {
+                for (int unfolding : CaseUnfoldingTrie.findSingleCharUnfoldings(algorithm, codepoint)) {
+                    if (filter.test(codepoint, unfolding)) {
+                        tmp.addCodePoint(unfolding);
+                    }
+                }
+            }
+        }
+
+        // Only include characters that are admissible in the given encoding.
+        tmp.intersectWith(allowedCodePoints);
+
+        charClass.addSet(tmp.get());
+    }
+
+    /**
+     * Finds any characters in {@code charClass} that have multi-codepoint expansions.
+     *
+     * @return a list of pairs, with the first element being the expanded codepoint and the second
+     *         element the expansion
+     */
+    public static List<Pair<Integer, int[]>> caseClosureMultiCodePoint(CaseFoldData.CaseFoldAlgorithm algorithm, CodePointSetAccumulator charClass) {
+        List<Pair<Integer, int[]>> multiCodePointExpansions = new ArrayList<>();
+
+        caseFoldCharClass(algorithm, charClass, (from, to) -> {
+            if (to.length > 1) {
+                assert !isAscii(from);
+                multiCodePointExpansions.add(Pair.create(from, to));
+            }
+        });
+
+        return multiCodePointExpansions;
+    }
+
+    public static boolean equalsIgnoreCase(CaseFoldData.CaseFoldAlgorithm algorithm, int codePointA, int codePointB) {
+        int[] foldedA = caseFold(algorithm, codePointA);
+        int[] foldedB = caseFold(algorithm, codePointB);
+        if (foldedA == null && foldedB == null) {
+            return codePointA == codePointB;
+        } else if (foldedA == null) {
+            return foldedB.length == 1 && codePointA == foldedB[0];
+        } else if (foldedB == null) {
+            return foldedA.length == 1 && foldedA[0] == codePointB;
+        } else {
+            return Arrays.equals(foldedA, foldedB);
+        }
     }
 }

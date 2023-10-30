@@ -534,7 +534,7 @@ public final class RegexASTBuilder {
      * @param token aside from the source sections, the token most importantly contains the set of
      *            code points and strings to be included in the class set
      */
-    public void addClassSet(Token.ClassSet token, CaseFoldTable.CaseFoldingAlgorithm caseUnfoldAlgo) {
+    public void addClassSet(Token.ClassSet token, CaseFoldData.CaseFoldUnfoldAlgorithm caseUnfoldAlgo) {
         CodePointSetAccumulator buf = compilationBuffer.getCodePointSetAccumulator1();
 
         ClassSetContents contents = token.getContents();
@@ -552,7 +552,7 @@ public final class RegexASTBuilder {
                 if (caseUnfoldAlgo != null) {
                     buf.clear();
                     buf.addCodePoint(cp);
-                    CaseFoldTable.applyCaseFoldUnfold(buf, compilationBuffer.getCodePointSetAccumulator2(), caseUnfoldAlgo);
+                    CaseFoldData.applyCaseFoldUnfold(buf, compilationBuffer.getCodePointSetAccumulator2(), caseUnfoldAlgo);
                     addCharClass(buf.toCodePointSet());
                 } else {
                     addCharClass(CodePointSet.create(cp));
@@ -565,7 +565,7 @@ public final class RegexASTBuilder {
             if (caseUnfoldAlgo != null) {
                 buf.clear();
                 buf.addSet(contents.getCodePointSet());
-                CaseFoldTable.applyCaseFoldUnfold(buf, compilationBuffer.getCodePointSetAccumulator2(), caseUnfoldAlgo);
+                CaseFoldData.applyCaseFoldUnfold(buf, compilationBuffer.getCodePointSetAccumulator2(), caseUnfoldAlgo);
                 addCharClass(buf.toCodePointSet());
             } else {
                 addCharClass(contents.getCodePointSet());

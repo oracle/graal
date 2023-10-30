@@ -51,6 +51,7 @@ import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.errors.PyErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
@@ -65,7 +66,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
 
 public final class PythonRegexParser implements RegexParser {
 
-    private static final EnumSet<Token.Kind> QUANTIFIER_PREV = EnumSet.of(Token.Kind.charClass, Token.Kind.groupEnd, Token.Kind.backReference);
+    private static final EnumSet<Token.Kind> QUANTIFIER_PREV = EnumSet.of(Token.Kind.literalChar, Token.Kind.charClass, Token.Kind.charClassEnd, Token.Kind.groupEnd, Token.Kind.backReference);
 
     /**
      * Indicates whether the regex being parsed is a 'str' pattern or a 'bytes' pattern.
@@ -73,6 +74,7 @@ public final class PythonRegexParser implements RegexParser {
     private final PythonREMode mode;
     private final PythonRegexLexer lexer;
     private final RegexASTBuilder astBuilder;
+    private final CodePointSetAccumulator curCharClass = new CodePointSetAccumulator();
 
     public PythonRegexParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
         this.mode = PythonREMode.fromEncoding(source.getEncoding());
@@ -228,8 +230,25 @@ public final class PythonRegexParser implements RegexParser {
                     }
                     astBuilder.popGroup(token);
                     break;
+                case literalChar:
+                    literalChar(((Token.LiteralCharacter) token).getCodePoint());
+                    break;
                 case charClass:
                     astBuilder.addCharClass((Token.CharacterClass) token);
+                    break;
+                case charClassBegin:
+                    curCharClass.clear();
+                    break;
+                case charClassAtom:
+                    curCharClass.addSet(((Token.CharacterClassAtom) token).getContents());
+                    break;
+                case charClassEnd:
+                    boolean wasSingleChar = !lexer.isCurCharClassInverted() && curCharClass.matchesSingleChar();
+                    if (lexer.featureEnabledIgnoreCase()) {
+                        lexer.caseFoldUnfold(curCharClass);
+                    }
+                    CodePointSet cps = curCharClass.toCodePointSet();
+                    astBuilder.addCharClass(lexer.isCurCharClassInverted() ? cps.createInverse(lexer.source.getEncoding()) : cps, wasSingleChar);
                     break;
                 case conditionalBackreference:
                     Token.BackReference conditionalBackRefToken = (Token.BackReference) token;
@@ -261,6 +280,17 @@ public final class PythonRegexParser implements RegexParser {
             }
         }
         return ast;
+    }
+
+    private void literalChar(int codePoint) {
+        if (lexer.featureEnabledIgnoreCase()) {
+            curCharClass.clear();
+            curCharClass.addCodePoint(codePoint);
+            lexer.caseFoldUnfold(curCharClass);
+            astBuilder.addCharClass(curCharClass.toCodePointSet(), true);
+        } else {
+            astBuilder.addCharClass(CodePointSet.create(codePoint));
+        }
     }
 
     /**

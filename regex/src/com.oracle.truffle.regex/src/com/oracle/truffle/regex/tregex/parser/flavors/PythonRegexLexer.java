@@ -46,6 +46,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
+import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
 import org.graalvm.shadowed.com.ibm.icu.lang.UCharacter;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -59,7 +60,6 @@ import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.PyErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
 import com.oracle.truffle.regex.charset.ClassSetContents;
 import com.oracle.truffle.regex.tregex.parser.RegexLexer;
 import com.oracle.truffle.regex.tregex.parser.Token;
@@ -414,8 +414,8 @@ public final class PythonRegexLexer extends RegexLexer {
         if (getLocalFlags().isLocale()) {
             getLocaleData().caseFoldUnfold(charClass, caseFoldTmp);
         } else {
-            CaseFoldTable.CaseFoldingAlgorithm caseFolding = getLocalFlags().isUnicode(mode) ? CaseFoldTable.CaseFoldingAlgorithm.PythonUnicode : CaseFoldTable.CaseFoldingAlgorithm.PythonAscii;
-            CaseFoldTable.applyCaseFoldUnfold(charClass, caseFoldTmp, caseFolding);
+            CaseFoldData.CaseFoldUnfoldAlgorithm caseFolding = getLocalFlags().isUnicode(mode) ? CaseFoldData.CaseFoldUnfoldAlgorithm.PythonUnicode : CaseFoldData.CaseFoldUnfoldAlgorithm.PythonAscii;
+            CaseFoldData.applyCaseFoldUnfold(charClass, caseFoldTmp, caseFolding);
         }
     }
 
@@ -487,7 +487,7 @@ public final class PythonRegexLexer extends RegexLexer {
     @Override
     protected Token handleBoundedQuantifierSyntaxError() throws RegexSyntaxException {
         position = getLastTokenPosition() + 1;
-        return charClass('{');
+        return literalChar('{');
     }
 
     @Override
@@ -614,7 +614,7 @@ public final class PythonRegexLexer extends RegexLexer {
 
     @Override
     protected RegexSyntaxException handleUnmatchedLeftBracket() {
-        return syntaxErrorAtAbs(PyErrorMessages.UNTERMINATED_CHARACTER_SET, getLastTokenPosition());
+        return syntaxErrorAtAbs(PyErrorMessages.UNTERMINATED_CHARACTER_SET, getLastCharacterClassBeginPosition());
     }
 
     @Override
@@ -635,7 +635,7 @@ public final class PythonRegexLexer extends RegexLexer {
             if (codePoint > 0xff) {
                 handleOctalOutOfRange();
             }
-            return charClass(codePoint);
+            return literalChar(codePoint);
         }
         return null;
     }

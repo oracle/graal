@@ -53,9 +53,6 @@ EMOJI_VERSION=15.0
 
 mkdir -p ./dat
 
-wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/UnicodeData.txt -O dat/UnicodeData.txt
-wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/CaseFolding.txt -O dat/CaseFolding.txt
-wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/SpecialCasing.txt -O dat/SpecialCasing.txt
 wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/PropertyAliases.txt -O dat/PropertyAliases.txt
 wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/PropertyValueAliases.txt -O dat/PropertyValueAliases.txt
 wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/NameAliases.txt -O dat/NameAliases.txt
@@ -68,19 +65,16 @@ unzip -d dat dat/ucd.nounihan.flat.zip
 
 ./generate_unicode_properties.py > ../src/com/oracle/truffle/regex/charset/UnicodePropertyData.java
 
-./unicode-script.sh
-
-clojure -Sdeps '{:paths ["."]}' -M --main generate-case-fold-table > dat/case-fold-table.txt
-
-./update_case_fold_table.py
-
-./generate_ruby_case_folding.py > ../src/com/oracle/truffle/regex/tregex/parser/flavors/RubyCaseFoldingData.java
-
 ./generate_name_alias_table.py > ../src/com/oracle/truffle/regex/chardata/UnicodeCharacterAliases.java
 
 rm -r ./dat
 
+pushd casefolding
+cargo build --release && ./target/release/tregex-casefolding
+rm -r ./tmp
+popd
+
 mx build
-mx java -cp `mx paths regex:TREGEX`:`mx paths truffle:TRUFFLE_API`:`mx paths sdk:GRAAL_SDK` com.oracle.truffle.regex.charset.UnicodeGeneralCategoriesGenerator > ../src/com/oracle/truffle/regex/charset/UnicodeGeneralCategories.java
+mx java -cp `mx paths regex:TREGEX`:`mx paths truffle:TRUFFLE_API`:`mx paths sdk:COLLECTIONS` com.oracle.truffle.regex.charset.UnicodeGeneralCategoriesGenerator > ../src/com/oracle/truffle/regex/charset/UnicodeGeneralCategories.java
 
 mx eclipseformat --primary || true
