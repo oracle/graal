@@ -159,7 +159,9 @@ class LowUpcallStub extends UpcallStub implements CustomCallingConventionMethod 
         assert !savedRegisters.asList().contains(registers.methodHandle());
         assert !savedRegisters.asList().contains(registers.isolate());
         var save = kit.saveRegisters(savedRegisters);
-        ValueNode enterResult = kit.append(CEntryPointEnterNode.enterByIsolate(isolate));
+        //ValueNode enterResult = kit.append(CEntryPointEnterNode.enterByIsolate(isolate));
+        // ensureJavaThread = true to ensure that later calls to com.oracle.svm.core.thread.PlatformThreads.currentThread return the current thread and not null.
+        ValueNode enterResult = kit.append(CEntryPointEnterNode.attachThread(isolate, false, true, false));
 
         kit.startIf(IntegerEqualsNode.create(enterResult, ConstantNode.forInt(CEntryPointErrors.NO_ERROR, kit.getGraph()), NodeView.DEFAULT),
                         ProfileData.BranchProbabilityData.create(VERY_FAST_PATH_PROBABILITY, ProfileData.ProfileSource.UNKNOWN));
