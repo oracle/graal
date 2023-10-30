@@ -35,6 +35,11 @@ public final class Ignored extends CausalityEvent {
     }
 
     @Override
+    public EventKinds typeDescriptor() {
+        throw new RuntimeException("[Ignored dummy node that never happens]");
+    }
+
+    @Override
     public String toString() {
         throw new RuntimeException("[Ignored dummy node that never happens]");
     }

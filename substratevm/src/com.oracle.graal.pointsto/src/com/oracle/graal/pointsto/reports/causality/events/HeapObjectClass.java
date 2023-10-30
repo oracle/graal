@@ -24,11 +24,9 @@
  */
 package com.oracle.graal.pointsto.reports.causality.events;
 
-public final class HeapObjectClass extends CausalityEvent {
-    public final Class<?> clazz;
-
+public final class HeapObjectClass extends ClassEvent {
     HeapObjectClass(Class<?> clazz) {
-        this.clazz = clazz;
+        super(clazz);
     }
 
     @Override
@@ -37,7 +35,7 @@ public final class HeapObjectClass extends CausalityEvent {
     }
 
     @Override
-    public String toString() {
-        return clazz.getTypeName() + " [Class-Object in Heap]";
+    public EventKinds typeDescriptor() {
+        return EventKinds.HeapObjectClass;
     }
 }

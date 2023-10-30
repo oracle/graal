@@ -32,7 +32,7 @@ public final class JNIRegistration extends ReflectionObjectEvent {
     }
 
     @Override
-    protected String getSuffix() {
-        return " [JNI Registration]";
+    public EventKinds typeDescriptor() {
+        return EventKinds.JniRegistration;
     }
 }

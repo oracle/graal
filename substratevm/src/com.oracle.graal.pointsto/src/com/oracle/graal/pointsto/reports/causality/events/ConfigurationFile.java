@@ -26,6 +26,9 @@ package com.oracle.graal.pointsto.reports.causality.events;
 
 import java.net.URI;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.reports.causality.ReachabilityExport;
+
 public final class ConfigurationFile extends CausalityEvent {
     public final URI uri;
 
@@ -46,11 +49,21 @@ public final class ConfigurationFile extends CausalityEvent {
             }
         }
 
-        return path + " [Configuration File]";
+        return path + typeDescriptor().suffix;
     }
 
     @Override
     public boolean root() {
         return true;
+    }
+
+    @Override
+    public ReachabilityExport.HierarchyNode getParent(ReachabilityExport export, AnalysisMetaAccess metaAccess) {
+        return export.computeIfAbsent(uri);
+    }
+
+    @Override
+    public EventKinds typeDescriptor() {
+        return EventKinds.ConfigurationFile;
     }
 }

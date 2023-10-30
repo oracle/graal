@@ -26,18 +26,18 @@ package com.oracle.graal.pointsto.reports.causality.events;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
-public final class TypeReachable extends ReachableEvent<AnalysisType> {
+public final class TypeReachable extends AnalysisTypeEvent {
     TypeReachable(AnalysisType type) {
         super(type);
     }
 
     @Override
-    public String toString() {
-        return element.toJavaName();
+    public boolean unused() {
+        return !type.isReachable();
     }
 
     @Override
-    public boolean unused() {
-        return !element.isReachable();
+    public EventKinds typeDescriptor() {
+        return EventKinds.Reachable;
     }
 }

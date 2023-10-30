@@ -32,7 +32,7 @@ public final class ReflectionRegistration extends ReflectionObjectEvent {
     }
 
     @Override
-    protected String getSuffix() {
-        return " [Reflection Registration]";
+    public EventKinds typeDescriptor() {
+        return EventKinds.ReflectionRegistration;
     }
 }

@@ -26,15 +26,13 @@ package com.oracle.graal.pointsto.reports.causality.events;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
-public final class VirtualMethodInvoked extends CausalityEvent {
-    public final AnalysisMethod method;
-
+public final class VirtualMethodInvoked extends AnalysisMethodEvent {
     VirtualMethodInvoked(AnalysisMethod method) {
-        this.method = method;
+        super(method);
     }
 
     @Override
-    public String toString() {
-        return method.format("%H.%n(%P):%R") + " [Virtual Invoke]";
+    public EventKinds typeDescriptor() {
+        return EventKinds.VirtualInvoke;
     }
 }

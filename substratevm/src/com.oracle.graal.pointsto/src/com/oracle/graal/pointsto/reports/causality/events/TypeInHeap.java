@@ -26,15 +26,13 @@ package com.oracle.graal.pointsto.reports.causality.events;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
-public final class TypeInHeap extends CausalityEvent {
-    public final AnalysisType type;
-
+public final class TypeInHeap extends AnalysisTypeEvent {
     TypeInHeap(AnalysisType type) {
-        this.type = type;
+        super(type);
     }
 
     @Override
-    public String toString() {
-        return type.toJavaName() + " [Type In Heap]";
+    public EventKinds typeDescriptor() {
+        return EventKinds.TypeInHeap;
     }
 }

@@ -24,14 +24,7 @@
  */
 package com.oracle.graal.pointsto.reports.causality.events;
 
-import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.reports.causality.CausalityExport;
-import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.meta.Signature;
-import org.graalvm.collections.Pair;
+import static org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
@@ -44,7 +37,16 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import static org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
+import org.graalvm.collections.Pair;
+
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.Signature;
 
 public final class CausalityEvents {
     private CausalityEvents() {
@@ -230,8 +232,8 @@ public final class CausalityEvents {
     public static final EventFactory<AnnotatedElement> JNIRegistration = factory(JNIRegistration::new);
     public static final EventFactory<AnnotatedElement> ReflectionRegistration = factory(ReflectionRegistration::new);
     public static final EventFactory<AnnotatedElement> ReflectionObjectInHeap = factory(ReflectionObjectInHeap::new);
-    public static final CausalityEvent AutomaticFeatureRegistration = new RootEvent("[Automatic Feature Registration]");
-    public static final CausalityEvent UserEnabledFeatureRegistration = new RootEvent("[User-Requested Feature Registration]");
-    public static final CausalityEvent InitialRegistration = new RootEvent("[Initial Registrations]");
+    public static final CausalityEvent AutomaticFeatureRegistration = new RootEvent(EventKinds.AutomaticFeatureRegistration);
+    public static final CausalityEvent UserEnabledFeatureRegistration = new RootEvent(EventKinds.UserRequestedFeatureRegistration);
+    public static final CausalityEvent InitialRegistration = new RootEvent(EventKinds.InitialRegistrations);
     public static final CausalityEvent Ignored = new Ignored();
 }

@@ -25,19 +25,24 @@
 package com.oracle.graal.pointsto.reports.causality.events;
 
 public final class RootEvent extends CausalityEvent {
-    public final String label;
+    public final EventKinds label;
 
-    RootEvent(String label) {
+    RootEvent(EventKinds label) {
         this.label = label;
     }
 
     @Override
     public String toString() {
-        return label;
+        return label.suffix.trim();
     }
 
     @Override
     public boolean root() {
         return true;
+    }
+
+    @Override
+    public EventKinds typeDescriptor() {
+        return label;
     }
 }

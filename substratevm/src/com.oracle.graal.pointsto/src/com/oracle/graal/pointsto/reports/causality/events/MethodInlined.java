@@ -26,15 +26,13 @@ package com.oracle.graal.pointsto.reports.causality.events;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
-public final class MethodInlined extends CausalityEvent {
-    public final AnalysisMethod method;
-
+public final class MethodInlined extends AnalysisMethodEvent {
     MethodInlined(AnalysisMethod method) {
-        this.method = method;
+        super(method);
     }
 
     @Override
-    public String toString() {
-        return method.format("%H.%n(%P):%R") + " [Inlined]";
+    public EventKinds typeDescriptor() {
+        return EventKinds.Inlined;
     }
 }

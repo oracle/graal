@@ -26,11 +26,9 @@ package com.oracle.graal.pointsto.reports.causality.events;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
-public final class RootMethodRegistration extends CausalityEvent {
-    public final AnalysisMethod method;
-
+public final class RootMethodRegistration extends AnalysisMethodEvent {
     RootMethodRegistration(AnalysisMethod method) {
-        this.method = method;
+        super(method);
     }
 
     @Override
@@ -39,7 +37,7 @@ public final class RootMethodRegistration extends CausalityEvent {
     }
 
     @Override
-    public String toString() {
-        return method.format("%H.%n(%P):%R") + " [Root Registration]";
+    public EventKinds typeDescriptor() {
+        return EventKinds.RootMethodRegistration;
     }
 }

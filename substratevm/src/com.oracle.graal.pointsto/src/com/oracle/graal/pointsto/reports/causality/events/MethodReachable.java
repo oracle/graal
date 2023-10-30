@@ -26,18 +26,18 @@ package com.oracle.graal.pointsto.reports.causality.events;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
-public final class MethodReachable extends ReachableEvent<AnalysisMethod> {
+public final class MethodReachable extends AnalysisMethodEvent {
     MethodReachable(AnalysisMethod method) {
         super(method);
     }
 
     @Override
-    public String toString() {
-        return element.format("%H.%n(%P):%R");
+    public boolean unused() {
+        return !method.isReachable();
     }
 
     @Override
-    public boolean unused() {
-        return !element.isReachable();
+    public EventKinds typeDescriptor() {
+        return EventKinds.Reachable;
     }
 }

@@ -25,6 +25,7 @@
 package com.oracle.graal.pointsto.reports.causality.events;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.reports.causality.ReachabilityExport;
 
 public abstract class CausalityEvent {
     /**
@@ -55,4 +56,10 @@ public abstract class CausalityEvent {
     public String toString(AnalysisMetaAccess metaAccess) {
         return this.toString();
     }
+
+    public ReachabilityExport.HierarchyNode getParent(ReachabilityExport export, AnalysisMetaAccess metaAccess) {
+        return null;
+    }
+
+    public abstract EventKinds typeDescriptor();
 }

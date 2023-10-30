@@ -37,7 +37,12 @@ public final class ConfigurationCondition extends CausalityEvent {
     }
 
     @Override
+    public EventKinds typeDescriptor() {
+        return EventKinds.ConfigurationCondition;
+    }
+
+    @Override
     public String toString() {
-        return typeName + " [Configuration Condition]";
+        return typeName + typeDescriptor().suffix;
     }
 }

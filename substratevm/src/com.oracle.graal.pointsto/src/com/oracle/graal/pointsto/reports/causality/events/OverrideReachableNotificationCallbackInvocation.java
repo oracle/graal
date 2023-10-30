@@ -24,11 +24,12 @@
  */
 package com.oracle.graal.pointsto.reports.causality.events;
 
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import org.graalvm.nativeimage.hosted.Feature;
-
 import java.lang.reflect.Executable;
 import java.util.function.BiConsumer;
+
+import org.graalvm.nativeimage.hosted.Feature;
+
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
 public final class OverrideReachableNotificationCallbackInvocation extends CausalityEvent {
     public final BiConsumer<Feature.DuringAnalysisAccess, Executable> callback;
@@ -45,7 +46,12 @@ public final class OverrideReachableNotificationCallbackInvocation extends Causa
     }
 
     @Override
+    public EventKinds typeDescriptor() {
+        return EventKinds.MethodOverrideReachableCallbackInvocation;
+    }
+
+    @Override
     public String toString() {
-        return callback + " + " + override.format("%H.%n(%P):%R") + " [Method Override Reachable Callback Invocation]";
+        return callback + " + " + override.format("%H.%n(%P):%R") + typeDescriptor().suffix;
     }
 }

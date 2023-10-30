@@ -24,6 +24,9 @@
  */
 package com.oracle.graal.pointsto.reports.causality.events;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.reports.causality.ReachabilityExport;
+
 public final class Feature extends CausalityEvent {
     public final org.graalvm.nativeimage.hosted.Feature f;
 
@@ -41,5 +44,15 @@ public final class Feature extends CausalityEvent {
             str += " [Feature]";
         }
         return str;
+    }
+
+    @Override
+    public ReachabilityExport.HierarchyNode getParent(ReachabilityExport export, AnalysisMetaAccess metaAccess) {
+        return export.computeIfAbsent(metaAccess, f.getClass());
+    }
+
+    @Override
+    public EventKinds typeDescriptor() {
+        return EventKinds.Feature;
     }
 }

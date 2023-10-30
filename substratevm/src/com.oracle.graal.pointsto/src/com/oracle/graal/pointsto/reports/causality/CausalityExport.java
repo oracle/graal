@@ -24,6 +24,8 @@
  */
 package com.oracle.graal.pointsto.reports.causality;
 
+import java.util.zip.ZipOutputStream;
+
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -34,9 +36,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import jdk.vm.ci.meta.JavaConstant;
 
-import java.util.zip.ZipOutputStream;
+import jdk.vm.ci.meta.JavaConstant;
 
 public final class CausalityExport {
     private CausalityExport() {
@@ -73,9 +74,9 @@ public final class CausalityExport {
         return InitializationOnDemandHolder.frozenLevel != ActivationLevel.DISABLED;
     }
 
-    public static synchronized void dump(PointsToAnalysis bb, ZipOutputStream zip, boolean exportTypeflowNames) throws java.io.IOException {
+    public static synchronized void dump(PointsToAnalysis bb, ZipOutputStream zip, ReachabilityExport hierarchy, boolean exportTypeflowNames) throws java.io.IOException {
         Graph g = get().createCausalityGraph(bb);
-        g.export(bb, zip, exportTypeflowNames);
+        g.export(bb, hierarchy, zip, exportTypeflowNames);
     }
 
     private static CausalityImplementation get() {

@@ -302,7 +302,7 @@ class BasicImpl<TContext extends BasicImpl.ThreadContext> extends CausalityImple
         var hyperEdges = this.hyperEdges.keySet();
 
         directEdges.removeIf(pair -> pair.from != null && pair.from.unused() || pair.to.unused());
-        directEdges.removeIf(pair -> pair.to instanceof com.oracle.graal.pointsto.reports.causality.events.MethodReachable mr && mr.element.isClassInitializer());
+        directEdges.removeIf(pair -> pair.to instanceof com.oracle.graal.pointsto.reports.causality.events.MethodReachable mr && mr.method.isClassInitializer());
 
         HashSet<CausalityEvent> rootEvents = new HashSet<>();
         Set<com.oracle.graal.pointsto.reports.causality.events.BuildTimeClassInitialization> initialBuildTimeClinits = new HashSet<>();

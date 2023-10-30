@@ -24,8 +24,6 @@
  */
 package com.oracle.graal.pointsto.reports.causality.events;
 
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
@@ -34,6 +32,9 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.reports.causality.ReachabilityExport;
+
 abstract class ReflectionObjectEvent extends CausalityEvent {
     public final AnnotatedElement element;
 
@@ -41,16 +42,14 @@ abstract class ReflectionObjectEvent extends CausalityEvent {
         this.element = element;
     }
 
-    protected abstract String getSuffix();
-
     @Override
     public String toString() {
-        return reflectionObjectToString(element) + getSuffix();
+        return reflectionObjectToString(element) + typeDescriptor().suffix;
     }
 
     @Override
     public String toString(AnalysisMetaAccess metaAccess) {
-        return reflectionObjectToGraalLikeString(metaAccess, element) + getSuffix();
+        return reflectionObjectToGraalLikeString(metaAccess, element) + typeDescriptor().suffix;
     }
 
     private static String reflectionObjectToString(AnnotatedElement reflectionObject) {
@@ -74,5 +73,10 @@ abstract class ReflectionObjectEvent extends CausalityEvent {
         } else {
             return metaAccess.lookupJavaField((Field) reflectionObject).format("%H.%n");
         }
+    }
+
+    @Override
+    public ReachabilityExport.HierarchyNode getParent(ReachabilityExport export, AnalysisMetaAccess metaAccess) {
+        return export.computeIfAbsent(metaAccess, element);
     }
 }

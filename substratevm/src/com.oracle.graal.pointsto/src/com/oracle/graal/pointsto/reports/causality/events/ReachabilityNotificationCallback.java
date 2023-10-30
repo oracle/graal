@@ -24,9 +24,12 @@
  */
 package com.oracle.graal.pointsto.reports.causality.events;
 
+import java.util.function.Consumer;
+
 import org.graalvm.nativeimage.hosted.Feature;
 
-import java.util.function.Consumer;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.reports.causality.ReachabilityExport;
 
 public final class ReachabilityNotificationCallback extends CausalityEvent {
     public final Consumer<Feature.DuringAnalysisAccess> callback;
@@ -42,6 +45,16 @@ public final class ReachabilityNotificationCallback extends CausalityEvent {
 
     @Override
     public String toString() {
-        return callback + " [Reachability Callback]";
+        return callback + typeDescriptor().suffix;
+    }
+
+    @Override
+    public ReachabilityExport.HierarchyNode getParent(ReachabilityExport export, AnalysisMetaAccess metaAccess) {
+        return export.computeIfAbsent(metaAccess, callback.getClass());
+    }
+
+    @Override
+    public EventKinds typeDescriptor() {
+        return EventKinds.ReachabilityCallback;
     }
 }

@@ -42,6 +42,11 @@ public final class JniCallVariantWrapper extends CausalityEvent {
 
     @Override
     public String toString() {
-        return signature + (virtual ? " [Virtual JNI Call Variant Wrapper]" : " [JNI Call Variant Wrapper]");
+        return signature + typeDescriptor().suffix;
+    }
+
+    @Override
+    public EventKinds typeDescriptor() {
+        return virtual ? EventKinds.VirtualJniCallVariantWrapper : EventKinds.JniCallVariantWrapper;
     }
 }

@@ -24,7 +24,9 @@
  */
 package com.oracle.graal.pointsto.reports.causality.events;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.reports.causality.ReachabilityExport;
 
 public final class InlinedMethodCode extends CausalityEvent {
     public final AnalysisMethod[] context;
@@ -45,5 +47,15 @@ public final class InlinedMethodCode extends CausalityEvent {
         sb.append(" [Impl]");
 
         return sb.toString();
+    }
+
+    @Override
+    public ReachabilityExport.HierarchyNode getParent(ReachabilityExport export, AnalysisMetaAccess metaAccess) {
+        return export.computeIfAbsent(context[0]);
+    }
+
+    @Override
+    public EventKinds typeDescriptor() {
+        return EventKinds.MethodCode;
     }
 }

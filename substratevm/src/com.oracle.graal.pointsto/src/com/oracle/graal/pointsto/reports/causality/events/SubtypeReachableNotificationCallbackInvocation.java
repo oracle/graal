@@ -24,10 +24,11 @@
  */
 package com.oracle.graal.pointsto.reports.causality.events;
 
-import com.oracle.graal.pointsto.meta.AnalysisType;
+import java.util.function.BiConsumer;
+
 import org.graalvm.nativeimage.hosted.Feature;
 
-import java.util.function.BiConsumer;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 
 public final class SubtypeReachableNotificationCallbackInvocation extends CausalityEvent {
     public final BiConsumer<Feature.DuringAnalysisAccess, Class<?>> callback;
@@ -44,7 +45,12 @@ public final class SubtypeReachableNotificationCallbackInvocation extends Causal
     }
 
     @Override
+    public EventKinds typeDescriptor() {
+        return EventKinds.SubtypeReachableNotificationCallbackInvocation;
+    }
+
+    @Override
     public String toString() {
-        return callback + " + " + subtype.toJavaName() + " [Subtype Reachable Callback Invocation]";
+        return callback + " + " + subtype.toJavaName() + typeDescriptor().suffix;
     }
 }

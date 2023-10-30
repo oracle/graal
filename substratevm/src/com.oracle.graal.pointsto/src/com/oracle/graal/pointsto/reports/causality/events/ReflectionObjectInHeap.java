@@ -37,7 +37,7 @@ public final class ReflectionObjectInHeap extends ReflectionObjectEvent {
     }
 
     @Override
-    protected String getSuffix() {
-        return " [Reflection Object In Heap]";
+    public EventKinds typeDescriptor() {
+        return EventKinds.ReflectionObjectInHeap;
     }
 }

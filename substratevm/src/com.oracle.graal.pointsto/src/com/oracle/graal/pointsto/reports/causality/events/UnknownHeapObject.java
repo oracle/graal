@@ -24,13 +24,9 @@
  */
 package com.oracle.graal.pointsto.reports.causality.events;
 
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-
-public final class UnknownHeapObject extends CausalityEvent {
-    public final Class<?> heapObjectType;
-
+public final class UnknownHeapObject extends ClassEvent {
     UnknownHeapObject(Class<?> heapObjectType) {
-        this.heapObjectType = heapObjectType;
+        super(heapObjectType);
     }
 
     @Override
@@ -39,17 +35,12 @@ public final class UnknownHeapObject extends CausalityEvent {
     }
 
     @Override
-    public String toString() {
-        return heapObjectType.getTypeName() + " [Unknown Heap Object]";
-    }
-
-    @Override
     public boolean essential() {
         return false;
     }
 
     @Override
-    public String toString(AnalysisMetaAccess metaAccess) {
-        return metaAccess.lookupJavaType(heapObjectType).toJavaName() + " [Unknown Heap Object]";
+    public EventKinds typeDescriptor() {
+        return EventKinds.UnknownHeapObject;
     }
 }
