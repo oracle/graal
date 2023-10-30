@@ -628,10 +628,8 @@ public class EarlyGVNTest extends GraalCompilerTest {
         c.apply(g, getDefaultHighTierContext());
         new ConvertDeoptimizeToGuardPhase(c).apply(g, highTierContext);
         new ConditionalEliminationPhase(c, false).apply(g, highTierContext);
-        c.apply(g, getDefaultHighTierContext());
         new DominatorBasedGlobalValueNumberingPhase(c).apply(g, highTierContext);
         new ConditionalEliminationPhase(c, false).apply(g, highTierContext);
-        c.apply(g, getDefaultHighTierContext());
         new DominatorBasedGlobalValueNumberingPhase(c).apply(g, highTierContext);
 
         checkHighTierGraph(g, count(FixedGuardNode.TYPE, 4),

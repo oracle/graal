@@ -190,12 +190,10 @@ public class TypeSystemTest extends GraalCompilerTest {
          * reference graph.
          */
         new ConditionalEliminationPhase(c, false).apply(graph, getProviders());
-        c.apply(graph, getProviders());
         // a second canonicalizer is needed to process nested MaterializeNodes
         c.apply(graph, getProviders());
         StructuredGraph referenceGraph = parseEager(referenceSnippet, AllowAssumptions.NO);
         new ConditionalEliminationPhase(c, false).apply(referenceGraph, getProviders());
-        c.apply(referenceGraph, getProviders());
         c.apply(referenceGraph, getProviders());
         assertEquals(referenceGraph, graph);
     }

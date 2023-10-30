@@ -84,7 +84,6 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
                 new ConditionalEliminationPhase(canonicalizer, true).apply(referenceGraph, context);
             }
             canonicalizer.apply(referenceGraph, context);
-            canonicalizer.apply(referenceGraph, context);
         } catch (Throwable t) {
             debug.handle(t);
         }
@@ -112,7 +111,6 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
 
         int baseProxyCount = graph.getNodes().filter(ProxyNode.class).count();
         new ConditionalEliminationPhase(canonicalizer, true).apply(graph, context);
-        canonicalizer.apply(graph, context);
         new SchedulePhase(graph.getOptions()).apply(graph, context);
         int actualProxiesCreated = graph.getNodes().filter(ProxyNode.class).count() - baseProxyCount;
         Assert.assertEquals(expectedProxiesCreated, actualProxiesCreated);

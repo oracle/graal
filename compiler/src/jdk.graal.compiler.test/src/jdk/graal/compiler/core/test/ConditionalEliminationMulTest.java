@@ -80,9 +80,7 @@ public class ConditionalEliminationMulTest extends GraalCompilerTest {
         HighTierContext context = getDefaultHighTierContext();
         CanonicalizerPhase c = createCanonicalizerPhase();
         new ConditionalEliminationPhase(c, false).apply(graph, context);
-        c.apply(graph, context);
         new ConditionalEliminationPhase(c, false).apply(graph, context);
-        c.apply(graph, context);
         return graph;
     }
 }

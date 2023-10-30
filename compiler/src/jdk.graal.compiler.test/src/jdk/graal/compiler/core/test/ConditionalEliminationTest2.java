@@ -116,7 +116,6 @@ public class ConditionalEliminationTest2 extends ConditionalEliminationTestBase 
         canonicalizer.apply(graph, context);
         new FloatingReadPhase(canonicalizer).apply(graph, context);
         new ConditionalEliminationPhase(canonicalizer, true).apply(graph, context);
-        canonicalizer.apply(graph, context);
 
         assertDeepEquals(1, graph.getNodes().filter(GuardNode.class).count());
     }
@@ -138,7 +137,6 @@ public class ConditionalEliminationTest2 extends ConditionalEliminationTestBase 
         new HighTierLoweringPhase(canonicalizer).apply(graph, context);
         canonicalizer.apply(graph, context);
         new ConditionalEliminationPhase(canonicalizer, true).apply(graph, context);
-        canonicalizer.apply(graph, context);
 
         assertDeepEquals(0, graph.getNodes().filter(GuardNode.class).count());
     }
@@ -152,7 +150,6 @@ public class ConditionalEliminationTest2 extends ConditionalEliminationTestBase 
         canonicalizer.apply(graph, context);
         new ConditionalEliminationPhase(canonicalizer, true).apply(graph, context);
         getDebugContext().dump(DebugContext.BASIC_LEVEL, graph, "After ConditionalEliminationPhase");
-        canonicalizer.apply(graph, context);
 
         Assert.assertEquals(count, graph.getNodes().filter(InstanceOfNode.class).count());
     }
