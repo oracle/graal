@@ -159,6 +159,11 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
             if (result != null) {
                 return result;
             }
+
+            if (!(forX.stamp(view) instanceof IntegerStamp)) {
+                return null;
+            }
+
             if (forX.stamp(view) instanceof IntegerStamp && forY.stamp(view) instanceof IntegerStamp) {
                 if (IntegerStamp.sameSign((IntegerStamp) forX.stamp(view), (IntegerStamp) forY.stamp(view))) {
                     return new IntegerBelowNode(forX, forY);
