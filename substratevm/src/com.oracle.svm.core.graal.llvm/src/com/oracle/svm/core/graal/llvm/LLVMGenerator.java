@@ -1627,6 +1627,12 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         }
 
         @Override
+        public Variable emitReverseBits(Value operand) {
+            LLVMValueRef reversed = builder.buildBitReverse(getVal(operand));
+            return new LLVMVariable(reversed);
+        }
+
+        @Override
         public Value emitMathMax(Value a, Value b) {
             LLVMValueRef max = builder.buildMax(getVal(a), getVal(b));
             return new LLVMVariable(max);
