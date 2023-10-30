@@ -12,6 +12,8 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-39407) Add support for the `NATIVE_IMAGE_OPTIONS` environment variable, which allows users and tools to pass additional arguments via the environment. Similar to `JAVA_TOOL_OPTIONS`, the value of the environment variable is prepended to the options supplied to `native-image`.
 * (GR-20827): Introduce a dedicated caller-saved branch target register for software CFI implementations.
 * (GR-47937) Make the lambda-class name format in Native-Image consistent with the JDK name format.
+* (GR-45651) Methods, fields and constructors of `Object`, primitive classes and array classes are now registered by default for reflection.
+* (GR-45651) The Native Image agent now tracks calls to `ClassLoader.findSystemClass`, `ObjectInputStream.resolveClass` and `Bundles.of`, and registers resource bundles as bundle name-locale pairs.
 
 ## GraalVM for JDK 21 (Internal Version 23.1.0)
 * (GR-35746) Lower the default aligned chunk size from 1 MB to 512 KB for the serial and epsilon GCs, reducing memory usage and image size in many cases.
