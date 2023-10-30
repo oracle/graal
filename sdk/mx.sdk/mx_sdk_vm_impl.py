@@ -1247,7 +1247,7 @@ class SvmSupport(object):
         return self.is_debug_supported() and _generate_debuginfo(image_config)
 
     def generate_separate_debug_info(self, image_config):
-        return self.generate_debug_info(image_config) and self._separate_debuginfo_ext
+        return self.generate_debug_info(image_config) and not mx.get_opts().disable_debuginfo_stripping and self._separate_debuginfo_ext
 
     def separate_debuginfo_ext(self):
         return self._separate_debuginfo_ext
@@ -1255,6 +1255,8 @@ class SvmSupport(object):
     def get_debug_flags(self, image_config):
         assert self.is_debug_supported()
         flags = ['-g']
+        if not self.generate_separate_debug_info(image_config):
+            flags += svm_experimental_options(['-H:-StripDebugInfo'])
         return flags
 
 
@@ -4441,6 +4443,7 @@ mx.add_argument('--skip-libraries', action='store', help='Do not build native im
 mx.add_argument('--sources', action='store', help='Comma-separated list of projects and distributions of open-source components for which source file archives must be included' + (' (all by default).' if _debuginfo_default else '.'), default=None)
 mx.add_argument('--debuginfo-dists', action='store_true', help='Generate debuginfo distributions.')
 mx.add_argument('--generate-debuginfo', action='store', help='Comma-separated list of launchers and libraries (syntax: lib:polyglot) for which to generate debug information (`native-image -g`) (all by default)', default=None)
+mx.add_argument('--disable-debuginfo-stripping', action='store_true', help='Disable the stripping of debug symbols from the native image.')
 mx.add_argument('--snapshot-catalog', action='store', help='Change the default URL of the component catalog for snapshots.', default=None)
 mx.add_argument('--gds-snapshot-catalog', action='store', help='Change the default appended URL of the component catalog for snapshots.', default=None)
 mx.add_argument('--release-catalog', action='store', help='Change the default URL of the component catalog for releases.', default=None)
