@@ -43,13 +43,16 @@ import java.util.regex.Pattern;
  */
 public final class JVMCIVersionCheck {
 
-    /**
-     * Minimum JVMCI version supported by Graal.
-     */
-    private static final Map<String, Version> JVMCI_MIN_VERSIONS = Map.of(
-                    "21", new Version(23, 1, 22),
-                    "22", new Version("22+20", 2));
+    public static final String DEFAULT_VENDOR_ENTRY = "*";
 
+    /**
+     * Minimum JVMCI version supported by Graal. This maps from {@code java.vm.vendor} to
+     * {@code java.specification.version} to {@link Version}. {@link #DEFAULT_VENDOR_ENTRY} can be
+     * used as a default/fallback entry.
+     */
+    private static final Map<String, Map<String, Version>> JVMCI_MIN_VERSIONS = Map.of(
+                    "21", Map.of(DEFAULT_VENDOR_ENTRY, new Version(23, 1, 22)),
+                    "22", Map.of(DEFAULT_VENDOR_ENTRY, new Version("22+20", 2)));
     private static final int NA = 0;
     /**
      * Minimum Java release supported by Graal.
@@ -223,21 +226,39 @@ public final class JVMCIVersionCheck {
         AS_TAG
     }
 
-    static void check(Map<String, String> props, boolean exitOnFailure, PrintFormat format) {
+    /**
+     * Validates the existence of expected properties. These properties are:
+     * <ul>
+     * <li>{@code java.specification.version}: Java specification version, e.g., {@code "21"}</li>
+     * <li>{@code java.vm.version}: Full Java VM version string, e.g, {@code "21+35"}</li>
+     * <li>{@code java.vm.vendor}: The vendor of the Java VM, e.g., {@code "GraalVM Community"}</li>
+     * </ul>
+     */
+    public static boolean validateProperties(Map<String, String> props) {
         String javaSpecVersion = props.get("java.specification.version");
-        JVMCIVersionCheck checker = new JVMCIVersionCheck(props, javaSpecVersion, props.get("java.vm.version"));
-        checker.run(exitOnFailure, JVMCI_MIN_VERSIONS.get(javaSpecVersion), format);
+        String javaVmVersion = props.get("java.vm.version");
+        String javaVmVendor = props.get("java.vm.vendor");
+        return javaSpecVersion != null && javaVmVersion != null && javaVmVendor != null;
     }
 
-    /**
-     * Entry point for testing.
-     */
-    public static void check(Map<String, String> props,
-                    Version minVersion,
-                    String javaSpecVersion,
-                    String javaVmVersion, boolean exitOnFailure) {
+    public static Version getMinVersion(Map<String, String> props, Map<String, Map<String, Version>> jvmciMinVersions) {
+        assert validateProperties(props) : "Properties map is missing an expected entry";
+        String javaSpecVersion = props.get("java.specification.version");
+        String javaVmVendor = props.get("java.vm.vendor");
+        Map<String, Version> versionMap = jvmciMinVersions.getOrDefault(javaSpecVersion, Map.of());
+        return versionMap.getOrDefault(javaVmVendor, versionMap.get(DEFAULT_VENDOR_ENTRY));
+    }
+
+    static void check(Map<String, String> props, boolean exitOnFailure, PrintFormat format) {
+        check(props, exitOnFailure, format, JVMCI_MIN_VERSIONS);
+    }
+
+    public static void check(Map<String, String> props, boolean exitOnFailure, PrintFormat format, Map<String, Map<String, Version>> jvmciMinVersions) {
+        assert validateProperties(props) : "Properties map is missing an expected entry";
+        String javaSpecVersion = props.get("java.specification.version");
+        String javaVmVersion = props.get("java.vm.version");
         JVMCIVersionCheck checker = new JVMCIVersionCheck(props, javaSpecVersion, javaVmVersion);
-        checker.run(exitOnFailure, minVersion, null);
+        checker.run(exitOnFailure, getMinVersion(props, jvmciMinVersions), format);
     }
 
     private void run(boolean exitOnFailure, Version minVersion, PrintFormat format) {
@@ -296,7 +317,7 @@ public final class JVMCIVersionCheck {
         }
         if (minVersion) {
             String javaSpecVersion = props.get("java.specification.version");
-            Version v = JVMCI_MIN_VERSIONS.get(javaSpecVersion);
+            Version v = getMinVersion(props, JVMCI_MIN_VERSIONS);
             if (v == null) {
                 System.out.printf("No minimum JVMCI version specified for JDK version %s.%n", javaSpecVersion);
             } else {

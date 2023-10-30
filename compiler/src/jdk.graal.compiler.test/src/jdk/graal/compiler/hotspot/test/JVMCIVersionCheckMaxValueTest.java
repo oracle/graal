@@ -24,10 +24,13 @@
  */
 package jdk.graal.compiler.hotspot.test;
 
-import jdk.graal.compiler.core.test.GraalCompilerTest;
-import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
+import java.util.Map;
+
 import org.junit.Assert;
 import org.junit.Test;
+
+import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
 
 /**
  * Test handling of version components bigger than Integer.MAX_VALUE.
@@ -53,7 +56,11 @@ public class JVMCIVersionCheckMaxValueTest extends GraalCompilerTest {
         try {
             JVMCIVersionCheck.Version minVersion = new JVMCIVersionCheck.Version(20, 0, 1);
             // Use a javaSpecVersion that will likely not fail in the near future
-            JVMCIVersionCheck.check(JVMCIVersionCheckTest.props, minVersion, "99", javaVmVersion, false);
+            String javaSpecVersion = "99";
+            var props = JVMCIVersionCheckTest.createTestProperties(javaSpecVersion, javaVmVersion, null);
+            var jvmciMinVersions = Map.of(
+                            javaSpecVersion, Map.of(JVMCIVersionCheck.DEFAULT_VENDOR_ENTRY, minVersion));
+            JVMCIVersionCheck.check(props, false, null, jvmciMinVersions);
             String value = System.getenv("JVMCI_VERSION_CHECK");
             if (!"warn".equals(value) && !"ignore".equals(value)) {
                 Assert.fail("expected to fail checking " + javaVmVersion + " against " + minVersion);
