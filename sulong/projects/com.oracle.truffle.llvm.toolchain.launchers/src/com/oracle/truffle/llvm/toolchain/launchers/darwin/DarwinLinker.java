@@ -52,7 +52,7 @@ public final class DarwinLinker extends Driver {
     }
 
     public static List<String> getLinkerFlags() {
-        return List.of();
+        return Arrays.asList("--lto-O0");
     }
 
     public static void link(String[] args) {
