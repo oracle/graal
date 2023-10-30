@@ -2457,7 +2457,12 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
         }
 
         static NativeImageDebugStackValue create(StackSlot value, int framesize) {
-            return memoizedCreate(value.getOffset(framesize));
+            // Work around a problem on AArch64 where StackSlot asserts if it is
+            // passed a zero frame size, even though this is what is expected
+            // for stack slot offsets provided at the point of entry (because,
+            // unlike x86, lr has not been pushed).
+            int offset = (framesize == 0 ? value.getRawOffset() : value.getOffset(framesize));
+            return memoizedCreate(offset);
         }
 
         static NativeImageDebugStackValue create(DebugLocalValueInfo previous, int adjustment) {
