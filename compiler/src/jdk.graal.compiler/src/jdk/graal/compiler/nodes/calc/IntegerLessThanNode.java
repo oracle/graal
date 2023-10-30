@@ -162,6 +162,9 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
             if (result != null) {
                 return result;
             }
+            if (!(forX.stamp(view) instanceof IntegerStamp)) {
+                return null;
+            }
             // always prefer unsigned comparisons, however, if part of a graph we sometimes want to
             // disable it for testing purposes
             if (forX.getOptions() == null || GraalOptions.PreferUnsignedComparison.getValue(forX.getOptions())) {
