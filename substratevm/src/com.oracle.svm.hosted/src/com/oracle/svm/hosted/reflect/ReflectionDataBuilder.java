@@ -130,6 +130,12 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final Map<AnalysisType, Set<AnalysisMethod.Signature>> negativeMethodLookups = new ConcurrentHashMap<>();
     private final Map<AnalysisType, Set<AnalysisType[]>> negativeConstructorLookups = new ConcurrentHashMap<>();
 
+    // Linkage error handling
+    private final Map<Class<?>, Throwable> classLookupExceptions = new ConcurrentHashMap<>();
+    private final Map<Class<?>, Throwable> fieldLookupExceptions = new ConcurrentHashMap<>();
+    private final Map<Class<?>, Throwable> methodLookupExceptions = new ConcurrentHashMap<>();
+    private final Map<Class<?>, Throwable> constructorLookupExceptions = new ConcurrentHashMap<>();
+
     // Intermediate bookkeeping
     private final Map<Type, Set<Integer>> processedTypes = new ConcurrentHashMap<>();
     private final Map<Class<?>, Set<Method>> pendingRecordClasses;
@@ -189,7 +195,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 registerClass(innerClass, false, !MissingRegistrationUtils.throwMissingRegistrationErrors());
             }
         } catch (LinkageError e) {
-            /* Ignore the error */
+            classLookupExceptions.put(clazz, e);
         }
     }
 
@@ -203,7 +209,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 registerClass(innerClass, false, !MissingRegistrationUtils.throwMissingRegistrationErrors());
             }
         } catch (LinkageError e) {
-            /* Ignore the error */
+            classLookupExceptions.put(clazz, e);
         }
     }
 
@@ -326,7 +332,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         try {
             register(condition, queriedOnly, clazz.getMethods());
         } catch (LinkageError e) {
-            /* Ignore the error */
+            methodLookupExceptions.put(clazz, e);
         }
     }
 
@@ -337,7 +343,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         try {
             register(condition, queriedOnly, clazz.getDeclaredMethods());
         } catch (LinkageError e) {
-            /* Ignore the error */
+            methodLookupExceptions.put(clazz, e);
         }
     }
 
@@ -351,7 +357,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         try {
             register(condition, queriedOnly, clazz.getConstructors());
         } catch (LinkageError e) {
-            /* Ignore the error */
+            constructorLookupExceptions.put(clazz, e);
         }
     }
 
@@ -362,7 +368,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         try {
             register(condition, queriedOnly, clazz.getDeclaredConstructors());
         } catch (LinkageError e) {
-            /* Ignore the error */
+            constructorLookupExceptions.put(clazz, e);
         }
     }
 
@@ -459,7 +465,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         try {
             registerInternal(condition, clazz.getFields());
         } catch (LinkageError e) {
-            /* Ignore the error */
+            fieldLookupExceptions.put(clazz, e);
         }
     }
 
@@ -470,7 +476,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         try {
             registerInternal(condition, clazz.getDeclaredFields());
         } catch (LinkageError e) {
-            /* Ignore the error */
+            fieldLookupExceptions.put(clazz, e);
         }
     }
 
@@ -1070,6 +1076,26 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     @Override
     public Map<AnalysisType, Set<AnalysisType[]>> getNegativeConstructorQueries() {
         return Collections.unmodifiableMap(negativeConstructorLookups);
+    }
+
+    @Override
+    public Map<Class<?>, Throwable> getClassLookupErrors() {
+        return Collections.unmodifiableMap(classLookupExceptions);
+    }
+
+    @Override
+    public Map<Class<?>, Throwable> getFieldLookupErrors() {
+        return Collections.unmodifiableMap(fieldLookupExceptions);
+    }
+
+    @Override
+    public Map<Class<?>, Throwable> getMethodLookupErrors() {
+        return Collections.unmodifiableMap(methodLookupExceptions);
+    }
+
+    @Override
+    public Map<Class<?>, Throwable> getConstructorLookupErrors() {
+        return Collections.unmodifiableMap(constructorLookupExceptions);
     }
 
     private static final AnnotationValue[] NO_ANNOTATIONS = new AnnotationValue[0];

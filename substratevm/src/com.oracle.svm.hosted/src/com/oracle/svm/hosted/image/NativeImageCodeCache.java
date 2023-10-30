@@ -331,6 +331,26 @@ public abstract class NativeImageCodeCache {
             }
         }
 
+        reflectionSupport.getClassLookupErrors().forEach((clazz, error) -> {
+            HostedType type = hMetaAccess.lookupJavaType(clazz);
+            reflectionMetadataEncoder.addClassLookupError(type, error);
+        });
+
+        reflectionSupport.getFieldLookupErrors().forEach((clazz, error) -> {
+            HostedType type = hMetaAccess.lookupJavaType(clazz);
+            reflectionMetadataEncoder.addFieldLookupError(type, error);
+        });
+
+        reflectionSupport.getMethodLookupErrors().forEach((clazz, error) -> {
+            HostedType type = hMetaAccess.lookupJavaType(clazz);
+            reflectionMetadataEncoder.addMethodLookupError(type, error);
+        });
+
+        reflectionSupport.getConstructorLookupErrors().forEach((clazz, error) -> {
+            HostedType type = hMetaAccess.lookupJavaType(clazz);
+            reflectionMetadataEncoder.addConstructorLookupError(type, error);
+        });
+
         Set<AnalysisField> includedFields = new HashSet<>();
         Set<AnalysisMethod> includedMethods = new HashSet<>();
         Map<AnalysisField, Field> configurationFields = reflectionSupport.getReflectionFields();
@@ -767,6 +787,14 @@ public abstract class NativeImageCodeCache {
         void addNegativeMethodQueryMetadata(HostedType declaringClass, String methodName, HostedType[] parameterTypes);
 
         void addNegativeConstructorQueryMetadata(HostedType declaringClass, HostedType[] parameterTypes);
+
+        void addClassLookupError(HostedType declaringClass, Throwable exception);
+
+        void addFieldLookupError(HostedType declaringClass, Throwable exception);
+
+        void addMethodLookupError(HostedType declaringClass, Throwable exception);
+
+        void addConstructorLookupError(HostedType declaringClass, Throwable exception);
 
         void encodeAllAndInstall();
 
