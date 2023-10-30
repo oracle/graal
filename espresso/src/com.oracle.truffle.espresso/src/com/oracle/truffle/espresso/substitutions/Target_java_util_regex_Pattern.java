@@ -22,8 +22,8 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -51,6 +51,7 @@ public final class Target_java_util_regex_Pattern {
         return (flags & flag) != 0;
     }
 
+    @TruffleBoundary
     public static String convertFlags(int flags) {
         StringBuilder sb = new StringBuilder(8);
         if (isSet(flags, Pattern.CANON_EQ)) {
@@ -95,13 +96,14 @@ public final class Target_java_util_regex_Pattern {
             String pattern = meta.toHostString(p);
 
             String combined = "RegressionTestMode=true,Encoding=UTF-16,Flavor=JavaUtilPattern,JavaMatch=true";
-            String sourceStr = combined + '/' + pattern + '/' + convertFlags(f);
-            Source src = Source.newBuilder("regex", sourceStr, "patternExpr").build();
+            String sourceStr = getString(f, combined, pattern);
+            Source src = getSource(sourceStr);
 
             Object target = null;
             try {
                 target = context.getEnv().parseInternal(src).call();
             } catch (/* RegexSyntaxException */ Exception e) {
+                CompilerDirectives.transferToInterpreter();
                 /* TODO: we have to deal with RegexSyntaxException somehow */
                 throw new RuntimeException(e);
                 /*
@@ -133,6 +135,18 @@ public final class Target_java_util_regex_Pattern {
                 }
             }
         }
+
+        @TruffleBoundary
+        private static Source getSource(String sourceStr) {
+            Source src = Source.newBuilder("regex", sourceStr, "patternExpr").build();
+            return src;
+        }
+    }
+
+    @TruffleBoundary
+    private static String getString(int f, String combined, String pattern) {
+        String sourceStr = combined + '/' + pattern + '/' + convertFlags(f);
+        return sourceStr;
     }
 
     @Substitution(hasReceiver = true, methodName = "namedGroups")
@@ -144,6 +158,7 @@ public final class Target_java_util_regex_Pattern {
         public static Object getNull() {
             return StaticObject.NULL;
         }
+
 
         @Specialization(guards = "context.getMeta().java_util_regex_Pattern_HIDDEN_tregex.getHiddenObject(self) != getNull()") // TODO change to StaticObject.NULL
         @JavaType(Map.class) StaticObject doDefault(
@@ -169,7 +184,7 @@ public final class Target_java_util_regex_Pattern {
                 }
                 return (StaticObject) getMeta().java_util_Map_copy_of.getCallTarget().call(guestMap);
             } catch (UnsupportedMessageException | UnknownIdentifierException | InvalidArrayIndexException e) {
-                throw new RuntimeException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
 

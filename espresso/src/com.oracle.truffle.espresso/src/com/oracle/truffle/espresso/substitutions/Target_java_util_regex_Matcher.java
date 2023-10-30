@@ -22,19 +22,19 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
@@ -111,6 +111,7 @@ public final class Target_java_util_regex_Matcher {
 
                 return false;
             } catch (ArityException | UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException e) {
+                CompilerDirectives.transferToInterpreter();
                 throw new RuntimeException(e);
             }
         }
@@ -182,6 +183,7 @@ public final class Target_java_util_regex_Matcher {
                 context.getMeta().java_util_regex_Matcher_first.setInt(self, -1);
                 return false;
             } catch (ArityException | UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException e) {
+                CompilerDirectives.transferToInterpreter();
                 throw new RuntimeException(e);
             }
         }
@@ -195,8 +197,9 @@ public final class Target_java_util_regex_Matcher {
             String pattern = context.getMeta().toHostString(context.getMeta().java_util_regex_Pattern_pattern.getObject(patternObject));
 
             String combined = "RegressionTestMode=true,Encoding=UTF-16,Flavor=JavaUtilPattern,JavaMatch=false";
-            String sourceStr = combined + '/' + pattern + '/' + convertFlags(context.getMeta().java_util_regex_Pattern_flags0.getInt(patternObject));
-            Source src = Source.newBuilder("regex", sourceStr, "patternExpr").build();
+
+            String sourceStr = getString(context, combined, pattern, patternObject);
+            Source src = getSource(sourceStr);
 
             Object regexObject = context.getEnv().parseInternal(src).call();
             context.getMeta().java_util_regex_Pattern_HIDDEN_tregexSearch.setHiddenObject(patternObject, regexObject);
@@ -236,8 +239,21 @@ public final class Target_java_util_regex_Matcher {
                 context.getMeta().java_util_regex_Matcher_first.setInt(self, -1);
                 return false;
             } catch (ArityException | UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException e) {
+                CompilerDirectives.transferToInterpreter();
                 throw new RuntimeException(e);
             }
+        }
+
+        @TruffleBoundary
+        private static String getString(EspressoContext context, String combined, String pattern, StaticObject patternObject) {
+            String sourceStr = combined + '/' + pattern + '/' + convertFlags(context.getMeta().java_util_regex_Pattern_flags0.getInt(patternObject));
+            return sourceStr;
+        }
+
+        @TruffleBoundary
+        private static Source getSource(String sourceStr) {
+            Source src = Source.newBuilder("regex", sourceStr, "patternExpr").build();
+            return src;
         }
 
         @Specialization(guards = "getRegexObject(getContext(), self) == getNull()")
