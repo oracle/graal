@@ -114,7 +114,7 @@ public class NativeImageDebugInfoStripFeature implements InternalFeature {
 
     private static Path createKeepSymbolsListFile(AfterImageWriteAccessImpl accessImpl) throws IOException {
         Path exportedSymbolsPath = accessImpl.getTempDirectory().resolve("keep-symbols.list").toAbsolutePath();
-        Files.write(exportedSymbolsPath, accessImpl.getImageSymbols(false));
+        Files.write(exportedSymbolsPath, accessImpl.getImageSymbols(true));
         return exportedSymbolsPath;
     }
 }
