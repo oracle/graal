@@ -277,33 +277,9 @@ public final class LoadModulesNode extends LLVMRootNode {
             }
 
             /*
-             * Depenedencies need to be constructed before scoping building to ensure libraries are not garbage collected
-             * early.
-             */
-            if (LLVMLoadingPhase.BUILD_DEPENDENCY.isActive(phase) && !context.isLibraryAlreadyLoaded(bitcodeID)) {
-                int id = bitcodeID.getId();
-                if (!visited.get(id)) {
-                    visited.set(id);
-                    for (LoadDependencyNode libraryDependency : libraryDependencies) {
-                        CallTarget lib = libraryDependency.execute();
-                        if (lib != null) {
-                            if (LibraryLocator.loggingEnabled()) {
-                                LibraryLocator.traceStaticInits(context, "building library dependency", libraryDependency.getLibraryName());
-                            }
-                            callDependencies.call(lib, LLVMLoadingPhase.BUILD_DEPENDENCY, visited, dependencies);
-                        }
-                    }
-                    dependencies.add(this.getCallTarget());
-                }
-            }
-
-            /*
              * The scope is built in parsing order, which requires breadth-first with a que.
              */
             if (LLVMLoadingPhase.BUILD_SCOPES.isActive(phase)) {
-                if (LLVMLoadingPhase.ALL == phase) {
-                    visited.clear();
-                }
                 int id = bitcodeID.getId();
                 if (!visited.get(id)) {
                     visited.set(id);
@@ -356,6 +332,27 @@ public final class LoadModulesNode extends LLVMRootNode {
                     return headResultScopeChain;
                 } else {
                     return headLocalScopeChain;
+                }
+            }
+
+            if (LLVMLoadingPhase.BUILD_DEPENDENCY.isActive(phase)) {
+                if (LLVMLoadingPhase.ALL == phase) {
+                    visited.clear();
+                }
+
+                int id = bitcodeID.getId();
+                if (!visited.get(id)) {
+                    visited.set(id);
+                    for (LoadDependencyNode libraryDependency : libraryDependencies) {
+                        if (LibraryLocator.loggingEnabled()) {
+                            LibraryLocator.traceStaticInits(context, "building library dependency", libraryDependency.getLibraryName());
+                        }
+                        CallTarget lib = libraryDependency.execute();
+                        if (lib != null) {
+                            callDependencies.call(lib, LLVMLoadingPhase.BUILD_DEPENDENCY, visited, dependencies);
+                        }
+                    }
+                    dependencies.add(this.getCallTarget());
                 }
             }
 
