@@ -351,6 +351,9 @@ public class PolyglotTypeMappings {
 
         @Override
         public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) {
+            if (!interop.hasArrayElements(value)) {
+                throw new ClassCastException();
+            }
             return StaticObject.createForeign(toEspresso.getLanguage(), klass, value, interop);
         }
     }
