@@ -178,7 +178,7 @@ public class SubstrateOptions {
 
     public static final String IMAGE_CLASSPATH_PREFIX = "-imagecp";
     public static final String IMAGE_MODULEPATH_PREFIX = "-imagemp";
-    public static final String WATCHPID_PREFIX = "-watchpid";
+    public static final String KEEP_ALIVE_PREFIX = "-keepalive";
     private static ValueUpdateHandler<OptimizationLevel> optimizeValueUpdateHandler;
 
     @Fold

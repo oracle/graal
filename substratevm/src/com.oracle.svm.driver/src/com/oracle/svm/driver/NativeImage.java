@@ -1566,13 +1566,25 @@ public class NativeImage {
 
         arguments.addAll(config.getGeneratorMainClass());
 
-        if (IS_AOT && OS.getCurrent().hasProcFS) {
+        Path keepAliveFile;
+        if (OS.getCurrent().hasProcFS) {
             /*
-             * GR-8254: Ensure image-building VM shuts down even if native-image dies unexpected
-             * (e.g. using CTRL-C in Gradle daemon mode)
+             * On Linux we use the procfs entry of the driver itself. This guarantees builder
+             * shutdown even if the driver is terminated via SIGKILL.
              */
-            arguments.addAll(Arrays.asList(SubstrateOptions.WATCHPID_PREFIX, "" + ProcessProperties.getProcessID()));
+            keepAliveFile = Path.of("/proc/" + ProcessHandle.current().pid() + "/comm");
+        } else {
+            try {
+                keepAliveFile = Files.createTempFile(".native_image", "alive");
+                keepAliveFile.toFile().deleteOnExit();
+            } catch (IOException e) {
+                throw showError("Temporary keep-alive file could not be created");
+            }
         }
+
+        boolean useContainer = useBundle() && bundleSupport.useContainer;
+        Path keepAliveFileInContainer = Path.of("/keep_alive");
+        arguments.addAll(Arrays.asList(SubstrateOptions.KEEP_ALIVE_PREFIX, (useContainer ? keepAliveFileInContainer : keepAliveFile).toString()));
 
         /*
          * Workaround for GR-47186: Native image cannot handle modules on the image module path,
@@ -1606,7 +1618,7 @@ public class NativeImage {
         List<String> command = new ArrayList<>();
         List<String> completeCommandList = new ArrayList<>();
 
-        if (useBundle() && bundleSupport.useContainer) {
+        if (useContainer) {
             ContainerSupport.replacePaths(arguments, config.getJavaHome(), bundleSupport.rootDir);
             ContainerSupport.replacePaths(finalImageBuilderArgs, config.getJavaHome(), bundleSupport.rootDir);
             Path binJava = Paths.get("bin", "java");
@@ -1616,7 +1628,7 @@ public class NativeImage {
         Path argFile = createVMInvocationArgumentFile(arguments);
         Path builderArgFile = createImageBuilderArgumentFile(finalImageBuilderArgs);
 
-        if (useBundle() && bundleSupport.useContainer) {
+        if (useContainer) {
             if (!Files.exists(bundleSupport.containerSupport.dockerfile)) {
                 bundleSupport.createDockerfile(bundleSupport.containerSupport.dockerfile);
             }
@@ -1642,6 +1654,7 @@ public class NativeImage {
             Map<Path, ContainerSupport.TargetPath> mountMapping = ContainerSupport.mountMappingFor(config.getJavaHome(), bundleSupport.inputDir, bundleSupport.outputDir);
             mountMapping.put(argFile, ContainerSupport.TargetPath.readonly(argFile));
             mountMapping.put(builderArgFile, ContainerSupport.TargetPath.readonly(builderArgFile));
+            mountMapping.put(keepAliveFile, ContainerSupport.TargetPath.readonly(keepAliveFileInContainer));
 
             List<String> containerCommand = bundleSupport.containerSupport.createCommand(imageBuilderEnvironment, mountMapping);
             command.addAll(containerCommand);
@@ -1701,7 +1714,6 @@ public class NativeImage {
         try {
             p = pb.inheritIO().start();
             imageBuilderPid = p.pid();
-            installImageBuilderCleanupHook(p);
             return p.waitFor();
         } catch (IOException | InterruptedException e) {
             throw showError(e.getMessage());
@@ -1771,23 +1783,6 @@ public class NativeImage {
             }
         }
         return result;
-    }
-
-    /**
-     * Adds a shutdown hook to kill the image builder process if it's still alive.
-     *
-     * @param p image builder process
-     */
-    private static void installImageBuilderCleanupHook(Process p) {
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            @Override
-            public void run() {
-                if (p.isAlive()) {
-                    System.out.println("DESTROYING " + p.pid());
-                    p.destroy();
-                }
-            }
-        });
     }
 
     boolean useBundle() {
