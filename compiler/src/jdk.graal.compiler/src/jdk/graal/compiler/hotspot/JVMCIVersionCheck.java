@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package jdk.graal.compiler.hotspot;
 import java.util.Formatter;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -46,9 +47,9 @@ public final class JVMCIVersionCheck {
     public static final String DEFAULT_VENDOR_ENTRY = "*";
 
     /**
-     * Minimum JVMCI version supported by Graal. This maps from {@code java.vm.vendor} to
-     * {@code java.specification.version} to {@link Version}. {@link #DEFAULT_VENDOR_ENTRY} can be
-     * used as a default/fallback entry.
+     * Minimum JVMCI version supported by Graal. This maps from {@code java.specification.version}
+     * to {@code java.vm.vendor} to {@link Version}. {@link #DEFAULT_VENDOR_ENTRY} can be used as a
+     * default/fallback entry.
      */
     private static final Map<String, Map<String, Version>> JVMCI_MIN_VERSIONS = Map.of(
                     "21", Map.of(DEFAULT_VENDOR_ENTRY, new Version(23, 1, 22)),
@@ -228,25 +229,13 @@ public final class JVMCIVersionCheck {
         AS_TAG
     }
 
-    /**
-     * Validates the existence of expected properties. These properties are:
-     * <ul>
-     * <li>{@code java.specification.version}: Java specification version, e.g., {@code "21"}</li>
-     * <li>{@code java.vm.version}: Full Java VM version string, e.g, {@code "21+35"}</li>
-     * <li>{@code java.vm.vendor}: The vendor of the Java VM, e.g., {@code "GraalVM Community"}</li>
-     * </ul>
-     */
-    public static boolean validateProperties(Map<String, String> props) {
-        String javaSpecVersion = props.get("java.specification.version");
-        String javaVmVersion = props.get("java.vm.version");
-        String javaVmVendor = props.get("java.vm.vendor");
-        return javaSpecVersion != null && javaVmVersion != null && javaVmVendor != null;
+    private static String getRequiredProperty(Map<String, String> props, String name) {
+        return Objects.requireNonNull(props.get(name), "missing required property: " + name);
     }
 
     public static Version getMinVersion(Map<String, String> props, Map<String, Map<String, Version>> jvmciMinVersions) {
-        assert validateProperties(props) : "Properties map is missing an expected entry";
-        String javaSpecVersion = props.get("java.specification.version");
-        String javaVmVendor = props.get("java.vm.vendor");
+        String javaSpecVersion = getRequiredProperty(props, "java.specification.version");
+        String javaVmVendor = getRequiredProperty(props, "java.vm.vendor");
         Map<String, Version> versionMap = jvmciMinVersions.getOrDefault(javaSpecVersion, Map.of());
         return versionMap.getOrDefault(javaVmVendor, versionMap.get(DEFAULT_VENDOR_ENTRY));
     }
@@ -255,10 +244,18 @@ public final class JVMCIVersionCheck {
         check(props, exitOnFailure, format, JVMCI_MIN_VERSIONS);
     }
 
+    /**
+     * Checks the JVMCI version. This method expects the following properties to be present in
+     * {@code props}:
+     * <ul>
+     * <li>{@code java.specification.version}: Java specification version, e.g., {@code "21"}</li>
+     * <li>{@code java.vm.version}: Full Java VM version string, e.g, {@code "21+35"}</li>
+     * <li>{@code java.vm.vendor}: The vendor of the Java VM, e.g., {@code "GraalVM Community"}</li>
+     * </ul>
+     */
     public static void check(Map<String, String> props, boolean exitOnFailure, PrintFormat format, Map<String, Map<String, Version>> jvmciMinVersions) {
-        assert validateProperties(props) : "Properties map is missing an expected entry";
-        String javaSpecVersion = props.get("java.specification.version");
-        String javaVmVersion = props.get("java.vm.version");
+        String javaSpecVersion = getRequiredProperty(props, "java.specification.version");
+        String javaVmVersion = getRequiredProperty(props, "java.vm.version");
         JVMCIVersionCheck checker = new JVMCIVersionCheck(props, javaSpecVersion, javaVmVersion);
         checker.run(exitOnFailure, getMinVersion(props, jvmciMinVersions), format);
     }

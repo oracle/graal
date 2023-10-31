@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,15 +24,14 @@
  */
 package jdk.graal.compiler.hotspot.test;
 
-import static jdk.graal.compiler.hotspot.JVMCIVersionCheck.DEFAULT_VENDOR_ENTRY;
-
-import java.util.Map;
-
+import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
 import org.junit.Assert;
 import org.junit.Test;
 
-import jdk.graal.compiler.core.test.GraalCompilerTest;
-import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
+import java.util.Map;
+
+import static jdk.graal.compiler.hotspot.JVMCIVersionCheck.DEFAULT_VENDOR_ENTRY;
 
 /**
  * Tests that {@link JVMCIVersionCheck} can have multiple minimum versions for a given
