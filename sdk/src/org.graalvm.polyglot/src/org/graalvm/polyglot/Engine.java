@@ -2101,7 +2101,7 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public FileSystem allowLanguageHomeAccess(FileSystem fileSystem) {
+        public FileSystem allowInternalResourceAccess(FileSystem fileSystem) {
             throw noPolyglotImplementationFound();
         }
 

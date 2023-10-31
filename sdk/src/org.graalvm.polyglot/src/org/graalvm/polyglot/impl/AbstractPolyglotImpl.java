@@ -1389,8 +1389,8 @@ public abstract class AbstractPolyglotImpl {
         return getNext().newDefaultFileSystem(hostTmpDir);
     }
 
-    public FileSystem allowLanguageHomeAccess(FileSystem fileSystem) {
-        return getNext().allowLanguageHomeAccess(fileSystem);
+    public FileSystem allowInternalResourceAccess(FileSystem fileSystem) {
+        return getNext().allowInternalResourceAccess(fileSystem);
     }
 
     public FileSystem newReadOnlyFileSystem(FileSystem fileSystem) {

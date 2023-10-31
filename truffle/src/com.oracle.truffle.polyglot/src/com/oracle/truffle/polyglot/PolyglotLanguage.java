@@ -44,9 +44,7 @@ import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 import static com.oracle.truffle.polyglot.EngineAccessor.NODES;
 
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
@@ -56,7 +54,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 
@@ -69,7 +66,6 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
     Object api; // effectively final
     final int engineIndex;
     final RuntimeException initError;
-    final Map<String, TruffleFile> internalResources = new ConcurrentHashMap<>();
 
     private volatile OptionDescriptors options;
     private volatile OptionValuesImpl optionValues;

@@ -1076,6 +1076,8 @@ public abstract class TruffleInstrument {
          * unpacking would be repeated once per operating system user. When the language was
          * compiled using native-image internal resources are unpacked at native-image compile time
          * and stored relative to the native-image.
+         * <p>
+         * The caller thread must be entered in a context.
          *
          * @param resource the resource class to load
          * @throws IllegalArgumentException if {@code resource} is not associated with this

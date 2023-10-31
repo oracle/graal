@@ -675,6 +675,10 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return internalResources.keySet();
     }
 
+    Collection<InternalResourceCache> getResources() {
+        return internalResources.values();
+    }
+
     @Override
     public String toString() {
         return "LanguageCache [id=" + id + ", name=" + name + ", implementationName=" + implementationName + ", version=" + version + ", className=" + className + ", services=" + services + "]";
