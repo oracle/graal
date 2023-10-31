@@ -30,14 +30,17 @@
 package com.oracle.truffle.llvm.runtime.nodes.func;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
@@ -45,6 +48,7 @@ import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessGlobalSymbolNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessGlobalSymbolNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(value = "function", type = LLVMExpressionNode.class)
 public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
@@ -90,16 +94,16 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
      * Try to cache the target symbol if it's always the same one, the reverse lookup is much faster
      * and doesn't need a TruffleBoundary.
      */
-    /*@Specialization(guards = {"!isAutoDerefHandle(pointer.asNative())", "cachedSymbol != null"}, replaces = {"doHandleCached",
+    @Specialization(guards = {"!isAutoDerefHandle(pointer.asNative())", "cachedSymbol != null"}, replaces = {"doHandleCached",
                     "doNativeFunctionCached"}, rewriteOn = LLVMIllegalSymbolIndexException.class)
     protected Object doLookupNativeFunctionCachedSymbol(VirtualFrame frame, LLVMNativePointer pointer,
-                    @Cached("lookupFunctionSymbol(pointer)") LLVMAccessGlobalSymbolNode cachedSymbol) {*/
+                    @Cached("lookupFunctionSymbol(pointer)") LLVMAccessGlobalSymbolNode cachedSymbol) {
         /*
          * The cache will be invalidated if the symbol cannot be found in the symbol table. In which
          * case the entire specialisation will be rewritten when the context throws an
          * LLVMIllegalSymbolIndexException.
          */
-        /*LLVMPointer symbolPointer = cachedSymbol.executeGeneric(frame);
+        LLVMPointer symbolPointer = cachedSymbol.executeGeneric(frame);
 
         // guard against uninitialized symbols in multi-context cases
         if (LLVMManagedPointer.isInstance(symbolPointer)) {
@@ -114,7 +118,7 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new LLVMIllegalSymbolIndexException("mismatching function");
-    }*/
+    }
 
     @Specialization(guards = "!isAutoDerefHandle(pointer.asNative())", //replaces = {"doLookupNativeFunctionCachedSymbol", "doHandleCached", "doNativeFunctionCached"})
             replaces = {"doHandleCached", "doNativeFunctionCached"})

@@ -814,88 +814,28 @@ public final class LLVMContext {
             try {
                 return symbolFinalStorage[id][index];
             } catch (ArrayIndexOutOfBoundsException | NullPointerException e) {
-                //exception.enter();)
-
-                loaderLogger.log(Level.FINEST, "********************stack trace:***********************");
-                loaderLogger.log(Level.FINEST, Arrays.toString(e.getStackTrace()));
-                loaderLogger.log(Level.FINEST, "symbol is: " + symbol.getName());
-                loaderLogger.log(Level.FINEST, "id is: " + id);
-                loaderLogger.log(Level.FINEST, "id name is: " + bitcodeID.getName());
-                loaderLogger.log(Level.FINEST, "index is: " + index);
-
-
-                System.out.println("symbol is: " + symbol.getName());
-                System.out.println("id is: " + id);
-                System.out.println("id name is: " + bitcodeID.getName());
-                System.out.println("index is: " + index);
-
-                System.out.println("symbolFinalStorage length is: " + symbolFinalStorage.length + ", when compared against id: " + id);
-                System.out.println("symbolFinalStorage is: ");
-                for (int i = 0; i < symbolFinalStorage.length; i++) {
-                    if (id == i) {
-                        LLVMPointer[] pointers = symbolFinalStorage[i];
-                        if (pointers != null) {
-                            System.out.println("Length for " + i + " array : " + pointers.length + ", when compared against index: " + index);
-                            for (int j = 0; j < pointers.length; j++) {
-                                System.out.println("(" + i + ", " + j + ") : " + pointers[j]);
-                            }
-                        } else {
-                            System.out.println("Length for " + i + " array : 0");
-                        }
-                    }
+                exception.enter();
+                if (LibraryLocator.loggingEnabled()) {
+                    loaderLogger.log(Level.FINEST, Arrays.toString(e.getStackTrace()));
+                    loaderLogger.log(Level.FINEST, "symbol is: " + symbol.getName());
+                    loaderLogger.log(Level.FINEST, "id is: " + id);
+                    loaderLogger.log(Level.FINEST, "id name is: " + bitcodeID.getName());
+                    loaderLogger.log(Level.FINEST, "index is: " + index);
                 }
-
-                System.out.println("library loaded:");
-                for (int i = 0; i < libraryLoaded.length; i++) {
-                    System.out.println(i + " : " + this.libraryLoaded[i]);
-                }
-
-                System.out.println("stack trace:");
-                e.printStackTrace();
-
                 throw new LLVMIllegalSymbolIndexException("cannot find symbol");
             }
         } else {
             try {
                 return symbolDynamicStorage[id][index];
             } catch (ArrayIndexOutOfBoundsException | NullPointerException e) {
-                //exception.enter();
-
-                loaderLogger.log(Level.FINEST, "********************stack trace:***********************");
-                loaderLogger.log(Level.FINEST, Arrays.toString(e.getStackTrace()));
-                loaderLogger.log(Level.FINEST, "symbol is: " + symbol.getName());
-                loaderLogger.log(Level.FINEST, "id is: " + id);
-                loaderLogger.log(Level.FINEST, "id name is: " + bitcodeID.getName());
-                loaderLogger.log(Level.FINEST, "index is: " + index);
-
-                System.out.println("symbol is: " + symbol.getName());
-                System.out.println("id is: " + id);
-                System.out.println("id name is: " + bitcodeID.getName());
-                System.out.println("index is: " + index);
-                System.out.println("symbolFinalStorage length is: " + symbolDynamicStorage.length + ", when compared against id: " + id);
-                System.out.println("symbolFinalStorage is: ");
-                for (int i = 0; i < symbolDynamicStorage.length; i++) {
-                    if (id == i) {
-                        LLVMPointer[] pointers = symbolDynamicStorage[i];
-                        if (pointers != null) {
-                            System.out.println("Length for " + i + " array : " + pointers.length + ", when compared against index: " + index);
-                            for (int j = 0; j < pointers.length; j++) {
-                                System.out.println("(" + i + ", " + j + ") : " + pointers[j]);
-                            }
-                        } else {
-                            System.out.println("Length for " + i + " array : 0");
-                        }
-                    }
+                exception.enter();
+                if (LibraryLocator.loggingEnabled()) {
+                    loaderLogger.log(Level.FINEST, Arrays.toString(e.getStackTrace()));
+                    loaderLogger.log(Level.FINEST, "symbol is: " + symbol.getName());
+                    loaderLogger.log(Level.FINEST, "id is: " + id);
+                    loaderLogger.log(Level.FINEST, "id name is: " + bitcodeID.getName());
+                    loaderLogger.log(Level.FINEST, "index is: " + index);
                 }
-
-                System.out.println("library loaded:");
-                for (int i = 0; i < libraryLoaded.length; i++) {
-                    System.out.println(i + " : " + this.libraryLoaded[i]);
-                }
-
-                System.out.println("stack trace:");
-                e.printStackTrace();
-
                 throw new LLVMIllegalSymbolIndexException("cannot find symbol");
             }
         }

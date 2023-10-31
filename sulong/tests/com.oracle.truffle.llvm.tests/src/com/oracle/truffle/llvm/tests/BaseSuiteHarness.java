@@ -35,6 +35,7 @@ import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil.ProcessResult;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil.TestEngineMode;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.junit.AfterClass;
@@ -196,7 +197,6 @@ public abstract class BaseSuiteHarness {
         try {
             result = testEngineMode.run(candidateBinary.toAbsolutePath().toFile(), inputArgs, getContextOptions(candidateBinary.toAbsolutePath().toString()), evaluateSourceOnly());
         } catch (Exception e) {
-            System.out.println("*************Failure in BaseSuiteHarness.runCandidate()*************");
             throw fail(getTestName(), new Exception("Candidate binary that failed: " + candidateBinary, e));
         }
 
@@ -227,8 +227,6 @@ public abstract class BaseSuiteHarness {
                 if (retries++ >= MAX_RETRIES) {
                     throw e;
                 }
-            } catch (IOException e) {
-                throw new RuntimeException(e);
             }
         }
     }
