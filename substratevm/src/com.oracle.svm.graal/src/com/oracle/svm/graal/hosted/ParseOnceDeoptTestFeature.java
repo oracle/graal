@@ -244,5 +244,10 @@ public class ParseOnceDeoptTestFeature implements InternalFeature {
              */
             return multiMethodKey == DEOPT_TARGET_METHOD;
         }
+
+        @Override
+        public boolean unknownReturnValue(BigBang bb, MultiMethod.MultiMethodKey callerMultiMethodKey, AnalysisMethod implementation) {
+            return false;
+        }
     }
 }

@@ -354,6 +354,13 @@ public abstract class HostVM {
          * return values.
          */
         boolean insertPlaceholderParamAndReturnFlows(MultiMethod.MultiMethodKey multiMethodKey);
+
+        /**
+         * Some methods can be transformed after analysis; in these cases we do not know what the
+         * returned value will be.
+         */
+        boolean unknownReturnValue(BigBang bb, MultiMethod.MultiMethodKey callerMultiMethodKey, AnalysisMethod implementation);
+
     }
 
     /**
@@ -383,6 +390,11 @@ public abstract class HostVM {
 
         @Override
         public boolean insertPlaceholderParamAndReturnFlows(MultiMethod.MultiMethodKey multiMethodKey) {
+            return false;
+        }
+
+        @Override
+        public boolean unknownReturnValue(BigBang bb, MultiMethod.MultiMethodKey callerMultiMethodKey, AnalysisMethod implementation) {
             return false;
         }
     };
