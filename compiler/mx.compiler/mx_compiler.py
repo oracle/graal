@@ -566,14 +566,14 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
         if t:
             for name in dacapo_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
-                for i in range(default_iterations * scala_daily_scaling_factor):
+                for _ in range(default_iterations * scala_daily_scaling_factor):
                     _gate_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     with mx_gate.Task('Dacapo benchmark weekly workload', tasks, tags=['dacapo_weekly'], report=task_report_component) as t:
         if t:
             for name in dacapo_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
-                for i in range(default_iterations * scala_weekly_scaling_factor):
+                for _ in range(default_iterations * scala_weekly_scaling_factor):
                     _gate_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     # ensure we can also run on C2
@@ -603,14 +603,14 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
         if t:
             for name in scala_dacapo_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(scala_dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
-                for i in range(default_iterations * scala_dacapo_daily_scaling_factor):
+                for _ in range(default_iterations * scala_dacapo_daily_scaling_factor):
                     _gate_scala_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     with mx_gate.Task('ScalaDacapo benchmark weekly workload', tasks, tags=['scala_dacapo_weekly'], report=task_report_component) as t:
         if t:
             for name in scala_dacapo_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(scala_dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
-                for i in range(default_iterations * scala_dacapo_weekly_scaling_factor):
+                for _ in range(default_iterations * scala_dacapo_weekly_scaling_factor):
                     _gate_scala_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     # run Renaissance benchmarks #
@@ -630,14 +630,14 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
         if t:
             for name in renaissance_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(renaissance_suite.renaissanceIterations().get(name, -1) * default_iterations_reduction)
-                for i in range(default_iterations):
+                for _ in range(default_iterations):
                     _gate_renaissance(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + enable_assertions)
 
     with mx_gate.Task('Renaissance benchmark weekly workload', tasks, tags=['renaissance_weekly'], report=task_report_component) as t:
         if t:
             for name in renaissance_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(renaissance_suite.renaissanceIterations().get(name, -1) * default_iterations_reduction)
-                for i in range(default_iterations * daily_weekly_jobs_ratio):
+                for _ in range(default_iterations * daily_weekly_jobs_ratio):
                     _gate_renaissance(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + enable_assertions)
 
     # run benchmark with non default setup #

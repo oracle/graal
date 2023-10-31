@@ -50,7 +50,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.type.StampTool;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -138,17 +137,19 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable {
         if (joinedStamp.isEmpty()) {
             // The check can never succeed, the intersection of the two stamps is empty.
             return LogicConstantNode.contradiction();
+        } else if (joinedStamp.equals(inputStamp)) {
+            // The check will always succeed, the intersection of the two stamps is equal to the
+            // input stamp.
+            return LogicConstantNode.tautology();
+        } else if (joinedStamp.alwaysNull()) {
+            // The intersection of the two stamps is always null => simplify the check.
+            return IsNullNode.create(object);
         } else {
             ObjectStamp meetStamp = (ObjectStamp) checkedStamp.meet(inputStamp);
-            if (checkedStamp.equals(meetStamp)) {
-                // The check will always succeed, the union of the two stamps is equal to the
-                // checked stamp.
-                return LogicConstantNode.tautology();
-            } else if (checkedStamp.alwaysNull()) {
-                return IsNullNode.create(object);
-            } else if (Objects.equals(checkedStamp.type(), meetStamp.type()) && checkedStamp.isExactType() == meetStamp.isExactType() && checkedStamp.alwaysNull() == meetStamp.alwaysNull()) {
+            if (Objects.equals(checkedStamp.type(), meetStamp.type()) && checkedStamp.isExactType() == meetStamp.isExactType() && checkedStamp.alwaysNull() == meetStamp.alwaysNull()) {
                 assert checkedStamp.nonNull() != inputStamp.nonNull();
-                // The only difference makes the null-ness of the value => simplify the check.
+                // The only difference between the two stamps is their null-ness => simplify the
+                // check.
                 if (checkedStamp.nonNull()) {
                     return LogicNegationNode.create(IsNullNode.create(object));
                 } else {
@@ -182,8 +183,7 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable {
 
     @Override
     public TriState tryFold(Stamp valueStamp) {
-        if (valueStamp instanceof ObjectStamp) {
-            ObjectStamp inputStamp = (ObjectStamp) valueStamp;
+        if (valueStamp instanceof ObjectStamp inputStamp) {
             ObjectStamp joinedStamp = (ObjectStamp) checkedStamp.join(inputStamp);
 
             if (joinedStamp.isEmpty()) {
@@ -232,8 +232,7 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable {
 
     @Override
     public TriState implies(boolean thisNegated, LogicNode other) {
-        if (other instanceof InstanceOfNode) {
-            InstanceOfNode instanceOfNode = (InstanceOfNode) other;
+        if (other instanceof InstanceOfNode instanceOfNode) {
             if (instanceOfNode.getValue() == getValue()) {
                 if (thisNegated) {
                     // !X => Y
