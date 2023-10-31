@@ -81,7 +81,7 @@ public class AnalysisReportsOptions {
     public static final OptionKey<Boolean> CausalityGraphWithTypeflow = new OptionKey<>(true);
 
     @Option(help = "Include debug-string for each typeflow.")//
-    public static final OptionKey<Boolean> CausalityGraphVerbose = new OptionKey<>(false);
+    public static final OptionKey<Boolean> CausalityGraphVerbose = new OptionKey<>(true);
 
     enum CallTreeType {
         TXT,
