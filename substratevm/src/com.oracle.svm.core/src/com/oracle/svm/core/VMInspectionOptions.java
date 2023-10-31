@@ -57,11 +57,12 @@ public final class VMInspectionOptions {
     private static final String MONITORING_JMXCLIENT_NAME = "jmxclient";
     private static final String MONITORING_JMXSERVER_NAME = "jmxserver";
     private static final String MONITORING_THREADDUMP_NAME = "threaddump";
+    private static final String MONITORING_NMT_NAME = "nmt";
 
     private static final List<String> MONITORING_ALL_VALUES = List.of(MONITORING_HEAPDUMP_NAME, MONITORING_JFR_NAME, MONITORING_JVMSTAT_NAME, MONITORING_JMXCLIENT_NAME, MONITORING_JMXSERVER_NAME,
-                    MONITORING_THREADDUMP_NAME, MONITORING_ALL_NAME, MONITORING_DEFAULT_NAME);
+                    MONITORING_THREADDUMP_NAME, MONITORING_NMT_NAME, MONITORING_ALL_NAME, MONITORING_DEFAULT_NAME);
     private static final String MONITORING_ALLOWED_VALUES_TEXT = "'" + MONITORING_HEAPDUMP_NAME + "', '" + MONITORING_JFR_NAME + "', '" + MONITORING_JVMSTAT_NAME + "', '" + MONITORING_JMXSERVER_NAME +
-                    "' (experimental), '" + MONITORING_JMXCLIENT_NAME + "' (experimental), '" + MONITORING_THREADDUMP_NAME + "', or '" + MONITORING_ALL_NAME +
+                    "' (experimental), '" + MONITORING_JMXCLIENT_NAME + "' (experimental), '" + MONITORING_THREADDUMP_NAME + "', '" + MONITORING_NMT_NAME + "', or '" + MONITORING_ALL_NAME +
                     "' (deprecated behavior: defaults to '" + MONITORING_ALL_NAME + "' if no argument is provided)";
 
     static {
@@ -161,6 +162,15 @@ public final class VMInspectionOptions {
     @Fold
     public static boolean hasThreadDumpSupport() {
         return hasAllOrKeywordMonitoringSupport(MONITORING_THREADDUMP_NAME) || DeprecatedOptions.DumpThreadStacksOnSignal.getValue();
+    }
+
+    @Fold
+    public static boolean hasNmtSupport() {
+        return hasAllOrKeywordMonitoringSupport(MONITORING_NMT_NAME) && !Platform.includedIn(WINDOWS.class); // TODO
+                                                                                                             // no
+                                                                                                             // windows
+                                                                                                             // for
+                                                                                                             // now?
     }
 
     @Option(help = "Dumps all runtime compiled methods on SIGUSR2.", type = OptionType.User) //

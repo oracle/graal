@@ -33,6 +33,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.nmt.NmtVirtualMemoryData;
 
 /**
  * Provides new instances of the image heap for creating isolates. The same image heap provider
@@ -79,7 +80,7 @@ public interface ImageHeapProvider {
      *            written. May be null if this value is not required.
      * @return a result code from {@link CEntryPointErrors}.
      */
-    int initialize(Pointer reservedAddressSpace, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer);
+    int initialize(Pointer reservedAddressSpace, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer, NmtVirtualMemoryData nmtData);
 
     /**
      * Disposes an instance of the image heap that was created with this provider. This method must

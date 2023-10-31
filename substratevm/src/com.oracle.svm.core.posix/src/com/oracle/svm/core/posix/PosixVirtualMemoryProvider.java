@@ -54,6 +54,9 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.nmt.NativeMemoryTracking;
+import com.oracle.svm.core.nmt.NmtFlag;
+import com.oracle.svm.core.nmt.NmtVirtualMemoryData;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.PointerUtils;
@@ -110,6 +113,11 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean executable) {
+        return reserve(nbytes, alignment, executable, WordFactory.nullPointer());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean executable, NmtVirtualMemoryData nmtData) {
         if (nbytes.equal(0)) {
             return WordFactory.nullPointer();
         }
@@ -128,18 +136,32 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
             return nullPointer();
         }
         if (!customAlignment) {
+            if (nmtData.isNull()) {
+                NativeMemoryTracking.recordReserve(mappingSize, NmtFlag.Default.ordinal());
+            } else {
+                nmtData.setReserved(nmtData.getReserved().add(mappingSize));
+            }
             return mappingBegin;
         }
+        UnsignedWord unmappedSize = WordFactory.zero();
         Pointer begin = PointerUtils.roundUp(mappingBegin, alignment);
         UnsignedWord clippedBegin = begin.subtract(mappingBegin);
         if (clippedBegin.aboveOrEqual(granularity)) {
-            munmap(mappingBegin, UnsignedUtils.roundDown(clippedBegin, granularity));
+            UnsignedWord unmapSize = UnsignedUtils.roundDown(clippedBegin, granularity);
+            munmap(mappingBegin, unmapSize);
+            unmappedSize.add(unmapSize);
         }
         Pointer mappingEnd = mappingBegin.add(mappingSize);
         UnsignedWord clippedEnd = mappingEnd.subtract(begin.add(nbytes));
         if (clippedEnd.aboveOrEqual(granularity)) {
             UnsignedWord rounded = UnsignedUtils.roundDown(clippedEnd, granularity);
             munmap(mappingEnd.subtract(rounded), rounded);
+            unmappedSize.add(rounded);
+        }
+        if (nmtData.isNull()) {
+            NativeMemoryTracking.recordReserve(mappingSize.subtract(unmappedSize), NmtFlag.Default.ordinal());
+        } else {
+            nmtData.setReserved(nmtData.getReserved().add(mappingSize.subtract(unmappedSize)));
         }
         return begin;
     }
@@ -147,6 +169,12 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access) {
+        return mapFile(start, nbytes, fileHandle, offset, access, WordFactory.nullPointer());
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access, NmtVirtualMemoryData nmtData) {
         if ((start.isNonNull() && !isAligned(start)) || nbytes.equal(0)) {
             return WordFactory.nullPointer();
         }
@@ -157,12 +185,28 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
         }
         int fd = (int) fileHandle.rawValue();
         Pointer result = mmap(start, nbytes, accessAsProt(access), flags, fd, offset.rawValue());
-        return result.notEqual(MAP_FAILED()) ? result : WordFactory.nullPointer();
+        if (result.notEqual(MAP_FAILED())) {
+            if (nmtData.isNull()) {
+                // TODO is this also a reserve? [No, the mem has already been reserved in a previous
+                // call.]
+                NativeMemoryTracking.recordCommit(nbytes, NmtFlag.Default.ordinal());
+            } else {
+                nmtData.setCommitted(nmtData.getCommitted().add(nbytes));
+            }
+            return result;
+        }
+        return WordFactory.nullPointer();
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer commit(PointerBase start, UnsignedWord nbytes, int access) {
+        return commit(start, nbytes, access, WordFactory.nullPointer());
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public Pointer commit(PointerBase start, UnsignedWord nbytes, int access, NmtVirtualMemoryData nmtData) {
         if ((start.isNonNull() && !isAligned(start)) || nbytes.equal(0)) {
             return WordFactory.nullPointer();
         }
@@ -177,7 +221,15 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
         }
         /* The memory returned by mmap is guaranteed to be zeroed. */
         final Pointer result = mmap(start, nbytes, accessAsProt(access), flags, NO_FD, NO_FD_OFFSET);
-        return result.notEqual(MAP_FAILED()) ? result : nullPointer();
+        if (result.notEqual(MAP_FAILED())) {
+            if (nmtData.isNull()) {
+                NativeMemoryTracking.recordCommit(nbytes, NmtFlag.Default.ordinal());
+            } else {
+                nmtData.setCommitted(nmtData.getCommitted().add(nbytes));
+            }
+            return result;
+        }
+        return nullPointer();
     }
 
     @Override
@@ -196,7 +248,7 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
         if (start.isNull() || !isAligned(start) || nbytes.equal(0)) {
             return -1;
         }
-
+        NativeMemoryTracking.recordUncommit(nbytes, NmtFlag.Default.ordinal());
         final Pointer result = mmap(start, nbytes, PROT_NONE(), MAP_FIXED() | MAP_ANON() | MAP_PRIVATE() | MAP_NORESERVE(), NO_FD, NO_FD_OFFSET);
         return result.notEqual(MAP_FAILED()) ? 0 : -1;
     }
@@ -211,6 +263,7 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
         UnsignedWord granularity = getGranularity();
         Pointer mappingBegin = PointerUtils.roundDown(start, granularity);
         UnsignedWord mappingSize = UnsignedUtils.roundUp(nbytes, granularity);
+        NativeMemoryTracking.recordFree(nbytes, NmtFlag.Default.ordinal());
         return munmap(mappingBegin, mappingSize);
     }
 

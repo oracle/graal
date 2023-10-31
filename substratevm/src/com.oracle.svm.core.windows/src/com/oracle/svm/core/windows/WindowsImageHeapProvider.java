@@ -47,6 +47,7 @@ import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.os.AbstractCopyingImageHeapProvider;
+import com.oracle.svm.core.nmt.NmtVirtualMemoryData;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.windows.headers.FileAPI;
@@ -64,18 +65,18 @@ import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 public class WindowsImageHeapProvider extends AbstractCopyingImageHeapProvider {
     @Override
     @Uninterruptible(reason = "Called during isolate initialization.")
-    protected int commitAndCopyMemory(Pointer loadedImageHeap, UnsignedWord imageHeapSize, Pointer newImageHeap) {
+    protected int commitAndCopyMemory(Pointer loadedImageHeap, UnsignedWord imageHeapSize, Pointer newImageHeap, NmtVirtualMemoryData nmtData) {
         HANDLE imageHeapFileMapping = getImageHeapFileMapping();
         if (imageHeapFileMapping.isNull()) {
             /* Fall back to copying from memory. */
-            return super.commitAndCopyMemory(loadedImageHeap, imageHeapSize, newImageHeap);
+            return super.commitAndCopyMemory(loadedImageHeap, imageHeapSize, newImageHeap, nmtData);
         }
 
         /* Map a copy-on-write view of the image heap. */
         if (VirtualMemoryProvider.get().mapFile(newImageHeap, imageHeapSize, imageHeapFileMapping, getImageHeapFileOffset(),
-                        Access.READ | Access.WRITE).isNull()) {
+                        Access.READ | Access.WRITE, nmtData).isNull()) {
             /* Fall back to copying from memory. */
-            return super.commitAndCopyMemory(loadedImageHeap, imageHeapSize, newImageHeap);
+            return super.commitAndCopyMemory(loadedImageHeap, imageHeapSize, newImageHeap, nmtData);
         }
 
         /* Copy relocatable pages. */

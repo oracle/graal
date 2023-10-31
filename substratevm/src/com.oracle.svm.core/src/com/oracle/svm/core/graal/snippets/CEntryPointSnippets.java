@@ -98,6 +98,10 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.nmt.HasNmtSupport;
+import com.oracle.svm.core.nmt.NmtFlag;
+import com.oracle.svm.core.nmt.NmtVirtualMemoryData;
+import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
@@ -243,13 +247,24 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
 
         WordPointer isolatePtr = StackValue.get(WordPointer.class);
-        int error = Isolates.create(isolatePtr, parameters);
+        NmtVirtualMemoryData nmtData = WordFactory.nullPointer();
+        if (HasNmtSupport.get()) {
+            nmtData = StackValue.get(NmtVirtualMemoryData.class);
+            nmtData.setCommitted(WordFactory.zero());
+            nmtData.setReserved(WordFactory.zero());
+        }
+        int error = Isolates.create(isolatePtr, parameters, nmtData);
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
         Isolate isolate = isolatePtr.read();
         if (SpawnIsolates.getValue()) {
             setHeapBase(Isolates.getHeapBase(isolate));
+        }
+
+        if (HasNmtSupport.get()) {
+            NativeMemoryTracking.recordCommit(nmtData.getCommitted(), NmtFlag.Default.ordinal());
+            NativeMemoryTracking.recordReserve(nmtData.getReserved(), NmtFlag.Default.ordinal());
         }
 
         return createIsolate0(parsedArgs, isolate, vmThreadSize);

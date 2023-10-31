@@ -205,6 +205,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
      */
     public void closeFile() {
         assert lock.isOwner();
+        com.oracle.svm.core.nmt.NativeMemoryTracking.printStats();
         /*
          * Switch to a new epoch. This is done at a safepoint to ensure that we end up with
          * consistent data, even if multiple threads have JFR events in progress.

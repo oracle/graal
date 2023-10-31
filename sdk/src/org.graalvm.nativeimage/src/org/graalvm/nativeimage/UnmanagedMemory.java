@@ -154,6 +154,6 @@ public final class UnmanagedMemory {
      * {@link UnmanagedMemory#free(PointerBase)} is used instead, a segfault will occur.
      */
     public static void untrackedFree(PointerBase ptr) {
-        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(ptr);
+        ImageSingletons.lookup(UnmanagedMemorySupport.class).untrackedFree(ptr);
     }
 }
