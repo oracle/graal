@@ -1073,6 +1073,7 @@ public abstract class PlatformThreads {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static boolean isAlive(Thread thread) {
         int threadStatus = getThreadStatus(thread);
         return !(threadStatus == ThreadStatus.NEW || threadStatus == ThreadStatus.TERMINATED);

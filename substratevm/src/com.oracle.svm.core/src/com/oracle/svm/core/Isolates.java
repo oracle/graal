@@ -71,6 +71,7 @@ public class Isolates {
      * they have a single native state that does not distinguish between isolates).
      */
     public static boolean isCurrentFirst() {
+        VMError.guarantee(isCurrentFirst != null);
         return isCurrentFirst;
     }
 
