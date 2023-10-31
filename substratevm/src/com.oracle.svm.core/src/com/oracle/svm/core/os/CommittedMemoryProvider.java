@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
@@ -43,12 +42,6 @@ import com.oracle.svm.core.heap.Heap;
  * memory or swap space.
  */
 public interface CommittedMemoryProvider {
-    /**
-     * Value for alignment parameters that indicates that no specific alignment is required (other
-     * than the {@linkplain #getGranularity() granularity} usually).
-     */
-    UnsignedWord UNALIGNED = WordFactory.unsigned(1);
-
     @Fold
     static CommittedMemoryProvider get() {
         return ImageSingletons.lookup(CommittedMemoryProvider.class);

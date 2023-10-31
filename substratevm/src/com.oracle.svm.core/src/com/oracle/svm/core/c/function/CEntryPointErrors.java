@@ -59,6 +59,9 @@ public final class CEntryPointErrors {
     @Description("An argument was NULL.") //
     public static final int NULL_ARGUMENT = 2;
 
+    @Description("Memory allocation failed, the OS is probably out of memory.") //
+    public static final int ALLOCATION_FAILED = 3;
+
     @Description("The specified thread is not attached to the isolate.") //
     public static final int UNATTACHED_THREAD = 4;
 
