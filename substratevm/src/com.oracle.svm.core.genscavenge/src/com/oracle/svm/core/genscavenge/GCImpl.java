@@ -29,7 +29,6 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.ref.Reference;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -96,6 +95,8 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalMTSupport;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * Garbage collector (incremental or complete) for {@link HeapImpl}.
@@ -211,14 +212,14 @@ public final class GCImpl implements GC {
         printGCBefore(cause);
 
         ThreadLocalAllocation.disableAndFlushForAllThreads();
-        GenScavengeMemoryPoolMXBeans.notifyBeforeCollection();
+        GenScavengeMemoryPoolMXBeans.singleton().notifyBeforeCollection();
         HeapImpl.getAccounting().notifyBeforeCollection();
 
         boolean outOfMemory = collectImpl(cause, data.getRequestingNanoTime(), data.getForceFullGC());
         data.setOutOfMemory(outOfMemory);
 
         HeapImpl.getAccounting().notifyAfterCollection();
-        GenScavengeMemoryPoolMXBeans.notifyAfterCollection();
+        GenScavengeMemoryPoolMXBeans.singleton().notifyAfterCollection();
 
         printGCAfter(cause);
         JfrGCHeapSummaryEvent.emit(JfrGCWhen.AFTER_GC);

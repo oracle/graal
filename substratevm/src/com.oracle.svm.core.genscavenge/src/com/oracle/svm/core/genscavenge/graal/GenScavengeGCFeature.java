@@ -24,15 +24,11 @@
  */
 package com.oracle.svm.core.genscavenge.graal;
 
-import java.lang.management.MemoryPoolMXBean;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -70,6 +66,10 @@ import com.oracle.svm.core.jvmstat.PerfDataHolder;
 import com.oracle.svm.core.jvmstat.PerfManager;
 import com.sun.management.GarbageCollectorMXBean;
 
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+
 @AutomaticallyRegisteredFeature
 class GenScavengeGCFeature implements InternalFeature {
     @Override
@@ -95,7 +95,9 @@ class GenScavengeGCFeature implements InternalFeature {
         ImageSingletons.add(Heap.class, heap);
         ImageSingletons.add(GCAllocationSupport.class, new GenScavengeAllocationSupport());
 
-        List<MemoryPoolMXBean> memoryPools = Arrays.asList(GenScavengeMemoryPoolMXBeans.createMemoryPoolMXBeans());
+        GenScavengeMemoryPoolMXBeans memoryPoolMXBeans = new GenScavengeMemoryPoolMXBeans();
+        ImageSingletons.add(GenScavengeMemoryPoolMXBeans.class, memoryPoolMXBeans);
+
         List<GarbageCollectorMXBean> garbageCollectors;
         if (SubstrateOptions.UseEpsilonGC.getValue()) {
             garbageCollectors = Arrays.asList(new EpsilonGarbageCollectorMXBean());
@@ -105,7 +107,7 @@ class GenScavengeGCFeature implements InternalFeature {
 
         ManagementSupport managementSupport = ManagementSupport.getSingleton();
         managementSupport.addPlatformManagedObjectSingleton(java.lang.management.MemoryMXBean.class, new HeapImplMemoryMXBean());
-        managementSupport.addPlatformManagedObjectList(java.lang.management.MemoryPoolMXBean.class, memoryPools);
+        managementSupport.addPlatformManagedObjectList(java.lang.management.MemoryPoolMXBean.class, Arrays.asList(memoryPoolMXBeans.getMXBeans()));
         managementSupport.addPlatformManagedObjectList(com.sun.management.GarbageCollectorMXBean.class, garbageCollectors);
         /* Not supported yet. */
         managementSupport.addPlatformManagedObjectList(java.lang.management.BufferPoolMXBean.class, Collections.emptyList());
