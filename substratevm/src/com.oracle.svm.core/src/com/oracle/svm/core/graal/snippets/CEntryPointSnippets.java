@@ -71,6 +71,7 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
+import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceHandler;
@@ -549,6 +550,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             int result = Isolates.tearDownCurrent();
             // release the heap memory associated with final isolate thread
             VMThreads.singleton().freeIsolateThread(finalThread);
+            WriteCurrentVMThreadNode.writeCurrentVMThread(WordFactory.nullPointer());
             return result;
         } catch (Throwable t) {
             return reportException(t);
