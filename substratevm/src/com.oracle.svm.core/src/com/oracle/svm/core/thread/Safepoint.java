@@ -876,42 +876,7 @@ public final class Safepoint {
             return safepointId;
         }
 
-        /** A sample method to execute in a VMOperation. */
         public static class TestingBackdoor {
-
-            public static int countingVMOperation() {
-                final Log trace = Log.log().string("[Safepoint.Master.TestingBackdoor.countingVMOperation:").newline();
-                int atSafepoint = 0;
-                int ignoreSafepoints = 0;
-                int notAtSafepoint = 0;
-
-                for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
-                    int safepointBehavior = SafepointBehavior.getSafepointBehaviorVolatile(vmThread);
-                    int status = StatusSupport.getStatusVolatile(vmThread);
-                    if (safepointBehavior == SafepointBehavior.PREVENT_VM_FROM_REACHING_SAFEPOINT) {
-                        notAtSafepoint++;
-                    } else if (safepointBehavior == SafepointBehavior.THREAD_CRASHED) {
-                        ignoreSafepoints += 1;
-                    } else {
-                        assert safepointBehavior == SafepointBehavior.ALLOW_SAFEPOINT;
-                        // Check if the thread is at a safepoint or in native code.
-                        switch (status) {
-                            case StatusSupport.STATUS_IN_SAFEPOINT:
-                                atSafepoint += 1;
-                                break;
-                            default:
-                                notAtSafepoint += 1;
-                                break;
-                        }
-                    }
-                }
-                trace.string("  atSafepoint: ").signed(atSafepoint)
-                                .string("  ignoreSafepoints: ").signed(ignoreSafepoints)
-                                .string("  notAtSafepoint: ").signed(notAtSafepoint);
-                trace.string("]").newline();
-                return atSafepoint;
-            }
-
             @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
             public static int getCurrentThreadSafepointRequestedCount() {
                 return getSafepointRequested(CurrentIsolate.getCurrentThread());
