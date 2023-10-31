@@ -120,8 +120,7 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
         throw new LLVMIllegalSymbolIndexException("mismatching function");
     }
 
-    @Specialization(guards = "!isAutoDerefHandle(pointer.asNative())", //replaces = {"doLookupNativeFunctionCachedSymbol", "doHandleCached", "doNativeFunctionCached"})
-            replaces = {"doHandleCached", "doNativeFunctionCached"})
+    @Specialization(guards = "!isAutoDerefHandle(pointer.asNative())", replaces = {"doLookupNativeFunctionCachedSymbol", "doHandleCached", "doNativeFunctionCached"})
     protected Object doLookup(LLVMNativePointer pointer) {
         LLVMFunctionDescriptor descriptor = lookupFunction(pointer);
         if (descriptor != null) {
