@@ -76,7 +76,6 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     "gate-vm-libgraal_truffle-labsjdk-latest-linux-amd64": {},
     "gate-vm-libgraal_compiler_zgc-labsjdk-latest-linux-amd64": {},
     "gate-vm-libgraal_compiler_quickbuild-labsjdk-latest-linux-amd64": {},
-    "gate-vm-libgraal_truffle_quickbuild-labsjdk-latest-linux-amd64": t("1:10:00"),
 
     "gate-vm-libgraal_compiler-labsjdk-21-linux-amd64": {} + graal_common.mach5_target,
     "gate-vm-libgraal_truffle-labsjdk-21-linux-amd64": {},
@@ -88,6 +87,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
     "daily-vm-libgraal_compiler_zgc-labsjdk-21-linux-amd64": {},
     "daily-vm-libgraal_compiler_quickbuild-labsjdk-21-linux-amd64": {},
+    "daily-vm-libgraal_truffle_quickbuild-labsjdk-latest-linux-amd64": t("1:10:00"),
     "daily-vm-libgraal_truffle_quickbuild-labsjdk-21-linux-amd64": t("1:10:00"),
   },
 
