@@ -1905,7 +1905,6 @@ suite = {
          "com.oracle.truffle.api.debug.test",
          "com.oracle.truffle.api.strings.test",
          "com.oracle.truffle.object.basic.test",
-         "com.oracle.truffle.nfi.test",
          "com.oracle.truffle.api.staticobject.test",
        ],
        "exclude" : [
@@ -1925,12 +1924,30 @@ suite = {
          "TRUFFLE_NFI",
          "TRUFFLE_NFI_LIBFFI",
          "TRUFFLE_DSL_PROCESSOR",
-         "TRUFFLE_TEST_NATIVE",
          "TRUFFLE_TCK",
          "TRUFFLE_TCK_INSTRUMENTATION",
       ],
       "unittestConfig": "truffle",
       "maven" : False,
+     },
+
+    "TRUFFLE_NFI_TEST": {
+       "subDir": "src",
+       "javaCompliance": "17+",
+       "dependencies": [
+         "com.oracle.truffle.nfi.test",
+       ],
+       "exclude": [
+         "mx:HAMCREST",
+         "mx:JUNIT",
+       ],
+       "distDependencies": [
+        "TRUFFLE_TEST",
+        "TRUFFLE_NFI",
+        "TRUFFLE_TEST_NATIVE",
+      ],
+      "unittestConfig": "truffle-nfi",
+      "maven": False,
      },
 
      "TRUFFLE_TEST_NATIVE" : {

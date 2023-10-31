@@ -44,7 +44,7 @@ import shutil
 import tempfile
 import difflib
 import zipfile
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from argparse import Action, ArgumentParser, RawDescriptionHelpFormatter
 from os.path import exists, isdir, join, abspath
 from urllib.parse import urljoin # pylint: disable=unused-import,no-name-in-module
 
@@ -191,13 +191,6 @@ class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
     def __init__(self, name='truffle'):
         super(TruffleUnittestConfig, self).__init__(name)
 
-    def processDeps(self, deps):
-        # A workaround to include the TRUFFLE_NFI_PANAMA dependency in the TRUFFLE_TEST.
-        # The TRUFFLE_TEST distribution is Java compliant for version 17, the TRUFFLE_NFI_PANAMA distribution requires Java 21.
-        # Due to this discrepancy, TRUFFLE_TEST cannot directly depend on the TRUFFLE_NFI_PANAMA.
-        if mx.get_jdk().javaCompliance.value >= 21:
-            deps.update({mx.distribution('TRUFFLE_NFI_PANAMA')})
-
     def apply(self, config):
         vmArgs, mainClass, mainClassArgs = config
         # Disable DefaultRuntime warning
@@ -219,6 +212,89 @@ class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
 
 
 mx_unittest.register_unittest_config(TruffleUnittestConfig())
+
+
+class NFITestConfig:
+
+    def __init__(self, name, runtime_deps):
+        self.name = name
+        self.runtime_deps = runtime_deps
+
+    def vm_args(self):
+        return []
+
+
+class _LibFFINFITestConfig(NFITestConfig):
+
+    def __init__(self):
+        super(_LibFFINFITestConfig, self).__init__('libffi', [])
+
+
+class _PanamaNFITestConfig(NFITestConfig):
+
+    def __init__(self):
+        super(_PanamaNFITestConfig, self).__init__('panama', ['TRUFFLE_NFI_PANAMA'])
+
+    def vm_args(self):
+        testPath = mx.distribution('TRUFFLE_TEST_NATIVE').output
+        args = [
+            '-Dnative.test.backend=panama',
+            '-Dnative.test.path.panama=' + testPath
+        ]
+        return args
+
+
+_nfi_test_configs = {}
+
+
+def register_nfi_test_config(cfg):
+    name = cfg.name
+    assert not name in _nfi_test_configs, 'duplicate nfi test config'
+    _nfi_test_configs[name] = cfg
+
+
+register_nfi_test_config(_LibFFINFITestConfig())
+register_nfi_test_config(_PanamaNFITestConfig())
+
+
+class _TruffleNFIUnittestConfig(mx_unittest.MxUnittestConfig):
+
+    runtimeConfig = None
+
+    def __init__(self, name='truffle-nfi'):
+        super(_TruffleNFIUnittestConfig, self).__init__(name)
+
+    def processDeps(self, deps):
+        deps.update({mx.distribution(runtime_dep) for runtime_dep in _TruffleNFIUnittestConfig.runtimeConfig.runtime_deps})
+
+    def apply(self, config):
+        vmArgs, mainClass, mainClassArgs = config
+        # Disable DefaultRuntime warning
+        vmArgs = vmArgs + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
+        # Assert for enter/return parity of ProbeNode
+        vmArgs = vmArgs + ['-Dpolyglot.engine.AssertProbes=true', '-Dpolyglot.engine.AllowExperimentalOptions=true']
+        # Add runtimeConfig vm args
+        vmArgs = vmArgs + _TruffleNFIUnittestConfig.runtimeConfig.vm_args()
+        return (vmArgs, mainClass, mainClassArgs)
+
+
+mx_unittest.register_unittest_config(_TruffleNFIUnittestConfig())
+
+
+class _SelectNFIConfigAction(Action):
+    def __init__(self, **kwargs):
+        kwargs['required'] = False
+        _TruffleNFIUnittestConfig.runtimeConfig = _nfi_test_configs["libffi"]
+        super(_SelectNFIConfigAction, self).__init__(**kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        if values in _nfi_test_configs:
+            _TruffleNFIUnittestConfig.runtimeConfig = _nfi_test_configs[values]
+        else:
+            mx.abort(f"NFI test config {values} unknown!")
+
+
+mx_unittest.add_unittest_argument('--nfi-config', default=None, help='Select test engine configuration for the nfi unittests.', metavar='<config>', action=_SelectNFIConfigAction)
 
 # simple utility that returns the right distribution names to use
 # for building a language module path
@@ -304,10 +380,7 @@ def _truffle_gate_runner(args, tasks):
     if jdk.javaCompliance >= '22':
         with Task('Truffle NFI tests with Panama Backend', tasks) as t:
             if t:
-                testPath = mx.distribution('TRUFFLE_TEST_NATIVE').output
-                args = ['-Dnative.test.backend=panama', '-Dnative.test.path.panama=' + testPath]
-                # testlibArg = mx_subst.path_substitutions.substitute('-Dnative.test.path.panama=<path:TRUFFLE_TEST_NATIVE>')
-                unittest(args + ['com.oracle.truffle.nfi.test', '--enable-timing', '--verbose'])
+                unittest(['com.oracle.truffle.nfi.test', '--enable-timing', '--verbose', '--nfi-config=panama'])
     with Task('TruffleString UnitTests without Java String Compaction', tasks) as t:
         if t: unittest(list(['-XX:-CompactStrings', '--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25', 'com.oracle.truffle.api.strings.test']))
     if os.getenv('DISABLE_DSL_STATE_BITS_TESTS', 'false').lower() != 'true':

@@ -197,7 +197,7 @@ def _sulong_gate_runner(args, tasks):
         _unittest('InteropUnchained', 'SULONG_EMBEDDED_TEST_SUITES', description="Truffle Language interoperability tests with resources instead of language home", testClasses=['com.oracle.truffle.llvm.tests.interop.'], tags=['interop', 'sulongBasic', 'sulongWinSupport', 'sulongUnchained'],
               extraUnittestArgs=['--sulong-test-resources'])
     _unittest('SulongNFI', 'SULONG_NFI_TESTS', description="Truffle NFI test suite with the Sulong NFI backend", testClasses=['com.oracle.truffle.nfi.test'], tags=['sulongNFI', 'sulongBasic', 'sulongWinSupport'],
-              extraUnittestArgs=['-Dnative.test.backend=llvm', '-Dnative.test.path.llvm=<path:SULONG_NFI_TESTS>', '-Dorg.graalvm.language.llvm.home=<path:SULONG_HOME>'])
+              extraUnittestArgs=['--nfi-config=llvm'])
     _unittest('Linker', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.linker.'], tags=['linker', 'sulongBasic'])
     _unittest('Debug', 'SULONG_EMBEDDED_TEST_SUITES', description="Debug support test suite", testClasses=['com.oracle.truffle.llvm.tests.debug.LLVMDebugTest'], tags=['debug', 'sulongBasic', 'sulongWinSupport'])
     _unittest('IRDebug', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.debug.LLVMIRDebugTest'], tags=['irdebug', 'sulongBasic'])
