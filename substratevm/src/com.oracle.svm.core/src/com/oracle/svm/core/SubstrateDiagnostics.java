@@ -30,16 +30,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
-import jdk.graal.compiler.nodes.PauseNode;
-import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionType;
-import jdk.graal.compiler.word.ObjectAccess;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -100,6 +90,17 @@ import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.core.util.CounterSupport;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.nodes.PauseNode;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionType;
+import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 
 public class SubstrateDiagnostics {
     private static final int MAX_THREADS_TO_PRINT = 100_000;
@@ -506,6 +507,31 @@ public class SubstrateDiagnostics {
         return patternPos == pattern.length();
     }
 
+    /* Scan the stack until we find a valid return address. We may encounter false-positives. */
+    private static Pointer findPotentialReturnAddressPosition(Pointer originalSp) {
+        UnsignedWord stackBase = VMThreads.StackBase.get();
+        if (stackBase.equal(0)) {
+            /* We don't know the stack boundaries, so only search within 32 bytes. */
+            stackBase = originalSp.add(32);
+        }
+
+        int wordSize = ConfigurationValues.getTarget().wordSize;
+        Pointer pos = originalSp;
+        while (pos.belowThan(stackBase)) {
+            CodePointer possibleIp = pos.readWord(0);
+            if (pointsIntoNativeImageCode(possibleIp)) {
+                return pos;
+            }
+            pos = pos.add(wordSize);
+        }
+        return WordFactory.nullPointer();
+    }
+
+    @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo.")
+    private static boolean pointsIntoNativeImageCode(CodePointer possibleIp) {
+        return CodeInfoTable.lookupCodeInfo(possibleIp).isNonNull();
+    }
+
     public static class FatalErrorState {
         AtomicWord<IsolateThread> diagnosticThread;
         volatile int diagnosticThunkIndex;
@@ -593,15 +619,31 @@ public class SubstrateDiagnostics {
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
             CodePointer ip = context.getInstructionPointer();
-            log.string("Printing instructions (ip=").zhex(ip).string("):").indent(true);
-            if (ip.isNull()) {
-                // can't print any instructions
-            } else if (invocationCount < 4) {
-                // print 512, 128, or 32 instruction bytes.
+            log.string("Printing instructions (ip=").zhex(ip).string("):");
+
+            if (((Pointer) ip).belowThan(VirtualMemoryProvider.get().getGranularity())) {
+                /* IP points into the first page of the virtual address space. */
+                Pointer originalSp = context.getStackPointer();
+                log.string(" IP is invalid");
+
+                Pointer returnAddressPos = findPotentialReturnAddressPosition(originalSp);
+                if (returnAddressPos.isNull()) {
+                    log.string(", instructions cannot be printed.").newline();
+                    return;
+                }
+
+                ip = returnAddressPos.readWord(0);
+                Pointer sp = returnAddressPos.add(FrameAccess.returnAddressSize());
+                log.string(", printing instructions (ip=").zhex(ip).string(") of the most likely caller (sp + ").unsigned(sp.subtract(originalSp)).string(") instead");
+            }
+
+            log.indent(true);
+            if (invocationCount < 4) {
+                /* Print 512, 128, or 32 instruction bytes. */
                 int bytesToPrint = 1024 >> (invocationCount * 2);
                 hexDump(log, ip, bytesToPrint, bytesToPrint);
             } else if (invocationCount == 4) {
-                // just print one word starting at the ip
+                /* Just print one word starting at the ip. */
                 hexDump(log, ip, 0, ConfigurationValues.getTarget().wordSize);
             }
             log.indent(false).newline();
@@ -992,31 +1034,16 @@ public class SubstrateDiagnostics {
         }
 
         private static void startStackWalkInMostLikelyCaller(Log log, int invocationCount, Pointer originalSp) {
-            UnsignedWord stackBase = VMThreads.StackBase.get();
-            if (stackBase.equal(0)) {
-                /* We don't know the stack boundaries, so only search within 32 bytes. */
-                stackBase = originalSp.add(32);
+            Pointer returnAddressPos = findPotentialReturnAddressPosition(originalSp);
+            if (returnAddressPos.isNull()) {
+                return;
             }
 
-            /* Search until we find a valid return address. We may encounter false-positives. */
-            int wordSize = ConfigurationValues.getTarget().wordSize;
-            Pointer pos = originalSp;
-            while (pos.belowThan(stackBase)) {
-                CodePointer possibleIp = pos.readWord(0);
-                if (pointsIntoNativeImageCode(possibleIp)) {
-                    Pointer sp = pos.add(wordSize);
-                    log.newline();
-                    log.string("Starting the stack walk in a possible caller:").newline();
-                    ThreadStackPrinter.printStacktrace(sp, possibleIp, printVisitors[invocationCount - 1].reset(), log);
-                    break;
-                }
-                pos = pos.add(wordSize);
-            }
-        }
-
-        @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo.")
-        private static boolean pointsIntoNativeImageCode(CodePointer possibleIp) {
-            return CodeInfoTable.lookupCodeInfo(possibleIp).isNonNull();
+            CodePointer possibleIp = returnAddressPos.readWord(0);
+            Pointer sp = returnAddressPos.add(FrameAccess.returnAddressSize());
+            log.newline();
+            log.string("Starting the stack walk in a possible caller (sp + ").unsigned(sp.subtract(originalSp)).string("):").newline();
+            ThreadStackPrinter.printStacktrace(sp, possibleIp, printVisitors[invocationCount - 1].reset(), log);
         }
     }
 
