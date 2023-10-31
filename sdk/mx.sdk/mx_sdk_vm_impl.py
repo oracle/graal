@@ -1175,7 +1175,7 @@ class SvmSupport(object):
         assert self.is_debug_supported()
         flags = ['-g']
         if not self.generate_separate_debug_info(image_config):
-            flags += svm_experimental_options(['-H:-StripDebugInfo'])
+            flags += ['-H:-StripDebugInfo']
         if mx.is_darwin():
             flags += ['-H:+UseOldDebugInfo']
         if self.generate_separate_debug_info(image_config):
