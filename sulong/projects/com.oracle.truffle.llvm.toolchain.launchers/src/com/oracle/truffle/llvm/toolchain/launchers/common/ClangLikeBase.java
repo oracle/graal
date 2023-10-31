@@ -238,11 +238,6 @@ public abstract class ClangLikeBase extends Driver {
             sulongArgs.add("--ld-path=" + getLLVMExecutable(LinuxLinker.LD_LLD));
             sulongArgs.add("-Wl," + String.join(",", LinuxLinker.getLinkerFlags()));
         } else if (os == OS.WINDOWS) {
-            /*
-             * This should rather be `"-fuse-ld=" + getLLVMExecutable(WindowsLinker.LLD_LINK)` to be
-             * sure to pick up the right executable, but for some reason using absolute paths for
-             * `-fuse-ld` does not work on Windows.
-             */
             sulongArgs.add("-fuse-ld=lld-link");
             sulongArgs.add("--ld-path=" + getLLVMExecutable(WindowsLinker.LLD_LINK));
             sulongArgs.add("-Wl," + String.join(",", WindowsLinker.getLinkerFlags()));
