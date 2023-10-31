@@ -24,15 +24,16 @@
  */
 package com.oracle.graal.pointsto.heap;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
-import com.oracle.graal.pointsto.util.AtomicUtils;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.graal.compiler.core.common.type.TypedConstant;
@@ -50,40 +51,64 @@ import jdk.vm.ci.meta.VMConstant;
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, CompressibleConstant, VMConstant {
-    /** Stores the type of this object. */
-    protected final ResolvedJavaType type;
-    /**
-     * Stores the hosted object, already processed by the object transformers. It is null for
-     * instances of partially evaluated classes.
-     */
-    protected final JavaConstant hostedObject;
-    protected final int identityHashCode;
 
+    public static final VarHandle isReachableHandle = ReflectionUtil.unreflectField(ConstantData.class, "isReachable", MethodHandles.lookup());
+
+    public abstract static class ConstantData {
+        /**
+         * Stores the type of this object.
+         */
+        protected final ResolvedJavaType type;
+        /**
+         * Stores the hosted object, already processed by the object transformers. It is null for
+         * instances of partially evaluated classes.
+         */
+        protected final JavaConstant hostedObject;
+        /**
+         * See {@link #createIdentityHashCode(JavaConstant)}.
+         */
+        protected final int identityHashCode;
+        /**
+         * A future that reads the hosted field or array elements values lazily only when the
+         * receiver object is used. This way the shadow heap can contain hosted only objects, i.e.,
+         * objects that cannot be reachable at run time but are processed ahead-of-time.
+         */
+        protected AnalysisFuture<Void> hostedValuesReader;
+        /**
+         * A constant is marked as reachable only when it is decided that it can be used at run-time
+         * and its field values/array elements need to be processed. The value of the field is
+         * initially null, then it stores the reason why this constant became reachable.
+         */
+        @SuppressWarnings("unused") private volatile Object isReachable;
+
+        ConstantData(ResolvedJavaType type, JavaConstant object, int identityHashCode) {
+            Objects.requireNonNull(type);
+            this.type = type;
+            this.hostedObject = object;
+            this.identityHashCode = identityHashCode;
+        }
+
+        @Override
+        public int hashCode() {
+            return hostedObject != null ? hostedObject.hashCode() : super.hashCode();
+        }
+    }
+
+    protected final ConstantData constantData;
     protected final boolean compressed;
 
-    @SuppressWarnings("unused") private volatile Object isReachable;
-
-    /**
-     * A future that reads the hosted field or array elements values lazily only when the receiver
-     * object is used. This way the shadow heap can contain hosted only objects, i.e., objects that
-     * cannot be reachable at run time but are processed ahead-of-time.
-     */
-    protected AnalysisFuture<Void> hostedValuesReader;
-
-    private static final AtomicReferenceFieldUpdater<ImageHeapConstant, Object> isReachableUpdater = AtomicReferenceFieldUpdater
-                    .newUpdater(ImageHeapConstant.class, Object.class, "isReachable");
-
-    ImageHeapConstant(ResolvedJavaType type, JavaConstant object, int identityHashCode, boolean compressed) {
-        Objects.requireNonNull(type);
-        this.type = type;
-        this.hostedObject = object;
-        this.identityHashCode = identityHashCode;
+    ImageHeapConstant(ConstantData constantData, boolean compressed) {
+        this.constantData = constantData;
         this.compressed = compressed;
     }
 
+    public ConstantData getConstantData() {
+        return constantData;
+    }
+
     public void ensureReaderInstalled() {
-        if (hostedValuesReader != null) {
-            hostedValuesReader.ensureDone();
+        if (constantData.hostedValuesReader != null) {
+            constantData.hostedValuesReader.ensureDone();
         }
     }
 
@@ -97,16 +122,16 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
      * Simulated constants are fully initialized when they are created.
      */
     protected boolean isReaderInstalled() {
-        return hostedValuesReader == null || hostedValuesReader.isDone();
+        return constantData.hostedValuesReader == null || constantData.hostedValuesReader.isDone();
     }
 
     public boolean markReachable(ObjectScanner.ScanReason reason) {
         ensureReaderInstalled();
-        return AtomicUtils.atomicSet(this, reason, isReachableUpdater);
+        return isReachableHandle.compareAndSet(constantData, null, reason);
     }
 
     public boolean isReachable() {
-        return AtomicUtils.isSet(this, isReachableUpdater);
+        return isReachableHandle.get(constantData) != null;
     }
 
     static int createIdentityHashCode(JavaConstant object) {
@@ -125,15 +150,15 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
 
     @Override
     public int getIdentityHashCode() {
-        if (hostedObject != null) {
-            if (hostedObject.isNull()) {
+        if (constantData.hostedObject != null) {
+            if (constantData.hostedObject.isNull()) {
                 /*
                  * According to the JavaDoc of System.identityHashCode, the identity hash code of
                  * null is 0.
                  */
                 return 0;
             } else {
-                return ((TypedConstant) hostedObject).getIdentityHashCode();
+                return ((TypedConstant) constantData.hostedObject).getIdentityHashCode();
             }
         } else {
             /*
@@ -141,17 +166,17 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
              * hash code that has the same properties as the image builder VM, so we use the
              * identity hash code of a new and otherwise unused object in the image builder VM.
              */
-            assert identityHashCode > 0 : "The Java HotSpot VM only returns positive numbers for the identity hash code, so we want to have the same restriction on Substrate VM in order to not surprise users";
-            return identityHashCode;
+            assert constantData.identityHashCode > 0 : "The Java HotSpot VM only returns positive numbers for the identity hash code, so we want to have the same restriction on Substrate VM in order to not surprise users";
+            return constantData.identityHashCode;
         }
     }
 
     public JavaConstant getHostedObject() {
-        return hostedObject;
+        return constantData.hostedObject;
     }
 
     public boolean isBackedByHostedObject() {
-        return hostedObject != null;
+        return constantData.hostedObject != null;
     }
 
     @Override
@@ -171,7 +196,7 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
 
     @Override
     public ResolvedJavaType getType(MetaAccessProvider provider) {
-        return type;
+        return constantData.type;
     }
 
     @Override
@@ -211,7 +236,7 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
 
     @Override
     public String toValueString() {
-        return type.getName();
+        return constantData.type.getName();
     }
 
     /**
@@ -228,18 +253,18 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
              * the previous behavior where the raw object was extracted and used as a key when
              * constructing the image heap map.
              */
-            return Objects.equals(this.type, other.type) && Objects.equals(this.hostedObject, other.hostedObject);
+            return this.constantData == other.constantData;
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return hostedObject != null ? hostedObject.hashCode() : 0;
+        return constantData.hashCode();
     }
 
     @Override
     public String toString() {
-        return "ImageHeapConstant< " + type.toJavaName() + ", reachable: " + isReachable() + ", reader installed: " + isReaderInstalled() + ">";
+        return "ImageHeapConstant< " + constantData.type.toJavaName() + ", reachable: " + isReachable() + ", reader installed: " + isReaderInstalled() + ">";
     }
 }

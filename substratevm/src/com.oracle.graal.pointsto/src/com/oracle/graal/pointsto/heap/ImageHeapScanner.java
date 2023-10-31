@@ -253,7 +253,7 @@ public abstract class ImageHeapScanner {
     private ImageHeapArray createImageHeapObjectArray(JavaConstant constant, AnalysisType type, int length, ScanReason reason) {
         ImageHeapObjectArray array = new ImageHeapObjectArray(type, constant, length);
         /* Read hosted array element values only when the array is initialized. */
-        AnalysisFuture<Void> hostedElementsReader = new AnalysisFuture<>(() -> {
+        array.constantData.hostedValuesReader = new AnalysisFuture<>(() -> {
             type.registerAsReachable(reason);
             ScanReason arrayReason = new ArrayScan(type, constant, reason);
             Object[] elementValues = new Object[length];
@@ -268,14 +268,13 @@ public abstract class ImageHeapScanner {
             }
             array.setElementValues(elementValues);
         });
-        array.hostedValuesReader = hostedElementsReader;
         return array;
     }
 
     private ImageHeapInstance createImageHeapInstance(JavaConstant constant, AnalysisType type, ScanReason reason) {
         ImageHeapInstance instance = new ImageHeapInstance(type, constant);
         /* Read hosted field values only when the receiver is initialized. */
-        AnalysisFuture<Void> hostedFieldReader = new AnalysisFuture<>(() -> {
+        instance.constantData.hostedValuesReader = new AnalysisFuture<>(() -> {
             /* We are about to query the type's fields, the type must be marked as reachable. */
             type.registerAsReachable(reason);
             ResolvedJavaField[] instanceFields = type.getInstanceFields(true);
@@ -298,7 +297,6 @@ public abstract class ImageHeapScanner {
             }
             instance.setFieldValues(hostedFieldValues);
         });
-        instance.hostedValuesReader = hostedFieldReader;
         return instance;
     }
 
