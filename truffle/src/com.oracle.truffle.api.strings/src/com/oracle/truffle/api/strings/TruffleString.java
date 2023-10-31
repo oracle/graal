@@ -3879,6 +3879,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 23.0
          */
+        @NeverDefault
         public static ByteIndexOfCodePointSetNode create() {
             return TruffleStringFactory.ByteIndexOfCodePointSetNodeGen.create();
         }
