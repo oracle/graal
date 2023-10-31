@@ -41,8 +41,10 @@
 package com.oracle.truffle.regex.tregex.nodes.input;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -50,30 +52,32 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 @GenerateUncached
+@GenerateInline
 @ImportStatic(Encodings.class)
 public abstract class InputReadNode extends Node {
 
-    public static InputReadNode create() {
-        return InputReadNodeGen.create();
-    }
-
-    public abstract int execute(TruffleString input, int index, Encoding encoding);
+    public abstract int execute(Node node, TruffleString input, int index, Encoding encoding);
 
     @Specialization(guards = {"encoding != UTF_16", "encoding != UTF_32", "encoding != UTF_16_RAW"})
     static int doTStringUTF8(TruffleString input, int index, Encoding encoding,
-                    @Cached TruffleString.ReadByteNode readRawNode) {
+                    @Cached(inline = false) TruffleString.ReadByteNode readRawNode) {
         return readRawNode.execute(input, index, encoding.getTStringEncoding());
     }
 
     @Specialization(guards = "encoding == UTF_16 || encoding == UTF_16_RAW")
     static int doTStringUTF16(TruffleString input, int index, @SuppressWarnings("unused") Encoding encoding,
-                    @Cached TruffleString.ReadCharUTF16Node readRawNode) {
+                    @Cached(inline = false) TruffleString.ReadCharUTF16Node readRawNode) {
         return readRawNode.execute(input, index);
     }
 
     @Specialization(guards = "encoding == UTF_32")
     static int doTStringUTF32(TruffleString input, int index, @SuppressWarnings("unused") Encoding encoding,
-                    @Cached TruffleString.CodePointAtIndexNode readRawNode) {
+                    @Cached(inline = false) TruffleString.CodePointAtIndexNode readRawNode) {
         return readRawNode.execute(input, index, TruffleString.Encoding.UTF_32);
+    }
+
+    @NeverDefault
+    public static InputReadNode create() {
+        return InputReadNodeGen.create();
     }
 }

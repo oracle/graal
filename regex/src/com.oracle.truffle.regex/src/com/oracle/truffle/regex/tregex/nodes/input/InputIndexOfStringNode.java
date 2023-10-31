@@ -43,22 +43,22 @@ package com.oracle.truffle.regex.tregex.nodes.input;
 import static com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 
+@GenerateInline
 public abstract class InputIndexOfStringNode extends Node {
 
-    public static InputIndexOfStringNode create() {
-        return InputIndexOfStringNodeGen.create();
-    }
-
-    public abstract int execute(TruffleString input, int fromIndex, int maxIndex, TruffleString match, TruffleString.WithMask mask, Encoding encoding);
+    public abstract int execute(Node node, TruffleString input, int fromIndex, int maxIndex, TruffleString match, TruffleString.WithMask mask, Encoding encoding);
 
     @Specialization(guards = "mask == null")
     public int doTString(TruffleString input, int fromIndex, int maxIndex, TruffleString match, @SuppressWarnings("unused") TruffleString.WithMask mask, Encoding encoding,
-                    @Cached TruffleString.ByteIndexOfStringNode indexOfStringNode) {
+                    @Cached(inline = false) @Shared TruffleString.ByteIndexOfStringNode indexOfStringNode) {
         int fromByteIndex = fromIndex << encoding.getStride();
         if (fromByteIndex >= input.byteLength(encoding.getTStringEncoding())) {
             return -1;
@@ -68,11 +68,16 @@ public abstract class InputIndexOfStringNode extends Node {
 
     @Fallback
     public int doTStringMask(TruffleString input, int fromIndex, int maxIndex, @SuppressWarnings("unused") TruffleString match, TruffleString.WithMask mask, Encoding encoding,
-                    @Cached TruffleString.ByteIndexOfStringNode indexOfStringNode) {
+                    @Cached(inline = false) @Shared TruffleString.ByteIndexOfStringNode indexOfStringNode) {
         int fromByteIndex = fromIndex << encoding.getStride();
         if (fromByteIndex >= input.byteLength(encoding.getTStringEncoding())) {
             return -1;
         }
         return indexOfStringNode.execute(input, mask, fromByteIndex, maxIndex << encoding.getStride(), encoding.getTStringEncoding()) >> encoding.getStride();
+    }
+
+    @NeverDefault
+    public static InputIndexOfStringNode create() {
+        return InputIndexOfStringNodeGen.create();
     }
 }

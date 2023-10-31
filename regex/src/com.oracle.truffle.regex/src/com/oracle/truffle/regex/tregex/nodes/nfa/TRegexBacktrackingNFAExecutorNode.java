@@ -1112,7 +1112,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         if (isForward() ? index + backrefLength > inputLength : index - backrefLength < 0) {
             return false;
         }
-        return regionMatchesNode.execute(locals.getInput(), backrefStart, locals.getInput(), isForward() ? index : index - backrefLength, backrefLength, null, getEncoding());
+        return regionMatchesNode.execute(this, locals.getInput(), backrefStart, locals.getInput(), isForward() ? index : index - backrefLength, backrefLength, null, getEncoding());
     }
 
     private int matchBackReferenceGeneric(TRegexBacktrackingNFAExecutorLocals locals, PureNFAState backReference, TruffleString.CodeRange codeRange) {
@@ -1151,7 +1151,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
             CompilerDirectives.transferToInterpreterAndInvalidate();
             indexOfNode = insert(InputIndexOfStringNode.create());
         }
-        return indexOfNode.execute(locals.getInput(), locals.getIndex(), locals.getMaxIndex(), innerLiteral.getLiteralContent(), innerLiteral.getMaskContent(), getEncoding());
+        return indexOfNode.execute(this, locals.getInput(), locals.getIndex(), locals.getMaxIndex(), innerLiteral.getLiteralContent(), innerLiteral.getMaskContent(), getEncoding());
     }
 
     private boolean inputBoundsCheck(int i, int min, int max) {
