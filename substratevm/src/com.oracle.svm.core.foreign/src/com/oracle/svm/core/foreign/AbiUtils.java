@@ -48,6 +48,7 @@ import java.util.stream.Stream;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
+import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.ReinterpretNode;
 import jdk.graal.compiler.word.Word;
@@ -278,7 +279,7 @@ public abstract class AbiUtils {
         }
 
         private static final class Extract extends Adaptation {
-            private static Extract DROP = new Extract(null, null);
+            private static final Extract DROP = new Extract(null, null);
             private final Extracted as;
             private final Class<?> type;
 
@@ -414,67 +415,6 @@ public abstract class AbiUtils {
     public abstract TrampolineTemplate generateTrampolineTemplate();
 }
 
-@Platforms(Platform.HOSTED_ONLY.class)
-class TrampolineTemplateHelper {
-    private static final byte isolatePattern = (byte) 0xFF;
-    private static final byte mhPattern = (byte) 0xEE;
-    private static final byte stubPattern = (byte) 0xDD;
-
-    interface TrampolineGenerator {
-        public byte[] generate(Word isolate, Word methodHandle, Word stubPointer);
-    }
-
-    private static Word repeat(byte byt) {
-        long b = byt & 0xFFL;
-        return WordFactory.unsigned(
-                        (b << 56) | (b << 48) | (b << 40) | (b << 32) | (b << 24) | (b << 16) | (b << 8) | (b << 0));
-    }
-
-    /**
-     * Generate two trampolines which are then compared to infer the location (i.e. offset) of the
-     * address parameters in the assembly.
-     */
-    public static AbiUtils.TrampolineTemplate fromGeneratorDiff(TrampolineGenerator generator) {
-        byte[] baseAsm = generator.generate(WordFactory.zero(), WordFactory.zero(), WordFactory.zero());
-        byte[] patternedAsm = generator.generate(repeat(isolatePattern), repeat(mhPattern), repeat(stubPattern));
-        assert baseAsm.length == patternedAsm.length;
-
-        int isolateOffset = -1;
-        int mhOffset = -1;
-        int stubOffset = -1;
-
-        for (int i = 0; i < baseAsm.length; ++i) {
-            if (baseAsm[i] != patternedAsm[i]) {
-                assert baseAsm[i] == 0;
-
-                switch (patternedAsm[i]) {
-                    case isolatePattern -> {
-                        assert isolateOffset == -1;
-                        isolateOffset = i;
-                    }
-                    case mhPattern -> {
-                        assert mhOffset == -1;
-                        mhOffset = i;
-                    }
-                    case stubPattern -> {
-                        assert stubOffset == -1;
-                        stubOffset = i;
-                    }
-                    default -> throw new AssertionError(patternedAsm[i]);
-                }
-
-                for (int j = 0; j < 7; ++j) {
-                    i += 1;
-                    assert patternedAsm[i] == patternedAsm[i - 1];
-                }
-            }
-        }
-
-        assert isolateOffset != -1 && mhOffset != -1 && stubOffset != -1;
-        return new AbiUtils.TrampolineTemplate(baseAsm, isolateOffset, mhOffset, stubOffset);
-    }
-}
-
 class ABIs {
     static final class Unsupported extends AbiUtils {
         private final String name;
@@ -561,7 +501,6 @@ class ABIs {
         }
 
         static class Upcalls {
-
             static Binding.VMLoad[] argMoveBindings(CallingSequence callingSequence) {
                 return callingSequence.argumentBindings()
                                 .filter(Binding.VMLoad.class::isInstance)
@@ -575,49 +514,29 @@ class ABIs {
                                 .map(Binding.VMStore.class::cast)
                                 .toArray(Binding.VMStore[]::new);
             }
-
-            private static final MethodHandle MH_BUFFER_COPY;
-
-            public static MemorySegment bufferCopy(MemorySegment dest, MemorySegment buffer) {
-                return dest.copyFrom(buffer);
-            }
-
-            static {
-                try {
-                    MH_BUFFER_COPY = MethodHandles.lookup().findStatic(Upcalls.class, "bufferCopy",
-                                    methodType(MemorySegment.class, MemorySegment.class, MemorySegment.class));
-                } catch (NoSuchMethodException | IllegalAccessException e) {
-                    throw VMError.shouldNotReachHere(e);
-                }
-            }
         }
 
         protected abstract CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, LinkerOptions options);
 
         @Override
         public NativeEntryPointInfo makeNativeEntrypoint(FunctionDescriptor desc, Linker.Option... options) {
-            // Linker.downcallHandle implemented in
-            // AbstractLinker.downcallHandle
-
-            // AbstractLinker.downcallHandle0
+            // From Linker.downcallHandle implemented in AbstractLinker.downcallHandle:
+            // From AbstractLinker.downcallHandle0
             LinkerOptions optionSet = LinkerOptions.forDowncall(desc, options);
             MethodType type = desc.toMethodType();
 
-            /* OS SPECIFIC BEGINS */
-            // AbstractLinker.arrangeDowncall implemented in
-            // SysVx64Linker.arrangeDowncall or Windowsx64Linker.arrangeDowncall
-
-            // CallArranger.arrangeDowncall
+            // OS specific!
+            // From AbstractLinker.arrangeDowncall implemented in SysVx64Linker.arrangeDowncall or Windowsx64Linker.arrangeDowncall:
+            // From CallArranger.arrangeDowncall
             var callingSequence = makeCallingSequence(type, desc, false, optionSet);
-            /* OS SPECIFIC ENDS */
 
-            // DowncallLinker.getBoundMethodHandle
+            // From DowncallLinker.getBoundMethodHandle
             var argMoves = Downcalls.toStorageArray(Downcalls.argMoveBindingsStream(callingSequence).toArray(Binding.VMStore[]::new));
             var returnMoves = Downcalls.toStorageArray(Downcalls.retMoveBindings(callingSequence));
             var boundaryType = callingSequence.calleeMethodType();
             var needsReturnBuffer = callingSequence.needsReturnBuffer();
 
-            // NativeEntrypoint.make
+            // From NativeEntrypoint.make
             return NativeEntryPointInfo.make(argMoves, returnMoves, boundaryType, needsReturnBuffer, callingSequence.capturedStateMask(), callingSequence.needsTransition());
         }
 
@@ -731,31 +650,39 @@ class ABIs {
         @Platforms(Platform.HOSTED_ONLY.class)
         @Override
         public TrampolineTemplate generateTrampolineTemplate() {
-            return TrampolineTemplateHelper.fromGeneratorDiff((isolate, methodHandle, stubPointer) -> {
-                // Generate the trampoline
-                AMD64Assembler asm = new AMD64Assembler(ConfigurationValues.getTarget());
-
-                Register mhRegister = upcallSpecialArgumentsRegisters().methodHandle();
-                Register isolateRegister = upcallSpecialArgumentsRegisters().isolate();
-
-                /* Store isolate in the assigned register */
-                asm.movq(isolateRegister, isolate.rawValue());
-                /* r10 points in the mh array */
-                asm.movq(mhRegister, methodHandle.rawValue());
-                /* r10 contains the method handle */
-                asm.movq(mhRegister, new AMD64Address(mhRegister));
-                /* rax contains the stub address */
-                asm.movq(rax, stubPointer.rawValue());
-                /* executes the stub */
-                asm.jmp(new AMD64Address(rax, 0));
-
-                assert trampolineSize() - asm.position() >= 0;
-                asm.nop(trampolineSize() - asm.position());
-
-                byte[] assembly = asm.close(true);
-                assert assembly.length == trampolineSize();
-                return assembly;
+            // Generate the trampoline
+            AMD64Assembler asm = new AMD64Assembler(ConfigurationValues.getTarget());
+            var odas = new ArrayList<AMD64BaseAssembler.OperandDataAnnotation>(3);
+            // Collect the positions of the address in the movq instructions.
+            asm.setCodePatchingAnnotationConsumer(ca -> {
+                if (ca instanceof AMD64BaseAssembler.OperandDataAnnotation oda) {
+                    odas.add(oda);
+                }
             });
+
+            Register mhRegister = upcallSpecialArgumentsRegisters().methodHandle();
+            Register isolateRegister = upcallSpecialArgumentsRegisters().isolate();
+
+            /* Store isolate in the assigned register */
+            asm.movq(isolateRegister, 0L, true);
+            /* r10 points in the mh array */
+            asm.movq(mhRegister, 0L, true);
+            /* r10 contains the method handle */
+            asm.movq(mhRegister, new AMD64Address(mhRegister));
+            /* rax contains the stub address */
+            asm.movq(rax, 0L, true);
+            /* executes the stub */
+            asm.jmp(new AMD64Address(rax, 0));
+
+            assert trampolineSize() - asm.position() >= 0;
+            asm.nop(trampolineSize() - asm.position());
+
+            byte[] assembly = asm.close(true);
+            assert assembly.length == trampolineSize();
+            assert odas.size() == 3;
+            assert odas.stream().allMatch(oda -> oda.operandSize == 8);
+
+            return new TrampolineTemplate(assembly, odas.get(0).operandPosition, odas.get(1).operandPosition, odas.get(2).operandPosition);
         }
     }
 

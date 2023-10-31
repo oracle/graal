@@ -111,6 +111,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
         @Override
         public void registerForUpcall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options) {
+            checkNotSealed();
             registerConditionalConfiguration(condition, () -> registeredUpcalls.add(Pair.create(desc, options)));
         }
     }

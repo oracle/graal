@@ -95,7 +95,7 @@ public class ForeignFunctionsRuntime {
     }
 
     /* TODO: Fix inevitable concurrency issues */
-    private final Map<PointerHolder, TrampolineSet> trampolines = new ConcurrentHashMap<>();
+    private final Map<PointerHolder, TrampolineSet> trampolineMap = new ConcurrentHashMap<>();
     private TrampolineSet currentTrampolineSet;
 
     public ForeignFunctionsRuntime(AbiUtils.TrampolineTemplate trampolineTemplate) {
@@ -256,7 +256,7 @@ public class ForeignFunctionsRuntime {
     public Pointer registerForUpcall(MethodHandle methodHandle, JavaEntryPointInfo jep) {
         if (this.currentTrampolineSet == null || !this.currentTrampolineSet.hasFreeTrampolines()) {
             this.currentTrampolineSet = new TrampolineSet();
-            this.trampolines.put(new PointerHolder(this.currentTrampolineSet.base()), this.currentTrampolineSet);
+            this.trampolineMap.put(new PointerHolder(this.currentTrampolineSet.base()), this.currentTrampolineSet);
         }
         return this.currentTrampolineSet.assignTrampoline(methodHandle, jep);
     }
@@ -264,10 +264,10 @@ public class ForeignFunctionsRuntime {
     public void freeTrampoline(long addr) {
         Pointer ptr = TrampolineSet.getAllocationBase(WordFactory.pointer(addr));
         PointerHolder key = new PointerHolder(ptr);
-        TrampolineSet trampolineSet = trampolines.get(key);
+        TrampolineSet trampolineSet = trampolineMap.get(key);
         VMError.guarantee(trampolineSet != null);
         if (trampolineSet.tryFree()) {
-            trampolines.remove(key);
+            trampolineMap.remove(key);
         }
     }
 
