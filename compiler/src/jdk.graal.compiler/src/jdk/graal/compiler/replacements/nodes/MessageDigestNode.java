@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.replacements.nodes;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 import static jdk.graal.compiler.nodeinfo.InputType.Memory;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_128;
@@ -57,7 +58,7 @@ public abstract class MessageDigestNode extends MemoryKillStubIntrinsicNode {
                     NamedLocationIdentity.getArrayLocation(JavaKind.Long)};
 
     private static ForeignCallDescriptor foreignCallDescriptor(String name) {
-        return new ForeignCallDescriptor(name, void.class, new Class<?>[]{Pointer.class, Pointer.class}, false, KILLED_LOCATIONS, false, false);
+        return new ForeignCallDescriptor(name, void.class, new Class<?>[]{Pointer.class, Pointer.class}, HAS_SIDE_EFFECT, KILLED_LOCATIONS, false, false);
     }
 
     @Input protected ValueNode buf;
@@ -203,7 +204,7 @@ public abstract class MessageDigestNode extends MemoryKillStubIntrinsicNode {
 
         public static final NodeClass<SHA3Node> TYPE = NodeClass.create(SHA3Node.class);
         public static final ForeignCallDescriptor STUB = new ForeignCallDescriptor("sha3ImplCompress", void.class, new Class<?>[]{Pointer.class, Pointer.class, int.class},
-                        false, KILLED_LOCATIONS, false, false);
+                        HAS_SIDE_EFFECT, KILLED_LOCATIONS, false, false);
 
         @Input protected ValueNode blockSize;
 

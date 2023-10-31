@@ -24,17 +24,19 @@
  */
 package jdk.graal.compiler.hotspot;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
+import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF;
+import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO;
+import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
+import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.NO_LOCATIONS;
+import static jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.UNSAFE_ARRAYCOPY;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.TLAB_END_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.TLAB_TOP_LOCATION;
 import static org.graalvm.word.LocationIdentity.any;
 
 import java.util.EnumSet;
 
-import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
-import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl;
-import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
-import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
-import jdk.graal.compiler.hotspot.nodes.VMErrorNode;
-import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
-import jdk.graal.compiler.hotspot.word.KlassPointer;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -50,9 +52,13 @@ import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
+import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
+import jdk.graal.compiler.hotspot.nodes.VMErrorNode;
 import jdk.graal.compiler.hotspot.stubs.ExceptionHandlerStub;
 import jdk.graal.compiler.hotspot.stubs.Stub;
 import jdk.graal.compiler.hotspot.stubs.UnwindExceptionToCallerStub;
+import jdk.graal.compiler.hotspot.word.KlassPointer;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstruction;
@@ -107,43 +113,36 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
      * Descriptor for {@link ExceptionHandlerStub}. This stub is called by the
      * {@linkplain HotSpotMarkId#EXCEPTION_HANDLER_ENTRY exception handler} in a compiled method.
      */
-    public static final HotSpotForeignCallDescriptor EXCEPTION_HANDLER = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(), "exceptionHandler", void.class, Object.class,
+    public static final HotSpotForeignCallDescriptor EXCEPTION_HANDLER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(), "exceptionHandler", void.class, Object.class,
                     Word.class);
 
     /**
      * Descriptor for SharedRuntime::get_ic_miss_stub().
      */
-    public static final HotSpotForeignCallDescriptor IC_MISS_HANDLER = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, HotSpotForeignCallsProviderImpl.NO_LOCATIONS, "icMissHandler", void.class);
+    public static final HotSpotForeignCallDescriptor IC_MISS_HANDLER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NO_SIDE_EFFECT, NO_LOCATIONS, "icMissHandler", void.class);
 
     /**
      * Descriptor for {@link UnwindExceptionToCallerStub}. This stub is called by code generated
      * from {@link UnwindNode}.
      */
-    public static final HotSpotForeignCallDescriptor UNWIND_EXCEPTION_TO_CALLER = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.SAFEPOINT,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(), "unwindExceptionToCaller", void.class,
+    public static final HotSpotForeignCallDescriptor UNWIND_EXCEPTION_TO_CALLER = new HotSpotForeignCallDescriptor(SAFEPOINT, HAS_SIDE_EFFECT, any(), "unwindExceptionToCaller", void.class,
                     Object.class, Word.class);
 
     /**
      * Descriptor for the arguments when unwinding to an exception handler in a caller.
      */
-    public static final HotSpotForeignCallDescriptor EXCEPTION_HANDLER_IN_CALLER = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(), "exceptionHandlerInCaller",
+    public static final HotSpotForeignCallDescriptor EXCEPTION_HANDLER_IN_CALLER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(), "exceptionHandlerInCaller",
                     void.class, Object.class, Word.class);
 
     private final HotSpotGraalRuntimeProvider runtime;
 
-    public static final HotSpotForeignCallDescriptor MONTGOMERY_MULTIPLY = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int),
+    public static final HotSpotForeignCallDescriptor MONTGOMERY_MULTIPLY = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NamedLocationIdentity.getArrayLocation(JavaKind.Int),
                     "implMontgomeryMultiply", void.class, Word.class, Word.class, Word.class, int.class, long.class, Word.class);
 
-    public static final HotSpotForeignCallDescriptor MONTGOMERY_SQUARE = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int),
+    public static final HotSpotForeignCallDescriptor MONTGOMERY_SQUARE = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NamedLocationIdentity.getArrayLocation(JavaKind.Int),
                     "implMontgomerySquare", void.class, Word.class, Word.class, int.class, long.class, Word.class);
 
-    public static final HotSpotForeignCallDescriptor MD5_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(), "md5ImplCompress", int.class, Word.class,
+    public static final HotSpotForeignCallDescriptor MD5_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "md5ImplCompress", int.class, Word.class,
                     Object.class, int.class, int.class);
 
     public static int md5ImplCompressMBStub(Word bufAddr, Object stateAddr, int ofs, int limit) {
@@ -153,8 +152,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     @NodeIntrinsic(ForeignCallNode.class)
     private static native int md5ImplCompressMBStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state, int ofs, int limit);
 
-    public static final HotSpotForeignCallDescriptor SHA_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(), "shaImplCompressMB", int.class, Word.class,
+    public static final HotSpotForeignCallDescriptor SHA_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "shaImplCompressMB", int.class, Word.class,
                     Object.class, int.class, int.class);
 
     public static int shaImplCompressMBStub(Word bufAddr, Object stateAddr, int ofs, int limit) {
@@ -164,8 +162,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     @NodeIntrinsic(ForeignCallNode.class)
     private static native int shaImplCompressMBStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state, int ofs, int limit);
 
-    public static final HotSpotForeignCallDescriptor SHA2_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(), "sha2ImplCompressMB", int.class, Word.class,
+    public static final HotSpotForeignCallDescriptor SHA2_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "sha2ImplCompressMB", int.class, Word.class,
                     Object.class, int.class, int.class);
 
     public static int sha2ImplCompressMBStub(Word bufAddr, Object stateAddr, int ofs, int limit) {
@@ -175,8 +172,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     @NodeIntrinsic(ForeignCallNode.class)
     private static native int sha2ImplCompressMBStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state, int ofs, int limit);
 
-    public static final HotSpotForeignCallDescriptor SHA5_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(), "sha5ImplCompressMB", int.class, Word.class,
+    public static final HotSpotForeignCallDescriptor SHA5_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "sha5ImplCompressMB", int.class, Word.class,
                     Object.class, int.class, int.class);
 
     public static int sha5ImplCompressMBStub(Word bufAddr, Object stateAddr, int ofs, int limit) {
@@ -186,8 +182,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     @NodeIntrinsic(ForeignCallNode.class)
     private static native int sha5ImplCompressMBStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state, int ofs, int limit);
 
-    public static final HotSpotForeignCallDescriptor SHA3_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(), "sha3ImplCompressMB", int.class, Word.class,
+    public static final HotSpotForeignCallDescriptor SHA3_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "sha3ImplCompressMB", int.class, Word.class,
                     Object.class, int.class, int.class, int.class);
 
     public static int sha3ImplCompressMBStub(Word bufAddr, Object stateAddr, int blockSize, int ofs, int limit) {
@@ -198,7 +193,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     private static native int sha3ImplCompressMBStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state, int blockSize, int ofs, int limit);
 
     public static void unsafeArraycopy(Word srcAddr, Word dstAddr, Word size) {
-        unsafeArraycopyStub(HotSpotHostForeignCallsProvider.UNSAFE_ARRAYCOPY, srcAddr, dstAddr, size);
+        unsafeArraycopyStub(UNSAFE_ARRAYCOPY, srcAddr, dstAddr, size);
     }
 
     @NodeIntrinsic(ForeignCallNode.class)
@@ -207,129 +202,106 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     /**
      * Descriptor for {@code StubRoutines::_base64_encodeBlock}.
      */
-    public static final HotSpotForeignCallDescriptor BASE64_ENCODE_BLOCK = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(), "base64EncodeBlock", void.class, Word.class,
+    public static final HotSpotForeignCallDescriptor BASE64_ENCODE_BLOCK = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "base64EncodeBlock", void.class, Word.class,
                     int.class, int.class, Word.class, int.class, boolean.class);
 
     /**
      * Descriptor for {@code StubRoutines::_base64_decodeBlock}.
      */
-    public static final HotSpotForeignCallDescriptor BASE64_DECODE_BLOCK = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(), "base64DecodeBlock", int.class, Word.class,
+    public static final HotSpotForeignCallDescriptor BASE64_DECODE_BLOCK = new HotSpotForeignCallDescriptor(LEAF, HAS_SIDE_EFFECT, any(), "base64DecodeBlock", int.class, Word.class,
                     int.class, int.class, Word.class, int.class, boolean.class, boolean.class);
 
     public static final LocationIdentity CRC_TABLE_LOCATION = NamedLocationIdentity.immutable("crc32_table");
 
-    public static final HotSpotForeignCallDescriptor UPDATE_BYTES_CRC32 = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(), "updateBytesCRC32", int.class, int.class,
+    public static final HotSpotForeignCallDescriptor UPDATE_BYTES_CRC32 = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(), "updateBytesCRC32", int.class, int.class,
                     WordBase.class, int.class);
 
-    public static final HotSpotForeignCallDescriptor UPDATE_BYTES_CRC32C = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(), "updateBytesCRC32C", int.class, int.class,
+    public static final HotSpotForeignCallDescriptor UPDATE_BYTES_CRC32C = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(), "updateBytesCRC32C", int.class, int.class,
                     WordBase.class, int.class);
 
-    public static final HotSpotForeignCallDescriptor UPDATE_BYTES_ADLER32 = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(), "updateBytesAdler32", int.class, int.class,
+    public static final HotSpotForeignCallDescriptor UPDATE_BYTES_ADLER32 = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(), "updateBytesAdler32", int.class, int.class,
                     WordBase.class, int.class);
 
-    public static final HotSpotForeignCallDescriptor BIGINTEGER_LEFT_SHIFT_WORKER = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(), "bigIntegerLeftShiftWorker", void.class,
+    public static final HotSpotForeignCallDescriptor BIGINTEGER_LEFT_SHIFT_WORKER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(), "bigIntegerLeftShiftWorker", void.class,
                     WordBase.class, WordBase.class, int.class, int.class, int.class);
 
-    public static final HotSpotForeignCallDescriptor BIGINTEGER_RIGHT_SHIFT_WORKER = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(), "bigIntegerRightShiftWorker", void.class,
+    public static final HotSpotForeignCallDescriptor BIGINTEGER_RIGHT_SHIFT_WORKER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(), "bigIntegerRightShiftWorker", void.class,
                     WordBase.class, WordBase.class, int.class, int.class, int.class);
 
-    public static final HotSpotForeignCallDescriptor ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(),
+    public static final HotSpotForeignCallDescriptor ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(),
                     "_electronicCodeBook_encryptAESCrypt", int.class,
                     WordBase.class, WordBase.class, WordBase.class, int.class);
 
-    public static final HotSpotForeignCallDescriptor ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(),
+    public static final HotSpotForeignCallDescriptor ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(),
                     "_electronicCodeBook_decryptAESCrypt", int.class,
                     WordBase.class, WordBase.class, WordBase.class, int.class);
 
-    public static final HotSpotForeignCallDescriptor GALOIS_COUNTER_MODE_CRYPT = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(), "_galoisCounterMode_AESCrypt", int.class,
+    public static final HotSpotForeignCallDescriptor GALOIS_COUNTER_MODE_CRYPT = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(), "_galoisCounterMode_AESCrypt", int.class,
                     WordBase.class, int.class, WordBase.class, WordBase.class, WordBase.class, WordBase.class, WordBase.class, WordBase.class);
 
-    public static final HotSpotForeignCallDescriptor POLY1305_PROCESSBLOCKS = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(), "_poly1305_processBlocks", int.class,
+    public static final HotSpotForeignCallDescriptor POLY1305_PROCESSBLOCKS = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(), "_poly1305_processBlocks", int.class,
                     WordBase.class, int.class, WordBase.class, WordBase.class);
 
-    public static final HotSpotForeignCallDescriptor CHACHA20Block = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(), "_chacha20Block", int.class,
+    public static final HotSpotForeignCallDescriptor CHACHA20Block = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(), "_chacha20Block", int.class,
                     WordBase.class, WordBase.class);
 
-    public static final HotSpotForeignCallDescriptor SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_START = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.SAFEPOINT,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(),
+    public static final HotSpotForeignCallDescriptor SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_START = new HotSpotForeignCallDescriptor(SAFEPOINT, HAS_SIDE_EFFECT, any(),
                     "notify_jvmti_vthread_start", void.class,
                     Object.class, boolean.class, Word.class);
 
-    public static final HotSpotForeignCallDescriptor SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_END = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.SAFEPOINT,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(),
+    public static final HotSpotForeignCallDescriptor SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_END = new HotSpotForeignCallDescriptor(SAFEPOINT, HAS_SIDE_EFFECT, any(),
                     "notify_jvmti_vthread_end", void.class,
                     Object.class, boolean.class, Word.class);
 
-    public static final HotSpotForeignCallDescriptor SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_MOUNT = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.SAFEPOINT,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(),
+    public static final HotSpotForeignCallDescriptor SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_MOUNT = new HotSpotForeignCallDescriptor(SAFEPOINT, HAS_SIDE_EFFECT, any(),
                     "notify_jvmti_vthread_mount", void.class,
                     Object.class, boolean.class, Word.class);
 
-    public static final HotSpotForeignCallDescriptor SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_UNMOUNT = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.SAFEPOINT,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(),
+    public static final HotSpotForeignCallDescriptor SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_UNMOUNT = new HotSpotForeignCallDescriptor(SAFEPOINT, HAS_SIDE_EFFECT, any(),
                     "notify_jvmti_vthread_unmount", void.class,
                     Object.class, boolean.class, Word.class);
 
     /**
      * @see VMErrorNode
      */
-    public static final HotSpotForeignCallDescriptor VM_ERROR = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, HotSpotForeignCallsProviderImpl.NO_LOCATIONS, "vm_error", void.class, Object.class, Object.class,
+    public static final HotSpotForeignCallDescriptor VM_ERROR = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NO_SIDE_EFFECT, NO_LOCATIONS, "vm_error", void.class, Object.class, Object.class,
                     long.class);
 
-    private static final LocationIdentity[] TLAB_LOCATIONS = new LocationIdentity[]{HotSpotReplacementsUtil.TLAB_TOP_LOCATION, HotSpotReplacementsUtil.TLAB_END_LOCATION};
+    private static final LocationIdentity[] TLAB_LOCATIONS = new LocationIdentity[]{TLAB_TOP_LOCATION, TLAB_END_LOCATION};
 
     /**
      * New multi array stub that throws an {@link OutOfMemoryError} on allocation failure.
      */
-    public static final HotSpotForeignCallDescriptor NEW_MULTI_ARRAY = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.SAFEPOINT,
-                    HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, TLAB_LOCATIONS, "new_multi_array", Object.class, KlassPointer.class,
+    public static final HotSpotForeignCallDescriptor NEW_MULTI_ARRAY = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, TLAB_LOCATIONS, "new_multi_array", Object.class, KlassPointer.class,
                     int.class, Word.class);
 
     /**
      * New multi array stub that will return null on allocation failure.
      */
-    public static final HotSpotForeignCallDescriptor NEW_MULTI_ARRAY_OR_NULL = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.SAFEPOINT,
-                    HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, TLAB_LOCATIONS, "new_multi_array_or_null", Object.class,
+    public static final HotSpotForeignCallDescriptor NEW_MULTI_ARRAY_OR_NULL = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, TLAB_LOCATIONS, "new_multi_array_or_null", Object.class,
                     KlassPointer.class, int.class, Word.class);
 
     /**
      * New array stub that throws an {@link OutOfMemoryError} on allocation failure.
      */
-    public static final HotSpotForeignCallDescriptor NEW_ARRAY = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.SAFEPOINT,
-                    HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, TLAB_LOCATIONS, "new_array", Object.class, KlassPointer.class, int.class);
+    public static final HotSpotForeignCallDescriptor NEW_ARRAY = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, TLAB_LOCATIONS, "new_array", Object.class, KlassPointer.class, int.class);
 
     /**
      * New array stub that will return null on allocation failure.
      */
-    public static final HotSpotForeignCallDescriptor NEW_ARRAY_OR_NULL = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.SAFEPOINT,
-                    HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, TLAB_LOCATIONS, "new_array_or_null", Object.class,
+    public static final HotSpotForeignCallDescriptor NEW_ARRAY_OR_NULL = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, TLAB_LOCATIONS, "new_array_or_null", Object.class,
                     KlassPointer.class,
                     int.class);
 
     /**
      * New instance stub that throws an {@link OutOfMemoryError} on allocation failure.
      */
-    public static final HotSpotForeignCallDescriptor NEW_INSTANCE = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.SAFEPOINT,
-                    HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, TLAB_LOCATIONS, "new_instance", Object.class, KlassPointer.class);
+    public static final HotSpotForeignCallDescriptor NEW_INSTANCE = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, TLAB_LOCATIONS, "new_instance", Object.class, KlassPointer.class);
 
     /**
      * New instance stub that will return null on allocation failure.
      */
-    public static final HotSpotForeignCallDescriptor NEW_INSTANCE_OR_NULL = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.SAFEPOINT,
-                    HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, TLAB_LOCATIONS, "new_instance_or_null", Object.class,
+    public static final HotSpotForeignCallDescriptor NEW_INSTANCE_OR_NULL = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, TLAB_LOCATIONS, "new_instance_or_null", Object.class,
                     KlassPointer.class);
 
     public HotSpotBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {

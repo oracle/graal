@@ -44,8 +44,27 @@ import org.graalvm.word.LocationIdentity;
  */
 public class ForeignCallDescriptor {
 
+    /**
+     * Constants specifying when a foreign call or stub call is re-executable.
+     */
+    public enum CallSideEffect {
+        /**
+         * Denotes a call that cannot be re-executed. If an exception is raised, the call is
+         * deoptimized and the exception is passed on to be dispatched. If the call can throw an
+         * exception it needs to have a precise frame state.
+         */
+        HAS_SIDE_EFFECT,
+
+        /**
+         * Denotes a call that can always be re-executed. If an exception is raised by the call it
+         * may be cleared, compiled code deoptimized and reexecuted. Since the call has no side
+         * effects it is assumed that the same exception will be thrown.
+         */
+        NO_SIDE_EFFECT
+    }
+
     protected final ForeignCallSignature signature;
-    protected final boolean isReexecutable;
+    protected final CallSideEffect callSideEffect;
     protected final boolean canDeoptimize;
     protected final boolean isGuaranteedSafepoint;
     protected final LocationIdentity[] killedLocations;
@@ -53,16 +72,15 @@ public class ForeignCallDescriptor {
     public ForeignCallDescriptor(String name,
                     Class<?> resultType,
                     Class<?>[] argumentTypes,
-                    boolean isReexecutable,
+                    CallSideEffect callSideEffect,
                     LocationIdentity[] killedLocations,
                     boolean canDeoptimize,
                     boolean isGuaranteedSafepoint) {
-        this.isReexecutable = isReexecutable;
+        this.callSideEffect = callSideEffect;
         this.killedLocations = killedLocations;
         this.canDeoptimize = canDeoptimize;
         this.isGuaranteedSafepoint = isGuaranteedSafepoint;
         this.signature = new ForeignCallSignature(name, resultType, argumentTypes);
-
     }
 
     public ForeignCallSignature getSignature() {
@@ -95,8 +113,8 @@ public class ForeignCallDescriptor {
      * Determines if a given foreign call is side-effect free. Deoptimization cannot return
      * execution to a point before a foreign call that has a side effect.
      */
-    public boolean isReexecutable() {
-        return isReexecutable;
+    public CallSideEffect getSideEffect() {
+        return callSideEffect;
     }
 
     /**
@@ -125,7 +143,7 @@ public class ForeignCallDescriptor {
     @Override
     public String toString() {
         return getClass().getSimpleName() + "{" + signature +
-                        ", isReexecutable=" + isReexecutable +
+                        ", callSideEffect=" + callSideEffect +
                         ", canDeoptimize=" + canDeoptimize +
                         ", isGuaranteedSafepoint=" + isGuaranteedSafepoint +
                         ", killedLocations=" + Arrays.toString(killedLocations) +

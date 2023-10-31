@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.replacements.nodes;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
+
 import java.util.EnumSet;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -51,7 +53,7 @@ public class BigIntegerSquareToLenNode extends MemoryKillStubIntrinsicNode {
     public static final ForeignCallDescriptor STUB = new ForeignCallDescriptor("squareToLen",
                     void.class,
                     new Class<?>[]{Pointer.class, int.class, Pointer.class, int.class},
-                    false,
+                    HAS_SIDE_EFFECT,
                     KILLED_LOCATIONS,
                     false,
                     false);

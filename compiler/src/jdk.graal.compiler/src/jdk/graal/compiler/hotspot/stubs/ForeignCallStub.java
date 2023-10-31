@@ -73,7 +73,7 @@ public class ForeignCallStub extends AbstractForeignCallStub {
     @Override
     protected HotSpotForeignCallDescriptor getTargetSignature(HotSpotForeignCallDescriptor descriptor) {
         Class<?>[] targetParameterTypes = createTargetParameters(descriptor);
-        HotSpotForeignCallDescriptor targetSig = new HotSpotForeignCallDescriptor(descriptor.getTransition(), descriptor.getReexecutability(), descriptor.getKilledLocations(),
+        HotSpotForeignCallDescriptor targetSig = new HotSpotForeignCallDescriptor(descriptor.getTransition(), descriptor.getCallSideEffect(), descriptor.getKilledLocations(),
                         descriptor.getName() + ":C", descriptor.getResultType(), targetParameterTypes);
         return targetSig;
     }
@@ -96,7 +96,7 @@ public class ForeignCallStub extends AbstractForeignCallStub {
 
     @Override
     protected boolean shouldClearException() {
-        return linkage.getDescriptor().isReexecutable();
+        return linkage.getDescriptor().getSideEffect() == ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
     }
 
     @Override

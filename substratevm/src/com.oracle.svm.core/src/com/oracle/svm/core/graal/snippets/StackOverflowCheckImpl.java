@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
@@ -102,8 +103,9 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
     static final int STATE_UNINITIALIZED = 0;
     static final int STATE_YELLOW_ENABLED = 1;
 
-    public static final SubstrateForeignCallDescriptor THROW_CACHED_STACK_OVERFLOW_ERROR = SnippetRuntime.findForeignCall(StackOverflowCheckImpl.class, "throwCachedStackOverflowError", true);
-    public static final SubstrateForeignCallDescriptor THROW_NEW_STACK_OVERFLOW_ERROR = SnippetRuntime.findForeignCall(StackOverflowCheckImpl.class, "throwNewStackOverflowError", true);
+    public static final SubstrateForeignCallDescriptor THROW_CACHED_STACK_OVERFLOW_ERROR = SnippetRuntime.findForeignCall(StackOverflowCheckImpl.class, "throwCachedStackOverflowError",
+                    NO_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor THROW_NEW_STACK_OVERFLOW_ERROR = SnippetRuntime.findForeignCall(StackOverflowCheckImpl.class, "throwNewStackOverflowError", NO_SIDE_EFFECT);
 
     static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{THROW_CACHED_STACK_OVERFLOW_ERROR, THROW_NEW_STACK_OVERFLOW_ERROR};
 

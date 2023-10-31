@@ -27,19 +27,28 @@ package jdk.graal.compiler.hotspot.test;
 import static jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode.CheckAll;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
+import java.util.EnumSet;
 
 import jdk.graal.compiler.core.test.SubprocessTest;
 import jdk.graal.compiler.hotspot.HotSpotBackend;
+import jdk.graal.compiler.hotspot.meta.DefaultHotSpotLoweringProvider;
 import jdk.graal.compiler.hotspot.stubs.CreateExceptionStub;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
+import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import org.junit.Assume;
 import org.junit.Test;
 
 /**
- * This test exercises the deoptimization in the {@link BytecodeExceptionMode} foreign call path.
+ * This test exercises the deoptimization in the {@link BytecodeExceptionNode} foreign call path.
  */
 public class HotSpotDeoptExplicitExceptions extends SubprocessTest {
+
+    static class Fields {
+        Object a;
+    }
 
     @Override
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
@@ -58,10 +67,69 @@ public class HotSpotDeoptExplicitExceptions extends SubprocessTest {
         return (String) o;
     }
 
+    static void aastoreSnippet(Object[] array, int index, Object value) {
+        array[index] = value;
+    }
+
+    static Object outOfBoundsSnippet(Object[] array, int index) {
+        return array[index];
+    }
+
+    static Object getFieldSnippet(Fields o) {
+        return o.a;
+    }
+
+    static void putFieldSnippet(Fields a, Object o) {
+        a.a = o;
+    }
+
+    static Object[] allocateSnippet(int length) {
+        return new Object[length];
+    }
+
+    static int arrayLengthSnippet(Object o) {
+        return Array.getLength(o);
+    }
+
+    static int intExactOverflowSnippet(int a, int b) {
+        return Math.addExact(a, b);
+    }
+
+    static long longExactOverflowSnippet(long a, long b) {
+        return Math.addExact(a, b);
+    }
+
+    /**
+     * These are the {@link BytecodeExceptionKind}s that are supported on HotSpot. Some kinds are
+     * only required for use in native image and any missing ones would result in lowering failures.
+     */
+    private EnumSet<BytecodeExceptionKind> needsTesting = EnumSet.copyOf(DefaultHotSpotLoweringProvider.RuntimeCalls.runtimeCalls.keySet());
+
+    @Override
+    protected void checkHighTierGraph(StructuredGraph graph) {
+        for (BytecodeExceptionNode node : graph.getNodes().filter(BytecodeExceptionNode.class)) {
+            // Mark this kind as exercised by one of unit tests. The full set of tests will
+            // exercise some of these multiple times but we want to ensure they are exercised at
+            // least once.
+            needsTesting.remove(node.getExceptionKind());
+        }
+        super.checkHighTierGraph(graph);
+    }
+
     void testBody() {
         test("nullCheckSnippet", (Object) null);
         test("divByZeroSnippet", 1, 0);
         test("classCastSnippet", Boolean.TRUE);
+        test("aastoreSnippet", new String[1], 0, new Object());
+        test("outOfBoundsSnippet", new String[0], 0);
+        test("getFieldSnippet", (Object) null);
+        test("putFieldSnippet", null, null);
+        test("allocateSnippet", -1);
+        test("arrayLengthSnippet", "s");
+        test("intExactOverflowSnippet", Integer.MAX_VALUE, Integer.MAX_VALUE);
+        test("longExactOverflowSnippet", Long.MAX_VALUE, Long.MAX_VALUE);
+
+        assertTrue(needsTesting.isEmpty(), "missing tests for %s", needsTesting);
     }
 
     @Test

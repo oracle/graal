@@ -107,7 +107,7 @@ public class DebugInfoBuilder {
             current = current.outerFrameState();
         } while (current != null);
 
-        assert verifyFrameState(node, topState);
+        verifyFrameState(node, topState);
         BytecodeFrame frame = computeFrameForState(node, topState);
 
         VirtualObject[] virtualObjectsArray = null;
@@ -252,10 +252,8 @@ public class DebugInfoBuilder {
      *
      * @param node the node using the state
      * @param topState the state
-     * @return true if the validation succeeded
      */
-    protected boolean verifyFrameState(NodeWithState node, FrameState topState) {
-        return true;
+    protected void verifyFrameState(NodeWithState node, FrameState topState) {
     }
 
     protected BytecodeFrame computeFrameForState(NodeWithState node, FrameState state) {
@@ -294,7 +292,8 @@ public class DebugInfoBuilder {
                                 "not the same as the frame state method's code", ste);
             }
 
-            return new BytecodeFrame(caller, state.getMethod(), state.bci, state.rethrowException(), state.duringCall(), values, slotKinds, numLocals, numStack, numLocks);
+            return new BytecodeFrame(caller, state.getMethod(), state.bci, state.getStackState().rethrowException, state.getStackState().duringCall, values, slotKinds, numLocals, numStack,
+                            numLocks);
         } catch (GraalError e) {
             throw e.addContext("FrameState: ", state);
         }

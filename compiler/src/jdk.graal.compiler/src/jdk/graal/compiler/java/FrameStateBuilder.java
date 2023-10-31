@@ -364,7 +364,8 @@ public final class FrameStateBuilder implements SideEffectsState {
             outerFrameState = parent.getFrameStateBuilder().create(parent.bci(), parent.getNonIntrinsicAncestor(), true, null, null);
         }
         if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI && parent != null) {
-            return outerFrameState.duplicateModified(graph, outerFrameState.bci, true, false, JavaKind.Void, new JavaKind[]{JavaKind.Object}, new ValueNode[]{stack[0]}, null);
+            return outerFrameState.duplicateModified(graph, outerFrameState.bci, FrameState.StackState.Rethrow, JavaKind.Void, new JavaKind[]{JavaKind.Object}, new ValueNode[]{stack[0]},
+                            null);
         }
         if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
             throw shouldNotReachHereUnexpectedValue(bci); // ExcludeFromJacocoGeneratedReport
@@ -379,7 +380,8 @@ public final class FrameStateBuilder implements SideEffectsState {
             verifyStackEffect(bci, pushedSlotKinds);
         }
 
-        return graph.add(new FrameState(outerFrameState, code, bci, locals, stack, stackSize, pushedSlotKinds, pushedValues, lockedObjects, Arrays.asList(monitorIds), rethrowException, duringCall));
+        return graph.add(new FrameState(outerFrameState, code, bci, locals, stack, stackSize, pushedSlotKinds, pushedValues, lockedObjects, Arrays.asList(monitorIds),
+                        FrameState.StackState.of(duringCall, rethrowException)));
     }
 
     /**
@@ -1177,7 +1179,8 @@ public final class FrameStateBuilder implements SideEffectsState {
         ValueNode[] newStack = ValueNode.EMPTY_ARRAY;
         ValueNode[] locks = ValueNode.EMPTY_ARRAY;
         assert monitorIds.length == 0;
-        stateAfterStart = graph.add(new FrameState(null, new ResolvedJavaMethodBytecode(original), 0, newLocals, newStack, stackSize, null, null, locks, Collections.emptyList(), false, false));
+        stateAfterStart = graph.add(
+                        new FrameState(null, new ResolvedJavaMethodBytecode(original), 0, newLocals, newStack, stackSize, null, null, locks, Collections.emptyList(), FrameState.StackState.BeforePop));
         return stateAfterStart;
     }
 

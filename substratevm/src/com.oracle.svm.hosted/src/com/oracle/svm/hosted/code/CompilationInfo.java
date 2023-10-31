@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GraphDecoder;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
@@ -92,9 +93,9 @@ public class CompilationInfo {
         this.method = method;
     }
 
-    public boolean isDeoptEntry(int bci, boolean duringCall, boolean rethrowException) {
+    public boolean isDeoptEntry(int bci, FrameState.StackState stackState) {
         return method.isDeoptTarget() && (method.getMultiMethod(MultiMethod.ORIGINAL_METHOD).compilationInfo.canDeoptForTesting ||
-                        SubstrateCompilationDirectives.singleton().isRegisteredDeoptEntry(method, bci, duringCall, rethrowException));
+                        SubstrateCompilationDirectives.singleton().isRegisteredDeoptEntry(method, bci, stackState));
     }
 
     public boolean canDeoptForTesting() {

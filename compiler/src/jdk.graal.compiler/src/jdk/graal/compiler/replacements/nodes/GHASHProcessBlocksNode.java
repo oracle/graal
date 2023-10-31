@@ -26,6 +26,7 @@ package jdk.graal.compiler.replacements.nodes;
 
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.CLMUL;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSSE3;
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 
 import java.util.EnumSet;
 
@@ -57,7 +58,7 @@ public class GHASHProcessBlocksNode extends MemoryKillStubIntrinsicNode {
     public static final ForeignCallDescriptor STUB = new ForeignCallDescriptor("ghashProcessBlocks",
                     void.class,
                     new Class<?>[]{Pointer.class, Pointer.class, Pointer.class, int.class},
-                    false,
+                    HAS_SIDE_EFFECT,
                     KILLED_LOCATIONS,
                     false,
                     false);

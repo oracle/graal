@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.snippets;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
+
 import java.lang.reflect.GenericSignatureFormatError;
 
 import com.oracle.svm.core.SubstrateDiagnostics;
@@ -59,66 +62,76 @@ public class ImplicitExceptions {
     public static final AssertionError CACHED_ASSERTION_ERROR = new AssertionError(NO_STACK_MSG);
     public static final StackOverflowError CACHED_STACK_OVERFLOW_ERROR = new StackOverflowError(NO_STACK_MSG);
 
-    public static final SubstrateForeignCallDescriptor CREATE_NULL_POINTER_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createNullPointerException", false);
-    public static final SubstrateForeignCallDescriptor CREATE_OUT_OF_BOUNDS_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createOutOfBoundsException", false);
+    public static final SubstrateForeignCallDescriptor CREATE_NULL_POINTER_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createNullPointerException", HAS_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor CREATE_OUT_OF_BOUNDS_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createOutOfBoundsException", HAS_SIDE_EFFECT);
     public static final SubstrateForeignCallDescriptor CREATE_INTRINSIC_OUT_OF_BOUNDS_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createIntrinsicOutOfBoundsException",
-                    false);
-    public static final SubstrateForeignCallDescriptor CREATE_CLASS_CAST_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createClassCastException", false);
-    public static final SubstrateForeignCallDescriptor CREATE_ARRAY_STORE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createArrayStoreException", false);
-    public static final SubstrateForeignCallDescriptor CREATE_INCOMPATIBLE_CLASS_CHANGE_ERROR = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createIncompatibleClassChangeError", false);
-    public static final SubstrateForeignCallDescriptor CREATE_ILLEGAL_ARGUMENT_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createIllegalArgumentException", false);
-    public static final SubstrateForeignCallDescriptor CREATE_NEGATIVE_ARRAY_SIZE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createNegativeArraySizeException", false);
-    public static final SubstrateForeignCallDescriptor CREATE_DIVISION_BY_ZERO_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createDivisionByZeroException", false);
-    public static final SubstrateForeignCallDescriptor CREATE_INTEGER_OVERFLOW_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createIntegerOverflowException", false);
-    public static final SubstrateForeignCallDescriptor CREATE_LONG_OVERFLOW_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createLongOverflowException", false);
-    public static final SubstrateForeignCallDescriptor CREATE_ASSERTION_ERROR_NULLARY = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createAssertionErrorNullary", false);
-    public static final SubstrateForeignCallDescriptor CREATE_ASSERTION_ERROR_OBJECT = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createAssertionErrorObject", false);
+                    HAS_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor CREATE_CLASS_CAST_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createClassCastException", HAS_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor CREATE_ARRAY_STORE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createArrayStoreException", HAS_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor CREATE_INCOMPATIBLE_CLASS_CHANGE_ERROR = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createIncompatibleClassChangeError",
+                    HAS_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor CREATE_ILLEGAL_ARGUMENT_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createIllegalArgumentException", HAS_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor CREATE_NEGATIVE_ARRAY_SIZE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createNegativeArraySizeException",
+                    HAS_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor CREATE_DIVISION_BY_ZERO_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createDivisionByZeroException", HAS_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor CREATE_INTEGER_OVERFLOW_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createIntegerOverflowException", HAS_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor CREATE_LONG_OVERFLOW_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createLongOverflowException", HAS_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor CREATE_ASSERTION_ERROR_NULLARY = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createAssertionErrorNullary", HAS_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor CREATE_ASSERTION_ERROR_OBJECT = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createAssertionErrorObject", HAS_SIDE_EFFECT);
 
-    public static final SubstrateForeignCallDescriptor THROW_NEW_NULL_POINTER_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewNullPointerException", true);
+    public static final SubstrateForeignCallDescriptor THROW_NEW_NULL_POINTER_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewNullPointerException", NO_SIDE_EFFECT);
     public static final SubstrateForeignCallDescriptor THROW_NEW_INTRINSIC_OUT_OF_BOUNDS_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewIntrinsicOutOfBoundsException",
-                    true);
+                    NO_SIDE_EFFECT);
     public static final SubstrateForeignCallDescriptor THROW_NEW_OUT_OF_BOUNDS_EXCEPTION_WITH_ARGS = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewOutOfBoundsExceptionWithArgs",
-                    true);
-    public static final SubstrateForeignCallDescriptor THROW_NEW_CLASS_CAST_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewClassCastException", true);
-    public static final SubstrateForeignCallDescriptor THROW_NEW_CLASS_CAST_EXCEPTION_WITH_ARGS = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewClassCastExceptionWithArgs", true);
-    public static final SubstrateForeignCallDescriptor THROW_NEW_ARRAY_STORE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewArrayStoreException", true);
+                    NO_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor THROW_NEW_CLASS_CAST_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewClassCastException", NO_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor THROW_NEW_CLASS_CAST_EXCEPTION_WITH_ARGS = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewClassCastExceptionWithArgs",
+                    NO_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor THROW_NEW_ARRAY_STORE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewArrayStoreException", NO_SIDE_EFFECT);
     public static final SubstrateForeignCallDescriptor THROW_NEW_ARRAY_STORE_EXCEPTION_WITH_ARGS = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewArrayStoreExceptionWithArgs",
-                    true);
+                    NO_SIDE_EFFECT);
     public static final SubstrateForeignCallDescriptor THROW_NEW_INCOMPATIBLE_CLASS_CHANGE_ERROR = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewIncompatibleClassChangeError",
-                    true);
+                    NO_SIDE_EFFECT);
     public static final SubstrateForeignCallDescriptor THROW_NEW_ILLEGAL_ARGUMENT_EXCEPTION_WITH_ARGS = SnippetRuntime.findForeignCall(ImplicitExceptions.class,
-                    "throwNewIllegalArgumentExceptionWithArgs", true);
-    public static final SubstrateForeignCallDescriptor THROW_NEW_NEGATIVE_ARRAY_SIZE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewNegativeArraySizeException", true);
-    public static final SubstrateForeignCallDescriptor THROW_NEW_ARITHMETIC_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewArithmeticException", true);
-    public static final SubstrateForeignCallDescriptor THROW_NEW_DIVISION_BY_ZERO_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewDivisionByZeroException", true);
-    public static final SubstrateForeignCallDescriptor THROW_NEW_INTEGER_OVERFLOW_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewIntegerOverflowException", true);
-    public static final SubstrateForeignCallDescriptor THROW_NEW_LONG_OVERFLOW_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewLongOverflowException", true);
-    public static final SubstrateForeignCallDescriptor THROW_NEW_ASSERTION_ERROR_NULLARY = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewAssertionErrorNullary", true);
-    public static final SubstrateForeignCallDescriptor THROW_NEW_ASSERTION_ERROR_OBJECT = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewAssertionErrorObject", true);
+                    "throwNewIllegalArgumentExceptionWithArgs", NO_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor THROW_NEW_NEGATIVE_ARRAY_SIZE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewNegativeArraySizeException",
+                    NO_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor THROW_NEW_ARITHMETIC_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewArithmeticException", NO_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor THROW_NEW_DIVISION_BY_ZERO_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewDivisionByZeroException",
+                    NO_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor THROW_NEW_INTEGER_OVERFLOW_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewIntegerOverflowException",
+                    NO_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor THROW_NEW_LONG_OVERFLOW_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewLongOverflowException", NO_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor THROW_NEW_ASSERTION_ERROR_NULLARY = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewAssertionErrorNullary", NO_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor THROW_NEW_ASSERTION_ERROR_OBJECT = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewAssertionErrorObject", NO_SIDE_EFFECT);
 
-    public static final SubstrateForeignCallDescriptor GET_CACHED_NULL_POINTER_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedNullPointerException", false);
-    public static final SubstrateForeignCallDescriptor GET_CACHED_OUT_OF_BOUNDS_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedOutOfBoundsException", false);
-    public static final SubstrateForeignCallDescriptor GET_CACHED_CLASS_CAST_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedClassCastException", false);
-    public static final SubstrateForeignCallDescriptor GET_CACHED_ARRAY_STORE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedArrayStoreException", false);
+    public static final SubstrateForeignCallDescriptor GET_CACHED_NULL_POINTER_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedNullPointerException", HAS_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor GET_CACHED_OUT_OF_BOUNDS_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedOutOfBoundsException", HAS_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor GET_CACHED_CLASS_CAST_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedClassCastException", HAS_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor GET_CACHED_ARRAY_STORE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedArrayStoreException", HAS_SIDE_EFFECT);
     public static final SubstrateForeignCallDescriptor GET_CACHED_INCOMPATIBLE_CLASS_CHANGE_ERROR = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedIncompatibleClassChangeError",
-                    false);
-    public static final SubstrateForeignCallDescriptor GET_CACHED_ILLEGAL_ARGUMENT_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedIllegalArgumentException", false);
+                    HAS_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor GET_CACHED_ILLEGAL_ARGUMENT_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedIllegalArgumentException",
+                    HAS_SIDE_EFFECT);
     public static final SubstrateForeignCallDescriptor GET_CACHED_NEGATIVE_ARRAY_SIZE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedNegativeArraySizeException",
-                    false);
-    public static final SubstrateForeignCallDescriptor GET_CACHED_ARITHMETIC_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedArithmeticException", false);
-    public static final SubstrateForeignCallDescriptor GET_CACHED_ASSERTION_ERROR = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedAssertionError", false);
+                    HAS_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor GET_CACHED_ARITHMETIC_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedArithmeticException", HAS_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor GET_CACHED_ASSERTION_ERROR = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedAssertionError", HAS_SIDE_EFFECT);
 
-    public static final SubstrateForeignCallDescriptor THROW_CACHED_NULL_POINTER_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedNullPointerException", true);
-    public static final SubstrateForeignCallDescriptor THROW_CACHED_OUT_OF_BOUNDS_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedOutOfBoundsException", true);
-    public static final SubstrateForeignCallDescriptor THROW_CACHED_CLASS_CAST_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedClassCastException", true);
-    public static final SubstrateForeignCallDescriptor THROW_CACHED_ARRAY_STORE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedArrayStoreException", true);
+    public static final SubstrateForeignCallDescriptor THROW_CACHED_NULL_POINTER_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedNullPointerException",
+                    NO_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor THROW_CACHED_OUT_OF_BOUNDS_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedOutOfBoundsException",
+                    NO_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor THROW_CACHED_CLASS_CAST_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedClassCastException", NO_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor THROW_CACHED_ARRAY_STORE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedArrayStoreException", NO_SIDE_EFFECT);
     public static final SubstrateForeignCallDescriptor THROW_CACHED_INCOMPATIBLE_CLASS_CHANGE_ERROR = SnippetRuntime.findForeignCall(ImplicitExceptions.class,
-                    "throwCachedIncompatibleClassChangeError", true);
-    public static final SubstrateForeignCallDescriptor THROW_CACHED_ILLEGAL_ARGUMENT_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedIllegalArgumentException", true);
+                    "throwCachedIncompatibleClassChangeError", NO_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor THROW_CACHED_ILLEGAL_ARGUMENT_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedIllegalArgumentException",
+                    NO_SIDE_EFFECT);
     public static final SubstrateForeignCallDescriptor THROW_CACHED_NEGATIVE_ARRAY_SIZE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedNegativeArraySizeException",
-                    true);
-    public static final SubstrateForeignCallDescriptor THROW_CACHED_ARITHMETIC_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedArithmeticException", true);
-    public static final SubstrateForeignCallDescriptor THROW_CACHED_ASSERTION_ERROR = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedAssertionError", true);
+                    NO_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor THROW_CACHED_ARITHMETIC_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedArithmeticException", NO_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor THROW_CACHED_ASSERTION_ERROR = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedAssertionError", NO_SIDE_EFFECT);
 
     public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{
                     CREATE_NULL_POINTER_EXCEPTION, CREATE_OUT_OF_BOUNDS_EXCEPTION, CREATE_INTRINSIC_OUT_OF_BOUNDS_EXCEPTION, CREATE_CLASS_CAST_EXCEPTION, CREATE_ARRAY_STORE_EXCEPTION,

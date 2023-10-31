@@ -24,12 +24,16 @@
  */
 package jdk.graal.compiler.hotspot.stubs;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
+import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
 import static jdk.graal.compiler.hotspot.stubs.StubUtil.cAssertionsEnabled;
 import static jdk.graal.compiler.hotspot.stubs.StubUtil.decipher;
 import static jdk.graal.compiler.hotspot.stubs.StubUtil.fatal;
 import static jdk.graal.compiler.hotspot.stubs.StubUtil.newDescriptor;
 import static jdk.graal.compiler.hotspot.stubs.StubUtil.printf;
 import static org.graalvm.word.LocationIdentity.any;
+
+import org.graalvm.word.WordFactory;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Fold.InjectedParameter;
@@ -51,8 +55,6 @@ import jdk.graal.compiler.hotspot.nodes.StubForeignCallNode;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.word.Word;
-import org.graalvm.word.WordFactory;
-
 import jdk.vm.ci.code.Register;
 
 /**
@@ -141,8 +143,7 @@ public class ExceptionHandlerStub extends SnippetStub {
         return Assertions.assertionsEnabled() || cAssertionsEnabled(config);
     }
 
-    public static final HotSpotForeignCallDescriptor EXCEPTION_HANDLER_FOR_PC = newDescriptor(HotSpotForeignCallDescriptor.Transition.SAFEPOINT,
-                    HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, any(), ExceptionHandlerStub.class, "exceptionHandlerForPc", Word.class,
+    public static final HotSpotForeignCallDescriptor EXCEPTION_HANDLER_FOR_PC = newDescriptor(SAFEPOINT, NO_SIDE_EFFECT, any(), ExceptionHandlerStub.class, "exceptionHandlerForPc", Word.class,
                     Word.class);
 
     @NodeIntrinsic(value = StubForeignCallNode.class)

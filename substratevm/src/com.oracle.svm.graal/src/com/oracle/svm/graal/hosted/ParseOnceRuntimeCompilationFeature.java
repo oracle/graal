@@ -1382,7 +1382,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
             FrameState state = proxyNode.stateAfter();
             HostedMethod method = (HostedMethod) state.getMethod();
             if (proxyNode instanceof DeoptEntryNode) {
-                if (directive.isDeoptEntry(method, state.bci, state.duringCall(), state.rethrowException())) {
+                if (directive.isDeoptEntry(method, state.bci, state.getStackState())) {
                     // must keep all deopt entries which are still guarding nodes
                     decision = RemovalDecision.KEEP;
                 }
@@ -1391,7 +1391,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
             if (decision == RemovalDecision.REMOVE) {
                 // now check for any implicit deopt entry being protected against
                 int proxifiedInvokeBci = proxyNode.getProxifiedInvokeBci();
-                if (proxifiedInvokeBci != BytecodeFrame.UNKNOWN_BCI && directive.isDeoptEntry(method, proxifiedInvokeBci, true, false)) {
+                if (proxifiedInvokeBci != BytecodeFrame.UNKNOWN_BCI && directive.isDeoptEntry(method, proxifiedInvokeBci, FrameState.StackState.AfterPop)) {
                     // must keep still keep a proxy for nodes which are "proxifying" an invoke
                     decision = proxyNode instanceof DeoptEntryNode ? RemovalDecision.PROXIFY : RemovalDecision.KEEP;
                 }

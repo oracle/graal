@@ -25,8 +25,11 @@
 
 package jdk.graal.compiler.hotspot.amd64.test;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 import static jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.COMPUTES_REGISTERS_KILLED;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+
+import java.util.BitSet;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
@@ -74,8 +77,6 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
-
-import java.util.BitSet;
 
 public class StubAVXTest extends LIRTest {
 
@@ -239,9 +240,7 @@ public class StubAVXTest extends LIRTest {
     public void test() {
         HotSpotProviders providers = (HotSpotProviders) getProviders();
         HotSpotForeignCallsProviderImpl foreignCalls = providers.getForeignCalls();
-        HotSpotForeignCallLinkage linkage = foreignCalls.registerStubCall(TEST_STUB, HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                        HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE,
-                        COMPUTES_REGISTERS_KILLED);
+        HotSpotForeignCallLinkage linkage = foreignCalls.registerStubCall(TEST_STUB, HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO, NO_SIDE_EFFECT, COMPUTES_REGISTERS_KILLED);
         linkage.setCompiledStub(new TestStub(GraalCompilerTest.getInitialOptions(), providers, linkage));
         runTest("testStub");
     }

@@ -24,11 +24,11 @@
  */
 package jdk.graal.compiler.hotspot.meta;
 
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static jdk.graal.compiler.core.common.GraalOptions.AlwaysInlineVTableStubs;
 import static jdk.graal.compiler.core.common.GraalOptions.InlineVTableStubs;
 import static jdk.graal.compiler.core.common.GraalOptions.OmitHotExceptionStacktrace;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.OSR_MIGRATION_END;
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.word.LocationIdentity.any;
 
 import java.util.Arrays;
@@ -36,6 +36,8 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.GraalOptions;
@@ -57,6 +59,15 @@ import jdk.graal.compiler.debug.DebugHandlersFactory;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeInputList;
+import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
+import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import jdk.graal.compiler.hotspot.nodes.BeginLockScopeNode;
+import jdk.graal.compiler.hotspot.nodes.HotSpotCompressionNode;
+import jdk.graal.compiler.hotspot.nodes.HotSpotDirectCallTargetNode;
+import jdk.graal.compiler.hotspot.nodes.HotSpotIndirectCallTargetNode;
+import jdk.graal.compiler.hotspot.nodes.KlassBeingInitializedCheckNode;
+import jdk.graal.compiler.hotspot.nodes.VMErrorNode;
+import jdk.graal.compiler.hotspot.nodes.VirtualThreadUpdateJFRNode;
 import jdk.graal.compiler.hotspot.nodes.type.HotSpotNarrowOopStamp;
 import jdk.graal.compiler.hotspot.nodes.type.KlassPointerStamp;
 import jdk.graal.compiler.hotspot.nodes.type.MethodPointerStamp;
@@ -83,15 +94,6 @@ import jdk.graal.compiler.hotspot.replacements.StringToBytesSnippets;
 import jdk.graal.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
 import jdk.graal.compiler.hotspot.replacements.UnsafeSnippets;
 import jdk.graal.compiler.hotspot.replacements.VirtualThreadUpdateJFRSnippets;
-import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
-import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
-import jdk.graal.compiler.hotspot.nodes.BeginLockScopeNode;
-import jdk.graal.compiler.hotspot.nodes.HotSpotCompressionNode;
-import jdk.graal.compiler.hotspot.nodes.HotSpotDirectCallTargetNode;
-import jdk.graal.compiler.hotspot.nodes.HotSpotIndirectCallTargetNode;
-import jdk.graal.compiler.hotspot.nodes.KlassBeingInitializedCheckNode;
-import jdk.graal.compiler.hotspot.nodes.VMErrorNode;
-import jdk.graal.compiler.hotspot.nodes.VirtualThreadUpdateJFRNode;
 import jdk.graal.compiler.hotspot.replacements.arraycopy.HotSpotArraycopySnippets;
 import jdk.graal.compiler.hotspot.stubs.ForeignCallSnippets;
 import jdk.graal.compiler.hotspot.word.KlassPointer;
@@ -102,6 +104,7 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DeadEndNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GraphState.GuardsStage;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.LogicConstantNode;
@@ -183,8 +186,6 @@ import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import jdk.graal.compiler.replacements.nodes.CStringConstant;
 import jdk.graal.compiler.replacements.nodes.LogNode;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
@@ -958,13 +959,17 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
          */
         foreignCallNode.setValidateDeoptFrameStates(false);
         /*
-         * The original BytecodeExceptionNode has a rethrowException FrameState which isn't suitable
-         * for deopt because the exception to be thrown come from this call so it's not available in
-         * the debug info. The foreign call needs a stateDuring instead so it can deopt with a
-         * pending exception.
+         * The original BytecodeExceptionNode is a StateState.Rethrow FrameState which isn't
+         * suitable for deopt because the exception to be thrown comes from this call so it's not
+         * available in the debug info. The foreign call cannot be a StateState.AfterPop because
+         * that runs into assertions about which bytecodes must be reexecuted. The actual setting of
+         * reexecute doesn't matter here because the call will simply rethrows the exception
+         * instead.
          */
-        foreignCallNode.setStateDuring(node.createStateDuring());
-        // Keep a proper stateAfter for use by FSA
+        FrameState stateDuring = node.stateAfter();
+        stateDuring = stateDuring.duplicateModified(graph, stateDuring.bci, FrameState.StackState.BeforePop, JavaKind.Object, null, null, null);
+        foreignCallNode.setStateDuring(stateDuring);
+        // Keep the original rethrowException stateAfter for use by FSA
         foreignCallNode.setStateAfter(node.stateAfter());
         graph.replaceFixedWithFixed(node, foreignCallNode);
     }

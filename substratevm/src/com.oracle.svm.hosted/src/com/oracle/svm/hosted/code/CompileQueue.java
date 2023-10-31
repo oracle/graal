@@ -1295,7 +1295,7 @@ public class CompileQueue {
                 method.compilationInfo.numNodesBeforeCompilation = graph.getNodeCount();
                 method.compilationInfo.numDeoptEntryPoints = graph.getNodes().filter(DeoptEntryNode.class).count();
                 method.compilationInfo.numDuringCallEntryPoints = graph.getNodes(MethodCallTargetNode.TYPE).snapshot().stream().map(MethodCallTargetNode::invoke).filter(
-                                invoke -> method.compilationInfo.isDeoptEntry(invoke.bci(), true, false)).count();
+                                invoke -> method.compilationInfo.isDeoptEntry(invoke.bci(), FrameState.StackState.AfterPop)).count();
 
                 Suites suites = method.isDeoptTarget() ? deoptTargetSuites : createSuitesForRegularCompile(graph, regularSuites);
                 LIRSuites lirSuites = method.isDeoptTarget() ? deoptTargetLIRSuites : regularLIRSuites;

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.classinitialization;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
+
 import java.util.Map;
 
 import jdk.graal.compiler.api.replacements.Snippet;
@@ -51,7 +53,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 
 public final class EnsureClassInitializedSnippets extends SubstrateTemplates implements Snippets {
-    private static final SubstrateForeignCallDescriptor INITIALIZE = SnippetRuntime.findForeignCall(ClassInitializationInfo.class, "initialize", false, LocationIdentity.any());
+    private static final SubstrateForeignCallDescriptor INITIALIZE = SnippetRuntime.findForeignCall(ClassInitializationInfo.class, "initialize", HAS_SIDE_EFFECT, LocationIdentity.any());
 
     public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{
                     INITIALIZE,

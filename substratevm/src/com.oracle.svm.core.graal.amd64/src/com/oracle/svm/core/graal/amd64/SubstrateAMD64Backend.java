@@ -1076,7 +1076,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         } else {
             GraalError.guarantee(RuntimeCompilation.isEnabled(), "should be reached in JIT mode only");
             return new ForeignCallDescriptor(descriptor.getName() + Stubs.RUNTIME_CHECKED_CPU_FEATURES_NAME_SUFFIX, descriptor.getResultType(), descriptor.getArgumentTypes(),
-                            descriptor.isReexecutable(), descriptor.getKilledLocations(), descriptor.canDeoptimize(), descriptor.isGuaranteedSafepoint());
+                            descriptor.getSideEffect(), descriptor.getKilledLocations(), descriptor.canDeoptimize(), descriptor.isGuaranteedSafepoint());
         }
     }
 

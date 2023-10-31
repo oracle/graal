@@ -253,7 +253,7 @@ public class DeoptimizationUtils {
         }
         assert rootFrame.getMethod().equals(method);
 
-        boolean isBciDeoptEntry = method.compilationInfo.isDeoptEntry(rootFrame.getBCI(), rootFrame.duringCall, rootFrame.rethrowException);
+        boolean isBciDeoptEntry = method.compilationInfo.isDeoptEntry(rootFrame.getBCI(), FrameState.StackState.of(rootFrame));
         if (isBciDeoptEntry) {
             /*
              * When an infopoint's bci corresponds to a deoptimization entrypoint, it does not
@@ -302,7 +302,7 @@ public class DeoptimizationUtils {
 
                 if (isDeoptEntry(method, result, infopoint)) {
                     BytecodeFrame frame = debugInfo.frame();
-                    long encodedBci = FrameInfoEncoder.encodeBci(frame.getBCI(), frame.duringCall, frame.rethrowException);
+                    long encodedBci = FrameInfoEncoder.encodeBci(frame.getBCI(), FrameState.StackState.of(frame));
 
                     BytecodeFrame previous = encodedBciMap.put(encodedBci, frame);
                     assert previous == null : "duplicate encoded bci " + encodedBci + " in deopt target " + method + " found.\n\n" + frame +
@@ -349,7 +349,7 @@ public class DeoptimizationUtils {
         }
 
         if (caller.isDeoptTarget()) {
-            if (caller.compilationInfo.isDeoptEntry(bci, true, false)) {
+            if (caller.compilationInfo.isDeoptEntry(bci, FrameState.StackState.AfterPop)) {
                 /*
                  * The call can be on the stack for a deoptimization, so we need an actual
                  * non-inlined invoke to deoptimize too.
@@ -470,7 +470,7 @@ public class DeoptimizationUtils {
                  * the bci of the next bytecode after the invoke.
                  */
                 FrameState stateDuring = invoke.stateAfter().duplicateModifiedDuringCall(invoke.bci(), invoke.asNode().getStackKind());
-                assert stateDuring.duringCall() && !stateDuring.rethrowException();
+                assert stateDuring.getStackState() == FrameState.StackState.AfterPop : stateDuring;
                 ResolvedJavaMethod method = deoptRetriever.getDeoptTarget(stateDuring.getMethod());
                 if (SubstrateCompilationDirectives.singleton().registerDeoptEntry(stateDuring, method)) {
                     changedMethods.add(method);

@@ -497,20 +497,20 @@ public abstract class NativeImageCodeCache {
          * All DeoptEntries not corresponding to exception objects must have an exception handler.
          */
         boolean hasExceptionHandler = result.getExceptionOffset() != 0;
-        if (!targetFrame.duringCall() && !targetFrame.rethrowException()) {
-            if (!hasExceptionHandler) {
-                return error(method, encodedBci, "no exception handler registered for deopt entry");
-            }
-        } else if (!targetFrame.duringCall() && targetFrame.rethrowException()) {
-            if (hasExceptionHandler) {
-                return error(method, encodedBci, "exception handler registered for rethrowException");
-            }
-        } else if (targetFrame.duringCall() && !targetFrame.rethrowException()) {
-            if (!hasExceptionHandler) {
-                return error(method, encodedBci, "no exception handler registered for deopt entry");
-            }
-        } else {
-            return error(method, encodedBci, "invalid encoded bci");
+        switch (targetFrame.getStackState()) {
+            case BeforePop:
+            case AfterPop:
+                if (!hasExceptionHandler) {
+                    return error(method, encodedBci, "no exception handler registered for deopt entry");
+                }
+                break;
+            case Rethrow:
+                if (hasExceptionHandler) {
+                    return error(method, encodedBci, "exception handler registered for rethrowException");
+                }
+                break;
+            default:
+                return error(method, encodedBci, "invalid encoded bci");
         }
 
         /*

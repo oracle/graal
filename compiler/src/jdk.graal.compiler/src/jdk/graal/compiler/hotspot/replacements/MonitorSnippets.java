@@ -24,9 +24,9 @@
  */
 package jdk.graal.compiler.hotspot.replacements;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_OPTIONVALUES;
 import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
-import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.STACK_INSPECTABLE_LEAF;
 import static jdk.graal.compiler.hotspot.nodes.AcquiredCASLockNode.mark;
@@ -81,6 +81,11 @@ import static org.graalvm.word.WordFactory.zero;
 import java.util.List;
 import java.util.Objects;
 
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordBase;
+import org.graalvm.word.WordFactory;
+
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
@@ -127,11 +132,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.CStringConstant;
 import jdk.graal.compiler.word.Word;
-import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaType;
@@ -807,8 +807,8 @@ public class MonitorSnippets implements Snippets {
                         callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, checkCounter.getMethod(), new ValueNode[]{errMsg}, returnStamp, null));
                         invoke = graph.add(new InvokeNode(callTarget, 0));
                         Bytecode code = new ResolvedJavaMethodBytecode(graph.method());
-                        FrameState stateAfter = new FrameState(null, code, BytecodeFrame.AFTER_BCI, ValueNode.EMPTY_ARRAY, ValueNode.EMPTY_ARRAY, 0, null, null, ValueNode.EMPTY_ARRAY, null, false,
-                                        false);
+                        FrameState stateAfter = new FrameState(null, code, BytecodeFrame.AFTER_BCI, ValueNode.EMPTY_ARRAY, ValueNode.EMPTY_ARRAY, 0, null, null, ValueNode.EMPTY_ARRAY, null,
+                                        FrameState.StackState.BeforePop);
                         invoke.setStateAfter(graph.add(stateAfter));
                         graph.addBeforeFixed(ret, invoke);
 
@@ -822,8 +822,8 @@ public class MonitorSnippets implements Snippets {
         }
     }
 
-    public static final HotSpotForeignCallDescriptor MONITORENTER = new HotSpotForeignCallDescriptor(SAFEPOINT, NOT_REEXECUTABLE, any(), "monitorenter", void.class, Object.class, Word.class);
-    public static final HotSpotForeignCallDescriptor MONITOREXIT = new HotSpotForeignCallDescriptor(STACK_INSPECTABLE_LEAF, NOT_REEXECUTABLE, any(), "monitorexit", void.class, Object.class,
+    public static final HotSpotForeignCallDescriptor MONITORENTER = new HotSpotForeignCallDescriptor(SAFEPOINT, HAS_SIDE_EFFECT, any(), "monitorenter", void.class, Object.class, Word.class);
+    public static final HotSpotForeignCallDescriptor MONITOREXIT = new HotSpotForeignCallDescriptor(STACK_INSPECTABLE_LEAF, HAS_SIDE_EFFECT, any(), "monitorexit", void.class, Object.class,
                     Word.class);
 
     @NodeIntrinsic(ForeignCallNode.class)

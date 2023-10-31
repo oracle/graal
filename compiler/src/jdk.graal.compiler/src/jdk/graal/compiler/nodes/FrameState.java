@@ -91,6 +91,55 @@ public final class FrameState extends VirtualState implements IterableNodeType {
     }
 
     /**
+     * An enumeration describing the state of the expression stack captured by a {@link FrameState}.
+     */
+    public enum StackState {
+        /**
+         * Arguments to the current bytecode are on the top of stack.
+         */
+        BeforePop(false, false),
+
+        /**
+         * Arguments to current bytecode have been popped but the result of the bytecode hasn't been
+         * pushed. This is primarily used for deopt at call sites since the arguments have been
+         * consumed but the return value will come implicitly from the callee return value.
+         */
+        AfterPop(true, false),
+
+        /**
+         * A state with all arguments popped and an exception to be rethrown on the top of the
+         * stack.
+         */
+        Rethrow(false, true);
+
+        public final boolean rethrowException;
+        public final boolean duringCall;
+
+        StackState(boolean duringCall, boolean rethrowException) {
+            this.rethrowException = rethrowException;
+            this.duringCall = duringCall;
+        }
+
+        public static StackState of(BytecodeFrame frame) {
+            return of(frame.duringCall, frame.rethrowException);
+        }
+
+        public static StackState of(boolean duringCall, boolean rethrowException) {
+            if (rethrowException) {
+                if (duringCall) {
+                    throw GraalError.shouldNotReachHere("unexpected encoding: " + duringCall + " " + rethrowException);
+                } else {
+                    return Rethrow;
+                }
+            } else if (duringCall) {
+                return AfterPop;
+            } else {
+                return BeforePop;
+            }
+        }
+    }
+
+    /**
      * Logical number of local variables represented in this frame state. See {@link #values()} for
      * details on storage allocated for the local variables.
      */
@@ -106,12 +155,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      */
     private final char locksSize;
 
-    /**
-     * @see BytecodeFrame#rethrowException
-     */
-    private final boolean rethrowException;
-
-    private final boolean duringCall;
+    private final StackState stackState;
 
     /**
      * When a method {@code y()} has been inlined into a method {@code x()}, the frame states from
@@ -163,8 +207,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                     int localsSize,
                     int stackSize,
                     int locksSize,
-                    boolean rethrowException,
-                    boolean duringCall,
+                    StackState stackState,
                     boolean validForDeoptimization,
                     List<MonitorIdNode> monitorIds,
                     List<EscapeObjectState> virtualObjectMappings) {
@@ -197,10 +240,9 @@ public final class FrameState extends VirtualState implements IterableNodeType {
             this.virtualObjectMappings = new NodeInputList<>(this, virtualObjectMappings);
         }
 
-        this.rethrowException = rethrowException;
-        this.duringCall = duringCall;
+        this.stackState = stackState;
         this.validForDeoptimization = validForDeoptimization;
-        assert !this.rethrowException || this.stackSize == 1 : "must have exception on top of the stack";
+        assert this.stackState != StackState.Rethrow || this.stackSize == 1 : "must have exception on top of the stack";
         assert this.locksSize() == this.monitorIdCount();
     }
 
@@ -214,13 +256,12 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                     int localsSize,
                     int stackSize,
                     int locksSize,
-                    boolean rethrowException,
-                    boolean duringCall,
+                    StackState stackState,
                     boolean validForDeoptimization,
                     List<MonitorIdNode> monitorIds,
                     List<EscapeObjectState> virtualObjectMappings,
                     ValueFunction valueFunction) {
-        this(outerFrameState, code, bci, localsSize, stackSize, locksSize, rethrowException, duringCall, validForDeoptimization, monitorIds, virtualObjectMappings);
+        this(outerFrameState, code, bci, localsSize, stackSize, locksSize, stackState, validForDeoptimization, monitorIds, virtualObjectMappings);
         this.values = new NodeInputList<>(this, values.size());
         for (int i = 0; i < values.size(); ++i) {
             ValueNode value = values.get(i);
@@ -241,7 +282,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
     }
 
     public FrameState(int bci) {
-        this(null, null, bci, 0, 0, 0, false, false, true, null, null);
+        this(null, null, bci, 0, 0, 0, StackState.BeforePop, true, null, null);
         assert bci == BytecodeFrame.BEFORE_BCI ||
                         bci == BytecodeFrame.AFTER_BCI ||
                         bci == BytecodeFrame.AFTER_EXCEPTION_BCI ||
@@ -259,7 +300,8 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * @param bci this must be {@link BytecodeFrame#AFTER_BCI}
      */
     public FrameState(int bci, ValueNode returnValueOrExceptionObject) {
-        this(null, null, bci, 0, returnValueOrExceptionObject.getStackKind().getSlotCount(), 0, returnValueOrExceptionObject instanceof ExceptionObjectNode, false, true, null, null);
+        this(null, null, bci, 0, returnValueOrExceptionObject.getStackKind().getSlotCount(), 0, returnValueOrExceptionObject instanceof ExceptionObjectNode ? StackState.Rethrow : StackState.BeforePop,
+                        true, null, null);
         assert (bci == BytecodeFrame.AFTER_BCI && !rethrowException()) || (bci == BytecodeFrame.AFTER_EXCEPTION_BCI && rethrowException());
         ValueNode[] stack = {returnValueOrExceptionObject};
         this.values = new NodeInputList<>(this, stack);
@@ -275,9 +317,8 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                     ValueNode[] pushedValues,
                     ValueNode[] locks,
                     List<MonitorIdNode> monitorIds,
-                    boolean rethrowException,
-                    boolean duringCall) {
-        this(outerFrameState, code, bci, locals.length, stackSize + computeSize(pushedSlotKinds), locks.length, rethrowException, duringCall, true, monitorIds, null);
+                    StackState stackState) {
+        this(outerFrameState, code, bci, locals.length, stackSize + computeSize(pushedSlotKinds), locks.length, stackState, true, monitorIds, null);
         createValues(locals, stack, stackSize, pushedSlotKinds, pushedValues, locks);
     }
 
@@ -401,11 +442,11 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * @see BytecodeFrame#rethrowException
      */
     public boolean rethrowException() {
-        return rethrowException;
+        return stackState == StackState.Rethrow;
     }
 
-    public boolean duringCall() {
-        return duringCall;
+    public StackState getStackState() {
+        return stackState;
     }
 
     public Bytecode getCode() {
@@ -454,7 +495,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * Gets a copy of this frame state.
      */
     public FrameState duplicate() {
-        return graph().add(new FrameState(outerFrameState(), code, bci, values, localsSize, stackSize, locksSize, rethrowException, duringCall, validForDeoptimization, monitorIds,
+        return graph().add(new FrameState(outerFrameState(), code, bci, values, localsSize, stackSize, locksSize, stackState, validForDeoptimization, monitorIds,
                         virtualObjectMappings, null));
     }
 
@@ -475,7 +516,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * {@code valueFunc} to the {@link #values()} in this frame state.
      */
     public FrameState duplicate(ValueFunction valueFunc) {
-        return new FrameState(outerFrameState(), code, bci, values, localsSize, stackSize, locksSize, rethrowException, duringCall, validForDeoptimization, monitorIds, virtualObjectMappings,
+        return new FrameState(outerFrameState(), code, bci, values, localsSize, stackSize, locksSize, stackState, validForDeoptimization, monitorIds, virtualObjectMappings,
                         valueFunc);
     }
 
@@ -496,7 +537,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                 newVirtualMappings.add(state.duplicateWithVirtualState());
             }
         }
-        return graph().add(new FrameState(newOuterFrameState, code, bci, values, localsSize, stackSize, locksSize, rethrowException, duringCall, validForDeoptimization, monitorIds, newVirtualMappings,
+        return graph().add(new FrameState(newOuterFrameState, code, bci, values, localsSize, stackSize, locksSize, stackState, validForDeoptimization, monitorIds, newVirtualMappings,
                         null));
     }
 
@@ -505,7 +546,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * the stack.
      */
     public FrameState duplicateModifiedDuringCall(int newBci, JavaKind popKind) {
-        return duplicateModified(graph(), newBci, rethrowException, true, popKind, null, null, null);
+        return duplicateModified(graph(), newBci, StackState.AfterPop, popKind, null, null, null);
     }
 
     public FrameState duplicateModifiedBeforeCall(int newBci,
@@ -513,7 +554,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                     JavaKind[] pushedSlotKinds,
                     ValueNode[] pushedValues,
                     List<EscapeObjectState> pushedVirtualObjectMappings) {
-        return duplicateModified(graph(), newBci, rethrowException, false, popKind, pushedSlotKinds, pushedValues, pushedVirtualObjectMappings);
+        return duplicateModified(graph(), newBci, StackState.BeforePop, popKind, pushedSlotKinds, pushedValues, pushedVirtualObjectMappings);
     }
 
     /**
@@ -525,18 +566,17 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                     ValueNode pushedValue,
                     List<EscapeObjectState> pushedVirtualObjectMappings) {
         assert pushedValue != null && pushedValue.getStackKind() == popKind;
-        return duplicateModified(graph(), bci, rethrowException, duringCall, popKind, new JavaKind[]{pushedSlotKind}, new ValueNode[]{pushedValue}, pushedVirtualObjectMappings);
+        return duplicateModified(graph(), bci, stackState, popKind, new JavaKind[]{pushedSlotKind}, new ValueNode[]{pushedValue}, pushedVirtualObjectMappings);
     }
 
     public FrameState duplicateModified(StructuredGraph graph,
                     int newBci,
-                    boolean newRethrowException,
-                    boolean newDuringCall,
+                    StackState newStackState,
                     JavaKind popKind,
                     JavaKind[] pushedSlotKinds,
                     ValueNode[] pushedValues,
                     List<EscapeObjectState> pushedVirtualObjectMappings) {
-        return duplicateModified(graph, newBci, newRethrowException, newDuringCall, popKind, pushedSlotKinds, pushedValues, pushedVirtualObjectMappings, true);
+        return duplicateModified(graph, newBci, newStackState, popKind, pushedSlotKinds, pushedValues, pushedVirtualObjectMappings, true);
     }
 
     /**
@@ -547,14 +587,12 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      */
     public FrameState duplicateModified(StructuredGraph graph,
                     int newBci,
-                    boolean newRethrowException,
-                    boolean newDuringCall,
+                    StackState newStackState,
                     JavaKind popKind,
                     JavaKind[] pushedSlotKinds,
                     ValueNode[] pushedValues,
                     List<EscapeObjectState> pushedVirtualObjectMappings,
                     boolean checkStackDepth) {
-
         // Compute size of stack to copy (accounting for popping)
         // and final stack size after pushing
         int copyStackSize;
@@ -565,7 +603,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                 newStackSize += pushedSlotKinds[i].getSlotCount();
             }
         }
-        if (newRethrowException && !rethrowException && popKind == JavaKind.Void) {
+        if (newStackState == StackState.Rethrow && stackState != StackState.Rethrow && popKind == JavaKind.Void) {
             assert popKind == JavaKind.Void;
             copyStackSize = 0;
         } else {
@@ -618,7 +656,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
 
         // Check invariants
         assert newValues.size() == newValuesSize : newValues.size() + " != " + newValuesSize;
-        assert !checkStackDepth || checkStackDepth(bci, stackSize, duringCall, rethrowException, newBci, newStackSize, newDuringCall, newRethrowException);
+        assert !checkStackDepth || checkStackDepth(bci, stackSize, stackState, newBci, newStackSize, newStackState);
 
         return graph.add(new FrameState(outerFrameState(),
                         code,
@@ -627,8 +665,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                         localsSize,
                         newStackSize,
                         locksSize,
-                        newRethrowException,
-                        newDuringCall,
+                        newStackState,
                         validForDeoptimization,
                         monitorIds,
                         copiedVirtualObjectMappings != null ? copiedVirtualObjectMappings : virtualObjectMappings,
@@ -698,8 +735,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * Perform a few sanity checks on the transformation of the stack state. The current expectation
      * is that a stateAfter is being transformed into a stateDuring, so the stack depth may change.
      */
-    private boolean checkStackDepth(int oldBci, int oldStackSize, boolean oldDuringCall, boolean oldRethrowException, int newBci, int newStackSize, boolean newDuringCall,
-                    boolean newRethrowException) {
+    private boolean checkStackDepth(int oldBci, int oldStackSize, StackState oldStackState, int newBci, int newStackSize, StackState newStackState) {
         if (BytecodeFrame.isPlaceholderBci(oldBci)) {
             return true;
         }
@@ -715,7 +751,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         }
         byte newCode = codes[newBci];
         if (oldBci == newBci) {
-            assert oldStackSize == newStackSize || oldDuringCall != newDuringCall || oldRethrowException != newRethrowException : "bci is unchanged, stack depth shouldn't change";
+            assert oldStackSize == newStackSize || oldStackState != newStackState : "bci is unchanged, stack depth shouldn't change";
         } else {
             byte oldCode = codes[oldBci];
             assert Bytecodes.lengthOf(newCode) + newBci == oldBci || Bytecodes.lengthOf(oldCode) + oldBci == newBci : "expecting roll back or forward";
@@ -826,6 +862,9 @@ public final class FrameState extends VirtualState implements IterableNodeType {
             Bytecode.appendLocation(sb, fs.getCode(), fs.bci);
             if (BytecodeFrame.isPlaceholderBci(fs.bci)) {
                 sb.append("//").append(getPlaceholderBciName(fs.bci));
+            }
+            if (fs == frameState) {
+                sb.append(" ").append(fs.stackState);
             }
             sb.append(nl);
             sb.append("locals: [");

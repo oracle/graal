@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.graal.snippets.aarch64;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
+
 import java.util.Map;
 
 import jdk.graal.compiler.api.replacements.Snippet;
@@ -61,7 +63,7 @@ import jdk.vm.ci.meta.JavaKind;
  * AArch64 does not have a remainder operation. We lower it to a stub call.
  */
 final class AArch64ArithmeticSnippets extends ArithmeticSnippets {
-    private static final SubstrateForeignCallDescriptor FMOD = SnippetRuntime.findForeignCall(AArch64ArithmeticSnippets.class, "fmod", true);
+    private static final SubstrateForeignCallDescriptor FMOD = SnippetRuntime.findForeignCall(AArch64ArithmeticSnippets.class, "fmod", NO_SIDE_EFFECT);
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{FMOD};
 
     public static void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {

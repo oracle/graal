@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
+
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -105,8 +107,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class NonSnippetLowerings {
 
-    public static final SnippetRuntime.SubstrateForeignCallDescriptor REPORT_VERIFY_TYPES_ERROR = SnippetRuntime.findForeignCall(
-                    NonSnippetLowerings.class, "reportVerifyTypesError", false, LocationIdentity.any());
+    public static final SnippetRuntime.SubstrateForeignCallDescriptor REPORT_VERIFY_TYPES_ERROR = SnippetRuntime.findForeignCall(NonSnippetLowerings.class, "reportVerifyTypesError", HAS_SIDE_EFFECT,
+                    LocationIdentity.any());
 
     private final Predicate<ResolvedJavaMethod> mustNotAllocatePredicate;
 

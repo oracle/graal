@@ -99,8 +99,8 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
             this.method = method;
         }
 
-        boolean isDeoptEntry(int bci, boolean duringCall, boolean rethrowException) {
-            return SubstrateCompilationDirectives.singleton().isDeoptEntry(method, bci, duringCall, rethrowException);
+        boolean isDeoptEntry(int bci, FrameState.StackState stackState) {
+            return SubstrateCompilationDirectives.singleton().isDeoptEntry(method, bci, stackState);
         }
     }
 
@@ -163,9 +163,9 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
         throw new GraalError("Matching constructor not found: %s", getSignature());
     }
 
-    private static boolean shouldInsertDeoptEntry(DeoptInfoProvider deoptInfo, int bci, boolean duringCall, boolean rethrowException) {
+    private static boolean shouldInsertDeoptEntry(DeoptInfoProvider deoptInfo, int bci, FrameState.StackState stackState) {
         if (deoptInfo != null) {
-            return deoptInfo.isDeoptEntry(bci, duringCall, rethrowException);
+            return deoptInfo.isDeoptEntry(bci, stackState);
         }
         return false;
     }
@@ -173,7 +173,7 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
     private static int startMethod(HostedGraphKit kit, DeoptInfoProvider deoptInfo, int nextDeoptIndex) {
         if (deoptInfo != null) {
             FrameState initialState = kit.getGraph().start().stateAfter();
-            if (shouldInsertDeoptEntry(deoptInfo, initialState.bci, false, false)) {
+            if (shouldInsertDeoptEntry(deoptInfo, initialState.bci, FrameState.StackState.BeforePop)) {
                 return appendDeoptWithExceptionUnwind(kit, initialState, initialState.bci, nextDeoptIndex, DeoptEntryNode.create());
             }
         }
@@ -220,7 +220,7 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
 
         int nextDeoptIndex = initialNextDeoptIndex;
 
-        if (shouldInsertDeoptEntry(deoptInfo, bci, false, true)) {
+        if (shouldInsertDeoptEntry(deoptInfo, bci, FrameState.StackState.Rethrow)) {
             // Exception during invoke
 
             var exceptionDeopt = kit.add(DeoptEntryNode.create(invoke.bci()));
@@ -240,8 +240,8 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
             kit.append(new UnwindNode(exception));
         }
 
-        boolean needDeoptEntry = shouldInsertDeoptEntry(deoptInfo, invoke.stateAfter().bci, false, false);
-        boolean needDeoptProxy = shouldInsertDeoptEntry(deoptInfo, bci, true, false);
+        boolean needDeoptEntry = shouldInsertDeoptEntry(deoptInfo, invoke.stateAfter().bci, FrameState.StackState.BeforePop);
+        boolean needDeoptProxy = shouldInsertDeoptEntry(deoptInfo, bci, FrameState.StackState.AfterPop);
         if (needDeoptEntry || needDeoptProxy) {
             kit.noExceptionPart();
             if (needDeoptEntry) {

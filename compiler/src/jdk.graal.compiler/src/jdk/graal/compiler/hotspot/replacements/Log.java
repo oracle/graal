@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.hotspot.replacements;
 
-import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE;
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.NO_LOCATIONS;
 import static jdk.graal.compiler.replacements.nodes.CStringConstant.cstring;
@@ -47,11 +47,11 @@ import jdk.vm.ci.meta.JavaKind;
  */
 public final class Log {
 
-    public static final HotSpotForeignCallDescriptor LOG_PRIMITIVE = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS, "logPrimitive", void.class, int.class, long.class,
+    public static final HotSpotForeignCallDescriptor LOG_PRIMITIVE = new HotSpotForeignCallDescriptor(LEAF, NO_SIDE_EFFECT, NO_LOCATIONS, "logPrimitive", void.class, int.class, long.class,
                     boolean.class);
-    public static final HotSpotForeignCallDescriptor LOG_OBJECT = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS, "logObject", void.class, Object.class, boolean.class,
+    public static final HotSpotForeignCallDescriptor LOG_OBJECT = new HotSpotForeignCallDescriptor(LEAF, NO_SIDE_EFFECT, NO_LOCATIONS, "logObject", void.class, Object.class, boolean.class,
                     boolean.class);
-    public static final HotSpotForeignCallDescriptor LOG_PRINTF = new HotSpotForeignCallDescriptor(LEAF, REEXECUTABLE, NO_LOCATIONS, "logPrintf", void.class, Word.class, long.class, long.class,
+    public static final HotSpotForeignCallDescriptor LOG_PRINTF = new HotSpotForeignCallDescriptor(LEAF, NO_SIDE_EFFECT, NO_LOCATIONS, "logPrintf", void.class, Word.class, long.class, long.class,
                     long.class);
 
     @NodeIntrinsic(ForeignCallNode.class)

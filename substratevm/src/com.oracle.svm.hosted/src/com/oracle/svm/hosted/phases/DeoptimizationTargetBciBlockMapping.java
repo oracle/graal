@@ -33,6 +33,7 @@ import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.java.BciBlockMapping;
+import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.options.OptionValues;
 
 import com.oracle.svm.common.meta.MultiMethod;
@@ -279,18 +280,18 @@ final class DeoptimizationTargetBciBlockMapping extends BciBlockMapping {
     /**
      * Checking whether this bci corresponds to a deopt entry point.
      */
-    private boolean isDeoptEntry(int bci, boolean duringCall, boolean rethrowException) {
+    private boolean isDeoptEntry(int bci, FrameState.StackState stackState) {
         ResolvedJavaMethod method = code.getMethod();
-        return SubstrateCompilationDirectives.singleton().isDeoptEntry((MultiMethod) method, bci, duringCall, rethrowException);
+        return SubstrateCompilationDirectives.singleton().isDeoptEntry((MultiMethod) method, bci, stackState);
     }
 
     /**
      * Checking whether this bci corresponds to a deopt entry point.
      */
-    private boolean isRegisteredDeoptEntry(int bci, boolean duringCall, boolean rethrowException) {
+    private boolean isRegisteredDeoptEntry(int bci, FrameState.StackState stackState) {
         ResolvedJavaMethod method = code.getMethod();
         SubstrateCompilationDirectives directives = SubstrateCompilationDirectives.singleton();
-        return directives.isRegisteredDeoptTarget(method) && directives.isRegisteredDeoptEntry((MultiMethod) method, bci, duringCall, rethrowException);
+        return directives.isRegisteredDeoptTarget(method) && directives.isRegisteredDeoptEntry((MultiMethod) method, bci, stackState);
     }
 
     /* A new block must be created for all places where a DeoptEntryNode will be inserted. */
@@ -299,7 +300,7 @@ final class DeoptimizationTargetBciBlockMapping extends BciBlockMapping {
         /*
          * Checking whether a DeoptEntryPoint will be created for this spot.
          */
-        if (isDeoptEntry(bci, false, false)) {
+        if (isDeoptEntry(bci, FrameState.StackState.BeforePop)) {
             return true;
         }
 
@@ -321,7 +322,7 @@ final class DeoptimizationTargetBciBlockMapping extends BciBlockMapping {
             throw new PermanentBailoutException("Exception handler can be reached by both normal and exceptional control flow");
         }
 
-        if (isDeoptEntry(invokeBci, true, false)) {
+        if (isDeoptEntry(invokeBci, FrameState.StackState.AfterPop)) {
             /*
              * Because this invoke has an implicit deopt entry, it is necessary to insert proxies
              * afterwards.
@@ -375,7 +376,7 @@ final class DeoptimizationTargetBciBlockMapping extends BciBlockMapping {
         }
         BciBlock newBlock = new BciBlock(bci);
         blocksNotYetAssignedId++;
-        if (isDeoptEntry(bci, false, false)) {
+        if (isDeoptEntry(bci, FrameState.StackState.BeforePop)) {
             DeoptBciBlock deoptEntry = DeoptBciBlock.createDeoptEntry(bci);
             recordInsertedBlock(deoptEntry);
             deoptEntry.addSuccessor(newBlock);
@@ -411,7 +412,7 @@ final class DeoptimizationTargetBciBlockMapping extends BciBlockMapping {
      */
     @Override
     protected BciBlock processNewBciBlock(int bci, BciBlock newBlock) {
-        if (isDeoptEntry(bci, false, false)) {
+        if (isDeoptEntry(bci, FrameState.StackState.BeforePop)) {
             DeoptBciBlock deoptBciBlock = DeoptBciBlock.createDeoptEntry(bci);
             recordInsertedBlock(deoptBciBlock);
             deoptBciBlock.addSuccessor(newBlock);
@@ -435,8 +436,8 @@ final class DeoptimizationTargetBciBlockMapping extends BciBlockMapping {
      */
     @Override
     protected ExceptionDispatchBlock processNewExceptionDispatchBlock(int bci, boolean isInvoke, ExceptionDispatchBlock handler) {
-        boolean isDeoptEntry = isDeoptEntry(bci, false, true);
-        boolean isInvokeProxy = isInvoke && isDeoptEntry(bci, true, false);
+        boolean isDeoptEntry = isDeoptEntry(bci, FrameState.StackState.Rethrow);
+        boolean isInvokeProxy = isInvoke && isDeoptEntry(bci, FrameState.StackState.AfterPop);
         if (isDeoptEntry || isInvokeProxy) {
             DeoptExceptionDispatchBlock block;
             if (handler == null) {
@@ -479,14 +480,15 @@ final class DeoptimizationTargetBciBlockMapping extends BciBlockMapping {
             boolean proxifysInvoke = deopt.proxifysInvoke();
             boolean coversInvoke = false;
             boolean coversDeoptEntry = false;
+            FrameState.StackState stackState = isExceptionDispatch ? FrameState.StackState.Rethrow : FrameState.StackState.BeforePop;
 
             if (deopt.proxifysInvoke()) {
                 int proxifiedInvokeBci = deopt.proxifiedInvokeBci();
                 assert proxifiedInvokeBci >= 0;
-                coversInvoke = isRegisteredDeoptEntry(proxifiedInvokeBci, true, false);
+                coversInvoke = isRegisteredDeoptEntry(proxifiedInvokeBci, FrameState.StackState.AfterPop);
             }
             if (!isProxy) {
-                coversDeoptEntry = isRegisteredDeoptEntry(bci, false, isExceptionDispatch);
+                coversDeoptEntry = isRegisteredDeoptEntry(bci, stackState);
             }
 
             if (block.getId() < 0) {
@@ -508,7 +510,7 @@ final class DeoptimizationTargetBciBlockMapping extends BciBlockMapping {
                 assert proxifysInvoke;
             } else {
                 assert coversDeoptEntry;
-                assert coveredEncodedBcis.add(FrameInfoEncoder.encodeBci(bci, false, isExceptionDispatch)) : "Deoptimization entry points must be unique.";
+                assert coveredEncodedBcis.add(FrameInfoEncoder.encodeBci(bci, stackState)) : "Deoptimization entry points must be unique.";
             }
 
             assert block.getSuccessorCount() <= 2 : "DeoptEntryInsertionPoint must have at most 2 successors";

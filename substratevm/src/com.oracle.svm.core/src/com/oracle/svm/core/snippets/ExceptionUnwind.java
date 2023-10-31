@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.snippets;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
+
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
@@ -59,9 +61,9 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 public abstract class ExceptionUnwind {
 
     public static final SubstrateForeignCallDescriptor UNWIND_EXCEPTION_WITHOUT_CALLEE_SAVED_REGISTERS = SnippetRuntime.findForeignCall(ExceptionUnwind.class,
-                    "unwindExceptionWithoutCalleeSavedRegisters", true, LocationIdentity.any());
+                    "unwindExceptionWithoutCalleeSavedRegisters", NO_SIDE_EFFECT, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor UNWIND_EXCEPTION_WITH_CALLEE_SAVED_REGISTERS = SnippetRuntime.findForeignCall(ExceptionUnwind.class, "unwindExceptionWithCalleeSavedRegisters",
-                    true, LocationIdentity.any());
+                    NO_SIDE_EFFECT, LocationIdentity.any());
 
     public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{
                     UNWIND_EXCEPTION_WITHOUT_CALLEE_SAVED_REGISTERS,

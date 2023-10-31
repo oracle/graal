@@ -24,9 +24,12 @@
  */
 package jdk.graal.compiler.truffle.hotspot;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.NO_LOCATIONS;
 import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
+
+import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
@@ -39,7 +42,6 @@ import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.meta.DefaultHotSpotLoweringProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
-import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.nodes.CurrentJavaThreadNode;
@@ -58,8 +60,6 @@ import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.truffle.nodes.TruffleSafepointNode;
 import jdk.graal.compiler.truffle.phases.TruffleSafepointInsertionPhase;
 import jdk.graal.compiler.word.Word;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -75,7 +75,7 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
      */
     static final HotSpotForeignCallDescriptor THREAD_LOCAL_HANDSHAKE = new HotSpotForeignCallDescriptor(
                     SAFEPOINT,
-                    Reexecutability.REEXECUTABLE,
+                    NO_SIDE_EFFECT,
                     NO_LOCATIONS,
                     "HotSpotThreadLocalHandshake.doHandshake",
                     void.class, Object.class);

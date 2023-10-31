@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.jdk;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
@@ -60,7 +61,7 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import jdk.vm.ci.meta.JavaKind;
 
 public final class SubstrateArraycopySnippets extends SubstrateTemplates implements Snippets {
-    private static final SubstrateForeignCallDescriptor ARRAYCOPY = SnippetRuntime.findForeignCall(SubstrateArraycopySnippets.class, "doArraycopy", false, LocationIdentity.any());
+    private static final SubstrateForeignCallDescriptor ARRAYCOPY = SnippetRuntime.findForeignCall(SubstrateArraycopySnippets.class, "doArraycopy", HAS_SIDE_EFFECT, LocationIdentity.any());
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{ARRAYCOPY};
 
     public static void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
