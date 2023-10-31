@@ -200,8 +200,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             Safepoint.transitionNativeToJava(false);
         }
 
-        result = runtimeCallInitializeIsolate(INITIALIZE_ISOLATE, parameters);
-        return result;
+        return runtimeCallInitializeIsolate(INITIALIZE_ISOLATE, parameters);
     }
 
     @Uninterruptible(reason = "Thread state not yet set up.")
@@ -276,15 +275,41 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         return isolateInitialized;
     }
 
+    @Uninterruptible(reason = "Must be uninterruptible because thread state is not set up after leaveTearDownIsolate().")
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static int initializeIsolate(CEntryPointCreateIsolateParameters parameters) {
-        boolean firstIsolate = false;
+        int result = initializeIsolateInterruptibly(parameters);
+        if (result != CEntryPointErrors.NO_ERROR) {
+            CEntryPointActions.leaveTearDownIsolate();
+            /* Extra return is needed because of validation. */
+            return result;
+        }
+        return result;
+    }
 
-        final long initStateAddr = FIRST_ISOLATE_INIT_STATE.get().rawValue();
-        int state = Unsafe.getUnsafe().getInt(initStateAddr);
-        if (state != FirstIsolateInitStates.SUCCESSFUL) {
-            firstIsolate = Unsafe.getUnsafe().compareAndSetInt(null, initStateAddr, FirstIsolateInitStates.UNINITIALIZED, FirstIsolateInitStates.IN_PROGRESS);
-            if (!firstIsolate) {
+    @Uninterruptible(reason = "Used as a transition between uninterruptible and interruptible code", calleeMustBe = false)
+    private static int initializeIsolateInterruptibly(CEntryPointCreateIsolateParameters parameters) {
+        return initializeIsolateInterruptibly0(parameters);
+    }
+
+    private static int initializeIsolateInterruptibly0(CEntryPointCreateIsolateParameters parameters) {
+        /*
+         * The VM operation thread must be started early as no VM operations can be scheduled before
+         * this thread is fully started. The isolate teardown may also use VM operations.
+         */
+        if (VMOperationControl.useDedicatedVMOperationThread()) {
+            VMOperationControl.startVMOperationThread();
+        }
+
+        long initStateAddr = FIRST_ISOLATE_INIT_STATE.get().rawValue();
+        boolean firstIsolate = Unsafe.getUnsafe().compareAndSetInt(null, initStateAddr, FirstIsolateInitStates.UNINITIALIZED, FirstIsolateInitStates.IN_PROGRESS);
+
+        Isolates.setCurrentIsFirstIsolate(firstIsolate);
+        Isolates.setCurrentStartTime();
+
+        if (!firstIsolate) {
+            int state = Unsafe.getUnsafe().getInt(initStateAddr);
+            if (state != FirstIsolateInitStates.SUCCESSFUL) {
                 while (state == FirstIsolateInitStates.IN_PROGRESS) { // spin-wait for first isolate
                     PauseNode.pause();
                     state = Unsafe.getUnsafe().getIntVolatile(null, initStateAddr);
@@ -294,16 +319,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 }
             }
         }
-        Isolates.setCurrentIsFirstIsolate(firstIsolate);
-
-        /*
-         * The VM operation thread must be started early as no VM operations can be scheduled before
-         * this thread is fully started.
-         */
-        if (VMOperationControl.useDedicatedVMOperationThread()) {
-            VMOperationControl.startVMOperationThread();
-        }
-
+        
         /*
          * The reference handler thread must also be started early. Otherwise, it could happen that
          * the GC publishes pending references but there is no thread to process them. This could
@@ -334,7 +350,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                     Log.logStream().println("error: " + e.getMessage());
                     System.exit(1);
                 } else {
-                    CEntryPointActions.leaveTearDownIsolate();
                     return CEntryPointErrors.ARGUMENT_PARSING_FAILED;
                 }
             }
@@ -346,12 +361,11 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
         boolean success = PlatformNativeLibrarySupport.singleton().initializeBuiltinLibraries();
         if (firstIsolate) { // let other isolates (if any) initialize now
-            state = success ? FirstIsolateInitStates.SUCCESSFUL : FirstIsolateInitStates.FAILED;
+            int state = success ? FirstIsolateInitStates.SUCCESSFUL : FirstIsolateInitStates.FAILED;
             Unsafe.getUnsafe().putIntVolatile(null, initStateAddr, state);
         }
 
         if (!success) {
-            CEntryPointActions.leaveTearDownIsolate();
             return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
         }
 
@@ -369,7 +383,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         } catch (Throwable t) {
             System.err.println("Uncaught exception while running initialization hooks:");
             t.printStackTrace();
-            CEntryPointActions.leaveTearDownIsolate();
             return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
         }
 

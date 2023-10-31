@@ -435,7 +435,7 @@ public final class VMOperationControl {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean isRunning() {
-            return isolateThread.isNonNull() && !stopped;
+            return PlatformThreads.isAlive(thread);
         }
     }
 
