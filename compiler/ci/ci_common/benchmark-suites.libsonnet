@@ -251,7 +251,6 @@
       bench_upload
     ],
     timelimit: "7:00:00",
-    restricted_archs:: ["amd64"],  # load testers only work on amd64 at the moment: GR-35619
     min_jdk_version:: 11,
     max_jdk_version:: null
   },
