@@ -233,7 +233,7 @@ public class LoopEx {
         InvariantPredicate invariant = new InvariantPredicate();
         NodeBitMap newLoopNodes = graph.createNodeBitMap();
         for (BinaryArithmeticNode<?> binary : whole().nodes().filter(BinaryArithmeticNode.class)) {
-            if (!binary.isAssociative()) {
+            if (!binary.mayReassociate()) {
                 continue;
             }
             ValueNode result = BinaryArithmeticNode.reassociateMatchedValues(binary, invariant, binary.getX(), binary.getY(), NodeView.DEFAULT);

@@ -48,12 +48,11 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
-
 import jdk.vm.ci.meta.PrimitiveConstant;
 
 /**
- * Rearrange {@link BinaryArithmeticNode#isAssociative() associative binary operations} for loop
- * invariants and constants.
+ * Rearrange binary arithmetic operations that {@linkplain BinaryArithmeticNode#mayReassociate() may
+ * be reassociated} for loop invariants and constants.
  */
 public class ReassociationPhase extends BasePhase<CoreProviders> {
 
@@ -133,7 +132,7 @@ public class ReassociationPhase extends BasePhase<CoreProviders> {
         try (DebugContext.Scope s = debug.scope("ReassociateConstants")) {
             for (BinaryArithmeticNode<?> binary : graph.getNodes().filter(BinaryArithmeticNode.class)) {
                 // Skip re-associations to loop variant expressions.
-                if (!binary.isAssociative() || (!loopNodes.isNew(binary) && loopNodes.contains(binary))) {
+                if (!binary.mayReassociate() || (!loopNodes.isNew(binary) && loopNodes.contains(binary))) {
                     continue;
                 }
                 ValueNode result = BinaryArithmeticNode.reassociateUnmatchedValues(binary, ValueNode.isConstantPredicate(), NodeView.DEFAULT);

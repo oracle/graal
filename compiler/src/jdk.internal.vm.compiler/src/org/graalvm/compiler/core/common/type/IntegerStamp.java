@@ -45,7 +45,6 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.ReinterpretOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.ShiftOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp;
 import org.graalvm.compiler.debug.GraalError;
-
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -1101,7 +1100,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
                     },
 
-                    new BinaryOp.Sub(true, false) {
+                    new BinaryOp.Sub(false, false) {
 
                         @Override
                         public Constant foldConstant(Constant const1, Constant const2) {
@@ -1493,7 +1492,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
                     },
 
-                    new BinaryOp.Div(true, false) {
+                    new BinaryOp.Div(false, false) {
 
                         @Override
                         public Constant foldConstant(Constant const1, Constant const2) {
