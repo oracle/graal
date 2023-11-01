@@ -33,7 +33,6 @@ import com.oracle.truffle.llvm.parser.binary.BinaryParser;
 import com.oracle.truffle.llvm.parser.binary.BinaryParserResult;
 import com.oracle.truffle.llvm.parser.coff.WindowsLibraryLocator;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
-import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import org.graalvm.polyglot.io.ByteSequence;
 
 import java.io.FileInputStream;
