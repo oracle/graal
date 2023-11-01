@@ -42,6 +42,8 @@ env:
   MX_GIT_CACHE: refcache
   MX_PATH: ${{ github.workspace }}/mx
   MX_PYTHON: python3.8
+  # Enforce experimental option checking in CI (GR-47922)
+  NATIVE_IMAGE_EXPERIMENTAL_OPTIONS_ARE_FATAL: "true"
 
 permissions:
   contents: read # to fetch code (actions/checkout)

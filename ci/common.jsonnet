@@ -277,6 +277,10 @@ local common_json = import "../common.json";
       # Keep in sync with com.oracle.svm.hosted.NativeImageOptions#DEFAULT_ERROR_FILE_NAME
       " (?P<filename>.+/svm_err_b_\\d+T\\d+\\.\\d+_pid\\d+\\.md)",
     ],
+    environment+: {
+      # Enforce experimental option checking in CI (GR-47922)
+      NATIVE_IMAGE_EXPERIMENTAL_OPTIONS_ARE_FATAL: "true",
+    },
   },
 
   // OS specific file handling
