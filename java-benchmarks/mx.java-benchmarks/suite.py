@@ -32,9 +32,9 @@ suite = {
   "javac.lint.overrides": "none",
 
   "libraries" : {
-    "TIKA_1.0.8": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/tika-1.0.8.zip"],
-      "digest": "sha512:2b7d147f27eba65a5a38385de9b08b5520d4960219acf09ceae5525e5b51fda118ea4b4b46d91594de0794a739eb8709850bf673f5fce49b2f27962cd5d8af3d",
+    "TIKA_1.0.10": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/tika-1.0.10.zip"],
+      "digest": "sha512:023e3c575c88fa2754538bf9f61a0642f12f34b6239d17df184f92c5708e1b2fdc3b4219c9d658ab88d5f9ed444d2883a500014df3c7942263050da256c6a5a3",
       "packedResource": True,
     },
 
@@ -50,33 +50,33 @@ suite = {
       "packedResource": True
     },
 
-    "PETCLINIC_3.0.0": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/spring-petclinic-3.0.0.zip"],
-      "digest": "sha512:cacbedf0456a769ae5bd022480b1ceeb8f157684b79f682b70c27fd715a4523cd80e030f127c7a9cff8c6b256a83677d2285e6197b82ecd53f99a5231dfd76e9",
+    "PETCLINIC_3.0.1": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/spring-petclinic-3.0.1.zip"],
+      "digest": "sha512:37d50049530ac23342a0e5adcf1c2a72b64312685ce407bc9dac577835d0df5e0548e72676e8a3a7bc670cf603d6b0c6e450f1ce8592f1f17681b6ddea602cda",
       "packedResource": True,
     },
 
-    "SHOPCART_0.3.8": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.3.8.zip"],
-      "digest": "sha512:07eb59fae6a2245ef7dd628488e3c970336ba75c6a379899d222c418bb14d4b34019b25ce422e0f0e90cdd79c4ae7fc38f47c9c5a25d504e8a0f922fa28fa90a",
+    "SHOPCART_0.3.9": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.3.9.zip"],
+      "digest": "sha512:8a6095426c14fab7146c2ffd368c38069321983b38b2e8c75ab4b900ccda7c86723854a61d20f9c7779a49b41fc0ddfd806988458cc76088a8ab2be5acb4df48",
       "packedResource": True,
     },
 
-    "SPRING_HW_3.0.5": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/spring-hello-world-3.0.5.zip"],
-      "digest": "sha512:fc016eecfdbb8fe29a825470630fbfe7fe2742d5241894bf0a15cbb14170b8d6eff540714a9a4f66cf233422570c8918665d8564a7a8a3d73c003df71b370a52",
+    "SPRING_HW_3.0.6": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/spring-hello-world-3.0.6.zip"],
+      "digest": "sha512:15a7fd76e47af62b25f66be0b12020f068202ced3b5cb96e6aed8b23cd60a037595ebb1b843a2e123051c08a18b5348133bc419c2b1f94364d263c13b3268ee1",
       "packedResource": True,
     },
 
-    "QUARKUS_HW_1.0.3": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/quarkus-hello-world-1.0.3.zip"],
-      "digest": "sha512:dd9502099953f2ac977e2505fca07a74bd3ac012badfd762918172d121c567fb7ce6ca9420c5c45e64a3343d1796232eea2f74ccb2d5c30c86759c1f73b565c0",
+    "QUARKUS_HW_1.0.5": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/quarkus-hello-world-1.0.5.zip"],
+      "digest": "sha512:682a5dd39c27717d1e96a0c55f531a308f97266cc5abf4a9b7ecf3094a18b4a71cfb9630cb74be29b0580794190e25f538b5587856fa44cd35c34e1cab6ddcff",
       "packedResource": True,
     },
 
-    "MICRONAUT_HW_1.0.5": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/micronaut-hello-world-1.0.5.zip"],
-      "digest": "sha512:71b998f46784ec807de8e8b6cc9c55ee043171a4601ea5594f51d9d982b396c72bf59c0e426d3dbf44db9162cb34c73bfef9be48f57b79590777e6ff7081262c",
+    "MICRONAUT_HW_1.0.6": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/micronaut-hello-world-1.0.6.zip"],
+      "digest": "sha512:62f5c22c7217f42ffb0e53fffdbdf7add7ad4b6828c59967a2cae29e94120d0f88699ce14aca1b0cc39150119532d7c20c8e8b60fe097524b471094512b2ce58",
       "packedResource": True,
     },
 
