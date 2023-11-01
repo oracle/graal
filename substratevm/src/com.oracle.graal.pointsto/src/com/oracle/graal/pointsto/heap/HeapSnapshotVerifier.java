@@ -27,12 +27,7 @@ package com.oracle.graal.pointsto.heap;
 import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 
 import java.util.Objects;
-import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
-
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionType;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
@@ -46,6 +41,10 @@ import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.svm.util.LogUtils;
 
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionType;
 import jdk.vm.ci.meta.JavaConstant;
 
 public class HeapSnapshotVerifier {
@@ -74,8 +73,8 @@ public class HeapSnapshotVerifier {
         verbosity = Options.HeapVerifierVerbosity.getValue(bb.getOptions());
     }
 
-    public boolean checkHeapSnapshot(UniverseMetaAccess metaAccess, ForkJoinPool threadPool, String stage) {
-        CompletionExecutor executor = new CompletionExecutor(bb, threadPool, bb.getHeartbeatCallback());
+    public boolean checkHeapSnapshot(DebugContext debug, UniverseMetaAccess metaAccess, String stage) {
+        CompletionExecutor executor = new CompletionExecutor(debug, bb);
         executor.init();
         return checkHeapSnapshot(metaAccess, executor, stage, false);
     }
@@ -277,7 +276,6 @@ public class HeapSnapshotVerifier {
             } else if (task instanceof ImageHeapConstant) {
                 return (ImageHeapConstant) task;
             } else {
-                assert task instanceof AnalysisFuture;
                 AnalysisFuture<ImageHeapConstant> future = ((AnalysisFuture<ImageHeapConstant>) task);
                 if (future.isDone()) {
                     return future.guardedGet();
@@ -360,7 +358,6 @@ public class HeapSnapshotVerifier {
             } else if (task instanceof ImageHeapConstant snapshot) {
                 verifyTypeConstant(maybeUnwrapSnapshot(snapshot, typeConstant instanceof ImageHeapConstant), typeConstant, reason);
             } else {
-                assert task instanceof AnalysisFuture;
                 AnalysisFuture<ImageHeapConstant> future = ((AnalysisFuture<ImageHeapConstant>) task);
                 if (future.isDone()) {
                     JavaConstant snapshot = maybeUnwrapSnapshot(future.guardedGet(), typeConstant instanceof ImageHeapConstant);

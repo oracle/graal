@@ -25,7 +25,9 @@ local common_json = import "../common.json";
   # ***************
   local variants(name) = [name, name + "Debug", name + "-llvm"],
   # gets the JDK major version from a labsjdk version string (e.g., "ce-21+35-jvmci-23.1-b15" -> 21)
-  local parse_labsjdk_version(version) =
+  local parse_labsjdk_version(jdk) =
+    if jdk.name == "jpg-jdk" then std.parseInt(jdk.version) else
+    local version = jdk.version;
     assert std.startsWith(version, "ce-") || std.startsWith(version, "ee-") : "Unsupported labsjdk version: " + version;
     local number_prefix(str) =
       if std.length(str) == 0 || std.length(std.findSubstr(str[0], "0123456789")) == 0 then
@@ -34,6 +36,12 @@ local common_json = import "../common.json";
         str[0] + number_prefix(str[1:])
       ;
     std.parseInt(number_prefix(version[3:]))
+    ,
+  # gets the build_id from a labsjdk version string (e.g., "ce-21+35-jvmci-23.1-b15" -> 21)
+  local get_labsjdk_build_id(jdk) =
+    local _parts = std.split(jdk.version, "-");
+    local _version_build_id = std.split(_parts[1], "+");
+    _version_build_id[1]
     ,
   local jdks_data = {
     oraclejdk11: jdk_base + common_json.jdks["oraclejdk11"] + { jdk_version:: 11 },
@@ -50,10 +58,18 @@ local common_json = import "../common.json";
     [name]: jdk_base + common_json.jdks[name] + { jdk_version:: 21 }
     for name in ["oraclejdk21"] + variants("labsjdk-ce-21") + variants("labsjdk-ee-21")
   } + {
-    [name]: jdk_base + common_json.jdks[name] + { jdk_version:: parse_labsjdk_version(self.version), jdk_name:: "jdk-latest"}
-    for name in variants("labsjdk-ce-latest") + variants("labsjdk-ee-latest")
+    [name]: jdk_base + common_json.jdks[name] + { jdk_version:: parse_labsjdk_version(self), jdk_name:: "jdk-latest"}
+    for name in ["oraclejdk-latest"] + variants("labsjdk-ce-latest") + variants("labsjdk-ee-latest")
   },
   assert std.assertEqual(std.objectFields(common_json.jdks), std.objectFields(jdks_data)),
+  # Verify oraclejdk-latest and labsjdk-ee-latest versions match
+  assert
+    local _labsjdk = common_json.jdks["labsjdk-ee-latest"];
+    local _oraclejdk = common_json.jdks["oraclejdk-latest"];
+    local _ov = "ee-%s+%s" % [_oraclejdk.version, _oraclejdk.build_id];
+    local _lv = _labsjdk.version;
+    assert std.startsWith(_lv, _ov) : "update oraclejdk-latest to match labsjdk-ee-latest: %s+%s vs %s" % [_oraclejdk.version, _oraclejdk.build_id, _labsjdk.version];
+    true,
 
   # The raw jdk data, the same as common_json.jdks + { jdk_version:: }
   jdks_data: jdks_data,
@@ -76,8 +92,13 @@ local common_json = import "../common.json";
     labsjdk20ce: self["labsjdk-ce-20"],
     labsjdk20ee: self["labsjdk-ee-20"],
 
-    labsjdkLatestCE: self["labsjdk-ce-21"],
-    labsjdkLatestEE: self["labsjdk-ee-21"],
+    labsjdk21ce: self["labsjdk-ce-21"],
+    labsjdk21ee: self["labsjdk-ee-21"],
+
+    labsjdkLatestCE: self["labsjdk-ce-latest"],
+    labsjdkLatestEE: self["labsjdk-ee-latest"],
+
+    oraclejdkLatest: self["oraclejdk-latest"],
   },
 
   # The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)
@@ -86,7 +107,8 @@ local common_json = import "../common.json";
     "windows-jdk19": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
     "windows-jdk20": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
     "windows-jdk21": { packages+: { "devkit:VS2022-17.1.0+1": "==1" }},
-    "windows-jdkLatest": { packages+: { "devkit:VS2022-17.1.0+1": "==1" }},
+    "windows-jdk-latest": { packages+: { "devkit:VS2022-17.1.0+1": "==1" }},
+    "windows-jdkLatest": self["windows-jdk-latest"],
     "linux-jdk17": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
     "linux-jdk19": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
     "linux-jdk20": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
@@ -127,6 +149,16 @@ local common_json = import "../common.json";
         LC_ALL: "en_US.UTF-8",
       } else {},
     },
+
+    local code_tools = {
+      downloads+: if 'jdk_version' in self && self.jdk_version > 21 then {
+        TOOLS_JAVA_HOME: jdks_data['oraclejdk21'],
+      } else {},
+    },
+    # GR-46676: ProGuard does not yet run on JDK 22
+    proguard: code_tools,
+    # GR-49566: SpotBugs does not yet run on JDK 22
+    spotbugs: code_tools,
 
     sulong:: {
       packages+: {
@@ -238,9 +270,9 @@ local common_json = import "../common.json";
 
   local common = mx + {
     catch_files+: [
-      # Keep in sync with org.graalvm.compiler.debug.StandardPathUtilitiesProvider#DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_REGEXP
+      # Keep in sync with jdk.graal.compiler.debug.StandardPathUtilitiesProvider#DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_REGEXP
       "Graal diagnostic output saved in '(?P<filename>[^']+)'",
-      # Keep in sync with org.graalvm.compiler.debug.DebugContext#DUMP_FILE_MESSAGE_REGEXP
+      # Keep in sync with jdk.graal.compiler.debug.DebugContext#DUMP_FILE_MESSAGE_REGEXP
       "Dumping debug output to '(?P<filename>[^']+)'",
       # Keep in sync with com.oracle.svm.hosted.NativeImageOptions#DEFAULT_ERROR_FILE_NAME
       " (?P<filename>.+/svm_err_b_\\d+T\\d+\\.\\d+_pid\\d+\\.md)",

@@ -33,10 +33,10 @@ import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.core.common.type.TypedConstant;
-import org.graalvm.compiler.debug.GraalError;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.core.common.type.TypedConstant;
+import jdk.graal.compiler.debug.GraalError;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
@@ -113,7 +113,7 @@ public abstract class ImageHeapScanner {
     }
 
     public void onFieldRead(AnalysisField field) {
-        assert field.isRead();
+        assert field.isRead() : field;
         /* Check if the value is available before accessing it. */
         FieldScan reason = new FieldScan(field);
         AnalysisType declaringClass = field.getDeclaringClass();
@@ -186,7 +186,7 @@ public abstract class ImageHeapScanner {
     }
 
     public ImageHeapConstant toImageHeapObject(JavaConstant constant, ScanReason reason) {
-        assert constant != null && isNonNullObjectConstant(constant);
+        assert constant != null && isNonNullObjectConstant(constant) : constant;
         return markReachable(getOrCreateImageHeapConstant(constant, reason), reason, null);
     }
 
@@ -214,7 +214,7 @@ public abstract class ImageHeapScanner {
      * and install a future that can process them.
      */
     protected ImageHeapConstant createImageHeapObject(JavaConstant constant, ScanReason reason) {
-        assert constant.getJavaKind() == JavaKind.Object && !constant.isNull();
+        assert constant.getJavaKind() == JavaKind.Object && !constant.isNull() : constant;
 
         Optional<JavaConstant> replaced = maybeReplace(constant, reason);
         if (replaced.isPresent()) {
@@ -511,7 +511,7 @@ public abstract class ImageHeapScanner {
 
     protected ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, JavaConstant receiver) {
         // Wrap the hosted constant into a substrate constant
-        JavaConstant value = universe.fromHosted(hostedConstantReflection.readFieldValue(field.wrapped, receiver));
+        JavaConstant value = universe.fromHosted(constantReflection.readFieldValue(field, receiver));
         return ValueSupplier.eagerValue(value);
     }
 
@@ -535,7 +535,7 @@ public abstract class ImageHeapScanner {
             AnalysisType type = metaAccess.lookupJavaType(reflectionField.getDeclaringClass());
             if (type.isReachable()) {
                 AnalysisField field = metaAccess.lookupJavaField(reflectionField);
-                assert !field.isStatic();
+                assert !field.isStatic() : field;
                 JavaConstant receiverConstant = asConstant(receiver);
                 Optional<JavaConstant> replaced = maybeReplace(receiverConstant, OtherReason.RESCAN);
                 if (replaced.isPresent()) {

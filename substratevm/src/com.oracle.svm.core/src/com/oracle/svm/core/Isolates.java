@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core;
 
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -80,8 +80,8 @@ public class Isolates {
     }
 
     public static void setCurrentStartTime() {
-        assert startTimeMillis == 0;
-        assert startNanoTime == 0;
+        assert startTimeMillis == 0 : startTimeMillis;
+        assert startNanoTime == 0 : startNanoTime;
         startTimeMillis = System.currentTimeMillis();
         startNanoTime = System.nanoTime();
     }

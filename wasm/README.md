@@ -313,15 +313,17 @@ You can download a standalone based on Oracle GraalVM or GraalVM Community Editi
 1. Navigate to the [latest GraalVM release on GitHub](https://github.com/graalvm/graalvm-ce-builds/releases) and download the Wasm standalone for your operating system. 
 
 2. Unzip the archive:
-   ```shell
-   tar -xzf <archive>.tar.gz
-   ```
-   Alternatively, open the file in the Finder.
-   > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute:
+
+    > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute:
     ```shell
     sudo xattr -r -d com.apple.quarantine <archive>.tar.gz
     ```
 
+    Extact:
+    ```shell
+    tar -xzf <archive>.tar.gz
+    ```
+   
 3. A standalone comes with a JVM in addition to its native launcher. Check the version to see GraalWasm is active:
     ```bash
     ./path/to/bin/wasm --version

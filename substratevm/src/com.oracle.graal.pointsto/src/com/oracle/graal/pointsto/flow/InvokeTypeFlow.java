@@ -183,7 +183,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
             return TypeState.forIntersection(bb, receiverState, receiverType.getAssignableTypes(true));
         } else {
             // when not filtering, all input types should be assignable
-            assert verifyAllAssignable(bb, receiverState);
+            assert verifyAllAssignable(bb, receiverState) : receiverState;
         }
         return receiverState;
     }
@@ -203,14 +203,16 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     }
 
     protected void updateReceiver(PointsToAnalysis bb, MethodFlowsGraphInfo calleeFlows, TypeState receiverTypeState) {
-        if (bb.getHostVM().getMultiMethodAnalysisPolicy().performParameterLinking(callerMultiMethodKey, calleeFlows.getMethod().getMultiMethodKey())) {
+        var analysisPolicy = bb.getHostVM().getMultiMethodAnalysisPolicy();
+        var calleeKey = calleeFlows.getMethod().getMultiMethodKey();
+        if (analysisPolicy.performParameterLinking(callerMultiMethodKey, calleeKey)) {
             FormalReceiverTypeFlow formalReceiverFlow = calleeFlows.getFormalReceiver();
             if (formalReceiverFlow != null) {
                 formalReceiverFlow.addReceiverState(bb, receiverTypeState);
             }
         }
 
-        if (bb.getHostVM().getMultiMethodAnalysisPolicy().performReturnLinking(callerMultiMethodKey, calleeFlows.getMethod().getMultiMethodKey())) {
+        if (analysisPolicy.performReturnLinking(callerMultiMethodKey, calleeKey) && !analysisPolicy.unknownReturnValue(bb, callerMultiMethodKey, calleeFlows.getMethod())) {
             if (bb.optimizeReturnedParameter()) {
                 int paramIndex = calleeFlows.getMethod().getTypeFlow().getReturnedParameterIndex();
                 if (actualReturn != null && paramIndex == 0) {
@@ -279,7 +281,12 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
          * created for the return, then {@code setActualReturn} will perform all necessary linking.
          */
         if (actualReturn != null && bb.getHostVM().getMultiMethodAnalysisPolicy().performReturnLinking(callerMultiMethodKey, calleeFlows.getMethod().getMultiMethodKey())) {
-            if (bb.optimizeReturnedParameter()) {
+            if (bb.getHostVM().getMultiMethodAnalysisPolicy().unknownReturnValue(bb, callerMultiMethodKey, calleeFlows.getMethod())) {
+                /*
+                 * When there is an unknown return value we must be conservative.
+                 */
+                actualReturn.declaredType.getTypeFlow(bb, true).addUse(bb, actualReturn);
+            } else if (bb.optimizeReturnedParameter()) {
                 int paramNodeIndex = calleeFlows.getMethod().getTypeFlow().getReturnedParameterIndex();
                 if (paramNodeIndex != -1) {
                     if (isStatic || paramNodeIndex != 0) {
@@ -339,7 +346,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
 
         return getAllCallees().stream().filter(callee -> {
             boolean originalMethod = callee.isOriginalMethod();
-            assert !originalMethod || callee.isImplementationInvoked();
+            assert !originalMethod || callee.isImplementationInvoked() : callee;
             return originalMethod;
         }).collect(Collectors.toUnmodifiableList());
     }
@@ -348,10 +355,10 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     public abstract Collection<AnalysisMethod> getAllCallees();
 
     /**
-     * Returns all callees which have been computed for this method. It is possible that these
-     * callees have yet to have their typeflow created and also they may not be fully linked.
+     * Returns all callees which have been computed for this method which should be linked to the
+     * return. It is possible that these callees have yet to have their typeflow created.
      */
-    public abstract Collection<AnalysisMethod> getAllComputedCallees();
+    public abstract Collection<AnalysisMethod> getCalleesForReturnLinking();
 
     @Override
     public BytecodePosition getPosition() {

@@ -26,11 +26,14 @@
 
 package com.oracle.graal.pointsto.standalone.test;
 
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.spi.Replacements;
+
 import java.lang.reflect.Array;
 
 /**
  * This case is for
- * {@code org.graalvm.compiler.replacements.StandardGraphBuilderPlugins#registerArrayPlugins(InvocationPlugins, Replacements)}.
+ * {@link jdk.graal.compiler.replacements.StandardGraphBuilderPlugins#registerArrayPlugins(InvocationPlugins, Replacements)}.
  */
 public class ArrayNewInstancePluginCase {
     public static void main(String[] args) {

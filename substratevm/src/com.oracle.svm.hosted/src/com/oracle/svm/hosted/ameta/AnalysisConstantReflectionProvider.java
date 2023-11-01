@@ -28,8 +28,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.ObjIntConsumer;
 
-import org.graalvm.compiler.core.common.type.TypedConstant;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.core.common.type.TypedConstant;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
@@ -72,7 +72,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 @Platforms(Platform.HOSTED_ONLY.class)
 public class AnalysisConstantReflectionProvider extends SharedConstantReflectionProvider {
     private final AnalysisUniverse universe;
-    private final UniverseMetaAccess metaAccess;
+    protected final UniverseMetaAccess metaAccess;
     private HostedMetaAccess hMetaAccess;
     private final ClassInitializationSupport classInitializationSupport;
     private final AnalysisMethodHandleAccessProvider methodHandleAccess;
@@ -186,7 +186,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     }
 
     @Override
-    public final JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
+    public JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
         return readValue(metaAccess, (AnalysisField) field, receiver, false);
     }
 

@@ -44,15 +44,15 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
-import org.graalvm.compiler.java.StableMethodNameFormatter;
-import org.graalvm.compiler.nodes.EncodedGraph;
-import org.graalvm.compiler.nodes.EncodedGraph.EncodedNodeReference;
-import org.graalvm.compiler.nodes.GraphDecoder;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.java.BytecodeParser.BytecodeParserError;
+import jdk.graal.compiler.java.StableMethodNameFormatter;
+import jdk.graal.compiler.nodes.EncodedGraph;
+import jdk.graal.compiler.nodes.EncodedGraph.EncodedNodeReference;
+import jdk.graal.compiler.nodes.GraphDecoder;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -373,8 +373,8 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     public boolean registerAsImplementationInvoked(Object reason) {
         assert isValidReason(reason) : "Registering a method as implementation invoked needs to provide a valid reason, found: " + reason;
-        assert isImplementationInvokable();
-        assert !Modifier.isAbstract(getModifiers());
+        assert isImplementationInvokable() : this;
+        assert !Modifier.isAbstract(getModifiers()) : this;
 
         /*
          * The class constant of the declaring class is used for exception metadata, so marking a
@@ -715,7 +715,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     public AnalysisMethod[] getImplementations() {
-        assert getUniverse().analysisDataValid;
+        assert getUniverse().analysisDataValid : this;
         if (implementations == null) {
             return new AnalysisMethod[0];
         }
@@ -927,11 +927,19 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         }
     }
 
+    public StructuredGraph decodeAnalyzedGraph(DebugContext debug, Iterable<EncodedNodeReference> nodeReferences) {
+        if (analyzedGraph == null) {
+            return null;
+        }
+
+        return decodeAnalyzedGraph(debug, nodeReferences, analyzedGraph.trackNodeSourcePosition());
+    }
+
     /**
      * Returns the {@link StructuredGraph Graal IR} for the method that has been processed by the
      * static analysis.
      */
-    public StructuredGraph decodeAnalyzedGraph(DebugContext debug, Iterable<EncodedNodeReference> nodeReferences) {
+    public StructuredGraph decodeAnalyzedGraph(DebugContext debug, Iterable<EncodedNodeReference> nodeReferences, boolean trackNodeSourcePosition) {
         if (analyzedGraph == null) {
             return null;
         }
@@ -939,7 +947,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         var allowAssumptions = getUniverse().hostVM().allowAssumptions(this);
         // Note we never record inlined methods. This is correct even for runtime compiled methods
         StructuredGraph result = new StructuredGraph.Builder(debug.getOptions(), debug, allowAssumptions).method(this).recordInlinedMethods(false).trackNodeSourcePosition(
-                        analyzedGraph.trackNodeSourcePosition()).build();
+                        trackNodeSourcePosition).build();
         GraphDecoder decoder = new GraphDecoder(AnalysisParsedGraph.HOST_ARCHITECTURE, result);
         decoder.decode(analyzedGraph, nodeReferences);
         /*
@@ -948,10 +956,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
          */
         switch (allowAssumptions) {
             case YES -> {
-                assert analyzedGraph.getAssumptions().equals(result.getAssumptions());
+                assert analyzedGraph.getAssumptions().equals(result.getAssumptions()) : this;
             }
             case NO -> {
-                assert analyzedGraph.getAssumptions() == null && result.getAssumptions() == null;
+                assert analyzedGraph.getAssumptions() == null && result.getAssumptions() == null : this;
             }
         }
         return result;

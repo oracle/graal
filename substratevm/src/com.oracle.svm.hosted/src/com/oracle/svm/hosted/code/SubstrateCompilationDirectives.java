@@ -28,9 +28,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.compiler.debug.Assertions;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.ValueNode;
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.ValueNode;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -197,7 +197,7 @@ public class SubstrateCompilationDirectives {
     public boolean registerDeoptEntry(FrameState state, ResolvedJavaMethod method) {
         assert deoptInfoModifiable();
         assert state.bci >= 0;
-        long encodedBci = FrameInfoEncoder.encodeBci(state.bci, state.duringCall(), state.rethrowException());
+        long encodedBci = FrameInfoEncoder.encodeBci(state.bci, state.getStackState());
 
         Map<Long, DeoptSourceFrameInfo> sourceFrameInfoMap = deoptEntries.computeIfAbsent(toAnalysisMethod(method), m -> new ConcurrentHashMap<>());
 
@@ -231,22 +231,22 @@ public class SubstrateCompilationDirectives {
         deoptEntries.computeIfAbsent(toAnalysisMethod(method), m -> new ConcurrentHashMap<>());
     }
 
-    public boolean isDeoptEntry(MultiMethod method, int bci, boolean duringCall, boolean rethrowException) {
+    public boolean isDeoptEntry(MultiMethod method, int bci, FrameState.StackState stackState) {
         assert deoptInfoQueryable();
 
         if (method instanceof HostedMethod && ((HostedMethod) method).getMultiMethod(MultiMethod.ORIGINAL_METHOD).compilationInfo.canDeoptForTesting()) {
             return true;
         }
 
-        return isRegisteredDeoptEntry(method, bci, duringCall, rethrowException);
+        return isRegisteredDeoptEntry(method, bci, stackState);
     }
 
-    public boolean isRegisteredDeoptEntry(MultiMethod method, int bci, boolean duringCall, boolean rethrowException) {
+    public boolean isRegisteredDeoptEntry(MultiMethod method, int bci, FrameState.StackState stackState) {
         assert deoptInfoQueryable();
         Map<Long, DeoptSourceFrameInfo> bciMap = deoptEntries.get(toAnalysisMethod((ResolvedJavaMethod) method));
         assert bciMap != null : "can only query for deopt entries for methods registered as deopt targets";
 
-        long encodedBci = FrameInfoEncoder.encodeBci(bci, duringCall, rethrowException);
+        long encodedBci = FrameInfoEncoder.encodeBci(bci, stackState);
         return bciMap.containsKey(encodedBci);
     }
 
@@ -300,6 +300,7 @@ public class SubstrateCompilationDirectives {
      */
     public void resetDeoptEntries() {
         assert !deoptInfoSealed;
+        assert SubstrateOptions.parseOnce();
         // all methods which are registered for deopt testing cannot be cleared
         Map<AnalysisMethod, Map<Long, DeoptSourceFrameInfo>> newDeoptEntries = new ConcurrentHashMap<>();
         for (var deoptForTestingMethod : deoptForTestingMethods) {
@@ -310,6 +311,11 @@ public class SubstrateCompilationDirectives {
         }
         deoptEntries = newDeoptEntries;
         // all methods which require frame information must have a deoptimization entry
-        frameInformationRequired.forEach(m -> deoptEntries.computeIfAbsent(m, n -> new ConcurrentHashMap<>()));
+        frameInformationRequired.forEach(m -> {
+            assert m.isOriginalMethod();
+            var deoptMethod = m.getMultiMethod(MultiMethod.DEOPT_TARGET_METHOD);
+            assert deoptMethod != null;
+            deoptEntries.computeIfAbsent(deoptMethod, n -> new ConcurrentHashMap<>());
+        });
     }
 }

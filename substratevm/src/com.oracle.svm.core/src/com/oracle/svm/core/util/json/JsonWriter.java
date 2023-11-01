@@ -82,11 +82,11 @@ public class JsonWriter implements AutoCloseable {
     }
 
     public JsonWriter appendKeyValue(String key, Object value) throws IOException {
-        return quote(key).appendFieldSeparator().quote(value);
+        return quote(key).appendFieldSeparator().printValue(value);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public void print(Object value) throws IOException {
+    public JsonWriter print(Object value) throws IOException {
         if (value instanceof Map map) {
             printMap(map); // Must always be <String, Object>
         } else if (value instanceof Iterator it) {
@@ -94,8 +94,9 @@ public class JsonWriter implements AutoCloseable {
         } else if (value instanceof List list) {
             printIterator(list.iterator());
         } else {
-            quote(value);
+            printValue(value);
         }
+        return this;
     }
 
     @SuppressWarnings("unchecked")
@@ -130,15 +131,26 @@ public class JsonWriter implements AutoCloseable {
         append(']');
     }
 
-    public JsonWriter quote(Object o) throws IOException {
+    public JsonWriter printValue(Object o) throws IOException {
         if (o == null) {
             return append("null");
-        } else if (Boolean.TRUE.equals(o)) {
-            return append("true");
-        } else if (Boolean.FALSE.equals(o)) {
-            return append("false");
-        } else if (o instanceof Number) {
+        } else if (o instanceof Boolean || o instanceof Byte || o instanceof Short || o instanceof Integer || o instanceof Long) {
+            /*
+             * Note that sub-integer values here most likely become Integer objects when parsing,
+             * and comparisons such as equals() or compareTo() on boxed values only work on the
+             * exact same type. (Boolean values, however, should be deserialized as Boolean).
+             */
             return append(o.toString());
+        } else if (o instanceof Float f) {
+            if (f.isNaN() || f.isInfinite()) {
+                return quote(f.toString()); // cannot express, best we can do without failing
+            }
+            return append(f.toString());
+        } else if (o instanceof Double d) {
+            if (d.isNaN() || d.isInfinite()) {
+                return quote(d.toString()); // cannot express, best we can do without failing
+            }
+            return append(d.toString());
         } else {
             return quote(o.toString());
         }

@@ -141,14 +141,6 @@ suite = {
       },
     },
 
-    # Deprecated: Do not use, replaced by TRUFFLE_JSON.
-    "TruffleJSON" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20230227.jar"],
-      "digest" : "sha512:2b48819e94ca82472ffbdd3befc214351e1cfd0f87eb97d4aed092b48f11b53a7d82a637b008e022254781d2439aefe45ca4794eea8ad05de69934c5317c9a27",
-      "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20230227-src.jar"],
-      "sourceDigest" : "sha512:ecf08ea386398a9834f560e0afbb1bc2630037e3b170fe6d5c60e23ed4e198072cec2cd3569bdc1cae22318cd5fb97123dc5bb6d1e138c08f8d5c612f486956a",
-    },
-
     "JSON" : {
       "moduleName" : "org.json",
       "digest" : "sha512:4deb046af3b06169c7dd81275f0ff0e56438701c171c72c290c6525dd1f2fff775f12257a6f75576f9bce3835bd68d92c8b196624faa86721097d1ef7ded3f17",
@@ -845,6 +837,8 @@ suite = {
       "javaCompliance" : "21+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
+      # disable SpotBugs as long is panama is preview [GR-49448]
+      "spotbugs" : "false",
     },
 
     "com.oracle.truffle.nfi.backend.spi" : {
@@ -1349,9 +1343,9 @@ suite = {
         ],
         "exports" : [
           # Qualified exports
-          "com.oracle.truffle.compiler to org.graalvm.truffle.runtime, jdk.internal.vm.compiler, org.graalvm.nativeimage.builder, com.oracle.truffle.enterprise, com.oracle.graal.graal_enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
-          "com.oracle.truffle.compiler.hotspot to org.graalvm.truffle.runtime, jdk.internal.vm.compiler",
-          "com.oracle.truffle.compiler.hotspot.libgraal to org.graalvm.truffle.runtime, jdk.internal.vm.compiler"
+          "com.oracle.truffle.compiler to org.graalvm.truffle.runtime, jdk.graal.compiler, org.graalvm.nativeimage.builder, com.oracle.truffle.enterprise, com.oracle.graal.graal_enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
+          "com.oracle.truffle.compiler.hotspot to org.graalvm.truffle.runtime, jdk.graal.compiler",
+          "com.oracle.truffle.compiler.hotspot.libgraal to org.graalvm.truffle.runtime, jdk.graal.compiler"
         ],
         "uses" : [
         ],
@@ -1390,7 +1384,7 @@ suite = {
           # Qualified exports
           "* to org.graalvm.truffle, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
           # necessary to instantiate access truffle compiler from the runtime during host compilation
-          "com.oracle.truffle.runtime.hotspot to jdk.internal.vm.compiler",
+          "com.oracle.truffle.runtime.hotspot to jdk.graal.compiler",
         ],
         "uses" : [
           "com.oracle.truffle.api.impl.TruffleLocator",
@@ -1998,7 +1992,7 @@ suite = {
       "moduleInfo" : {
         "name" : "org.graalvm.locator",
         "exports" : [
-          "com.oracle.graalvm.locator to jdk.internal.vm.compiler.management",
+          "com.oracle.graalvm.locator to jdk.graal.compiler.management",
         ],
       },
       "dependencies": ["com.oracle.graalvm.locator"],
@@ -2017,7 +2011,7 @@ suite = {
         ],
         "exports" : [
           # Qualified exports.
-          "org.graalvm.shadowed.com.ibm.icu.lang to org.graalvm.js, org.graalvm.py",
+          "org.graalvm.shadowed.com.ibm.icu.lang to com.oracle.truffle.regex, org.graalvm.js, org.graalvm.py",
           "org.graalvm.shadowed.com.ibm.icu.math to org.graalvm.js, org.graalvm.py",
           "org.graalvm.shadowed.com.ibm.icu.number to org.graalvm.js, org.graalvm.py",
           "org.graalvm.shadowed.com.ibm.icu.text to org.graalvm.js, org.graalvm.py",

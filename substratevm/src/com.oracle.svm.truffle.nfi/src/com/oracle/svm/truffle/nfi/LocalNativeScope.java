@@ -26,7 +26,7 @@ package com.oracle.svm.truffle.nfi;
 
 import java.util.ArrayList;
 
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 

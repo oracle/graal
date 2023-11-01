@@ -190,6 +190,11 @@
     capabilities+: ["ram16gb"],
   },
 
+  # Avoid using xgene3 nodes
+  avoid_xgene3:: {
+    capabilities+: ["!xgene3"],
+  },
+
   jdk_latest:: "Latest",
 
   # This map defines the builders that run as gates. Each key in this map
@@ -198,12 +203,12 @@
   # fields of the denoted build.
   local gates = {
     "gate-compiler-test-labsjdk-latest-linux-amd64": t("1:00:00") + c.mach5_target,
-    "gate-compiler-test-labsjdk-latest-linux-aarch64": t("1:50:00"),
+    "gate-compiler-test-labsjdk-latest-linux-aarch64": t("1:50:00") + s.avoid_xgene3,
     "gate-compiler-test-labsjdk-latest-darwin-amd64": t("1:00:00") + c.mach5_target + s.ram16gb,
     "gate-compiler-test-labsjdk-latest-darwin-aarch64": t("1:00:00"),
     "gate-compiler-test-labsjdk-latest-windows-amd64": t("1:30:00"),
     "gate-compiler-test_zgc-labsjdk-latest-linux-amd64": t("1:00:00") + c.mach5_target,
-    "gate-compiler-test_zgc-labsjdk-latest-linux-aarch64": t("1:50:00"),
+    "gate-compiler-test_zgc-labsjdk-latest-linux-aarch64": t("1:50:00") + s.avoid_xgene3,
     "gate-compiler-test_zgc-labsjdk-latest-darwin-amd64": t("1:00:00") + c.mach5_target + s.ram16gb,
     "gate-compiler-test_zgc-labsjdk-latest-darwin-aarch64": t("1:00:00"),
 

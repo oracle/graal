@@ -211,20 +211,33 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         return multiValueStackThreadLocal.get();
     }
 
-    static final class MultiValueStack {
+    public static final class MultiValueStack {
         private long[] primitiveStack;
         private Object[] referenceStack;
         // Initialize size to 1, so we only create the stack for more than 1 result value.
         private int size = 1;
 
+        /**
+         * @return The current primitive multi-value stack or null if it has never been resized.
+         */
         public long[] primitiveStack() {
             return primitiveStack;
         }
 
+        /**
+         * @return the current reference multi-value stack or null if it has never been resized.
+         */
         public Object[] referenceStack() {
             return referenceStack;
         }
 
+        /**
+         * Updates the size of the multi-value stack if needed. In case of a resize, the values are
+         * not copied. Therefore, resizing should occur before any call to a function that uses the
+         * multi-value stack.
+         *
+         * @param expectedSize The minimum expected size.
+         */
         public void resize(int expectedSize) {
             if (expectedSize > size) {
                 primitiveStack = new long[expectedSize];

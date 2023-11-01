@@ -27,7 +27,7 @@ package com.oracle.svm.core.jfr;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
@@ -434,19 +434,19 @@ public final class Target_jdk_jfr_internal_JVM {
     @Substitute
     @TargetElement(onlyWith = JDK22OrLater.class)
     public static void include(Thread thread) {
-        SubstrateJVM.get().setExcluded(thread, false);
+        JfrThreadLocal.setExcluded(thread, false);
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK22OrLater.class)
     public static void exclude(Thread thread) {
-        SubstrateJVM.get().setExcluded(thread, true);
+        JfrThreadLocal.setExcluded(thread, true);
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK22OrLater.class)
     public static boolean isExcluded(Thread thread) {
-        return SubstrateJVM.get().isExcluded(thread);
+        return JfrThreadLocal.isThreadExcluded(thread);
     }
 
     @Substitute

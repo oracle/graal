@@ -32,9 +32,9 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -50,7 +50,6 @@ import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
-import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.analysis.SVMParsingSupport;
@@ -105,20 +104,12 @@ public class ParseOnceDeoptTestFeature implements InternalFeature {
         @Override
         public boolean validateGraph(PointsToAnalysis bb, StructuredGraph graph) {
             PointsToAnalysisMethod aMethod = (PointsToAnalysisMethod) graph.method();
-            Supplier<Boolean> hasStackValues = () -> graph.getNodes(StackValueNode.TYPE).isNotEmpty();
+            Supplier<Boolean> graphInvalidator = DeoptimizationUtils.createGraphInvalidator(graph);
             if (aMethod.isDeoptTarget()) {
-                /*
-                 * Stack allocated memory is not seen by the deoptimization code, i.e., it is not
-                 * copied in case of deoptimization. Also, pointers to it can be used for arbitrary
-                 * address arithmetic, so we would not know how to update derived pointers into
-                 * stack memory during deoptimization. Therefore, we cannot allow methods that
-                 * allocate stack memory for runtime compilation. To remove this limitation, we
-                 * would need to change how we handle stack allocated memory in Graal.
-                 */
-                return !hasStackValues.get();
+                return !graphInvalidator.get();
             } else {
                 boolean canDeoptForTesting = aMethod.isOriginalMethod() &&
-                                DeoptimizationUtils.canDeoptForTesting(aMethod, DeoptTester.enabled(), hasStackValues);
+                                DeoptimizationUtils.canDeoptForTesting(aMethod, DeoptTester.enabled(), graphInvalidator);
                 if (canDeoptForTesting) {
                     DeoptimizationUtils.registerDeoptEntriesForDeoptTesting(bb, graph, aMethod);
                 }
@@ -252,6 +243,11 @@ public class ParseOnceDeoptTestFeature implements InternalFeature {
              * flows are needed.
              */
             return multiMethodKey == DEOPT_TARGET_METHOD;
+        }
+
+        @Override
+        public boolean unknownReturnValue(BigBang bb, MultiMethod.MultiMethodKey callerMultiMethodKey, AnalysisMethod implementation) {
+            return false;
         }
     }
 }

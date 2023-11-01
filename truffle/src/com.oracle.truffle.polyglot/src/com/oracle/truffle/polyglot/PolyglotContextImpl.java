@@ -1130,7 +1130,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
              * Thread finalization notification is invoked outside of the context lock so that the
              * guest languages can operate freely without the risk of a deadlock.
              */
-            ex = notifyThreadFinalizing(threadInfo, null);
+            ex = notifyThreadFinalizing(threadInfo, null, false);
         }
         synchronized (this) {
             if (finalizeAndDispose) {
@@ -1205,7 +1205,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
-    private Throwable notifyThreadFinalizing(PolyglotThreadInfo threadInfo, Throwable previousEx) {
+    private Throwable notifyThreadFinalizing(PolyglotThreadInfo threadInfo, Throwable previousEx, boolean mustSucceed) {
         Throwable ex = previousEx;
         Thread thread = threadInfo.getThread();
         if (thread == null) {
@@ -1258,7 +1258,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             }
             synchronized (this) {
                 if (finalizedContexts.cardinality() == threadInfo.initializedLanguageContextsCount()) {
-                    threadInfo.setFinalizationComplete();
+                    threadInfo.setFinalizationComplete(engine, mustSucceed);
                     break;
                 }
             }
@@ -1722,7 +1722,18 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
         try {
             OutputStream out = languageContext.context.config.out;
-            out.write(stringResult.getBytes(StandardCharsets.UTF_8));
+            int lastEndPos = 0;
+            // avoid hitting the java array length limit during conversion to UTF-8 by printing in
+            // chunks
+            while (lastEndPos < stringResult.length()) {
+                int endPos = (int) Math.min(stringResult.length(), ((long) lastEndPos) + (Integer.MAX_VALUE / 4));
+                if (endPos < stringResult.length() && Character.isHighSurrogate(stringResult.charAt(endPos - 1)) && Character.isLowSurrogate(stringResult.charAt(endPos))) {
+                    // don't split in the middle of surrogate pairs
+                    endPos++;
+                }
+                out.write(stringResult.substring(lastEndPos, endPos).getBytes(StandardCharsets.UTF_8));
+                lastEndPos = endPos;
+            }
             out.write(System.getProperty("line.separator").getBytes(StandardCharsets.UTF_8));
         } catch (IOException ioex) {
             // out stream has problems.
@@ -3232,7 +3243,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 embedderThreads = getSeenThreads().values().stream().filter(threadInfo -> !threadInfo.isPolyglotThread(this)).toList().toArray(new PolyglotThreadInfo[0]);
             }
             for (PolyglotThreadInfo threadInfo : embedderThreads) {
-                ex = notifyThreadFinalizing(threadInfo, ex);
+                ex = notifyThreadFinalizing(threadInfo, ex, mustSucceed);
             }
             if (ex != null) {
                 if (!mustSucceed || isInternalError(ex)) {

@@ -3056,7 +3056,7 @@ public abstract class TruffleLanguage<C> {
             if (LanguageAccessor.engineAccess().hasNoAccess(publicFsContext.fileSystem)) {
                 FileSystemContext internalFsContext = getInternalFileSystemContext();
                 TruffleFile internalFile = truffleFileFactory.apply(path, internalFsContext);
-                if (LanguageAccessor.engineAccess().getRelativePathInLanguageHome(internalFile) != null && isStdLibFile.test(internalFile.getAbsoluteFile())) {
+                if (LanguageAccessor.engineAccess().getRelativePathInResourceRoot(internalFile) != null && isStdLibFile.test(internalFile.getAbsoluteFile())) {
                     return internalFile;
                 }
             }

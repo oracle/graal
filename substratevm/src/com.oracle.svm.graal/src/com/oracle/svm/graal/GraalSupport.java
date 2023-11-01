@@ -37,32 +37,34 @@ import java.util.Map;
 import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.gen.NodeMatchRules;
-import org.graalvm.compiler.core.match.MatchStatement;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugContext.Builder;
-import org.graalvm.compiler.debug.DebugContext.Description;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
-import org.graalvm.compiler.debug.GlobalMetrics;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.lir.CompositeValueClass;
-import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.phases.LIRPhase;
-import org.graalvm.compiler.lir.phases.LIRSuites;
-import org.graalvm.compiler.nodes.EncodedGraph;
-import org.graalvm.compiler.nodes.GraphDecoder;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.FloatingGuardPhase;
-import org.graalvm.compiler.phases.Speculative;
-import org.graalvm.compiler.phases.tiers.Suites;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.core.CompilationWrapper.ExceptionAction;
+import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.core.gen.NodeMatchRules;
+import jdk.graal.compiler.core.match.MatchStatement;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext.Builder;
+import jdk.graal.compiler.debug.DebugContext.Description;
+import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DiagnosticsOutputDirectory;
+import jdk.graal.compiler.debug.GlobalMetrics;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.CompositeValueClass;
+import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.phases.LIRPhase;
+import jdk.graal.compiler.lir.phases.LIRSuites;
+import jdk.graal.compiler.loop.phases.SpeculativeGuardMovementPhase;
+import jdk.graal.compiler.nodes.EncodedGraph;
+import jdk.graal.compiler.nodes.GraphDecoder;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.FloatingGuardPhase;
+import jdk.graal.compiler.phases.Speculative;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.tiers.Suites;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -208,6 +210,8 @@ public class GraalSupport {
         effectiveSuites.getHighTier().removeSubTypePhases(Speculative.class);
         effectiveSuites.getMidTier().removeSubTypePhases(Speculative.class);
         effectiveSuites.getLowTier().removeSubTypePhases(Speculative.class);
+        // remove after GR-49600 is resolved:
+        effectiveSuites.getMidTier().replaceAllPhases(SpeculativeGuardMovementPhase.class, () -> new SpeculativeGuardMovementPhase(CanonicalizerPhase.create(), false, false));
         return effectiveSuites;
     }
 
@@ -219,6 +223,8 @@ public class GraalSupport {
         effectiveSuites.getHighTier().removeSubTypePhases(Speculative.class);
         effectiveSuites.getMidTier().removeSubTypePhases(Speculative.class);
         effectiveSuites.getLowTier().removeSubTypePhases(Speculative.class);
+        // remove after GR-49600 is resolved:
+        effectiveSuites.getMidTier().replaceAllPhases(SpeculativeGuardMovementPhase.class, () -> new SpeculativeGuardMovementPhase(CanonicalizerPhase.create(), false, false));
         return effectiveSuites;
     }
 

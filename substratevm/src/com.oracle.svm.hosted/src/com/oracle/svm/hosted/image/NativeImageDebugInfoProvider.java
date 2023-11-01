@@ -42,11 +42,12 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.hosted.DeadlockWatchdog;
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.java.StableMethodNameFormatter;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.java.StableMethodNameFormatter;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.RawPointerTo;
@@ -119,9 +120,8 @@ import jdk.vm.ci.meta.Value;
 class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase implements DebugInfoProvider {
     private final DebugContext debugContext;
     private final Set<HostedMethod> allOverrides;
-    private final Runnable heartbeatCallback;
 
-    NativeImageDebugInfoProvider(DebugContext debugContext, NativeImageCodeCache codeCache, NativeImageHeap heap, NativeLibraries nativeLibs, HostedMetaAccess metaAccess, Runnable heartbeatCallback) {
+    NativeImageDebugInfoProvider(DebugContext debugContext, NativeImageCodeCache codeCache, NativeImageHeap heap, NativeLibraries nativeLibs, HostedMetaAccess metaAccess) {
         super(codeCache, heap, nativeLibs, metaAccess);
         this.debugContext = debugContext;
         /* Calculate the set of all HostedMethods that are overrides. */
@@ -130,7 +130,6 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
                         .flatMap(m -> Arrays.stream(m.getImplementations())
                                         .filter(Predicate.not(m::equals)))
                         .collect(Collectors.toSet());
-        this.heartbeatCallback = heartbeatCallback;
     }
 
     @Override
@@ -2715,6 +2714,6 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
 
     @Override
     public void recordActivity() {
-        heartbeatCallback.run();
+        DeadlockWatchdog.singleton().recordActivity();
     }
 }

@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
+import static com.oracle.truffle.regex.tregex.parser.RegexLexer.isAscii;
+
 import java.math.BigInteger;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -50,7 +52,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.Pair;
@@ -64,12 +65,14 @@ import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
-import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.RbErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
+import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
+import com.oracle.truffle.regex.tregex.parser.MultiCharacterCaseFolding;
 import com.oracle.truffle.regex.tregex.parser.RegexASTBuilder;
+import com.oracle.truffle.regex.tregex.parser.RegexLexer;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 import com.oracle.truffle.regex.tregex.parser.Token;
@@ -620,24 +623,6 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         return RegexSyntaxException.createPattern(inSource, message, pos);
     }
 
-    // Character predicates
-
-    private static boolean isOctDigit(int c) {
-        return c >= '0' && c <= '7';
-    }
-
-    private static boolean isDecDigit(int c) {
-        return c >= '0' && c <= '9';
-    }
-
-    private static boolean isHexDigit(int c) {
-        return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
-    }
-
-    static boolean isAscii(int c) {
-        return c < 128;
-    }
-
     // First pass - identifying capture groups
 
     private void scanForCaptureGroups() {
@@ -701,7 +686,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                                     parseGroupReference('>', true, true, true, false);
                                 } else if (match("'")) {
                                     parseGroupReference('\'', true, true, true, false);
-                                } else if (isDecDigit(curChar())) {
+                                } else if (RegexLexer.isDecimalDigit(curChar())) {
                                     parseGroupReference(')', true, false, true, false);
                                 }
                             }
@@ -968,7 +953,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             }
 
             if (getLocalFlags().isIgnoreCase()) {
-                RubyCaseFolding.caseFoldUnfoldString(codepointsBuffer.toArray(), inSource.getEncoding().getFullSet(), astBuilder);
+                MultiCharacterCaseFolding.caseFoldUnfoldString(CaseFoldData.CaseFoldAlgorithm.Ruby, codepointsBuffer.toArray(), inSource.getEncoding().getFullSet(), astBuilder);
             } else {
                 for (int i = 0; i < codepointsBuffer.length(); i++) {
                     addChar(codepointsBuffer.get(i));
@@ -993,7 +978,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     private void buildChar(int codepoint) {
         if (!silent) {
             if (getLocalFlags().isIgnoreCase()) {
-                RubyCaseFolding.caseFoldUnfoldString(new int[]{codepoint}, inSource.getEncoding().getFullSet(), astBuilder);
+                MultiCharacterCaseFolding.caseFoldUnfoldString(CaseFoldData.CaseFoldAlgorithm.Ruby, new int[]{codepoint}, inSource.getEncoding().getFullSet(), astBuilder);
             } else {
                 addChar(codepoint);
             }
@@ -1038,10 +1023,10 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                         return false;
                     } else {
                         // lower bound
-                        getMany(RubyRegexParser::isDecDigit);
+                        getMany(RegexLexer::isDecimalDigit);
                         // upper bound
                         if (match(",")) {
-                            getMany(RubyRegexParser::isDecDigit);
+                            getMany(RegexLexer::isDecimalDigit);
                         }
                         if (!match("}")) {
                             return false;
@@ -1316,7 +1301,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         int restorePosition = position;
         if (curChar() >= '1' && curChar() <= '9') {
             // Joni only considers backreferences numbered <= 1000.
-            String number = getUpTo(4, RubyRegexParser::isDecDigit);
+            String number = getUpTo(4, RegexLexer::isDecimalDigit);
             int groupNumber = Integer.parseInt(number);
             if (groupNumber > 1000) {
                 position = restorePosition;
@@ -1354,7 +1339,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             List<Integer> groupNumbers = parseGroupReference('>', true, true, true, true);
             int nameEnd = position - 1;
             // named references cannot point forward, so filter out reference > groupIndex
-            buildNamedBackreference(groupNumbers.stream().filter(groupNumber -> groupNumber <= groupIndex).toArray(n -> new Integer[n]), inPattern.substring(nameStart, nameEnd));
+            buildNamedBackreference(groupNumbers.stream().filter(groupNumber -> groupNumber <= groupIndex).toArray(Integer[]::new), inPattern.substring(nameStart, nameEnd));
             return true;
         } else {
             return false;
@@ -1365,12 +1350,12 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         String groupName;
         List<Integer> groupNumbers = null;
         int beginPos = position;
-        if (curChar() == '-' || isDecDigit(curChar())) {
+        if (curChar() == '-' || RegexLexer.isDecimalDigit(curChar())) {
             if (!allowNumeric) {
                 throw syntaxErrorHere(RbErrorMessages.INVALID_GROUP_NAME);
             }
             int sign = match("-") ? -1 : 1;
-            groupName = getMany(RubyRegexParser::isDecDigit);
+            groupName = getMany(RegexLexer::isDecimalDigit);
             int groupNumber;
             try {
                 groupNumber = sign * Integer.parseInt(groupName);
@@ -1413,7 +1398,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         }
         if (allowLevels && (curChar() == '+' || curChar() == '-')) {
             advance(); // consume sign
-            String level = getMany(RubyRegexParser::isDecDigit);
+            String level = getMany(RegexLexer::isDecimalDigit);
             if (level.isEmpty()) {
                 throw syntaxErrorAt(RbErrorMessages.INVALID_GROUP_NAME, beginPos);
             }
@@ -1560,7 +1545,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         if (match("u{")) {
             getMany(c -> ASCII_POSIX_CHAR_CLASSES.get("space").contains(c));
             while (!match("}")) {
-                String code = getMany(RubyRegexParser::isHexDigit);
+                String code = getMany(RegexLexer::isHexDigit);
                 try {
                     int codePoint = Integer.parseInt(code, 16);
                     if (codePoint > 0x10FFFF) {
@@ -1570,7 +1555,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                 } catch (NumberFormatException e) {
                     throw syntaxErrorAt(RbErrorMessages.badEscape(code), beginPos);
                 }
-                getMany(c -> WHITESPACE.get(c));
+                getMany(WHITESPACE::get);
             }
             return true;
         } else {
@@ -1666,7 +1651,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         switch (curChar()) {
             case 'x': {
                 advance();
-                String code = getUpTo(2, RubyRegexParser::isHexDigit);
+                String code = getUpTo(2, RegexLexer::isHexDigit);
                 int byteValue = Integer.parseInt(code, 16);
                 if (byteValue > 0x7F) {
                     // This is a non-ASCII byte escape. The escaped character might be part of a
@@ -1685,10 +1670,10 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                 advance();
                 String code;
                 if (match("{")) {
-                    code = getMany(RubyRegexParser::isHexDigit);
+                    code = getMany(RegexLexer::isHexDigit);
                     mustMatch("}");
                 } else {
-                    code = getUpTo(4, RubyRegexParser::isHexDigit);
+                    code = getUpTo(4, RegexLexer::isHexDigit);
                     if (code.length() < 4) {
                         throw syntaxErrorAt(RbErrorMessages.incompleteEscape(code), beginPos);
                     }
@@ -1711,7 +1696,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             case '5':
             case '6':
             case '7': {
-                String code = getUpTo(3, RubyRegexParser::isOctDigit);
+                String code = getUpTo(3, c -> RegexLexer.isOctalDigit(c));
                 int codePoint = Integer.parseInt(code, 8);
                 if (codePoint > 0xFF) {
                     throw syntaxErrorAt(RbErrorMessages.TOO_BIG_NUMBER, beginPos);
@@ -1741,7 +1726,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     private void buildCharClass() {
         if (!silent) {
             if (getLocalFlags().isIgnoreCase()) {
-                List<Pair<Integer, int[]>> multiCodePointExpansions = caseClosureMultiCodePoint();
+                List<Pair<Integer, int[]>> multiCodePointExpansions = MultiCharacterCaseFolding.caseClosureMultiCodePoint(CaseFoldData.CaseFoldAlgorithm.Ruby, curCharClass);
                 if (multiCodePointExpansions.size() > 0) {
                     pushGroup();
                     addCharClass(curCharClass.toCodePointSet());
@@ -1750,7 +1735,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                         int from = pair.getLeft();
                         int[] to = pair.getRight();
                         boolean dropAsciiOnStart = !fullyFoldableCharacters.get().contains(from);
-                        RubyCaseFolding.caseFoldUnfoldString(to, inSource.getEncoding().getFullSet(), dropAsciiOnStart, astBuilder);
+                        MultiCharacterCaseFolding.caseFoldUnfoldString(CaseFoldData.CaseFoldAlgorithm.Ruby, to, inSource.getEncoding().getFullSet(), dropAsciiOnStart, astBuilder);
                     }
                     popGroup();
                 } else {
@@ -1976,87 +1961,14 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         }
     }
 
-    /**
-     * Calls the argument on any element of the character class which has a case-folding.
-     */
-    private void caseFoldCharClass(BiConsumer<Integer, int[]> caseFoldItem) {
-        if (curCharClass.get().size() < RubyCaseFoldingData.CASE_FOLD.size()) {
-            for (Range r : curCharClass) {
-                RubyCaseFoldingData.CASE_FOLD.subMap(r.lo, r.hi + 1).forEach((Integer from, int[] to) -> {
-                    caseFoldItem.accept(from, to);
-                });
-            }
-        } else {
-            RubyCaseFoldingData.CASE_FOLD.forEach((Integer from, int[] to) -> {
-                if (curCharClass.get().contains(from)) {
-                    caseFoldItem.accept(from, to);
-                }
-            });
-        }
-    }
-
     private boolean acceptableCaseFold(int from, int to) {
         // Characters which are not "fully case-foldable" are only treated as equivalent if the
         // relation doesn't cross the ASCII boundary.
         return fullyFoldableCharacters.get().contains(from) || isAscii(from) == isAscii(to);
     }
 
-    /**
-     * This method modifies {@code curCharClass} to contains its closure on case mapping.
-     */
     private void caseClosure() {
-        charClassTmp.clear();
-
-        caseFoldCharClass((from, to) -> {
-            if (to.length == 1) {
-                // Add the case-folded version to the character class...
-                if (acceptableCaseFold(from, to[0])) {
-                    charClassTmp.addCodePoint(to[0]);
-                }
-            }
-            // ... and also any characters which case-fold to the same.
-            for (int unfolding : RubyCaseUnfoldingTrie.findSingleCharUnfoldings(to)) {
-                if (unfolding != from && acceptableCaseFold(from, unfolding)) {
-                    charClassTmp.addCodePoint(unfolding);
-                }
-            }
-        });
-
-        // We also handle all the characters which might have no case-folding, i.e. they case-fold
-        // to themselves.
-        for (Range r : curCharClass) {
-            for (int codepoint = r.lo; codepoint <= r.hi; codepoint++) {
-                for (int unfolding : RubyCaseUnfoldingTrie.findSingleCharUnfoldings(codepoint)) {
-                    if (acceptableCaseFold(codepoint, unfolding)) {
-                        charClassTmp.addCodePoint(unfolding);
-                    }
-                }
-            }
-        }
-
-        // Only include characters that are admissible in the given encoding.
-        charClassTmp.intersectWith(inSource.getEncoding().getFullSet());
-
-        curCharClass.addSet(charClassTmp.get());
-    }
-
-    /**
-     * Finds any characters in {@link #curCharClass} that have multi-codepoint expansions.
-     * 
-     * @return a list of pairs, with the first element being the expanded codepoint and the second
-     *         element the expansion
-     */
-    private List<Pair<Integer, int[]>> caseClosureMultiCodePoint() {
-        List<Pair<Integer, int[]>> multiCodePointExpansions = new ArrayList<>();
-
-        caseFoldCharClass((from, to) -> {
-            if (to.length > 1) {
-                assert !isAscii(from);
-                multiCodePointExpansions.add(Pair.create(from, to));
-            }
-        });
-
-        return multiCodePointExpansions;
+        MultiCharacterCaseFolding.caseClosure(CaseFoldData.CaseFoldAlgorithm.Ruby, curCharClass, charClassTmp, this::acceptableCaseFold, inSource.getEncoding().getFullSet());
     }
 
     /**
@@ -2110,12 +2022,12 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                 Optional<BigInteger> lowerBound = Optional.empty();
                 Optional<BigInteger> upperBound = Optional.empty();
                 boolean canBeNonGreedy = true;
-                String lower = getMany(RubyRegexParser::isDecDigit);
+                String lower = getMany(RegexLexer::isDecimalDigit);
                 if (!lower.isEmpty()) {
                     lowerBound = Optional.of(new BigInteger(lower));
                 }
                 if (match(",")) {
-                    String upper = getMany(RubyRegexParser::isDecDigit);
+                    String upper = getMany(RegexLexer::isDecimalDigit);
                     if (!upper.isEmpty()) {
                         upperBound = Optional.of(new BigInteger(upper));
                     }
@@ -2380,14 +2292,14 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         List<Integer> groupNumbers;
         boolean namedReference;
         if (match("<")) {
-            namedReference = curChar() != '-' && !isDecDigit(curChar());
+            namedReference = curChar() != '-' && !RegexLexer.isDecimalDigit(curChar());
             groupNumbers = parseGroupReference('>', true, true, true, true);
             mustMatch(")");
         } else if (match("'")) {
-            namedReference = curChar() != '-' && !isDecDigit(curChar());
+            namedReference = curChar() != '-' && !RegexLexer.isDecimalDigit(curChar());
             groupNumbers = parseGroupReference('\'', true, true, true, true);
             mustMatch(")");
-        } else if (isDecDigit(curChar())) {
+        } else if (RegexLexer.isDecimalDigit(curChar())) {
             namedReference = false;
             groupNumbers = parseGroupReference(')', true, false, true, true);
         } else {

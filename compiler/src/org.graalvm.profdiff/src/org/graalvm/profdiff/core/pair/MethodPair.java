@@ -33,7 +33,7 @@ import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.Method;
 import org.graalvm.profdiff.core.Writer;
-import org.graalvm.util.CollectionsUtil;
+import jdk.graal.compiler.util.CollectionsUtil;
 
 /**
  * A pair of methods from two experiments with equal method names.

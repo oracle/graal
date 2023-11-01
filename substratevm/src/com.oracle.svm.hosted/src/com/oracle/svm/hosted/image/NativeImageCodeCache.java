@@ -46,16 +46,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.hosted.DeadlockWatchdog;
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.code.DataSection;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.options.Option;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.code.DataSection;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -84,6 +83,7 @@ import com.oracle.svm.core.code.ImageCodeInfo.HostedImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -163,7 +163,7 @@ public abstract class NativeImageCodeCache {
         return codeAreaSize;
     }
 
-    protected void setCodeAreaSize(int codeAreaSize) {
+    public void setCodeAreaSize(int codeAreaSize) {
         this.codeAreaSize = codeAreaSize;
     }
 
@@ -190,14 +190,14 @@ public abstract class NativeImageCodeCache {
         return compilations.get(method);
     }
 
-    public abstract void layoutMethods(DebugContext debug, BigBang bb, ForkJoinPool threadPool);
+    public abstract void layoutMethods(DebugContext debug, BigBang bb);
 
     public void layoutConstants() {
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
             CompilationResult compilation = pair.getRight();
             for (DataSection.Data data : compilation.getDataSection()) {
                 if (data instanceof SubstrateDataBuilder.ObjectData) {
-                    VMConstant constant = ((SubstrateDataBuilder.ObjectData) data).getConstant();
+                    JavaConstant constant = ((SubstrateDataBuilder.ObjectData) data).getConstant();
                     constantReasons.put(constant, compilation.getName());
                 }
             }
@@ -217,7 +217,7 @@ public abstract class NativeImageCodeCache {
     public void addConstantsToHeap() {
         for (DataSection.Data data : dataSection) {
             if (data instanceof SubstrateDataBuilder.ObjectData) {
-                VMConstant constant = ((SubstrateDataBuilder.ObjectData) data).getConstant();
+                JavaConstant constant = ((SubstrateDataBuilder.ObjectData) data).getConstant();
                 addConstantToHeap(constant, NativeImageHeap.HeapInclusionReason.DataSection);
             }
         }
@@ -262,17 +262,19 @@ public abstract class NativeImageCodeCache {
         return ConfigurationValues.getObjectLayout().alignUp(getConstantsSize());
     }
 
-    public void buildRuntimeMetadata(SnippetReflectionProvider snippetReflectionProvider, ForkJoinPool threadPool) {
-        buildRuntimeMetadata(snippetReflectionProvider, threadPool, new MethodPointer(getFirstCompilation().getLeft()), WordFactory.signed(getCodeAreaSize()));
+    public void buildRuntimeMetadata(DebugContext debug, SnippetReflectionProvider snippetReflectionProvider) {
+        buildRuntimeMetadata(debug, snippetReflectionProvider, new MethodPointer(getFirstCompilation().getLeft(), true), WordFactory.signed(getCodeAreaSize()));
     }
 
-    protected void buildRuntimeMetadata(SnippetReflectionProvider snippetReflection, ForkJoinPool threadPool, CFunctionPointer firstMethod, UnsignedWord codeSize) {
+    protected void buildRuntimeMetadata(DebugContext debug, SnippetReflectionProvider snippetReflection, CFunctionPointer firstMethod, UnsignedWord codeSize) {
         // Build run-time metadata.
         HostedFrameInfoCustomization frameInfoCustomization = new HostedFrameInfoCustomization();
         CodeInfoEncoder.Encoders encoders = new CodeInfoEncoder.Encoders();
         CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(frameInfoCustomization, encoders);
+        DeadlockWatchdog watchdog = ImageSingletons.lookup(DeadlockWatchdog.class);
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
             encodeMethod(codeInfoEncoder, pair);
+            watchdog.recordActivity();
         }
 
         HostedUniverse hUniverse = imageHeap.hUniverse;
@@ -422,7 +424,7 @@ public abstract class NativeImageCodeCache {
             verifyDeoptEntries(imageCodeInfo);
         }
 
-        assert verifyMethods(hUniverse, threadPool, codeInfoEncoder, imageCodeInfo);
+        assert verifyMethods(debug, hUniverse, codeInfoEncoder, imageCodeInfo);
     }
 
     protected HostedImageCodeInfo installCodeInfo(SnippetReflectionProvider snippetReflection, CFunctionPointer firstMethod, UnsignedWord codeSize, CodeInfoEncoder codeInfoEncoder,
@@ -495,20 +497,20 @@ public abstract class NativeImageCodeCache {
          * All DeoptEntries not corresponding to exception objects must have an exception handler.
          */
         boolean hasExceptionHandler = result.getExceptionOffset() != 0;
-        if (!targetFrame.duringCall() && !targetFrame.rethrowException()) {
-            if (!hasExceptionHandler) {
-                return error(method, encodedBci, "no exception handler registered for deopt entry");
-            }
-        } else if (!targetFrame.duringCall() && targetFrame.rethrowException()) {
-            if (hasExceptionHandler) {
-                return error(method, encodedBci, "exception handler registered for rethrowException");
-            }
-        } else if (targetFrame.duringCall() && !targetFrame.rethrowException()) {
-            if (!hasExceptionHandler) {
-                return error(method, encodedBci, "no exception handler registered for deopt entry");
-            }
-        } else {
-            return error(method, encodedBci, "invalid encoded bci");
+        switch (targetFrame.getStackState()) {
+            case BeforePop:
+            case AfterPop:
+                if (!hasExceptionHandler) {
+                    return error(method, encodedBci, "no exception handler registered for deopt entry");
+                }
+                break;
+            case Rethrow:
+                if (hasExceptionHandler) {
+                    return error(method, encodedBci, "exception handler registered for rethrowException");
+                }
+                break;
+            default:
+                return error(method, encodedBci, "invalid encoded bci");
         }
 
         /*
@@ -565,12 +567,12 @@ public abstract class NativeImageCodeCache {
         return true;
     }
 
-    protected boolean verifyMethods(HostedUniverse hUniverse, ForkJoinPool threadPool, CodeInfoEncoder codeInfoEncoder, CodeInfo codeInfo) {
+    protected boolean verifyMethods(DebugContext debug, HostedUniverse hUniverse, CodeInfoEncoder codeInfoEncoder, CodeInfo codeInfo) {
         /*
          * Run method verification in parallel to reduce computation time.
          */
         BigBang bb = hUniverse.getBigBang();
-        CompletionExecutor executor = new CompletionExecutor(bb, threadPool, bb.getHeartbeatCallback());
+        CompletionExecutor executor = new CompletionExecutor(debug, bb);
         try {
             executor.init();
             executor.start();
@@ -599,7 +601,7 @@ public abstract class NativeImageCodeCache {
     public void writeConstants(NativeImageHeapWriter writer, RelocatableBuffer buffer) {
         ByteBuffer bb = buffer.getByteBuffer();
         dataSection.buildDataSection(bb, (position, constant) -> {
-            writer.writeReference(buffer, position, constant, "VMConstant: " + constant);
+            writer.writeReference(buffer, position, (JavaConstant) constant, "VMConstant: " + constant);
         });
     }
 

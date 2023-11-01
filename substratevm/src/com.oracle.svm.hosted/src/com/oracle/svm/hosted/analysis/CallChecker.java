@@ -26,7 +26,7 @@ package com.oracle.svm.hosted.analysis;
 
 import java.util.regex.Pattern;
 
-import org.graalvm.compiler.core.common.SuppressSVMWarnings;
+import jdk.graal.compiler.core.common.SuppressSVMWarnings;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;

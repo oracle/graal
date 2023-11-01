@@ -594,14 +594,15 @@ public class Breakpoint {
             boolean doAssign;
             EventBinding<?> execBinding = null;
             synchronized (this) {
-                if (debugger == null) {
+                Debugger dbg = debugger;
+                if (dbg == null) {
                     // disposed
                     return;
                 }
                 if (!(doAssign = executedSources.contains(source))) {
                     SourceSection oldSection = loadedSections.put(source, section);
                     if (oldSection == null) {
-                        execBinding = debugger.getInstrumenter().createExecuteSourceBinding(SourceFilter.newBuilder().sourceIs(source).build(), this, true);
+                        execBinding = dbg.getInstrumenter().createExecuteSourceBinding(SourceFilter.newBuilder().sourceIs(source).build(), this, true);
                         if (executeBindings.putIfAbsent(source, execBinding) != null) {
                             execBinding = null;
                         }

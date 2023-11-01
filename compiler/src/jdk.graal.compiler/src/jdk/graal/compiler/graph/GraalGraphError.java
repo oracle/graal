@@ -1,0 +1,130 @@
+/*
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package jdk.graal.compiler.graph;
+
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodeinfo.Verbosity;
+
+/**
+ * This error is the graph/node aware extension of {@link GraalError}.
+ */
+@SuppressWarnings("serial")
+public class GraalGraphError extends GraalError {
+
+    private static final long serialVersionUID = -989290015525497919L;
+    private Node node;
+    private Graph graph;
+
+    /**
+     * This constructor creates a {@link GraalGraphError} with a message assembled via
+     * {@link String#format(String, Object...)}. It always uses the ENGLISH locale in order to
+     * always generate the same output.
+     *
+     * @param msg the message that will be associated with the error, in String.format syntax
+     * @param args parameters to String.format - parameters that implement {@link Iterable} will be
+     *            expanded into a [x, x, ...] representation.
+     */
+    public GraalGraphError(String msg, Object... args) {
+        super(msg, args);
+    }
+
+    /**
+     * This constructor creates a {@link GraalGraphError} for a given causing Throwable instance.
+     *
+     * @param cause the original exception that contains additional information on this error
+     */
+    public GraalGraphError(Throwable cause) {
+        super(cause);
+    }
+
+    /**
+     * This constructor creates a {@link GraalGraphError} from a given GraalError instance.
+     *
+     * @param e the original GraalError
+     */
+    protected GraalGraphError(GraalError e) {
+        super(e);
+        if (e instanceof GraalGraphError) {
+            node = ((GraalGraphError) e).node;
+            graph = ((GraalGraphError) e).graph;
+        }
+    }
+
+    /**
+     * Adds a graph to the context of this {@code GraalGraphError}.
+     *
+     * @param newGraph the graph which is in a incorrect state, if the error was not caused by a
+     *            specific node
+     */
+    GraalGraphError addContext(Graph newGraph) {
+        if (newGraph != this.graph) {
+            addContext("graph", newGraph);
+            if (this.graph == null) {
+                this.graph = newGraph;
+            }
+        }
+        return this;
+    }
+
+    /**
+     * Adds a node to the context of this {@code GraalGraphError}.
+     *
+     * @param newNode the node which is in a incorrect state, if the verification error was caused
+     *            by a node
+     */
+    public GraalGraphError addContext(Node newNode) {
+        if (newNode != this.node) {
+            String nodeMessage;
+            try {
+                // Provide more detail about the node.
+                nodeMessage = newNode.toString(Verbosity.Debugger);
+            } catch (Throwable t) {
+                nodeMessage = newNode.toString();
+            }
+            addContext("node", nodeMessage);
+            if (this.node == null) {
+                this.node = newNode;
+            }
+        }
+        return this;
+    }
+
+    /**
+     * Transform a GraalError into a GraalGraphInternalError and add a node to the context.
+     *
+     * @param e the previous error
+     * @param newNode the node which is in a incorrect state, if the verification error was caused
+     *            by a node
+     */
+    public static GraalGraphError transformAndAddContext(GraalError e, Node newNode) {
+        GraalGraphError graphError;
+        if (e instanceof GraalGraphError) {
+            graphError = (GraalGraphError) e;
+        } else {
+            graphError = new GraalGraphError(e);
+        }
+        return graphError.addContext(newNode);
+    }
+}

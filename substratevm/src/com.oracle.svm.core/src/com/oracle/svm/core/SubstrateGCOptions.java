@@ -27,9 +27,9 @@ package com.oracle.svm.core;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionType;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionType;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.heap.HeapSizeVerifier;

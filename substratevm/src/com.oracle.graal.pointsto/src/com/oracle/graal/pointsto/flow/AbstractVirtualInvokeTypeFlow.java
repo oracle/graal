@@ -118,7 +118,7 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
     }
 
     @Override
-    public final Collection<AnalysisMethod> getAllComputedCallees() {
+    public Collection<AnalysisMethod> getCalleesForReturnLinking() {
         return getAllCallees();
     }
 

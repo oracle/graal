@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.headers;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
@@ -105,6 +105,11 @@ public class LibC {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord strlen(CCharPointer str) {
         return libc().strlen(str);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static CCharPointer strdup(CCharPointer str) {
+        return libc().strdup(str);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

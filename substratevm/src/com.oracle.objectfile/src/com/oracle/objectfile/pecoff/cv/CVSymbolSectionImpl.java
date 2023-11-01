@@ -27,7 +27,7 @@
 package com.oracle.objectfile.pecoff.cv;
 
 import com.oracle.objectfile.ObjectFile.RelocationKind;
-import org.graalvm.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.io.Utf8;
 

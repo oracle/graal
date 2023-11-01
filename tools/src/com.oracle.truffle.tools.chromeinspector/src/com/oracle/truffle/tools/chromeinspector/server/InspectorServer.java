@@ -31,6 +31,8 @@ import java.io.PrintWriter;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
@@ -308,15 +310,22 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
         @Override
         public HttpResponse apply(HttpRequest request) {
             if ("GET".equals(request.getMethod())) {
-                String uri = request.getUri();
+                String uriStr = request.getUri();
+                URI uri;
+                try {
+                    uri = new URI(uriStr);
+                } catch (URISyntaxException ex) {
+                    return null;
+                }
+                String uriPath = uri.getPath();
                 String responseJson = null;
-                if ("/json/version".equals(uri)) {
+                if ("/json/version".equals(uriPath)) {
                     JSONObject version = new JSONObject();
                     version.put("Browser", "GraalVM");
                     version.put("Protocol-Version", "1.2");
                     responseJson = version.toString();
                 }
-                if ("/json".equals(uri)) {
+                if ("/json".equals(uriPath) || "/json/list".equals(uriPath)) {
                     JSONArray json = new JSONArray();
                     for (ServerPathSession serverPathSession : sessions.values()) {
                         final String path = serverPathSession.pathContainingToken;

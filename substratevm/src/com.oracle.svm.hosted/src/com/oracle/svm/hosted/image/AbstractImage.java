@@ -26,9 +26,8 @@ package com.oracle.svm.hosted.image;
 
 import java.nio.file.Path;
 import java.util.List;
-import java.util.concurrent.ForkJoinPool;
 
-import org.graalvm.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.LinkerInvocation;
@@ -54,16 +53,12 @@ public abstract class AbstractImage {
         SHARED_LIBRARY(false) {
             @Override
             public String getFilenameSuffix() {
-                switch (ObjectFile.getNativeFormat()) {
-                    case ELF:
-                        return ".so";
-                    case MACH_O:
-                        return ".dylib";
-                    case PECOFF:
-                        return ".dll";
-                    default:
-                        throw new AssertionError("Unreachable");
-                }
+                return switch (ObjectFile.getNativeFormat()) {
+                    case ELF -> ".so";
+                    case MACH_O -> ".dylib";
+                    case PECOFF -> ".dll";
+                    default -> throw new AssertionError("Unreachable");
+                };
             }
         },
         EXECUTABLE(true),
@@ -123,17 +118,17 @@ public abstract class AbstractImage {
     /**
      * Write the image to the named file.
      */
-    public abstract LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config, ForkJoinPool forkJoinPool);
+    public abstract LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config);
 
     // factory method
     public static AbstractImage create(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap,
                     NativeImageCodeCache codeCache, List<HostedMethod> entryPoints, ClassLoader classLoader) {
-        switch (k) {
-            case SHARED_LIBRARY:
-                return new SharedLibraryImageViaCC(universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, classLoader);
-            default:
-                return new ExecutableImageViaCC(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, classLoader);
-        }
+        return switch (k) {
+            case SHARED_LIBRARY ->
+                new SharedLibraryImageViaCC(universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, classLoader);
+            case EXECUTABLE, STATIC_EXECUTABLE ->
+                new ExecutableImageViaCC(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, classLoader);
+        };
     }
 
     public abstract String[] makeLaunchCommand(AbstractImage.NativeImageKind k, String imageName, Path binPath, Path workPath, java.lang.reflect.Method method);

@@ -80,7 +80,7 @@ final class BytecodeSensitiveStaticInvokeTypeFlow extends AbstractStaticInvokeTy
 
     @Override
     public void update(PointsToAnalysis bb) {
-        assert this.isClone();
+        assert this.isClone() : this;
         /* The static invokes should be updated only once and the callee should be null. */
         guarantee(LightImmutableCollection.isEmpty(this, CALLEES_ACCESSOR), "static invoke updated multiple times!");
 

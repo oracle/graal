@@ -40,26 +40,26 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.api.runtime.GraalRuntime;
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
-import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.lir.phases.LIRSuites;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.GraphEncoder;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionStability;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.phases.tiers.Suites;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.word.WordTypes;
+import jdk.graal.compiler.api.runtime.GraalRuntime;
+import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.phases.LIRSuites;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.GraphEncoder;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionStability;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.phases.tiers.Suites;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.word.WordTypes;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.AfterCompilationAccess;
@@ -179,11 +179,7 @@ public abstract class RuntimeCompilationFeature {
     }
 
     public static Class<? extends Feature> getRuntimeCompilationFeature() {
-        if (SubstrateOptions.ParseOnceJIT.getValue()) {
-            return ParseOnceRuntimeCompilationFeature.class;
-        } else {
-            return LegacyRuntimeCompilationFeature.class;
-        }
+        return ParseOnceRuntimeCompilationFeature.class;
     }
 
     public interface RuntimeCompilationCandidatePredicate {
@@ -527,21 +523,21 @@ public abstract class RuntimeCompilationFeature {
         runtimeCompilationCandidatePredicateUpdated = true;
         deoptimizeOnExceptionPredicate = newDeoptimizeOnExceptionPredicate;
 
-        if (SubstrateOptions.IncludeNodeSourcePositions.getValue()) {
+        if (SubstrateOptions.IncludeNodeSourcePositions.getValue() || SubstrateOptions.parseOnce()) {
             graphBuilderConfig = graphBuilderConfig.withNodeSourcePosition(true);
         }
     }
 
-    public SubstrateMethod requireFrameInformationForMethod(ResolvedJavaMethod method) {
+    public SubstrateMethod requireFrameInformationForMethod(ResolvedJavaMethod method, BeforeAnalysisAccessImpl config, boolean registerAsRoot) {
         AnalysisMethod aMethod = (AnalysisMethod) method;
         SubstrateMethod sMethod = objectReplacer.createMethod(aMethod);
 
-        requireFrameInformationForMethodHelper(aMethod);
+        requireFrameInformationForMethodHelper(aMethod, config, registerAsRoot);
 
         return sMethod;
     }
 
-    protected abstract void requireFrameInformationForMethodHelper(AnalysisMethod aMethod);
+    protected abstract void requireFrameInformationForMethodHelper(AnalysisMethod aMethod, BeforeAnalysisAccessImpl config, boolean registerAsRoot);
 
     public SubstrateMethod prepareMethodForRuntimeCompilation(Executable method, BeforeAnalysisAccessImpl config) {
         return prepareMethodForRuntimeCompilation(config.getMetaAccess().lookupJavaMethod(method), config);

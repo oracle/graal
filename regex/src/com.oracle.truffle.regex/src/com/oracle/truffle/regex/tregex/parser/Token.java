@@ -71,7 +71,11 @@ public class Token implements JsonConvertible {
         lookAheadAssertionBegin,
         lookBehindAssertionBegin,
         groupEnd,
+        literalChar,
         charClass,
+        charClassBegin,
+        charClassAtom,
+        charClassEnd,
         classSet,
         inlineFlags,
         conditionalBackreference
@@ -87,6 +91,8 @@ public class Token implements JsonConvertible {
     private static final Token ALTERNATION = new Token(Kind.alternation);
     private static final Token CAPTURE_GROUP_BEGIN = new Token(Kind.captureGroupBegin);
     private static final Token NON_CAPTURE_GROUP_BEGIN = new Token(Kind.nonCaptureGroupBegin);
+    private static final Token CHAR_CLASS_BEGIN = new Token(Kind.charClassBegin);
+    private static final Token CHAR_CLASS_END = new Token(Kind.charClassEnd);
     private static final Token LOOK_AHEAD_ASSERTION_BEGIN = new LookAheadAssertionBegin(false);
     private static final Token NEGATIVE_LOOK_AHEAD_ASSERTION_BEGIN = new LookAheadAssertionBegin(true);
     private static final Token LOOK_BEHIND_ASSERTION_BEGIN = new LookBehindAssertionBegin(false);
@@ -157,6 +163,10 @@ public class Token implements JsonConvertible {
         return new Quantifier(min, max, greedy);
     }
 
+    public static LiteralCharacter createLiteralCharacter(int codePoint) {
+        return new LiteralCharacter(codePoint);
+    }
+
     public static CharacterClass createCharClass(CodePointSet codePointSet) {
         return new CharacterClass(codePointSet, false);
     }
@@ -167,6 +177,18 @@ public class Token implements JsonConvertible {
 
     public static ClassSet createClassSetExpression(ClassSetContents contents) {
         return new ClassSet(contents);
+    }
+
+    public static Token createCharacterClassBegin() {
+        return CHAR_CLASS_BEGIN;
+    }
+
+    public static Token createCharacterClassAtom(CodePointSet contents, boolean isPosixCollationEquivalenceClass) {
+        return new CharacterClassAtom(contents, isPosixCollationEquivalenceClass);
+    }
+
+    public static Token createCharacterClassEnd() {
+        return CHAR_CLASS_END;
     }
 
     public static Token createLookAheadAssertionBegin(boolean negated) {
@@ -359,6 +381,52 @@ public class Token implements JsonConvertible {
         }
     }
 
+    public static final class LiteralCharacter extends Token {
+
+        private final int codePoint;
+
+        public LiteralCharacter(int codePoint) {
+            super(Kind.literalChar);
+            this.codePoint = codePoint;
+        }
+
+        @TruffleBoundary
+        @Override
+        public JsonObject toJson() {
+            return super.toJson().append(Json.prop("codePoint", codePoint));
+        }
+
+        public int getCodePoint() {
+            return codePoint;
+        }
+    }
+
+    public static final class CharacterClassAtom extends Token {
+
+        private final CodePointSet contents;
+        private final boolean isPosixCollationEquivalenceClass;
+
+        public CharacterClassAtom(CodePointSet contents, boolean isPosixCollationEquivalenceClass) {
+            super(Kind.charClassAtom);
+            this.contents = contents;
+            this.isPosixCollationEquivalenceClass = isPosixCollationEquivalenceClass;
+        }
+
+        @TruffleBoundary
+        @Override
+        public JsonObject toJson() {
+            return super.toJson().append(Json.prop("contents", contents));
+        }
+
+        public CodePointSet getContents() {
+            return contents;
+        }
+
+        public boolean isPosixCollationEquivalenceClass() {
+            return isPosixCollationEquivalenceClass;
+        }
+    }
+
     public static final class CharacterClass extends Token {
 
         private final CodePointSet codePointSet;
@@ -420,7 +488,7 @@ public class Token implements JsonConvertible {
         @TruffleBoundary
         @Override
         public JsonObject toJson() {
-            return super.toJson().append(Json.prop("groupNumbers", Arrays.stream(groupNumbers).mapToObj(x -> Json.val(x))));
+            return super.toJson().append(Json.prop("groupNumbers", Arrays.stream(groupNumbers).mapToObj(Json::val)));
         }
 
         public int[] getGroupNumbers() {

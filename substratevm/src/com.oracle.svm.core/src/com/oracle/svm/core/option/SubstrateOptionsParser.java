@@ -33,9 +33,9 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.options.OptionDescriptor;
-import org.graalvm.compiler.options.OptionDescriptors;
-import org.graalvm.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionDescriptors;
+import jdk.graal.compiler.options.OptionKey;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -175,16 +175,18 @@ public class SubstrateOptionsParser {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public static String commandArgument(OptionKey<?> option, String value, String apiOptionName) {
+        /* Ensure descriptor is loaded */
+        OptionDescriptor optionDescriptor = option.loadDescriptor();
         Field field;
         try {
-            field = option.getDescriptor().getDeclaringClass().getDeclaredField(option.getDescriptor().getFieldName());
+            field = optionDescriptor.getDeclaringClass().getDeclaredField(optionDescriptor.getFieldName());
         } catch (ReflectiveOperationException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
 
         APIOption[] apiOptions = field.getAnnotationsByType(APIOption.class);
 
-        if (option.getDescriptor().getOptionValueType() == Boolean.class) {
+        if (optionDescriptor.getOptionValueType() == Boolean.class) {
             VMError.guarantee(value.equals("+") || value.equals("-"), "Boolean option value can be only + or -");
             for (APIOption apiOption : apiOptions) {
                 String selected = selectVariant(apiOption, apiOptionName);

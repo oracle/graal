@@ -26,9 +26,9 @@ package com.oracle.svm.core.graal.code;
 
 import java.util.List;
 
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.graph.NodeSourcePosition;
 
 public final class SubstrateCompilationResult extends CompilationResult {
 

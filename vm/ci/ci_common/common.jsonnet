@@ -1,5 +1,6 @@
 local vm = import '../ci_includes/vm.jsonnet';
 local graal_common = import '../../../ci/ci_common/common.jsonnet';
+local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 local repo_config = import '../../../repo-configuration.libsonnet';
 local devkits = graal_common.devkits;
 
@@ -56,23 +57,14 @@ local devkits = graal_common.devkits;
 
   # JS
   js_windows_common: {
+    # derive VS version from devkit package name
+    local devkit_version = std.filterMap(function(p) std.startsWith(p, 'devkit:VS'), function(p) std.substr(p, std.length('devkit:VS'), 4), std.objectFields(super.packages))[0],
+    environment+: {
+      DEVKIT_VERSION: devkit_version,
+    },
     downloads+: {
       NASM: {name: 'nasm', version: '2.14.02', platformspecific: true},
     },
-  },
-
-  js_windows_jdk17: self.js_windows_common + {
-    setup+: [
-      # Keep in sync with the 'devkits' object defined in ci/common.jsonnet.
-      ['set-export', 'DEVKIT_VERSION', '2019'],
-    ],
-  },
-
-  js_windows_jdk21: self.js_windows_common + {
-    setup+: [
-      # Keep in sync with the 'devkits' object defined in ci/common.jsonnet.
-      ['set-export', 'DEVKIT_VERSION', '2022'],
-    ],
   },
 
   # SULONG
@@ -352,6 +344,10 @@ local devkits = graal_common.devkits;
     targets+: ['daily'],
   },
 
+  daily_vm_darwin_aarch64: self.vm_darwin_aarch64 + {
+    targets+: ['daily'],
+  },
+
   daily_vm_windows: self.vm_windows + {
     targets+: ['daily'],
   },
@@ -485,6 +481,9 @@ local devkits = graal_common.devkits;
       local java_deps(edition) = {
         downloads+: {
           JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21'],
+        } + if (os == 'linux' || os == 'darwin') && (arch == 'amd64') then {
+            LLVM_JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21-llvm'],
+        } else {
         }
       };
 
@@ -509,7 +508,7 @@ local devkits = graal_common.devkits;
       else if (os == 'windows') then
         if (arch == 'amd64') then
           # Windows/AMD64
-          java_deps(edition) + self.svm_common_windows_amd64("21") + self.js_windows_jdk21 + self.sulong_windows
+          java_deps(edition) + self.svm_common_windows_amd64("21") + self.js_windows_common + self.sulong_windows
         else
           error 'Unknown windows arch: ' + arch
       else
@@ -821,9 +820,9 @@ local devkits = graal_common.devkits;
   deploy_vm_standalones_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_components("java21", installables=false, standalones=true) + {name: 'daily-deploy-vm-standalones-java21-darwin-aarch64', diskspace_required: "31GB", notify_groups:: ["deploy"], notify_emails+: ["bernhard.urban-forster@oracle.com"], timelimit: '3:00:00'},
 
   # Windows/AMD64
-  deploy_vm_base_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.js_windows_jdk21 + self.deploy_daily_vm_windows_jdk21 + self.deploy_graalvm_base("java21") + self.deploy_build + {name: 'daily-deploy-vm-base-java21-windows-amd64', notify_groups:: ["deploy"], timelimit: '1:30:00'},
-  deploy_vm_installables_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.js_windows_jdk21 + self.sulong_windows + self.deploy_weekly_vm_windows_jdk21 + self.deploy_graalvm_components("java21", installables=true, standalones=false) + self.deploy_build + {name: 'weekly-deploy-vm-installables-java21-windows-amd64', diskspace_required: "31GB", timelimit: '2:30:00', notify_groups:: ["deploy"]},
-  deploy_vm_standalones_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.js_windows_jdk21 + self.sulong_windows + self.deploy_daily_vm_windows_jdk21 + self.deploy_graalvm_components("java21", installables=false, standalones=true) + self.deploy_build + {name: 'daily-deploy-vm-standalones-java21-windows-amd64', diskspace_required: "31GB", timelimit: '2:30:00', notify_groups:: ["deploy"]},
+  deploy_vm_base_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.js_windows_common + self.deploy_daily_vm_windows_jdk21 + self.deploy_graalvm_base("java21") + self.deploy_build + {name: 'daily-deploy-vm-base-java21-windows-amd64', notify_groups:: ["deploy"], timelimit: '1:30:00'},
+  deploy_vm_installables_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.js_windows_common + self.sulong_windows + self.deploy_weekly_vm_windows_jdk21 + self.deploy_graalvm_components("java21", installables=true, standalones=false) + self.deploy_build + {name: 'weekly-deploy-vm-installables-java21-windows-amd64', diskspace_required: "31GB", timelimit: '2:30:00', notify_groups:: ["deploy"]},
+  deploy_vm_standalones_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.js_windows_common + self.sulong_windows + self.deploy_daily_vm_windows_jdk21 + self.deploy_graalvm_components("java21", installables=false, standalones=true) + self.deploy_build + {name: 'daily-deploy-vm-standalones-java21-windows-amd64', diskspace_required: "31GB", timelimit: '2:30:00', notify_groups:: ["deploy"]},
 
   #
   # Deploy the GraalVM Espresso artifact (GraalVM Base + espresso - native image)
@@ -859,5 +858,5 @@ local devkits = graal_common.devkits;
     vm.vm_java_Latest + sulong_vm_tests,
   ] + (import 'libgraal.jsonnet').builds,
 
-  builds:: [{'defined_in': std.thisFile} + b for b in builds],
+  builds:: utils.add_defined_in(builds, std.thisFile),
 }

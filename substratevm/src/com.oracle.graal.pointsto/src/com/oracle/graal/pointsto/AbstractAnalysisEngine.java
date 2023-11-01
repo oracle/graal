@@ -27,21 +27,20 @@ package com.oracle.graal.pointsto;
 import java.io.PrintWriter;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugContext.Builder;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.DeoptBciSupplier;
-import org.graalvm.compiler.nodes.StateSplit;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
-import org.graalvm.compiler.word.WordTypes;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext.Builder;
+import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.Indent;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.DeoptBciSupplier;
+import jdk.graal.compiler.nodes.StateSplit;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.word.WordTypes;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.api.HostVM;
@@ -94,7 +93,6 @@ public abstract class AbstractAnalysisEngine implements BigBang {
      * Processing queue.
      */
     protected final CompletionExecutor executor;
-    private final Runnable heartbeatCallback;
 
     protected final Timer processFeaturesTimer;
     protected final Timer analysisTimer;
@@ -102,8 +100,8 @@ public abstract class AbstractAnalysisEngine implements BigBang {
 
     @SuppressWarnings("this-escape")
     public AbstractAnalysisEngine(OptionValues options, AnalysisUniverse universe, HostVM hostVM, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
-                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, ForkJoinPool executorService, Runnable heartbeatCallback,
-                    UnsupportedFeatures unsupportedFeatures, TimerCollection timerCollection) {
+                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, UnsupportedFeatures unsupportedFeatures, DebugContext debugContext,
+                    TimerCollection timerCollection) {
         this.options = options;
         this.universe = universe;
         this.debugHandlerFactories = Collections.singletonList(new GraalDebugHandlersFactory(snippetReflectionProvider));
@@ -111,8 +109,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         this.metaAccess = metaAccess;
         this.analysisPolicy = universe.analysisPolicy();
         this.hostVM = hostVM;
-        this.executor = new CompletionExecutor(this, executorService, heartbeatCallback);
-        this.heartbeatCallback = heartbeatCallback;
+        this.executor = new CompletionExecutor(debugContext, this);
         this.unsupportedFeatures = unsupportedFeatures;
 
         this.processFeaturesTimer = timerCollection.get(TimerCollection.Registry.FEATURES);
@@ -213,7 +210,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
              * scanner and the verifier also passes it to the root scanner, so when
              * checkHeapSnapshot returns all heap scanning and verification tasks are completed.
              */
-            assert executor.isBeforeStart();
+            assert executor.isBeforeStart() : executor.getState();
             analysisModified = universe.getHeapVerifier().checkHeapSnapshot(metaAccess, executor, "during analysis", true);
         }
         /* Initialize for the next iteration. */
@@ -263,11 +260,6 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     @Override
     public OptionValues getOptions() {
         return options;
-    }
-
-    @Override
-    public Runnable getHeartbeatCallback() {
-        return heartbeatCallback;
     }
 
     @Override
@@ -343,7 +335,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
 
             @Override
             public DebugContext getDebug(OptionValues opts, List<DebugHandlersFactory> factories) {
-                assert opts == getOptions();
+                assert opts == getOptions() : opts + " != " + getOptions();
                 return DebugContext.disabled(opts);
             }
         });
@@ -394,7 +386,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
                     while (current.outerFrameState() != null) {
                         current = current.outerFrameState();
                     }
-                    assert method.equals(current.getMethod());
+                    assert method.equals(current.getMethod()) : method + " != " + current.getMethod();
                     bci = current.bci;
                 } else if (bci == BytecodeFrame.UNKNOWN_BCI) {
                     /*

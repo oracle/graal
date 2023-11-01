@@ -27,9 +27,9 @@ package com.oracle.svm.core.genscavenge;
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_END_IDENTITY;
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_TOP_IDENTITY;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.replacements.AllocationSnippets.FillContent;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.replacements.AllocationSnippets.FillContent;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -67,7 +67,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.Continuation;
+import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
@@ -375,7 +375,7 @@ public final class ThreadLocalAllocation {
     @Uninterruptible(reason = "Holds uninitialized memory")
     private static Object formatArrayLikeObject(Pointer memory, DynamicHub hub, int length, boolean unaligned, FillContent fillContent, byte[] podReferenceMap) {
         Class<?> clazz = DynamicHub.toClass(hub);
-        if (Continuation.isSupported() && clazz == StoredContinuation.class) {
+        if (ContinuationSupport.isSupported() && clazz == StoredContinuation.class) {
             return FormatStoredContinuationNode.formatStoredContinuation(memory, clazz, length, false, unaligned, true);
         } else if (Pod.RuntimeSupport.isPresent() && podReferenceMap != null) {
             return FormatPodNode.formatPod(memory, clazz, length, podReferenceMap, false, unaligned, fillContent, true);

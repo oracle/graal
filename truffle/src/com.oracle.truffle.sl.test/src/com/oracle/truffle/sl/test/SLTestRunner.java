@@ -307,6 +307,12 @@ public class SLTestRunner extends ParentRunner<TestCase> {
             for (Map.Entry<String, String> e : testCase.options.entrySet()) {
                 builder.option(e.getKey(), e.getValue());
             }
+            boolean assertsOn = false;
+            assert !!(assertsOn = true);
+            if (!assertsOn) {
+                // Assertions are off, we need to turn off probe assertions.
+                builder.option("engine.AssertProbes", "false");
+            }
             context = builder.build();
             PrintWriter printer = new PrintWriter(out);
             run(context, testCase.path, printer);

@@ -25,9 +25,9 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryUsage;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -36,8 +36,9 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.VMError;
 
-public class GenScavengeMemoryPoolMXBeans {
+import jdk.graal.compiler.api.replacements.Fold;
 
+public class GenScavengeMemoryPoolMXBeans {
     static final String YOUNG_GEN_SCAVENGER = "young generation scavenger";
     static final String COMPLETE_SCAVENGER = "complete scavenger";
     static final String EPSILON_SCAVENGER = "epsilon scavenger";
@@ -47,10 +48,10 @@ public class GenScavengeMemoryPoolMXBeans {
     static final String OLD_GEN_SPACE = "old generation space";
     static final String EPSILON_HEAP = "epsilon heap";
 
-    private static AbstractMemoryPoolMXBean[] mxBeans;
+    private final AbstractMemoryPoolMXBean[] mxBeans;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static MemoryPoolMXBean[] createMemoryPoolMXBeans() {
+    public GenScavengeMemoryPoolMXBeans() {
         if (SubstrateOptions.UseSerialGC.getValue()) {
             mxBeans = new AbstractMemoryPoolMXBean[]{
                             new EdenMemoryPoolMXBean(YOUNG_GEN_SCAVENGER, COMPLETE_SCAVENGER),
@@ -63,16 +64,24 @@ public class GenScavengeMemoryPoolMXBeans {
                             new EpsilonMemoryPoolMXBean(EPSILON_SCAVENGER)
             };
         }
+    }
+
+    @Fold
+    public static GenScavengeMemoryPoolMXBeans singleton() {
+        return ImageSingletons.lookup(GenScavengeMemoryPoolMXBeans.class);
+    }
+
+    public AbstractMemoryPoolMXBean[] getMXBeans() {
         return mxBeans;
     }
 
-    public static void notifyBeforeCollection() {
+    public void notifyBeforeCollection() {
         for (AbstractMemoryPoolMXBean mxBean : mxBeans) {
             mxBean.beforeCollection();
         }
     }
 
-    public static void notifyAfterCollection() {
+    public void notifyAfterCollection() {
         for (AbstractMemoryPoolMXBean mxBean : mxBeans) {
             mxBean.afterCollection();
         }
@@ -98,11 +107,6 @@ public class GenScavengeMemoryPoolMXBeans {
         @Override
         UnsignedWord computeInitialValue() {
             return GCImpl.getPolicy().getInitialEdenSize();
-        }
-
-        @Override
-        UnsignedWord getMaximumValue() {
-            return GCImpl.getPolicy().getMaximumEdenSize();
         }
 
         @Override
@@ -149,11 +153,6 @@ public class GenScavengeMemoryPoolMXBeans {
         }
 
         @Override
-        UnsignedWord getMaximumValue() {
-            return GCImpl.getPolicy().getMaximumSurvivorSize();
-        }
-
-        @Override
         public MemoryUsage getUsage() {
             return getCollectionUsage();
         }
@@ -192,11 +191,6 @@ public class GenScavengeMemoryPoolMXBeans {
         }
 
         @Override
-        UnsignedWord getMaximumValue() {
-            return GCImpl.getPolicy().getMaximumOldSize();
-        }
-
-        @Override
         public MemoryUsage getUsage() {
             return getCollectionUsage();
         }
@@ -232,11 +226,6 @@ public class GenScavengeMemoryPoolMXBeans {
         @Override
         UnsignedWord computeInitialValue() {
             return GCImpl.getPolicy().getMinimumHeapSize();
-        }
-
-        @Override
-        UnsignedWord getMaximumValue() {
-            return GCImpl.getPolicy().getMaximumHeapSize();
         }
 
         @Override

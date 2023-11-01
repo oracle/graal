@@ -31,26 +31,30 @@ Java on Truffle passes the Java Compatibility Kit (JCK or TCK for Java SE).
 As of GraalVM for JDK 21, Java on Truffle (known as Espresso) is available as a standalone distribution. 
 You can download a standalone based on Oracle GraalVM or GraalVM Community Edition. 
 
-1. Download the Java on Truffle (Espresso) standalone for your operating system:
-   * [Linux x64](https://gds.oracle.com/api/20220101/artifacts/04F488A062424081E0631818000A781E/content)
-   * [Linux AArch64](https://gds.oracle.com/api/20220101/artifacts/04F556B0056D3A58E0631818000A322D/content)
-   * [macOS x64](https://gds.oracle.com/api/20220101/artifacts/04F556B005743A58E0631818000A322D/content)
-   * [macOS AArch64](https://gds.oracle.com/api/20220101/artifacts/04F556B0057A3A58E0631818000A322D/content)
-   * [Windows x64](https://gds.oracle.com/api/20220101/artifacts/04F488A062484081E0631818000A781E/content)
+1. Download the Java on Truffle (Espresso) 23.1 standalone for your operating system:
+
+   * [Linux x64](https://gds.oracle.com/api/20220101/artifacts/069B12298B3349EDE0631718000A11BC/content)
+   * [Linux AArch64](https://gds.oracle.com/api/20220101/artifacts/069B4EC01B97519AE0631718000AA34D/content)
+   * [macOS x64](https://gds.oracle.com/api/20220101/artifacts/07867F4EBBAF81ADE0631718000AA7AB/content)
+   * [macOS AArch64](https://gds.oracle.com/api/20220101/artifacts/069B12298B4949EDE0631718000A11BC/content)
+   * [Windows x64](https://gds.oracle.com/api/20220101/artifacts/07867F4EBBBD81ADE0631718000AA7AB/content)
 
 2. Unzip the archive:
-   ```shell
-   tar -xzf <archive>.tar.gz
-   ```
-   Alternatively, open the file in the Finder.
-   > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute:
+
+    > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute:
     ```shell
     sudo xattr -r -d com.apple.quarantine <archive>.tar.gz
     ```
-
+    
+    Extact:
+    ```shell
+    tar -xzf <archive>.tar.gz
+    ```
+   
 3. A standalone comes with a JVM in addition to its native launcher. Check the version to see the Java on Truffle runtime is active:
     ```shell
-    ./path/to/bin/java -truffle --version
+    # Path to Java on Truffle (Espresso) installation
+    ./path/to/bin/java -truffle -version
     ```
 
 ## Run Java on Truffle
@@ -97,7 +101,8 @@ This might be important for options such as `MaxDirectMemorySize` which can be s
 
 To ensure you have successfully installed Java on Truffle, verify its version:
 ```shell
-java -truffle -version
+# Path to Java on Truffle (Espresso) installation
+./path/to/bin/java -truffle -version
 ```
 
 Taking this `HelloWorld.java` example, compile it and run from the command line:

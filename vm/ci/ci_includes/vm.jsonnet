@@ -179,7 +179,8 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
         ['set-export', 'BRANCH_NAME', ['git', 'rev-parse', '--abbrev-ref', 'HEAD']],
         ['bash', '-c', 'if [[ ${BRANCH_NAME} == master ]] || [[ ${BRANCH_NAME} == release/* ]] || [[ ${BRANCH_NAME} == cpu/* ]]; then git -C ${MX_HOME} push origin +HEAD:refs/heads/graal/${BRANCH_NAME}; fi']
       ],
-        name: 'post-merge-vm-update-stable-mx-branch-linux-amd64',
+      name: 'post-merge-vm-update-stable-mx-branch-linux-amd64',
+      notify_groups:: ['deploy'],
     },
 
 
@@ -224,7 +225,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     self.notify_releaser_build,
   ],
 
-  builds: [vm_common.verify_name(b1) for b1 in vm_common.builds + vm_common_bench.builds + vm_bench.builds + vm_native.builds + [{'defined_in': std.thisFile} + b2  for b2 in builds]],
+  builds: [vm_common.verify_name(b) for b in vm_common.builds + vm_common_bench.builds + vm_bench.builds + vm_native.builds + utils.add_defined_in(builds, std.thisFile)],
 
   compiler_gate:: (import '../../../compiler/ci/ci_common/gate.jsonnet')
 }

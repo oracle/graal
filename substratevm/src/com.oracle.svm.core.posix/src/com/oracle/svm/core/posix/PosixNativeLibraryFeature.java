@@ -187,6 +187,21 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
             return loaded;
         }
 
+        @Override
+        public boolean unload() {
+            assert loaded;
+            if (builtin) {
+                return false;
+            }
+            assert dlhandle.isNonNull();
+            if (PosixUtils.dlclose(dlhandle)) {
+                dlhandle = WordFactory.nullPointer();
+                return true;
+            } else {
+                return false;
+            }
+        }
+
         private boolean doLoad() {
             // Make sure the jvm.lib is available for linking
             // Need a better place to put this.

@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.graal.stackvalue;
 
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.phases.Phase;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.phases.Phase;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

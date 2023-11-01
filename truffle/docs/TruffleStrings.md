@@ -108,6 +108,8 @@ Conversion:
   Convert a MutableTruffleString to an immutable TruffleString.
 * [AsManaged](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.AsManagedNode.html):
   Convert a TruffleString backed by a native pointer to one backed by a java byte array.
+* [ToValidString](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.ToValidStringNode.html):
+  Convert a TruffleString to a version that is encoded correctly.
 * [CopyToByteArray](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CopyToByteArrayNode.html):
   Copy a string's content into a byte array.
 * [GetInternalByteArray](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.GetInternalByteArrayNode.html):

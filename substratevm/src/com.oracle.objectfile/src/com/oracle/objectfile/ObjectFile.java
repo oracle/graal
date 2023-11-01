@@ -43,11 +43,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
 import java.util.stream.StreamSupport;
 
-import org.graalvm.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.elf.ELFObjectFile;
@@ -329,6 +328,33 @@ public abstract class ObjectFile {
                 case PC_RELATIVE_2:
                 case PC_RELATIVE_4:
                 case PC_RELATIVE_8:
+                case AARCH64_R_AARCH64_ADR_PREL_PG_HI21:
+                case AARCH64_R_AARCH64_ADD_ABS_LO12_NC:
+                case AARCH64_R_LD_PREL_LO19:
+                case AARCH64_R_GOT_LD_PREL19:
+                case AARCH64_R_AARCH64_LDST128_ABS_LO12_NC:
+                case AARCH64_R_AARCH64_LDST64_ABS_LO12_NC:
+                case AARCH64_R_AARCH64_LDST32_ABS_LO12_NC:
+                case AARCH64_R_AARCH64_LDST16_ABS_LO12_NC:
+                case AARCH64_R_AARCH64_LDST8_ABS_LO12_NC:
+                    return true;
+            }
+            return false;
+        }
+
+        public static boolean isDirect(RelocationKind kind) {
+            switch (kind) {
+                case DIRECT_1:
+                case DIRECT_2:
+                case DIRECT_4:
+                case DIRECT_8:
+                case AARCH64_R_MOVW_UABS_G0:
+                case AARCH64_R_MOVW_UABS_G0_NC:
+                case AARCH64_R_MOVW_UABS_G1:
+                case AARCH64_R_MOVW_UABS_G1_NC:
+                case AARCH64_R_MOVW_UABS_G2:
+                case AARCH64_R_MOVW_UABS_G2_NC:
+                case AARCH64_R_MOVW_UABS_G3:
                     return true;
             }
             return false;
@@ -1268,7 +1294,7 @@ public abstract class ObjectFile {
     private final Map<Element, List<BuildDependency>> dependenciesByDependingElement = new IdentityHashMap<>();
     private final Map<Element, List<BuildDependency>> dependenciesByDependedOnElement = new IdentityHashMap<>();
 
-    public void write(DebugContext context, Path outputFile, @SuppressWarnings("unused") ForkJoinPool forkJoinPool) throws IOException {
+    public void write(DebugContext context, Path outputFile) throws IOException {
         try (FileChannel channel = FileChannel.open(outputFile, StandardOpenOption.WRITE, StandardOpenOption.READ, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
             withDebugContext(context, "ObjectFile.write", () -> {
                 write(channel);

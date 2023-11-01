@@ -24,16 +24,15 @@
  */
 package com.oracle.svm.core.thread;
 
-import org.graalvm.compiler.api.directives.GraalDirectives;
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.replacements.ReplacementsUtil;
-import org.graalvm.compiler.replacements.nodes.AssertionNode;
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.replacements.ReplacementsUtil;
+import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.ComparableWord;
@@ -633,21 +632,26 @@ public abstract class VMThreads {
     }
 
     public static boolean printLocationInfo(Log log, UnsignedWord value, boolean allowUnsafeOperations) {
+        if (!allowUnsafeOperations && !VMOperation.isInProgressAtSafepoint()) {
+            /*
+             * Iterating the threads or accessing thread locals of other threads is unsafe if we are
+             * outside a VM operation because the IsolateThread data structure could be freed at any
+             * time (we can't use any locking to prevent races).
+             */
+            return false;
+        }
+
         for (IsolateThread thread = firstThreadUnsafe(); thread.isNonNull(); thread = nextThread(thread)) {
             if (thread.equal(value)) {
                 log.string("is a thread");
                 return true;
             }
 
-            if (allowUnsafeOperations || VMOperation.isInProgressAtSafepoint()) {
-                // If we are not at a safepoint, then it is unsafe to access thread locals of
-                // another thread as the IsolateThread could be freed at any time.
-                UnsignedWord stackBase = StackBase.get(thread);
-                UnsignedWord stackEnd = StackEnd.get(thread);
-                if (value.belowThan(stackBase) && value.aboveOrEqual(stackEnd)) {
-                    log.string("points into the stack for thread ").zhex(thread);
-                    return true;
-                }
+            UnsignedWord stackBase = StackBase.get(thread);
+            UnsignedWord stackEnd = StackEnd.get(thread);
+            if (value.belowThan(stackBase) && value.aboveOrEqual(stackEnd)) {
+                log.string("points into the stack for thread ").zhex(thread);
+                return true;
             }
 
             if (SubstrateOptions.MultiThreaded.getValue()) {
@@ -884,13 +888,13 @@ public abstract class VMThreads {
          * The thread won't freeze at a safepoint, and will actively prevent the VM from reaching a
          * safepoint (regardless of the thread status).
          */
-        static final int PREVENT_VM_FROM_REACHING_SAFEPOINT = 1;
+        public static final int PREVENT_VM_FROM_REACHING_SAFEPOINT = 1;
 
         /**
          * The thread won't freeze at a safepoint and the safepoint handling will ignore the thread.
          * So, the VM will be able to reach a safepoint regardless of the status of this thread.
          */
-        static final int THREAD_CRASHED = 2;
+        public static final int THREAD_CRASHED = 2;
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static boolean ignoresSafepoints() {
@@ -939,6 +943,11 @@ public abstract class VMThreads {
         public static void markThreadAsCrashed() {
             // It would be nice if we could retire the TLAB here but that wouldn't work reliably.
             safepointBehaviorTL.setVolatile(THREAD_CRASHED);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static boolean isCrashedThread(IsolateThread thread) {
+            return safepointBehaviorTL.getVolatile(thread) == THREAD_CRASHED;
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -998,65 +1007,6 @@ public abstract class VMThreads {
                 }
                 setSynchronizeCode(vmThread);
             }
-        }
-    }
-
-    /**
-     * This follows {@link ActionOnTransitionToJavaSupport}, but only for exiting safepoint.
-     */
-    public static class ActionOnExitSafepointSupport {
-
-        private static final FastThreadLocalInt actionTL = FastThreadLocalFactory.createInt("ActionOnExitSafepointSupport.actionTL");
-        private static final int NO_ACTION = 0;
-        /**
-         * The thread needs to start execution from a different stack, used for preempting a
-         * continuation.
-         */
-        private static final int SWITCH_STACK = NO_ACTION + 1;
-
-        /** Target of stack switching. */
-        private static final FastThreadLocalWord<Pointer> returnSP = FastThreadLocalFactory.createWord("ActionOnExitSafepointSupport.returnSP");
-        private static final FastThreadLocalWord<CodePointer> returnIP = FastThreadLocalFactory.createWord("ActionOnExitSafepointSupport.returnIP");
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static boolean isActionPending() {
-            return actionTL.getVolatile() != NO_ACTION;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static boolean isSwitchStackPending() {
-            return actionTL.getVolatile() == SWITCH_STACK;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static void setSwitchStack(IsolateThread vmThread) {
-            assert VMOperation.isInProgressAtSafepoint() : "Invariant to avoid races between setting and clearing.";
-            actionTL.setVolatile(vmThread, SWITCH_STACK);
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static void setSwitchStackTarget(IsolateThread vmThread, Pointer sp, CodePointer ip) {
-            returnSP.setVolatile(vmThread, sp);
-            returnIP.setVolatile(vmThread, ip);
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected static Pointer getSwitchStackSP() {
-            Pointer sp = returnSP.getVolatile();
-            assert sp.isNonNull();
-            return sp;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected static CodePointer getSwitchStackIP() {
-            CodePointer ip = returnIP.getVolatile();
-            assert ip.isNonNull();
-            return ip;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static void clearActions() {
-            actionTL.setVolatile(NO_ACTION);
         }
     }
 

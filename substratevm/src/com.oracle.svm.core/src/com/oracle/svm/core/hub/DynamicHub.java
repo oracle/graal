@@ -72,8 +72,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
 
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -244,6 +245,11 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      * circumstances.
      */
     private static final int IS_LAMBDA_FORM_HIDDEN_BIT = 9;
+    /**
+     * Indicates this Class was linked during build time. Accessing an unlinked class during run
+     * time will throw an error.
+     */
+    private static final int IS_LINKED_BIT = 10;
 
     /** Similar to {@link #flags}, but non-final because {@link #setData} sets the value. */
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
@@ -385,7 +391,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(Class<?> hostedJavaClass, String name, int hubType, ReferenceType referenceType, DynamicHub superType, DynamicHub componentHub, String sourceFileName, int modifiers,
                     ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus, boolean hasDefaultMethods, boolean declaresDefaultMethods,
-                    boolean isSealed, boolean isVMInternal, boolean isLambdaFormHidden, String simpleBinaryName, Object declaringClass, String signature) {
+                    boolean isSealed, boolean isVMInternal, boolean isLambdaFormHidden, boolean isLinked, String simpleBinaryName, Object declaringClass, String signature) {
         this.hostedJavaClass = hostedJavaClass;
         this.module = hostedJavaClass.getModule();
         this.name = name;
@@ -409,7 +415,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                         makeFlag(DECLARES_DEFAULT_METHODS_FLAG_BIT, declaresDefaultMethods) |
                         makeFlag(IS_SEALED_FLAG_BIT, isSealed) |
                         makeFlag(IS_VM_INTERNAL_FLAG_BIT, isVMInternal) |
-                        makeFlag(IS_LAMBDA_FORM_HIDDEN_BIT, isLambdaFormHidden));
+                        makeFlag(IS_LAMBDA_FORM_HIDDEN_BIT, isLambdaFormHidden) |
+                        makeFlag(IS_LINKED_BIT, isLinked));
 
         this.companion = new DynamicHubCompanion(hostedJavaClass, classLoader);
     }
@@ -881,6 +888,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     public boolean isLambdaFormHidden() {
         return isFlagSet(flags, IS_LAMBDA_FORM_HIDDEN_BIT);
+    }
+
+    public boolean isLinked() {
+        return isFlagSet(flags, IS_LINKED_BIT);
     }
 
     public boolean isRegisteredForSerialization() {
@@ -1936,6 +1947,30 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
         boolean isReadOnly = isFinal && (!override || langReflectAccess.isTrustedFinalField(field));
         return UnsafeFieldAccessorFactory.newFieldAccessor(field, isReadOnly);
     }
+
+    /**
+     * Work around "JDK-8315810: Reimplement
+     * sun.reflect.ReflectionFactory::newConstructorForSerialization with method handles"
+     * [GR-48901].
+     *
+     * @see Target_jdk_internal_reflect_DirectConstructorHandleAccessor
+     */
+    @Substitute
+    @TargetElement(onlyWith = JDK22OrLater.class)
+    @Fold // cut off the alternative branch, already during analysis
+    static boolean useOldSerializableConstructor() {
+        return true;
+    }
+}
+
+/**
+ * Ensure that we are not accidentally using the method handle based constructor accessor.
+ *
+ * @see Target_jdk_internal_reflect_ReflectionFactory#useOldSerializableConstructor()
+ */
+@Delete
+@TargetClass(className = "jdk.internal.reflect.DirectConstructorHandleAccessor")
+final class Target_jdk_internal_reflect_DirectConstructorHandleAccessor {
 }
 
 @TargetClass(className = "java.lang.Class", innerClass = "EnclosingMethodInfo")

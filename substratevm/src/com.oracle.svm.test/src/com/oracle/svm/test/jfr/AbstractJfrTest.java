@@ -49,7 +49,6 @@ import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.test.jfr.utils.JfrFileParser;
-import com.oracle.svm.util.ModuleSupport;
 
 import jdk.jfr.Configuration;
 import jdk.jfr.consumer.RecordedEvent;
@@ -188,12 +187,4 @@ public abstract class AbstractJfrTest {
 }
 
 class JfrTestFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        /*
-         * Use of org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC in
-         * com.oracle.svm.test.jfr.utils.poolparsers.ClassConstantPoolParser.parse
-         */
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JfrTestFeature.class, false, "jdk.internal.vm.compiler", "org.graalvm.compiler.serviceprovider");
-    }
 }

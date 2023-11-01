@@ -44,6 +44,9 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.AbstractRegexObject;
@@ -52,9 +55,10 @@ import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.errors.JsErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.parser.CaseFoldTable.CaseFoldingAlgorithm;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
@@ -62,17 +66,17 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.string.Encodings;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
 
 public final class JSRegexParser implements RegexParser {
 
-    private static final EnumSet<Token.Kind> QUANTIFIER_PREV = EnumSet.of(Token.Kind.charClass, Token.Kind.classSet, Token.Kind.groupEnd, Token.Kind.backReference);
+    private static final EnumSet<Token.Kind> QUANTIFIER_PREV = EnumSet.of(Token.Kind.literalChar, Token.Kind.charClass, Token.Kind.charClassEnd, Token.Kind.classSet, Token.Kind.groupEnd,
+                    Token.Kind.backReference);
     private final RegexParserGlobals globals;
     private final RegexSource source;
     private final RegexFlags flags;
     private final JSRegexLexer lexer;
     private final RegexASTBuilder astBuilder;
+    private final CodePointSetAccumulator curCharClass = new CodePointSetAccumulator();
 
     @TruffleBoundary
     public JSRegexParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
@@ -204,11 +208,28 @@ public final class JSRegexParser implements RegexParser {
                     }
                     astBuilder.popGroup(token);
                     break;
+                case literalChar:
+                    literalChar(((Token.LiteralCharacter) token).getCodePoint());
+                    break;
                 case charClass:
                     astBuilder.addCharClass((Token.CharacterClass) token);
                     break;
+                case charClassBegin:
+                    curCharClass.clear();
+                    break;
+                case charClassAtom:
+                    curCharClass.addSet(((Token.CharacterClassAtom) token).getContents());
+                    break;
+                case charClassEnd:
+                    boolean wasSingleChar = !lexer.isCurCharClassInverted() && curCharClass.matchesSingleChar();
+                    if (flags.isIgnoreCase()) {
+                        lexer.caseFoldUnfold(curCharClass);
+                    }
+                    CodePointSet cps = curCharClass.toCodePointSet();
+                    astBuilder.addCharClass(lexer.isCurCharClassInverted() ? cps.createInverse(source.getEncoding()) : cps, wasSingleChar);
+                    break;
                 case classSet:
-                    astBuilder.addClassSet((Token.ClassSet) token, flags.isIgnoreCase() ? CaseFoldingAlgorithm.ECMAScriptUnicode : null);
+                    astBuilder.addClassSet((Token.ClassSet) token, flags.isIgnoreCase() ? CaseFoldData.CaseFoldUnfoldAlgorithm.ECMAScriptUnicode : null);
                     break;
                 default:
                     throw CompilerDirectives.shouldNotReachHere();
@@ -220,6 +241,17 @@ public final class JSRegexParser implements RegexParser {
         RegexAST ast = astBuilder.popRootGroup();
         checkNamedCaptureGroups(ast);
         return ast;
+    }
+
+    private void literalChar(int codePoint) {
+        if (flags.isIgnoreCase()) {
+            curCharClass.clear();
+            curCharClass.addCodePoint(codePoint);
+            lexer.caseFoldUnfold(curCharClass);
+            astBuilder.addCharClass(curCharClass.toCodePointSet(), true);
+        } else {
+            astBuilder.addCharClass(CodePointSet.create(codePoint));
+        }
     }
 
     private static boolean isNestedInLookBehindAssertion(Term t) {

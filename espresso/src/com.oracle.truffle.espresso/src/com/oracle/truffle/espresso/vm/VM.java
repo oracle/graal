@@ -153,6 +153,7 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import com.oracle.truffle.espresso.threads.Transition;
+import com.oracle.truffle.espresso.vm.npe.ExtendedNPEMessage;
 import com.oracle.truffle.espresso.vm.structs.JavaVMAttachArgs;
 import com.oracle.truffle.espresso.vm.structs.JdkVersionInfo;
 import com.oracle.truffle.espresso.vm.structs.Structs;
@@ -1705,6 +1706,8 @@ public final class VM extends NativeEnv {
 
         int getLineNumber();
 
+        int getBci();
+
         String getFileName();
     }
 
@@ -1763,6 +1766,11 @@ public final class VM extends NativeEnv {
         }
 
         @Override
+        public int getBci() {
+            return bci;
+        }
+
+        @Override
         public String getFileName() {
             return m.getDeclaringKlass().getSourceFile();
         }
@@ -1808,6 +1816,11 @@ public final class VM extends NativeEnv {
         }
 
         @Override
+        public int getBci() {
+            return EspressoStackElement.UNKNOWN_BCI;
+        }
+
+        @Override
         public String getFileName() {
             return fileName;
         }
@@ -1820,6 +1833,7 @@ public final class VM extends NativeEnv {
         public StackElement[] trace;
         public int size;
         public int capacity;
+        private boolean hiddenTop;
 
         public StackTrace() {
             this(DEFAULT_STACK_SIZE);
@@ -1831,7 +1845,18 @@ public final class VM extends NativeEnv {
             this.size = 0;
         }
 
-        public void add(StackElement e) {
+        public StackElement top() {
+            if (size > 0) {
+                return trace[0];
+            }
+            return null;
+        }
+
+        public boolean isSkippedFramesHidden() {
+            return hiddenTop;
+        }
+
+        void add(StackElement e) {
             if (size < capacity) {
                 trace[size++] = e;
             } else {
@@ -1839,11 +1864,19 @@ public final class VM extends NativeEnv {
                 trace[size++] = e;
             }
         }
+
+        void markTopFrameHidden() {
+            hiddenTop = true;
+        }
     }
 
     @VmImpl(isJni = true)
-    public static @JavaType(String.class) StaticObject JVM_GetExtendedNPEMessage(@SuppressWarnings("unused") @JavaType(Throwable.class) StaticObject throwable) {
-        return StaticObject.NULL;
+    @TruffleBoundary
+    public @JavaType(String.class) StaticObject JVM_GetExtendedNPEMessage(@SuppressWarnings("unused") @JavaType(Throwable.class) StaticObject throwable) {
+        if (!getContext().getEnv().getOptions().get(EspressoOptions.ShowCodeDetailsInExceptionMessages)) {
+            return StaticObject.NULL;
+        }
+        return getMeta().toGuestString(ExtendedNPEMessage.getNPEMessage(throwable));
     }
 
     @VmImpl(isJni = true)

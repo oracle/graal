@@ -387,6 +387,10 @@ public abstract class Accessor {
 
         public abstract TruffleContext getCurrentCreatorTruffleContext();
 
+        public abstract void assertReturnParityEnter(Node probe, Object polyglotEngine);
+
+        public abstract void assertReturnParityLeave(Node probe, Object polyglotEngine);
+
         public abstract Object toGuestValue(Node node, Object obj, Object languageContext);
 
         public abstract Object getPolyglotEngine(Object polyglotLanguageInstance);
@@ -567,9 +571,7 @@ public abstract class Accessor {
 
         public abstract String getUnparsedOptionValue(OptionValues optionValues, OptionKey<?> optionKey);
 
-        public abstract String getRelativePathInLanguageHome(TruffleFile truffleFile);
-
-        public abstract TruffleFile relativizeToInternalResourceCache(TruffleFile truffleFile);
+        public abstract String getRelativePathInResourceRoot(TruffleFile truffleFile);
 
         public abstract void onSourceCreated(Source source);
 
@@ -755,6 +757,8 @@ public abstract class Accessor {
         public abstract TruffleFile getInternalResource(Object owner, Class<? extends InternalResource> resourceType) throws IOException;
 
         public abstract TruffleFile getInternalResource(Object owner, String resourceId) throws IOException;
+
+        public abstract Path getEngineResource(Object polyglotEngine, String resourceId) throws IOException;
 
         public abstract Collection<String> getResourceIds(String componentId);
 

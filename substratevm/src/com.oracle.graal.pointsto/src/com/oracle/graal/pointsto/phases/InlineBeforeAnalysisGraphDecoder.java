@@ -32,33 +32,33 @@ import java.util.Deque;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.compiler.bytecode.BytecodeProvider;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.nodes.AbstractEndNode;
-import org.graalvm.compiler.nodes.AbstractMergeNode;
-import org.graalvm.compiler.nodes.CallTargetNode;
-import org.graalvm.compiler.nodes.ControlSinkNode;
-import org.graalvm.compiler.nodes.ControlSplitNode;
-import org.graalvm.compiler.nodes.EncodedGraph;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.LogicConstantNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
-import org.graalvm.compiler.nodes.java.LoadFieldNode;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.replacements.PEGraphDecoder;
-import org.graalvm.compiler.replacements.nodes.MethodHandleWithExceptionNode;
-import org.graalvm.compiler.replacements.nodes.ResolvedMethodHandleCallTargetNode;
+import jdk.graal.compiler.bytecode.BytecodeProvider;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.nodes.AbstractEndNode;
+import jdk.graal.compiler.nodes.AbstractMergeNode;
+import jdk.graal.compiler.nodes.CallTargetNode;
+import jdk.graal.compiler.nodes.ControlSinkNode;
+import jdk.graal.compiler.nodes.ControlSplitNode;
+import jdk.graal.compiler.nodes.EncodedGraph;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.LogicConstantNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.IsNullNode;
+import jdk.graal.compiler.nodes.extended.UnsafeAccessNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.replacements.PEGraphDecoder;
+import jdk.graal.compiler.replacements.nodes.MethodHandleWithExceptionNode;
+import jdk.graal.compiler.replacements.nodes.ResolvedMethodHandleCallTargetNode;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
@@ -292,7 +292,6 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
 
     private void ensureDMHStaticAccessorFieldsInitialized() {
         if (dmhStaticAccessorOffsetField == null) {
-            assert dmhStaticAccessorBaseField == null && dmhStaticAccessorOffsetAnalysisField == null && dmhStaticAccessorBaseAnalysisField == null;
             Class<?> staticAccessorClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.DirectMethodHandle$StaticAccessor");
             dmhStaticAccessorOffsetField = ReflectionUtil.lookupField(staticAccessorClass, "staticOffset");
             dmhStaticAccessorBaseField = ReflectionUtil.lookupField(staticAccessorClass, "staticBase");
@@ -403,8 +402,8 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
             invokeData.invokePredecessor.setNext(invokeData.invoke.asFixedNode());
 
             if (inlineScope.exceptionPlaceholderNode != null) {
-                assert invokeData.invoke instanceof InvokeWithExceptionNode;
-                assert lookupNode(callerLoopScope, invokeData.exceptionOrderId) == inlineScope.exceptionPlaceholderNode;
+                assert invokeData.invoke instanceof InvokeWithExceptionNode : invokeData.invoke;
+                assert lookupNode(callerLoopScope, invokeData.exceptionOrderId) == inlineScope.exceptionPlaceholderNode : inlineScope;
                 registerNode(callerLoopScope, invokeData.exceptionOrderId, null, true, true);
                 ValueNode exceptionReplacement = makeStubNode(callerScope, callerLoopScope, invokeData.exceptionOrderId);
                 inlineScope.exceptionPlaceholderNode.replaceAtUsagesAndDelete(exceptionReplacement);
@@ -444,8 +443,8 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
         Deque<Node> workList = null;
         Node cur = start;
         while (true) {
-            assert !cur.isDeleted();
-            assert graph.isNew(inlineScope.methodStartMark, cur);
+            assert !cur.isDeleted() : cur;
+            assert graph.isNew(inlineScope.methodStartMark, cur) : cur;
 
             Node next = null;
             if (cur instanceof FixedWithNextNode) {
@@ -502,6 +501,7 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
     @Override
     protected FixedWithNextNode afterMethodScopeCreation(PEMethodScope is, FixedWithNextNode predecessor) {
         InlineBeforeAnalysisMethodScope inlineScope = cast(is);
-        return policy.processInvokeArgs(inlineScope.method, predecessor, inlineScope.getArguments());
+        var sourcePosition = inlineScope.invokeData.invoke.asNode().getNodeSourcePosition();
+        return policy.processInvokeArgs(inlineScope.method, predecessor, inlineScope.getArguments(), sourcePosition);
     }
 }

@@ -34,13 +34,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Formatter;
 import java.util.List;
-import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.Indent;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.Indent;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.objectfile.ObjectFile;
@@ -89,13 +88,13 @@ public abstract class NativeImageViaCC extends NativeImage {
 
     @Override
     @SuppressWarnings("try")
-    public LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config, ForkJoinPool forkJoinPool) {
+    public LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config) {
         try (Indent indent = debug.logAndIndent("Writing native image")) {
             // 0. Free codecache to make space for writing the objectFile
             codeCache.purge();
 
             // 1. write the relocatable file
-            write(debug, tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()), forkJoinPool);
+            write(debug, tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()));
             if (NativeImageOptions.ExitAfterRelocatableImageWrite.getValue()) {
                 return null;
             }

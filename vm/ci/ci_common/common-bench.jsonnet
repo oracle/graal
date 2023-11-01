@@ -1,5 +1,6 @@
 # note: this file needs to be in sync between CE and EE
 
+local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 local vm = import '../ci_includes/vm.jsonnet';
 local common = import '../../../ci/ci_common/common.jsonnet';
 local vm_common = import '../ci_common/common.jsonnet';
@@ -322,5 +323,5 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     vm_common.gate_vm_linux_amd64 + self.vm_gate_polybench_linux + {name: 'gate-vm-' + vm.vm_setup.short_name + '-polybench-linux-amd64'},
   ],
 
-  builds: [{'defined_in': std.thisFile} + b for b in builds],
+  builds: utils.add_defined_in(builds, std.thisFile),
 }

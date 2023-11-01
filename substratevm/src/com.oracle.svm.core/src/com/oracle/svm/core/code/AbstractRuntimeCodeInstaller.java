@@ -99,7 +99,7 @@ public class AbstractRuntimeCodeInstaller {
         @Override
         protected void operate() {
             try {
-                assert !installedCode.isValid() && !installedCode.isAlive();
+                assert !installedCode.isValid() && !installedCode.isAlive() : installedCode;
                 CodePointer codeStart = CodeInfoAccess.getCodeStart(codeInfo);
                 UnsignedWord offset = CodeInfoAccess.getCodeEntryPointOffset(codeInfo);
                 installedCode.setAddress(codeStart.rawValue(), codeStart.rawValue() + offset.rawValue(), method);

@@ -11,6 +11,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 	* `GenerateWrapper` has new `yieldExceptions()` and `resumeMethodPrefix()` parameters to automatically call the new `onYield()`/`onResume()` methods from wrapper nodes.
 	* `RootNode.isSameFrame()` and `TruffleInstrument.Env.isSameFrame()` added to test if two frames are the same, to match the yielded and resumed execution.
 * GR-45863 Adopted onYield() and onResume() instrumentation events in the debugger stepping logic.
+* [GR-21361] Remove support for legacy `<language-id>.home` system property. Only `org.graalvm.language.<language-id>.home` will be used.
+* GR-41302 Added the `--engine.AssertProbes` option, which asserts that enter and return are always called in pairs on ProbeNode, verifies correct behavior of wrapper nodes. Java asserts need to be turned on for this option to have an effect.
+* GR-48816 Added new interpreted performance warning to Truffle DSL.
 
 ## Version 23.1.0
 
@@ -47,6 +50,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
   * Bundle the necessary files into a jar distribution.
   * Implement the `InternalResource` interface for handling the resource file unpacking.
   * Call the `Env#getInternalResource` when the language or instrument needs the bundled resource files. This method ensures that the requested `InternalResource` is unpacked and provides a directory containing the unpacked files. Since unpacking internal resources can be an expensive operation, the implementation ensures that internal resources are cached.
+* GR-44464 Added `TruffleString.ToValidStringNode` for encoding-level string sanitization.
 
 ## Version 23.0.0
 

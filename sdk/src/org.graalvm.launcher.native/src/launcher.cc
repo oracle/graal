@@ -158,11 +158,14 @@
 
 typedef jint(*CreateJVM)(JavaVM **, void **, void *);
 extern char **environ;
-bool debug = false;
-bool relaunch = false;
+
+static bool debug = false;
+static bool relaunch = false;
+static bool found_switch_to_jvm_flag = false;
+static const char *svm_error = NULL;
 
 /* platform-independent environment setter, use empty value to clear */
-int setenv(std::string key, std::string value) {
+static int setenv(std::string key, std::string value) {
     if (debug) {
         std::cout << "Setting env variable " << key << "=" << value << std::endl;
     }
@@ -189,13 +192,13 @@ int setenv(std::string key, std::string value) {
 }
 
 /* check if file exists */
-bool exists(std::string filename) {
+static bool exists(std::string filename) {
     struct stat buffer;
     return (stat(filename.c_str(), &buffer) == 0);
 }
 
 /* get the path to the current executable */
-std::string exe_path() {
+static std::string exe_path() {
     #if defined (__linux__)
         char *realPath = realpath("/proc/self/exe", NULL);
     #elif defined (__APPLE__)
@@ -213,7 +216,7 @@ std::string exe_path() {
 }
 
 /* get the directory of the current executable */
-std::string exe_directory() {
+static std::string exe_directory() {
     char *path = strdup(exe_path().c_str());
     #if defined (_WIN32)
         // get the directory part
@@ -251,7 +254,7 @@ static std::string canonicalize(std::string path) {
  * via the JavaRuntimeSupport.framework (JRS), which will fall back to the
  * system JRE and fail if none is installed
  */
-void *load_jli_lib(std::string exeDir) {
+static void *load_jli_lib(std::string exeDir) {
     std::stringstream libjliPath;
     libjliPath << exeDir << DIR_SEP_STR << LIBJLI_RELPATH_STR;
     return dlopen(libjliPath.str().c_str(), RTLD_NOW);
@@ -260,7 +263,7 @@ void *load_jli_lib(std::string exeDir) {
 
 /* load the language library (either native library or libjvm) and return a
  * pointer to the JNI_CreateJavaVM function */
-CreateJVM load_vm_lib(std::string liblangPath) {
+static CreateJVM load_vm_lib(std::string liblangPath) {
     if (debug) {
         std::cout << "Loading library " << liblangPath << std::endl;
     }
@@ -282,7 +285,7 @@ CreateJVM load_vm_lib(std::string liblangPath) {
     return NULL;
 }
 
-std::string vm_path(std::string exeDir, bool jvmMode) {
+static std::string vm_path(std::string exeDir, bool jvmMode) {
     std::stringstream liblangPath;
     if (jvmMode) {
         liblangPath << exeDir << DIR_SEP_STR << LIBJVM_RELPATH_STR;
@@ -297,7 +300,7 @@ std::string vm_path(std::string exeDir, bool jvmMode) {
     return liblangPath.str();
 }
 
-void parse_vm_option(
+static void parse_vm_option(
         std::vector<std::string> *vmArgs,
         std::stringstream *cp,
         std::stringstream *modulePath,
@@ -317,11 +320,13 @@ void parse_vm_option(
         std::stringstream opt;
         opt << '-' << option.substr(VM_ARG_OFFSET);
         vmArgs->push_back(opt.str());
+    } else if (option == "--jvm") {
+        found_switch_to_jvm_flag = true;
     }
 }
 
 /* parse the VM arguments that should be passed to JNI_CreateJavaVM */
-void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs *vmInitArgs, bool jvmMode) {
+static void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs *vmInitArgs, bool jvmMode) {
     std::vector<std::string> vmArgs;
 
     /* check if vm args have been set on relaunch already */
@@ -546,9 +551,17 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
 #endif
     }
 
-    vmInitArgs->options = new JavaVMOption[vmArgs.size()];
-    vmInitArgs->nOptions = vmArgs.size();
+    jint nOptions = jvmMode ? vmArgs.size() : 1 + vmArgs.size();
+    vmInitArgs->options = new JavaVMOption[nOptions];
+    vmInitArgs->nOptions = nOptions;
     JavaVMOption *curOpt = vmInitArgs->options;
+
+    if (!jvmMode) {
+        curOpt->optionString = strdup("_createvm_errorstr");
+        curOpt->extraInfo = &svm_error;
+        curOpt++;
+    }
+
     for(const auto& arg: vmArgs) {
         if (debug) {
             std::cout << "Setting VM argument " << arg << std::endl;
@@ -676,7 +689,11 @@ static int jvm_main_thread(int argc, char *argv[], std::string exeDir, bool jvmM
     vmInitArgs.nOptions = 0;
     parse_vm_options(argc, argv, exeDir, &vmInitArgs, jvmMode);
     vmInitArgs.version = JNI_VERSION_9;
-    vmInitArgs.ignoreUnrecognized = true;
+    /* In general we want to validate VM arguments.
+     * But we must disable it for the case there is a native library and we saw a --jvm argument,
+     * as the VM arguments are then JVM VM arguments and not SVM VM arguments.
+     * In that case we validate them after the execve() when running in --jvm mode. */
+    vmInitArgs.ignoreUnrecognized = found_switch_to_jvm_flag && !jvmMode;
 
     /* load VM library - after parsing arguments s.t. NMT
      * tracking variable is already set */
@@ -688,6 +705,11 @@ static int jvm_main_thread(int argc, char *argv[], std::string exeDir, bool jvmM
 
     int res = createVM(&vm, (void**)&env, &vmInitArgs);
     if (res != JNI_OK) {
+        if (svm_error != NULL) {
+            std::cerr << svm_error << std::endl;
+            free((void*) svm_error);
+            svm_error = NULL;
+        }
         std::cerr << "Creation of the VM failed." << std::endl;
         return -1;
     }

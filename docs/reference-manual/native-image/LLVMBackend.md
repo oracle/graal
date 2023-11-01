@@ -22,7 +22,6 @@ To enable the LLVM backend, pass the `-H:CompilerBackend=llvm` option to the `na
 
 ## Code Generation Options
 
-* `-H:+SpawnIsolates`: enables isolates. (These are disabled by default when using the LLVM backend because they incur a performance penalty.)
 * `-H:+BitcodeOptimizations`: enables aggressive optimizations at the LLVM bitcode level. This is experimental and may cause bugs.
 
 ## Debugging Options

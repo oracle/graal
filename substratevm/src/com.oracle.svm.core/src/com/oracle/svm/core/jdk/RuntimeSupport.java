@@ -28,13 +28,14 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.impl.VMRuntimeSupport;
 
+import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.HeapSizeVerifier;
@@ -92,7 +93,7 @@ public final class RuntimeSupport implements VMRuntimeSupport {
     public void initialize() {
         boolean shouldInitialize = initializationState.compareAndSet(InitializationState.Uninitialized, InitializationState.InProgress);
         if (shouldInitialize) {
-            // GR-35186: we should verify that none of the early parsed isolate arguments changed.
+            IsolateArgumentParser.singleton().verifyOptionValues();
             HeapSizeVerifier.verifyHeapOptions();
 
             executeHooks(startupHooks);

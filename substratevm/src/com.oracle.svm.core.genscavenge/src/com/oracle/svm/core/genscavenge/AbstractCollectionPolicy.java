@@ -26,8 +26,8 @@ package com.oracle.svm.core.genscavenge;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.nodes.PauseNode;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.nodes.PauseNode;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -49,7 +49,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     static int getMaxSurvivorSpaces(Integer userValue) {
-        assert userValue == null || userValue >= 0;
+        assert userValue == null || userValue >= 0 : userValue;
         return (userValue != null) ? userValue : AbstractCollectionPolicy.MAX_TENURING_THRESHOLD;
     }
 

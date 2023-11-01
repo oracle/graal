@@ -25,7 +25,7 @@
 
 package com.oracle.svm.core.sampler;
 
-import org.graalvm.compiler.nodes.PauseNode;
+import jdk.graal.compiler.nodes.PauseNode;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;

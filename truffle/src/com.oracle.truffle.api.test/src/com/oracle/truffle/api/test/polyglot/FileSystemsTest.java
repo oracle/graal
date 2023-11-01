@@ -276,7 +276,7 @@ public class FileSystemsTest {
         cfgs.put(MEMORY_FILE_SYSTEM, new Configuration(MEMORY_FILE_SYSTEM, ctx, memDir, fileSystem, false, true, true, true));
 
         // Memory with language home
-        fileSystem = FileSystem.allowLanguageHomeAccess(new MemoryFileSystem());
+        fileSystem = FileSystem.allowInternalResourceAccess(new MemoryFileSystem());
         memDir = mkdirs(fileSystem.toAbsolutePath(fileSystem.parsePath("work")), fileSystem);
         fileSystem.setCurrentWorkingDirectory(memDir);
         createContent(memDir, fileSystem);
@@ -286,7 +286,7 @@ public class FileSystemsTest {
 
         if (TruffleTestAssumptions.isNoClassLoaderEncapsulation()) { // setCwd not supported
             // Memory with language home - in language home
-            fileSystem = FileSystem.allowLanguageHomeAccess(new MemoryFileSystem());
+            fileSystem = FileSystem.allowInternalResourceAccess(new MemoryFileSystem());
             memDir = mkdirs(fileSystem.toAbsolutePath(fileSystem.parsePath("work")), fileSystem);
             fileSystem.setCurrentWorkingDirectory(memDir);
             privateDir = createContent(memDir, fileSystem);

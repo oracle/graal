@@ -33,7 +33,7 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.pecoff.PECoffObjectFile;
-import org.graalvm.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

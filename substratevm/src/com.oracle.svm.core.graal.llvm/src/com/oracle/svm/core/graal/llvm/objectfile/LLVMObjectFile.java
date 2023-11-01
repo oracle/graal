@@ -41,11 +41,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.graalvm.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
@@ -183,7 +182,7 @@ public class LLVMObjectFile extends ObjectFile {
 
     @Override
     @SuppressWarnings("try")
-    public final void write(DebugContext context, Path outputFile, ForkJoinPool forkJoinPool) throws IOException {
+    public final void write(DebugContext context, Path outputFile) throws IOException {
         List<Element> sortedObjectFileElements = new ArrayList<>();
         bake(sortedObjectFileElements);
 
@@ -192,7 +191,7 @@ public class LLVMObjectFile extends ObjectFile {
 
         writeParts();
 
-        BatchExecutor batchExecutor = new BatchExecutor(bb, forkJoinPool);
+        BatchExecutor batchExecutor = new BatchExecutor(context, bb);
 
         compileBitcodeBatches(batchExecutor, context, numBatches);
 

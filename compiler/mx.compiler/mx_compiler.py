@@ -1,6 +1,4 @@
 #
-# ----------------------------------------------------------------------------------------------------
-#
 # Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
@@ -24,7 +22,6 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
-# ----------------------------------------------------------------------------------------------------
 
 from __future__ import print_function
 import os
@@ -50,8 +47,6 @@ import mx_unittest
 from mx_unittest import unittest, parse_split_args
 
 from mx_javamodules import as_java_module
-from mx_updategraalinopenjdk import updategraalinopenjdk
-from mx_renamegraalpackages import renamegraalpackages
 import mx_sdk_vm_impl
 
 import mx_benchmark
@@ -111,7 +106,7 @@ class JavaLangRuntimeVersion(mx.Comparable):
         cached = JavaLangRuntimeVersion._cmp_cache.get(key, None)
         if cached is not None:
             return cached
-        source_path = join(_suite.dir, 'src', 'jdk.internal.vm.compiler', 'src', 'org', 'graalvm', 'compiler',
+        source_path = join(_suite.dir, 'src', 'jdk.graal.compiler', 'src', 'jdk', 'graal', 'compiler',
                            'hotspot',
                            'JVMCIVersionCompare.java')
         out = mx.OutputCapture()
@@ -160,7 +155,7 @@ def _check_jvmci_version(jdk):
 
 @mx.command(_suite.name, 'jvmci-version-check')
 def _run_jvmci_version_check(args=None, jdk=jdk, **kwargs):
-    source_path = join(_suite.dir, 'src', 'jdk.internal.vm.compiler', 'src', 'org', 'graalvm', 'compiler', 'hotspot',
+    source_path = join(_suite.dir, 'src', 'jdk.graal.compiler', 'src', 'jdk', 'graal', 'compiler', 'hotspot',
                        'JVMCIVersionCheck.java')
     return mx.run([jdk.java, '-Xlog:disable', source_path] + (args or []), **kwargs)
 
@@ -169,6 +164,7 @@ if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore':
     _check_jvmci_version(jdk)
 
 mx_gate.add_jacoco_includes(['org.graalvm.*'])
+mx_gate.add_jacoco_includes(['jdk.graal.compiler.*'])
 mx_gate.add_jacoco_excludes(['com.oracle.truffle'])
 mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution', '@ExcludeFromJacocoInstrumentation'])
 
@@ -231,7 +227,7 @@ def _ctw_system_properties_suffix():
     out.data = 'System properties for CTW:\n\n'
     args = ['-XX:+EnableJVMCI'] + _ctw_jvmci_export_args()
     cp = _remove_redundant_entries(mx.classpath('GRAAL_TEST', jdk=jdk))
-    args.extend(['-cp', cp, '-DCompileTheWorld.Help=true', 'org.graalvm.compiler.hotspot.test.CompileTheWorld'])
+    args.extend(['-cp', cp, '-DCompileTheWorld.Help=true', 'jdk.graal.compiler.hotspot.test.CompileTheWorld'])
     run_java(args, out=out, addDefaultArgs=False)
     return out.data
 
@@ -284,7 +280,7 @@ def ctw(args, extraVMarguments=None):
             vmargs.append('-DCompileTheWorld.Classpath=' + cp)
         cp = _remove_redundant_entries(mx.classpath('GRAAL_TEST', jdk=jdk))
         vmargs.extend(_ctw_jvmci_export_args() + ['-cp', cp])
-        mainClassAndArgs = ['org.graalvm.compiler.hotspot.test.CompileTheWorld']
+        mainClassAndArgs = ['jdk.graal.compiler.hotspot.test.CompileTheWorld']
 
     run_vm(vmargs + mainClassAndArgs)
 
@@ -413,7 +409,7 @@ def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
 def _gate_renaissance(name, iterations, extraVMarguments=None):
     if iterations == -1:
         return
-    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments)
+    vmargs = ['-Xms2g', '-XX:-UseCompressedOops'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments)
     args = ['-r', str(iterations)]
     return _run_benchmark('renaissance', name, args, vmargs)
 
@@ -471,7 +467,7 @@ def _check_forbidden_imports(projects, package_substrings, exceptions=None):
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None, extraUnitTestArguments=None):
     with Task('CheckForbiddenImports:Compiler', tasks, tags=['style']) as t:
         # Ensure HotSpot-independent compiler classes do not import HotSpot-specific classes
-        if t: _check_forbidden_imports([mx.project('jdk.internal.vm.compiler')], ('hotspot', 'libgraal'))
+        if t: _check_forbidden_imports([mx.project('jdk.graal.compiler')], ('hotspot', 'libgraal'))
 
     with Task('JDK_java_base_test', tasks, tags=['javabasetest'], report=True) as t:
         if t: java_base_unittest(_remove_empty_entries(extraVMarguments) + [])
@@ -570,14 +566,14 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
         if t:
             for name in dacapo_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
-                for i in range(default_iterations * scala_daily_scaling_factor):
+                for _ in range(default_iterations * scala_daily_scaling_factor):
                     _gate_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     with mx_gate.Task('Dacapo benchmark weekly workload', tasks, tags=['dacapo_weekly'], report=task_report_component) as t:
         if t:
             for name in dacapo_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
-                for i in range(default_iterations * scala_weekly_scaling_factor):
+                for _ in range(default_iterations * scala_weekly_scaling_factor):
                     _gate_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     # ensure we can also run on C2
@@ -607,31 +603,41 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
         if t:
             for name in scala_dacapo_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(scala_dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
-                for i in range(default_iterations * scala_dacapo_daily_scaling_factor):
+                for _ in range(default_iterations * scala_dacapo_daily_scaling_factor):
                     _gate_scala_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     with mx_gate.Task('ScalaDacapo benchmark weekly workload', tasks, tags=['scala_dacapo_weekly'], report=task_report_component) as t:
         if t:
             for name in scala_dacapo_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(scala_dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
-                for i in range(default_iterations * scala_dacapo_weekly_scaling_factor):
+                for _ in range(default_iterations * scala_dacapo_weekly_scaling_factor):
                     _gate_scala_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     # run Renaissance benchmarks #
     ###############################
     renaissance_suite = mx_java_benchmarks.RenaissanceBenchmarkSuite()
+    renaissance_gate_iterations = {
+        k: default_iterations for k, v in renaissance_suite.renaissanceIterations().items() if v > 0
+    }
+
+    for name in renaissance_suite.benchmarkList(bmSuiteArgs):
+        iterations = renaissance_gate_iterations.get(name, -1)
+        with Task(prefix + 'Renaissance:' + name, tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
+            if t:
+                _gate_renaissance(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + enable_assertions)
+
     with mx_gate.Task('Renaissance benchmark daily workload', tasks, tags=['renaissance_daily'], report=task_report_component) as t:
         if t:
             for name in renaissance_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(renaissance_suite.renaissanceIterations().get(name, -1) * default_iterations_reduction)
-                for i in range(default_iterations):
+                for _ in range(default_iterations):
                     _gate_renaissance(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + enable_assertions)
 
     with mx_gate.Task('Renaissance benchmark weekly workload', tasks, tags=['renaissance_weekly'], report=task_report_component) as t:
         if t:
             for name in renaissance_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(renaissance_suite.renaissanceIterations().get(name, -1) * default_iterations_reduction)
-                for i in range(default_iterations * daily_weekly_jobs_ratio):
+                for _ in range(default_iterations * daily_weekly_jobs_ratio):
                     _gate_renaissance(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + enable_assertions)
 
     # run benchmark with non default setup #
@@ -777,7 +783,7 @@ def _unittest_config_participant(config):
         # for the junit harness which uses reflection to find @Test methods. In addition, the
         # tests widely use JVMCI classes so JVMCI needs to also export all its packages to
         # ALL-UNNAMED.
-        mainClassArgs.extend(['-JUnitOpenPackages', 'jdk.internal.vm.ci/*=org.graalvm.truffle.runtime,jdk.internal.vm.compiler,ALL-UNNAMED'])
+        mainClassArgs.extend(['-JUnitOpenPackages', 'jdk.internal.vm.ci/*=org.graalvm.truffle.runtime,jdk.graal.compiler,ALL-UNNAMED'])
 
         limited_modules = None
         for arg in vmArgs:
@@ -1045,7 +1051,7 @@ def collate_metrics(args):
         if not filename.endswith('.csv'):
             mx.abort('Cannot collate metrics from non-CSV files: ' + filename)
 
-        # Keep in sync with org.graalvm.compiler.debug.GlobalMetrics.print(OptionValues)
+        # Keep in sync with jdk.graal.compiler.debug.GlobalMetrics.print(OptionValues)
         abs_filename = join(os.getcwd(), filename)
         directory = dirname(abs_filename)
         rootname = basename(filename)[0:-len('.csv')]
@@ -1273,7 +1279,7 @@ class GraalArchiveParticipant:
                 else:
                     version = None
                 provider = arcname[:-len('.class'):].replace('/', '.')
-                service = 'org.graalvm.compiler.options.OptionDescriptors'
+                service = 'jdk.graal.compiler.options.OptionDescriptors'
                 add_serviceprovider(service, provider, version)
         return False
 
@@ -1358,7 +1364,7 @@ def phaseplan_fuzz_jtt_tests(args, extraVMarguments=None, extraUnitTestArguments
             target_tests.append(arg)
             args.remove(arg)
     if not target_tests:
-        target_tests = ['org.graalvm.compiler.jtt.']
+        target_tests = ['jdk.graal.compiler.jtt.']
 
     for test in target_tests:
         UnitTestRun("Fuzz phase plan for tests matching substring " + test, [], tags=GraalTags.unittest + GraalTags.phaseplan_fuzz_jtt_tests).\
@@ -1518,8 +1524,6 @@ mx.update_commands(_suite, {
     'collate-metrics': [collate_metrics, 'filename'],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'java_base_unittest' : [java_base_unittest, 'Runs unittest on JDK java.base "only" module(s)'],
-    'updategraalinopenjdk' : [updategraalinopenjdk, '[options]'],
-    'renamegraalpackages' : [renamegraalpackages, '[options]'],
     'javadoc': [javadoc, ''],
     'makegraaljdk': [makegraaljdk_cli, '[options]'],
     'graaljdk-home': [print_graaljdk_home, '[options]'],

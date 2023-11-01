@@ -41,9 +41,10 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.util.LogUtils;
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -52,13 +53,6 @@ import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.util.ReflectionUtil;
 
 public final class ImageClassLoader {
-
-    /*
-     * This cannot be a HostedOption because the option parsing already relies on the list of loaded
-     * classes.
-     */
-    private static final int CLASS_LOADING_MAX_SCALING = 8;
-    private static final int CLASS_LOADING_TIMEOUT_IN_MINUTES = 10;
 
     static {
         /*
@@ -87,20 +81,18 @@ public final class ImageClassLoader {
     }
 
     public void loadAllClasses() throws InterruptedException {
-        ForkJoinPool executor = new ForkJoinPool(Math.min(Runtime.getRuntime().availableProcessors(), CLASS_LOADING_MAX_SCALING)) {
-            @Override
-            public void execute(Runnable task) {
-                super.execute(() -> {
-                    task.run();
-                    watchdog.recordActivity();
-                });
-            }
-        };
+        ForkJoinPool executor = ForkJoinPool.commonPool();
         try {
             classLoaderSupport.loadAllClasses(executor, this);
         } finally {
-            executor.shutdown();
-            executor.awaitTermination(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
+            boolean isQuiescence = false;
+            while (!isQuiescence) {
+                isQuiescence = executor.awaitQuiescence(10, TimeUnit.MINUTES);
+                if (!isQuiescence) {
+                    LogUtils.warning("Class loading is slow. Waiting for tasks to complete...");
+                    /* DeadlockWatchdog should fail the build eventually. */
+                }
+            }
         }
         classLoaderSupport.reportBuilderClassesInApplication();
     }

@@ -74,7 +74,7 @@ public class ConstantContextSensitiveObject extends ContextSensitiveAnalysisObje
 
     public ConstantContextSensitiveObject(PointsToAnalysis bb, AnalysisType type, JavaConstant constant) {
         super(bb.getUniverse(), type, AnalysisObjectKind.ConstantContextSensitive);
-        assert bb.trackConcreteAnalysisObjects(type);
+        assert bb.trackConcreteAnalysisObjects(type) : type;
         this.constant = constant;
         bb.profileConstantObject(type);
     }
@@ -97,7 +97,7 @@ public class ConstantContextSensitiveObject extends ContextSensitiveAnalysisObje
     /** The object has been in contact with an context insensitive object in an union operation. */
     @Override
     public void noteMerge(PointsToAnalysis bb) {
-        assert bb.analysisPolicy().isMergingEnabled();
+        assert bb.analysisPolicy().isMergingEnabled() : "policy mismatch";
 
         if (!merged) {
             if (!isEmptyObjectArrayConstant(bb)) {

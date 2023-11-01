@@ -1,4 +1,3 @@
-# ----------------------------------------------------------------------------------------------------
 #
 # Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -23,7 +22,7 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
-# ----------------------------------------------------------------------------------------------------
+
 import json
 import shutil
 
@@ -88,8 +87,8 @@ def _unittest_config_participant(config):
 mx_unittest.add_config_participant(_unittest_config_participant)
 
 def _get_CountUppercase_vmargs():
-    cp = mx.project("jdk.internal.vm.compiler.test").classpath_repr()
-    return ['-cp', cp, 'org.graalvm.compiler.test.CountUppercase']
+    cp = mx.project("jdk.graal.compiler.test").classpath_repr()
+    return ['-cp', cp, 'jdk.graal.compiler.test.CountUppercase']
 
 def _check_compiler_log(compiler_log_file, expectations, extra_check=None, extra_log_files=None):
     """
@@ -373,7 +372,7 @@ def _test_libgraal_CompilationTimeout_JIT():
         expectations = ['detected long running compilation'] + (['a stuck compilation'] if vm_can_exit else [])
         _check_compiler_log(compiler_log_file, expectations)
         if vm_can_exit:
-            # org.graalvm.compiler.core.CompilationWatchDog.EventHandler.STUCK_COMPILATION_EXIT_CODE
+            # jdk.graal.compiler.core.CompilationWatchDog.EventHandler.STUCK_COMPILATION_EXIT_CODE
             if exit_code != 84:
                 mx.abort(f'expected process to exit with 84 (indicating a stuck compilation) instead of {exit_code}')
         elif exit_code != 0:
@@ -419,7 +418,7 @@ def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
         expectations = ['detected long running compilation'] + (['a stuck compilation'] if vm_can_exit else [])
         _check_compiler_log(compiler_log_file, expectations, extra_log_files=[truffle_log_file])
         if vm_can_exit:
-            # org.graalvm.compiler.core.CompilationWatchDog.EventHandler.STUCK_COMPILATION_EXIT_CODE
+            # jdk.graal.compiler.core.CompilationWatchDog.EventHandler.STUCK_COMPILATION_EXIT_CODE
             if exit_code != 84:
                 mx.abort(f'expected process to exit with 84 (indicating a stuck compilation) instead of {exit_code}')
         elif exit_code != 0:
@@ -680,9 +679,6 @@ def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id, langu
         ] + mx_sdk_vm_impl.svm_experimental_options([
             '-H:ClassInitialization=:build_time',
             '-H:+EnforceMaxRuntimeCompileMethods',
-            '-H:-InlineBeforeAnalysis',
-            '-H:-ParseOnceJIT', #GR-47163
-            '-H:-VerifyDeoptimizationEntryPoints', #GR-47163
             '-cp',
             cp,
             '-H:-FoldSecurityManagerGetter',

@@ -5,9 +5,6 @@
 
   local javadoc_publisher = {
     name: 'graal-publish-javadoc-' + utils.prefixed_jdk(self.jdk_version),
-    environment+: {
-      JVMCI_VERSION_CHECK: 'ignore',
-    },
     run+: [
       ["cd", "./sdk"],
       ["mx", "build"],
@@ -23,8 +20,8 @@
       ["zip", "-r", "javadoc.zip", "javadoc"],
       ["cd", "../compiler"],
       ["mx", "build"],
-      ["mx", "javadoc", "--projects", "jdk.internal.vm.compiler", "--packages", "org.graalvm.graphio"],
-      ["cd", "src/jdk.internal.vm.compiler/"],
+      ["mx", "javadoc", "--projects", "jdk.graal.compiler", "--packages", "jdk.graal.compiler.graphio"],
+      ["cd", "src/jdk.graal.compiler/"],
       ["zip", "-r", "../../graphio-javadoc.zip", "javadoc"],
       ["cd", "../../.."],
       ["set-export", "GRAAL_REPO", ["pwd"]],
@@ -62,8 +59,8 @@
   },
 
   local all_builds = [
-    common.post_merge + linux_amd64 + common.labsjdk17 + javadoc_publisher,
+    common.post_merge + linux_amd64 + common.labsjdk21 + javadoc_publisher,
   ],
   // adds a "defined_in" field to all builds mentioning the location of this current file
-  builds:: [{ defined_in: std.thisFile } + b for b in all_builds]
+  builds:: utils.add_defined_in(all_builds, std.thisFile),
 }

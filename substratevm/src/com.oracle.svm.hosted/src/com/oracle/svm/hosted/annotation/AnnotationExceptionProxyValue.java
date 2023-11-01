@@ -28,7 +28,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 
 import jdk.vm.ci.meta.JavaConstant;
 import sun.reflect.annotation.ExceptionProxy;

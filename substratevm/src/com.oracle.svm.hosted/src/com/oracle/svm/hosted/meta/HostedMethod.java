@@ -39,11 +39,11 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.JavaMethodContext;
-import org.graalvm.compiler.java.StableMethodNameFormatter;
-import org.graalvm.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.JavaMethodContext;
+import jdk.graal.compiler.java.StableMethodNameFormatter;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

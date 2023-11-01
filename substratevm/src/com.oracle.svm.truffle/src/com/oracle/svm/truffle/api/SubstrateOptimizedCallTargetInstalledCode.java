@@ -26,8 +26,8 @@ package com.oracle.svm.truffle.api;
 
 import java.lang.ref.WeakReference;
 
-import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
+import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;

@@ -33,8 +33,8 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.word.BarrieredAccess;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.word.BarrieredAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -51,9 +51,9 @@ import com.oracle.svm.core.jfr.events.JavaMonitorInflateEvent;
 import com.oracle.svm.core.monitor.JavaMonitorQueuedSynchronizer.JavaMonitorConditionObject;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperationControl;
-import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
@@ -72,7 +72,7 @@ import jdk.internal.misc.Unsafe;
  * monitor slot because it would increase the size of every array and it is not possible to
  * distinguish between arrays with different header sizes. See
  * {@code UniverseBuilder.getImmutableTypes()} for details.
- * 
+ *
  * Synchronization on {@link String}, arrays, and other types not having a monitor slot fall back to
  * a monitor stored in {@link #additionalMonitors}. Synchronization of such objects is very slow and
  * not scaling well with more threads because the {@link #additionalMonitorsLock additional monitor
@@ -230,8 +230,31 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, access = Access.UNRESTRICTED)
     @Override
     public void monitorEnter(Object obj, MonitorInflationCause cause) {
-        JavaMonitor lockObject = getOrCreateMonitor(obj, cause);
-        lockObject.monitorEnter(obj);
+        JavaMonitor monitor;
+        int monitorOffset = getMonitorOffset(obj);
+        if (monitorOffset != 0) {
+            /*
+             * Optimized path takes advantage of the knowledge that, when a new monitor object is
+             * created, it is not shared with other threads, so we can set its state without CAS. It
+             * also has acquisitions == 1 by construction, so we don't need to set that too.
+             */
+            long current = JavaMonitor.getCurrentThreadIdentity();
+            monitor = (JavaMonitor) BarrieredAccess.readObject(obj, monitorOffset);
+            if (monitor == null) {
+                long startTicks = JfrTicks.elapsedTicks();
+                JavaMonitor newMonitor = newMonitorLock();
+                newMonitor.setState(current);
+                monitor = (JavaMonitor) UNSAFE.compareAndExchangeObject(obj, monitorOffset, null, newMonitor);
+                if (monitor == null) { // successful
+                    JavaMonitorInflateEvent.emit(obj, startTicks, MonitorInflationCause.MONITOR_ENTER);
+                    newMonitor.latestJfrTid = current;
+                    return;
+                }
+            }
+        } else {
+            monitor = getOrCreateMonitor(obj, cause);
+        }
+        monitor.monitorEnter(obj);
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
@@ -271,8 +294,18 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, access = Access.UNRESTRICTED)
     @Override
     public void monitorExit(Object obj, MonitorInflationCause cause) {
-        JavaMonitor lockObject = getOrCreateMonitor(obj, cause);
-        lockObject.monitorExit();
+        JavaMonitor monitor;
+        int monitorOffset = getMonitorOffset(obj);
+        if (monitorOffset != 0) {
+            /*
+             * Optimized path: we know that a monitor object exists, due to structured locking, so
+             * one does not need to be created/inflated.
+             */
+            monitor = (JavaMonitor) BarrieredAccess.readObject(obj, monitorOffset);
+        } else {
+            monitor = getOrCreateMonitor(obj, cause);
+        }
+        monitor.monitorExit();
     }
 
     @Override
@@ -325,8 +358,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
          * clear the virtual thread interrupt.
          */
         long compensation = -1;
-        boolean pinned = VirtualThreads.isSupported() &&
-                        VirtualThreads.singleton().isVirtual(Thread.currentThread()) && VirtualThreads.singleton().isCurrentPinned();
+        boolean pinned = JavaThreads.isCurrentThreadVirtualAndPinned();
         if (pinned) {
             compensation = Target_jdk_internal_misc_Blocker.begin();
         }

@@ -29,7 +29,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.security.ProtectionDomain;
 
-import org.graalvm.compiler.nodes.extended.MembarNode;
+import jdk.graal.compiler.nodes.extended.MembarNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.impl.UnsafeMemorySupport;

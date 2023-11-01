@@ -37,19 +37,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.function.Consumer;
 import java.util.stream.StreamSupport;
-
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -82,8 +73,14 @@ import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.util.ClassUtil;
-import com.oracle.svm.util.ImageGeneratorThreadMarker;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.Indent;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeList;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -109,9 +106,9 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     @SuppressWarnings("this-escape")
     public PointsToAnalysis(OptionValues options, AnalysisUniverse universe, HostVM hostVM, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
-                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, ForkJoinPool executorService, Runnable heartbeatCallback,
-                    UnsupportedFeatures unsupportedFeatures, TimerCollection timerCollection, boolean strengthenGraalGraphs) {
-        super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, executorService, heartbeatCallback, unsupportedFeatures, timerCollection);
+                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, UnsupportedFeatures unsupportedFeatures, DebugContext debugContext, TimerCollection timerCollection,
+                    boolean strengthenGraalGraphs) {
+        super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, unsupportedFeatures, debugContext, timerCollection);
         this.typeFlowTimer = timerCollection.createTimer("(typeflow)");
 
         this.strengthenGraalGraphs = strengthenGraalGraphs;
@@ -256,11 +253,11 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     }
 
     public AnalysisType getGraalNodeType() {
-        return metaAccess.lookupJavaType(org.graalvm.compiler.graph.Node.class);
+        return metaAccess.lookupJavaType(Node.class);
     }
 
     public AnalysisType getGraalNodeListType() {
-        return metaAccess.lookupJavaType(org.graalvm.compiler.graph.NodeList.class);
+        return metaAccess.lookupJavaType(NodeList.class);
     }
 
     public TypeFlow<?> getAllInstantiatedTypeFlow() {
@@ -328,7 +325,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
             };
             triggerStaticMethodFlow.accept(originalPTAMethod);
             for (MultiMethod.MultiMethodKey key : otherRoots) {
-                assert key != MultiMethod.ORIGINAL_METHOD;
+                assert key != MultiMethod.ORIGINAL_METHOD : key;
                 PointsToAnalysisMethod ptaMethod = assertPointsToAnalysisMethod(originalPTAMethod.getMultiMethod(key));
                 triggerStaticMethodFlow.accept(ptaMethod);
             }
@@ -515,7 +512,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         try (Indent indent = debug.logAndIndent("starting analysis in BigBang.finish")) {
             universe.setAnalysisDataValid(false);
             boolean didSomeWork = doTypeflow();
-            assert executor.getPostedOperations() == 0;
+            assert executor.getPostedOperations() == 0 : executor.getPostedOperations();
             universe.setAnalysisDataValid(true);
             return didSomeWork;
         }
@@ -535,21 +532,11 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         return didSomeWork;
     }
 
-    @SuppressFBWarnings(value = "NP_NONNULL_PARAM_VIOLATION", justification = "ForkJoinPool does support null for the exception handler.")
-    public static ForkJoinPool createExecutor(DebugContext debug, int numberOfThreads) {
-        ForkJoinPool.ForkJoinWorkerThreadFactory factory = debugThreadFactory(debug.areScopesEnabled() || debug.areMetricsEnabled() ? debug : null);
-        return new ForkJoinPool(numberOfThreads, factory, null, false);
-    }
-
-    private static ForkJoinPool.ForkJoinWorkerThreadFactory debugThreadFactory(DebugContext debug) {
-        return pool -> new SubstrateWorkerThread(pool, debug);
-    }
-
     @Override
     public void onTypeInstantiated(AnalysisType type, AnalysisType.UsageKind usageKind) {
         /* Register the type as instantiated with all its super types. */
 
-        assert type.isAllocated() || type.isInHeap();
+        assert type.isAllocated() || type.isInHeap() : type;
         AnalysisError.guarantee(type.isArray() || (type.isInstanceClass() && !type.isAbstract()));
         universe.hostVM().checkForbidden(type, usageKind);
 
@@ -731,23 +718,6 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
             System.out.format("%5d %5d %5d  |", numParsedGraphs.get(), StreamSupport.stream(getAllInstantiatedTypes().spliterator(), false).count(), universe.getNextTypeId());
             super.print();
             System.out.println();
-        }
-    }
-
-    private static class SubstrateWorkerThread extends ForkJoinWorkerThread
-                    implements ImageGeneratorThreadMarker {
-        private final DebugContext debug;
-
-        SubstrateWorkerThread(ForkJoinPool pool, DebugContext debug) {
-            super(pool);
-            this.debug = debug;
-        }
-
-        @Override
-        protected void onTermination(Throwable exception) {
-            if (debug != null) {
-                debug.closeDumpHandlers(true);
-            }
         }
     }
 }

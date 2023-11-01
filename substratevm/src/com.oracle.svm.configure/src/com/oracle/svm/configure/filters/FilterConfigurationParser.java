@@ -30,7 +30,7 @@ import java.util.function.BiConsumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.util.json.JSONParserException;
+import jdk.graal.compiler.util.json.JSONParserException;
 
 import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.ConfigurationParser;

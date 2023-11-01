@@ -52,10 +52,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionStability;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionStability;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
@@ -140,7 +140,7 @@ public class ProgressReporter {
         PARSING("Parsing methods", true, true),
         INLINING("Inlining methods", true, false),
         COMPILING("Compiling methods", true, true),
-        LAYOUTING("Layouting methods", true, true),
+        LAYING_OUT("Laying out methods", true, true),
         CREATING("Creating image", true, true);
 
         private static final int NUM_STAGES = values().length;
@@ -392,7 +392,7 @@ public class ProgressReporter {
             maxHeapSuffix = "set via '%s'".formatted(xmxValueOrNull);
         }
 
-        int maxNumberOfThreads = NativeImageOptions.NumberOfThreads.getValue();
+        int maxNumberOfThreads = NativeImageOptions.getActualNumberOfThreads();
         recordJsonMetric(ResourceUsageKey.PARALLELISM, maxNumberOfThreads);
         int availableProcessors = runtime.availableProcessors();
         recordJsonMetric(ResourceUsageKey.CPU_CORES_TOTAL, availableProcessors);
@@ -511,7 +511,7 @@ public class ProgressReporter {
     }
 
     public ReporterClosable printLayouting() {
-        return print(TimerCollection.Registry.LAYOUT, BuildStage.LAYOUTING);
+        return print(TimerCollection.Registry.LAYOUT, BuildStage.LAYING_OUT);
     }
 
     // TODO: merge printCreationStart and printCreationEnd at some point (GR-35721).

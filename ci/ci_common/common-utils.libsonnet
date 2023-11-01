@@ -26,6 +26,11 @@
   else
     build,
 
+  # Adds a 'defined_in' key to all jobs in the list.
+  # Due to the nature of std.thisFile, the file name has to be explicitly passed.
+  # Usage: add_defined_in(builds, std.thisFile)
+  add_defined_in(builds, file):: [{ defined_in: file } + b for b in builds],
+
   # Returns true if `str` contains `needle` as a substring.
   contains(str, needle):: std.findSubstr(needle, str) != [],
 

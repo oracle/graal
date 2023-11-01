@@ -36,6 +36,8 @@ import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import static com.oracle.truffle.tools.dap.test.DAPTester.getFilePath;
+
 @Ignore("GR-43473")
 public final class SimpleLanguageDAPTest {
 
@@ -1194,18 +1196,6 @@ public final class SimpleLanguageDAPTest {
         file.deleteOnExit();
         Files.writeString(file.toPath(), content, StandardOpenOption.TRUNCATE_EXISTING);
         return file;
-    }
-
-    private static String getFilePath(File file) {
-        String path;
-        try {
-            path = file.getCanonicalPath();
-        } catch (IOException ex) {
-            path = file.getAbsolutePath();
-        }
-        // We need to escape backlash for correct JSON:
-        path = path.replace("\\", "\\\\");
-        return path;
     }
 
     private static String replaceNewLines(String nl) {

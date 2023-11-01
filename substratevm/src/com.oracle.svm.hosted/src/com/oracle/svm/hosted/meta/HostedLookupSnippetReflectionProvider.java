@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import org.graalvm.compiler.word.WordTypes;
+import jdk.graal.compiler.word.WordTypes;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
 

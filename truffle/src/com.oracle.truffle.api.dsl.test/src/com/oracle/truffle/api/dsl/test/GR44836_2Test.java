@@ -52,6 +52,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
+@SuppressWarnings("truffle-interpreted-performance")
 public class GR44836_2Test extends AbstractPolyglotTest {
 
     @Test

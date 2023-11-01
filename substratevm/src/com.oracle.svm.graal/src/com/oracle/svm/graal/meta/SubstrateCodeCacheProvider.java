@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.graal.meta;
 
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
 
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.code.SubstrateCompiledCode;

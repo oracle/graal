@@ -26,7 +26,7 @@ package com.oracle.svm.core.util;
 
 import java.nio.ByteBuffer;
 
-import org.graalvm.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.ComparableWord;
