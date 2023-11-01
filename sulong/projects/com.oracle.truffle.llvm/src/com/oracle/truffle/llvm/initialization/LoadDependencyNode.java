@@ -128,7 +128,7 @@ public final class LoadDependencyNode extends LLVMNode {
         }
     }
 
-    public String getLibraryName(){
+    public String getLibraryName() {
         return libraryName;
     }
 }
