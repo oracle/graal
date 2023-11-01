@@ -58,13 +58,13 @@ public final class ImageHeapInstance extends ImageHeapConstant {
     public static class InstanceData extends ConstantData {
 
         /**
-         * The field values array. It is only set when the constant is actually used and the hosted
-         * values of its fields/elements may be read.
-         *
-         * Each value is either an {@link AnalysisFuture} of {@link JavaConstant} or its result, a
-         * {@link JavaConstant}, indexed by {@link AnalysisField#getPosition()}.
+         * Stores the field values, indexed by {@link AnalysisField#getPosition()}. For normal
+         * constants it is set via {@link #setFieldValues(Object[])} only when the constant is
+         * actually used and the hosted values of its fields may be read. For simulated constants it
+         * is set on creation.
          * <p>
-         * Evaluating the {@link AnalysisFuture} runs
+         * Each value is either an {@link AnalysisFuture} of {@link JavaConstant} or its result, a
+         * {@link JavaConstant}. Evaluating the {@link AnalysisFuture} runs
          * {@link ImageHeapScanner#createFieldValue(AnalysisField, ImageHeapInstance, ValueSupplier, ObjectScanner.ScanReason)}
          * which adds the result to the image heap.
          */
@@ -78,7 +78,6 @@ public final class ImageHeapInstance extends ImageHeapConstant {
             super(type, object, identityHashCode);
             this.fieldValues = fieldValues;
         }
-
     }
 
     ImageHeapInstance(ResolvedJavaType type, JavaConstant object) {
@@ -112,12 +111,24 @@ public final class ImageHeapInstance extends ImageHeapConstant {
     }
 
     /**
+     * {@link InstanceData#fieldValues} are only set once, in {@link #setFieldValues(Object[])} and
+     * shouldn't be accessed before set, i.e., read access is guarded by
+     * {@link #isReaderInstalled()} which ensures that the future setting the field values was
+     * executed, therefore we can read the field directly.
+     */
+    private Object[] getFieldValues() {
+        AnalysisError.guarantee(isReaderInstalled());
+        Object[] fieldValues = getConstantData().fieldValues;
+        AnalysisError.guarantee(fieldValues != null);
+        return fieldValues;
+    }
+
+    /**
      * Record the task computing the field value. It will be retrieved and executed when the field
      * is marked as read.
      */
     void setFieldTask(AnalysisField field, AnalysisFuture<JavaConstant> task) {
-        AnalysisError.guarantee(isReaderInstalled());
-        arrayHandle.setVolatile(valuesHandle.get(constantData), field.getPosition(), task);
+        arrayHandle.setVolatile(getFieldValues(), field.getPosition(), task);
     }
 
     /**
@@ -126,8 +137,7 @@ public final class ImageHeapInstance extends ImageHeapConstant {
      * and replaced.
      */
     public void setFieldValue(AnalysisField field, JavaConstant value) {
-        AnalysisError.guarantee(isReaderInstalled());
-        arrayHandle.setVolatile(valuesHandle.get(constantData), field.getPosition(), value);
+        arrayHandle.setVolatile(getFieldValues(), field.getPosition(), value);
     }
 
     /**
@@ -136,8 +146,7 @@ public final class ImageHeapInstance extends ImageHeapConstant {
      * or the result of executing the task, i.e., a {@link JavaConstant}.
      */
     public Object getFieldValue(AnalysisField field) {
-        AnalysisError.guarantee(isReaderInstalled());
-        return arrayHandle.getVolatile(valuesHandle.get(constantData), field.getPosition());
+        return arrayHandle.getVolatile(getFieldValues(), field.getPosition());
     }
 
     /**
@@ -168,7 +177,7 @@ public final class ImageHeapInstance extends ImageHeapConstant {
             return null;
         }
 
-        Object[] fieldValues = getConstantData().fieldValues;
+        Object[] fieldValues = getFieldValues();
         Objects.requireNonNull(fieldValues, "Cannot clone an instance before the field values are set.");
         Object[] newFieldValues = Arrays.copyOf(fieldValues, fieldValues.length);
         /* The new constant is never backed by a hosted object, regardless of the input object. */

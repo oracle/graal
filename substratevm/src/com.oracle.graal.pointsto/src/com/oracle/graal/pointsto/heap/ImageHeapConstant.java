@@ -63,17 +63,17 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
          * Stores the hosted object, already processed by the object transformers. It is null for
          * instances of partially evaluated classes.
          */
-        protected final JavaConstant hostedObject;
+        private final JavaConstant hostedObject;
         /**
          * See {@link #createIdentityHashCode(JavaConstant)}.
          */
-        protected final int identityHashCode;
+        private final int identityHashCode;
         /**
          * A future that reads the hosted field or array elements values lazily only when the
          * receiver object is used. This way the shadow heap can contain hosted only objects, i.e.,
          * objects that cannot be reachable at run time but are processed ahead-of-time.
          */
-        protected AnalysisFuture<Void> hostedValuesReader;
+        AnalysisFuture<Void> hostedValuesReader;
         /**
          * A constant is marked as reachable only when it is decided that it can be used at run-time
          * and its field values/array elements need to be processed. The value of the field is
