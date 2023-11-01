@@ -49,7 +49,7 @@ public interface ReflectionRegistry {
         Arrays.stream(classes).forEach(clazz -> {
             if (clazz == null) {
                 throw new NullPointerException("Cannot register null value as class for reflection. " +
-                        "Please ensure that all values you register are not null.");
+                                "Please ensure that all values you register are not null.");
             }
             register(condition, false, clazz);
         });
