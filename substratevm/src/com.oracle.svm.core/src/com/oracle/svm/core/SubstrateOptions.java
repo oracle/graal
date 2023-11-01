@@ -57,6 +57,7 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.VMOperationControl;
+import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
@@ -112,7 +113,11 @@ public class SubstrateOptions {
 
     @APIOption(name = "static")//
     @Option(help = "Build statically linked executable (requires static libc and zlib)")//
-    public static final HostedOptionKey<Boolean> StaticExecutable = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> StaticExecutable = new HostedOptionKey<>(false, key -> {
+        if (!Platform.includedIn(Platform.LINUX.class)) {
+            throw new InterruptImageBuilding("Building static executable images is currently only supported on Linux. Remove the '--static' option or build on a Linux machine.");
+        }
+    });
 
     @APIOption(name = "libc")//
     @Option(help = "Selects the libc implementation to use. Available implementations: glibc, musl, bionic")//
