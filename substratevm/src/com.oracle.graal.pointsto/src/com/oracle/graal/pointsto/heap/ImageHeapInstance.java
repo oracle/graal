@@ -32,12 +32,12 @@ import java.util.Objects;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * This class implements an instance object snapshot. It stores the field values in an Object[],
@@ -70,29 +70,29 @@ public final class ImageHeapInstance extends ImageHeapConstant {
          */
         private Object[] fieldValues;
 
-        InstanceData(ResolvedJavaType type, JavaConstant object, int identityHashCode) {
+        InstanceData(AnalysisType type, JavaConstant object, int identityHashCode) {
             super(type, object, identityHashCode);
         }
 
-        InstanceData(ResolvedJavaType type, JavaConstant object, int identityHashCode, Object[] fieldValues) {
+        InstanceData(AnalysisType type, JavaConstant object, int identityHashCode, Object[] fieldValues) {
             super(type, object, identityHashCode);
             this.fieldValues = fieldValues;
         }
     }
 
-    ImageHeapInstance(ResolvedJavaType type, JavaConstant object) {
+    ImageHeapInstance(AnalysisType type, JavaConstant object) {
         super(new InstanceData(type, object, createIdentityHashCode(object)), false);
     }
 
-    public ImageHeapInstance(ResolvedJavaType type) {
+    public ImageHeapInstance(AnalysisType type) {
         this(type, null, type.getInstanceFields(true).length);
     }
 
-    private ImageHeapInstance(ResolvedJavaType type, JavaConstant object, int length) {
+    private ImageHeapInstance(AnalysisType type, JavaConstant object, int length) {
         this(type, object, createIdentityHashCode(object), new Object[length], false);
     }
 
-    private ImageHeapInstance(ResolvedJavaType type, JavaConstant object, int identityHashCode, Object[] fieldValues, boolean compressed) {
+    private ImageHeapInstance(AnalysisType type, JavaConstant object, int identityHashCode, Object[] fieldValues, boolean compressed) {
         super(new InstanceData(type, object, identityHashCode, fieldValues), compressed);
     }
 

@@ -486,7 +486,7 @@ public abstract class ImageHeapScanner {
 
         markTypeInstantiated(objectType, reason);
         if (imageHeapConstant instanceof ImageHeapObjectArray imageHeapArray) {
-            AnalysisType arrayType = (AnalysisType) imageHeapArray.getType(metaAccess);
+            AnalysisType arrayType = imageHeapArray.getType(metaAccess);
             for (int idx = 0; idx < imageHeapArray.getLength(); idx++) {
                 JavaConstant elementValue = imageHeapArray.readElementValue(idx);
                 ArrayScan arrayScanReason = new ArrayScan(arrayType, imageHeapArray, reason, idx);
@@ -607,7 +607,7 @@ public abstract class ImageHeapScanner {
     protected AnalysisFuture<JavaConstant> patchArrayElement(ImageHeapObjectArray arrayObject, int index, JavaConstant elementValue, ScanReason reason,
                     Consumer<ScanReason> onAnalysisModified) {
         AnalysisFuture<JavaConstant> task = new AnalysisFuture<>(() -> {
-            JavaConstant value = onArrayElementReachable(arrayObject, (AnalysisType) arrayObject.getType(metaAccess), elementValue, index, reason, onAnalysisModified);
+            JavaConstant value = onArrayElementReachable(arrayObject, arrayObject.getType(metaAccess), elementValue, index, reason, onAnalysisModified);
             arrayObject.setElement(index, value);
             return value;
         });

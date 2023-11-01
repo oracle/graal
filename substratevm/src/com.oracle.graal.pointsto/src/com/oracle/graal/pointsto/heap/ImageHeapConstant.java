@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -40,7 +41,6 @@ import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.VMConstant;
 
 /**
@@ -58,7 +58,7 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
         /**
          * Stores the type of this object.
          */
-        protected final ResolvedJavaType type;
+        protected final AnalysisType type;
         /**
          * Stores the hosted object, already processed by the object transformers. It is null for
          * instances of partially evaluated classes.
@@ -81,7 +81,7 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
          */
         @SuppressWarnings("unused") private volatile Object isReachable;
 
-        ConstantData(ResolvedJavaType type, JavaConstant object, int identityHashCode) {
+        ConstantData(AnalysisType type, JavaConstant object, int identityHashCode) {
             Objects.requireNonNull(type);
             this.type = type;
             this.hostedObject = object;
@@ -195,7 +195,7 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
     }
 
     @Override
-    public ResolvedJavaType getType(MetaAccessProvider provider) {
+    public AnalysisType getType(MetaAccessProvider provider) {
         return constantData.type;
     }
 

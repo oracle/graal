@@ -33,7 +33,6 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class ImageHeapPrimitiveArray extends ImageHeapArray {
 
@@ -46,7 +45,7 @@ public final class ImageHeapPrimitiveArray extends ImageHeapArray {
         private final Object array;
         private final int length;
 
-        public PrimitiveArrayData(ResolvedJavaType type, JavaConstant object, int identityHashCode, Object array, int length) {
+        public PrimitiveArrayData(AnalysisType type, JavaConstant object, int identityHashCode, Object array, int length) {
             super(type, object, identityHashCode);
             this.array = array;
             this.length = length;
@@ -67,7 +66,7 @@ public final class ImageHeapPrimitiveArray extends ImageHeapArray {
                         createIdentityHashCode(hostedObject), false, length);
     }
 
-    private ImageHeapPrimitiveArray(ResolvedJavaType type, JavaConstant hostedObject, Object array, int identityHashCode, boolean compressed, int length) {
+    private ImageHeapPrimitiveArray(AnalysisType type, JavaConstant hostedObject, Object array, int identityHashCode, boolean compressed, int length) {
         super(new PrimitiveArrayData(type, hostedObject, identityHashCode, array, length), compressed);
         assert type.isArray() && type.getComponentType().isPrimitive() : type;
     }

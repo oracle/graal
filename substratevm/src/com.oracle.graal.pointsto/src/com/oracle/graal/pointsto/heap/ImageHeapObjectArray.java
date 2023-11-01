@@ -37,7 +37,6 @@ import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class ImageHeapObjectArray extends ImageHeapArray {
 
@@ -60,31 +59,31 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
 
         final int length;
 
-        public ArrayData(ResolvedJavaType type, JavaConstant object, int identityHashCode, int length) {
+        public ArrayData(AnalysisType type, JavaConstant object, int identityHashCode, int length) {
             super(type, object, identityHashCode);
             this.length = length;
         }
 
-        public ArrayData(ResolvedJavaType type, JavaConstant object, int identityHashCode, Object[] arrayElementValues, int length) {
+        public ArrayData(AnalysisType type, JavaConstant object, int identityHashCode, Object[] arrayElementValues, int length) {
             super(type, object, identityHashCode);
             this.arrayElementValues = arrayElementValues;
             this.length = length;
         }
     }
 
-    ImageHeapObjectArray(ResolvedJavaType type, JavaConstant object, int length) {
+    ImageHeapObjectArray(AnalysisType type, JavaConstant object, int length) {
         super(new ArrayData(type, object, createIdentityHashCode(object), length), false);
     }
 
-    ImageHeapObjectArray(ResolvedJavaType type, int length) {
+    ImageHeapObjectArray(AnalysisType type, int length) {
         this(type, null, new Object[length], length);
     }
 
-    ImageHeapObjectArray(ResolvedJavaType type, JavaConstant object, Object[] arrayElementValues, int length) {
+    ImageHeapObjectArray(AnalysisType type, JavaConstant object, Object[] arrayElementValues, int length) {
         this(type, object, createIdentityHashCode(object), arrayElementValues, length, false);
     }
 
-    private ImageHeapObjectArray(ResolvedJavaType type, JavaConstant object, int identityHashCode, Object[] arrayElementValues, int length, boolean compressed) {
+    private ImageHeapObjectArray(AnalysisType type, JavaConstant object, int identityHashCode, Object[] arrayElementValues, int length, boolean compressed) {
         super(new ArrayData(type, object, identityHashCode, arrayElementValues, length), compressed);
     }
 

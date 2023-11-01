@@ -28,8 +28,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.ObjIntConsumer;
 
-import jdk.graal.compiler.core.common.type.TypedConstant;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
@@ -60,6 +58,8 @@ import com.oracle.svm.hosted.meta.HostedLookupSnippetReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
 
+import jdk.graal.compiler.core.common.type.TypedConstant;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -121,7 +121,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
              * Unbox by reading the known single field "value", which is a primitive field of the
              * correct unboxed type.
              */
-            AnalysisType type = (AnalysisType) imageHeapConstant.getType(metaAccess);
+            AnalysisType type = imageHeapConstant.getType(metaAccess);
             if (BOXING_CLASSES.contains(type.getJavaClass())) {
                 imageHeapConstant.ensureReaderInstalled();
                 ResolvedJavaField[] fields = type.getInstanceFields(true);
