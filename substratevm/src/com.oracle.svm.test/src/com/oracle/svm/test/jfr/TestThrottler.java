@@ -32,6 +32,7 @@ import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrThrottler;
 import com.oracle.svm.core.jfr.JfrThrottlerWindow;
+import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
 import jdk.jfr.Recording;
 import org.junit.Test;
@@ -433,7 +434,7 @@ public class TestThrottler extends JfrRecordingTest {
         }
 
         public void expireActiveWindow() {
-            if (eventSampleSize <= LOW_RATE_UPPER_BOUND || periodNs > com.oracle.svm.core.util.TimeUtils.nanosPerSecond) {
+            if (eventSampleSize <= LOW_RATE_UPPER_BOUND || periodNs > TimeUtils.nanosPerSecond) {
                 window0().currentTestNanos += periodNs;
                 window1().currentTestNanos += periodNs;
             }

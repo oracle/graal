@@ -28,7 +28,7 @@ package com.oracle.svm.core.jfr.utils;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import org.graalvm.compiler.nodes.PauseNode;
+import jdk.graal.compiler.nodes.PauseNode;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 
