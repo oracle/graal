@@ -53,7 +53,7 @@ public interface CPUType {
     }
 
     private static void print(String name, CPUType[] values) {
-        Arrays.sort(values, Comparator.comparing(v -> v.getName()));
+        Arrays.sort(values, Comparator.comparing(CPUType::getName));
         System.out.printf("On %s, the following machine types are available:%n%n", name);
         for (CPUType m : values) {
             String specificFeatures = m.getSpecificFeaturesString();

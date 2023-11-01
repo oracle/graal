@@ -333,7 +333,6 @@ public class NativeImage {
             this(null, null, args);
         }
 
-        @SuppressWarnings("deprecation")
         BuildConfiguration(Path rootDir, Path workDir, List<String> args) {
             try {
                 modulePathBuild = (boolean) isModulePathBuild.invoke(null);
@@ -635,16 +634,6 @@ public class NativeImage {
         public boolean buildFallbackImage() {
             return false;
         }
-
-        /**
-         * ResourcesJar packs resources files needed for some jdk services such as xml
-         * serialization.
-         *
-         * @return the path to the resources.jar file
-         */
-        public Optional<Path> getResourcesJar() {
-            return Optional.of(rootDir.resolve(Paths.get("lib", "resources.jar")));
-        }
     }
 
     class DriverMetaInfProcessor implements NativeImageMetaInfResourceProcessor {
@@ -669,7 +658,6 @@ public class NativeImage {
                             throw showError("Failed to process ForceOnModulePath attribute: Module descriptor for the module " + forceOnModulePath +
                                             " could not be resolved with class-path entry: " + classpathEntry + ".", e);
                         }
-                        ignoreClasspathEntry = true;
                         addImageModulePath(classpathEntry, true, false);
                         addAddedModules(forceOnModulePath);
                         ignoreClasspathEntry = true;
@@ -683,7 +671,7 @@ public class NativeImage {
              */
             String originSuffix = isNativeImagePropertiesFile ? "" : OptionOrigin.isAPISuffix;
 
-            NativeImageArgsProcessor args = NativeImage.this.new NativeImageArgsProcessor(resourcePath.toUri().toString() + originSuffix);
+            NativeImageArgsProcessor args = NativeImage.this.new NativeImageArgsProcessor(resourcePath.toUri() + originSuffix);
             Path componentDirectory = resourceRoot.relativize(resourcePath).getParent();
             Function<String, String> resolver = str -> {
                 int nameCount = componentDirectory.getNameCount();
@@ -743,17 +731,13 @@ public class NativeImage {
 
         List<String> runtimeJavaArgs = imageBuilderArgs.stream()
                         .filter(s -> s.startsWith(oRRuntimeJavaArg))
-                        .collect(Collectors.toList());
-        for (String runtimeJavaArg : runtimeJavaArgs) {
-            buildArgs.add(runtimeJavaArg);
-        }
+                        .toList();
+        buildArgs.addAll(runtimeJavaArgs);
 
         List<String> fallbackExecutorJavaArgs = imageBuilderArgs.stream()
                         .filter(s -> s.startsWith(oHFallbackExecutorJavaArg))
-                        .collect(Collectors.toList());
-        for (String fallbackExecutorJavaArg : fallbackExecutorJavaArgs) {
-            buildArgs.add(fallbackExecutorJavaArg);
-        }
+                        .toList();
+        buildArgs.addAll(fallbackExecutorJavaArgs);
 
         buildArgs.add(oHEnabled(SubstrateOptions.UnlockExperimentalVMOptions));
         buildArgs.add(oHEnabled(SubstrateOptions.BuildOutputSilent));
@@ -808,11 +792,6 @@ public class NativeImage {
         private FallbackBuildConfiguration(NativeImage original) {
             super(original.config);
             fallbackBuildArgs = original.createFallbackBuildArgs();
-        }
-
-        @Override
-        public List<Path> getImageClasspath() {
-            return Collections.emptyList();
         }
 
         @Override
@@ -932,10 +911,9 @@ public class NativeImage {
         consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.image-build-time.PreinitializeContexts=", ",", Function.identity());
     }
 
-    protected static boolean replaceArg(Collection<String> args, String argPrefix, String argSuffix) {
-        boolean elementsRemoved = args.removeIf(arg -> arg.startsWith(argPrefix));
+    protected static void replaceArg(Collection<String> args, String argPrefix, String argSuffix) {
+        args.removeIf(arg -> arg.startsWith(argPrefix));
         args.add(argPrefix + argSuffix);
-        return elementsRemoved;
     }
 
     private static LinkedHashSet<String> collectListArgs(Collection<String> args, String argPrefix, String delimiter) {
@@ -1340,14 +1318,7 @@ public class NativeImage {
         return values;
     }
 
-    private static final class ArgumentEntry {
-        private final int index;
-        private final String value;
-
-        private ArgumentEntry(int index, String value) {
-            this.index = index;
-            this.value = value;
-        }
+    private record ArgumentEntry(int index, String value) {
     }
 
     private static Boolean getHostedOptionFinalBooleanArgumentValue(List<String> args, OptionKey<Boolean> option) {
@@ -1414,8 +1385,6 @@ public class NativeImage {
     }
 
     private String targetPlatform = null;
-    private String targetOS = null;
-    private String targetArch = null;
 
     private void addTargetArguments() {
         /*
@@ -1434,8 +1403,8 @@ public class NativeImage {
             throw NativeImage.showError("--target argument must be in format <OS>-<architecture>");
         }
 
-        targetOS = parts[0];
-        targetArch = parts[1];
+        String targetOS = parts[0];
+        String targetArch = parts[1];
 
         if (customJavaArgs.stream().anyMatch(arg -> arg.startsWith("-D" + Platform.PLATFORM_PROPERTY_NAME + "="))) {
             LogUtils.warning("Usage of -D" + Platform.PLATFORM_PROPERTY_NAME + " might conflict with --target parameter.");
@@ -1512,8 +1481,7 @@ public class NativeImage {
 
     protected int buildImage(List<String> javaArgs, LinkedHashSet<Path> cp, LinkedHashSet<Path> mp, ArrayList<String> imageArgs, LinkedHashSet<Path> imagecp,
                     LinkedHashSet<Path> imagemp) {
-        List<String> arguments = new ArrayList<>();
-        arguments.addAll(javaArgs);
+        List<String> arguments = new ArrayList<>(javaArgs);
 
         if (!cp.isEmpty()) {
             arguments.addAll(Arrays.asList("-cp", cp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
@@ -2028,8 +1996,6 @@ public class NativeImage {
         addImageClasspathEntry(imageClasspath, classpath, true);
     }
 
-    LinkedHashSet<String> builderModuleNames = null;
-
     void addImageModulePath(Path modulePathEntry) {
         addImageModulePath(modulePathEntry, true, true);
     }
@@ -2246,7 +2212,6 @@ public class NativeImage {
 
     @SuppressWarnings("serial")
     public static final class NativeImageError extends Error {
-
         final int exitCode;
 
         private NativeImageError(String message) {
@@ -2472,13 +2437,6 @@ public class NativeImage {
         }
     }
 
-    private static final class ExcludeConfig {
-        final Pattern jarPattern;
-        final Pattern resourcePattern;
-
-        private ExcludeConfig(Pattern jarPattern, Pattern resourcePattern) {
-            this.jarPattern = jarPattern;
-            this.resourcePattern = resourcePattern;
-        }
+    private record ExcludeConfig(Pattern jarPattern, Pattern resourcePattern) {
     }
 }
