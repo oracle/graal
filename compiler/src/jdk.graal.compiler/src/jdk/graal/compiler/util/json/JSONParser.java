@@ -547,7 +547,7 @@ public class JSONParser {
 
         try {
             int numChars;
-            while ((numChars = reader.read(arr, 0, arr.length)) > 0) {
+            while ((numChars = reader.read(arr, 0, arr.length)) >= 0) {
                 sb.append(arr, 0, numChars);
             }
         } finally {
