@@ -162,11 +162,22 @@ public final class Target_java_lang_reflect_Array {
             profiler.profile(1);
             throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
-        try {
-            return Array.getByte(array.unwrap(language), index) != 0;
-        } catch (ArrayIndexOutOfBoundsException e) {
-            profiler.profile(5);
-            throw rethrowAsGuestException(e, meta, profiler);
+        if (array.isForeignObject()) {
+            try {
+                InteropLibrary library = InteropLibrary.getUncached();
+                return library.asBoolean(library.readArrayElement(array.rawForeignObject(language), index));
+            } catch (UnsupportedMessageException e) {
+                throw meta.throwException(meta.java_lang_IllegalArgumentException);
+            } catch (InvalidArrayIndexException e) {
+                throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
+            }
+        } else {
+            try {
+                return Array.getByte(array.unwrap(language), index) != 0;
+            } catch (ArrayIndexOutOfBoundsException e) {
+                profiler.profile(5);
+                throw rethrowAsGuestException(e, meta, profiler);
+            }
         }
     }
 
@@ -176,11 +187,22 @@ public final class Target_java_lang_reflect_Array {
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
-        try {
-            return Array.getByte(array.unwrap(language), index);
-        } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            profiler.profile(5);
-            throw rethrowAsGuestException(e, meta, profiler);
+        if (array.isForeignObject()) {
+            try {
+                InteropLibrary library = InteropLibrary.getUncached();
+                return library.asByte(library.readArrayElement(array.rawForeignObject(language), index));
+            } catch (UnsupportedMessageException e) {
+                throw meta.throwException(meta.java_lang_IllegalArgumentException);
+            } catch (InvalidArrayIndexException e) {
+                throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
+            }
+        } else {
+            try {
+                return Array.getByte(array.unwrap(language), index);
+            } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
+                profiler.profile(5);
+                throw rethrowAsGuestException(e, meta, profiler);
+            }
         }
     }
 
@@ -190,11 +212,29 @@ public final class Target_java_lang_reflect_Array {
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
-        try {
-            return Array.getChar(array.unwrap(language), index);
-        } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            profiler.profile(5);
-            throw rethrowAsGuestException(e, meta, profiler);
+        if (array.isForeignObject()) {
+            try {
+                InteropLibrary library = InteropLibrary.getUncached();
+                String str = library.asString(library.readArrayElement(array.rawForeignObject(language), index));
+                if (str.isEmpty()) {
+                    return '\u0000';
+                } else if (str.length() > 1) {
+                    throw meta.throwException(meta.java_lang_IllegalArgumentException);
+                } else {
+                    return str.charAt(0);
+                }
+            } catch (UnsupportedMessageException e) {
+                throw meta.throwException(meta.java_lang_IllegalArgumentException);
+            } catch (InvalidArrayIndexException e) {
+                throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
+            }
+        } else {
+            try {
+                return Array.getChar(array.unwrap(language), index);
+            } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
+                profiler.profile(5);
+                throw rethrowAsGuestException(e, meta, profiler);
+            }
         }
     }
 
@@ -204,11 +244,22 @@ public final class Target_java_lang_reflect_Array {
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
-        try {
-            return Array.getShort(array.unwrap(language), index);
-        } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            profiler.profile(5);
-            throw rethrowAsGuestException(e, meta, profiler);
+        if (array.isForeignObject()) {
+            try {
+                InteropLibrary library = InteropLibrary.getUncached();
+                return library.asShort(library.readArrayElement(array.rawForeignObject(language), index));
+            } catch (UnsupportedMessageException e) {
+                throw meta.throwException(meta.java_lang_IllegalArgumentException);
+            } catch (InvalidArrayIndexException e) {
+                throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
+            }
+        } else {
+            try {
+                return Array.getShort(array.unwrap(language), index);
+            } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
+                profiler.profile(5);
+                throw rethrowAsGuestException(e, meta, profiler);
+            }
         }
     }
 
@@ -218,11 +269,22 @@ public final class Target_java_lang_reflect_Array {
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
-        try {
-            return Array.getInt(array.unwrap(language), index);
-        } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            profiler.profile(5);
-            throw rethrowAsGuestException(e, meta, profiler);
+        if (array.isForeignObject()) {
+            try {
+                InteropLibrary library = InteropLibrary.getUncached();
+                return library.asInt(library.readArrayElement(array.rawForeignObject(language), index));
+            } catch (UnsupportedMessageException e) {
+                throw meta.throwException(meta.java_lang_IllegalArgumentException);
+            } catch (InvalidArrayIndexException e) {
+                throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
+            }
+        } else {
+            try {
+                return Array.getInt(array.unwrap(language), index);
+            } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
+                profiler.profile(5);
+                throw rethrowAsGuestException(e, meta, profiler);
+            }
         }
     }
 
@@ -232,11 +294,22 @@ public final class Target_java_lang_reflect_Array {
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
-        try {
-            return Array.getFloat(array.unwrap(language), index);
-        } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            profiler.profile(5);
-            throw rethrowAsGuestException(e, meta, profiler);
+        if (array.isForeignObject()) {
+            try {
+                InteropLibrary library = InteropLibrary.getUncached();
+                return library.asFloat(library.readArrayElement(array.rawForeignObject(language), index));
+            } catch (UnsupportedMessageException e) {
+                throw meta.throwException(meta.java_lang_IllegalArgumentException);
+            } catch (InvalidArrayIndexException e) {
+                throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
+            }
+        } else {
+            try {
+                return Array.getFloat(array.unwrap(language), index);
+            } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
+                profiler.profile(5);
+                throw rethrowAsGuestException(e, meta, profiler);
+            }
         }
     }
 
@@ -246,11 +319,22 @@ public final class Target_java_lang_reflect_Array {
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
-        try {
-            return Array.getDouble(array.unwrap(language), index);
-        } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            profiler.profile(5);
-            throw rethrowAsGuestException(e, meta, profiler);
+        if (array.isForeignObject()) {
+            try {
+                InteropLibrary library = InteropLibrary.getUncached();
+                return library.asDouble(library.readArrayElement(array.rawForeignObject(language), index));
+            } catch (UnsupportedMessageException e) {
+                throw meta.throwException(meta.java_lang_IllegalArgumentException);
+            } catch (InvalidArrayIndexException e) {
+                throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
+            }
+        } else {
+            try {
+                return Array.getDouble(array.unwrap(language), index);
+            } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
+                profiler.profile(5);
+                throw rethrowAsGuestException(e, meta, profiler);
+            }
         }
     }
 
@@ -260,11 +344,22 @@ public final class Target_java_lang_reflect_Array {
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
-        try {
-            return Array.getLong(array.unwrap(language), index);
-        } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            profiler.profile(5);
-            throw rethrowAsGuestException(e, meta, profiler);
+        if (array.isForeignObject()) {
+            try {
+                InteropLibrary library = InteropLibrary.getUncached();
+                return library.asLong(library.readArrayElement(array.rawForeignObject(language), index));
+            } catch (UnsupportedMessageException e) {
+                throw meta.throwException(meta.java_lang_IllegalArgumentException);
+            } catch (InvalidArrayIndexException e) {
+                throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
+            }
+        } else {
+            try {
+                return Array.getLong(array.unwrap(language), index);
+            } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
+                profiler.profile(5);
+                throw rethrowAsGuestException(e, meta, profiler);
+            }
         }
     }
 
@@ -319,11 +414,15 @@ public final class Target_java_lang_reflect_Array {
             profiler.profile(1);
             throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
-        try {
-            Array.setByte(array.unwrap(language), index, value ? (byte) 1 : (byte) 0);
-        } catch (ArrayIndexOutOfBoundsException e) {
-            profiler.profile(5);
-            throw rethrowAsGuestException(e, meta, profiler);
+        if (array.isForeignObject()) {
+            writeForeignArrayElement(array, language, index, value, meta);
+        } else {
+            try {
+                Array.setByte(array.unwrap(language), index, value ? (byte) 1 : (byte) 0);
+            } catch (ArrayIndexOutOfBoundsException e) {
+                profiler.profile(5);
+                throw rethrowAsGuestException(e, meta, profiler);
+            }
         }
     }
 
@@ -333,11 +432,15 @@ public final class Target_java_lang_reflect_Array {
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
-        try {
-            Array.setByte(array.unwrap(language), index, value);
-        } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            profiler.profile(5);
-            throw rethrowAsGuestException(e, meta, profiler);
+        if (array.isForeignObject()) {
+            writeForeignArrayElement(array, language, index, value, meta);
+        } else {
+            try {
+                Array.setByte(array.unwrap(language), index, value);
+            } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
+                profiler.profile(5);
+                throw rethrowAsGuestException(e, meta, profiler);
+            }
         }
     }
 
@@ -347,11 +450,15 @@ public final class Target_java_lang_reflect_Array {
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
-        try {
-            Array.setChar(array.unwrap(language), index, value);
-        } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            profiler.profile(5);
-            throw rethrowAsGuestException(e, meta, profiler);
+        if (array.isForeignObject()) {
+            writeForeignArrayElement(array, language, index, value, meta);
+        } else {
+            try {
+                Array.setChar(array.unwrap(language), index, value);
+            } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
+                profiler.profile(5);
+                throw rethrowAsGuestException(e, meta, profiler);
+            }
         }
     }
 
@@ -361,11 +468,15 @@ public final class Target_java_lang_reflect_Array {
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
-        try {
-            Array.setShort(array.unwrap(language), index, value);
-        } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            profiler.profile(5);
-            throw rethrowAsGuestException(e, meta, profiler);
+        if (array.isForeignObject()) {
+            writeForeignArrayElement(array, language, index, value, meta);
+        } else {
+            try {
+                Array.setShort(array.unwrap(language), index, value);
+            } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
+                profiler.profile(5);
+                throw rethrowAsGuestException(e, meta, profiler);
+            }
         }
     }
 
@@ -375,11 +486,15 @@ public final class Target_java_lang_reflect_Array {
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
-        try {
-            Array.setInt(array.unwrap(language), index, value);
-        } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            profiler.profile(5);
-            throw rethrowAsGuestException(e, meta, profiler);
+        if (array.isForeignObject()) {
+            writeForeignArrayElement(array, language, index, value, meta);
+        } else {
+            try {
+                Array.setInt(array.unwrap(language), index, value);
+            } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
+                profiler.profile(5);
+                throw rethrowAsGuestException(e, meta, profiler);
+            }
         }
     }
 
@@ -389,11 +504,15 @@ public final class Target_java_lang_reflect_Array {
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
-        try {
-            Array.setFloat(array.unwrap(language), index, value);
-        } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            profiler.profile(5);
-            throw rethrowAsGuestException(e, meta, profiler);
+        if (array.isForeignObject()) {
+            writeForeignArrayElement(array, language, index, value, meta);
+        } else {
+            try {
+                Array.setFloat(array.unwrap(language), index, value);
+            } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
+                profiler.profile(5);
+                throw rethrowAsGuestException(e, meta, profiler);
+            }
         }
     }
 
@@ -403,11 +522,15 @@ public final class Target_java_lang_reflect_Array {
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
-        try {
-            Array.setDouble(array.unwrap(language), index, value);
-        } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            profiler.profile(5);
-            throw rethrowAsGuestException(e, meta, profiler);
+        if (array.isForeignObject()) {
+            writeForeignArrayElement(array, language, index, value, meta);
+        } else {
+            try {
+                Array.setDouble(array.unwrap(language), index, value);
+            } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
+                profiler.profile(5);
+                throw rethrowAsGuestException(e, meta, profiler);
+            }
         }
     }
 
@@ -417,11 +540,26 @@ public final class Target_java_lang_reflect_Array {
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
+        if (array.isForeignObject()) {
+            writeForeignArrayElement(array, language, index, value, meta);
+        } else {
+            try {
+                Array.setLong(array.unwrap(language), index, value);
+            } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
+                profiler.profile(5);
+                throw rethrowAsGuestException(e, meta, profiler);
+            }
+        }
+    }
+
+    private static void writeForeignArrayElement(StaticObject array, EspressoLanguage language, int index, Object value, Meta meta) {
         try {
-            Array.setLong(array.unwrap(language), index, value);
-        } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
-            profiler.profile(5);
-            throw rethrowAsGuestException(e, meta, profiler);
+            InteropLibrary library = InteropLibrary.getUncached();
+            library.writeArrayElement(array.rawForeignObject(language), index, value);
+        } catch (UnsupportedMessageException | UnsupportedTypeException e) {
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
+        } catch (InvalidArrayIndexException e) {
+            throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
     }
 
@@ -449,91 +587,34 @@ public final class Target_java_lang_reflect_Array {
             throw meta.throwNullPointerException();
         }
         if (array.isArray()) {
-            try {
             Object widenValue = Target_sun_reflect_NativeMethodAccessorImpl.checkAndWiden(meta, value, ((ArrayKlass) array.getKlass()).getComponentType());
+            if (array.isForeignObject()) {
+                try {
+                    InteropLibrary library = InteropLibrary.getUncached();
+                    library.writeArrayElement(array.rawForeignObject(language), index, widenValue);
+                    return;
+                } catch (UnsupportedMessageException | UnsupportedTypeException e) {
+                    throw meta.throwException(meta.java_lang_IllegalArgumentException);
+                } catch (InvalidArrayIndexException e) {
+                    throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
+                }
+            }
+            // @formatter:off
             switch (((ArrayKlass) array.getKlass()).getComponentType().getJavaKind()) {
-                case Boolean: {
-                    if (array.isForeignObject()) {
-                        InteropLibrary library = InteropLibrary.getUncached();
-                        library.writeArrayElement(array.rawForeignObject(language), index, widenValue);
-                    } else {
-                        vm.setArrayByte(language, ((boolean) widenValue) ? (byte) 1 : (byte) 0, index, array);
-                    }
-                    break;
-                }
-                case Byte: {
-                    if (array.isForeignObject()) {
-                        InteropLibrary library = InteropLibrary.getUncached();
-                        library.writeArrayElement(array.rawForeignObject(language), index, widenValue);
-                    } else {
-                        vm.setArrayByte(language, ((byte) widenValue), index, array);
-                    }
-                    break;
-                }
-                case Short: {
-                    if (array.isForeignObject()) {
-                        InteropLibrary library = InteropLibrary.getUncached();
-                        library.writeArrayElement(array.rawForeignObject(language), index, widenValue);
-                    } else {
-                        vm.setArrayShort(language, ((short) widenValue), index, array);
-                    }
-                    break;
-                }
-                case Char: {
-                    if (array.isForeignObject()) {
-                        InteropLibrary library = InteropLibrary.getUncached();
-                        library.writeArrayElement(array.rawForeignObject(language), index, widenValue);
-                    } else {
-                        vm.setArrayChar(language, ((char) widenValue), index, array);
-                    }
-                    break;
-                }
-                case Int: {
-                    if (array.isForeignObject()) {
-                        InteropLibrary library = InteropLibrary.getUncached();
-                        library.writeArrayElement(array.rawForeignObject(language), index, widenValue);
-                    } else {
-                        vm.setArrayInt(language, ((int) widenValue), index, array);
-                    }
-                    break;
-                }
-                case Float: {
-                    if (array.isForeignObject()) {
-                        InteropLibrary library = InteropLibrary.getUncached();
-                        library.writeArrayElement(array.rawForeignObject(language), index, widenValue);
-                    } else {
-                        vm.setArrayFloat(language, ((float) widenValue), index, array);
-                    }
-                    break;
-                }
-                case Long: {
-                    if (array.isForeignObject()) {
-                        InteropLibrary library = InteropLibrary.getUncached();
-                        library.writeArrayElement(array.rawForeignObject(language), index, widenValue);
-                    } else {
-                        vm.setArrayLong(language, ((long) widenValue), index, array);
-                    }
-                    break;
-                }
-                case Double: {
-                    if (array.isForeignObject()) {
-                        InteropLibrary library = InteropLibrary.getUncached();
-                        library.writeArrayElement(array.rawForeignObject(language), index, widenValue);
-                    } else {
-                        vm.setArrayDouble(language, ((double) widenValue), index, array);
-                    }
-                    break;
-                }
+                case Boolean : vm.setArrayByte(language, ((boolean) widenValue) ? (byte) 1 : (byte) 0, index, array); break;
+                case Byte    : vm.setArrayByte(language, ((byte) widenValue), index, array); break;
+                case Short   : vm.setArrayShort(language, ((short) widenValue), index, array); break;
+                case Char    : vm.setArrayChar(language, ((char) widenValue), index, array); break;
+                case Int     : vm.setArrayInt(language, ((int) widenValue), index, array); break;
+                case Float   : vm.setArrayFloat(language, ((float) widenValue), index, array); break;
+                case Long    : vm.setArrayLong(language, ((long) widenValue), index, array); break;
+                case Double  : vm.setArrayDouble(language, ((double) widenValue), index, array); break;
                 case Object  : vm.setArrayObject(language, value, index, array); break;
                 default      :
                     CompilerDirectives.transferToInterpreter();
                     throw EspressoError.shouldNotReachHere("invalid array type: " + array);
             }
-            } catch (UnsupportedMessageException | UnsupportedTypeException e) {
-                throw meta.throwException(meta.java_lang_IllegalArgumentException);
-            } catch (InvalidArrayIndexException e) {
-                throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
-            }
+            // @formatter:on
         } else {
             throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
@@ -599,7 +680,7 @@ public final class Target_java_lang_reflect_Array {
                             InteropLibrary library = InteropLibrary.getUncached();
                             String str = library.asString(library.readArrayElement(array.rawForeignObject(language), index));
                             if (str.isEmpty()) {
-                                result = ' ';
+                                result = '\u0000';
                             } else if (str.length() > 1) {
                                 throw meta.throwException(meta.java_lang_IllegalArgumentException);
                             } else {
