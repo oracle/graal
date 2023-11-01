@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.ReturnNullPointer;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
 import com.oracle.svm.truffle.nfi.NativeAPI.AttachCurrentThreadFunction;
 import com.oracle.svm.truffle.nfi.NativeAPI.DetachCurrentThreadFunction;
+import com.oracle.svm.truffle.nfi.NativeAPI.ExceptionCheckFunction;
 import com.oracle.svm.truffle.nfi.NativeAPI.GetClosureObjectFunction;
 import com.oracle.svm.truffle.nfi.NativeAPI.GetTruffleContextFunction;
 import com.oracle.svm.truffle.nfi.NativeAPI.GetTruffleEnvFunction;
@@ -70,6 +71,7 @@ final class NativeAPIImpl {
     static final CEntryPointLiteral<NewClosureRefFunction> NEW_CLOSURE_REF = CEntryPointLiteral.create(NativeAPIImpl.class, "newClosureRef", NativeTruffleEnv.class, PointerBase.class);
     static final CEntryPointLiteral<ReleaseClosureRefFunction> RELEASE_CLOSURE_REF = CEntryPointLiteral.create(NativeAPIImpl.class, "releaseClosureRef", NativeTruffleEnv.class, PointerBase.class);
     static final CEntryPointLiteral<GetClosureObjectFunction> GET_CLOSURE_OBJECT = CEntryPointLiteral.create(NativeAPIImpl.class, "getClosureObject", NativeTruffleEnv.class, PointerBase.class);
+    static final CEntryPointLiteral<ExceptionCheckFunction> EXCEPTION_CHECK = CEntryPointLiteral.create(NativeAPIImpl.class, "exceptionCheck", NativeTruffleEnv.class);
 
     static final CEntryPointLiteral<GetTruffleEnvFunction> GET_TRUFFLE_ENV = CEntryPointLiteral.create(NativeAPIImpl.class, "getTruffleEnv", NativeTruffleContext.class);
     static final CEntryPointLiteral<AttachCurrentThreadFunction> ATTACH_CURRENT_THREAD = CEntryPointLiteral.create(NativeAPIImpl.class, "attachCurrentThread", NativeTruffleContext.class);
@@ -139,6 +141,12 @@ final class NativeAPIImpl {
         Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext context = lookupContext(env.context());
         Object ret = context.getClosureObject(closure.rawValue());
         return support.createGlobalHandle(ret);
+    }
+
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = EnterNativeTruffleEnvPrologue.class)
+    static boolean exceptionCheck(@SuppressWarnings("unused") NativeTruffleEnv env) {
+        return NativeClosure.pendingException.get() != null;
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
