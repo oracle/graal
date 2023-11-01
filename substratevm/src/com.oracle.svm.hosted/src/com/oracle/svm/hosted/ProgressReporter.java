@@ -48,14 +48,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionStability;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
@@ -96,6 +91,11 @@ import com.oracle.svm.hosted.util.CPUType;
 import com.oracle.svm.hosted.util.DiagnosticUtils;
 import com.oracle.svm.hosted.util.VMErrorReporter;
 import com.oracle.svm.util.ImageBuildStatistics;
+
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionStability;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 
 public class ProgressReporter {
     private static final boolean IS_CI = SubstrateUtil.isRunningInCI();
@@ -1079,7 +1079,13 @@ public class ProgressReporter {
         }
 
         final void printLineParts() {
-            lineParts.forEach(ProgressReporter.this::print);
+            /*
+             * This uses a copy of the array to avoid any ConcurrentModificationExceptions in case
+             * progress is still being printed.
+             */
+            for (String part : lineParts.toArray(new String[0])) {
+                print(part);
+            }
         }
 
         void flushln() {
@@ -1102,7 +1108,7 @@ public class ProgressReporter {
         private BuildStage activeBuildStage = null;
 
         private ScheduledFuture<?> periodicPrintingTask;
-        private AtomicBoolean isCancelled = new AtomicBoolean();
+        private boolean isCancelled;
 
         T start(BuildStage stage) {
             assert activeBuildStage == null;
@@ -1118,14 +1124,14 @@ public class ProgressReporter {
         }
 
         private void startPeriodicProgress() {
-            isCancelled.set(false);
+            isCancelled = false;
             periodicPrintingTask = executor.scheduleAtFixedRate(new Runnable() {
                 int countdown;
                 int numPrints;
 
                 @Override
                 public void run() {
-                    if (isCancelled.get()) {
+                    if (isCancelled) {
                         return;
                     }
                     if (--countdown < 0) {
@@ -1155,7 +1161,7 @@ public class ProgressReporter {
 
         void end(double totalTime) {
             if (activeBuildStage.hasPeriodicProgress) {
-                isCancelled.set(true);
+                isCancelled = true;
                 periodicPrintingTask.cancel(false);
             }
             if (activeBuildStage.hasProgressBar) {
