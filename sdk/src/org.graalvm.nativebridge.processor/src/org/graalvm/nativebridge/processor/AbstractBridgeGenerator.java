@@ -416,6 +416,10 @@ abstract class AbstractBridgeGenerator {
                         CharSequence jniEnvFieldName);
 
         @SuppressWarnings("unused")
+        void declarePerMarshalledParameterVariable(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, Map<String, CharSequence> parameterValueOverrides) {
+        }
+
+        @SuppressWarnings("unused")
         boolean preMarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence marshalledParametersOutput, CharSequence jniEnvFieldName,
                         Map<String, CharSequence> parameterValueOverrides) {
             return false;
