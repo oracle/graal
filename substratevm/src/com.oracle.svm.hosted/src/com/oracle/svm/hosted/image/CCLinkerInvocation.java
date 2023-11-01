@@ -584,7 +584,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         }
 
         Path outputFile = outputDirectory.resolve(imageName + imageKind.getFilenameSuffix());
-        UserError.guarantee(!Files.isDirectory(outputFile), "Cannot write image to %s. Path exists as directory. (Use -H:Name=<image name>)", outputFile);
+        UserError.guarantee(!Files.isDirectory(outputFile), "Cannot write image to %s. Path exists as directory (use '-o /path/to/image').", outputFile);
         inv.setOutputFile(outputFile);
         inv.setTempDirectory(tempDirectory);
 
