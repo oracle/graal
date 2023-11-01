@@ -378,8 +378,6 @@ public class ITLInspectDebugTest {
         tester.finish();
     }
 
-<<<<<<< HEAD
-=======
     @Test
     public void testOutputNoNL() throws Exception {
         Source source = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
@@ -415,7 +413,6 @@ public class ITLInspectDebugTest {
                         "}}\n");
     }
 
->>>>>>> de48c8431b2 (Add the mandatory experimental property 'debuggerId' and handle GET of /json/list path. (GR-49664))
     public void testAsynchronousStackTraces() throws Exception {
         String code = "ROOT(DEFINE(af11, ROOT(STATEMENT)),\n" +
                         "DEFINE(af12, ROOT(CALL(af11))),\n" +
@@ -506,8 +503,6 @@ public class ITLInspectDebugTest {
         tester.finish();
     }
 
-<<<<<<< HEAD
-=======
     @Test
     public void testSuspendALot() throws Exception {
         int numSuspend = 100_000; // Must be more than 65535, see GR-29742
@@ -556,7 +551,6 @@ public class ITLInspectDebugTest {
         tester.finish();
     }
 
->>>>>>> de48c8431b2 (Add the mandatory experimental property 'debuggerId' and handle GET of /json/list path. (GR-49664))
     // @formatter:on
     // CheckStyle: resume line length check
 }
