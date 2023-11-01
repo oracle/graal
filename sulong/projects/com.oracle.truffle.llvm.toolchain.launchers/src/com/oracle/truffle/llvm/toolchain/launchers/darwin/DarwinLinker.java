@@ -44,15 +44,15 @@ import java.util.List;
 
 public final class DarwinLinker extends Driver {
 
-    public static final String LD = "/usr/bin/ld";
-    public static final String LD_NAME = "ld";
+    public static final String LLD = "lld";
+    public static final String LD64_LLD = "ld64.lld";
 
     private DarwinLinker() {
-        super(LD, false);
+        super(LD64_LLD);
     }
 
     public static List<String> getLinkerFlags() {
-        return Arrays.asList("-lto_library", getLLVMBinDir().resolve("..").resolve("lib").resolve("libLTO.dylib").toString());
+        return Arrays.asList("--lto-O0");
     }
 
     public static void link(String[] args) {
@@ -63,8 +63,6 @@ public final class DarwinLinker extends Driver {
         List<String> sulongArgs = new ArrayList<>();
         sulongArgs.add(exe);
         sulongArgs.add("-L" + getSulongHome().resolve(ClangLike.NATIVE_PLATFORM).resolve("lib"));
-        sulongArgs.add("-lto_library");
-        sulongArgs.add(getLLVMBinDir().resolve("..").resolve("lib").resolve("libLTO.dylib").toString());
         List<String> userArgs = Arrays.asList(args);
         boolean verbose = userArgs.contains("-v");
         runDriver(sulongArgs, userArgs, verbose, false, false);
@@ -86,7 +84,7 @@ public final class DarwinLinker extends Driver {
                     String newOutput = tempDir.resolve("temp.out").toString();
                     List<String> newUserArgs = newUserArgs(userArgs, newOutput, linkerOptionPrefix, outputFlagPos);
                     driver.runDriverReturn(sulongArgs, newUserArgs, verb, hlp, earlyexit);
-                    String bcFile = newOutput + ".lto.bc";
+                    String bcFile = newOutput + ".0.5.precodegen.bc";
                     if (Files.exists(Paths.get(bcFile))) {
                         sulongArgs.add(linkerOptionPrefix + "-sectcreate");
                         sulongArgs.add(linkerOptionPrefix + "__LLVM");

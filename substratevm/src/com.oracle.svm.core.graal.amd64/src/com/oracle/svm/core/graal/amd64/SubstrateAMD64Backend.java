@@ -34,9 +34,9 @@ import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
-import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.graal.compiler.lir.LIRValueUtil.asConstantValue;
+import static jdk.graal.compiler.lir.LIRValueUtil.differentRegisters;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -44,95 +44,95 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.function.BiConsumer;
 
-import org.graalvm.compiler.asm.Label;
-import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.asm.amd64.AMD64Assembler;
-import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler;
-import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.core.amd64.AMD64ArithmeticLIRGenerator;
-import org.graalvm.compiler.core.amd64.AMD64LIRGenerator;
-import org.graalvm.compiler.core.amd64.AMD64LIRKindTool;
-import org.graalvm.compiler.core.amd64.AMD64MoveFactory;
-import org.graalvm.compiler.core.amd64.AMD64MoveFactoryBase;
-import org.graalvm.compiler.core.amd64.AMD64NodeLIRBuilder;
-import org.graalvm.compiler.core.amd64.AMD64NodeMatchRules;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.Stride;
-import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
-import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
-import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
-import org.graalvm.compiler.core.common.spi.LIRKindTool;
-import org.graalvm.compiler.core.common.type.CompressibleConstant;
-import org.graalvm.compiler.core.gen.DebugInfoBuilder;
-import org.graalvm.compiler.core.gen.LIRGenerationProvider;
-import org.graalvm.compiler.core.gen.NodeLIRBuilder;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.lir.ConstantValue;
-import org.graalvm.compiler.lir.LIR;
-import org.graalvm.compiler.lir.LIRFrameState;
-import org.graalvm.compiler.lir.LIRInstruction;
-import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.LabelRef;
-import org.graalvm.compiler.lir.Opcode;
-import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
-import org.graalvm.compiler.lir.StandardOp.LabelOp;
-import org.graalvm.compiler.lir.StandardOp.LoadConstantOp;
-import org.graalvm.compiler.lir.Variable;
-import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
-import org.graalvm.compiler.lir.amd64.AMD64BreakpointOp;
-import org.graalvm.compiler.lir.amd64.AMD64Call;
-import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.BranchOp;
-import org.graalvm.compiler.lir.amd64.AMD64FrameMap;
-import org.graalvm.compiler.lir.amd64.AMD64FrameMapBuilder;
-import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
-import org.graalvm.compiler.lir.amd64.AMD64Move;
-import org.graalvm.compiler.lir.amd64.AMD64Move.MoveFromConstOp;
-import org.graalvm.compiler.lir.amd64.AMD64Move.PointerCompressionOp;
-import org.graalvm.compiler.lir.amd64.AMD64PrefetchOp;
-import org.graalvm.compiler.lir.amd64.AMD64ReadProcid;
-import org.graalvm.compiler.lir.amd64.AMD64ReadTimestampCounterWithProcid;
-import org.graalvm.compiler.lir.amd64.AMD64VZeroUpper;
-import org.graalvm.compiler.lir.amd64.EndbranchOp;
-import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
-import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
-import org.graalvm.compiler.lir.asm.DataBuilder;
-import org.graalvm.compiler.lir.asm.EntryPointDecorator;
-import org.graalvm.compiler.lir.asm.FrameContext;
-import org.graalvm.compiler.lir.framemap.FrameMap;
-import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
-import org.graalvm.compiler.lir.framemap.FrameMapBuilderTool;
-import org.graalvm.compiler.lir.framemap.ReferenceMapBuilder;
-import org.graalvm.compiler.lir.gen.LIRGenerationResult;
-import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
-import org.graalvm.compiler.lir.gen.MoveFactory;
-import org.graalvm.compiler.lir.gen.MoveFactory.BackupSlotProvider;
-import org.graalvm.compiler.nodes.BreakpointNode;
-import org.graalvm.compiler.nodes.CallTargetNode;
-import org.graalvm.compiler.nodes.DirectCallTargetNode;
-import org.graalvm.compiler.nodes.IndirectCallTargetNode;
-import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.LogicNode;
-import org.graalvm.compiler.nodes.LoweredCallTargetNode;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.ParameterNode;
-import org.graalvm.compiler.nodes.SafepointNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.cfg.HIRBlock;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.compiler.nodes.spi.NodeValueMap;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.common.AddressLoweringByNodePhase;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.amd64.AMD64IntrinsicStubs;
+import jdk.graal.compiler.asm.Label;
+import jdk.graal.compiler.asm.amd64.AMD64Address;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler;
+import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
+import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.amd64.AMD64ArithmeticLIRGenerator;
+import jdk.graal.compiler.core.amd64.AMD64LIRGenerator;
+import jdk.graal.compiler.core.amd64.AMD64LIRKindTool;
+import jdk.graal.compiler.core.amd64.AMD64MoveFactory;
+import jdk.graal.compiler.core.amd64.AMD64MoveFactoryBase;
+import jdk.graal.compiler.core.amd64.AMD64NodeLIRBuilder;
+import jdk.graal.compiler.core.amd64.AMD64NodeMatchRules;
+import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.Stride;
+import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
+import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
+import jdk.graal.compiler.core.common.spi.LIRKindTool;
+import jdk.graal.compiler.core.common.type.CompressibleConstant;
+import jdk.graal.compiler.core.gen.DebugInfoBuilder;
+import jdk.graal.compiler.core.gen.LIRGenerationProvider;
+import jdk.graal.compiler.core.gen.NodeLIRBuilder;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.lir.ConstantValue;
+import jdk.graal.compiler.lir.LIR;
+import jdk.graal.compiler.lir.LIRFrameState;
+import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.LabelRef;
+import jdk.graal.compiler.lir.Opcode;
+import jdk.graal.compiler.lir.StandardOp.BlockEndOp;
+import jdk.graal.compiler.lir.StandardOp.LabelOp;
+import jdk.graal.compiler.lir.StandardOp.LoadConstantOp;
+import jdk.graal.compiler.lir.Variable;
+import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
+import jdk.graal.compiler.lir.amd64.AMD64BreakpointOp;
+import jdk.graal.compiler.lir.amd64.AMD64Call;
+import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.BranchOp;
+import jdk.graal.compiler.lir.amd64.AMD64FrameMap;
+import jdk.graal.compiler.lir.amd64.AMD64FrameMapBuilder;
+import jdk.graal.compiler.lir.amd64.AMD64LIRInstruction;
+import jdk.graal.compiler.lir.amd64.AMD64Move;
+import jdk.graal.compiler.lir.amd64.AMD64Move.MoveFromConstOp;
+import jdk.graal.compiler.lir.amd64.AMD64Move.PointerCompressionOp;
+import jdk.graal.compiler.lir.amd64.AMD64PrefetchOp;
+import jdk.graal.compiler.lir.amd64.AMD64ReadProcid;
+import jdk.graal.compiler.lir.amd64.AMD64ReadTimestampCounterWithProcid;
+import jdk.graal.compiler.lir.amd64.AMD64VZeroUpper;
+import jdk.graal.compiler.lir.amd64.EndbranchOp;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
+import jdk.graal.compiler.lir.asm.DataBuilder;
+import jdk.graal.compiler.lir.asm.EntryPointDecorator;
+import jdk.graal.compiler.lir.asm.FrameContext;
+import jdk.graal.compiler.lir.framemap.FrameMap;
+import jdk.graal.compiler.lir.framemap.FrameMapBuilder;
+import jdk.graal.compiler.lir.framemap.FrameMapBuilderTool;
+import jdk.graal.compiler.lir.framemap.ReferenceMapBuilder;
+import jdk.graal.compiler.lir.gen.LIRGenerationResult;
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
+import jdk.graal.compiler.lir.gen.MoveFactory;
+import jdk.graal.compiler.lir.gen.MoveFactory.BackupSlotProvider;
+import jdk.graal.compiler.nodes.BreakpointNode;
+import jdk.graal.compiler.nodes.CallTargetNode;
+import jdk.graal.compiler.nodes.DirectCallTargetNode;
+import jdk.graal.compiler.nodes.IndirectCallTargetNode;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.LoweredCallTargetNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.SafepointNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.cfg.HIRBlock;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.nodes.spi.NodeValueMap;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.common.AddressLoweringByNodePhase;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.amd64.AMD64IntrinsicStubs;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -181,6 +181,7 @@ import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -754,8 +755,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
         @Override
         public void emitProcid(AllocatableValue dst) {
-            // GR-43733: Replace string by feature when we remove support for Java 17
-            if (supportsCPUFeature("RDPID")) {
+            if (supportsCPUFeature(CPUFeature.RDPID)) {
                 append(new AMD64ReadProcid(dst));
             } else {
                 AMD64ReadTimestampCounterWithProcid procid = new AMD64ReadTimestampCounterWithProcid();
@@ -828,7 +828,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
         @Override
         protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeValueMap nodeValueMap) {
-            return new SubstrateDebugInfoBuilder(graph, gen.getProviders().getMetaAccessExtensionProvider(), nodeValueMap);
+            return new SubstrateDebugInfoBuilder(graph, getProviders().getSnippetReflection(), gen.getProviders().getMetaAccessExtensionProvider(), nodeValueMap);
         }
 
         @Override
@@ -1076,7 +1076,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         } else {
             GraalError.guarantee(RuntimeCompilation.isEnabled(), "should be reached in JIT mode only");
             return new ForeignCallDescriptor(descriptor.getName() + Stubs.RUNTIME_CHECKED_CPU_FEATURES_NAME_SUFFIX, descriptor.getResultType(), descriptor.getArgumentTypes(),
-                            descriptor.isReexecutable(), descriptor.getKilledLocations(), descriptor.canDeoptimize(), descriptor.isGuaranteedSafepoint());
+                            descriptor.getSideEffect(), descriptor.getKilledLocations(), descriptor.canDeoptimize(), descriptor.isGuaranteedSafepoint());
         }
     }
 

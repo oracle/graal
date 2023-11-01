@@ -487,6 +487,10 @@ public abstract class AbstractPolyglotImpl {
         return next;
     }
 
+    public final AbstractPolyglotImpl getNextOrNull() {
+        return next;
+    }
+
     public final void setIO(IOAccessor ioAccess) {
         Objects.requireNonNull(ioAccess, "IOAccess must be non null.");
         this.io = ioAccess;
@@ -1385,8 +1389,8 @@ public abstract class AbstractPolyglotImpl {
         return getNext().newDefaultFileSystem(hostTmpDir);
     }
 
-    public FileSystem allowLanguageHomeAccess(FileSystem fileSystem) {
-        return getNext().allowLanguageHomeAccess(fileSystem);
+    public FileSystem allowInternalResourceAccess(FileSystem fileSystem) {
+        return getNext().allowInternalResourceAccess(fileSystem);
     }
 
     public FileSystem newReadOnlyFileSystem(FileSystem fileSystem) {

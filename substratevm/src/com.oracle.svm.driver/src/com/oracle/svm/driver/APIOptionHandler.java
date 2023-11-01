@@ -45,9 +45,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.options.OptionDescriptor;
-import org.graalvm.compiler.options.OptionDescriptors;
-import org.graalvm.compiler.options.OptionStability;
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionDescriptors;
+import jdk.graal.compiler.options.OptionStability;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -357,9 +357,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                         whitespaceSeparated = true;
                         break found;
                     } else {
-                        boolean withSeparator = valueSeparator != APIOption.NO_SEPARATOR;
-                        String separatorString = withSeparator ? Character.toString(valueSeparator) : "";
-                        String optionNameWithSeparator = optionName + separatorString;
+                        String optionNameWithSeparator = optionName + APIOption.Utils.valueSeparatorToString(valueSeparator);
                         if (headArg.startsWith(optionNameWithSeparator)) {
                             option = optionInfo;
                             int length = optionNameWithSeparator.length();
@@ -623,7 +621,7 @@ final class APIOptionFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, APIOptionFeature.class, true,
-                        "jdk.internal.vm.compiler", "org.graalvm.compiler.options");
+                        "jdk.graal.compiler", "jdk.graal.compiler.options");
     }
 
     @Override

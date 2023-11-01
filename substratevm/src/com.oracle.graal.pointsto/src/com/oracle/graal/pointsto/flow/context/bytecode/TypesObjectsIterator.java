@@ -118,7 +118,7 @@ final class TypesObjectsIterator {
      */
     public AnalysisType nextType() {
         /* Check that there is a next type. */
-        assert hasNextType();
+        assert hasNextType() : typeIdx;
         /* Increment the type index. */
         typeIdx++;
         /* Return the type at the objectIdx. */
@@ -130,7 +130,7 @@ final class TypesObjectsIterator {
      */
     public AnalysisObject nextObject(AnalysisType type) {
         /* Check that there is a next object of the desired type. */
-        assert hasNextObject(type);
+        assert hasNextObject(type) : type;
         /* Return the next object and increment objectIdx. */
         return objects[objectIdx++];
     }

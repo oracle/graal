@@ -45,7 +45,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   libgraal_truffle_base(quickbuild_args=[], extra_vm_args=[], coverage=false): self.libgraal_build(['-J-esa', '-J-ea', '-esa', '-ea'] + quickbuild_args) + {
     environment+: {
       # The Truffle TCK tests run as a part of Truffle TCK gate, tools tests run as a part of tools gate
-      TEST_LIBGRAAL_EXCLUDE: 'com.oracle.truffle.tck.tests.* com.oracle.truffle.tools.*'
+      TEST_LIBGRAAL_EXCLUDE: 'com.oracle.truffle.tck.tests.* com.oracle.truffle.tools.* com.oracle.truffle.regex.*'
     },
     run+: [
       ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Truffle'] + if coverage then g.jacoco_gate_args else [] +
@@ -72,17 +72,23 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
   # See definition of `gates` local variable in ../../compiler/ci_common/gate.jsonnet
   local gates = {
+    "gate-vm-libgraal_compiler-labsjdk-latest-linux-amd64": {},
+    "gate-vm-libgraal_truffle-labsjdk-latest-linux-amd64": {},
+    "gate-vm-libgraal_compiler_zgc-labsjdk-latest-linux-amd64": {},
+    "gate-vm-libgraal_compiler_quickbuild-labsjdk-latest-linux-amd64": {},
+
     "gate-vm-libgraal_compiler-labsjdk-21-linux-amd64": {} + graal_common.mach5_target,
     "gate-vm-libgraal_truffle-labsjdk-21-linux-amd64": {},
-    "gate-vm-libgraal_compiler_zgc-labsjdk-21-linux-amd64": {},
-    "gate-vm-libgraal_compiler_quickbuild-labsjdk-21-linux-amd64": {},
-    "gate-vm-libgraal_truffle_quickbuild-labsjdk-21-linux-amd64": t("1:10:00"),
-    "gate-vm-libgraal_compiler-oraclejdk-22-linux-amd64": {},
   },
 
   # See definition of `dailies` local variable in ../../compiler/ci_common/gate.jsonnet
   local dailies = {
-    "daily-vm-libgraal_truffle_zgc-labsjdk-21-linux-amd64": {},
+    "daily-vm-libgraal_truffle_zgc-labsjdk-latest-linux-amd64": {},
+
+    "daily-vm-libgraal_compiler_zgc-labsjdk-21-linux-amd64": {},
+    "daily-vm-libgraal_compiler_quickbuild-labsjdk-21-linux-amd64": {},
+    "daily-vm-libgraal_truffle_quickbuild-labsjdk-latest-linux-amd64": t("1:10:00"),
+    "daily-vm-libgraal_truffle_quickbuild-labsjdk-21-linux-amd64": t("1:10:00"),
   },
 
   # See definition of `weeklies` local variable in ../../compiler/ci_common/gate.jsonnet
@@ -112,14 +118,15 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     vm["custom_vm_" + os(os_arch)] +
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
                  include_common_os_arch=false,
-                 jdk_name = if jdk == "22" then "oraclejdk" else "labsjdk",
+                 jdk_name = "labsjdk",
                  gates_manifest=gates,
                  dailies_manifest=dailies,
                  weeklies_manifest=weeklies,
                  monthlies_manifest=monthlies).build +
     vm["vm_java_" + jdk]
     for jdk in [
-      "21"
+      "21",
+      "Latest"
     ]
     for os_arch in all_os_arches
     for task in [
@@ -130,34 +137,12 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     ]
   ],
 
-  # Builds run on OracleJDK22
-  local oraclejdk22_builds = [
-    c["gate_vm_" + underscore(os_arch)] +
-    svm_common(os_arch, jdk) +
-    vm["custom_vm_" + os(os_arch)] +
-    g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
-                 include_common_os_arch=false,
-                 jdk_name="oraclejdk",
-                 gates_manifest=gates,
-                 dailies_manifest=dailies,
-                 weeklies_manifest=weeklies,
-                 monthlies_manifest=monthlies).build +
-    vm["vm_java_" + jdk]
-    for jdk in [
-      "22"
-    ]
-    for os_arch in all_os_arches
-    for task in [
-      "libgraal_compiler",
-    ]
-  ],
-
   local adjust_windows_version(gate) = (
       # replace 2016 with 2019
      gate + { capabilities: [ if x == "windows_server_2016" then "windows_server_2019" else x for x in gate.capabilities ] }
   ),
 
-  # Builds run on all platforms (platform = JDK + OS + ARCH) but windows currently requires windows server 2019
+  # Builds run on all platforms (platform = JDK + OS + ARCH) but Windows currently requires Windows server 2019
   local all_platforms_zgc_builds = [
     adjust_windows_version(c["gate_vm_" + underscore(os_arch)]) +
     svm_common(os_arch, jdk) +
@@ -170,7 +155,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
                  monthlies_manifest=monthlies).build +
     vm["vm_java_" + jdk]
     for jdk in [
-      "21",
+      "Latest",
     ]
     for os_arch in all_os_arches
     for task in [
@@ -179,7 +164,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     ]
   ],
 
-  # Coverage builds only on jdk21
+  # Coverage builds only on jdk21 (GR-46676)
   local coverage_jdk21_builds = [
     c["gate_vm_" + underscore(os_arch)] +
     svm_common(os_arch, jdk) +
@@ -207,7 +192,6 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   # Complete set of builds defined in this file
   local all_builds =
     all_platforms_builds +
-    oraclejdk22_builds +
     all_platforms_zgc_builds +
     coverage_jdk21_builds,
 

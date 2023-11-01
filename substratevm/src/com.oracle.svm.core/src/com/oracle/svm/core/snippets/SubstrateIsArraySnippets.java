@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.snippets;
 
-import org.graalvm.compiler.replacements.IsArraySnippets;
+import jdk.graal.compiler.replacements.IsArraySnippets;
 
 import com.oracle.svm.core.hub.DynamicHub;
 

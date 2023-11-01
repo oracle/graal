@@ -29,7 +29,7 @@ package com.oracle.objectfile.debugentry;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugInterfaceTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
-import org.graalvm.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -56,7 +56,9 @@ public class InterfaceClassEntry extends ClassEntry {
 
     public void addImplementor(ClassEntry classEntry, DebugContext debugContext) {
         implementors.add(classEntry);
-        debugContext.log("typename %s add implementor %s%n", typeName, classEntry.getTypeName());
+        if (debugContext.isLogEnabled()) {
+            debugContext.log("typename %s add implementor %s%n", typeName, classEntry.getTypeName());
+        }
     }
 
     public Stream<ClassEntry> implementors() {

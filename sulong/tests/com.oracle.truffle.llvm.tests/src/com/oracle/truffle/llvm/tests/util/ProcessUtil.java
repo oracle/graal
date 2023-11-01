@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,8 +29,7 @@
  */
 package com.oracle.truffle.llvm.tests.util;
 
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
+import com.oracle.truffle.llvm.tests.Platform;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 import com.oracle.truffle.llvm.tests.pipe.CaptureOutput;
 import org.graalvm.polyglot.Context;
@@ -50,6 +49,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+
+import org.junit.Assert;
 
 public class ProcessUtil {
 
@@ -115,6 +116,16 @@ public class ProcessUtil {
             return sb.toString();
         }
 
+        private static String sanitizeCRLF(String str) {
+            if (Platform.isWindows()) {
+                // on windows, the JVM sometimes messes with the binary/text mode of stdout
+                // so we have to ignore CRLF vs LF differences in the test output
+                return str.replaceAll("\r\n", "\n");
+            } else {
+                return str;
+            }
+        }
+
         @Override
         public boolean equals(Object obj) {
             // ignore originalCommand, two different commands can still produce the same output
@@ -124,8 +135,8 @@ public class ProcessUtil {
 
             ProcessResult other = (ProcessResult) obj;
             return this.returnValue == other.returnValue &&
-                            Objects.equals(this.stdErr, other.stdErr) &&
-                            Objects.equals(this.stdOutput, other.stdOutput);
+                            Objects.equals(sanitizeCRLF(this.stdErr), sanitizeCRLF(other.stdErr)) &&
+                            Objects.equals(sanitizeCRLF(this.stdOutput), sanitizeCRLF(other.stdOutput));
         }
 
         @Override
@@ -166,14 +177,14 @@ public class ProcessUtil {
 
         @Override
         public ProcessResult run(File bitcodeFile, String[] args, Map<String, String> options, boolean evalSourceOnly) throws IOException {
-            org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(LLVMLanguage.ID, bitcodeFile).build();
+            org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder("llvm", bitcodeFile).build();
             Builder builder = Context.newBuilder();
             try (CaptureOutput out = captureOutput.apply(builder)) {
                 int result = 0;
-                try (Context context = builder.engine(engine).arguments(LLVMLanguage.ID, args).options(options).allowAllAccess(true).build()) {
+                try (Context context = builder.engine(engine).arguments("llvm", args).options(options).allowAllAccess(true).build()) {
                     Value main = context.eval(source);
                     if (!main.canExecute()) {
-                        throw new LLVMLinkerException("No main function found.");
+                        Assert.fail("No main function found.");
                     }
                     if (!evalSourceOnly) {
                         result = main.execute().asInt();

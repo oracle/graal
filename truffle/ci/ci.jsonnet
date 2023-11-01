@@ -34,7 +34,7 @@
   },
 
   local gate_lite = truffle_common + {
-    name: 'gate-truffle-mac-lite-oraclejdk-' + self.jdk_version,
+    name: 'gate-truffle-mac-lite-oraclejdk-' + self.jdk_name,
     run: [
       ["mx", "build"],
       ["mx", "unittest", "--verbose"],
@@ -42,15 +42,15 @@
   },
 
   local sigtest = truffle_common + {
-    name: 'gate-truffle-sigtest-' + self.jdk_version,
+    name: 'gate-truffle-sigtest-' + self.jdk_name,
     run: [
       ["mx", "build"],
-      ["mx", "sigtest", "--check", (if self.jdk_version == 17 then "all" else "bin")],
+      ["mx", "sigtest", "--check", (if self.jdk_version == 21 then "all" else "bin")],
     ],
   },
 
   local simple_tool_maven_project_gate = truffle_common + {
-    name: 'gate-external-mvn-simpletool-' + self.jdk_version,
+    name: 'gate-external-mvn-simpletool-' + self.jdk_name,
     packages+: {
       maven: "==3.3.9"
     },
@@ -58,19 +58,19 @@
     run+: [
       ["set-export", "ROOT_DIR", ["pwd"]],
       self.mx_cmd + ["build"],
-      ["mkdir", "tmp_mvn_repo"],
-      ["mx", "maven-install", "--repo", "tmp_mvn_repo", "--version-string", self.mx_cmd + ["graalvm-version"]],
+      ["mkdir", "mxbuild/tmp_mvn_repo"],
+      self.mx_cmd + ["maven-deploy", "--tags=public", "--all-suites", "--all-distribution-types", "--validate=full", "--licenses=EPL-2.0,PSF-License,GPLv2-CPE,ICU,GPLv2,BSD-simplified,BSD-new,UPL,MIT", "--version-string", self.mx_cmd + ["graalvm-version"], "--suppress-javadoc", "local", "file://$ROOT_DIR/mxbuild/tmp_mvn_repo"],
       ["set-export", "JAVA_HOME", self.mx_cmd + ["--quiet", "--no-warning", "graalvm-home"]],
       ["cd", "external_repos/"],
       ["python", "populate.py"],
       ["cd", "simpletool"],
-      ["mvn", "-Dmaven.repo.local=$ROOT_DIR/tmp_mvn_repo", "package"],
-      ["./simpletool", "js", "example.js"],
+      ["mvn", "-Dmaven.repo.local=$ROOT_DIR/mxbuild/tmp_mvn_repo", "package"],
+      ["./simpletool", "example.js"],
     ],
   },
 
   local simple_language_maven_project_gate = truffle_common + {
-    name: 'gate-external-mvn-simplelanguage-' + self.jdk_version,
+    name: 'gate-external-mvn-simplelanguage-' + self.jdk_name,
     packages+: {
       maven: "==3.3.9",
       ruby: ">=2.1.0",
@@ -83,28 +83,23 @@
     run+: [
       ["set-export", "ROOT_DIR", ["pwd"]],
       self.mx_cmd + ["build"],
-      ["mkdir", "tmp_mvn_repo"],
-      ["mx", "maven-install", "--all-suites", "--repo", "tmp_mvn_repo", "--version-string", self.mx_cmd + ["graalvm-version"]],
+      ["mkdir", "mxbuild/tmp_mvn_repo"],
+      ["mx", "maven-install", "--all-suites", "--repo", "mxbuild/tmp_mvn_repo", "--version-string", self.mx_cmd + ["graalvm-version"]],
       ["set-export", "JAVA_HOME", self.mx_cmd + ["--quiet", "--no-warning", "graalvm-home"]],
       ["cd", "external_repos"],
       ["python", "populate.py"],
       ["cd", "simplelanguage"],
-      ["mvn", "-Dmaven.repo.local=$ROOT_DIR/tmp_mvn_repo", "package"],
+      ["mvn", "-Dmaven.repo.local=$ROOT_DIR/mxbuild/tmp_mvn_repo", "package", "-Pnative"],
       ["./sl", "language/tests/Add.sl"],
-      ["./sl", "-dump", "language/tests/Add.sl"],
-      ["./sl", "-disassemble", "language/tests/Add.sl"],
-      ["./sl", "language/tests/Add.sl"],
-      ["./native/slnative", "language/tests/Add.sl"],
-      ["$JAVA_HOME/bin/gu", "install", "-L", "component/sl-component.jar"],
-      ["$JAVA_HOME/bin/sl", "language/tests/Add.sl"],
-      ["$JAVA_HOME/bin/slnative", "language/tests/Add.sl"],
-      ["$JAVA_HOME/bin/polyglot", "--jvm", "--language", "sl", "--file", "language/tests/Add.sl"],
-      ["$JAVA_HOME/bin/gu", "remove", "sl"],
+      ["./sl", "-dump", "language/tests/SumCall.sl"],
+      ["./sl", "-disassemble", "language/tests/SumCall.sl"],
+      ["./sl", "language/tests/SumCall.sl"],
+      ["./standalone/target/slnative", "language/tests/SumCall.sl"],
     ],
   },
 
-  local truffle_gate = truffle_common + common.deps.eclipse + common.deps.jdt {
-    name: 'gate-truffle-oraclejdk-' + self.jdk_version,
+  local truffle_gate = truffle_common + common.deps.eclipse + common.deps.jdt + common.deps.spotbugs {
+    name: 'gate-truffle-oraclejdk-' + self.jdk_name,
     run: [["mx", "--strict-compliance", "gate", "--strict-mode"]],
   },
 
@@ -114,13 +109,16 @@
       [
         linux_amd64  + jdk + sigtest + guard,
         linux_amd64  + jdk + simple_tool_maven_project_gate + common.mach5_target,
-        linux_amd64  + jdk + simple_language_maven_project_gate,
         darwin_amd64 + jdk + truffle_weekly + gate_lite + guard,
-      ] for jdk in [common.oraclejdk21, common.oraclejdk17]
+      ] for jdk in [common.oraclejdk21, common.oraclejdkLatest]
     ]) +
   [
-    linux_amd64 + common.oraclejdk17 + truffle_gate + guard + {timelimit: "45:00"},
-    linux_amd64 + common.oraclejdk21 + truffle_gate + guard + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
+    # The simple_language_maven_project_gate uses native-image, so we must run on labsjdk rather than oraclejdk
+    linux_amd64  + common.labsjdk21 + simple_language_maven_project_gate,
+    linux_amd64  + common.labsjdkLatest + simple_language_maven_project_gate,
+
+    linux_amd64 + common.oraclejdk21 + truffle_gate + guard + {timelimit: "45:00"},
+    linux_amd64 + common.oraclejdkLatest + truffle_gate + guard + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
 
     truffle_common + linux_amd64 + common.oraclejdk17 + guard {
       name: "gate-truffle-javadoc",
@@ -130,7 +128,7 @@
       ],
     },
 
-    truffle_common + linux_amd64 + common.oraclejdk17 + guard {
+    truffle_common + linux_amd64 + common.oraclejdk21 + guard {
       name: "gate-truffle-slow-path-unittests",
       run: [
         ["mx", "build", "-n", "-c", "-A-Atruffle.dsl.GenerateSlowPathOnly=true"],
@@ -141,8 +139,8 @@
       ],
     },
 
-    truffle_common + windows_amd64 + common.oraclejdk17 + devkits["windows-jdk17"] + guard {
-      name: "gate-truffle-nfi-windows-17",
+    truffle_common + windows_amd64 + common.oraclejdk21 + devkits["windows-jdk21"] + guard {
+      name: "gate-truffle-nfi-windows-21",
       # TODO make that a full gate run
       # currently, some truffle unittests fail on windows
       run: [
@@ -151,8 +149,8 @@
       ],
     },
 
-    truffle_common + linux_amd64 + common.oraclejdk17 + common.deps.eclipse + common.deps.jdt + guard + {
-      name: "weekly-truffle-coverage-17-linux-amd64",
+    truffle_common + linux_amd64 + common.oraclejdk21 + common.deps.eclipse + common.deps.jdt + guard + {
+      name: "weekly-truffle-coverage-21-linux-amd64",
       run: [
         ["mx", "--strict-compliance", "gate", "--strict-mode", "--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
       ],

@@ -41,15 +41,15 @@ import java.util.List;
 
 import com.oracle.svm.core.SubstrateUtil;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import org.graalvm.compiler.options.Option;
+import jdk.graal.compiler.options.Option;
 
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.info.NativeCodeInfo;
 import com.oracle.svm.hosted.c.query.QueryResultParser;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionValues;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 

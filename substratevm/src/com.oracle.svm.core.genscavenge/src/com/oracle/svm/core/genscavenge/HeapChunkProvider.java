@@ -32,7 +32,6 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
@@ -71,14 +70,6 @@ final class HeapChunkProvider {
      */
     private final AtomicUnsigned bytesInUnusedAlignedChunks = new AtomicUnsigned();
 
-    /**
-     * The time of the first allocation, as the basis for computing deltas.
-     *
-     * We do not care if we race on initializing the field, since the times will be similar in that
-     * case anyway.
-     */
-    private long firstAllocationTime;
-
     @Platforms(Platform.HOSTED_ONLY.class)
     HeapChunkProvider() {
     }
@@ -99,7 +90,6 @@ final class HeapChunkProvider {
         AlignedHeader result = popUnusedAlignedChunk();
         if (result.isNull()) {
             /* Unused list was empty, need to allocate memory. */
-            noteFirstAllocationTime();
             result = (AlignedHeader) CommittedMemoryProvider.get().allocateAlignedChunk(chunkSize, HeapParameters.getAlignedHeapChunkAlignment());
             if (result.isNull()) {
                 throw OutOfMemoryUtil.reportOutOfMemoryError(ALIGNED_OUT_OF_MEMORY_ERROR);
@@ -249,10 +239,10 @@ final class HeapChunkProvider {
     }
 
     /** Acquire an UnalignedHeapChunk from the operating system. */
+    @SuppressWarnings("static-method")
     UnalignedHeader produceUnalignedChunk(UnsignedWord objectSize) {
         UnsignedWord chunkSize = UnalignedHeapChunk.getChunkSizeForObject(objectSize);
 
-        noteFirstAllocationTime();
         UnalignedHeader result = (UnalignedHeader) CommittedMemoryProvider.get().allocateUnalignedChunk(chunkSize);
         if (result.isNull()) {
             throw OutOfMemoryUtil.reportOutOfMemoryError(UNALIGNED_OUT_OF_MEMORY_ERROR);
@@ -261,7 +251,8 @@ final class HeapChunkProvider {
         UnalignedHeapChunk.initialize(result, chunkSize);
         assert objectSize.belowOrEqual(HeapChunk.availableObjectMemory(result)) : "UnalignedHeapChunk insufficient for requested object";
 
-        if (HeapParameters.getZapProducedHeapChunks()) {
+        /* Avoid zapping if unaligned chunks are pre-zeroed. */
+        if (!CommittedMemoryProvider.get().areUnalignedChunksZeroed() && HeapParameters.getZapProducedHeapChunks()) {
             zap(result, HeapParameters.getProducedHeapChunkZapWord());
         }
         return result;
@@ -289,39 +280,8 @@ final class HeapChunkProvider {
         }
     }
 
-    Log report(Log log, boolean traceHeapChunks) {
-        log.string("Unused:").indent(true);
-        log.string("aligned: ").signed(bytesInUnusedAlignedChunks.get())
-                        .string("/")
-                        .signed(bytesInUnusedAlignedChunks.get().unsignedDivide(HeapParameters.getAlignedHeapChunkSize()));
-        if (traceHeapChunks) {
-            AlignedHeapChunk.AlignedHeader firstChunk = unusedAlignedChunks.get();
-            HeapChunkLogging.logChunks(log, firstChunk);
-        }
-        log.redent(false);
-        return log;
-    }
-
-    boolean walkHeapChunks(MemoryWalker.Visitor visitor) {
-        assert VMOperation.isInProgressAtSafepoint();
-        boolean continueVisiting = true;
-        MemoryWalker.HeapChunkAccess<AlignedHeapChunk.AlignedHeader> access = AlignedHeapChunk.getMemoryWalkerAccess();
-        for (AlignedHeapChunk.AlignedHeader aChunk = unusedAlignedChunks.get(); continueVisiting && aChunk.isNonNull(); aChunk = HeapChunk.getNext(aChunk)) {
-            continueVisiting = visitor.visitHeapChunk(aChunk, access);
-        }
-        return continueVisiting;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private void noteFirstAllocationTime() {
-        if (firstAllocationTime == 0L) {
-            firstAllocationTime = System.nanoTime();
-        }
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    long getFirstAllocationTime() {
-        return firstAllocationTime;
+    void logFreeChunks(Log log) {
+        HeapChunkLogging.logChunks(log, unusedAlignedChunks.get(), "F", true);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

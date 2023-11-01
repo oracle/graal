@@ -42,7 +42,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -88,7 +88,7 @@ public final class Resources {
      * com.oracle.svm.hosted.ModuleLayerFeature}.
      */
     private final EconomicMap<Pair<Module, String>, ResourceStorageEntryBase> resources = ImageHeapMap.create();
-    private final EconomicSet<ModuleResourcePair> includePatterns = EconomicSet.create();
+    private final EconomicMap<ModuleResourcePair, Boolean> includePatterns = ImageHeapMap.create();
 
     public record ModuleResourcePair(String module, String resource) {
     }
@@ -166,7 +166,7 @@ public final class Resources {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private ResourceStorageEntryBase addEntry(Module module, String resourceName, ResourceStorageEntryBase newEntry, boolean isDirectory, boolean fromJar) {
+    private void addEntry(Module module, String resourceName, boolean isDirectory, byte[] data, boolean fromJar, boolean isNegativeQuery) {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to add a resource entry after analysis.");
         Module m = module != null && module.isNamed() ? module : null;
         if (m != null) {
@@ -175,18 +175,27 @@ public final class Resources {
         synchronized (resources) {
             Pair<Module, String> key = createStorageKey(m, resourceName);
             ResourceStorageEntryBase entry = resources.get(key);
-            if (entry == null || entry == NEGATIVE_QUERY_MARKER) {
-                entry = newEntry == null ? new ResourceStorageEntry(isDirectory, fromJar) : newEntry;
-                updateTimeStamp();
-                resources.put(key, entry);
+            if (isNegativeQuery) {
+                if (entry == null) {
+                    resources.put(key, NEGATIVE_QUERY_MARKER);
+                }
+                return;
             }
-            return entry;
-        }
-    }
 
-    private void addEntry(Module module, String resourceName, boolean isDirectory, byte[] data, boolean fromJar) {
-        ResourceStorageEntryBase entry = addEntry(module, resourceName, null, isDirectory, fromJar);
-        entry.getData().add(data);
+            if (entry == null || entry == NEGATIVE_QUERY_MARKER) {
+                updateTimeStamp();
+                entry = new ResourceStorageEntry(isDirectory, fromJar);
+                resources.put(key, entry);
+            } else {
+                if (key.getLeft() != null) {
+                    // if the entry already exists, and it comes from a module, it is the same entry
+                    // that we registered at some point before
+                    return;
+                }
+            }
+
+            entry.getData().add(data);
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -195,38 +204,13 @@ public final class Resources {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerResource(String resourceName, InputStream is, boolean fromJar) {
-        registerResource(null, resourceName, is, fromJar);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerResource(Module module, String resourceName, InputStream is) {
-        registerResource(module, resourceName, is, true);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
     public void registerResource(Module module, String resourceName, byte[] resourceContent) {
-        addEntry(module, resourceName, false, resourceContent, true);
+        addEntry(module, resourceName, false, resourceContent, true, false);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerResource(Module module, String resourceName, InputStream is, boolean fromJar) {
-        addEntry(module, resourceName, false, inputStreamToByteArray(is), fromJar);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerDirectoryResource(String resourceDirName, String content) {
-        registerDirectoryResource(null, resourceDirName, content, true);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerDirectoryResource(String resourceDirName, String content, boolean fromJar) {
-        registerDirectoryResource(null, resourceDirName, content, fromJar);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerDirectoryResource(Module module, String resourceDirName, String content) {
-        registerDirectoryResource(module, resourceDirName, content, true);
+        addEntry(module, resourceName, false, inputStreamToByteArray(is), fromJar, false);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -236,21 +220,16 @@ public final class Resources {
          * specified directory, separated with new line delimiter and joined into one string which
          * is later converted into a byte array and placed into the resources map.
          */
-        addEntry(module, resourceDirName, true, content.getBytes(), fromJar);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerIOException(String resourceName, IOException e, boolean linkAtBuildTime) {
-        registerIOException(null, resourceName, e, linkAtBuildTime);
+        addEntry(module, resourceDirName, true, content.getBytes(), fromJar, false);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerIOException(Module module, String resourceName, IOException e, boolean linkAtBuildTime) {
         if (linkAtBuildTime) {
             if (SubstrateOptions.ThrowLinkAtBuildTimeIOExceptions.getValue()) {
-                throw new RuntimeException("Resource " + resourceName + " from module " + module.getName() + " produced an IOException.", e);
+                throw new RuntimeException("Resource " + resourceName + " from module " + moduleName(module) + " produced an IOException.", e);
             } else {
-                LogUtils.warning("Resource " + resourceName + " from module " + module.getName() + " produced the following IOException: " + e.getClass().getTypeName() + ": " + e.getMessage());
+                LogUtils.warning("Resource " + resourceName + " from module " + moduleName(module) + " produced the following IOException: " + e.getClass().getTypeName() + ": " + e.getMessage());
             }
         }
         Pair<Module, String> key = createStorageKey(module, resourceName);
@@ -267,7 +246,7 @@ public final class Resources {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerNegativeQuery(Module module, String resourceName) {
-        addEntry(module, resourceName, NEGATIVE_QUERY_MARKER, false, false);
+        addEntry(module, resourceName, false, null, false, true);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -280,7 +259,7 @@ public final class Resources {
         assert MissingRegistrationUtils.throwMissingRegistrationErrors();
         synchronized (includePatterns) {
             updateTimeStamp();
-            includePatterns.add(new ModuleResourcePair(module, pattern));
+            includePatterns.put(new ModuleResourcePair(module, pattern), Boolean.TRUE);
         }
     }
 
@@ -321,7 +300,9 @@ public final class Resources {
         ResourceStorageEntryBase entry = resources.get(createStorageKey(module, canonicalResourceName));
         if (entry == null) {
             if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
-                for (ModuleResourcePair moduleResourcePair : includePatterns) {
+                MapCursor<ModuleResourcePair, Boolean> cursor = includePatterns.getEntries();
+                while (cursor.advance()) {
+                    ModuleResourcePair moduleResourcePair = cursor.getKey();
                     if (Objects.equals(moduleName, moduleResourcePair.module) &&
                                     (matchResource(moduleResourcePair.resource, resourceName) || matchResource(moduleResourcePair.resource, canonicalResourceName))) {
                         return null;

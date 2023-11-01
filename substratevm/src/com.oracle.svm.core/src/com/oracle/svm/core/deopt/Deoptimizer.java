@@ -32,11 +32,11 @@ import java.lang.reflect.Array;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.common.util.TypeConversion;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.word.BarrieredAccess;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.util.TypeConversion;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.word.BarrieredAccess;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -48,6 +48,7 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
@@ -83,6 +84,7 @@ import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
@@ -164,9 +166,9 @@ public final class Deoptimizer {
 
     public static JavaConstant encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason, int speculationId) {
         JavaConstant result = JavaConstant.forLong(encodeDeoptActionAndReasonToLong(action, reason, speculationId));
-        assert decodeDeoptAction(result) == action;
-        assert decodeDeoptReason(result) == reason;
-        assert decodeDebugId(result) == speculationId;
+        assert decodeDeoptAction(result) == action : result;
+        assert decodeDeoptReason(result) == reason : result;
+        assert decodeDebugId(result) == speculationId : result;
         return result;
     }
 
@@ -695,7 +697,7 @@ public final class Deoptimizer {
             }
         }
 
-        assert endOfParams == 0;
+        assert endOfParams == 0 : endOfParams;
 
         /*
          * In case deoptimization is called from an inlined method, we have to construct multiple
@@ -1121,7 +1123,7 @@ public final class Deoptimizer {
     }
 
     private static void printDeoptimizedFrame(Log log, Pointer sp, DeoptimizedFrame deoptimizedFrame, FrameInfoQueryResult sourceFrameInfo, boolean printOnlyTopFrames) {
-        log.string("[Deoptimization of frame (timestamp ").unsigned(System.currentTimeMillis()).string(")").newline();
+        log.string("[Deoptimization of frame (").rational(Isolates.getCurrentUptimeMillis(), TimeUtils.millisPerSecond, 3).string("s)").newline();
 
         SubstrateInstalledCode installedCode = deoptimizedFrame.getSourceInstalledCode();
         if (installedCode != null) {

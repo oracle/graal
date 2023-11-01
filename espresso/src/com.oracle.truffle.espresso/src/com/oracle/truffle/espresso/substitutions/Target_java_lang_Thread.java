@@ -47,7 +47,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import com.oracle.truffle.espresso.threads.Transition;
@@ -180,8 +180,14 @@ public final class Target_java_lang_Thread {
     }
 
     @TruffleBoundary
-    @Substitution(isTrivial = true)
+    @Substitution(isTrivial = true, versionFilter = VersionFilter.Java18OrEarlier.class)
     public static void yield() {
+        Thread.yield();
+    }
+
+    @TruffleBoundary
+    @Substitution(isTrivial = true)
+    public static void yield0() {
         Thread.yield();
     }
 
@@ -198,23 +204,10 @@ public final class Target_java_lang_Thread {
         hostThread.setPriority(newPriority);
     }
 
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, versionFilter = VersionFilter.Java18OrEarlier.class)
     public static boolean isAlive(@JavaType(Thread.class) StaticObject self,
                     @Inject EspressoContext context) {
         return context.getThreadAccess().isAlive(self);
-    }
-
-    @Substitution(hasReceiver = true)
-    abstract static class GetState extends SubstitutionNode {
-        abstract @JavaType(internalName = "Ljava/lang/Thread$State;") StaticObject execute(@JavaType(Thread.class) StaticObject self);
-
-        @Specialization
-        @JavaType(internalName = "Ljava/lang/Thread$State;")
-        StaticObject doDefault(@JavaType(Thread.class) StaticObject self,
-                        @Bind("getContext()") EspressoContext context,
-                        @Cached("create(context.getMeta().sun_misc_VM_toThreadState.getCallTarget())") DirectCallNode toThreadState) {
-            return (StaticObject) toThreadState.call(context.getThreadAccess().getState(self));
-        }
     }
 
     @SuppressWarnings("unused")
@@ -391,6 +384,18 @@ public final class Target_java_lang_Thread {
             assert access.getThread() == Thread.currentThread();
             result = InterpreterToVM.getStackTrace(InterpreterToVM.DefaultHiddenFramesFilter.INSTANCE, maxDepth);
         }
+    }
+
+    @Substitution(versionFilter = VersionFilter.Java20OrLater.class)
+    public static @JavaType(Object[].class) StaticObject scopedValueCache(@Inject EspressoContext context) {
+        StaticObject platformThread = context.getCurrentPlatformThread();
+        return context.getThreadAccess().getScopedValueCache(platformThread);
+    }
+
+    @Substitution(versionFilter = VersionFilter.Java20OrLater.class)
+    public static void setScopedValueCache(@JavaType(Object[].class) StaticObject cache, @Inject EspressoContext context) {
+        StaticObject platformThread = context.getCurrentPlatformThread();
+        context.getThreadAccess().setScopedValueCache(platformThread, cache);
     }
 
     @Substitution(versionFilter = VersionFilter.Java20OrLater.class, isTrivial = true)

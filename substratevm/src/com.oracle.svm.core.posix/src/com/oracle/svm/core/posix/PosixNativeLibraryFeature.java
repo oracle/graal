@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,6 +48,7 @@ import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Resource;
+import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.darwin.DarwinSyslimits;
 
 @AutomaticallyRegisteredFeature
@@ -103,6 +104,20 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
                  * use of FORK on Linux and Mac.
                  */
                 System.setProperty("jdk.lang.Process.launchMechanism", "FORK");
+
+                /*
+                 * Work around a bug in fork() on Darwin by eagerly calling localtime_r to make sure
+                 * libnotify is initialized before any fork can happen. See GR-48525.
+                 *
+                 * Original workaround from here:
+                 * https://github.com/dart-lang/sdk/commit/9b1412031b66f86d2739595d115107def42b736d
+                 */
+                if (Platform.includedIn(Platform.DARWIN.class)) {
+                    Time.timeval tv = UnsafeStackValue.get(Time.timeval.class);
+                    Time.NoTransitions.gettimeofday(tv, WordFactory.nullPointer());
+                    Time.tm tm = UnsafeStackValue.get(Time.tm.class);
+                    Time.NoTransitions.localtime_r(tv.addressOftv_sec(), tm);
+                }
 
             } catch (UnsatisfiedLinkError e) {
                 Log.log().string("System.loadLibrary failed, " + e).newline();
@@ -170,6 +185,21 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
             assert !loaded;
             loaded = doLoad();
             return loaded;
+        }
+
+        @Override
+        public boolean unload() {
+            assert loaded;
+            if (builtin) {
+                return false;
+            }
+            assert dlhandle.isNonNull();
+            if (PosixUtils.dlclose(dlhandle)) {
+                dlhandle = WordFactory.nullPointer();
+                return true;
+            } else {
+                return false;
+            }
         }
 
         private boolean doLoad() {

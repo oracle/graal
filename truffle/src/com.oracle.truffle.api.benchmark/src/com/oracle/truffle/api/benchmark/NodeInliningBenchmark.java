@@ -331,7 +331,7 @@ public class NodeInliningBenchmark extends TruffleBenchmark {
         }
     }
 
-    @SuppressWarnings({"truffle-inlining", "truffle-sharing"})
+    @SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-interpreted-performance"})
     public abstract static class InlinedSharedExclusiveNode extends Node {
 
         abstract long execute(long v0, long v1, long v2, long v3);

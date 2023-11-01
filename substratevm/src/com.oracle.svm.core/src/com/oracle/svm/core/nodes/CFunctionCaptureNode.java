@@ -24,21 +24,24 @@
  */
 package com.oracle.svm.core.nodes;
 
-import static org.graalvm.compiler.nodeinfo.InputType.Memory;
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
+import static jdk.graal.compiler.nodeinfo.InputType.Memory;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
 import java.util.Objects;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
-import org.graalvm.compiler.nodes.spi.Lowerable;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
+import jdk.graal.compiler.nodes.extended.ForeignCallNode;
+import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
+import jdk.graal.compiler.nodes.spi.Lowerable;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
 
 /**
@@ -50,8 +53,8 @@ import org.graalvm.word.LocationIdentity;
  * {@link CFunctionEpilogueNode}. This means that this node is executed while in native state. As
  * such, the capture function should be uninterruptible, and never transition to/from Java. Any
  * preprocessing on the arguments (e.g. unboxing a long, or retrieving them from a field) should be
- * done before the prologue; {@link org.graalvm.compiler.nodes.extended.FixedValueAnchorNode} can be
- * used to prevent the computations from floating in between the prologue/epilogue.
+ * done before the prologue; {@link FixedValueAnchorNode} can be used to prevent the computations
+ * from floating in between the prologue/epilogue.
  * <p>
  * You need to register the capture method for foreign call and may need to declare it as an
  * analysis root.
@@ -76,15 +79,13 @@ public class CFunctionCaptureNode extends FixedWithNextNode implements Lowerable
         return LocationIdentity.any();
     }
 
-    public ForeignCallDescriptor getCaptureFunction() {
-        return captureFunction;
-    }
+    @Override
+    public void lower(LoweringTool tool) {
+        if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
+            return;
+        }
 
-    public ValueNode getStatesToCapture() {
-        return statesToCapture;
-    }
-
-    public ValueNode getCaptureBuffer() {
-        return captureBuffer;
+        final ForeignCallNode call = graph().add(new ForeignCallNode(captureFunction, statesToCapture, captureBuffer));
+        graph().replaceFixedWithFixed(this, call);
     }
 }

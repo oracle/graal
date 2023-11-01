@@ -58,13 +58,14 @@ final class BasicCollectionPolicies {
 
         @Override
         public boolean shouldCollectOnAllocation() {
-            UnsignedWord youngUsed = HeapImpl.getHeapImpl().getAccounting().getYoungUsedBytes();
+            UnsignedWord youngUsed = HeapImpl.getAccounting().getYoungUsedBytes();
             return youngUsed.aboveOrEqual(getMaximumYoungGenerationSize());
         }
 
         @Override
-        public boolean shouldCollectOnRequest(GCCause cause, boolean fullGC) {
-            return cause == GCCause.JavaLangSystemGC && !SubstrateGCOptions.DisableExplicitGC.getValue();
+        public boolean shouldCollectOnHint(boolean fullGC) {
+            /* Collection hints are not supported. */
+            return false;
         }
 
         @Override
@@ -79,12 +80,6 @@ final class BasicCollectionPolicies {
 
         @Override
         public void updateSizeParameters() {
-            // Sample the physical memory size, before the first GC but after some allocation.
-            UnsignedWord allocationBeforeUpdate = WordFactory.unsigned(SerialAndEpsilonGCOptions.AllocationBeforePhysicalMemorySize.getValue());
-            if (GCImpl.getGCImpl().getCollectionEpoch().equal(WordFactory.zero()) &&
-                            HeapImpl.getHeapImpl().getAccounting().getYoungUsedBytes().aboveOrEqual(allocationBeforeUpdate)) {
-                PhysicalMemory.tryInitialize();
-            }
             // Size parameters are recomputed from current values whenever they are queried
         }
 
@@ -287,7 +282,7 @@ final class BasicCollectionPolicies {
         private UnsignedWord estimateUsedHeapAtNextIncrementalCollection() {
             UnsignedWord currentYoungBytes = HeapImpl.getHeapImpl().getYoungGeneration().getChunkBytes();
             UnsignedWord maxYoungBytes = getMaximumYoungGenerationSize();
-            UnsignedWord oldBytes = GCImpl.getGCImpl().getAccounting().getOldGenerationAfterChunkBytes();
+            UnsignedWord oldBytes = GCImpl.getAccounting().getOldGenerationAfterChunkBytes();
             return currentYoungBytes.add(maxYoungBytes).add(oldBytes);
         }
 
@@ -295,7 +290,7 @@ final class BasicCollectionPolicies {
             int incrementalWeight = SerialGCOptions.PercentTimeInIncrementalCollection.getValue();
             assert incrementalWeight >= 0 && incrementalWeight <= 100 : "BySpaceAndTimePercentTimeInIncrementalCollection should be in the range [0..100].";
 
-            GCAccounting accounting = GCImpl.getGCImpl().getAccounting();
+            GCAccounting accounting = GCImpl.getAccounting();
             long actualIncrementalNanos = accounting.getIncrementalCollectionTotalNanos();
             long completeNanos = accounting.getCompleteCollectionTotalNanos();
             long totalNanos = actualIncrementalNanos + completeNanos;

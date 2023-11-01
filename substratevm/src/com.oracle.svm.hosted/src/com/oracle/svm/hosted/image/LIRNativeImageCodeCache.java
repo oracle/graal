@@ -30,23 +30,21 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.Indent;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.code.CompilationResult.CodeAnnotation;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.Indent;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.HostedDirectCallTrampolineSupport;
 import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
@@ -56,6 +54,7 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.Call;
+import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.Reference;
@@ -63,8 +62,6 @@ import jdk.vm.ci.code.site.Reference;
 public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
     private static final byte CODE_FILLER_BYTE = (byte) 0xCC;
-
-    private int codeCacheSize;
 
     private final Map<HostedMethod, Map<HostedMethod, Integer>> trampolineMap;
     private final Map<HostedMethod, List<Pair<HostedMethod, Integer>>> orderedTrampolineMap;
@@ -89,18 +86,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
     @Override
     public int getCodeCacheSize() {
-        assert codeCacheSize > 0;
-        return codeCacheSize;
-    }
-
-    @Override
-    public int getCodeAreaSize() {
-        return getCodeCacheSize();
-    }
-
-    private void setCodeCacheSize(int size) {
-        assert codeCacheSize == 0 && size > 0;
-        codeCacheSize = size;
+        return getCodeAreaSize();
     }
 
     @Override
@@ -152,7 +138,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
     @SuppressWarnings("try")
     @Override
-    public void layoutMethods(DebugContext debug, BigBang bb, ForkJoinPool threadPool) {
+    public void layoutMethods(DebugContext debug, BigBang bb) {
 
         try (Indent indent = debug.logAndIndent("layout methods")) {
             // Assign initial location to all methods.
@@ -215,11 +201,10 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 totalSize = computeNextMethodStart(lastCompilation.getLeft().getCodeAddressOffset(), lastCompilation.getRight().getTargetCodeSize());
             }
 
-            setCodeCacheSize(totalSize);
+            setCodeAreaSize(totalSize);
 
             assert verifyMethodLayout();
 
-            buildRuntimeMetadata(bb.getSnippetReflectionProvider(), threadPool, new MethodPointer(getFirstCompilation().getLeft(), true), WordFactory.unsigned(totalSize));
         }
     }
 
@@ -359,7 +344,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             // the codecache-relative offset of the compilation
             int compStart = method.getCodeAddressOffset();
 
-            // Build an index of PatchingAnnoations
+            // Build an index of PatchingAnnotations
             Map<Integer, HostedPatcher> patches = new HashMap<>();
             ByteBuffer targetCode = null;
             for (CodeAnnotation codeAnnotation : compilation.getCodeAnnotations()) {
@@ -411,12 +396,25 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 }
             }
             for (DataPatch dataPatch : compilation.getDataPatches()) {
+                assert dataPatch.note == null : "Unexpected note: " + dataPatch.note;
                 Reference ref = dataPatch.reference;
-                /*
-                 * Constants are allocated offsets in a separate space, which can be emitted as
-                 * read-only (.rodata) section.
-                 */
-                patches.get(dataPatch.pcOffset).relocate(ref, relocs, compStart);
+                var patcher = patches.get(dataPatch.pcOffset);
+                if (ref instanceof ConstantReference constant && constant.getConstant() instanceof SubstrateMethodPointerConstant methodPtrConstant) {
+                    /*
+                     * We directly patch SubstrateMethodPointerConstants.
+                     */
+                    HostedMethod hMethod = (HostedMethod) methodPtrConstant.pointer().getMethod();
+                    VMError.guarantee(hMethod.isCompiled(), "Method %s is not compiled although there is a method pointer constant created for it.", hMethod);
+                    int targetOffset = hMethod.getCodeAddressOffset();
+                    int pcDisplacement = targetOffset - (compStart + dataPatch.pcOffset);
+                    patcher.patch(compStart, pcDisplacement, compilation.getTargetCode());
+                } else {
+                    /*
+                     * Constants are allocated offsets in a separate space, which can be emitted as
+                     * read-only (.rodata) section.
+                     */
+                    patcher.relocate(ref, relocs, compStart);
+                }
                 boolean noPriorMatch = patchedOffsets.add(dataPatch.pcOffset);
                 VMError.guarantee(noPriorMatch, "Patching same offset twice.");
                 patchesHandled++;

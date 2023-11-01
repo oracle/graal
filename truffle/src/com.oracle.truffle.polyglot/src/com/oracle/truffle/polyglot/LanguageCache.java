@@ -66,6 +66,7 @@ import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -126,7 +127,8 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private LanguageCache(String id, String name, String implementationName, String version, String className,
                     String languageHome, Set<String> characterMimeTypes, Set<String> byteMimeTypes, String defaultMimeType,
                     Set<String> dependentLanguages, boolean interactive, boolean internal, boolean needsAllEncodings, Set<String> services,
-                    ContextPolicy contextPolicy, ProviderAdapter providerAdapter, String website, SandboxPolicy sandboxPolicy) {
+                    ContextPolicy contextPolicy, ProviderAdapter providerAdapter, String website, SandboxPolicy sandboxPolicy,
+                    Map<String, InternalResourceCache> internalResources) {
         assert providerAdapter != null : "Provider must be non null";
         this.className = className;
         this.name = name;
@@ -148,11 +150,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.providerAdapter = providerAdapter;
         this.website = website;
         this.sandboxPolicy = sandboxPolicy;
-        Map<String, InternalResourceCache> map = new HashMap<>();
-        for (String resourceId : providerAdapter.getInternalResourceIds()) {
-            map.put(resourceId, new InternalResourceCache(id, resourceId, () -> providerAdapter.createInternalResource(resourceId)));
-        }
-        this.internalResources = Collections.unmodifiableMap(map);
+        this.internalResources = internalResources;
     }
 
     /**
@@ -177,7 +175,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                         null,
                         Collections.emptySet(),
                         false, false, false, hostLanguageProvider.getServicesClassNames(),
-                        ContextPolicy.SHARED, new ModuleAwareProvider(hostLanguageProvider), "", SandboxPolicy.UNTRUSTED);
+                        ContextPolicy.SHARED, new ModuleAwareProvider(hostLanguageProvider), "", SandboxPolicy.UNTRUSTED, Map.of());
         cache.staticIndex = PolyglotEngineImpl.HOST_LANGUAGE_INDEX;
         return cache;
     }
@@ -273,14 +271,15 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     private static synchronized Map<String, LanguageCache> createLanguages(List<AbstractClassLoaderSupplier> suppliers) {
         List<LanguageCache> caches = new ArrayList<>();
+        Map<String, Map<String, Supplier<InternalResourceCache>>> optionalResources = InternalResourceCache.loadOptionalInternalResources(suppliers);
         for (AbstractClassLoaderSupplier supplier : suppliers) {
             ClassLoader loader = supplier.get();
             if (loader == null || !isValidLoader(loader)) {
                 continue;
             }
-            loadProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadLanguageImpl(p, caches));
+            loadProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadLanguageImpl(p, caches, optionalResources));
             if (supplier.supportsLegacyProviders()) {
-                loadLegacyProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadLanguageImpl(p, caches));
+                loadLegacyProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadLanguageImpl(p, caches, optionalResources));
             }
         }
 
@@ -330,7 +329,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
     }
 
-    private static void loadLanguageImpl(ProviderAdapter providerAdapter, List<LanguageCache> into) {
+    private static void loadLanguageImpl(ProviderAdapter providerAdapter, List<LanguageCache> into, Map<String, Map<String, Supplier<InternalResourceCache>>> optionalResources) {
         Class<?> providerClass = providerAdapter.getProviderClass();
         Module providerModule = providerClass.getModule();
         ModuleUtils.exportTransitivelyTo(providerModule);
@@ -385,9 +384,20 @@ final class LanguageCache implements Comparable<LanguageCache> {
         boolean needsAllEncodings = reg.needsAllEncodings();
         Set<String> servicesClassNames = new TreeSet<>(providerAdapter.getServicesClassNames());
         SandboxPolicy sandboxPolicy = reg.sandbox();
+        Map<String, InternalResourceCache> resources = new HashMap<>();
+        for (String resourceId : providerAdapter.getInternalResourceIds()) {
+            resources.put(resourceId, new InternalResourceCache(id, resourceId, () -> providerAdapter.createInternalResource(resourceId)));
+        }
+        for (Map.Entry<String, Supplier<InternalResourceCache>> resourceSupplier : optionalResources.getOrDefault(id, Map.of()).entrySet()) {
+            InternalResourceCache resource = resourceSupplier.getValue().get();
+            InternalResourceCache old = resources.put(resourceSupplier.getKey(), resource);
+            if (old != null) {
+                throw InternalResourceCache.throwDuplicateOptionalResourceException(old, resource);
+            }
+        }
         into.add(new LanguageCache(id, name, implementationName, version, className, languageHome,
                         characterMimes, byteMimeTypes, defaultMime, dependentLanguages, interactive, internal, needsAllEncodings,
-                        servicesClassNames, reg.contextPolicy(), providerAdapter, reg.website(), sandboxPolicy));
+                        servicesClassNames, reg.contextPolicy(), providerAdapter, reg.website(), sandboxPolicy, Collections.unmodifiableMap(resources)));
     }
 
     private static String getLanguageHomeFromURLConnection(String languageId, URLConnection connection) {
@@ -436,12 +446,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     private static String getLanguageHomeImpl(String languageId) {
-        String home = toRealStringPath("org.graalvm.language." + languageId + ".home");
-        if (home == null) {
-            // check legacy property
-            home = toRealStringPath(languageId + ".home");
-        }
-        return home;
+        return toRealStringPath("org.graalvm.language." + languageId + ".home");
     }
 
     private static String toRealStringPath(String propertyName) {
@@ -663,17 +668,15 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     InternalResourceCache getResourceCache(String resourceId) {
-        InternalResourceCache cache = internalResources.get(resourceId);
-        if (cache == null) {
-            throw new IllegalArgumentException(String.format("Resource with id %s is not provided by language %s, provided resource types are %s",
-                            resourceId, id, String.join(", ", internalResources.keySet())));
-        } else {
-            return cache;
-        }
+        return internalResources.get(resourceId);
     }
 
     Collection<String> getResourceIds() {
         return internalResources.keySet();
+    }
+
+    Collection<InternalResourceCache> getResources() {
+        return internalResources.values();
     }
 
     @Override

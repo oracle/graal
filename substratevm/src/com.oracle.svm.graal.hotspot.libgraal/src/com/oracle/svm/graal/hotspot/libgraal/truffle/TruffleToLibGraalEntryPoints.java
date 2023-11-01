@@ -50,12 +50,12 @@ import static org.graalvm.jniutils.JNIUtil.createHSString;
 
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.hotspot.CompilationContext;
-import org.graalvm.compiler.hotspot.HotSpotGraalServices;
-import org.graalvm.compiler.serviceprovider.IsolateUtil;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilationSupport;
-import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl;
+import jdk.graal.compiler.hotspot.CompilationContext;
+import jdk.graal.compiler.hotspot.HotSpotGraalServices;
+import jdk.graal.compiler.serviceprovider.IsolateUtil;
+import jdk.graal.compiler.truffle.TruffleCompilerOptions;
+import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilationSupport;
+import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilerImpl;
 import org.graalvm.jniutils.JNI.JByteArray;
 import org.graalvm.jniutils.JNI.JClass;
 import org.graalvm.jniutils.JNI.JNIEnv;
@@ -242,6 +242,7 @@ final class TruffleToLibGraalEntryPoints {
                 compiler.doCompile(task, compilable, listener);
             } finally {
                 Heap.getHeap().doReferenceHandling();
+                Heap.getHeap().getGC().collectionHint(true);
             }
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);

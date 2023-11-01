@@ -25,7 +25,7 @@
 package com.oracle.svm.core.option;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionKey;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

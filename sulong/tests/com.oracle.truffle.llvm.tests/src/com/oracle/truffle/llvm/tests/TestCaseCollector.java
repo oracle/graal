@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -105,10 +105,17 @@ public final class TestCaseCollector {
             // collect excludes
             ExcludeMap excludedTests = getExcludedTests(testSuiteClass);
             // walk test cases
-            List<Object[]> list = Files.walk(suitesPath).filter(predicate).map(Path::getParent).map(testPath -> {
+            Stream<Object[]> stream = Files.walk(suitesPath).filter(predicate).map(Path::getParent).map(testPath -> {
                 String testCaseName = getTestCaseName(suitesPath, testPath).replace("\\", "/");
                 return new Object[]{testPath, testCaseName, excludedTests.get(testCaseName)};
-            }).collect(Collectors.toList());
+            });
+            if (TestOptions.TEST_NAME_FILTER != null && !TestOptions.TEST_NAME_FILTER.isEmpty()) {
+                stream = stream.filter(arr -> {
+                    String testCaseName = (String) arr[1];
+                    return testCaseName.contains(TestOptions.TEST_NAME_FILTER);
+                });
+            }
+            List<Object[]> list = stream.collect(Collectors.toList());
             if (!list.isEmpty()) {
                 return list;
             }

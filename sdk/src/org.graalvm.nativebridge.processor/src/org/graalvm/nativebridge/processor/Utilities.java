@@ -44,6 +44,8 @@ import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -59,6 +61,7 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
@@ -152,7 +155,7 @@ public final class Utilities {
                     List<? extends Map.Entry<? extends TypeMirror, ? extends CharSequence>> parameters) {
         StringBuilder res = new StringBuilder();
         printModifiers(res, modifiers);
-        if (res.length() > 0) {
+        if (!res.isEmpty()) {
             res.append(" ");
         }
         if (returnType.getKind() != TypeKind.NONE) {
@@ -179,7 +182,7 @@ public final class Utilities {
     public static CharSequence printField(Set<Modifier> modifiers, CharSequence name, TypeMirror type) {
         StringBuilder res = new StringBuilder();
         printModifiers(res, modifiers);
-        if (res.length() > 0) {
+        if (!res.isEmpty()) {
             res.append(" ");
         }
         printType(res, type, false);
@@ -276,6 +279,42 @@ public final class Utilities {
         return name.replace("_", "_1").replace("$", "_00024").replace('.', '_');
     }
 
+    static TypeMirror jniTypeForJavaType(TypeMirror javaType, Types types, AbstractBridgeParser.AbstractTypeCache cache) {
+        if (javaType.getKind().isPrimitive() || javaType.getKind() == TypeKind.VOID) {
+            return javaType;
+        }
+        TypeMirror erasedType = types.erasure(javaType);
+        switch (erasedType.getKind()) {
+            case DECLARED:
+                if (types.isSameType(cache.string, javaType)) {
+                    return cache.jString;
+                } else if (types.isSameType(cache.clazz, javaType)) {
+                    return cache.jClass;
+                } else if (types.isSubtype(javaType, cache.throwable)) {
+                    return cache.jThrowable;
+                } else {
+                    return cache.jObject;
+                }
+            case ARRAY:
+                TypeMirror componentType = types.erasure(((ArrayType) erasedType).getComponentType());
+                return switch (componentType.getKind()) {
+                    case BOOLEAN -> cache.jBooleanArray;
+                    case BYTE -> cache.jByteArray;
+                    case CHAR -> cache.jCharArray;
+                    case SHORT -> cache.jShortArray;
+                    case INT -> cache.jIntArray;
+                    case LONG -> cache.jLongArray;
+                    case FLOAT -> cache.jFloatArray;
+                    case DOUBLE -> cache.jDoubleArray;
+                    case DECLARED -> cache.jObjectArray;
+                    default ->
+                        throw new UnsupportedOperationException("Not supported for array of " + componentType.getKind());
+                };
+            default:
+                throw new UnsupportedOperationException("Not supported for " + javaType.getKind());
+        }
+    }
+
     public static boolean contains(Collection<? extends TypeMirror> collection, TypeMirror mirror, Types types) {
         for (TypeMirror element : collection) {
             if (types.isSameType(element, mirror)) {
@@ -283,6 +322,28 @@ public final class Utilities {
             }
         }
         return false;
+    }
+
+    public static boolean equals(List<? extends TypeMirror> first, List<? extends TypeMirror> second, Types types) {
+        if (first.size() != second.size()) {
+            return false;
+        }
+        for (Iterator<? extends TypeMirror> fit = first.iterator(), sit = second.iterator(); fit.hasNext();) {
+            TypeMirror ft = fit.next();
+            TypeMirror st = sit.next();
+            if (!types.isSameType(ft, st)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static List<? extends TypeMirror> erasure(List<? extends TypeMirror> list, Types types) {
+        List<TypeMirror> result = new ArrayList<>(list.size());
+        for (TypeMirror type : list) {
+            result.add(types.erasure(type));
+        }
+        return result;
     }
 
     public static PackageElement getEnclosingPackageElement(TypeElement typeElement) {
@@ -296,7 +357,7 @@ public final class Utilities {
     public static CharSequence javaMemberName(CharSequence... nameComponents) {
         StringBuilder result = new StringBuilder();
         for (CharSequence component : nameComponents) {
-            if (result.length() == 0) {
+            if (result.isEmpty()) {
                 result.append(component);
             } else {
                 String strComponent = component.toString();
@@ -305,5 +366,33 @@ public final class Utilities {
             }
         }
         return result.toString();
+    }
+
+    public static Comparator<ExecutableElement> executableElementComparator(Elements elements, Types types) {
+        return new ExecutableElementComparator(elements, types);
+    }
+
+    private static final class ExecutableElementComparator implements Comparator<ExecutableElement> {
+
+        private final Elements elements;
+        private final Types types;
+
+        ExecutableElementComparator(Elements elements, Types types) {
+            this.elements = elements;
+            this.types = types;
+        }
+
+        @Override
+        public int compare(ExecutableElement o1, ExecutableElement o2) {
+            int res = o1.getSimpleName().toString().compareTo(o2.getSimpleName().toString());
+            if (res == 0) {
+                TypeMirror[] pt1 = ((ExecutableType) o1.asType()).getParameterTypes().toArray(new TypeMirror[0]);
+                TypeMirror[] pt2 = ((ExecutableType) o2.asType()).getParameterTypes().toArray(new TypeMirror[0]);
+                String sig1 = encodeMethodSignature(elements, types, o1.getReturnType(), pt1).toString();
+                String sig2 = encodeMethodSignature(elements, types, o2.getReturnType(), pt2).toString();
+                res = sig1.compareTo(sig2);
+            }
+            return res;
+        }
     }
 }

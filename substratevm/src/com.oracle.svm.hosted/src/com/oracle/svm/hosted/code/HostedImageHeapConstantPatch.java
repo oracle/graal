@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.code;
 
-import org.graalvm.compiler.code.CompilationResult;
+import jdk.graal.compiler.code.CompilationResult;
 
 import jdk.vm.ci.meta.JavaConstant;
 

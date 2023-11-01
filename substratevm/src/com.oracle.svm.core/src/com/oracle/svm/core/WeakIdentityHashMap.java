@@ -28,7 +28,7 @@
 package com.oracle.svm.core;
 
 import com.oracle.svm.core.heap.ReferenceInternals;
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
 
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;

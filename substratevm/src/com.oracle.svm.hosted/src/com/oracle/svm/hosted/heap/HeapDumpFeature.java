@@ -31,22 +31,26 @@ import java.util.Comparator;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.compiler.core.common.util.TypeConversion;
-import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
+import jdk.graal.compiler.core.common.util.TypeConversion;
+import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.HeapDumpSupport;
 
+import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.dump.HProfType;
 import com.oracle.svm.core.heap.dump.HeapDumpMetadata;
+import com.oracle.svm.core.heap.dump.HeapDumpShutdownHook;
+import com.oracle.svm.core.heap.dump.HeapDumpStartupHook;
 import com.oracle.svm.core.heap.dump.HeapDumpWriter;
 import com.oracle.svm.core.heap.dump.HeapDumping;
 import com.oracle.svm.core.heapdump.HeapDumpSupportImpl;
 import com.oracle.svm.core.heapdump.HeapDumpUtils;
 import com.oracle.svm.core.heapdump.HeapDumpWriterImpl;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.os.RawFileOperationSupport;
@@ -68,11 +72,12 @@ public class HeapDumpFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         /*
-         * Include the feature unconditionally on Linux and macOS. The code and all its data are
-         * only present in the final image if the heap dumping infrastructure is actually called by
-         * any code (e.g., VMRuntime.dumpHeap(...) or --enable-monitoring=heapdump).
+         * Include the feature unconditionally (all platforms except Windows - even unknown
+         * platforms). The code and all its data are only present in the final image if the heap
+         * dumping infrastructure is actually called by any code (e.g., VMRuntime.dumpHeap(...) or
+         * --enable-monitoring=heapdump).
          */
-        return Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class);
+        return !Platform.includedIn(Platform.WINDOWS.class);
     }
 
     @Override
@@ -97,6 +102,15 @@ public class HeapDumpFeature implements InternalFeature {
     public static boolean useLegacyImplementation() {
         /* See GR-44538. */
         return !RawFileOperationSupport.isPresent();
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        /* Heap dumping on signal and on OutOfMemoryError are opt-in features. */
+        if (VMInspectionOptions.hasHeapDumpSupport()) {
+            RuntimeSupport.getRuntimeSupport().addStartupHook(new HeapDumpStartupHook());
+            RuntimeSupport.getRuntimeSupport().addShutdownHook(new HeapDumpShutdownHook());
+        }
     }
 
     @Override

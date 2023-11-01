@@ -158,14 +158,15 @@ public final class JSRegexLexer extends RegexLexer {
 
     @Override
     protected void caseFoldUnfold(CodePointSetAccumulator charClass) {
-        CaseFoldTable.CaseFoldingAlgorithm caseFolding = flags.isEitherUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
-        CaseFoldTable.applyCaseFoldUnfold(charClass, compilationBuffer.getCodePointSetAccumulator1(), caseFolding);
+        CaseFoldData.CaseFoldUnfoldAlgorithm caseFolding = flags.isEitherUnicode() ? CaseFoldData.CaseFoldUnfoldAlgorithm.ECMAScriptUnicode : CaseFoldData.CaseFoldUnfoldAlgorithm.ECMAScriptNonUnicode;
+        CodePointSetAccumulator tmp = compilationBuffer.getCodePointSetAccumulator1();
+        CaseFoldData.applyCaseFoldUnfold(charClass, tmp, caseFolding);
     }
 
     @Override
     protected CodePointSet complementClassSet(CodePointSet codePointSet) {
         if (flags.isUnicodeSets() && flags.isIgnoreCase()) {
-            return codePointSet.createInverse(Constants.FOLDED_CHARACTERS, compilationBuffer);
+            return codePointSet.createInverse(CaseFoldData.FOLDED_CHARACTERS, compilationBuffer);
         } else {
             return codePointSet.createInverse(source.getEncoding());
         }
@@ -269,7 +270,7 @@ public final class JSRegexLexer extends RegexLexer {
             throw syntaxError(JsErrorMessages.INCOMPLETE_QUANTIFIER);
         }
         position = getLastTokenPosition() + 1;
-        return charClass('{');
+        return literalChar('{');
     }
 
     @Override
@@ -475,7 +476,7 @@ public final class JSRegexLexer extends RegexLexer {
                 }
                 handleInvalidBackReference(groupName);
             } else {
-                return charClass(c);
+                return literalChar(c);
             }
         }
         return null;

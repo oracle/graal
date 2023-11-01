@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.cpufeature;
 
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -32,23 +32,23 @@ import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.Set;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.riscv64.RISCV64ReflectionUtil;
-import org.graalvm.compiler.core.riscv64.ShadowedRISCV64;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.Node.InjectedNodeParameter;
-import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.LogicNode;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.ConditionalNode;
-import org.graalvm.compiler.nodes.calc.IntegerTestNode;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.riscv64.RISCV64ReflectionUtil;
+import jdk.graal.compiler.core.riscv64.ShadowedRISCV64;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Node.InjectedNodeParameter;
+import jdk.graal.compiler.graph.Node.NodeIntrinsicFactory;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.ConditionalNode;
+import jdk.graal.compiler.nodes.calc.IntegerTestNode;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -186,7 +186,7 @@ public final class RuntimeCPUFeatureCheckImpl {
                 enumToBitIndexMap.add(ordinal, NumUtil.safeToByte(index));
                 index++;
             }
-            assert index == supportedFeatures.size();
+            assert index == supportedFeatures.size() : index;
             // copy to plain byte[]
             this.enumToBitIndex = new byte[enumToBitIndexMap.size()];
             for (int i = 0; i < enumToBitIndexMap.size(); i++) {

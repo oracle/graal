@@ -31,7 +31,7 @@ import java.security.ProtectionDomain;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -83,11 +83,6 @@ class AccessControlContextReplacerFeature implements InternalFeature {
         allowContextIfExists("javax.management.monitor.Monitor", "noPermissionsACC");
 
         allowContextIfExists("java.security.AccessController$AccHolder", "innocuousAcc");
-        if (JavaVersionUtil.JAVA_SPEC < 19) {
-            allowContextIfExists("java.util.concurrent.ForkJoinPool$DefaultForkJoinWorkerThreadFactory", "ACC");
-            allowContextIfExists("java.util.concurrent.ForkJoinPool$WorkQueue", "INNOCUOUS_ACC");
-            allowContextIfExists("java.util.concurrent.ForkJoinPool$DefaultCommonPoolForkJoinWorkerThreadFactory", "ACC");
-        }
         access.registerObjectReplacer(AccessControlContextReplacerFeature::replaceAccessControlContext);
     }
 

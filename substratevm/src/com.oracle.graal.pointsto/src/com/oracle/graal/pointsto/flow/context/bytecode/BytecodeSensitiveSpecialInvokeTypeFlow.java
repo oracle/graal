@@ -113,7 +113,7 @@ final class BytecodeSensitiveSpecialInvokeTypeFlow extends AbstractSpecialInvoke
     }
 
     @Override
-    protected Collection<MethodFlowsGraph> getAllCalleesFlows(PointsToAnalysis bb) {
+    public Collection<MethodFlowsGraph> getAllNonStubCalleesFlows(PointsToAnalysis bb) {
         return calleesFlows;
     }
 }

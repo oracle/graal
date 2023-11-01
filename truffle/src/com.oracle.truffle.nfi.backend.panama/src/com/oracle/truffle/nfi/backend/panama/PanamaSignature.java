@@ -124,7 +124,7 @@ final class PanamaSignature {
                     return interop.execute(functionPointer, args);
                 } catch (UnsupportedMessageException e) {
                     error.enter(node);
-                    throw UnsupportedTypeException.create(new Object[]{functionPointer}, "functionPointer", e);
+                    throw UnsupportedTypeException.create(new Object[]{functionPointer}, "functionPointer was executable but threw UnsupportedMessageException on execute()");
                 }
             }
             if (!interop.isPointer(functionPointer)) {
@@ -136,7 +136,7 @@ final class PanamaSignature {
                 pointer = interop.asPointer(functionPointer);
             } catch (UnsupportedMessageException e) {
                 error.enter(node);
-                throw UnsupportedTypeException.create(new Object[]{functionPointer}, "functionPointer", e);
+                throw UnsupportedTypeException.create(new Object[]{functionPointer}, "functionPointer is not executable and not a pointer");
             }
             return functionExecute.execute(pointer, self, args);
         }
@@ -147,7 +147,7 @@ final class PanamaSignature {
     }
 
     @TruffleBoundary
-    @SuppressWarnings("preview")
+    @SuppressWarnings({"preview", "restricted"})
     MemorySegment bind(MethodHandle cachedHandle, Object receiver) {
         MethodHandle bound = cachedHandle.bindTo(receiver);
         @SuppressWarnings("preview")
@@ -310,7 +310,7 @@ final class PanamaSignature {
 
     static MethodHandle createDowncallHandle(@SuppressWarnings("preview") FunctionDescriptor descriptor) {
         int parameterCount = descriptor.argumentLayouts().size();
-        @SuppressWarnings("preview")
+        @SuppressWarnings({"preview", "restricted"})
         MethodHandle handle = Linker.nativeLinker().downcallHandle(descriptor).asSpreader(Object[].class, parameterCount).asType(
                         MethodType.methodType(Object.class, new Class<?>[]{MemorySegment.class, Object[].class}));
         return handle;

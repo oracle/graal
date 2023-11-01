@@ -24,27 +24,29 @@
  */
 package com.oracle.svm.graal.isolated;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.SnippetCounter;
-import org.graalvm.compiler.replacements.SnippetIntegerHistogram;
-
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.option.HostedOptionValues;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.hotspot.SymbolicSnippetEncoder;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.SnippetCounter;
+import jdk.graal.compiler.replacements.SnippetIntegerHistogram;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
- * Adapted from code of {@link org.graalvm.compiler.hotspot.SymbolicSnippetEncoder}.
+ * Adapted from code of {@link SymbolicSnippetEncoder}.
  */
 final class DisableSnippetCountersPlugin implements NodePlugin {
     private static final String snippetCounterName = 'L' + SnippetCounter.class.getName().replace('.', '/') + ';';
@@ -71,12 +73,14 @@ final class DisableSnippetCountersPlugin implements NodePlugin {
 /**
  * Disables snippet counters because they need a {@link SnippetReflectionProvider} which is not
  * fully supported for cross-isolate compilations.
+ *
+ * In general snippets counters should only enabled if the flag SnippetCounters is set.
  */
 @AutomaticallyRegisteredFeature
 final class DisableSnippetCountersFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.supportCompileInIsolates();
+        return SubstrateOptions.supportCompileInIsolates() || !GraalOptions.SnippetCounters.getValue(HostedOptionValues.singleton());
     }
 
     @Override

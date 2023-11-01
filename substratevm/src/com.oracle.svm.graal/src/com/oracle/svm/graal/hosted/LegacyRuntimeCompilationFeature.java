@@ -39,32 +39,32 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.java.BytecodeParser;
-import org.graalvm.compiler.java.GraphBuilderPhase;
-import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
-import org.graalvm.compiler.nodes.CallTargetNode;
-import org.graalvm.compiler.nodes.FixedGuardNode;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.GraphEncoder;
-import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.LogicConstantNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
-import org.graalvm.compiler.phases.common.inlining.InliningUtil;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
-import org.graalvm.compiler.word.WordTypes;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.java.BytecodeParser;
+import jdk.graal.compiler.java.GraphBuilderPhase;
+import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
+import jdk.graal.compiler.nodes.CallTargetNode;
+import jdk.graal.compiler.nodes.FixedGuardNode;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.GraphEncoder;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.LogicConstantNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.common.IterativeConditionalEliminationPhase;
+import jdk.graal.compiler.phases.common.inlining.InliningUtil;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.truffle.phases.DeoptimizeOnExceptionPhase;
+import jdk.graal.compiler.word.WordTypes;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -74,9 +74,7 @@ import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.meta.SubstrateMethod;
@@ -196,7 +194,7 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        VMError.guarantee(!SubstrateOptions.ParseOnceJIT.getValue(), "This feature is only supported when ParseOnceJIT is not set");
+        VMError.shouldNotReachHere("GR-48579: dead code that will be deleted later");
 
         ImageSingletons.add(RuntimeCompilationFeature.class, this);
     }
@@ -281,25 +279,18 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
                     builderPhase.apply(graph);
                 }
 
-                if (graph.getNodes(StackValueNode.TYPE).isNotEmpty()) {
-                    /*
-                     * Stack allocated memory is not seen by the deoptimization code, i.e., it is
-                     * not copied in case of deoptimization. Also, pointers to it can be used for
-                     * arbitrary address arithmetic, so we would not know how to update derived
-                     * pointers into stack memory during deoptimization. Therefore, we cannot allow
-                     * methods that allocate stack memory for runtime compilation. To remove this
-                     * limitation, we would need to change how we handle stack allocated memory in
-                     * Graal.
-                     */
-                    return;
-                }
-
                 CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
                 canonicalizer.apply(graph, hostedProviders);
                 if (deoptimizeOnExceptionPredicate != null) {
                     new DeoptimizeOnExceptionPhase(deoptimizeOnExceptionPredicate).apply(graph);
                 }
                 new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, hostedProviders);
+
+                if (DeoptimizationUtils.createGraphInvalidator(graph).get()) {
+                    return;
+                }
+
+                unwrapImageHeapConstants(graph, hostedProviders.getMetaAccess());
 
                 graphEncoder.prepare(graph);
                 node.graph = graph;
@@ -467,6 +458,8 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
                      */
                     convertDeoptimizeToGuard.apply(graph, hostedProviders);
 
+                    unwrapImageHeapConstants(graph, hostedProviders.getMetaAccess());
+
                     graphEncoder.prepare(graph);
                     assert RuntimeCompilationFeature.verifyNodes(graph);
                 } catch (Throwable ex) {
@@ -518,6 +511,11 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
     }
 
     @Override
+    public void beforeHeapLayout(BeforeHeapLayoutAccess a) {
+        super.beforeHeapLayoutHelper(a);
+    }
+
+    @Override
     public void afterHeapLayout(AfterHeapLayoutAccess a) {
         super.afterHeapLayoutHelper(a);
     }
@@ -536,8 +534,11 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
     }
 
     @Override
-    protected void requireFrameInformationForMethodHelper(AnalysisMethod aMethod) {
+    protected void requireFrameInformationForMethodHelper(AnalysisMethod aMethod, FeatureImpl.BeforeAnalysisAccessImpl config, boolean registerAsRoot) {
         SubstrateCompilationDirectives.singleton().registerFrameInformationRequired(aMethod, aMethod);
+        if (registerAsRoot) {
+            config.registerAsRoot(aMethod, true, "Frame information required, registered in " + LegacyRuntimeCompilationFeature.class);
+        }
     }
 
     @Override

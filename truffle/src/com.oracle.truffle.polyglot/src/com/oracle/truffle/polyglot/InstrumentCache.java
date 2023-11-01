@@ -53,6 +53,7 @@ import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -119,7 +120,7 @@ final class InstrumentCache {
     }
 
     private InstrumentCache(String id, String name, String version, String className, boolean internal, Set<String> services,
-                    ProviderAdapter providerAdapter, String website, SandboxPolicy sandboxPolicy) {
+                    ProviderAdapter providerAdapter, String website, SandboxPolicy sandboxPolicy, Map<String, InternalResourceCache> internalResources) {
         this.id = id;
         this.name = name;
         this.version = version;
@@ -129,11 +130,7 @@ final class InstrumentCache {
         this.services = services;
         this.providerAdapter = providerAdapter;
         this.sandboxPolicy = sandboxPolicy;
-        Map<String, InternalResourceCache> map = new HashMap<>();
-        for (String resourceId : providerAdapter.getInternalResourceIds()) {
-            map.put(resourceId, new InternalResourceCache(id, resourceId, () -> providerAdapter.createInternalResource(resourceId)));
-        }
-        internalResources = Collections.unmodifiableMap(map);
+        this.internalResources = internalResources;
     }
 
     boolean isInternal() {
@@ -170,15 +167,16 @@ final class InstrumentCache {
         Set<String> classNamesUsed = new HashSet<>();
         ClassLoader truffleClassLoader = InstrumentCache.class.getClassLoader();
         boolean usesTruffleClassLoader = false;
+        Map<String, Map<String, Supplier<InternalResourceCache>>> optionalResources = InternalResourceCache.loadOptionalInternalResources(suppliers);
         for (AbstractClassLoaderSupplier supplier : suppliers) {
             ClassLoader loader = supplier.get();
             if (loader == null || !isValidLoader(loader)) {
                 continue;
             }
             usesTruffleClassLoader |= truffleClassLoader == loader;
-            loadProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed));
+            loadProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed, optionalResources));
             if (supplier.supportsLegacyProviders()) {
-                loadLegacyProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed));
+                loadLegacyProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed, optionalResources));
             }
         }
         /*
@@ -191,7 +189,7 @@ final class InstrumentCache {
             Module truffleModule = InstrumentCache.class.getModule();
             loadProviders(truffleClassLoader).//
                             filter((p) -> p.getProviderClass().getModule().equals(truffleModule)).//
-                            forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed));
+                            forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed, optionalResources));
         }
         list.sort(Comparator.comparing(InstrumentCache::getId));
         return list;
@@ -207,7 +205,8 @@ final class InstrumentCache {
         return StreamSupport.stream(ServiceLoader.load(TruffleInstrumentProvider.class, loader).spliterator(), false).map(ModuleAwareProvider::new);
     }
 
-    private static void loadInstrumentImpl(ProviderAdapter providerAdapter, List<? super InstrumentCache> list, Set<? super String> classNamesUsed) {
+    private static void loadInstrumentImpl(ProviderAdapter providerAdapter, List<? super InstrumentCache> list, Set<? super String> classNamesUsed,
+                    Map<String, Map<String, Supplier<InternalResourceCache>>> optionalResources) {
         Class<?> providerClass = providerAdapter.getProviderClass();
         Module providerModule = providerClass.getModule();
         ModuleUtils.exportTransitivelyTo(providerModule);
@@ -232,10 +231,21 @@ final class InstrumentCache {
         SandboxPolicy sandboxPolicy = reg.sandbox();
         boolean internal = reg.internal();
         Set<String> servicesClassNames = new TreeSet<>(providerAdapter.getServicesClassNames());
+        Map<String, InternalResourceCache> resources = new HashMap<>();
+        for (String resourceId : providerAdapter.getInternalResourceIds()) {
+            resources.put(resourceId, new InternalResourceCache(id, resourceId, () -> providerAdapter.createInternalResource(resourceId)));
+        }
+        for (Map.Entry<String, Supplier<InternalResourceCache>> resourceSupplier : optionalResources.getOrDefault(id, Map.of()).entrySet()) {
+            InternalResourceCache resource = resourceSupplier.getValue().get();
+            InternalResourceCache old = resources.put(resourceSupplier.getKey(), resource);
+            if (old != null) {
+                throw InternalResourceCache.throwDuplicateOptionalResourceException(old, resource);
+            }
+        }
         // we don't want multiple instruments with the same class name
         if (!classNamesUsed.contains(className)) {
             classNamesUsed.add(className);
-            list.add(new InstrumentCache(id, name, version, className, internal, servicesClassNames, providerAdapter, website, sandboxPolicy));
+            list.add(new InstrumentCache(id, name, version, className, internal, servicesClassNames, providerAdapter, website, sandboxPolicy, Collections.unmodifiableMap(resources)));
         }
     }
 
@@ -277,17 +287,15 @@ final class InstrumentCache {
     }
 
     InternalResourceCache getResourceCache(String resourceId) {
-        InternalResourceCache cache = internalResources.get(resourceId);
-        if (cache == null) {
-            throw new IllegalArgumentException(String.format("Resource with id %s is not provided by language %s, provided resource types are %s",
-                            resourceId, id, String.join(", ", internalResources.keySet())));
-        } else {
-            return cache;
-        }
+        return internalResources.get(resourceId);
     }
 
     Collection<String> getResourceIds() {
         return internalResources.keySet();
+    }
+
+    Collection<InternalResourceCache> getResources() {
+        return internalResources.values();
     }
 
     String getWebsite() {

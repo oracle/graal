@@ -110,7 +110,7 @@ public final class ConcurrentLightHashSet {
                 /*
                  * Corner case: adding the first element again, so nothing to do.
                  */
-                assert oldElements == newElement;
+                assert oldElements == newElement : newElement;
                 return false;
             }
             /* We lost the race with another thread, just try again. */

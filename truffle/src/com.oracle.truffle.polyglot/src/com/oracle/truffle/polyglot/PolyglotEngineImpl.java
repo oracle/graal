@@ -239,6 +239,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     final APIAccess apiAccess;
 
+    final boolean probeAssertionsEnabled;
+
     @SuppressWarnings("unchecked")
     PolyglotEngineImpl(PolyglotImpl impl, SandboxPolicy sandboxPolicy, String[] permittedLanguages,
                     DispatchOutputStream out, DispatchOutputStream err, InputStream in, OptionValuesImpl engineOptions,
@@ -257,6 +259,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.in = in;
         this.logHandler = logHandler;
         this.logLevels = logLevels;
+        this.probeAssertionsEnabled = initAssertProbes(engineOptions);
         this.hostLanguage = createLanguage(LanguageCache.createHostLanguageCache(hostImpl), PolyglotEngineImpl.HOST_LANGUAGE_INDEX, null);
         this.boundEngine = boundEngine;
         this.storeEngine = RUNTIME.isStoreEnabled(engineOptions);
@@ -351,6 +354,17 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 deprecatedDescriptors.add(d);
             }
         }
+    }
+
+    private static boolean initAssertProbes(OptionValuesImpl engineOptions) {
+        boolean assertsOn = false;
+        assert !!(assertsOn = true);
+        boolean assertProbes = engineOptions.get(PolyglotEngineOptions.AssertProbes);
+        if (assertProbes && !assertsOn) {
+            throw PolyglotEngineException.illegalState("Option engine.AssertProbes is set to true, but assertions are disabled. " +
+                            "Assertions need to be enabled for this option to be functional. Pass -ea as VM option to resolve this problem.\n");
+        }
+        return assertProbes;
     }
 
     /**
@@ -489,6 +503,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.host = prototype.host;
         this.boundEngine = prototype.boundEngine;
         this.logHandler = prototype.logHandler;
+        this.probeAssertionsEnabled = prototype.probeAssertionsEnabled;
         this.hostLanguage = createLanguage(LanguageCache.createHostLanguageCache(prototype.getHostLanguageSPI()), HOST_LANGUAGE_INDEX, null);
         this.engineLoggerSupplier = prototype.engineLoggerSupplier;
 
@@ -1736,7 +1751,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             } else if (customFileSystem != null) {
                 fileSystemConfig = new FileSystemConfig(ioAccess, customFileSystem, customFileSystem);
             } else {
-                fileSystemConfig = new FileSystemConfig(ioAccess, FileSystems.newNoIOFileSystem(), FileSystems.newLanguageHomeFileSystem());
+                fileSystemConfig = new FileSystemConfig(ioAccess, FileSystems.newNoIOFileSystem(), FileSystems.newResourcesFileSystem());
             }
             if (currentWorkingDirectory != null) {
                 Path publicFsCwd;

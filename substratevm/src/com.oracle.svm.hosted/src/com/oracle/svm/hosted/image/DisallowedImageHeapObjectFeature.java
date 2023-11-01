@@ -50,7 +50,6 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
-import com.oracle.svm.util.ImageGeneratorThreadMarker;
 
 /**
  * Complain if there are types that can not move from the image generator heap to the image heap.
@@ -113,10 +112,6 @@ public class DisallowedImageHeapObjectFeature implements InternalFeature {
     }
 
     private Object replacer(Object original) {
-        if (original instanceof Thread && original instanceof ImageGeneratorThreadMarker) {
-            return ((ImageGeneratorThreadMarker) original).asTerminated();
-        }
-
         checkDisallowedMBeanObjects(original);
 
         if (original instanceof String && disallowedSubstrings != null) {

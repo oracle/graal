@@ -51,6 +51,7 @@ import mx_sdk_vm
 # noinspection PyUnresolvedReferences
 import mx_wasm_benchmark  # pylint: disable=unused-import
 from mx_gate import Task, add_gate_runner
+import mx_unittest
 from mx_unittest import unittest
 
 _suite = mx.suite("wasm")
@@ -98,6 +99,12 @@ class GraalWasmDefaultTags:
 def wat2wasm_binary():
     return mx.exe_suffix("wat2wasm")
 
+def wabt_test_args():
+    if not wabt_dir:
+        mx.warn("No WABT_DIR specified")
+        return []
+    return ["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, wat2wasm_binary())]
+
 
 def graal_wasm_gate_runner(args, tasks):
     with Task("BuildAll", tasks, tags=[GraalWasmDefaultTags.buildall]) as t:
@@ -106,11 +113,12 @@ def graal_wasm_gate_runner(args, tasks):
 
     with Task("UnitTests", tasks, tags=[GraalWasmDefaultTags.wasmtest, GraalWasmDefaultTags.coverage], report=True) as t:
         if t:
-            unittest(["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, wat2wasm_binary()), "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest([*wabt_test_args(), "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest([*wabt_test_args(), "-Dwasmtest.sharedEngine=true", "WasmTestSuite"], test_report_tags={'task': t.title})
+
     with Task("ConstantsPolicyUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmconstantspolicytest], report=True) as t:
         if t:
-            unittest(["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, wat2wasm_binary()),
-                      "-Dwasmtest.storeConstantsPolicy=LARGE_ONLY", "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest([*wabt_test_args(), "-Dwasmtest.storeConstantsPolicy=LARGE_ONLY", "WasmTestSuite"], test_report_tags={'task': t.title})
 
     with Task("ExtraUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmextratest, GraalWasmDefaultTags.coverage], report=True) as t:
         if t:
@@ -134,6 +142,15 @@ def graal_wasm_gate_runner(args, tasks):
 
 
 add_gate_runner(_suite, graal_wasm_gate_runner)
+
+def _unittest_config_participant(config):
+    (vmArgs, mainClass, mainClassArgs) = config
+    # limit heap memory to 2G, unless otherwise specified
+    if not any(a.startswith('-Xm') for a in vmArgs):
+        vmArgs += ['-Xmx2g']
+    return (vmArgs, mainClass, mainClassArgs)
+
+mx_unittest.add_config_participant(_unittest_config_participant)
 
 
 #
@@ -500,20 +517,47 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     name="GraalWasm",
     short_name="gwa",
     dir_name="wasm",
-    license_files=["LICENSE_WASM.txt"],
+    standalone_dir_name='graalwasm-community-<version>-<graalvm_os>-<arch>',
+    standalone_dir_name_enterprise='graalwasm-<version>-<graalvm_os>-<arch>',
+    standalone_dependencies={
+        'gwal': ('', []), # GraalWasm license files
+    },
+    standalone_dependencies_enterprise={
+        'gwal': ('', []), # GraalWasm license files
+        'GraalVM enterprise license files': ('LICENSE.txt', ['GRAALVM-README.md']),
+    },
+    license_files=[],
     third_party_license_files=[],
-    dependencies=["Truffle"],
+    dependencies=[
+        'gwal', # GraalWasm license files
+        "Truffle",
+    ],
     truffle_jars=["wasm:WASM"],
     support_distributions=["wasm:WASM_GRAALVM_SUPPORT"],
-    launcher_configs=[
-        mx_sdk_vm.LanguageLauncherConfig(
-            destination="bin/<exe:wasm>",
+    library_configs=[
+        mx_sdk_vm.LanguageLibraryConfig(
+            launchers=["bin/<exe:wasm>"],
             jar_distributions=["wasm:WASM_LAUNCHER"],
             main_class="org.graalvm.wasm.launcher.WasmLauncher",
             build_args=[],
             language="wasm",
         ),
     ],
+    installable=True,
+    stability="experimental",
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=_suite,
+    name='GraalWasm license files',
+    short_name='gwal',
+    dir_name='wasm',
+    license_files=["LICENSE_WASM.txt"],
+    third_party_license_files=[],
+    dependencies=[],
+    truffle_jars=[],
+    support_distributions=["wasm:WASM_GRAALVM_LICENSES"],
+    priority=5,
     installable=True,
     stability="experimental",
 ))

@@ -68,4 +68,6 @@ public interface OutParameterService {
     int[] mixedParametersArray(List<String> p1, List<String> p2, List<String> p3, List<String> p4);
 
     Map<String, String> mixedParametersCustom(List<String> p1, List<String> p2, List<String> p3, List<String> p4);
+
+    void exchangeArrayWithMarshalledParameter(int[] arr, List<String> list);
 }

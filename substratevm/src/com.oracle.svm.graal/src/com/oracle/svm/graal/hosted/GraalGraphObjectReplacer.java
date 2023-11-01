@@ -24,27 +24,28 @@
  */
 package com.oracle.svm.graal.hosted;
 
-import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.api.runtime.GraalRuntime;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.debug.MetricKey;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
-import org.graalvm.compiler.hotspot.HotSpotBackendFactory;
-import org.graalvm.compiler.hotspot.SnippetResolvedJavaMethod;
-import org.graalvm.compiler.hotspot.SnippetResolvedJavaType;
-import org.graalvm.compiler.nodes.FieldLocationIdentity;
-import org.graalvm.compiler.phases.util.Providers;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.api.runtime.GraalRuntime;
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.debug.MetricKey;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
+import jdk.graal.compiler.hotspot.HotSpotBackendFactory;
+import jdk.graal.compiler.hotspot.SnippetResolvedJavaMethod;
+import jdk.graal.compiler.hotspot.SnippetResolvedJavaType;
+import jdk.graal.compiler.nodes.FieldLocationIdentity;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
-import org.graalvm.nativeimage.hosted.Feature.CompilationAccess;
+import org.graalvm.nativeimage.hosted.Feature.BeforeHeapLayoutAccess;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -53,9 +54,11 @@ import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.SubstrateGraalRuntime;
 import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
@@ -94,6 +97,10 @@ import jdk.vm.ci.meta.Signature;
  * It is mainly used to replace the Hosted* meta data with the Substrate* meta data.
  */
 public class GraalGraphObjectReplacer implements Function<Object, Object> {
+    public static class Options {
+        @Option(help = "Ensure all created SubstrateTypes are linked")//
+        public static final HostedOptionKey<Boolean> GuaranteeSubstrateTypesLinked = new HostedOptionKey<>(false);
+    }
 
     private final AnalysisUniverse aUniverse;
     private final ConcurrentMap<AnalysisMethod, SubstrateMethod> methods = ObservableImageHeapMapProvider.create();
@@ -106,11 +113,6 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
     private SubstrateGraalRuntime sGraalRuntime;
 
     private final HostedStringDeduplication stringTable;
-
-    private final Field substrateFieldTypeField;
-    private final Field substrateFieldDeclaringClassField;
-    private final Field dynamicHubMetaTypeField;
-    private final Field substrateTypeRawAllInstanceFieldsField;
 
     private final Class<?> jvmciCleanerClass = ReflectionUtil.lookupClass(false, "jdk.vm.ci.hotspot.Cleaner");
 
@@ -125,10 +127,6 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         this.sProviders = sProviders;
         this.universeFactory = universeFactory;
         this.stringTable = HostedStringDeduplication.singleton();
-        substrateFieldTypeField = ReflectionUtil.lookupField(SubstrateField.class, "type");
-        substrateFieldDeclaringClassField = ReflectionUtil.lookupField(SubstrateField.class, "declaringClass");
-        dynamicHubMetaTypeField = ReflectionUtil.lookupField(DynamicHub.class, "metaType");
-        substrateTypeRawAllInstanceFieldsField = ReflectionUtil.lookupField(SubstrateType.class, "rawAllInstanceFields");
     }
 
     public void setGraalRuntime(SubstrateGraalRuntime sGraalRuntime) {
@@ -204,6 +202,9 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             dest = createType((ResolvedJavaType) source);
         } else if (source instanceof FieldLocationIdentity && !(source instanceof SubstrateFieldLocationIdentity)) {
             dest = createFieldLocationIdentity((FieldLocationIdentity) source);
+        } else if (source instanceof ImageHeapConstant heapConstant) {
+            VMError.guarantee(heapConstant.isBackedByHostedObject(), "Expected to find a heap object backed by a hosted object, found %s", heapConstant);
+            dest = heapConstant.getHostedObject();
         }
 
         assert dest != null;
@@ -289,8 +290,8 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
                 sField = newField;
 
                 sField.setLinks(createType(aField.getType()), createType(aField.getDeclaringClass()));
-                aUniverse.getHeapScanner().rescanField(sField, substrateFieldTypeField);
-                aUniverse.getHeapScanner().rescanField(sField, substrateFieldDeclaringClassField);
+                GraalSupport.rescan(aUniverse, sField.getType());
+                GraalSupport.rescan(aUniverse, sField.getDeclaringClass());
             }
         }
         return sField;
@@ -327,7 +328,6 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         }
 
         AnalysisType aType = toAnalysisType(original);
-        VMError.guarantee(aType.isLinked(), "Types reachable for JIT compilation must not have linkage errors");
         SubstrateType sType = types.get(aType);
         if (sType == null) {
             VMError.guarantee(!(forbidNewTypes || (original instanceof HostedType)), "Too late to create a new type: %s", aType);
@@ -338,10 +338,10 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             if (sType == null) {
                 sType = newType;
                 hub.setMetaType(sType);
-                aUniverse.getHeapScanner().rescanField(hub, dynamicHubMetaTypeField);
+                GraalSupport.rescan(aUniverse, hub.getMetaType());
 
                 sType.setRawAllInstanceFields(createAllInstanceFields(aType));
-                aUniverse.getHeapScanner().rescanField(sType, substrateTypeRawAllInstanceFieldsField);
+                GraalSupport.rescan(aUniverse, sType.getRawAllInstanceFields());
                 createType(aType.getSuperclass());
                 createType(aType.getComponentType());
                 for (AnalysisType aInterface : aType.getInterfaces()) {
@@ -422,6 +422,13 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
     @SuppressWarnings("try")
     public void updateSubstrateDataAfterCompilation(HostedUniverse hUniverse, Providers providers) {
 
+        if (Options.GuaranteeSubstrateTypesLinked.getValue()) {
+            var unlinkedTypes = types.values().stream().filter(sType -> !sType.isLinked()).map(SubstrateType::toString).toList();
+            if (!unlinkedTypes.isEmpty()) {
+                throw VMError.shouldNotReachHere(String.format("Unlinked SubstrateTypes have been created:%n%s", String.join(System.lineSeparator(), unlinkedTypes)));
+            }
+        }
+
         for (Map.Entry<AnalysisType, SubstrateType> entry : types.entrySet()) {
             AnalysisType aType = entry.getKey();
             SubstrateType sType = entry.getValue();
@@ -474,7 +481,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         }
     }
 
-    public void registerImmutableObjects(CompilationAccess access) {
+    public void registerImmutableObjects(BeforeHeapLayoutAccess access) {
         for (SubstrateMethod method : methods.values()) {
             access.registerAsImmutable(method);
             access.registerAsImmutable(method.getRawImplementations());

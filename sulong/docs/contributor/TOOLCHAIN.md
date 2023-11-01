@@ -47,7 +47,7 @@ The internal GraalVM LLVM runtime library layout follows the same approach.
 
 ## Java API
 
-Language implementations can access the toolchain via the [`Toolchain`](../../projects/com.oracle.truffle.llvm.api/src/com/oracle/truffle/llvm/api/Toolchain.java) service.
+Language implementations can access the toolchain via the [`Toolchain` service](../../projects/com.oracle.truffle.llvm.api/src/com/oracle/truffle/llvm/api/Toolchain.java).
 The service provides three methods:
 
 * `TruffleFile getToolPath(String tool)`
@@ -147,18 +147,19 @@ Note that they expect a toolchain name as the first argument. See for example th
 On the implementation side, _the toolchain_ consists of multiple ingredients:
 
 * The **LLVM.org component** is similar to a regular [LLVM release](https://llvm.org) (clang, lld, llvm-* tools).
-  In GraalVM, the LLVM.org component is located in `$GRAALVM/lib/llvm/` (or `$GRAALVM/jre/lib/llvm/` in the Java 8 version).
+  Starting from GraalVM for JDK 21 (23.1.0), the LLVM.org component is no longer present in `$GRAALVM/lib/` and should be downloaded from [GitHub](https://github.com/graalvm/graalvm-ce-builds/releases).
+  Download the LLVM standalone distribution for your operating system and unzip the archive. 
+  The LLVM standalone comes with a JVM in addition to its native launcher.
   This component is considered as internal and should not be directly used.
-  The LLVM.org component might not be installed by default. If that is the case, it can be installed via `gu install llvm-toolchain`.
 * The **toolchain wrappers** are GraalVM launchers that invoke the tools from the LLVM.org component with special flags
   to produce results that can be executed by the GraalVM LLVM runtime. The Java and `mx` APIs return paths to those wrappers.
-  The command `$GRAALVM/bin/lli --print-toolchain-path` can be used to get their location.
+  The command `$ ./bin/lli --print-toolchain-path` can be used to get their location.
   The wrappers are shipped with the GraalVM LLVM runtime and do not need to be installed separately.
   They are meant to be drop in replacements for the C/C++ compiler when compiling a native project.
   The goal is to produce a GraalVM LLVM runtime executable result by simply pointing any build system to those wrappers,
   for example via `CC`/`CXX` environment variables or by setting `PATH`.
 
-## Using a prebuilt GraalVM as a Bootstrapping Toolchain
+## Using a Prebuilt GraalVM as a Bootstrapping Toolchain
 
 To speed up toolchain compilation during development, the `SULONG_BOOTSTRAP_GRAALVM` environment variable can be set
 to a _prebuilt_ GraalVM. Sulong comes with a configuration file that makes building a bootstrapping GraalVM easy:

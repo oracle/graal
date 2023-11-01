@@ -67,6 +67,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.io.IOAccess.Builder;
 
 /**
@@ -512,9 +513,31 @@ public interface FileSystem {
      *             {@link #getPathSeparator() path separator} as the {@link #newDefaultFileSystem()
      *             default file system}.
      * @since 22.2
+     * @deprecated Use {{@link #allowInternalResourceAccess(FileSystem)}}.
      */
+    @Deprecated
     static FileSystem allowLanguageHomeAccess(FileSystem fileSystem) {
-        return IOHelper.ImplHolder.IMPL.allowLanguageHomeAccess(fileSystem);
+        return allowInternalResourceAccess(fileSystem);
+    }
+
+    /**
+     * Decorates the given {@code fileSystem} by an implementation that forwards access to the
+     * internal resources to the default file system. The method is intended to be used by custom
+     * filesystem implementations with non default storage to allow guest languages to access
+     * internal resources. As the returned filesystem uses a default file system to access internal
+     * resources, the {@code fileSystem} has to use the same {@link Path} type,
+     * {@link #getSeparator() separator} and {@link #getPathSeparator() path separator} as the
+     * {@link #newDefaultFileSystem() default filesystem}.
+     *
+     * @throws IllegalArgumentException when the {@code fileSystem} does not use the same
+     *             {@link Path} type or has a different {@link #getSeparator() separator} or
+     *             {@link #getPathSeparator() path separator} as the {@link #newDefaultFileSystem()
+     *             default file system}.
+     * @see Engine#copyResources(Path, String...)
+     * @since 24.0
+     */
+    static FileSystem allowInternalResourceAccess(FileSystem fileSystem) {
+        return IOHelper.ImplHolder.IMPL.allowInternalResourceAccess(fileSystem);
     }
 
     /**

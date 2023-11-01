@@ -30,7 +30,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.stream.Stream;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -47,11 +46,9 @@ import com.oracle.svm.core.jni.functions.JNIFunctionTables;
 import com.oracle.svm.core.jni.functions.JNIFunctions;
 import com.oracle.svm.core.jni.functions.JNIFunctions.UnimplementedWithJNIEnvArgument;
 import com.oracle.svm.core.jni.functions.JNIFunctions.UnimplementedWithJavaVMArgument;
-import com.oracle.svm.core.jni.functions.JNIFunctionsJDK19OrLater;
 import com.oracle.svm.core.jni.functions.JNIInvocationInterface;
 import com.oracle.svm.core.jni.headers.JNIInvokeInterface;
 import com.oracle.svm.core.jni.headers.JNINativeInterface;
-import com.oracle.svm.core.jni.headers.JNINativeInterfaceJDK19OrLater;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -90,7 +87,6 @@ public class JNIFunctionTablesFeature implements Feature {
      *      for the Interface Function Table</a>
      */
     private StructInfo functionTableMetadata;
-    private StructInfo functionTableMetadataJDK19OrLater;
 
     /**
      * Metadata about the table pointed to by the {@code JavaVM*} C pointer.
@@ -120,16 +116,12 @@ public class JNIFunctionTablesFeature implements Feature {
         invokeInterfaceMetadata = (StructInfo) nativeLibraries.findElementInfo(invokeInterface);
         AnalysisType functionTable = metaAccess.lookupJavaType(JNINativeInterface.class);
         functionTableMetadata = (StructInfo) nativeLibraries.findElementInfo(functionTable);
-        if (JavaVersionUtil.JAVA_SPEC > 17) {
-            functionTableMetadataJDK19OrLater = (StructInfo) nativeLibraries.findElementInfo(metaAccess.lookupJavaType(JNINativeInterfaceJDK19OrLater.class));
-        }
 
         // Manually add functions as entry points so this is only done when JNI features are enabled
         AnalysisType invokes = metaAccess.lookupJavaType(JNIInvocationInterface.class);
         AnalysisType exports = metaAccess.lookupJavaType(JNIInvocationInterface.Exports.class);
         AnalysisType functions = metaAccess.lookupJavaType(JNIFunctions.class);
-        AnalysisType functionsJDK19OrLater = JavaVersionUtil.JAVA_SPEC <= 17 ? null : metaAccess.lookupJavaType(JNIFunctionsJDK19OrLater.class);
-        Stream<AnalysisMethod> analysisMethods = Stream.of(invokes, functions, functionsJDK19OrLater, exports).filter(type -> type != null).flatMap(type -> Stream.of(type.getDeclaredMethods(false)));
+        Stream<AnalysisMethod> analysisMethods = Stream.of(invokes, functions, exports).filter(type -> type != null).flatMap(type -> Stream.of(type.getDeclaredMethods(false)));
         Stream<AnalysisMethod> unimplementedMethods = Stream.of((AnalysisMethod) getSingleMethod(metaAccess, UnimplementedWithJNIEnvArgument.class),
                         (AnalysisMethod) getSingleMethod(metaAccess, UnimplementedWithJavaVMArgument.class));
         Stream.concat(analysisMethods, unimplementedMethods).forEach(method -> {
@@ -228,14 +220,6 @@ public class JNIFunctionTablesFeature implements Feature {
             StructFieldInfo field = findFieldFor(functionTableMetadata, method.getName());
             int offset = field.getOffsetInfo().getProperty();
             tables.initFunctionEntry(offset, getStubFunctionPointer(access, method));
-        }
-        if (JavaVersionUtil.JAVA_SPEC > 17) {
-            HostedType functionsJDK19OrLater = access.getMetaAccess().lookupJavaType(JNIFunctionsJDK19OrLater.class);
-            for (HostedMethod method : functionsJDK19OrLater.getDeclaredMethods(false)) {
-                StructFieldInfo field = findFieldFor(functionTableMetadataJDK19OrLater, method.getName());
-                int offset = field.getOffsetInfo().getProperty();
-                tables.initFunctionEntry(offset, getStubFunctionPointer(access, method));
-            }
         }
         for (ResolvedJavaMethod accessor : generatedMethods) {
             StructFieldInfo field = findFieldFor(functionTableMetadata, accessor.getName());

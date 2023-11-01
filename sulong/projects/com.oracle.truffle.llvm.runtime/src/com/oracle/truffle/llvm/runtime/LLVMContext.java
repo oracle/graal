@@ -327,7 +327,12 @@ public final class LLVMContext {
             String[] sulongLibraryNames = platformCapability.getSulongDefaultLibraries();
             if (language.isDefaultInternalLibraryCacheEmpty()) {
                 for (int i = sulongLibraryNames.length - 1; i >= 0; i--) {
-                    Source librarySource = internalLibraryLocator.locateSource(this, sulongLibraryNames[i], "<default bitcode library>");
+                    String libraryName = sulongLibraryNames[i];
+                    Source librarySource = internalLibraryLocator.locateSource(this, libraryName, "<default bitcode library>");
+                    if (librarySource == null) {
+                        throw new InternalError("Could not locate library " + libraryName + " with locator " + internalLibraryLocator + ".");
+                    }
+
                     // use the source cache in the language.
                     env.parseInternal(librarySource);
                     language.setDefaultInternalLibraryCache(librarySource);

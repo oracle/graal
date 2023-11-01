@@ -24,7 +24,7 @@
  */
 package com.oracle.graal.reachability;
 
-import org.graalvm.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.StructuredGraph;
 
 /**
  * This abstraction encapsulates the process of getting a summary for a given method/graph.

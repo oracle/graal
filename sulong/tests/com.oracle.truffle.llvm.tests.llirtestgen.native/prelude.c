@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -76,7 +76,8 @@ int main(void) {
     print_input(input);
     run(input, input + 32, output);
 
-    fill(input, output, 0xffffffffffffffffl, 0);
+    // not 0xff...f to avoid NaN, otherwise the float test results are unspecified
+    fill(input, output, 0xfefffffffeffffffl, 0);
     print_input(input);
     run(input, input + 32, output);
 
@@ -88,7 +89,8 @@ int main(void) {
     print_input(input);
     run(input, input + 32, output);
 
-    fill(input, output, 0xffffffffffffffffl, -0x0101010101010101l);
+    // not 0xff...f to avoid NaN, otherwise the float test results are unspecified
+    fill(input, output, 0xfefffffffeffffffl, -0x0101010101010101l);
     print_input(input);
     run(input, input + 32, output);
 

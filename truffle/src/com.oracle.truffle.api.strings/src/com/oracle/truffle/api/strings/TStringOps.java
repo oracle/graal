@@ -398,7 +398,7 @@ final class TStringOps {
         return indexOfCodePointWithMaskWithStrideIntl(location, arrayA, a.offset(), toIndex, strideA, fromIndex, codepoint, maskA);
     }
 
-    private static int indexOfCodePointWithMaskWithStrideIntl(Node location, Object array, int offset, int length, int stride, int fromIndex, int v1, int mask1) {
+    static int indexOfCodePointWithMaskWithStrideIntl(Node location, Object array, int offset, int length, int stride, int fromIndex, int v1, int mask1) {
         final boolean isNative = isNativePointer(array);
         final byte[] stubArray = stubArray(array, isNative);
         validateRegionIndex(stubArray, offset, length, stride, fromIndex, isNative);

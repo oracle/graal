@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -83,6 +83,7 @@ import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.InternalResource;
+import com.oracle.truffle.api.InternalResource.Id;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.TruffleContext;
@@ -1075,6 +1076,8 @@ public abstract class TruffleInstrument {
          * unpacking would be repeated once per operating system user. When the language was
          * compiled using native-image internal resources are unpacked at native-image compile time
          * and stored relative to the native-image.
+         * <p>
+         * The caller thread must be entered in a context.
          *
          * @param resource the resource class to load
          * @throws IllegalArgumentException if {@code resource} is not associated with this
@@ -1091,11 +1094,13 @@ public abstract class TruffleInstrument {
          * resource. Unlike the {@link #getInternalResource(Class)}, this method can be used for
          * optional resources whose classes may not exist at runtime. In this case the optional
          * resource must be unpacked at build time, see
-         * {@link Engine#copyResources(Path, String...)}.
+         * {@link Engine#copyResources(Path, String...)}. If the resource with the specified
+         * {@code resourceId} is not associated to this instrument, the function returns
+         * {@code null}.
          *
          * @param resourceId unique id of the resource to be loaded
-         * @throws IllegalArgumentException if resource with the {@code resourceId} is not
-         *             associated with this instrument
+         * @return internal resource directory or {@code null} if resource with the
+         *         {@code resourceId} is not associated with this instrument
          * @throws IOException in case of IO error
          * @see #getInternalResource(Class)
          * @see Engine#copyResources(Path, String...)
@@ -1160,6 +1165,17 @@ public abstract class TruffleInstrument {
          */
         public TruffleLogger getLogger(Class<?> forClass) {
             return getLogger(forClass.getName());
+        }
+
+        /**
+         * Tests if two frames are the same. This method is mainly used by instruments in case of
+         * <code>yield</code> of the execution and later resume. Frame comparison is used to match
+         * the particular yielded and resumed execution. The frames must correspond to the root.
+         *
+         * @since 24.0
+         */
+        public boolean isSameFrame(RootNode root, Frame frame1, Frame frame2) {
+            return InstrumentAccessor.nodesAccess().isSameFrame(root, frame1, frame2);
         }
 
         private static class MessageTransportProxy implements MessageTransport {
@@ -1471,9 +1487,13 @@ public abstract class TruffleInstrument {
 
         /**
          * Declarative list of {@link InternalResource} classes that is associated with this
-         * instrument. To unpack all resources of an instrument embedders may use
-         * {@link Engine#copyResources(Path, String...)}.
+         * instrument. Use the {@code internalResources} attribute solely for registering required
+         * internal resources. Optional internal resources should provide the associated instrument
+         * identifier using the {@link Id#componentId()} method. To unpack all resources of an
+         * instrument embedders may use {@link Engine#copyResources(Path, String...)}.
          *
+         * @see InternalResource
+         * @see Id
          * @since 23.1
          */
         Class<? extends InternalResource>[] internalResources() default {};

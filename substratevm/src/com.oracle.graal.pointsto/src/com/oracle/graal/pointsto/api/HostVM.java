@@ -36,15 +36,15 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.java.GraphBuilderPhase.Instance;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -185,6 +185,12 @@ public abstract class HostVM {
      */
     public String getImageName() {
         return null;
+    }
+
+    /**
+     * Notify VM about activity.
+     */
+    public void recordActivity() {
     }
 
     public void addMethodAfterParsingListener(BiConsumer<AnalysisMethod, StructuredGraph> methodAfterParsingHook) {
@@ -348,6 +354,13 @@ public abstract class HostVM {
          * return values.
          */
         boolean insertPlaceholderParamAndReturnFlows(MultiMethod.MultiMethodKey multiMethodKey);
+
+        /**
+         * Some methods can be transformed after analysis; in these cases we do not know what the
+         * returned value will be.
+         */
+        boolean unknownReturnValue(BigBang bb, MultiMethod.MultiMethodKey callerMultiMethodKey, AnalysisMethod implementation);
+
     }
 
     /**
@@ -377,6 +390,11 @@ public abstract class HostVM {
 
         @Override
         public boolean insertPlaceholderParamAndReturnFlows(MultiMethod.MultiMethodKey multiMethodKey) {
+            return false;
+        }
+
+        @Override
+        public boolean unknownReturnValue(BigBang bb, MultiMethod.MultiMethodKey callerMultiMethodKey, AnalysisMethod implementation) {
             return false;
         }
     };

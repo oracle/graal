@@ -137,7 +137,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 if (modules == null) {
                     NativeImage.showError(nativeAccessOption + moduleSetModifierOptionErrorMessage);
                 }
-                nativeImage.addCustomJavaArgs(nativeAccessOption + "=" + modules);
+                nativeImage.addCustomJavaArgs(nativeAccessOption + "=" + modules + ",org.graalvm.nativeimage.foreign");
                 return true;
         }
 
@@ -218,7 +218,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             if (nativeAccessModules.isEmpty()) {
                 NativeImage.showError(headArg + moduleSetModifierOptionErrorMessage);
             }
-            nativeImage.addCustomJavaArgs(headArg);
+            nativeImage.addCustomJavaArgs(headArg + ",org.graalvm.nativeimage.foreign");
             return true;
         }
         return false;
@@ -234,7 +234,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     private void processModulePathArgs(String mpArgs) {
         for (String mpEntry : mpArgs.split(File.pathSeparator, Integer.MAX_VALUE)) {
-            nativeImage.addImageModulePath(Paths.get(mpEntry), false);
+            nativeImage.addImageModulePath(Paths.get(mpEntry), false, true);
         }
     }
 

@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.graal.aarch64;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
-import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.DefaultJavaLoweringProvider;
-import org.graalvm.compiler.replacements.TargetGraphBuilderPlugins;
-import org.graalvm.compiler.replacements.aarch64.AArch64GraphBuilderPlugins;
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
+import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.DefaultJavaLoweringProvider;
+import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
+import jdk.graal.compiler.replacements.aarch64.AArch64GraphBuilderPlugins;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

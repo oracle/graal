@@ -97,6 +97,12 @@ public abstract class PosixLibCSupport implements LibCSupport {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public CCharPointer strdup(CCharPointer str) {
+        return PosixLibC.strdup(str);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int strcmp(CCharPointer s1, CCharPointer s2) {
         return PosixLibC.strcmp(s1, s2);
     }

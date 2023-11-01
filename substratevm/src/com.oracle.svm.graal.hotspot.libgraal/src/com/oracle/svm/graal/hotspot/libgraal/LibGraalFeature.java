@@ -52,51 +52,48 @@ import java.util.TreeSet;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.core.heap.dump.HeapDumping;
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.code.DisassemblerProvider;
-import org.graalvm.compiler.core.GraalServiceThread;
-import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
-import org.graalvm.compiler.core.target.Backend;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.hotspot.EncodedSnippets;
-import org.graalvm.compiler.hotspot.HotSpotBackend;
-import org.graalvm.compiler.hotspot.HotSpotCodeCacheListener;
-import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkageImpl;
-import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkageImpl.CodeInfo;
-import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
-import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
-import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
-import org.graalvm.compiler.hotspot.HotSpotReplacementsImpl;
-import org.graalvm.compiler.hotspot.SnippetObjectConstant;
-import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
-import org.graalvm.compiler.hotspot.meta.HotSpotInvocationPluginProvider;
-import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
-import org.graalvm.compiler.hotspot.stubs.Stub;
-import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginFactory;
-import org.graalvm.compiler.nodes.spi.SnippetParameterInfo;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionDescriptor;
-import org.graalvm.compiler.options.OptionDescriptors;
-import org.graalvm.compiler.options.OptionDescriptorsMap;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.options.OptionsParser;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.serviceprovider.GlobalAtomicLong;
-import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
-import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
-import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl;
-import org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory;
-import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
-import org.graalvm.compiler.truffle.compiler.substitutions.GraphDecoderInvocationPluginProvider;
+import jdk.graal.compiler.code.DisassemblerProvider;
+import jdk.graal.compiler.core.GraalServiceThread;
+import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
+import jdk.graal.compiler.core.target.Backend;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.hotspot.EncodedSnippets;
+import jdk.graal.compiler.hotspot.HotSpotBackend;
+import jdk.graal.compiler.hotspot.HotSpotCodeCacheListener;
+import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkageImpl;
+import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkageImpl.CodeInfo;
+import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
+import jdk.graal.compiler.hotspot.HotSpotGraalOptionValues;
+import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
+import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
+import jdk.graal.compiler.hotspot.SnippetObjectConstant;
+import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
+import jdk.graal.compiler.hotspot.meta.HotSpotInvocationPluginProvider;
+import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
+import jdk.graal.compiler.hotspot.stubs.Stub;
+import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedPluginFactory;
+import jdk.graal.compiler.nodes.spi.SnippetParameterInfo;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionDescriptors;
+import jdk.graal.compiler.options.OptionDescriptorsMap;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.options.OptionsParser;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
+import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
+import jdk.graal.compiler.truffle.PartialEvaluatorConfiguration;
+import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
+import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilerImpl;
+import jdk.graal.compiler.truffle.hotspot.TruffleCallBoundaryInstrumentationFactory;
+import jdk.graal.compiler.truffle.substitutions.GraphBuilderInvocationPluginProvider;
+import jdk.graal.compiler.truffle.substitutions.GraphDecoderInvocationPluginProvider;
 import org.graalvm.jniutils.JNI;
 import org.graalvm.jniutils.JNIExceptionWrapper;
 import org.graalvm.jniutils.JNIMethodScope;
@@ -127,7 +124,6 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -183,8 +179,8 @@ public class LibGraalFeature implements InternalFeature {
         /* Open up all modules needed to build LibGraal image */
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "java.base", "jdk.internal.misc");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "jdk.internal.vm.ci");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "jdk.internal.vm.compiler");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "jdk.internal.vm.compiler.management");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "jdk.graal.compiler");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "jdk.graal.compiler.management");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "org.graalvm.collections");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "org.graalvm.word");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "org.graalvm.nativeimage", "org.graalvm.nativeimage.impl");
@@ -548,10 +544,8 @@ public class LibGraalFeature implements InternalFeature {
     }
 
     /**
-     * Verifies that the Truffle compiler does not bring Truffle API types into an image. The
-     * Truffle compiler depends on {@code org.graalvm.compiler.truffle.options} which depends on the
-     * Truffle APIs to be able to use the {@code @com.oracle.truffle.api.Option} annotation. We need
-     * to use the points to analysis to verify that the Truffle API types are not reachable.
+     * Verifies that the Truffle compiler does not bring Truffle API types into an image. We need to
+     * use the points to analysis to verify that the Truffle API types are not reachable.
      */
     private static void verifyReachableTruffleClasses(AfterAnalysisAccess access) {
         AnalysisUniverse universe = ((FeatureImpl.AfterAnalysisAccessImpl) access).getUniverse();
@@ -635,7 +629,7 @@ final class Target_jdk_vm_ci_hotspot_SharedLibraryJVMCIReflection {
 }
 
 @TargetClass(value = SpeculationReasonGroup.class, onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_serviceprovider_SpeculationReasonGroup {
+final class Target_jdk_graal_compiler_serviceprovider_SpeculationReasonGroup {
 
     /**
      * Delete this constructor to ensure {@link SpeculationReasonGroup} ids are in the libgraal
@@ -676,8 +670,8 @@ final class Target_jdk_vm_ci_hotspot_DirectHotSpotObjectConstantImpl {
     }
 }
 
-@TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotGraalCompiler", onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_hotspot_HotSpotGraalCompiler {
+@TargetClass(className = "jdk.graal.compiler.hotspot.HotSpotGraalCompiler", onlyWith = LibGraalFeature.IsEnabled.class)
+final class Target_jdk_graal_compiler_hotspot_HotSpotGraalCompiler {
 
     @SuppressWarnings({"unused", "try"})
     @Substitute
@@ -702,8 +696,8 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalCompiler {
     }
 }
 
-@TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotGraalRuntime", onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
+@TargetClass(className = "jdk.graal.compiler.hotspot.HotSpotGraalRuntime", onlyWith = LibGraalFeature.IsEnabled.class)
+final class Target_jdk_graal_compiler_hotspot_HotSpotGraalRuntime {
 
     @SuppressWarnings("unused")
     @Substitute
@@ -738,17 +732,17 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
     }
 }
 
-@TargetClass(className = "org.graalvm.compiler.serviceprovider.GraalServices", onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_serviceprovider_GraalServices {
+@TargetClass(className = "jdk.graal.compiler.serviceprovider.GraalServices", onlyWith = LibGraalFeature.IsEnabled.class)
+final class Target_jdk_graal_compiler_serviceprovider_GraalServices {
 
     @Substitute
     private static void notifyLowMemoryPoint(boolean fullGC) {
-        Heap.getHeap().getGC().maybeCauseUserRequestedCollection(GCCause.HintedGC, fullGC);
+        Heap.getHeap().getGC().collectionHint(fullGC);
     }
 }
 
-@TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotGraalOptionValues", onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_hotspot_HotSpotGraalOptionValues {
+@TargetClass(className = "jdk.graal.compiler.hotspot.HotSpotGraalOptionValues", onlyWith = LibGraalFeature.IsEnabled.class)
+final class Target_jdk_graal_compiler_hotspot_HotSpotGraalOptionValues {
     @Substitute
     private static OptionValues initializeOptions() {
         return HotSpotGraalOptionValuesUtil.initializeOptions();
@@ -799,17 +793,6 @@ final class HotSpotGraalOptionValuesUtil {
             options.update(values);
         }
 
-        // Normally HeapDumpOnOutOfMemoryError is done in an isolate startup hook.
-        // However, that hook is runtime before libgraal options have been parsed,
-        // so we need to do it explicitly here.
-        if (SubstrateOptions.HeapDumpOnOutOfMemoryError.getValue()) {
-            if (VMInspectionOptions.hasHeapDumpSupport()) {
-                HeapDumping.singleton().initializeDumpHeapOnOutOfMemoryError();
-            } else {
-                throw new IllegalArgumentException("HeapDumpOnOutOfMemoryError is not supported on this platform");
-            }
-        }
-
         if (LibGraalOptions.CrashAtThrowsOOME.getValue() && LibGraalOptions.CrashAtIsFatal.getValue()) {
             throw new IllegalArgumentException("CrashAtThrowsOOME and CrashAtIsFatal cannot both be true");
         }
@@ -823,8 +806,8 @@ final class HotSpotGraalOptionValuesUtil {
     }
 }
 
-@TargetClass(className = "org.graalvm.compiler.core.GraalServiceThread", onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_core_GraalServiceThread {
+@TargetClass(className = "jdk.graal.compiler.core.GraalServiceThread", onlyWith = LibGraalFeature.IsEnabled.class)
+final class Target_jdk_graal_compiler_core_GraalServiceThread {
     @Substitute()
     void beforeRun() {
         GraalServiceThread thread = SubstrateUtil.cast(this, GraalServiceThread.class);
@@ -840,8 +823,8 @@ final class Target_org_graalvm_compiler_core_GraalServiceThread {
     }
 }
 
-@TargetClass(className = "org.graalvm.compiler.core.GraalCompiler", onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_core_GraalCompiler {
+@TargetClass(className = "jdk.graal.compiler.core.GraalCompiler", onlyWith = LibGraalFeature.IsEnabled.class)
+final class Target_jdk_graal_compiler_core_GraalCompiler {
     @SuppressWarnings("unused")
     @Substitute()
     private static boolean notifyCrash(String crashMessage) {
@@ -867,13 +850,13 @@ final class Target_org_graalvm_compiler_core_GraalCompiler {
     }
 }
 
-@TargetClass(className = "org.graalvm.compiler.hotspot.SymbolicSnippetEncoder", onlyWith = LibGraalFeature.IsEnabled.class)
+@TargetClass(className = "jdk.graal.compiler.hotspot.SymbolicSnippetEncoder", onlyWith = LibGraalFeature.IsEnabled.class)
 @Delete("shouldn't appear in libgraal")
-final class Target_org_graalvm_compiler_hotspot_SymbolicSnippetEncoder {
+final class Target_jdk_graal_compiler_hotspot_SymbolicSnippetEncoder {
 }
 
 @TargetClass(value = HotSpotForeignCallLinkageImpl.class, onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_hotspot_HotSpotForeignCallLinkageImpl {
+final class Target_jdk_graal_compiler_hotspot_HotSpotForeignCallLinkageImpl {
     /**
      * Gets the code info for a runtime stub, consulting and updating
      * {@link LibGraalEntryPoints#STUBS} in the process to share runtime stub code info between

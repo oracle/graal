@@ -26,10 +26,10 @@ package com.oracle.svm.core;
 
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
-import static org.graalvm.compiler.core.common.SpectrePHTMitigations.None;
-import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTBarriers;
-import static org.graalvm.compiler.options.OptionType.Expert;
-import static org.graalvm.compiler.options.OptionType.User;
+import static jdk.graal.compiler.core.common.SpectrePHTMitigations.None;
+import static jdk.graal.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTBarriers;
+import static jdk.graal.compiler.options.OptionType.Expert;
+import static jdk.graal.compiler.options.OptionType.User;
 
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -40,13 +40,6 @@ import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionStability;
-import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -54,7 +47,6 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.MuslLibC;
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
@@ -70,15 +62,21 @@ import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionStability;
+import jdk.graal.compiler.options.OptionType;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.internal.misc.Unsafe;
 
 public class SubstrateOptions {
 
-    @Option(help = "When true, compiler graphs are parsed only once before static analysis. When false, compiler graphs are parsed for static analysis and again for AOT compilation.")//
+    @Option(help = "Deprecated, option no longer has any effect.", deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
     public static final HostedOptionKey<Boolean> ParseOnce = new HostedOptionKey<>(true);
-    @Option(help = "When true, each compiler graph version (DeoptTarget, AOT, JIT) needed for runtime compilation will be separately analyzed during static analysis." +
-                    "When false, only one version of the compiler graph (AOT) will be used in static analysis, and then three new versions will be parsed for compilation.")//
-    public static final HostedOptionKey<Boolean> ParseOnceJIT = new HostedOptionKey<>(true);
+    @Option(help = "Deprecated, option no longer has any effect.", deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
+    static final HostedOptionKey<Boolean> ParseOnceJIT = new HostedOptionKey<>(true);
     @Option(help = "Preserve the local variable information for every Java source line to allow line-by-line stepping in the debugger. Allow the lookup of Java-level method information, e.g., in stack traces.")//
     public static final HostedOptionKey<Boolean> SourceLevelDebug = new HostedOptionKey<>(false);
     @Option(help = "Constrain debug info generation to the comma-separated list of package prefixes given to this option.")//
@@ -89,16 +87,16 @@ public class SubstrateOptions {
 
     public static boolean parseOnce() {
         /*
-         * Parsing all graphs before static analysis is work-in-progress and for JIT compilation is
-         * only enabled when ParseOnceJIT is set.
+         * GR-48579: Old code only reachable when this method would return false will be deleted
+         * later.
          */
-        return ParseOnce.getValue() && (ParseOnceJIT.getValue() || !DeoptimizationSupport.enabled());
+        return true;
     }
 
     @Option(help = "Module containing the class that contains the main entry point. Optional if --shared is used.", type = OptionType.User)//
     public static final HostedOptionKey<String> Module = new HostedOptionKey<>("");
 
-    @Option(help = "Class containing the default entry point method. Optional if --shared is used.", type = OptionType.User)//
+    @Option(help = "Class containing the default entry point method. Optional if --shared is used.", type = OptionType.User, stability = OptionStability.STABLE)//
     public static final HostedOptionKey<String> Class = new HostedOptionKey<>("");
 
     @Option(help = "Name of the main entry point method. Optional if --shared is used.")//
@@ -131,7 +129,6 @@ public class SubstrateOptions {
 
         @Override
         public String getValue(OptionValues values) {
-            assert checkDescriptorExists();
             return getValueOrDefault(values.getMap());
         }
     };
@@ -154,13 +151,10 @@ public class SubstrateOptions {
     };
 
     @Option(help = "Builds a statically linked executable with libc dynamically linked", type = Expert, stability = OptionStability.EXPERIMENTAL)//
-    public static final HostedOptionKey<Boolean> StaticExecutableWithDynamicLibC = new HostedOptionKey<>(false) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            StaticExecutable.update(values, true);
-            super.onValueUpdate(values, oldValue, newValue);
-        }
-    };
+    public static final HostedOptionKey<Boolean> StaticExecutableWithDynamicLibC = new HostedOptionKey<>(false);
+
+    @Option(help = "Builds image with libstdc++ statically linked into the image (if needed)", type = Expert, stability = OptionStability.EXPERIMENTAL)//
+    public static final HostedOptionKey<Boolean> StaticLibStdCpp = new HostedOptionKey<>(false);
 
     public static final int ForceFallback = 10;
     public static final int Automatic = 5;
@@ -178,7 +172,7 @@ public class SubstrateOptions {
 
     public static final String IMAGE_CLASSPATH_PREFIX = "-imagecp";
     public static final String IMAGE_MODULEPATH_PREFIX = "-imagemp";
-    public static final String WATCHPID_PREFIX = "-watchpid";
+    public static final String KEEP_ALIVE_PREFIX = "-keepalive";
     private static ValueUpdateHandler<OptimizationLevel> optimizeValueUpdateHandler;
 
     @Fold
@@ -377,6 +371,8 @@ public class SubstrateOptions {
             }
         }
     };
+    @Option(help = "Physical memory size (in bytes). By default, the value is queried from the OS/container during VM startup.", type = OptionType.Expert)//
+    public static final RuntimeOptionKey<Long> MaxRAM = new RuntimeOptionKey<>(0L, Immutable);
 
     @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<>(0L);
@@ -412,6 +408,9 @@ public class SubstrateOptions {
 
     @Option(help = "Use only a writable native image heap (requires ld.gold linker)")//
     public static final HostedOptionKey<Boolean> ForceNoROSectionRelocations = new HostedOptionKey<>(false);
+
+    @Option(help = "Force no direct relocations to be present in the text section of the generated image", type = OptionType.Debug) //
+    public static final HostedOptionKey<Boolean> NoDirectRelocationsInText = new HostedOptionKey<>(true);
 
     @Option(help = "Support multiple isolates.") //
     public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<>(true);
@@ -462,6 +461,9 @@ public class SubstrateOptions {
     @Option(help = "Export Invocation API symbols.", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> JNIExportSymbols = new HostedOptionKey<>(true);
 
+    @Option(help = "JNI functions will return more specific error codes.", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> JNIEnhancedErrorCodes = new HostedOptionKey<>(false);
+
     @Option(help = "Alignment of AOT and JIT compiled code in bytes.")//
     public static final HostedOptionKey<Integer> CodeAlignment = new HostedOptionKey<>(16);
 
@@ -502,7 +504,7 @@ public class SubstrateOptions {
     @Option(help = "Prefix build output with '<pid>:<image name>'", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputPrefix = new HostedOptionKey<>(false);
 
-    @Option(help = "Color build output (enabled by default if colors are supported by terminal)", type = OptionType.User, deprecated = true, deprecationMessage = "Please use the '--color' option.")//
+    @Option(help = "Color build output (enabled by default if colors are supported by terminal)", type = OptionType.User, deprecated = true, deprecationMessage = "Please use '--color' instead.")//
     public static final HostedOptionKey<Boolean> BuildOutputColorful = new HostedOptionKey<>(false);
 
     @Option(help = "Show links in build output (defaults to the value of BuildOutputColorful)", type = OptionType.User)//
@@ -624,7 +626,9 @@ public class SubstrateOptions {
                     isLLVMBackendMissing = ReflectionUtil.lookupClass(true, "com.oracle.svm.core.graal.llvm.LLVMFeature") == null;
                 }
                 if (isLLVMBackendMissing) {
-                    throw UserError.abort("Please install the LLVM backend for GraalVM Native Image via `$JAVA_HOME/bin/gu install native-image-llvm-backend`.");
+                    throw UserError.abort(
+                                    "The LLVM backend for GraalVM Native Image is missing and needs to be build from source. " +
+                                                    "For instructions, please see https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/LLVMBackend.md.");
                 }
 
                 /* See GR-14405, https://github.com/oracle/graal/issues/1056 */
@@ -923,7 +927,7 @@ public class SubstrateOptions {
         if (value == 0) {
             return Unsafe.getUnsafe().pageSize();
         }
-        assert value > 0;
+        assert value > 0 : value;
         return value;
     }
 
@@ -1012,4 +1016,10 @@ public class SubstrateOptions {
 
     @Option(help = "Force using legacy method handle intrinsics.", type = Expert) //
     public static final HostedOptionKey<Boolean> UseOldMethodHandleIntrinsics = new HostedOptionKey<>(false);
+
+    @Option(help = "Include all classes, methods, and fields from given modules", type = OptionType.Debug) //
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeAllFromModule = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+
+    @Option(help = "Include all classes, methods, fields, and resources from given paths", type = OptionType.Debug) //
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeAllFromPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 }

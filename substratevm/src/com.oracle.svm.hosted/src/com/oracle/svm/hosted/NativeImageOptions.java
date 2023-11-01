@@ -24,23 +24,24 @@
  */
 package com.oracle.svm.hosted;
 
-import static org.graalvm.compiler.options.OptionType.Debug;
-import static org.graalvm.compiler.options.OptionType.User;
+import static jdk.graal.compiler.options.OptionType.Debug;
+import static jdk.graal.compiler.options.OptionType.User;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.concurrent.ForkJoinPool;
 
+import com.oracle.svm.util.LogUtils;
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionStability;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionStability;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
-import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.BundleMember;
@@ -49,7 +50,6 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.util.CPUType;
 import com.oracle.svm.util.StringUtil;
@@ -100,7 +100,7 @@ public class NativeImageOptions {
     };
 
     @Option(help = "Uses the native architecture, i.e., the architecture of a machine that builds an image.", type = User, //
-                    deprecated = true, deprecationMessage = "Please use -march=native instead. See --help for details.") //
+                    deprecated = true, deprecationMessage = "Please use '-march=native' instead. See '--help' for details.") //
     public static final HostedOptionKey<Boolean> NativeArchitecture = new HostedOptionKey<>(false) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
@@ -150,6 +150,9 @@ public class NativeImageOptions {
     @Option(help = "Deprecated", type = User)//
     static final HostedOptionKey<Boolean> AllowIncompleteClasspath = new HostedOptionKey<>(false);
 
+    @Option(help = "Disable substitution return type checking", type = Debug, deprecated = true, stability = OptionStability.EXPERIMENTAL, deprecationMessage = "This option will be removed soon and the return type check will be mandatory.")//
+    public static final HostedOptionKey<Boolean> DisableSubstitutionReturnTypeCheck = new HostedOptionKey<>(false);
+
     @SuppressWarnings("all")
     private static boolean areAssertionsEnabled() {
         boolean assertsEnabled = false;
@@ -186,17 +189,58 @@ public class NativeImageOptions {
     }
 
     /**
-     * Configures the number of threads used by the {@link CompletionExecutor}.
+     * Configures the number of threads of the common pool (see driver).
      */
-    @APIOption(name = "parallelism")//
+    private static final String PARALLELISM_OPTION_NAME = "parallelism";
+    @APIOption(name = PARALLELISM_OPTION_NAME)//
     @Option(help = "The maximum number of threads to use concurrently during native image generation.")//
-    public static final HostedOptionKey<Integer> NumberOfThreads = new HostedOptionKey<>(Math.min(Runtime.getRuntime().availableProcessors(), 32));
+    public static final HostedOptionKey<Integer> NumberOfThreads = new HostedOptionKey<>(Math.max(1, Math.min(Runtime.getRuntime().availableProcessors(), 32)), key -> {
+        int numberOfThreads = key.getValue();
+        if (numberOfThreads < 1) {
+            throw UserError.abort("The number of threads was set to %s. Please set the '--%s' option to at least 1.", numberOfThreads, PARALLELISM_OPTION_NAME);
+        }
+    });
 
-    /*
-     * Analysis scales well up to 12 cores and gives slight improvements until 18 cores. We set the
-     * default value to 16 to minimize wasted resources in large machines.
-     */
-    @Option(help = "The number of threads to use for analysis during native image generation. The number must be smaller than the NumberOfThreads.")//
+    public static int getActualNumberOfThreads() {
+        int commonThreadParallelism = ForkJoinPool.getCommonPoolParallelism();
+        if (NumberOfThreads.getValue() == 1) {
+            assert commonThreadParallelism == 1 : "Disabled common pool expected to report parallelism of 1";
+            commonThreadParallelism = 0; /* A disabled common pool has no actual threads */
+        }
+        /*
+         * Main thread plus common pool threads. setCommonPoolParallelism() asserts that this number
+         * matches NumberOfThreads.
+         */
+        return 1 + commonThreadParallelism;
+    }
+
+    public static void setCommonPoolParallelism(OptionValues optionValues) {
+        if (NativeImageOptions.NumberOfThreads.hasBeenSet(optionValues)) {
+            /*
+             * The main thread always helps to process tasks submitted to the common pool (e.g., see
+             * ForkJoinPool#awaitTermination()), so subtract one from the number of threads. The
+             * common pool can be disabled "by setting the parallelism property to zero" (see
+             * ForkJoinPool's javadoc).
+             */
+            int numberOfCommonPoolThreads = NativeImageOptions.NumberOfThreads.getValue(optionValues) - 1;
+            String commonPoolParallelismProperty = "java.util.concurrent.ForkJoinPool.common.parallelism";
+            assert System.getProperty(commonPoolParallelismProperty) == null : commonPoolParallelismProperty + " already set";
+            System.setProperty(commonPoolParallelismProperty, "" + numberOfCommonPoolThreads);
+            int actualCommonPoolParallelism = ForkJoinPool.commonPool().getParallelism();
+            /*
+             * getParallelism() returns at least 1, even in single-threaded mode where common pool
+             * is disabled.
+             */
+            boolean isSingleThreadedMode = numberOfCommonPoolThreads == 0 && actualCommonPoolParallelism == 1;
+            if (!isSingleThreadedMode && actualCommonPoolParallelism != numberOfCommonPoolThreads) {
+                String warning = "Failed to set parallelism of common pool (actual parallelism is %s).".formatted(actualCommonPoolParallelism);
+                assert false : warning;
+                LogUtils.warning(warning);
+            }
+        }
+    }
+
+    @Option(help = "Deprecated, option no longer has any effect", deprecated = true, deprecationMessage = "Please use '--parallelism' instead.")//
     public static final HostedOptionKey<Integer> NumberOfAnalysisThreads = new HostedOptionKey<>(-1);
 
     @Option(help = "Return after analysis")//
@@ -208,13 +252,13 @@ public class NativeImageOptions {
     @Option(help = "Exit after writing relocatable file")//
     public static final HostedOptionKey<Boolean> ExitAfterRelocatableImageWrite = new HostedOptionKey<>(false);
 
-    @Option(help = "Throw unsafe operation offset errors.)")//
+    @Option(help = "Throw unsafe operation offset errors.")//
     public static final HostedOptionKey<Boolean> ThrowUnsafeOffsetErrors = new HostedOptionKey<>(true);
 
-    @Option(help = "Print unsafe operation offset warnings.)")//
+    @Option(help = "Print unsafe operation offset warnings.")//
     public static final HostedOptionKey<Boolean> ReportUnsafeOffsetWarnings = new HostedOptionKey<>(false);
 
-    @Option(help = "Print unsafe operation offset warnings.)")//
+    @Option(help = "Print unsafe operation offset warnings.")//
     public static final HostedOptionKey<Boolean> UnsafeOffsetWarningsAreFatal = new HostedOptionKey<>(false);
 
     /**
@@ -266,26 +310,4 @@ public class NativeImageOptions {
             }
         }
     };
-
-    public static int getMaximumNumberOfConcurrentThreads(OptionValues optionValues) {
-        int maxNumberOfThreads = NativeImageOptions.NumberOfThreads.getValue(optionValues);
-        VMError.guarantee(maxNumberOfThreads > 0, "Number of threads must be greater than zero. Validation should have happened in driver.");
-        return maxNumberOfThreads;
-    }
-
-    public static int getMaximumNumberOfAnalysisThreads(OptionValues optionValues) {
-        int optionValue = NativeImageOptions.NumberOfAnalysisThreads.getValue(optionValues);
-        int analysisThreads = NumberOfAnalysisThreads.hasBeenSet(optionValues) ? optionValue : Math.min(getMaximumNumberOfConcurrentThreads(optionValues), DEFAULT_MAX_ANALYSIS_SCALING);
-        if (analysisThreads <= 0) {
-            throw UserError.abort("Number of analysis threads was set to '" + analysisThreads + "'. Please set the NumberOfAnalysisThreads flag to a number greater than 0.");
-        }
-
-        Integer maxNumberOfThreads = NumberOfThreads.getValue(optionValues);
-        if (analysisThreads > maxNumberOfThreads) {
-            throw UserError.abort(
-                            "NumberOfAnalysisThreads is not allowed to be larger than the number of threads set with the --parallelism option. Please set the NumberOfAnalysisThreads flag to a value between 0 and " +
-                                            (maxNumberOfThreads + 1) + ".");
-        }
-        return analysisThreads;
-    }
 }

@@ -33,9 +33,9 @@ import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.dumpTypes;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.dumpValues;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.getType;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.getVal;
-import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
-import static org.graalvm.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
-import static org.graalvm.compiler.debug.GraalError.unimplemented;
+import static jdk.graal.compiler.debug.GraalError.shouldNotReachHere;
+import static jdk.graal.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
+import static jdk.graal.compiler.debug.GraalError.unimplemented;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,44 +45,43 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.code.DataSection;
-import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.common.calc.Condition;
-import org.graalvm.compiler.core.common.calc.FloatConvert;
-import org.graalvm.compiler.core.common.cfg.BasicBlock;
-import org.graalvm.compiler.core.common.memory.BarrierType;
-import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
-import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
-import org.graalvm.compiler.core.common.spi.CodeGenProviders;
-import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.core.common.spi.LIRKindTool;
-import org.graalvm.compiler.core.common.type.CompressibleConstant;
-import org.graalvm.compiler.core.common.type.IllegalStamp;
-import org.graalvm.compiler.core.common.type.RawPointerStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.lir.LIRFrameState;
-import org.graalvm.compiler.lir.LIRInstruction;
-import org.graalvm.compiler.lir.LabelRef;
-import org.graalvm.compiler.lir.Variable;
-import org.graalvm.compiler.lir.VirtualStackSlot;
-import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
-import org.graalvm.compiler.lir.gen.BarrierSetLIRGeneratorTool;
-import org.graalvm.compiler.lir.gen.LIRGenerationResult;
-import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
-import org.graalvm.compiler.lir.gen.MoveFactory;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.ParameterNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.cfg.HIRBlock;
-import org.graalvm.compiler.nodes.type.NarrowOopStamp;
-import org.graalvm.compiler.phases.util.Providers;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.code.DataSection;
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.calc.Condition;
+import jdk.graal.compiler.core.common.calc.FloatConvert;
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.core.common.memory.BarrierType;
+import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.core.common.spi.LIRKindTool;
+import jdk.graal.compiler.core.common.type.CompressibleConstant;
+import jdk.graal.compiler.core.common.type.IllegalStamp;
+import jdk.graal.compiler.core.common.type.RawPointerStamp;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.lir.LIRFrameState;
+import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.graal.compiler.lir.LabelRef;
+import jdk.graal.compiler.lir.Variable;
+import jdk.graal.compiler.lir.VirtualStackSlot;
+import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
+import jdk.graal.compiler.lir.gen.BarrierSetLIRGeneratorTool;
+import jdk.graal.compiler.lir.gen.LIRGenerationResult;
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
+import jdk.graal.compiler.lir.gen.MoveFactory;
+import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.cfg.HIRBlock;
+import jdk.graal.compiler.nodes.type.NarrowOopStamp;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -204,7 +203,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     }
 
     @Override
-    public CodeGenProviders getProviders() {
+    public Providers getProviders() {
         return providers;
     }
 

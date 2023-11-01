@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022, Oracle and/or its affiliates.
+# Copyright (c) 2022, 2023, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -37,7 +37,7 @@ set(CHECK_WRAPPER_SCRIPT | grep.exe "GraalVM wrapper script" ${QUIETLY_REDIR})
 if (APPLE AND DEFINED SULONG_NATIVE_BUILD)
   set(BC_MAGIC 0b17c0de)
   set(BC_SECTION __bitcode\|__bundle)
-  set(SHARED_FLAGS -dynamic -dylib -arch x86_64 -macosx_version_min 10.14.0 -lSystem)
+  set(SHARED_FLAGS -dylib -arch ${CMAKE_SYSTEM_PROCESSOR} -macos_version_min 10.14.0 -platform_version macos 13.0.0 14.0 -undefined dynamic_lookup)
 else()
   set(BC_MAGIC dec04342)
   set(BC_SECTION \.llvmbc)
@@ -119,7 +119,12 @@ function(add_bc_section_test PREFIX TEST DEST_EXT)
 endfunction()
 
 function(add_run_test PREFIX TEST DEST_EXT)
-  add_test(NAME run-${PREFIX}${TEST} COMMAND ${SULONG_EXE} ${TEST}${DEST_EXT})
+  if(NOT ${STANDALONE_MODE} STREQUAL "native" OR NOT ${TEST} MATCHES "biginteger")
+    # tests with "biginteger" in their name use Java interop
+    # they can not run on the "native" standalone, but they can still be compiled
+    # so we still want them for all the other build tests, but skip the "run"
+    add_test(NAME run-${PREFIX}${TEST} COMMAND ${SULONG_EXE} ${TEST}${DEST_EXT})
+  endif()
 endfunction()
 
 function(add_bc_magic_tests PREFIX TESTS TC FLAGS SRC_EXT DEST_EXT)

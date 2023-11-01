@@ -30,7 +30,7 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugArrayTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext;
 
 public class ArrayTypeEntry extends StructureTypeEntry {
     private TypeEntry elementType;
@@ -56,7 +56,9 @@ public class ArrayTypeEntry extends StructureTypeEntry {
         this.lengthOffset = debugArrayTypeInfo.lengthOffset();
         /* Add details of fields and field types */
         debugArrayTypeInfo.fieldInfoProvider().forEach(debugFieldInfo -> this.processField(debugFieldInfo, debugInfoBase, debugContext));
-        debugContext.log("typename %s element type %s base size %d length offset %d%n", typeName, this.elementType.getTypeName(), baseSize, lengthOffset);
+        if (debugContext.isLogEnabled()) {
+            debugContext.log("typename %s element type %s base size %d length offset %d%n", typeName, this.elementType.getTypeName(), baseSize, lengthOffset);
+        }
     }
 
     public TypeEntry getElementType() {

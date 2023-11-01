@@ -33,7 +33,6 @@ import static com.oracle.graal.pointsto.reports.ReportUtils.positionComparator;
 
 import java.io.PrintWriter;
 import java.util.ArrayDeque;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.Iterator;
@@ -41,14 +40,12 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
-import org.graalvm.compiler.options.OptionValues;
+import jdk.graal.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
@@ -66,11 +63,6 @@ public final class ObjectTreePrinter extends ObjectScanner {
     }
 
     private static void doPrint(PrintWriter out, BigBang bb) {
-        if (!PointstoOptions.ExhaustiveHeapScan.getValue(bb.getOptions())) {
-            String types = Arrays.stream(bb.skippedHeapTypes()).map(t -> t.toJavaName()).collect(Collectors.joining(", "));
-            System.out.println("Exhaustive heap scanning is disabled. The object tree will not contain all instances of types: " + types);
-            System.out.println("Exhaustive heap scanning can be turned on using -H:+ExhaustiveHeapScan.");
-        }
         /* Use linked hash map for predictable iteration order. */
         Map<JavaConstant, ObjectNodeBase> constantToNode = new LinkedHashMap<>();
         ObjectTreePrinter printer = new ObjectTreePrinter(bb, constantToNode);
@@ -176,7 +168,7 @@ public final class ObjectTreePrinter extends ObjectScanner {
         }
 
         void addField(AnalysisField field, ObjectNodeBase typeNode) {
-            assert !fields.containsKey(field);
+            assert !fields.containsKey(field) : field;
             fields.put(field, new FieldNode(field, typeNode));
         }
     }
@@ -208,7 +200,7 @@ public final class ObjectTreePrinter extends ObjectScanner {
         }
 
         void addElement(Integer index, ObjectNodeBase object) {
-            assert !elements.containsKey(index);
+            assert !elements.containsKey(index) : elements;
             elements.put(index, new ElementNode(index, object));
         }
     }
@@ -331,7 +323,7 @@ public final class ObjectTreePrinter extends ObjectScanner {
                 return false;
             }
 
-            assert constantToNode.containsKey(receiver);
+            assert constantToNode.containsKey(receiver) : receiver;
 
             ObjectNode receiverNode = (ObjectNode) constantToNode.get(receiver);
             receiverNode.addField(field, ObjectNodeBase.forNull());
@@ -356,7 +348,7 @@ public final class ObjectTreePrinter extends ObjectScanner {
 
         @Override
         public boolean forNullArrayElement(JavaConstant array, AnalysisType arrayType, int index, ScanReason reason) {
-            assert constantToNode.containsKey(array);
+            assert constantToNode.containsKey(array) : array;
 
             ArrayObjectNode arrayNode = (ArrayObjectNode) constantToNode.get(array);
             arrayNode.addElement(index, ObjectNodeBase.forNull());

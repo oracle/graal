@@ -26,7 +26,7 @@ package com.oracle.svm.core.stack;
 
 import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
 
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;

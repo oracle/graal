@@ -93,6 +93,7 @@ import org.graalvm.polyglot.io.IOAccess;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.InternalResource.Id;
 import com.oracle.truffle.api.TruffleFile.FileSystemContext;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -521,9 +522,13 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * Declarative list of {@link InternalResource} classes that is associated with this
-         * language. To unpack all resources of a language embedders may use
-         * {@link Engine#copyResources(Path, String...)}.
+         * language. Use the {@code internalResources} attribute solely for registering required
+         * internal resources. Optional internal resources should provide the associated language
+         * identifier using the {@link Id#componentId()} method. To unpack all resources of a
+         * language embedders may use {@link Engine#copyResources(Path, String...)}.
          *
+         * @see InternalResource
+         * @see Id
          * @since 23.1
          */
         Class<? extends InternalResource>[] internalResources() default {};
@@ -3051,7 +3056,7 @@ public abstract class TruffleLanguage<C> {
             if (LanguageAccessor.engineAccess().hasNoAccess(publicFsContext.fileSystem)) {
                 FileSystemContext internalFsContext = getInternalFileSystemContext();
                 TruffleFile internalFile = truffleFileFactory.apply(path, internalFsContext);
-                if (LanguageAccessor.engineAccess().getRelativePathInLanguageHome(internalFile) != null && isStdLibFile.test(internalFile.getAbsoluteFile())) {
+                if (LanguageAccessor.engineAccess().getRelativePathInResourceRoot(internalFile) != null && isStdLibFile.test(internalFile.getAbsoluteFile())) {
                     return internalFile;
                 }
             }
@@ -3537,11 +3542,12 @@ public abstract class TruffleLanguage<C> {
          * resource. Unlike the {@link #getInternalResource(Class)}, this method can be used for
          * optional resources whose classes may not exist at runtime. In this case the optional
          * resource must be unpacked at build time, see
-         * {@link Engine#copyResources(Path, String...)}.
+         * {@link Engine#copyResources(Path, String...)}. If the resource with the specified
+         * {@code resourceId} is not associated to this language, the function returns {@code null}.
          *
          * @param resourceId unique id of the resource to be loaded
-         * @throws IllegalArgumentException if resource with the {@code resourceId} is not
-         *             associated with this language
+         * @return internal resource directory or {@code null} if resource with the
+         *         {@code resourceId} is not associated with this language
          * @throws IOException in case of IO error
          * @see #getInternalResource(Class)
          * @see Engine#copyResources(Path, String...)

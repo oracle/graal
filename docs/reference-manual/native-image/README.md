@@ -53,9 +53,9 @@ On Oracle Linux use the `yum` package manager:
 sudo yum install gcc glibc-devel zlib-devel
 ```
 Some Linux distributions may additionally require `libstdc++-static`.
-You can install `libstdc++-static` if the optional repositories are enabled (_ol7_optional_latest_ on Oracle Linux 7 and _ol8_codeready_builder_ on Oracle Linux 8).
+You can install `libstdc++-static` if the optional repositories are enabled (_ol7_optional_latest_ on Oracle Linux 7, _ol8_codeready_builder_ on Oracle Linux 8, and _ol9_codeready_builder_ on Oracle Linux 9).
 
-On  Ubuntu Linux use the `apt-get` package manager:
+On Ubuntu Linux use the `apt-get` package manager:
 ```shell
 sudo apt-get install build-essential libz-dev zlib1g-dev
 ```
@@ -172,11 +172,11 @@ native-image -jar App.jar ... ; say "GraalVM Native Image build completed"
 ```
 
 #### Windows
-```bat
-REM Ring the terminal bell (press Ctrl+G to enter ^G)
+```bash
+# Ring the terminal bell (press Ctrl+G to enter ^G)
 native-image.exe -jar App.jar & echo ^G
 
-REM Open an info dialog box with text
+# Open an info dialog box with text
 native-image.exe -jar App.jar & msg "%username%" GraalVM Native Image build completed
 ```
 

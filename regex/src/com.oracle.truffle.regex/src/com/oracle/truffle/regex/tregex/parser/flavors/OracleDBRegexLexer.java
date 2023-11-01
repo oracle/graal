@@ -40,7 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
-import org.graalvm.collections.EconomicMap;
+import static com.oracle.truffle.regex.tregex.parser.flavors.OracleDBConstants.POSIX_CHAR_CLASSES;
+import static com.oracle.truffle.regex.tregex.parser.flavors.OracleDBConstants.WORD_CHARACTERS;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexSource;
@@ -49,10 +50,9 @@ import com.oracle.truffle.regex.charset.ClassSetContents;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
-import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.OracleDBErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
+import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
 import com.oracle.truffle.regex.tregex.parser.RegexLexer;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.string.Encodings;
@@ -60,38 +60,7 @@ import com.oracle.truffle.regex.util.JavaStringUtil;
 import com.oracle.truffle.regex.util.TBitSet;
 
 public final class OracleDBRegexLexer extends RegexLexer {
-
-    // This map contains the character sets of POSIX character classes like [[:alpha:]] and
-    // [[:punct:]].
-    private static final EconomicMap<String, CodePointSet> UNICODE_POSIX_CHAR_CLASSES;
     private static final CodePointSet EMPTY_POSIX_CHAR_CLASS = CodePointSet.create(':', ':', '[', '[', ']', ']');
-
-    static {
-        CodePointSet alpha = UnicodeProperties.getProperty("Alphabetic");
-        CodePointSet digit = UnicodeProperties.getProperty("General_Category=Decimal_Number");
-        CodePointSet space = UnicodeProperties.getProperty("White_Space");
-        CodePointSet xdigit = CodePointSet.create('0', '9', 'A', 'F', 'a', 'f');
-
-        UNICODE_POSIX_CHAR_CLASSES = EconomicMap.create(12);
-        CompilationBuffer buffer = new CompilationBuffer(Encodings.UTF_32);
-
-        CodePointSet blank = UnicodeProperties.getProperty("General_Category=Space_Separator").union(CodePointSet.create('\t', '\t'));
-        CodePointSet cntrl = UnicodeProperties.getProperty("General_Category=Control");
-        CodePointSet graph = space.union(UnicodeProperties.getProperty("General_Category=Control")).union(UnicodeProperties.getProperty("General_Category=Surrogate")).union(
-                        UnicodeProperties.getProperty("General_Category=Unassigned")).createInverse(Encodings.UTF_32);
-        UNICODE_POSIX_CHAR_CLASSES.put("alpha", alpha);
-        UNICODE_POSIX_CHAR_CLASSES.put("alnum", alpha.union(digit));
-        UNICODE_POSIX_CHAR_CLASSES.put("blank", blank);
-        UNICODE_POSIX_CHAR_CLASSES.put("cntrl", cntrl);
-        UNICODE_POSIX_CHAR_CLASSES.put("digit", digit);
-        UNICODE_POSIX_CHAR_CLASSES.put("graph", graph);
-        UNICODE_POSIX_CHAR_CLASSES.put("lower", UnicodeProperties.getProperty("Lowercase"));
-        UNICODE_POSIX_CHAR_CLASSES.put("print", graph.union(blank).subtract(cntrl, buffer));
-        UNICODE_POSIX_CHAR_CLASSES.put("punct", UnicodeProperties.getProperty("General_Category=Punctuation").union(UnicodeProperties.getProperty("General_Category=Symbol").subtract(alpha, buffer)));
-        UNICODE_POSIX_CHAR_CLASSES.put("space", space);
-        UNICODE_POSIX_CHAR_CLASSES.put("upper", UnicodeProperties.getProperty("Uppercase"));
-        UNICODE_POSIX_CHAR_CLASSES.put("xdigit", xdigit);
-    }
     private static final TBitSet WHITESPACE = TBitSet.valueOf('\n', ' ');
     private final OracleDBFlags flags;
     private final CodePointSetAccumulator caseFoldTmp = new CodePointSetAccumulator();
@@ -114,7 +83,7 @@ public final class OracleDBRegexLexer extends RegexLexer {
 
     @Override
     protected boolean featureEnabledIgnoreCase() {
-        return flags.isIgnoreCase();
+        return false;
     }
 
     @Override
@@ -158,7 +127,7 @@ public final class OracleDBRegexLexer extends RegexLexer {
             // oracledb quirk: [::] inside a character class is treated as [:] instead of re-parsing
             return EMPTY_POSIX_CHAR_CLASS;
         }
-        CodePointSet cps = UNICODE_POSIX_CHAR_CLASSES.get(name);
+        CodePointSet cps = POSIX_CHAR_CLASSES.get(name);
         if (cps != null) {
             return cps;
         }
@@ -224,7 +193,7 @@ public final class OracleDBRegexLexer extends RegexLexer {
 
     @Override
     protected void caseFoldUnfold(CodePointSetAccumulator charClass) {
-        CaseFoldTable.applyCaseFoldUnfold(charClass, caseFoldTmp, CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode);
+        CaseFoldData.applyCaseFoldUnfold(charClass, caseFoldTmp, CaseFoldData.CaseFoldUnfoldAlgorithm.ECMAScriptUnicode);
     }
 
     @Override
@@ -258,9 +227,15 @@ public final class OracleDBRegexLexer extends RegexLexer {
     }
 
     @Override
+    protected boolean isPredefCharClass(char c) {
+        // OracleDB ignores \s \d \w inside character classes, and interprets them as literal
+        // characters instead
+        return !inCharacterClass() && PREDEFINED_CHAR_CLASSES.get(c);
+    }
+
+    @Override
     protected CodePointSet getPredefinedCharClass(char c) {
-        assert UNICODE_POSIX_CHAR_CLASSES.containsKey(getPOSIXCharClassName(c));
-        CodePointSet cps = UNICODE_POSIX_CHAR_CLASSES.get(getPOSIXCharClassName(c));
+        CodePointSet cps = getPOSIXCharClass(c);
         if (isLowerCase(c)) {
             return cps;
         } else {
@@ -276,14 +251,14 @@ public final class OracleDBRegexLexer extends RegexLexer {
         return (c & 0x20) != 0;
     }
 
-    private static String getPOSIXCharClassName(char c) {
+    private static CodePointSet getPOSIXCharClass(char c) {
         switch (toLowerCase(c)) {
             case 's':
-                return "space";
+                return POSIX_CHAR_CLASSES.get("space");
             case 'd':
-                return "digit";
+                return POSIX_CHAR_CLASSES.get("digit");
             case 'w':
-                return "alnum";
+                return WORD_CHARACTERS;
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
@@ -303,7 +278,7 @@ public final class OracleDBRegexLexer extends RegexLexer {
     protected Token handleBoundedQuantifierSyntaxError() throws RegexSyntaxException {
         // invalid bounded quantifiers are treated as string literals
         position = getLastTokenPosition() + 1;
-        return charClass('{');
+        return literalChar('{');
     }
 
     @Override
@@ -311,7 +286,7 @@ public final class OracleDBRegexLexer extends RegexLexer {
         if (min == -1 || max == -1) {
             // bounded quantifiers outside uint32 range are treated as string literals
             position = getLastTokenPosition() + 1;
-            return charClass('{');
+            return literalChar('{');
         }
         if (Long.compareUnsigned(min, max) > 0) {
             throw handleBoundedQuantifierOutOfOrder();
@@ -326,7 +301,7 @@ public final class OracleDBRegexLexer extends RegexLexer {
         if (min == -1) {
             // bounded quantifiers outside uint32 range are treated as string literals
             position = getLastTokenPosition() + 1;
-            return charClass('{');
+            return literalChar('{');
         }
         // oracledb quirk: values between 0x7fff_ffff and 0xffff_ffff are treated as uint32 in the
         // quantifier order check, but are later "cast" to int32 by stripping the sign bit.

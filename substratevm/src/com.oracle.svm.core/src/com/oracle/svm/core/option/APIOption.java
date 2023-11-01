@@ -31,7 +31,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.function.Function;
 
-import org.graalvm.compiler.options.Option;
+import jdk.graal.compiler.options.Option;
 
 import com.oracle.svm.core.util.VMError;
 
@@ -138,6 +138,10 @@ public @interface APIOption {
             } else {
                 return "--" + name;
             }
+        }
+
+        public static String valueSeparatorToString(char valueSeparator) {
+            return valueSeparator != APIOption.NO_SEPARATOR ? Character.toString(valueSeparator) : "";
         }
 
         public static String groupName(APIOptionGroup group) {

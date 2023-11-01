@@ -77,7 +77,6 @@ _graalvm_hostvm_configs = [
     ('jvm-3-compiler-threads', [], ['--jvm', '--engine.CompilerThreads=3'], 50),
     ('native-3-compiler-threads', [], ['--native', '--engine.CompilerThreads=3'], 100)
 ]
-_known_vms = set()
 _base_jdk = None
 
 
@@ -106,6 +105,7 @@ class AbstractNativeImageConfig(object, metaclass=ABCMeta):
         self.build_time = build_time
         self.build_args_enterprise = build_args_enterprise or []
         self.relative_home_paths = {}
+        self.relative_extracted_lib_paths = {}
 
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.build_args, (list, types.GeneratorType))
@@ -141,6 +141,12 @@ class AbstractNativeImageConfig(object, metaclass=ABCMeta):
             raise Exception('the relative home path of {} is already set to {} and cannot also be set to {} for {}'.format(
                 language, self.relative_home_paths[language], path, self.destination))
         self.relative_home_paths[language] = path
+
+    def add_relative_extracted_lib_path(self, name, path):
+        if name in self.relative_extracted_lib_paths and self.relative_extracted_lib_paths[name] != path:
+            raise Exception('the relative extracted lib path of {} is already set to {} and cannot also be set to {} for {}'.format(
+                name, self.relative_extracted_lib_paths[name], path, self.destination))
+        self.relative_extracted_lib_paths[name] = path
 
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, is_main_launcher=True,
@@ -198,10 +204,11 @@ class LibraryConfig(AbstractNativeImageConfig):
 
 
 class LanguageLibraryConfig(LibraryConfig):
-    def __init__(self, jar_distributions, build_args, language, main_class=None, is_sdk_launcher=True, launchers=None, option_vars=None, default_vm_args=None, headers=False, set_default_relative_home_path=True, **kwargs):
+    def __init__(self, jar_distributions, build_args, language, main_class=None, is_sdk_launcher=True, launchers=None, option_vars=None, default_vm_args=None, headers=False, set_default_relative_home_path=True, isolate_library_layout_distribution=None, **kwargs):
         """
         :param str language
         :param str main_class
+        :param isolate_library_layout_distribution dict
         """
         kwargs.pop('destination', None)
         super(LanguageLibraryConfig, self).__init__('lib/<lib:' + language + 'vm>', jar_distributions, build_args, home_finder=True, headers=headers, **kwargs)
@@ -220,6 +227,7 @@ class LanguageLibraryConfig(LibraryConfig):
         if set_default_relative_home_path:
             # Ensure the language launcher can always find the language home
             self.add_relative_home_path(language, relpath('.', dirname(self.destination)))
+        self.isolate_library_layout_distribution = isolate_library_layout_distribution
 
 class GraalVmComponent(object):
     def __init__(self,
@@ -254,7 +262,8 @@ class GraalVmComponent(object):
                  early_adopter=False,
                  stability=None,
                  extra_installable_qualifiers=None,
-                 has_relative_home=True):
+                 has_relative_home=True,
+                 jvm_configs=None):
         """
         :param suite mx.Suite: the suite this component belongs to
         :type name: str
@@ -266,6 +275,11 @@ class GraalVmComponent(object):
         :param list[str | (str, str)] provided_executables: executables to be placed in the appropriate `bin` directory.
             In the list, strings represent a path inside the component (e.g., inside a support distribution).
             Tuples `(dist, exec)` represent an executable to be copied found in `dist`, at path `exec` (the same basename will be used).
+        :param jvm_configs: list of dicts that describe changes to the `lib/jvm.cfg` file. Example:
+            {
+                'configs': ['-truffle KNOWN'],
+                'priority': -1,  # 0 is invalid; < 0 prepends to the default configs; > 0 appends
+            }
         :type license_files: list[str]
         :type third_party_license_files: list[str]
         :type polyglot_lib_build_args: list[str]
@@ -289,6 +303,7 @@ class GraalVmComponent(object):
         :type stability: str | None
         :type extra_installable_qualifiers: list[str] | None
         :type has_relative_home: bool
+        :type jvm_configs: list[dict] or None
         """
         if dependencies is None:
             mx.logv('Component {} does not specify dependencies'.format(name))
@@ -325,6 +340,7 @@ class GraalVmComponent(object):
         self.installable_id = installable_id or self.dir_name
         self.extra_installable_qualifiers = extra_installable_qualifiers or []
         self.has_relative_home = has_relative_home
+        self.jvm_configs = jvm_configs or []
 
         if supported is not None or early_adopter:
             if stability is not None:
@@ -530,12 +546,6 @@ def register_vm_config(config_name, components, suite, dist_name=None, env_file=
 
 def get_graalvm_hostvm_configs():
     return _graalvm_hostvm_configs
-
-
-def register_known_vm(name):
-    if name in _known_vms:
-        raise mx.abort("VM '{}' already registered".format(name))
-    _known_vms.add(name)
 
 
 def base_jdk():
@@ -810,7 +820,7 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
 
         if jdk_supports_enablejvmciproduct(jdk):
             non_synthetic_modules = [m.name for m in modules if m not in synthetic_modules]
-            if default_to_jvmci or 'jdk.internal.vm.compiler' in non_synthetic_modules:
+            if default_to_jvmci or 'jdk.graal.compiler' in non_synthetic_modules:
                 threads = get_JVMCIThreadsPerNativeLibraryRuntime(jdk)
                 vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct'])
                 if threads is not None and threads != 1:
@@ -1189,12 +1199,13 @@ def _verify_graalvm_configs(args):
     parser = ArgumentParser(prog='mx verify-graalvm-configs', description='Verify registered GraalVM configs')
     parser.add_argument('--suites', help='comma-separated list of suites')
     parser.add_argument('--from', dest='start_from', help='start verification from the indicated env file')
+    parser.add_argument('--all', dest='all', help='verify all configs, otherwise exit on first error', action='store_true')
     args = parser.parse_args(args)
     suites = args.suites if args.suites is None else args.suites.split(',')
-    verify_graalvm_configs(suites=suites, start_from=args.start_from)
+    verify_graalvm_configs(suites=suites, start_from=args.start_from, check_all=args.all)
 
 
-def verify_graalvm_configs(suites=None, start_from=None):
+def verify_graalvm_configs(suites=None, start_from=None, check_all=False):
     """
     Check the consistency of registered GraalVM configs.
     :param suites: optionally restrict the check to the configs registered by this list of suites.
@@ -1207,6 +1218,8 @@ def verify_graalvm_configs(suites=None, start_from=None):
         if env_var in child_env:
             del child_env[env_var]
     started = start_from is None
+    on_error = mx.warn if check_all else mx.abort
+    has_errors = False
     for dist_name, _, components, suite, env_file in _vm_configs:
         if env_file is not False and (suites is None or suite.name in suites):
             _env_file = env_file or dist_name
@@ -1239,7 +1252,8 @@ def verify_graalvm_configs(suites=None, start_from=None):
                         added = list(got_components_set - components_set)
                         removed = list(components_set - got_components_set)
                         diff = ('Added:\n{}\n'.format(added) if added else '') + ('Removed:\n{}\n'.format(removed) if removed else '')
-                    mx.abort("""\
+                    has_errors = True
+                    on_error("""\
 Unexpected GraalVM dist name for env file '{}' in suite '{}'.
 Expected dist name: '{}'
 Actual dist name: '{}'.
@@ -1248,6 +1262,5 @@ Expected component list:
 Actual component list:
 {}
 {}Did you forget to update the registration of the GraalVM config?""".format(_env_file, suite.name, graalvm_dist_name, '\n'.join(out.lines + err.lines), sorted(components), got_components, diff))
-
-
-register_known_vm('truffle')
+    if has_errors:
+        mx.abort("Errors during verification")

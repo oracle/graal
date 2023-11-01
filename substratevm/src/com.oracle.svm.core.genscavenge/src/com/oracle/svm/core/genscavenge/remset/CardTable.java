@@ -26,9 +26,9 @@ package com.oracle.svm.core.genscavenge.remset;
 
 import java.lang.ref.Reference;
 
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;

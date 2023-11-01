@@ -12,25 +12,65 @@ This includes languages like C/C++, Fortran and others.
 In contrast to static compilation that is normally used for LLVM-based languages, GraalVM's implementation of the `lli` tool first interprets LLVM bitcode and then dynamically compiles the hot parts of the program using the Graal compiler.
 This allows seamless interoperability with the dynamic languages supported by GraalVM.
 
-## Install LLVM Runtime
+## Getting Started
 
-Since GraalVM 22.2, the LLVM runtime is packaged in a separate GraalVM component. It can be installed with GraalVM Updater:
+As of GraalVM for JDK 21, the GraalVM LLVM runtime is available as a standalone distribution. 
+You can download a standalone based on Oracle GraalVM or GraalVM Community Edition. 
 
-```shell
-$JAVA_HOME/bin/gu install llvm
-```
+1. Download the LLVM 23.1 standalone for your operating system:
 
-This installs GraalVM's implementation of `lli` in the `$JAVA_HOME/bin` directory.
-With the LLVM runtime installed, you can execute programs in LLVM bitcode format on GraalVM.
+   - Native standalone
+      * [Linux x64](https://gds.oracle.com/api/20220101/artifacts/07867F4EBC7C81ADE0631718000AA7AB/content)
+      * [Linux AArch64](https://gds.oracle.com/api/20220101/artifacts/07867F4EBC8181ADE0631718000AA7AB/content)
+      * [macOS x64](https://gds.oracle.com/api/20220101/artifacts/069B4EC01CBE519AE0631718000AA34D/content)
+      * [macOS AArch64](https://gds.oracle.com/api/20220101/artifacts/069B12298BE249EDE0631718000A11BC/content)
+      * [Windows x64](https://gds.oracle.com/api/20220101/artifacts/069B12298BE749EDE0631718000A11BC/content)
+   - JVM standalone
+      * [Linux x64](https://gds.oracle.com/api/20220101/artifacts/069B12298BEC49EDE0631718000A11BC/content)
+      * [Linux AArch64](https://gds.oracle.com/api/20220101/artifacts/069B4EC01CC3519AE0631718000AA34D/content)
+      * [macOS x64](https://gds.oracle.com/api/20220101/artifacts/07867F4EBC8881ADE0631718000AA7AB/content)
+      * [macOS AArch64](https://gds.oracle.com/api/20220101/artifacts/069B4EC01CC8519AE0631718000AA34D/content)
+      * [Windows x64](https://gds.oracle.com/api/20220101/artifacts/07867F4EBC8D81ADE0631718000AA7AB/content)
 
-Additionally to installing the LLVM runtime, you can add the LLVM toolchain:
+2. Unzip the archive:
 
-```shell
-gu install llvm-toolchain
-export LLVM_TOOLCHAIN=$(lli --print-toolchain-path)
-```
+    > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute:
+    ```shell
+    sudo xattr -r -d com.apple.quarantine <archive>.tar.gz
+    ```
+    
+    Extact:
+    ```shell
+    tar -xzf <archive>.tar.gz
+    ```
 
-Now you can compile C/C++ code to LLVM bitcode using `clang` shipped with GraalVM via a prebuilt LLVM toolchain.
+3. A standalone comes with a JVM in addition to its native launcher. Check the version to see GraalVM LLVM runtime is active:
+    ```shell
+    ./path/to/bin/lli --version
+    ```
+
+Now you can execute programs in the LLVM bitcode format.
+
+### LLVM Toolchain
+
+Additionally, a prebuilt LLVM toolchain is bundled with the GraalVM LLVM runtime.
+
+1. Get the location of the toolchain, using the `--print-toolchain-path` argument of `lli`:
+    ```shell
+    ./path/to/bin/lli --print-toolchain-path
+    ```
+
+2. Set the `LLVM_TOOLCHAIN` environment variable: 
+    ```shell
+    export LLVM_TOOLCHAIN=$(./path/to/bin/lli --print-toolchain-path)
+    ```
+
+3. Then see the content of the toolchain path for a list of available tools:
+    ```shell
+    ls $LLVM_TOOLCHAIN
+    ```
+
+Now you can compile C/C++ code to LLVM bitcode using `clang` shipped with GraalVM via the LLVM toolchain.
 
 ## Run LLVM Bitcode on GraalVM
 

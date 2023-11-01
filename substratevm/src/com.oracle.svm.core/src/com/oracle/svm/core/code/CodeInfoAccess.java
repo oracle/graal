@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.UnsignedWord;
@@ -262,6 +262,7 @@ public final class CodeInfoAccess {
         return CodeInfoDecoder.lookupDeoptimizationEntrypoint(info, method, encodedBci, codeInfo);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long lookupTotalFrameSize(CodeInfo info, long ip) {
         SimpleCodeInfoQueryResult codeInfoQueryResult = UnsafeStackValue.get(SimpleCodeInfoQueryResult.class);
         lookupCodeInfo(info, ip, codeInfoQueryResult);
@@ -394,7 +395,7 @@ public final class CodeInfoAccess {
         long installedCodeAddress = 0;
         long installedCodeEntryPoint = 0;
         if (installedCode != null) {
-            assert hasInstalledCode == HasInstalledCode.Yes;
+            assert hasInstalledCode == HasInstalledCode.Yes : hasInstalledCode;
             installedCodeAddress = installedCode.getAddress();
             installedCodeEntryPoint = installedCode.getEntryPoint();
         }

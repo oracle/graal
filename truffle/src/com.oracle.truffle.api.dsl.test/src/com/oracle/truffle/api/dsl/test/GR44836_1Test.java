@@ -57,6 +57,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
+@SuppressWarnings("truffle-interpreted-performance")
 public class GR44836_1Test {
 
     static class TestRootNode extends RootNode {

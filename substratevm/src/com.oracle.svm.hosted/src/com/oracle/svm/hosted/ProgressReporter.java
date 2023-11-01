@@ -52,10 +52,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionStability;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionStability;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
@@ -140,7 +140,7 @@ public class ProgressReporter {
         PARSING("Parsing methods", true, true),
         INLINING("Inlining methods", true, false),
         COMPILING("Compiling methods", true, true),
-        LAYOUTING("Layouting methods", true, true),
+        LAYING_OUT("Laying out methods", true, true),
         CREATING("Creating image", true, true);
 
         private static final int NUM_STAGES = values().length;
@@ -331,13 +331,13 @@ public class ProgressReporter {
                     if (lmov.getValuesWithOrigins().allMatch(o -> o.getRight().isStable())) {
                         continue;
                     } else {
-                        origins = lmov.getValuesWithOrigins().map(p -> p.getRight().toString()).collect(Collectors.joining(", "));
+                        origins = lmov.getValuesWithOrigins().filter(p -> !isStableOrInternalOrigin(p.getRight())).map(p -> p.getRight().toString()).collect(Collectors.joining(", "));
                         alternatives = lmov.getValuesWithOrigins().map(p -> SubstrateOptionsParser.commandArgument(hok, p.getLeft().toString())).filter(c -> !c.startsWith(hostedOptionPrefix))
                                         .collect(Collectors.joining(", "));
                     }
                 } else {
                     OptionOrigin origin = hok.getLastOrigin();
-                    if (origin == null /* unknown */ || origin.isStable() || origin.isInternal()) {
+                    if (origin == null /* unknown */ || isStableOrInternalOrigin(origin)) {
                         continue;
                     }
                     origins = origin.toString();
@@ -370,6 +370,10 @@ public class ProgressReporter {
         }
     }
 
+    private static boolean isStableOrInternalOrigin(OptionOrigin origin) {
+        return origin.isStable() || origin.isInternal();
+    }
+
     private void printResourceInfo() {
         Runtime runtime = Runtime.getRuntime();
         long maxMemory = runtime.maxMemory();
@@ -388,7 +392,7 @@ public class ProgressReporter {
             maxHeapSuffix = "set via '%s'".formatted(xmxValueOrNull);
         }
 
-        int maxNumberOfThreads = NativeImageOptions.NumberOfThreads.getValue();
+        int maxNumberOfThreads = NativeImageOptions.getActualNumberOfThreads();
         recordJsonMetric(ResourceUsageKey.PARALLELISM, maxNumberOfThreads);
         int availableProcessors = runtime.availableProcessors();
         recordJsonMetric(ResourceUsageKey.CPU_CORES_TOTAL, availableProcessors);
@@ -398,7 +402,7 @@ public class ProgressReporter {
         }
 
         l().printLineSeparator();
-        l().doclink("Build resources", "#glossary-build-resources").a(":").println();
+        l().yellowBold().doclink("Build resources", "#glossary-build-resources").a(":").reset().println();
         l().a(" - %.2fGB of memory (%.1f%% of %.2fGB system memory, %s)",
                         ByteFormattingUtil.bytesToGiB(maxMemory), Utils.toPercentage(maxMemory, totalMemorySize), ByteFormattingUtil.bytesToGiB(totalMemorySize), maxHeapSuffix).println();
         l().a(" - %s thread(s) (%.1f%% of %s available processor(s), %s)",
@@ -507,7 +511,7 @@ public class ProgressReporter {
     }
 
     public ReporterClosable printLayouting() {
-        return print(TimerCollection.Registry.LAYOUT, BuildStage.LAYOUTING);
+        return print(TimerCollection.Registry.LAYOUT, BuildStage.LAYING_OUT);
     }
 
     // TODO: merge printCreationStart and printCreationEnd at some point (GR-35721).
@@ -715,7 +719,9 @@ public class ProgressReporter {
         if (generator.getBigbang() != null && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
             artifacts.add(ArtifactType.BUILD_INFO, reportImageBuildStatistics());
         }
-        ImageSingletons.lookup(ProgressReporterFeature.class).createAdditionalArtifacts(artifacts);
+        if (error.isEmpty()) {
+            ImageSingletons.lookup(ProgressReporterFeature.class).createAdditionalArtifacts(artifacts);
+        }
         BuildArtifactsExporter.run(imageName, artifacts, generator.getBuildArtifacts());
     }
 
@@ -1410,7 +1416,7 @@ public class ProgressReporter {
             if (filenameOnly) {
                 Path filename = normalized.getFileName();
                 if (filename != null) {
-                    name = normalized.toString();
+                    name = filename.toString();
                 } else {
                     throw VMError.shouldNotReachHere("filename should never be null, illegal path: " + path);
                 }

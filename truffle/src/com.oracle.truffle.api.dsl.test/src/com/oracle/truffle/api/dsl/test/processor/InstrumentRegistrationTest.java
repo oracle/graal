@@ -179,6 +179,35 @@ public class InstrumentRegistrationTest {
         }
     }
 
+    @ExpectError("The '@Id.componentId' for an required internal resources must be unset or equal to '@Registration.id'. " +
+                    "To resolve this, remove the '@Id.componentId = \"other-instrument\"'.")
+    @Registration(id = "instrumentresource8", name = "instrumentresource8", internalResources = {InternalResourceRegistration8.Resource1.class})
+    public static class InternalResourceRegistration8 extends ProxyInstrument {
+
+        @InternalResource.Id(value = "resource-id", componentId = "other-instrument")
+        public static class Resource1 extends ProxyInternalResource {
+
+            @SuppressWarnings("unused")
+            Resource1() {
+            }
+        }
+    }
+
+    @ExpectError("Optional internal resources must not be registered using '@Registration' annotation. To resolve this, " +
+                    "remove the 'InstrumentRegistrationTest.InternalResourceRegistration9.Resource1' from 'internalResources' the or " +
+                    "make the 'InstrumentRegistrationTest.InternalResourceRegistration9.Resource1' non-optional by removing 'optional = true'.")
+    @Registration(id = "instrumentresource9", name = "instrumentresource9", internalResources = {InternalResourceRegistration9.Resource1.class})
+    public static class InternalResourceRegistration9 extends ProxyInstrument {
+
+        @InternalResource.Id(value = "resource-id", componentId = "instrumentresource9", optional = true)
+        public static class Resource1 extends ProxyInternalResource {
+
+            @SuppressWarnings("unused")
+            Resource1() {
+            }
+        }
+    }
+
     interface Service1 {
     }
 

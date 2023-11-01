@@ -32,13 +32,16 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 
 @SuppressWarnings("unused")
 @TargetClass(value = java.lang.Module.class)
-final class Target_java_lang_Module {
+public final class Target_java_lang_Module {
+    @Alias
+    public native void ensureNativeAccess(Class<?> owner, String methodName);
 
     @SuppressWarnings("static-method")
     @Substitute

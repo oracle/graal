@@ -124,6 +124,7 @@ public class SamplerBufferPool {
     public void pushFullBuffer(SamplerBuffer buffer) {
         buffer.setNode(WordFactory.nullPointer());
         fullBuffers.pushBuffer(buffer);
+        SubstrateJVM.getRecorderThread().signal();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
