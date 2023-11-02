@@ -1008,6 +1008,70 @@ def test():
         checker = Checker('print Weird', rexp)
         checker.check(exec_string)
 
+    exec_string = execute("delete breakpoints")
+
+    # place a break point at the first instruction of method
+    # CStructTests::testMixedArguments
+    exec_string = execute("x/i 'com.oracle.svm.test.debug.CStructTests'::testMixedArguments")
+    rexp = r"%s0x(%s)%scom.oracle.svm.test.debug.CStructTests::testMixedArguments%s"%(spaces_pattern, hex_digits_pattern, wildcard_pattern, wildcard_pattern)
+    checker = Checker('x/i CStructTests::testMixedArguments', rexp)
+    matches = checker.check(exec_string)
+    # n.b can ony get here with one match
+    match = matches[0]
+    bp_address = int(match.group(1), 16)
+    print("bp = %s %x"%(match.group(1), bp_address))
+
+    exec_string = execute("break *0x%x"%bp_address)
+    rexp = r"Breakpoint %s at %s: file com/oracle/svm/test/debug/CStructTests\.java, line %s\."%(digits_pattern, address_pattern, digits_pattern)
+    checker = Checker(r"break *0x%x"%bp_address, rexp)
+    checker.check(exec_string)
+
+    # continue the program to the breakpoint
+    execute("continue")
+
+    exec_string = execute("info args")
+    rexp = [r"this = 0x%s"%(hex_digits_pattern),
+            r"m1 = 0x%s"%(hex_digits_pattern), 
+            r"s = 1",
+            r"ss1 = 0x%s"%(hex_digits_pattern),
+            r"l = 123456789",
+            r"m2 = 0x%s"%(hex_digits_pattern),
+            r"ss2 = 0x%s"%(hex_digits_pattern),
+            r"m3 = 0x%s"%(hex_digits_pattern)]
+    checker = Checker('info args CStructTests::testMixedArguments', rexp)
+    checker.check(exec_string)
+
+    exec_string = execute("p m1->value->data")
+    rexp = [r'\$%s = 0x%s "a message in a bottle"'%(digits_pattern, hex_digits_pattern)]
+    checker = Checker('p *m1->value->data', rexp)
+    checker.check(exec_string)
+
+    exec_string = execute("p m2->value->data")
+    rexp = [r'\$%s = 0x%s "a ship in a bottle"'%(digits_pattern, hex_digits_pattern)]
+    checker = Checker('p *m1->value->data', rexp)
+    checker.check(exec_string)
+
+    exec_string = execute("p m3->value->data")
+    rexp = [r'\$%s = 0x%s "courage in a bottle"'%(digits_pattern, hex_digits_pattern)]
+    checker = Checker('p *m1->value->data', rexp)
+    checker.check(exec_string)
+
+    exec_string = execute("p *ss1")
+    rexp = [r"\$%s = {"%(digits_pattern),
+            r"%sfirst = 1,"%(spaces_pattern),
+            r"%ssecond = 2"%(spaces_pattern),
+            r"}"]
+    checker = Checker('p *ss1', rexp)
+    checker.check(exec_string)
+
+    exec_string = execute("p *ss2")
+    rexp = [r"\$%s = {"%(digits_pattern),
+            r"%salpha = 99 'c',"%(spaces_pattern),
+            r"%sbeta = 100"%(spaces_pattern),
+            r"}"]
+    checker = Checker('p *ss1', rexp)
+    checker.check(exec_string)
+
     print(execute("quit 0"))
 
 test()
