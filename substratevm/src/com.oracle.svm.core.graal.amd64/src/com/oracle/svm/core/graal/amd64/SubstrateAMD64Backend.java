@@ -382,7 +382,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                     VMError.guarantee(!nextMemoryAccessNeedsDecompress, "Comparison with compressed null value not implemented");
                     masm.cmpAndJcc(lastOperandSize, computeRegister, 0, AMD64Assembler.ConditionFlag.NotEqual, done, true);
 
-                    SubstrateObjectConstant object = (SubstrateObjectConstant) ((FieldLoadIfZero) computation).getObject();
+                    JavaConstant object = ((FieldLoadIfZero) computation).getObject();
                     field = (SharedField) ((FieldLoadIfZero) computation).getField();
                     /*
                      * Loading a field from a constant object can be expressed with a single mov
@@ -1320,7 +1320,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             if (CompressedNullConstant.COMPRESSED_NULL.equals(src)) {
                 return super.createStackLoad(dst, getZeroConstant(dst));
             } else if (src instanceof CompressibleConstant) {
-                return loadObjectConstant(dst, (SubstrateObjectConstant) src);
+                return loadObjectConstant(dst, (CompressibleConstant) src);
             } else if (src instanceof SubstrateMethodPointerConstant) {
                 return new AMD64LoadMethodPointerConstantOp(dst, (SubstrateMethodPointerConstant) src);
             }
