@@ -1993,14 +1993,8 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
 
     def renaissanceIterations(self):
         benchmarks = _renaissanceConfig.copy()
-        if self.version() == "0.9.0":
-            # benchmark was introduced in 0.10.0
-            del benchmarks["scala-doku"]
 
-        if  (mx.get_jdk().javaCompliance >= '17' and self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0"])\
-            or (mx.get_jdk().javaCompliance >= '21' and self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0", "0.14.0", "0.14.1"]):
-            # JDK17 support for Spark benchmarks was added in 0.13.0
-            # See: renaissance-benchmarks/renaissance #295
+        if  mx.get_jdk().javaCompliance >= '21' and self.version() in ["0.14.0", "0.14.1"]:
             del benchmarks["als"]
             del benchmarks["chi-square"]
             del benchmarks["dec-tree"]
@@ -2009,20 +2003,9 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             del benchmarks["movie-lens"]
             del benchmarks["naive-bayes"]
             del benchmarks["page-rank"]
-
-        if mx.get_jdk().javaCompliance >= '21' and self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0", "0.14.0", "0.14.1"]:
             del benchmarks["dotty"]
+            del benchmarks["neo4j-analytics"]
 
-        if self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"] and mx.get_arch() != "amd64" or mx.get_jdk().javaCompliance > '11':
-            # JNA libraries were only available on amd64: renaissance-benchmarks/renaissance #153
-            del benchmarks["db-shootout"]
-
-        if self.version() in ["0.9.0", "0.10.0", "0.11.0"]:
-            if mx.get_jdk().javaCompliance > '11':
-                del benchmarks["neo4j-analytics"]
-        else:
-            if mx.get_jdk().javaCompliance < '11' or mx.get_jdk().javaCompliance > '15':
-                del benchmarks["neo4j-analytics"]
         return benchmarks
 
     def completeBenchmarkList(self, bmSuiteArgs):
@@ -2032,7 +2015,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         return self.availableSuiteVersions()[-1]
 
     def availableSuiteVersions(self):
-        return ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0", "0.14.0", "0.14.1", "0.15.0"]
+        return ["0.14.0", "0.14.1", "0.15.0"]
 
     def renaissancePath(self):
         lib = mx.library(self.renaissanceLibraryName())
@@ -2059,12 +2042,6 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
 
     def vmArgs(self, bmSuiteArgs):
         vm_args = super(RenaissanceBenchmarkSuite, self).vmArgs(bmSuiteArgs)
-        # Those --add-opens flags are specified in the manifest as of renaissance 0.14.0
-        if java_home_jdk().javaCompliance > '16' and self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0",
-                                                                        "0.13.0"]:
-            vm_args += ["--add-opens", "java.management/sun.management=ALL-UNNAMED"]
-            vm_args += ["--add-opens", "java.management/sun.management.counter=ALL-UNNAMED"]
-            vm_args += ["--add-opens", "java.management/sun.management.counter.perf=ALL-UNNAMED"]
         return vm_args
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
