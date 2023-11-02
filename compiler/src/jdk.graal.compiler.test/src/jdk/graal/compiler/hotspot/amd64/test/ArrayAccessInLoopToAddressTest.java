@@ -25,8 +25,6 @@
 package jdk.graal.compiler.hotspot.amd64.test;
 
 import jdk.graal.compiler.core.test.GraalCompilerTest;
-import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
-import jdk.vm.ci.meta.SpeculationLog;
 
 import org.junit.Test;
 
