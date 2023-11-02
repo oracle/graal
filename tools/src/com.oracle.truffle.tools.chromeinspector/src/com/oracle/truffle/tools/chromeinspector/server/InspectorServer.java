@@ -275,7 +275,7 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
                 URI uri;
                 try {
                     uri = new URI(uriStr);
-                } catch(URISyntaxException ex) {
+                } catch (URISyntaxException ex) {
                     return null;
                 }
                 String uriPath = uri.getPath();
