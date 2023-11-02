@@ -232,22 +232,16 @@ public abstract class ImageHeapScanner {
          */
         AnalysisType type = metaAccess.lookupJavaType(constant);
 
-        ImageHeapConstant newImageHeapConstant;
         if (type.isArray()) {
             Integer length = constantReflection.readArrayLength(constant);
             if (type.getComponentType().isPrimitive()) {
-                newImageHeapConstant = new ImageHeapPrimitiveArray(type, constant, asObject(constant), length);
+                return new ImageHeapPrimitiveArray(type, constant, asObject(constant), length);
             } else {
-                newImageHeapConstant = createImageHeapObjectArray(constant, type, length, reason);
+                return createImageHeapObjectArray(constant, type, length, reason);
             }
         } else {
-            newImageHeapConstant = createImageHeapInstance(constant, type, reason);
-            AnalysisType typeFromClassConstant = (AnalysisType) constantReflection.asJavaType(constant);
-            if (typeFromClassConstant != null) {
-                typeFromClassConstant.registerAsReachable(reason);
-            }
+            return createImageHeapInstance(constant, type, reason);
         }
-        return newImageHeapConstant;
     }
 
     private ImageHeapArray createImageHeapObjectArray(JavaConstant constant, AnalysisType type, int length, ScanReason reason) {
@@ -275,6 +269,11 @@ public abstract class ImageHeapScanner {
         ImageHeapInstance instance = new ImageHeapInstance(type, constant);
         /* Read hosted field values only when the receiver is initialized. */
         instance.constantData.hostedValuesReader = new AnalysisFuture<>(() -> {
+            /* If this is a Class constant register the corresponding type as reachable. */
+            AnalysisType typeFromClassConstant = (AnalysisType) constantReflection.asJavaType(instance);
+            if (typeFromClassConstant != null) {
+                typeFromClassConstant.registerAsReachable(reason);
+            }
             /* We are about to query the type's fields, the type must be marked as reachable. */
             type.registerAsReachable(reason);
             ResolvedJavaField[] instanceFields = type.getInstanceFields(true);
