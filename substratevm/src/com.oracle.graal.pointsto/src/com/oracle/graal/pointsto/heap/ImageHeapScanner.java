@@ -33,10 +33,6 @@ import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
-import jdk.graal.compiler.core.common.type.TypedConstant;
-import jdk.graal.compiler.debug.GraalError;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
@@ -59,6 +55,10 @@ import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.core.common.type.TypedConstant;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -252,40 +252,51 @@ public abstract class ImageHeapScanner {
 
     private ImageHeapArray createImageHeapObjectArray(JavaConstant constant, AnalysisType type, int length, ScanReason reason) {
         ImageHeapObjectArray array = new ImageHeapObjectArray(type, constant, length);
-        ScanReason arrayReason = new ArrayScan(type, constant, reason);
-        for (int idx = 0; idx < length; idx++) {
-            final JavaConstant rawElementValue = constantReflection.readArrayElement(constant, idx);
-            int finalIdx = idx;
-            array.setElementTask(idx, new AnalysisFuture<>(() -> {
-                JavaConstant arrayElement = createImageHeapConstant(rawElementValue, arrayReason);
-                array.setElement(finalIdx, arrayElement);
-                return arrayElement;
-            }));
-        }
+        /* Read hosted array element values only when the array is initialized. */
+        array.constantData.hostedValuesReader = new AnalysisFuture<>(() -> {
+            type.registerAsReachable(reason);
+            ScanReason arrayReason = new ArrayScan(type, constant, reason);
+            Object[] elementValues = new Object[length];
+            for (int idx = 0; idx < length; idx++) {
+                final JavaConstant rawElementValue = constantReflection.readArrayElement(constant, idx);
+                int finalIdx = idx;
+                elementValues[idx] = new AnalysisFuture<>(() -> {
+                    JavaConstant arrayElement = createImageHeapConstant(rawElementValue, arrayReason);
+                    array.setElement(finalIdx, arrayElement);
+                    return arrayElement;
+                });
+            }
+            array.setElementValues(elementValues);
+        });
         return array;
     }
 
     private ImageHeapInstance createImageHeapInstance(JavaConstant constant, AnalysisType type, ScanReason reason) {
-        /* We are about to query the type's fields, the type must be marked as reachable. */
-        type.registerAsReachable(reason);
-        ResolvedJavaField[] instanceFields = type.getInstanceFields(true);
-        ImageHeapInstance instance = new ImageHeapInstance(type, constant, instanceFields.length);
-        for (ResolvedJavaField javaField : instanceFields) {
-            AnalysisField field = (AnalysisField) javaField;
-            ValueSupplier<JavaConstant> rawFieldValue;
-            try {
-                rawFieldValue = readHostedFieldValue(field, universe.toHosted(constant));
-            } catch (InternalError | TypeNotPresentException | LinkageError e) {
-                /* Ignore missing type errors. */
-                continue;
+        ImageHeapInstance instance = new ImageHeapInstance(type, constant);
+        /* Read hosted field values only when the receiver is initialized. */
+        instance.constantData.hostedValuesReader = new AnalysisFuture<>(() -> {
+            /* We are about to query the type's fields, the type must be marked as reachable. */
+            type.registerAsReachable(reason);
+            ResolvedJavaField[] instanceFields = type.getInstanceFields(true);
+            Object[] hostedFieldValues = new Object[instanceFields.length];
+            for (ResolvedJavaField javaField : instanceFields) {
+                AnalysisField field = (AnalysisField) javaField;
+                ValueSupplier<JavaConstant> rawFieldValue;
+                try {
+                    rawFieldValue = readHostedFieldValue(field, universe.toHosted(constant));
+                } catch (InternalError | TypeNotPresentException | LinkageError e) {
+                    /* Ignore missing type errors. */
+                    continue;
+                }
+                hostedFieldValues[field.getPosition()] = new AnalysisFuture<>(() -> {
+                    ScanReason fieldReason = new FieldScan(field, constant, reason);
+                    JavaConstant value = createFieldValue(field, instance, rawFieldValue, fieldReason);
+                    instance.setFieldValue(field, value);
+                    return value;
+                });
             }
-            instance.setFieldTask(field, new AnalysisFuture<>(() -> {
-                ScanReason fieldReason = new FieldScan(field, constant, reason);
-                JavaConstant value = createFieldValue(field, instance, rawFieldValue, fieldReason);
-                instance.setFieldValue(field, value);
-                return value;
-            }));
-        }
+            instance.setFieldValues(hostedFieldValues);
+        });
         return instance;
     }
 
@@ -349,7 +360,8 @@ public abstract class ImageHeapScanner {
     }
 
     JavaConstant onFieldValueReachable(AnalysisField field, ImageHeapInstance receiver, ValueSupplier<JavaConstant> rawValue, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
-        AnalysisError.guarantee(field.isReachable(), "Field value is only reachable when field is reachable: %s", field);
+        // Static field can be read for constant folding before being marked as reachable.
+        AnalysisError.guarantee(field.isStatic() || field.isReachable(), "Field value is only reachable when field is reachable: %s", field);
         JavaConstant fieldValue = createFieldValue(field, receiver, rawValue, reason);
         markReachable(fieldValue, reason, onAnalysisModified);
         notifyAnalysis(field, receiver, fieldValue, reason, onAnalysisModified);
@@ -474,7 +486,7 @@ public abstract class ImageHeapScanner {
 
         markTypeInstantiated(objectType, reason);
         if (imageHeapConstant instanceof ImageHeapObjectArray imageHeapArray) {
-            AnalysisType arrayType = (AnalysisType) imageHeapArray.getType(metaAccess);
+            AnalysisType arrayType = imageHeapArray.getType(metaAccess);
             for (int idx = 0; idx < imageHeapArray.getLength(); idx++) {
                 JavaConstant elementValue = imageHeapArray.readElementValue(idx);
                 ArrayScan arrayScanReason = new ArrayScan(arrayType, imageHeapArray, reason, idx);
@@ -550,11 +562,25 @@ public abstract class ImageHeapScanner {
                     ImageHeapInstance receiverObject = (ImageHeapInstance) toImageHeapObject(receiverConstant, OtherReason.RESCAN);
                     AnalysisFuture<JavaConstant> fieldTask = patchInstanceField(receiverObject, field, fieldValue, OtherReason.RESCAN, null);
                     if (field.isRead() || field.isFolded()) {
-                        rescanCollectionElements(fieldTask.ensureDone());
+                        JavaConstant constant = fieldTask.ensureDone();
+                        ensureReaderInstalled(constant);
+                        rescanCollectionElements(constant);
                     }
                 }
             }
         });
+    }
+
+    /**
+     * For image heap constants created during verification, i.e., either correct values set lazily
+     * but for which the {@link ImageHeapConstant} was not yet created or values created by patching
+     * a wrong snapshot, we need to manually ensure that the readers are installed since the
+     * verification will continue expanding them.
+     */
+    static void ensureReaderInstalled(JavaConstant constant) {
+        if (constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
+            ((ImageHeapConstant) constant).ensureReaderInstalled();
+        }
     }
 
     protected AnalysisFuture<JavaConstant> patchStaticField(TypeData typeData, AnalysisField field, JavaConstant fieldValue, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
@@ -581,7 +607,7 @@ public abstract class ImageHeapScanner {
     protected AnalysisFuture<JavaConstant> patchArrayElement(ImageHeapObjectArray arrayObject, int index, JavaConstant elementValue, ScanReason reason,
                     Consumer<ScanReason> onAnalysisModified) {
         AnalysisFuture<JavaConstant> task = new AnalysisFuture<>(() -> {
-            JavaConstant value = onArrayElementReachable(arrayObject, (AnalysisType) arrayObject.getType(metaAccess), elementValue, index, reason, onAnalysisModified);
+            JavaConstant value = onArrayElementReachable(arrayObject, arrayObject.getType(metaAccess), elementValue, index, reason, onAnalysisModified);
             arrayObject.setElement(index, value);
             return value;
         });
