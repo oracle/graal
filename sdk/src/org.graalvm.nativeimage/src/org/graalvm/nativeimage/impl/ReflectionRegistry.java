@@ -46,13 +46,7 @@ import java.util.Arrays;
 
 public interface ReflectionRegistry {
     default void register(ConfigurationCondition condition, Class<?>... classes) {
-        Arrays.stream(classes).forEach(clazz -> {
-            if (clazz == null) {
-                throw new NullPointerException("Cannot register null value as class for reflection. " +
-                                "Please ensure that all values you register are not null.");
-            }
-            register(condition, false, clazz);
-        });
+        Arrays.stream(classes).forEach(clazz -> register(condition, false, clazz));
     }
 
     void register(ConfigurationCondition condition, boolean unsafeAllocated, Class<?> clazz);
