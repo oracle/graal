@@ -14,7 +14,7 @@ needs to be imported for debugging to work:
 mx --dynamicimport /tools lli --inspect ...
 ```
 
-## Debugging on the LLVM bitcode level
+## Debugging on the LLVM Bitcode Level
 
 To diagnose problems in the LLVM runtime itself, it it sometimes useful to debug
 programs running on GraalVM on the level of the LLVM bitcode directly, instead
@@ -43,7 +43,7 @@ e.g. bitcode files, ELF files with embedded bitcode and so on. The script will
 extract the bitcode from the file, disassemble it, and put the result in a file
 next to it with the correct name for the `--llvm.llDebug` code to find it.
 
-### Tracing the execution of LLVM bitcode
+### Tracing the Execution of LLVM Bitcode
 
 GraalVM can produce an LLVM IR-level trace of its program execution. You ca
 enable this feature by passing the `--log.llvm.TraceIR.level=FINER` option to
@@ -61,10 +61,10 @@ Hello, World!
 [llvm::TraceIR] FINER: >> Leaving @main
 ```
 
-## Debugging the runtime
+## Debugging the Runtime
 
 For debugging the internals of the runtime, it is recommended to run the GraalVM
-LLVM runtime in JVM mode (`lli --jvm`). Then a regular Java debugger can be
+LLVM runtime in JVM mode (i.e., from a JVM standalone). Then a regular Java debugger can be
 attached.
 
 If running with `mx`, the `-d` option can be used to enable debugging:
@@ -85,10 +85,10 @@ Alternatively, from a built GraalVM, debugging can be enabled using the standard
 Java debugging flags, for example:
 
 ```
-lli --jvm --vm.Xdebug --vm.Xrunjdwp:transport=dt_socket,server=y,address=8000,suspend=y ...
+lli --vm.Xdebug --vm.Xrunjdwp:transport=dt_socket,server=y,address=8000,suspend=y ...
 ```
 
-## Mixed debugging
+## Mixed Debugging
 
 Sometimes it is useful to debug in both modes simultaneously. For that you can
 just pass both options, and attach both a Java IDE and the Chrome Inspector to

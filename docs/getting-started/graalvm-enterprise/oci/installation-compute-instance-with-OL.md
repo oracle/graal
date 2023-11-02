@@ -17,7 +17,7 @@ To replicate the steps in this guide, [create a Compute instance and connect to 
 ## Install Oracle GraalVM
 
 For convenience, Oracle GraalVM RPMs are available in the Oracle YUM repository.
-RPMs for Oracle GraalVM for JDK 17 and Oracle GraalVM for JDK 20 are available with the package names `graalvm-17-native-image` and `graalvm-20-native-image` respectively.
+RPMs for Oracle GraalVM for JDK 17, Oracle GraalVM for JDK 20, and Oracle GraalVM for JDK 21 are available with the package names `graalvm-17-native-image`, `graalvm-20-native-image`, and `graalvm-21-native-image`, respectively.
 These Oracle GraalVM distributions include a JDK and Natime Image.
 Each Oracle GraalVM RPM is self-contained and all required dependencies will be automatically resolved during the installation.
 
@@ -51,9 +51,9 @@ The installation steps may differ per Oracle Linux version or package manager.
    ```
    bash
    ```
-4. Install Oracle GraalVM, for example, for JDK 20:
+4. Install the latest Oracle GraalVM:
    ```
-   sudo yum install graalvm-20-native-image
+   sudo yum install graalvm-21-native-image
    ```
    Confirm that the installed package size is correct by entering `yes` at the prompt.
 
@@ -67,7 +67,7 @@ sudo yum update -y oraclelinux-release-el8
 sudo yum config-manager --set-enabled ol8_codeready_builder
 ```
 ```shell
-sudo yum install graalvm-20-native-image
+sudo yum install graalvm-21-native-image
 ```
 Confirm that the installed package size is correct by entering `yes` at the prompt.
 
@@ -79,7 +79,7 @@ dnf update -y oraclelinux-release-el8
 dnf config-manager --set-enabled ol8_codeready_builder
 ```
 ```shell
-dnf install graalvm-20-native-image
+dnf install graalvm-21-native-image
 ```
 Confirm that the installed package size is correct by entering `yes` at the prompt.
 
@@ -90,7 +90,7 @@ After installation, the package files are placed in the _/usr/lib64/graalvm_ dir
 
 1. Set the `PATH` and `JAVA_HOME` environment variables in the bash configuration to point to Oracle GraalVM with the following commands:
    ```shell
-   echo "export JAVA_HOME=/usr/lib64/graalvm/graalvm-java20" >> ~/.bashrc
+   echo "export JAVA_HOME=/usr/lib64/graalvm/graalvm-java21" >> ~/.bashrc
    ```
    ```shell
    echo 'export PATH=$JAVA_HOME/bin:$PATH' >> ~/.bashrc
@@ -114,33 +114,32 @@ Now you have a ready-to-go OCI Compute instance with Oracle GraalVM installed.
 
 ## Install Additional Features
 
-Oracle GraalVM provides more technologies such as the Javascript runtime, Java on Truffle, etc., each of which can be installed as an add-on. 
-See the [Features Support list](https://docs.oracle.com/en/graalvm/jdk/20/docs/support/#features-support) for more information.
+Oracle GraalVM provides more technologies such as the Javascript runtime and Java on Truffle, each of which can be installed separately.
 
 1. Check what additional features are available for your current Oracle GraalVM installation:
 
    ```shell
-   sudo yum list graalvm-20*
+   sudo yum list graalvm-21*
    ```
    ```shell
-   dnf list graalvm-20*
+   dnf list graalvm-21*
    ```
    The printed list may be large. If you are interested in a particular feature, for example, the Python runtime, narrow down the search providing the exact package name:
 
    ```shell
-   sudo yum list graalvm-20-python*
+   sudo yum list graalvm-21-python*
    ```
    ```shell
-   dnf list graalvm-20-python*
+   dnf list graalvm-21-python*
    ```
 
 2. Install the feature to Oracle GraalVM using its `<package_name>`. For example, to install the Python runtime with `yum`, run:
    ```shell
-   sudo yum install graalvm-20-python
+   sudo yum install graalvm-21-python
    ```
    With `dnf`:
    ```shell
-   dnf install graalvm-20-python
+   dnf install graalvm-21-python
    ```
    Confirm that the installed package size is correct by entering `yes` at the prompt.
 

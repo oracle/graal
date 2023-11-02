@@ -172,7 +172,7 @@ Since storing partial heaps on HotSpot is not supported, these debug features do
 For example:
 
 ```
-js --jvm  --experimental-options --engine.TraceCompilation --engine.DebugCacheTrace --engine.DebugCacheStore --engine.DebugCacheCompile=executed fib.js
+js --experimental-options --engine.TraceCompilation --engine.DebugCacheTrace --engine.DebugCacheStore --engine.DebugCacheCompile=executed fib.js
 ```
 
 Prints the following output:
