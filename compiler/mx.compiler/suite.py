@@ -559,6 +559,7 @@ suite = {
       ],
       "testDistribution" : True,
       "maven": False,
+      "graalWhiteboxDistribution": True,
     },
 
     "GRAAL_COMPILER_MICRO_BENCHMARKS" : {
