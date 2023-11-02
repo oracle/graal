@@ -16,7 +16,7 @@ The Java heap is created when the native image starts up, and may increase or de
 When the heap becomes full, a garbage collection is triggered to reclaim memory of objects that are no longer used.
 
 For managing the Java heap, Native Image provides different garbage collector (GC) implementations:
-* The **Serial GC** is the default GC in GraalVM.
+* The **Serial GC** is the default GC in GraalVM Native Image.
 It is optimized for low memory footprint and small Java heap sizes.
 * The **G1 GC** is a multi-threaded GC that is optimized to reduce stop-the-world pauses and therefore improve latency, while achieving high throughput.
 To enable it, pass the option `--gc=G1` to the `native-image` builder.
