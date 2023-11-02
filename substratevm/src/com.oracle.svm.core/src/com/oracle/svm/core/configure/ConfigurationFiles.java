@@ -60,19 +60,22 @@ public final class ConfigurationFiles {
         @Option(help = "file:doc-files/ReflectionConfigurationFilesHelp.txt", type = OptionType.User)//
         @BundleMember(role = BundleMember.Role.Input)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Paths> ReflectionConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
-        @Option(help = "Resources describing program elements to be made available for reflection (see ReflectionConfigurationFiles).", type = OptionType.User)//
+        @Option(help = {"Resources describing program elements to be made available for reflection (see ReflectionConfigurationFiles).",
+                        "Use a reflect-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead."}, type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ReflectionConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @Option(help = "file:doc-files/ProxyConfigurationFilesHelp.txt", type = OptionType.User)//
         @BundleMember(role = BundleMember.Role.Input)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Paths> DynamicProxyConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
-        @Option(help = "Resources describing program elements to be made available for reflection (see ProxyConfigurationFiles).", type = OptionType.User)//
+        @Option(help = {"Resources describing program elements to be made available for reflection (see ProxyConfigurationFiles).",
+                        "Use a proxy-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead."}, type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DynamicProxyConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @Option(help = "file:doc-files/SerializationConfigurationFilesHelp.txt", type = OptionType.User)//
         @BundleMember(role = BundleMember.Role.Input)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Paths> SerializationConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
-        @Option(help = "Resources describing program elements to be made available for serialization (see SerializationConfigurationFiles).", type = OptionType.User)//
+        @Option(help = {"Resources describing program elements to be made available for serialization (see SerializationConfigurationFiles).",
+                        "Use a serialization-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead."}, type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SerializationConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @Option(help = "file:doc-files/SerializationConfigurationFilesHelp.txt", type = OptionType.User)//
@@ -82,18 +85,22 @@ public final class ConfigurationFiles {
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SerializationDenyConfigurationResources = new HostedOptionKey<>(
                         LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
-        @Option(help = "Files describing Java resources to be included in the image according to the schema at " +
-                        "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/resource-config-schema-v1.0.0.json", type = OptionType.User)//
+        @Option(help = {"Files describing Java resources to be included in the image according to the schema at " +
+                        "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/resource-config-schema-v1.0.0.json",
+                        "Use a resource-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead."}, type = OptionType.User)//
         @BundleMember(role = BundleMember.Role.Input)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Paths> ResourceConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
-        @Option(help = "Resources describing Java resources to be included in the image according to the schema at " +
-                        "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/resource-config-schema-v1.0.0.json", type = OptionType.User)//
+        @Option(help = {"Resources describing Java resources to be included in the image according to the schema at " +
+                        "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/resource-config-schema-v1.0.0.json",
+                        "Use a resource-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead."}, type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ResourceConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
-        @Option(help = "Files describing program elements to be made accessible via JNI (for syntax, see ReflectionConfigurationFiles)", type = OptionType.User)//
+        @Option(help = {"Files describing program elements to be made accessible via JNI (for syntax, see ReflectionConfigurationFiles)",
+                        "Use a jni-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead."}, type = OptionType.User)//
         @BundleMember(role = BundleMember.Role.Input)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Paths> JNIConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
-        @Option(help = "Resources describing program elements to be made accessible via JNI (see JNIConfigurationFiles).", type = OptionType.User)//
+        @Option(help = {"Resources describing program elements to be made accessible via JNI (see JNIConfigurationFiles).",
+                        "Use a jni-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead."}, type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> JNIConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @Option(help = "Files describing stubs allowing foreign calls.", type = OptionType.User)//
@@ -102,12 +109,14 @@ public final class ConfigurationFiles {
         @Option(help = "Resources describing stubs allowing foreign calls.", type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ForeignResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
-        @Option(help = "Files describing predefined classes that can be loaded at runtime according to the schema at " +
-                        "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/predefined-classes-config-schema-v1.0.0.json", type = OptionType.User)//
+        @Option(help = {"Files describing predefined classes that can be loaded at runtime according to the schema at " +
+                        "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/predefined-classes-config-schema-v1.0.0.json",
+                        "Use a predefined-classes-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead."}, type = OptionType.User)//
         @BundleMember(role = BundleMember.Role.Input)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Paths> PredefinedClassesConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
-        @Option(help = "Resources describing predefined classes that can be loaded at runtime according to the schema at " +
-                        "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/predefined-classes-config-schema-v1.0.0.json", type = OptionType.User)//
+        @Option(help = {"Resources describing predefined classes that can be loaded at runtime according to the schema at " +
+                        "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/predefined-classes-config-schema-v1.0.0.json",
+                        "Use a predefined-classes-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead."}, type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> PredefinedClassesConfigurationResources = new HostedOptionKey<>(
                         LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 

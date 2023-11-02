@@ -51,13 +51,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.Timer;
@@ -93,6 +93,7 @@ import com.oracle.svm.hosted.util.DiagnosticUtils;
 import com.oracle.svm.hosted.util.VMErrorReporter;
 import com.oracle.svm.util.ImageBuildStatistics;
 
+import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.options.OptionValues;
@@ -284,22 +285,28 @@ public class ProgressReporter {
         printer.println();
     }
 
-    record ExperimentalOptionDetails(String alternatives, String origins) {
+    record ExperimentalOptionDetails(String migrationMessage, String alternatives, String origins) {
         public String toSuffix() {
-            if (alternatives.isEmpty() && origins.isEmpty()) {
+            if (migrationMessage.isEmpty() && alternatives.isEmpty() && origins.isEmpty()) {
                 return "";
             }
-            StringBuilder sb = new StringBuilder(" (");
-            if (!alternatives.isEmpty()) {
-                sb.append("alternative API option(s): ").append(alternatives);
+            StringBuilder sb = new StringBuilder();
+            if (!migrationMessage.isEmpty()) {
+                sb.append(": ").append(migrationMessage);
             }
-            if (!origins.isEmpty()) {
+            if (!alternatives.isEmpty() || !origins.isEmpty()) {
+                sb.append(" (");
                 if (!alternatives.isEmpty()) {
-                    sb.append("; ");
+                    sb.append("alternative API option(s): ").append(alternatives);
                 }
-                sb.append("origin(s): ").append(origins);
+                if (!origins.isEmpty()) {
+                    if (!alternatives.isEmpty()) {
+                        sb.append("; ");
+                    }
+                    sb.append("origin(s): ").append(origins);
+                }
+                sb.append(")");
             }
-            sb.append(")");
             return sb.toString();
         }
     }
@@ -324,8 +331,11 @@ public class ProgressReporter {
                 continue;
             }
             if (option instanceof HostedOptionKey<?> hok && option.getDescriptor().getStability() == OptionStability.EXPERIMENTAL) {
+                OptionDescriptor hokDescriptor = hok.getDescriptor();
                 String optionPrefix = hostedOptionPrefix;
                 String origins = "";
+                /* We use the first extra help item for migration messages for options. */
+                String migrationMessage = hokDescriptor.getExtraHelp().isEmpty() ? "" : hokDescriptor.getExtraHelp().getFirst();
                 String alternatives = "";
                 Object value = option.getValueOrDefault(hostedOptionValues);
                 if (value instanceof LocatableMultiOptionValue<?> lmov) {
@@ -333,8 +343,10 @@ public class ProgressReporter {
                         continue;
                     } else {
                         origins = lmov.getValuesWithOrigins().filter(p -> !isStableOrInternalOrigin(p.getRight())).map(p -> p.getRight().toString()).collect(Collectors.joining(", "));
-                        alternatives = lmov.getValuesWithOrigins().map(p -> SubstrateOptionsParser.commandArgument(hok, p.getLeft().toString())).filter(c -> !c.startsWith(hostedOptionPrefix))
-                                        .collect(Collectors.joining(", "));
+                        if (alternatives.isEmpty()) {
+                            alternatives = lmov.getValuesWithOrigins().map(p -> SubstrateOptionsParser.commandArgument(hok, p.getLeft().toString())).filter(c -> !c.startsWith(hostedOptionPrefix))
+                                            .collect(Collectors.joining(", "));
+                        }
                     }
                 } else {
                     OptionOrigin origin = hok.getLastOrigin();
@@ -343,20 +355,22 @@ public class ProgressReporter {
                     }
                     origins = origin.toString();
                     String valueString;
-                    if (hok.getDescriptor().getOptionValueType() == Boolean.class) {
+                    if (hokDescriptor.getOptionValueType() == Boolean.class) {
                         valueString = Boolean.parseBoolean(value.toString()) ? "+" : "-";
                         optionPrefix += valueString;
                     } else {
                         valueString = value.toString();
                     }
-                    String command = SubstrateOptionsParser.commandArgument(hok, valueString);
-                    if (!command.startsWith(hostedOptionPrefix)) {
-                        alternatives = command;
+                    if (alternatives.isEmpty()) {
+                        String command = SubstrateOptionsParser.commandArgument(hok, valueString);
+                        if (!command.startsWith(hostedOptionPrefix)) {
+                            alternatives = command;
+                        }
                     }
                 }
                 String rawHostedOptionName = optionPrefix + hok.getName();
                 if (rawHostedOptionNamesFromDriver.contains(rawHostedOptionName)) {
-                    experimentalOptions.put(rawHostedOptionName, new ExperimentalOptionDetails(alternatives, origins));
+                    experimentalOptions.put(rawHostedOptionName, new ExperimentalOptionDetails(migrationMessage, alternatives, origins));
                 }
             }
         }
