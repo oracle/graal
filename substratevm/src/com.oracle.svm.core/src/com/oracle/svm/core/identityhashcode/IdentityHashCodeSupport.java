@@ -78,7 +78,7 @@ public final class IdentityHashCodeSupport {
         VMError.guarantee(!ol.isIdentityHashFieldOptional(), "Snippet must handle this case");
 
         int newHashCode = generateRandomHashCode();
-        int offset = LayoutEncoding.getOptionalIdentityHashOffset(obj);
+        int offset = LayoutEncoding.getIdentityHashOffset(obj);
         if (!Unsafe.getUnsafe().compareAndSetInt(obj, offset, 0, newHashCode)) {
             newHashCode = ObjectAccess.readInt(obj, offset, IDENTITY_HASHCODE_LOCATION);
         }

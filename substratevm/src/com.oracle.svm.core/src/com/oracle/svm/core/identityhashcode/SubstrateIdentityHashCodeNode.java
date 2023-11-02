@@ -59,7 +59,7 @@ public final class SubstrateIdentityHashCodeNode extends IdentityHashCodeNode {
     @Override
     public LocationIdentity getKilledLocationIdentity() {
         // With optional identity hash codes, we must write bits in the object header.
-        return supportsOptionalIdentityHashField() ? LocationIdentity.any() : IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION;
+        return isIdentityHashFieldOptional() ? LocationIdentity.any() : IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION;
     }
 
     @Override
@@ -69,16 +69,16 @@ public final class SubstrateIdentityHashCodeNode extends IdentityHashCodeNode {
 
     @Override
     public NodeCycles estimatedNodeCycles() {
-        return supportsOptionalIdentityHashField() ? NodeCycles.CYCLES_8 : NodeCycles.CYCLES_2;
+        return isIdentityHashFieldOptional() ? NodeCycles.CYCLES_8 : NodeCycles.CYCLES_2;
     }
 
     @Override
     protected NodeSize dynamicNodeSizeEstimate() {
-        return supportsOptionalIdentityHashField() ? NodeSize.SIZE_32 : NodeSize.SIZE_8;
+        return isIdentityHashFieldOptional() ? NodeSize.SIZE_32 : NodeSize.SIZE_8;
     }
 
     @Fold
-    static boolean supportsOptionalIdentityHashField() {
+    static boolean isIdentityHashFieldOptional() {
         return ConfigurationValues.getObjectLayout().isIdentityHashFieldOptional();
     }
 }

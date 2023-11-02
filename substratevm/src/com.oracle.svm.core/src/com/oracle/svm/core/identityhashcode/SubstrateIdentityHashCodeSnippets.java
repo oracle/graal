@@ -66,7 +66,7 @@ final class SubstrateIdentityHashCodeSnippets extends IdentityHashCodeSnippets {
             Word objPtr = Word.objectToUntrackedPointer(obj);
             Word header = ObjectHeader.readHeaderFromPointer(objPtr);
             if (probability(LIKELY_PROBABILITY, oh.hasOptionalIdentityHashField(header))) {
-                int offset = LayoutEncoding.getOptionalIdentityHashOffset(obj);
+                int offset = LayoutEncoding.getIdentityHashOffset(obj);
                 identityHashCode = ObjectAccess.readInt(obj, offset, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
             } else {
                 identityHashCode = IdentityHashCodeSupport.computeHashCodeFromAddress(obj);
@@ -78,7 +78,7 @@ final class SubstrateIdentityHashCodeSnippets extends IdentityHashCodeSnippets {
             return identityHashCode;
         }
 
-        int offset = LayoutEncoding.getOptionalIdentityHashOffset(obj);
+        int offset = LayoutEncoding.getIdentityHashOffset(obj);
         int identityHashCode = ObjectAccess.readInt(obj, offset, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
         if (probability(SLOW_PATH_PROBABILITY, identityHashCode == 0)) {
             identityHashCode = generateIdentityHashCode(GENERATE_IDENTITY_HASH_CODE, obj);

@@ -388,9 +388,9 @@ public final class NativeImageHeapWriter {
                     final Object array = Array.get(hybridArray, i);
                     writeConstant(buffer, elementIndex, elementStorageKind, array, info);
                 }
-                idHashOffset = hybridLayout.getOptionalIdentityHashOffset(length);
+                idHashOffset = hybridLayout.getIdentityHashOffset(length);
             } else {
-                idHashOffset = ((HostedInstanceClass) clazz).getOptionalIdentityHashOffset();
+                idHashOffset = ((HostedInstanceClass) clazz).getIdentityHashOffset();
             }
             bufferBytes.putInt(info.getIndexInBuffer(idHashOffset), info.getIdentityHashCode());
 
@@ -401,7 +401,7 @@ public final class NativeImageHeapWriter {
 
             int length = heap.hConstantReflection.readArrayLength(constant);
             bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayLengthOffset()), length);
-            bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayOptionalIdentityHashOffset(kind, length)), info.getIdentityHashCode());
+            bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayIdentityHashOffset(kind, length)), info.getIdentityHashCode());
 
             if (constant instanceof ImageHeapConstant) {
                 if (clazz.getComponentType().isPrimitive()) {

@@ -174,7 +174,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
 
         /* Reset identity hashcode if we use a synthetic field. */
         if (ConfigurationValues.getObjectLayout().isIdentityHashFieldSynthetic()) {
-            int offset = LayoutEncoding.getOptionalIdentityHashOffset(result);
+            int offset = LayoutEncoding.getIdentityHashOffset(result);
             ObjectAccess.writeInt(result, offset, 0);
         }
 

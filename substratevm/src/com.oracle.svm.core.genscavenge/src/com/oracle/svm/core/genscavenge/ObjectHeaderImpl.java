@@ -140,16 +140,16 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
         if (getReferenceSize() == Integer.BYTES) {
             dynamicAssert(encodedHub.and(WordFactory.unsigned(0xFFFFFFFF00000000L)).isNull(), "hub can only use 32 bits");
-            if (ol.hasFixedIdentityHashField()) {
-                dynamicAssert(ol.getFixedIdentityHashOffset() == getHubOffset() + 4, "assumed layout to optimize initializing write");
+            if (ol.isIdentityHashFieldInObjectHeader()) {
+                dynamicAssert(ol.getObjectHeaderIdentityHashOffset() == getHubOffset() + 4, "assumed layout to optimize initializing write");
                 objectPointer.writeLong(getHubOffset(), encodedHub.rawValue(), LocationIdentity.INIT_LOCATION);
             } else {
                 objectPointer.writeInt(getHubOffset(), (int) encodedHub.rawValue(), LocationIdentity.INIT_LOCATION);
             }
         } else {
             objectPointer.writeWord(getHubOffset(), encodedHub, LocationIdentity.INIT_LOCATION);
-            if (ol.hasFixedIdentityHashField()) {
-                objectPointer.writeInt(ol.getFixedIdentityHashOffset(), 0, LocationIdentity.INIT_LOCATION);
+            if (ol.isIdentityHashFieldInObjectHeader()) {
+                objectPointer.writeInt(ol.getObjectHeaderIdentityHashOffset(), 0, LocationIdentity.INIT_LOCATION);
             }
         }
     }

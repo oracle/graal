@@ -208,9 +208,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
     private short monitorOffset;
 
-    // TEMP (chaeubl): rename this field
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
-    private short optionalIdentityHashOffset;
+    private short identityHashOffset;
 
     /**
      * Bit-set for various boolean flags, to reduce size of instances. It is important that this
@@ -459,7 +458,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         this.layoutEncoding = layoutEncoding;
         this.typeID = typeID;
         this.monitorOffset = NumUtil.safeToShort(monitorOffset);
-        this.optionalIdentityHashOffset = NumUtil.safeToShort(identityHashOffset);
+        this.identityHashOffset = NumUtil.safeToShort(identityHashOffset);
         this.typeCheckStart = typeCheckStart;
         this.typeCheckRange = typeCheckRange;
         this.typeCheckSlot = typeCheckSlot;
@@ -631,15 +630,15 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return monitorOffset;
     }
 
-    // TEMP (chaeubl): should we rename this method as well?
+    /** If possible, use {@link LayoutEncoding#getIdentityHashOffset(Object)} instead. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int getOptionalIdentityHashOffset() {
+    public int getIdentityHashOffset() {
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
-        if (ol.hasFixedIdentityHashField()) { // enable elimination of our field
-            return ol.getFixedIdentityHashOffset();
+        if (ol.isIdentityHashFieldInObjectHeader()) { // enable elimination of our field
+            return ol.getObjectHeaderIdentityHashOffset();
         }
 
-        int result = optionalIdentityHashOffset;
+        int result = identityHashOffset;
         if (GraalDirectives.inIntrinsic()) {
             ReplacementsUtil.dynamicAssert(result > 0, "must have an identity hash field");
         } else {

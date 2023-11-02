@@ -39,10 +39,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.code.CompilationResult;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.graph.NodeSourcePosition;
-import jdk.graal.compiler.java.StableMethodNameFormatter;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.AllocatableValue;
 import org.graalvm.collections.EconomicMap;
@@ -91,6 +87,10 @@ import com.oracle.svm.hosted.substitute.SubstitutionField;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.util.ClassUtil;
 
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.java.StableMethodNameFormatter;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.BytecodeFrame;
@@ -435,8 +435,8 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
 
         int idHashSize = getObjectLayout().sizeInBytes(JavaKind.Int);
         int fixedIdHashOffset = -1;
-        if (getObjectLayout().hasFixedIdentityHashField()) {
-            fixedIdHashOffset = getObjectLayout().getFixedIdentityHashOffset();
+        if (getObjectLayout().isIdentityHashFieldInObjectHeader()) {
+            fixedIdHashOffset = getObjectLayout().getObjectHeaderIdentityHashOffset();
             objHeaderSize = Math.max(objHeaderSize, fixedIdHashOffset + idHashSize);
         }
 

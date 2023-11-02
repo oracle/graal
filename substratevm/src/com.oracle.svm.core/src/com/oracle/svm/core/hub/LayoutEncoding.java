@@ -202,7 +202,7 @@ public class LayoutEncoding {
         UnsignedWord size = getPureInstanceAllocationSize(hub.getLayoutEncoding());
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
         if (withOptionalIdHashField && ol.isIdentityHashFieldOptional()) {
-            int afterIdHashField = hub.getOptionalIdentityHashOffset() + Integer.BYTES;
+            int afterIdHashField = hub.getIdentityHashOffset() + Integer.BYTES;
             if (size.belowThan(afterIdHashField)) { // fits in a gap between fields
                 size = WordFactory.unsigned(ol.alignUp(afterIdHashField));
             }
@@ -294,27 +294,26 @@ public class LayoutEncoding {
         return WordFactory.unsigned(totalSize);
     }
 
-    // TEMP (chaeubl): this should be renamed to getIdentityHashOffset?
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static int getOptionalIdentityHashOffset(Object obj) {
+    public static int getIdentityHashOffset(Object obj) {
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
-        if (ol.hasFixedIdentityHashField()) {
-            return ol.getFixedIdentityHashOffset();
+        if (ol.isIdentityHashFieldInObjectHeader()) {
+            return ol.getObjectHeaderIdentityHashOffset();
         }
 
         DynamicHub hub = KnownIntrinsics.readHub(obj);
         int encoding = hub.getLayoutEncoding();
         if (isArrayLike(encoding)) {
             long unalignedSize = getArrayElementOffset(encoding, ArrayLengthNode.arrayLength(obj)).rawValue();
-            return (int) ol.getArrayOptionalIdentityHashOffset(unalignedSize);
+            return (int) ol.getArrayIdentityHashOffset(unalignedSize);
         } else {
-            return hub.getOptionalIdentityHashOffset();
+            return hub.getIdentityHashOffset();
         }
     }
 
     @Uninterruptible(reason = "Prevent a GC moving the object or interfering with its identity hash state.", callerMustBe = true)
     public static UnsignedWord getSizeFromObject(Object obj) {
-        boolean withOptionalIdHashField = ConfigurationValues.getObjectLayout().isIdentityHashFieldOptional() && checkOptionalIdentityHashField(obj);
+        boolean withOptionalIdHashField = ConfigurationValues.getObjectLayout().isIdentityHashFieldOptional() && hasOptionalIdentityHashField(obj);
         return getSizeFromObjectInline(obj, withOptionalIdHashField);
     }
 
@@ -346,7 +345,7 @@ public class LayoutEncoding {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getSizeFromObjectInlineInGC(Object obj, boolean addOptionalIdHashField) {
         boolean withOptionalIdHashField = addOptionalIdHashField ||
-                        (ConfigurationValues.getObjectLayout().isIdentityHashFieldOptional() && checkOptionalIdentityHashField(obj));
+                        (ConfigurationValues.getObjectLayout().isIdentityHashFieldOptional() && hasOptionalIdentityHashField(obj));
         return getSizeFromObjectInline(obj, withOptionalIdHashField);
     }
 
@@ -364,7 +363,7 @@ public class LayoutEncoding {
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static boolean checkOptionalIdentityHashField(Object obj) {
+    private static boolean hasOptionalIdentityHashField(Object obj) {
         ObjectHeader oh = Heap.getHeap().getObjectHeader();
         Word header = ObjectHeader.readHeaderFromPointer(Word.objectToUntrackedPointer(obj));
         return oh.hasOptionalIdentityHashField(header);

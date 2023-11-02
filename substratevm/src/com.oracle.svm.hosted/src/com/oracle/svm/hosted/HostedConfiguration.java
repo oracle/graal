@@ -48,6 +48,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayout.IdentityHashPosition;
 import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.monitor.MultiThreadedMonitorSupport;
@@ -100,14 +101,14 @@ public class HostedConfiguration {
             CompressEncoding compressEncoding = new CompressEncoding(SubstrateOptions.SpawnIsolates.getValue() ? 1 : 0, 0);
             ImageSingletons.add(CompressEncoding.class, compressEncoding);
 
-            ObjectLayout objectLayout = createObjectLayout(ObjectLayout.IdentityHashCodePosition.SYNTHETIC_FIELD);
+            ObjectLayout objectLayout = createObjectLayout(IdentityHashPosition.SYNTHETIC_FIELD);
             ImageSingletons.add(ObjectLayout.class, objectLayout);
 
             ImageSingletons.add(HybridLayoutSupport.class, new HybridLayoutSupport());
         }
     }
 
-    public static ObjectLayout createObjectLayout(ObjectLayout.IdentityHashCodePosition identityHashCodeMode) {
+    public static ObjectLayout createObjectLayout(IdentityHashPosition identityHashCodeMode) {
         return createObjectLayout(JavaKind.Object, identityHashCodeMode);
     }
 
@@ -132,7 +133,7 @@ public class HostedConfiguration {
      * <li>32 bit identity hashcode (if needed)</li>
      * </ul>
      */
-    public static ObjectLayout createObjectLayout(JavaKind referenceKind, ObjectLayout.IdentityHashCodePosition identityHashCodePosition) {
+    public static ObjectLayout createObjectLayout(JavaKind referenceKind, IdentityHashPosition identityHashCodePosition) {
         SubstrateTargetDescription target = ConfigurationValues.getTarget();
         int referenceSize = target.arch.getPlatformKind(referenceKind).getSizeInBytes();
         int intSize = target.arch.getPlatformKind(JavaKind.Int).getSizeInBytes();
@@ -142,11 +143,11 @@ public class HostedConfiguration {
         int headerSize = hubOffset + referenceSize;
 
         int objectHeaderIdentityHashOffset;
-        if (identityHashCodePosition == ObjectLayout.IdentityHashCodePosition.OBJECT_HEADER) {
+        if (identityHashCodePosition == IdentityHashPosition.OBJECT_HEADER) {
             objectHeaderIdentityHashOffset = headerSize;
             headerSize += intSize;
         } else {
-            assert identityHashCodePosition == ObjectLayout.IdentityHashCodePosition.SYNTHETIC_FIELD || identityHashCodePosition == ObjectLayout.IdentityHashCodePosition.OPTIONAL;
+            assert identityHashCodePosition == IdentityHashPosition.SYNTHETIC_FIELD || identityHashCodePosition == IdentityHashPosition.OPTIONAL;
             objectHeaderIdentityHashOffset = -1;
         }
 

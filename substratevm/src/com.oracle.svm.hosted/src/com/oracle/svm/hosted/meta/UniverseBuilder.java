@@ -534,8 +534,8 @@ public class UniverseBuilder {
         int afterFieldsOffset = usedBytes.length();
 
         // Identity hash code
-        if (layout.hasFixedIdentityHashField()) {
-            clazz.setOptionalIdentityHashOffset(layout.getFixedIdentityHashOffset());
+        if (layout.isIdentityHashFieldInObjectHeader()) {
+            clazz.setIdentityHashOffset(layout.getObjectHeaderIdentityHashOffset());
         } else if (!clazz.isAbstract()) {
             if (layout.isIdentityHashFieldSynthetic() || (layout.isIdentityHashFieldOptional() && !HybridLayout.isHybrid(clazz))) {
                 // place in gap if any, or append
@@ -550,7 +550,7 @@ public class UniverseBuilder {
                     }
                 }
                 reserve(usedBytes, offset, hashSize);
-                clazz.setOptionalIdentityHashOffset(offset);
+                clazz.setIdentityHashOffset(offset);
             }
         }
 
@@ -1042,13 +1042,13 @@ public class UniverseBuilder {
                     canInstantiateAsInstance = type.isInstantiated();
                 }
                 monitorOffset = instanceClass.getMonitorFieldOffset();
-                identityHashOffset = instanceClass.getOptionalIdentityHashOffset();
-                assert !ol.hasFixedIdentityHashField() || identityHashOffset == ol.getFixedIdentityHashOffset();
+                identityHashOffset = instanceClass.getIdentityHashOffset();
+                assert !ol.isIdentityHashFieldInObjectHeader() || identityHashOffset == ol.getObjectHeaderIdentityHashOffset();
             } else if (type.isArray()) {
                 JavaKind storageKind = type.getComponentType().getStorageKind();
                 boolean isObject = (storageKind == JavaKind.Object);
                 layoutHelper = LayoutEncoding.forArray(type, isObject, ol.getArrayBaseOffset(storageKind), ol.getArrayIndexShift(storageKind));
-                identityHashOffset = ol.hasFixedIdentityHashField() ? ol.getFixedIdentityHashOffset() : -1;
+                identityHashOffset = ol.isIdentityHashFieldInObjectHeader() ? ol.getObjectHeaderIdentityHashOffset() : -1;
             } else if (type.isInterface()) {
                 layoutHelper = LayoutEncoding.forInterface();
             } else if (type.isPrimitive()) {
