@@ -5,6 +5,7 @@
   local devkits = common.devkits,
 
   local darwin_amd64 = common.darwin_amd64,
+  local darwin_aarch64 = common.darwin_aarch64,
   local linux_amd64 = common.linux_amd64,
   local windows_amd64 = common.windows_amd64,
 
@@ -34,7 +35,7 @@
   },
 
   local gate_lite = truffle_common + {
-    name: 'gate-truffle-mac-lite-oraclejdk-' + self.jdk_name,
+    name: 'gate-truffle-lite-oraclejdk-' + self.jdk_name + '-' + self.os + '-' + self.arch,
     run: [
       ["mx", "build"],
       ["mx", "unittest", "--verbose"],
@@ -111,6 +112,7 @@
         linux_amd64  + jdk + simple_tool_maven_project_gate + common.mach5_target,
         # JDK latest only works on MacOS Ventura (GR-49652)
         # darwin_amd64 + jdk + truffle_weekly + gate_lite + guard,
+        darwin_aarch64 + jdk + truffle_weekly + gate_lite + guard,
       ] for jdk in [common.oraclejdk21, common.oraclejdkLatest]
     ]) +
   [
