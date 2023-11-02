@@ -35,13 +35,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.Executors;
@@ -76,6 +74,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionOrigin;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.json.JsonWriter;
@@ -312,74 +311,89 @@ public class ProgressReporter {
     }
 
     private void printExperimentalOptions(ImageClassLoader classLoader) {
-        String hostedOptionPrefix = CommonOptionParser.HOSTED_OPTION_PREFIX;
-
-        Set<String> rawHostedOptionNamesFromDriver = new HashSet<>();
+        /*
+         * Step 1: scan all builder arguments and collect relevant options.
+         */
+        Map<String, OptionOrigin> experimentalBuilderOptionsAndOrigins = new HashMap<>();
         for (String arg : DiagnosticUtils.getBuilderArguments(classLoader)) {
-            if (!arg.startsWith(hostedOptionPrefix)) {
+            if (!arg.startsWith(CommonOptionParser.HOSTED_OPTION_PREFIX)) {
                 continue;
             }
-            String rawOption = arg.split("=", 2)[0].split("@", 2)[0];
-            rawHostedOptionNamesFromDriver.add(rawOption);
+            String[] optionParts = arg.split("=", 2)[0].split("@", 2);
+            OptionOrigin optionOrigin = optionParts.length == 2 ? OptionOrigin.from(optionParts[1], false) : null;
+            if (optionOrigin == null || !isStableOrInternalOrigin(optionOrigin)) {
+                String prefixedOptionName = optionParts[0];
+                experimentalBuilderOptionsAndOrigins.put(prefixedOptionName, optionOrigin);
+            }
         }
-
+        if (experimentalBuilderOptionsAndOrigins.isEmpty()) {
+            return;
+        }
+        /*
+         * Step 2: scan HostedOptionValues and collect migrationMessage, alternatives, and origins.
+         */
         Map<String, ExperimentalOptionDetails> experimentalOptions = new HashMap<>();
         var hostedOptionValues = HostedOptionValues.singleton().getMap();
-
         for (OptionKey<?> option : hostedOptionValues.getKeys()) {
-            if (option == SubstrateOptions.UnlockExperimentalVMOptions) {
+            if (option instanceof RuntimeOptionKey || option == SubstrateOptions.UnlockExperimentalVMOptions || option.getDescriptor().getStability() != OptionStability.EXPERIMENTAL) {
                 continue;
             }
-            if (option instanceof HostedOptionKey<?> hok && option.getDescriptor().getStability() == OptionStability.EXPERIMENTAL) {
-                OptionDescriptor hokDescriptor = hok.getDescriptor();
-                String optionPrefix = hostedOptionPrefix;
-                String origins = "";
-                /* We use the first extra help item for migration messages for options. */
-                String migrationMessage = hokDescriptor.getExtraHelp().isEmpty() ? "" : hokDescriptor.getExtraHelp().getFirst();
-                String alternatives = "";
-                Object value = option.getValueOrDefault(hostedOptionValues);
-                if (value instanceof LocatableMultiOptionValue<?> lmov) {
-                    if (lmov.getValuesWithOrigins().allMatch(o -> o.getRight().isStable())) {
-                        continue;
-                    } else {
-                        origins = lmov.getValuesWithOrigins().filter(p -> !isStableOrInternalOrigin(p.getRight())).map(p -> p.getRight().toString()).collect(Collectors.joining(", "));
-                        if (alternatives.isEmpty()) {
-                            alternatives = lmov.getValuesWithOrigins().map(p -> SubstrateOptionsParser.commandArgument(hok, p.getLeft().toString())).filter(c -> !c.startsWith(hostedOptionPrefix))
-                                            .collect(Collectors.joining(", "));
-                        }
-                    }
+            OptionDescriptor descriptor = option.getDescriptor();
+            Object optionValue = option.getValueOrDefault(hostedOptionValues);
+            String emptyOrBooleanValue = "";
+            if (descriptor.getOptionValueType() == Boolean.class) {
+                emptyOrBooleanValue = Boolean.parseBoolean(optionValue.toString()) ? "+" : "-";
+            }
+            String prefixedOptionName = CommonOptionParser.HOSTED_OPTION_PREFIX + emptyOrBooleanValue + option.getName();
+            if (!experimentalBuilderOptionsAndOrigins.containsKey(prefixedOptionName)) {
+                /* Only check builder arguments, ignore options that were set as part of others. */
+                continue;
+            }
+            String origins = "";
+            /* The first extra help item is used for migration messages of options. */
+            String migrationMessage = descriptor.getExtraHelp().isEmpty() ? "" : descriptor.getExtraHelp().getFirst();
+            String alternatives = "";
+
+            if (optionValue instanceof LocatableMultiOptionValue<?> lmov) {
+                if (lmov.getValuesWithOrigins().allMatch(o -> o.getRight().isStable())) {
+                    continue;
                 } else {
-                    OptionOrigin origin = hok.getLastOrigin();
-                    if (origin == null /* unknown */ || isStableOrInternalOrigin(origin)) {
-                        continue;
-                    }
-                    origins = origin.toString();
-                    String valueString;
-                    if (hokDescriptor.getOptionValueType() == Boolean.class) {
-                        valueString = Boolean.parseBoolean(value.toString()) ? "+" : "-";
-                        optionPrefix += valueString;
-                    } else {
-                        valueString = value.toString();
-                    }
-                    if (alternatives.isEmpty()) {
-                        String command = SubstrateOptionsParser.commandArgument(hok, valueString);
-                        if (!command.startsWith(hostedOptionPrefix)) {
-                            alternatives = command;
-                        }
-                    }
+                    origins = lmov.getValuesWithOrigins().filter(p -> !isStableOrInternalOrigin(p.getRight())).map(p -> p.getRight().toString()).collect(Collectors.joining(", "));
+                    alternatives = lmov.getValuesWithOrigins().map(p -> SubstrateOptionsParser.commandArgument(option, p.getLeft().toString()))
+                                    .filter(c -> !c.startsWith(CommonOptionParser.HOSTED_OPTION_PREFIX))
+                                    .collect(Collectors.joining(", "));
                 }
-                String rawHostedOptionName = optionPrefix + hok.getName();
-                if (rawHostedOptionNamesFromDriver.contains(rawHostedOptionName)) {
-                    experimentalOptions.put(rawHostedOptionName, new ExperimentalOptionDetails(migrationMessage, alternatives, origins));
+            } else {
+                OptionOrigin origin = experimentalBuilderOptionsAndOrigins.get(prefixedOptionName);
+                if (origin == null && option instanceof HostedOptionKey<?> hok) {
+                    origin = hok.getLastOrigin();
+                }
+                if (origin == null /* unknown */ || isStableOrInternalOrigin(origin)) {
+                    continue;
+                }
+                origins = origin.toString();
+                String optionValueString;
+                if (descriptor.getOptionValueType() == Boolean.class) {
+                    assert !emptyOrBooleanValue.isEmpty();
+                    optionValueString = emptyOrBooleanValue;
+                } else {
+                    optionValueString = String.valueOf(optionValue);
+                }
+                String command = SubstrateOptionsParser.commandArgument(option, optionValueString);
+                if (!command.startsWith(CommonOptionParser.HOSTED_OPTION_PREFIX)) {
+                    alternatives = command;
                 }
             }
+            experimentalOptions.put(prefixedOptionName, new ExperimentalOptionDetails(migrationMessage, alternatives, origins));
         }
+        /*
+         * Step 3: print list of experimental options (if any).
+         */
         if (experimentalOptions.isEmpty()) {
             return;
         }
         l().printLineSeparator();
         l().yellowBold().a(" ").a(experimentalOptions.size()).a(" ").doclink("experimental option(s)", "#glossary-experimental-options").a(" unlocked").reset().a(":").println();
-
         for (var optionAndDetails : experimentalOptions.entrySet()) {
             l().a(" - '%s'%s", optionAndDetails.getKey(), optionAndDetails.getValue().toSuffix()).println();
         }
