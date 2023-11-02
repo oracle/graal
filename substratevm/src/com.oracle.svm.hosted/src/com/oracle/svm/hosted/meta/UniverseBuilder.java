@@ -531,28 +531,32 @@ public class UniverseBuilder {
          */
         allFields.sort(FIELD_LOCATION_COMPARATOR);
 
-        int sizeWithoutIdHashField = usedBytes.length();
+        int afterFieldsOffset = usedBytes.length();
 
         // Identity hash code
-        if (!clazz.isAbstract() && !HybridLayout.isHybrid(clazz)) {
-            int offset;
-            if (layout.hasFixedIdentityHashField()) {
-                offset = layout.getFixedIdentityHashOffset();
-            } else { // optional: place in gap if any, or append on demand during GC
-                int size = Integer.BYTES;
+        if (layout.hasFixedIdentityHashField()) {
+            clazz.setOptionalIdentityHashOffset(layout.getFixedIdentityHashOffset());
+        } else if (!clazz.isAbstract()) {
+            if (layout.isIdentityHashFieldSynthetic() || (layout.isIdentityHashFieldOptional() && !HybridLayout.isHybrid(clazz))) {
+                // place in gap if any, or append
+                int hashSize = Integer.BYTES;
                 int endOffset = usedBytes.length();
-                offset = findGapForField(usedBytes, 0, size, endOffset);
+                int offset = findGapForField(usedBytes, 0, hashSize, endOffset);
                 if (offset == -1) {
-                    offset = endOffset + getAlignmentAdjustment(endOffset, size);
+                    offset = endOffset + getAlignmentAdjustment(endOffset, hashSize);
+                    if (!layout.isIdentityHashFieldOptional()) {
+                        /* Include the identity hashcode field in the instance hashSize. */
+                        afterFieldsOffset = offset + hashSize;
+                    }
                 }
-                reserve(usedBytes, offset, size);
+                reserve(usedBytes, offset, hashSize);
+                clazz.setOptionalIdentityHashOffset(offset);
             }
-            clazz.setOptionalIdentityHashOffset(offset);
         }
 
         clazz.instanceFieldsWithoutSuper = allFields.toArray(new HostedField[0]);
-        clazz.afterFieldsOffset = sizeWithoutIdHashField;
-        clazz.instanceSize = layout.alignUp(clazz.afterFieldsOffset);
+        clazz.afterFieldsOffset = afterFieldsOffset;
+        clazz.instanceSize = layout.alignUp(afterFieldsOffset);
 
         if (clazz.instanceFieldsWithoutSuper.length == 0) {
             clazz.instanceFieldsWithSuper = superFields;
@@ -1022,7 +1026,7 @@ public class UniverseBuilder {
             int layoutHelper;
             boolean canInstantiateAsInstance = false;
             int monitorOffset = 0;
-            int optionalIdHashOffset = -1;
+            int identityHashOffset = -1;
             if (type.isInstanceClass()) {
                 HostedInstanceClass instanceClass = (HostedInstanceClass) type;
                 if (instanceClass.isAbstract()) {
@@ -1038,11 +1042,13 @@ public class UniverseBuilder {
                     canInstantiateAsInstance = type.isInstantiated();
                 }
                 monitorOffset = instanceClass.getMonitorFieldOffset();
-                optionalIdHashOffset = instanceClass.getOptionalIdentityHashOffset();
+                identityHashOffset = instanceClass.getOptionalIdentityHashOffset();
+                assert !ol.hasFixedIdentityHashField() || identityHashOffset == ol.getFixedIdentityHashOffset();
             } else if (type.isArray()) {
                 JavaKind storageKind = type.getComponentType().getStorageKind();
                 boolean isObject = (storageKind == JavaKind.Object);
                 layoutHelper = LayoutEncoding.forArray(type, isObject, ol.getArrayBaseOffset(storageKind), ol.getArrayIndexShift(storageKind));
+                identityHashOffset = ol.hasFixedIdentityHashField() ? ol.getFixedIdentityHashOffset() : -1;
             } else if (type.isInterface()) {
                 layoutHelper = LayoutEncoding.forInterface();
             } else if (type.isPrimitive()) {
@@ -1074,7 +1080,7 @@ public class UniverseBuilder {
 
             DynamicHub hub = type.getHub();
             SerializationRegistry s = ImageSingletons.lookup(SerializationRegistry.class);
-            hub.setData(layoutHelper, type.getTypeID(), monitorOffset, optionalIdHashOffset, type.getTypeCheckStart(), type.getTypeCheckRange(),
+            hub.setData(layoutHelper, type.getTypeID(), monitorOffset, identityHashOffset, type.getTypeCheckStart(), type.getTypeCheckRange(),
                             type.getTypeCheckSlot(), type.getTypeCheckSlots(), vtable, referenceMapIndex, type.isInstantiated(), canInstantiateAsInstance, isProxyClass,
                             s.isRegisteredForSerialization(type.getJavaClass()));
         }

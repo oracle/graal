@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.core.hub;
 
-import jdk.graal.compiler.core.common.calc.UnsignedMath;
-import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -43,6 +40,9 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.core.common.calc.UnsignedMath;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -201,7 +201,7 @@ public class LayoutEncoding {
     public static UnsignedWord getPureInstanceSize(DynamicHub hub, boolean withOptionalIdHashField) {
         UnsignedWord size = getPureInstanceAllocationSize(hub.getLayoutEncoding());
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
-        if (withOptionalIdHashField && !ol.hasFixedIdentityHashField()) {
+        if (withOptionalIdHashField && ol.isIdentityHashFieldOptional()) {
             int afterIdHashField = hub.getOptionalIdentityHashOffset() + Integer.BYTES;
             if (size.belowThan(afterIdHashField)) { // fits in a gap between fields
                 size = WordFactory.unsigned(ol.alignUp(afterIdHashField));
@@ -294,12 +294,14 @@ public class LayoutEncoding {
         return WordFactory.unsigned(totalSize);
     }
 
+    // TEMP (chaeubl): this should be renamed to getIdentityHashOffset?
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int getOptionalIdentityHashOffset(Object obj) {
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
         if (ol.hasFixedIdentityHashField()) {
             return ol.getFixedIdentityHashOffset();
         }
+
         DynamicHub hub = KnownIntrinsics.readHub(obj);
         int encoding = hub.getLayoutEncoding();
         if (isArrayLike(encoding)) {
@@ -312,7 +314,7 @@ public class LayoutEncoding {
 
     @Uninterruptible(reason = "Prevent a GC moving the object or interfering with its identity hash state.", callerMustBe = true)
     public static UnsignedWord getSizeFromObject(Object obj) {
-        boolean withOptionalIdHashField = !ConfigurationValues.getObjectLayout().hasFixedIdentityHashField() && checkOptionalIdentityHashField(obj);
+        boolean withOptionalIdHashField = ConfigurationValues.getObjectLayout().isIdentityHashFieldOptional() && checkOptionalIdentityHashField(obj);
         return getSizeFromObjectInline(obj, withOptionalIdHashField);
     }
 
@@ -344,7 +346,7 @@ public class LayoutEncoding {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getSizeFromObjectInlineInGC(Object obj, boolean addOptionalIdHashField) {
         boolean withOptionalIdHashField = addOptionalIdHashField ||
-                        (!ConfigurationValues.getObjectLayout().hasFixedIdentityHashField() && checkOptionalIdentityHashField(obj));
+                        (ConfigurationValues.getObjectLayout().isIdentityHashFieldOptional() && checkOptionalIdentityHashField(obj));
         return getSizeFromObjectInline(obj, withOptionalIdHashField);
     }
 

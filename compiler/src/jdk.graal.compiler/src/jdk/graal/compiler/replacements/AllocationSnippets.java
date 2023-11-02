@@ -31,6 +31,10 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static jdk.graal.compiler.replacements.nodes.ExplodeLoopNode.explodeLoop;
 
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
+
 import jdk.graal.compiler.nodes.PrefetchAllocateNode;
 import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
@@ -38,9 +42,6 @@ import jdk.graal.compiler.replacements.SnippetCounter.Group;
 import jdk.graal.compiler.replacements.nodes.ExplodeLoopNode;
 import jdk.graal.compiler.replacements.nodes.ZeroMemoryNode;
 import jdk.graal.compiler.word.Word;
-import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 /**
  * Snippets used for implementing NEW, ANEWARRAY and NEWARRAY.
@@ -112,21 +113,6 @@ public abstract class AllocationSnippets implements Snippets {
             dims.writeInt(i * 4, dimensions[i], LocationIdentity.init());
         }
         return callNewMultiArrayStub(hub, rank, dims);
-    }
-
-    protected UnsignedWord arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize) {
-        int alignment = objectAlignment();
-        return WordFactory.unsigned(arrayAllocationSize(length, arrayBaseOffset, log2ElementSize, alignment));
-    }
-
-    /**
-     * We do an unsigned multiplication so that a negative array length will result in an array size
-     * greater than Integer.MAX_VALUE.
-     */
-    public static long arrayAllocationSize(long length, int arrayBaseOffset, int log2ElementSize, int alignment) {
-        long size = ((length & 0xFFFFFFFFL) << log2ElementSize) + arrayBaseOffset + (alignment - 1);
-        long mask = ~(alignment - 1);
-        return size & mask;
     }
 
     /**
@@ -354,6 +340,8 @@ public abstract class AllocationSnippets implements Snippets {
 
     protected abstract int instanceHeaderSize();
 
+    protected abstract UnsignedWord arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize);
+
     public abstract void initializeObjectHeader(Word memory, Word hub, boolean isArray);
 
     protected abstract Object callNewInstanceStub(Word hub);
@@ -369,8 +357,6 @@ public abstract class AllocationSnippets implements Snippets {
     protected abstract Object verifyOop(Object obj);
 
     public abstract int arrayLengthOffset();
-
-    protected abstract int objectAlignment();
 
     public enum FillContent {
         DO_NOT_FILL,

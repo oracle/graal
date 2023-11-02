@@ -316,6 +316,7 @@ import jdk.graal.compiler.replacements.NodeIntrinsificationProvider;
 import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
 import jdk.graal.compiler.word.WordOperationPlugin;
 import jdk.graal.compiler.word.WordTypes;
+import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
@@ -476,24 +477,21 @@ public class NativeImageGenerator {
                 }
             }
             AMD64 architecture = new AMD64(features, AMD64CPUFeatureAccess.allAMD64Flags());
-            int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers: rax and xmm0
-            return new SubstrateTargetDescription(architecture, true, 16, 0, deoptScratchSpace, runtimeCheckedFeatures);
+            return new SubstrateTargetDescription(architecture, true, 16, 0, runtimeCheckedFeatures);
         } else if (includedIn(platform, Platform.AARCH64.class)) {
             EnumSet<AArch64.CPUFeature> features = CPUTypeAArch64.getSelectedFeatures();
             features.addAll(parseCSVtoEnum(AArch64.CPUFeature.class, NativeImageOptions.CPUFeatures.getValue().values(), AArch64.CPUFeature.values()));
             AArch64 architecture = new AArch64(features, AArch64CPUFeatureAccess.enabledAArch64Flags());
             // runtime checked features are the same as static features on AArch64 for now
             EnumSet<AArch64.CPUFeature> runtimeCheckedFeatures = architecture.getFeatures().clone();
-            int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers: r0 and v0.
-            return new SubstrateTargetDescription(architecture, true, 16, 0, deoptScratchSpace, runtimeCheckedFeatures);
+            return new SubstrateTargetDescription(architecture, true, 16, 0, runtimeCheckedFeatures);
         } else if (includedIn(platform, Platform.RISCV64.class)) {
             EnumSet<RISCV64.CPUFeature> features = CPUTypeRISCV64.getSelectedFeatures();
             features.addAll(parseCSVtoEnum(RISCV64.CPUFeature.class, NativeImageOptions.CPUFeatures.getValue().values(), RISCV64.CPUFeature.values()));
             RISCV64 architecture = new RISCV64(features, RISCV64CPUFeatureAccess.enabledRISCV64Flags());
             // runtime checked features are the same as static features on RISCV64 for now
             EnumSet<RISCV64.CPUFeature> runtimeCheckedFeatures = architecture.getFeatures().clone();
-            int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers: x0 and f0.
-            return new SubstrateTargetDescription(architecture, true, 16, 0, deoptScratchSpace, runtimeCheckedFeatures);
+            return new SubstrateTargetDescription(architecture, true, 16, 0, runtimeCheckedFeatures);
         } else {
             throw UserError.abort("Architecture specified by platform is not supported: %s", platform.getClass().getTypeName());
         }

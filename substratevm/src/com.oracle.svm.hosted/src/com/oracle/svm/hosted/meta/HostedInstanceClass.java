@@ -115,10 +115,12 @@ public class HostedInstanceClass extends HostedClass {
         this.monitorFieldOffset = monitorFieldOffset;
     }
 
+    // TEMP (chaeubl): rename
     public int getOptionalIdentityHashOffset() {
         return optionalIdentityHashOffset;
     }
 
+    // TEMP (chaeubl): rename
     public void setOptionalIdentityHashOffset(int offset) {
         assert this.optionalIdentityHashOffset == -1 : "setting identity hashcode field offset more than once";
         assert offset >= 0;

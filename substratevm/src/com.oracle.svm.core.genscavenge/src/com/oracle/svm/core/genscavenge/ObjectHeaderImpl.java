@@ -24,11 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.replacements.ReplacementsUtil;
-import jdk.graal.compiler.word.ObjectAccess;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
@@ -51,6 +46,11 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.replacements.ReplacementsUtil;
+import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.CodeUtil;
 
 /**
@@ -90,13 +90,13 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         numAlignmentBits = CodeUtil.log2(ConfigurationValues.getObjectLayout().getAlignment());
         int numMinimumReservedBits = 3;
         VMError.guarantee(numMinimumReservedBits <= numAlignmentBits, "Minimum set of reserved bits must be provided by object alignment");
-        if (hasFixedIdentityHashField()) {
-            numReservedBits = numMinimumReservedBits;
-        } else {
+        if (isIdentityHasFieldOptional()) {
             VMError.guarantee(ReferenceAccess.singleton().haveCompressedReferences(), "Ensures hubs (at the start of the image heap) remain addressable");
             numReservedBits = numMinimumReservedBits + 2;
             VMError.guarantee(numReservedBits <= numAlignmentBits || hasShift(),
                             "With no shift, forwarding references are stored directly in the header (with 64-bit, must be) and we cannot use non-alignment header bits");
+        } else {
+            numReservedBits = numMinimumReservedBits;
         }
         numReservedExtraBits = numReservedBits - numAlignmentBits;
         reservedBitsMask = (1 << numReservedBits) - 1;
@@ -158,9 +158,9 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Override
     public boolean hasOptionalIdentityHashField(Word header) {
         if (GraalDirectives.inIntrinsic()) {
-            ReplacementsUtil.staticAssert(!hasFixedIdentityHashField(), "use only when fields are not fixed");
+            ReplacementsUtil.staticAssert(isIdentityHasFieldOptional(), "use only when optional hashcode fields are support");
         } else {
-            VMError.guarantee(!hasFixedIdentityHashField(), "use only when fields are not fixed");
+            VMError.guarantee(isIdentityHasFieldOptional(), "use only when optional hashcode fields are support");
         }
         UnsignedWord inFieldState = IDHASH_STATE_IN_FIELD.shiftLeft(IDHASH_STATE_SHIFT);
         return header.and(IDHASH_STATE_BITS).equal(inFieldState);
@@ -169,7 +169,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void setIdentityHashInField(Object o) {
         assert VMOperation.isGCInProgress();
-        VMError.guarantee(!hasFixedIdentityHashField());
+        VMError.guarantee(isIdentityHasFieldOptional());
         UnsignedWord oldHeader = readHeaderFromObject(o);
         UnsignedWord inFieldState = IDHASH_STATE_IN_FIELD.shiftLeft(IDHASH_STATE_SHIFT);
         UnsignedWord newHeader = oldHeader.and(IDHASH_STATE_BITS.not()).or(inFieldState);
@@ -195,9 +195,9 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Override
     public void setIdentityHashFromAddress(Pointer ptr, Word currentHeader) {
         if (GraalDirectives.inIntrinsic()) {
-            ReplacementsUtil.staticAssert(!hasFixedIdentityHashField(), "must always access field");
+            ReplacementsUtil.staticAssert(isIdentityHasFieldOptional(), "must always access field");
         } else {
-            VMError.guarantee(!hasFixedIdentityHashField());
+            VMError.guarantee(isIdentityHasFieldOptional());
             assert !hasIdentityHashFromAddress(currentHeader);
         }
         UnsignedWord fromAddressState = IDHASH_STATE_FROM_ADDRESS.shiftLeft(IDHASH_STATE_SHIFT);
@@ -217,8 +217,10 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static boolean hasIdentityHashFromAddressInline(Word header) {
-        if (hasFixedIdentityHashField()) {
-            return false;
+        if (GraalDirectives.inIntrinsic()) {
+            ReplacementsUtil.staticAssert(isIdentityHasFieldOptional(), "must always access field");
+        } else {
+            assert isIdentityHasFieldOptional();
         }
         UnsignedWord fromAddressState = IDHASH_STATE_FROM_ADDRESS.shiftLeft(IDHASH_STATE_SHIFT);
         return header.and(IDHASH_STATE_BITS).equal(fromAddressState);
@@ -309,7 +311,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
                 assert obj.getPartition() instanceof FillerObjectDummyPartition;
             }
         }
-        if (!hasFixedIdentityHashField()) {
+        if (isIdentityHasFieldOptional()) {
             header |= (IDHASH_STATE_IN_FIELD.rawValue() << IDHASH_STATE_SHIFT);
         }
         return header;
@@ -427,7 +429,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     @Fold
-    static boolean hasFixedIdentityHashField() {
-        return ConfigurationValues.getObjectLayout().hasFixedIdentityHashField();
+    static boolean isIdentityHasFieldOptional() {
+        return ConfigurationValues.getObjectLayout().isIdentityHashFieldOptional();
     }
 }

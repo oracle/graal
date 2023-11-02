@@ -25,12 +25,13 @@
 package com.oracle.svm.core.config;
 
 import org.graalvm.nativeimage.AnnotationAccess;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.deopt.DeoptimizedFrame;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.NumUtil;
@@ -43,6 +44,16 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Immutable class that holds all sizes and offsets that contribute to the object layout.
+ *
+ * Identity hashcode fields can either be:
+ * <ol type="a">
+ * <li>In the object header, at a fixed offset for all objects (see
+ * {@link #hasFixedIdentityHashField()}).</li>
+ * <li>In a synthetic field (outside the object header), at a type or object specific offset (see
+ * {@link #isIdentityHashFieldSynthetic()}).</li>
+ * <li>Outside the object header, at a type and object state specific offset (see
+ * {@link #isIdentityHashFieldOptional()}).</li>
+ * </ol>
  */
 public final class ObjectLayout {
 
@@ -55,14 +66,20 @@ public final class ObjectLayout {
     private final int arrayLengthOffset;
     private final int arrayBaseOffset;
     private final int fixedIdentityHashOffset;
+    private final boolean isIdentityHashFieldSynthetic;
+    private final boolean isIdentityHashFieldOptional;
 
-    public ObjectLayout(SubstrateTargetDescription target, int referenceSize, int objectAlignment, int hubOffset,
-                    int firstFieldOffset, int arrayLengthOffset, int arrayBaseOffset, int fixedIdentityHashOffset) {
+    public ObjectLayout(SubstrateTargetDescription target, int referenceSize, int objectAlignment, int hubOffset, int firstFieldOffset, int arrayLengthOffset, int arrayBaseOffset,
+                    int fixedIdentityHashOffset, IdentityHashCodePosition identityHashCodePosition) {
         assert CodeUtil.isPowerOf2(referenceSize) : referenceSize;
         assert CodeUtil.isPowerOf2(objectAlignment) : objectAlignment;
         assert arrayLengthOffset % Integer.BYTES == 0;
         assert hubOffset < firstFieldOffset && hubOffset < arrayLengthOffset : hubOffset;
-        assert fixedIdentityHashOffset == -1 || (fixedIdentityHashOffset > 0 && fixedIdentityHashOffset < arrayLengthOffset) : fixedIdentityHashOffset;
+        assert identityHashCodePosition == IdentityHashCodePosition.OBJECT_HEADER || identityHashCodePosition == IdentityHashCodePosition.SYNTHETIC_FIELD ||
+                        identityHashCodePosition == IdentityHashCodePosition.OPTIONAL;
+        assert (identityHashCodePosition == IdentityHashCodePosition.OBJECT_HEADER && fixedIdentityHashOffset > 0 && fixedIdentityHashOffset < arrayLengthOffset &&
+                        fixedIdentityHashOffset % Integer.BYTES == 0) ||
+                        (identityHashCodePosition != IdentityHashCodePosition.OBJECT_HEADER && fixedIdentityHashOffset == -1);
 
         this.target = target;
         this.referenceSize = referenceSize;
@@ -73,6 +90,8 @@ public final class ObjectLayout {
         this.arrayLengthOffset = arrayLengthOffset;
         this.arrayBaseOffset = arrayBaseOffset;
         this.fixedIdentityHashOffset = fixedIdentityHashOffset;
+        this.isIdentityHashFieldSynthetic = identityHashCodePosition == IdentityHashCodePosition.SYNTHETIC_FIELD;
+        this.isIdentityHashFieldOptional = identityHashCodePosition == IdentityHashCodePosition.OPTIONAL;
     }
 
     /** The minimum alignment of objects (instances and arrays). */
@@ -93,14 +112,7 @@ public final class ObjectLayout {
     }
 
     /**
-     * Returns the amount of scratch space which must be reserved for return value registers in
-     * {@link DeoptimizedFrame}.
-     */
-    public int getDeoptScratchSpace() {
-        return target.getDeoptScratchSpace();
-    }
-
-    /**
+     * 
      * The size (in bytes) of values with the given kind.
      */
     public int sizeInBytes(JavaKind kind) {
@@ -151,6 +163,26 @@ public final class ObjectLayout {
         return arrayLengthOffset;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isIdentityHashFieldOptional() {
+        return isIdentityHashFieldOptional;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isIdentityHashFieldSynthetic() {
+        return isIdentityHashFieldSynthetic;
+    }
+
+    /**
+     * Indicates whether all objects, including arrays, always contain an identity hash code field
+     * at a specific offset in the object header.
+     */
+    // TEMP (chaeubl): we could rename that method (isIdentityHashFieldInObjectHeader)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean hasFixedIdentityHashField() {
+        return fixedIdentityHashOffset >= 0;
+    }
+
     /** If {@link #hasFixedIdentityHashField()}, then returns that offset. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getFixedIdentityHashOffset() {
@@ -162,21 +194,12 @@ public final class ObjectLayout {
         return fixedIdentityHashOffset;
     }
 
-    /**
-     * Indicates whether all objects, including arrays, always contain an identity hash code field
-     * at a specific offset.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean hasFixedIdentityHashField() {
-        return fixedIdentityHashOffset >= 0;
-    }
-
     public int getArrayBaseOffset(JavaKind kind) {
         return NumUtil.roundUp(arrayBaseOffset, sizeInBytes(kind));
     }
 
     public long getArrayElementOffset(JavaKind kind, int index) {
-        return getArrayBaseOffset(kind) + index * sizeInBytes(kind);
+        return getArrayBaseOffset(kind) + ((long) index) * sizeInBytes(kind);
     }
 
     public long getArraySize(JavaKind kind, int length, boolean withOptionalIdHashField) {
@@ -192,6 +215,7 @@ public final class ObjectLayout {
         return getArrayOptionalIdentityHashOffset(getArrayUnalignedSize(kind, length));
     }
 
+    // TEMP (chaeubl): we should probably rename this method.
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getArrayOptionalIdentityHashOffset(long unalignedSize) {
         if (hasFixedIdentityHashField()) {
@@ -204,7 +228,7 @@ public final class ObjectLayout {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long computeArrayTotalSize(long unalignedSize, boolean withOptionalIdHashField) {
         long size = unalignedSize;
-        if (withOptionalIdHashField && !hasFixedIdentityHashField()) {
+        if ((withOptionalIdHashField && isIdentityHashFieldOptional()) || isIdentityHashFieldSynthetic()) {
             size = getArrayOptionalIdentityHashOffset(size) + Integer.BYTES;
         }
         return alignUp(size);
@@ -235,5 +259,15 @@ public final class ObjectLayout {
             return JavaKind.Int;
         }
         return type.getJavaKind();
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public enum IdentityHashCodePosition {
+        /* At a fixed offset, for all objects (part of the object header). */
+        OBJECT_HEADER,
+        /* At a type-specific offset (outside the object header). */
+        SYNTHETIC_FIELD,
+        /* At a type and object-state specific offset (outside the object header). */
+        OPTIONAL
     }
 }

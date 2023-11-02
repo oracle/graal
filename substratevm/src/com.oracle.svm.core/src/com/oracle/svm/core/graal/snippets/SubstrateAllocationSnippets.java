@@ -36,6 +36,36 @@ import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import java.util.Arrays;
 import java.util.Map;
 
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
+
+import com.oracle.svm.core.MissingRegistrationUtils;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.allocationprofile.AllocationCounter;
+import com.oracle.svm.core.allocationprofile.AllocationSite;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.configure.ConfigurationFile;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.graal.nodes.ForeignCallWithExceptionNode;
+import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
+import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
+import com.oracle.svm.core.graal.nodes.SubstrateNewHybridInstanceNode;
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.Pod;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
+import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
+import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
+import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.thread.ContinuationSupport;
+import com.oracle.svm.core.util.VMError;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Snippet;
@@ -76,36 +106,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.word.BarrieredAccess;
 import jdk.graal.compiler.word.ObjectAccess;
 import jdk.graal.compiler.word.Word;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
-
-import com.oracle.svm.core.MissingRegistrationUtils;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.allocationprofile.AllocationCounter;
-import com.oracle.svm.core.allocationprofile.AllocationSite;
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.configure.ConfigurationFile;
-import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
-import com.oracle.svm.core.graal.nodes.ForeignCallWithExceptionNode;
-import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
-import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
-import com.oracle.svm.core.graal.nodes.SubstrateNewHybridInstanceNode;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.Pod;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
-import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
-import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
-import com.oracle.svm.core.thread.ContinuationSupport;
-import com.oracle.svm.core.util.VMError;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -420,6 +420,25 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         return ConfigurationValues.getObjectLayout().getFirstFieldOffset();
     }
 
+    @Override
+    protected UnsignedWord arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize) {
+        /*
+         * We do an unsigned multiplication so that a negative array length will result in an array
+         * size greater than Integer.MAX_VALUE.
+         */
+        long size = ((length & 0xFFFFFFFFL) << log2ElementSize) + arrayBaseOffset;
+
+        /* Add the identity hashcode field if necessary. */
+        if (ConfigurationValues.getObjectLayout().isIdentityHashFieldSynthetic()) {
+            int align = Integer.BYTES;
+            size = (size + align - 1) & -align;
+            size += Integer.BYTES;
+        }
+
+        size = (size + objectAlignment() - 1) & -objectAlignment();
+        return WordFactory.unsigned(size);
+    }
+
     @Fold
     public static int afterArrayLengthOffset() {
         return ConfigurationValues.getObjectLayout().getArrayLengthOffset() + ConfigurationValues.getObjectLayout().sizeInBytes(JavaKind.Int);
@@ -446,14 +465,13 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         return obj;
     }
 
-    @Override
-    public final int arrayLengthOffset() {
-        return ConfigurationValues.getObjectLayout().getArrayLengthOffset();
+    private static int objectAlignment() {
+        return ConfigurationValues.getObjectLayout().getAlignment();
     }
 
     @Override
-    protected final int objectAlignment() {
-        return ConfigurationValues.getObjectLayout().getAlignment();
+    public final int arrayLengthOffset() {
+        return ConfigurationValues.getObjectLayout().getArrayLengthOffset();
     }
 
     public static int getArrayBaseOffset(int layoutEncoding) {
