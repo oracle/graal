@@ -134,6 +134,10 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
         return isReachableHandle.get(constantData) != null;
     }
 
+    public Object getReachableReason() {
+        return constantData.isReachable;
+    }
+
     static int createIdentityHashCode(JavaConstant object) {
         if (object == null) {
             /*

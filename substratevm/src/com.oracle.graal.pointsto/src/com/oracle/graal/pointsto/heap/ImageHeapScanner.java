@@ -255,7 +255,7 @@ public abstract class ImageHeapScanner {
         /* Read hosted array element values only when the array is initialized. */
         array.constantData.hostedValuesReader = new AnalysisFuture<>(() -> {
             type.registerAsReachable(reason);
-            ScanReason arrayReason = new ArrayScan(type, constant, reason);
+            ScanReason arrayReason = new ArrayScan(type, array, reason);
             Object[] elementValues = new Object[length];
             for (int idx = 0; idx < length; idx++) {
                 final JavaConstant rawElementValue = constantReflection.readArrayElement(constant, idx);
@@ -289,7 +289,7 @@ public abstract class ImageHeapScanner {
                     continue;
                 }
                 hostedFieldValues[field.getPosition()] = new AnalysisFuture<>(() -> {
-                    ScanReason fieldReason = new FieldScan(field, constant, reason);
+                    ScanReason fieldReason = new FieldScan(field, instance, reason);
                     JavaConstant value = createFieldValue(field, instance, rawFieldValue, fieldReason);
                     instance.setFieldValue(field, value);
                     return value;
