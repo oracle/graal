@@ -30,8 +30,10 @@ import java.lang.reflect.Member;
 import java.lang.reflect.Modifier;
 
 import org.graalvm.nativeimage.AnnotationAccess;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.annotate.TargetClass;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -55,7 +57,10 @@ public abstract class ClassInclusionPolicy {
     /**
      * Determine if the given class needs to be included in the image according to the policy.
      */
-    public abstract boolean isClassIncluded(Class<?> cls);
+    public boolean isClassIncluded(Class<?> cls) {
+        Class<?> enclosingClass = cls.getEnclosingClass();
+        return !Feature.class.isAssignableFrom(cls) && !AnnotationAccess.isAnnotationPresent(cls, TargetClass.class) && (enclosingClass == null || isClassIncluded(enclosingClass));
+    }
 
     /**
      * Determine if the given method needs to be included in the image according to the policy.
@@ -126,6 +131,9 @@ public abstract class ClassInclusionPolicy {
 
         @Override
         public boolean isClassIncluded(Class<?> cls) {
+            if (!super.isClassIncluded(cls)) {
+                return false;
+            }
             Class<?> enclosingClass = cls.getEnclosingClass();
             int classModifiers = cls.getModifiers();
             if (enclosingClass != null) {
@@ -170,11 +178,6 @@ public abstract class ClassInclusionPolicy {
     public static class DefaultAllInclusionPolicy extends ClassInclusionPolicy {
         public DefaultAllInclusionPolicy(Object reason) {
             super(reason);
-        }
-
-        @Override
-        public boolean isClassIncluded(Class<?> cls) {
-            return true;
         }
 
         @Override

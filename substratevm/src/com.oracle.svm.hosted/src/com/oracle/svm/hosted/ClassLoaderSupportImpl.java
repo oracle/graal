@@ -116,7 +116,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
         /* Collect remaining resources from classpath */
         classLoaderSupport.classpath().stream().parallel().forEach(classpathFile -> {
-            boolean includeCurrent = classLoaderSupport.getJavaPathsToInclude().contains(classpathFile);
+            boolean includeCurrent = classLoaderSupport.getJavaPathsToInclude().contains(classpathFile) || classLoaderSupport.includeAllFromClassPath();
             try {
                 if (Files.isDirectory(classpathFile)) {
                     scanDirectory(classpathFile, resourceCollector, includeCurrent);

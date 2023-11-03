@@ -141,9 +141,10 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
                  * Using getInstanceFields and getStaticFields allows to include the fields from the
                  * substitution class.
                  */
-                Stream.concat(Arrays.stream(type.getInstanceFields(true)), Arrays.stream(type.getStaticFields()))
+                Stream.concat(Arrays.stream(getOrDefault(type, t -> t.getInstanceFields(true), new AnalysisField[0])),
+                                Arrays.stream(getOrDefault(type, AnalysisType::getStaticFields, new AnalysisField[0])))
                                 .map(OriginalFieldProvider::getJavaField)
-                                .filter(classInclusionPolicy::isFieldIncluded)
+                                .filter(field -> field != null && classInclusionPolicy.isFieldIncluded(field))
                                 .forEach(classInclusionPolicy::includeField);
             }
         });
