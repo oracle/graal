@@ -39,8 +39,9 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     sc.weekly + $.sulong + sc.labsjdkLatest + sc.linux_amd64 + sc.llvm6 + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTags) + { name: "weekly-sulong-basic-nwcc-llvm-v60-jdk-latest-linux-amd64" },
     sc.weekly + $.sulong + sc.labsjdkLatest + sc.linux_amd64 + sc.llvm8 + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTags) + { name: "weekly-sulong-basic-nwcc-llvm-v80-jdk-latest-linux-amd64" },
 
-    sc.weekly + $.sulong + sc.labsjdkLatest + sc.darwin_amd64 + sc.llvm4 + sc.gateTags(basicTags) + { name: "weekly-sulong-basic-nwcc-llvm-v40-jdk-latest-darwin-amd64", timelimit: "0:45:00" },
-    sc.gate + $.sulong + sc.labsjdkLatest + sc.darwin_amd64 + sc.llvmBundled + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk-latest-darwin-amd64", timelimit: "0:45:00", capabilities+: ["!darwin_bigsur", "ram16gb"] },
+    # JDK latest only works on MacOS Ventura (GR-49652)
+    # sc.weekly + $.sulong + sc.labsjdkLatest + sc.darwin_amd64 + sc.llvm4 + sc.gateTags(basicTags) + { name: "weekly-sulong-basic-nwcc-llvm-v40-jdk-latest-darwin-amd64", timelimit: "0:45:00" },
+    # sc.gate + $.sulong + sc.labsjdkLatest + sc.darwin_amd64 + sc.llvmBundled + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk-latest-darwin-amd64", timelimit: "0:45:00", capabilities+: ["!darwin_bigsur", "ram16gb"] },
 
     sc.gate + $.sulong + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk-latest-linux-amd64" },
     sc.gate + $.sulong + sc.labsjdk21 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk21-linux-amd64" },
@@ -67,19 +68,22 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     ],
     [
       [sc.linux_amd64,    [sc.labsjdkLatest]],
-      [sc.darwin_amd64,   [sc.labsjdkLatest]],
+      # JDK latest only works on MacOS Ventura (GR-49652)
+      # [sc.darwin_amd64,   [sc.labsjdkLatest]],
       [sc.windows_amd64 + { capabilities+: ["windows_server_2016"] /* work around native-image bug GR-48515 */ },  [sc.labsjdkLatest]],
       [sc.linux_aarch64,  [sc.labsjdkLatest]],
       [sc.darwin_aarch64, [sc.labsjdkLatest]],
     ],
     [
       { name: "gate-sulong-test-ce-standalones-jvm-jdk-latest-linux-amd64",    timelimit: "1:00:00" },
-      { name: "daily-sulong-test-ce-standalones-jvm-jdk-latest-darwin-amd64",  timelimit: "1:00:00", targets: [] } + sc.daily,
+      # JDK latest only works on MacOS Ventura (GR-49652)
+      # { name: "daily-sulong-test-ce-standalones-jvm-jdk-latest-darwin-amd64",  timelimit: "1:00:00", targets: [] } + sc.daily,
       { name: "gate-sulong-test-ce-standalones-jvm-jdk-latest-windows-amd64",  timelimit: "1:00:00" },
       { name: "gate-sulong-test-ce-standalones-jvm-jdk-latest-linux-aarch64",  timelimit: "1:00:00" },
       { name: "gate-sulong-test-ce-standalones-jvm-jdk-latest-darwin-aarch64", timelimit: "1:00:00" },
       { name: "gate-sulong-test-ce-standalones-native-jdk-latest-linux-amd64",    timelimit: "1:00:00" },
-      { name: "daily-sulong-test-ce-standalones-native-jdk-latest-darwin-amd64",  timelimit: "1:00:00", targets: [] } + sc.daily,
+      # JDK latest only works on MacOS Ventura (GR-49652)
+      # { name: "daily-sulong-test-ce-standalones-native-jdk-latest-darwin-amd64",  timelimit: "1:00:00", targets: [] } + sc.daily,
       { name: "gate-sulong-test-ce-standalones-native-jdk-latest-windows-amd64",  timelimit: "1:00:00" },
       { name: "gate-sulong-test-ce-standalones-native-jdk-latest-linux-aarch64",  timelimit: "1:00:00" },
       { name: "gate-sulong-test-ce-standalones-native-jdk-latest-darwin-aarch64", timelimit: "1:00:00" },
@@ -89,14 +93,16 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     sc.mapPrototypePlatformName([sc.weekly + $.sulong + sc.coverage($.regular_builds)],
     [
       [sc.linux_amd64,    [sc.labsjdkLatest]],
-      [sc.darwin_amd64,   [sc.labsjdkLatest]],
+      # JDK latest only works on MacOS Ventura (GR-49652)
+      # [sc.darwin_amd64,   [sc.labsjdkLatest]],
       [sc.windows_amd64,  [sc.labsjdkLatest]],
       [sc.linux_aarch64,  [sc.labsjdkLatest]],
       [sc.darwin_aarch64, [sc.labsjdkLatest]],
     ],
     [
       { name: "weekly-sulong-coverage-jdk-latest-linux-amd64",    timelimit: "1:00:00" },
-      { name: "weekly-sulong-coverage-jdk-latest-darwin-amd64",   timelimit: "1:00:00" },
+      # JDK latest only works on MacOS Ventura (GR-49652)
+      # { name: "weekly-sulong-coverage-jdk-latest-darwin-amd64",   timelimit: "1:00:00" },
       { name: "weekly-sulong-coverage-jdk-latest-windows-amd64",  timelimit: "1:00:00" },
       { name: "weekly-sulong-coverage-jdk-latest-linux-aarch64",  timelimit: "1:00:00" },
       { name: "weekly-sulong-coverage-jdk-latest-darwin-aarch64", timelimit: "1:00:00" },

@@ -829,15 +829,14 @@ suite = {
     "com.oracle.truffle.nfi.backend.panama" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "javaPreviewNeeded" : "21+",
       "dependencies" : [
         "com.oracle.truffle.nfi.backend.spi",
       ],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "21+",
+      "javaCompliance" : "22+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
-      # disable SpotBugs as long is panama is preview [GR-49448]
+      # disable SpotBugs as long JDK 22 is unsupported [GR-49566]
       "spotbugs" : "false",
     },
 
@@ -1606,7 +1605,7 @@ suite = {
         "name" : "com.oracle.truffle.truffle_nfi_panama",
       },
       "subDir" : "src",
-      "javaCompliance" : "21+",
+      "javaCompliance" : "22+",
       "dependencies" : [
         "com.oracle.truffle.nfi.backend.panama",
       ],

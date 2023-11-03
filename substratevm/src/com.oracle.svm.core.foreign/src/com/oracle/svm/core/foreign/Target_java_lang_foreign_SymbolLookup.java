@@ -49,6 +49,7 @@ import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.Target_java_lang_Module;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.Utils;
 import jdk.internal.loader.NativeLibrary;
@@ -134,7 +135,12 @@ final class Util_java_lang_foreign_SymbolLookup {
          */
         Target_java_lang_Module module = SubstrateUtil.cast(currentClass != null ? currentClass.getModule() : ClassLoader.getSystemClassLoader().getUnnamedModule(),
                         Target_java_lang_Module.class);
-        module.ensureNativeAccess(owner, methodName);
+        if (JavaVersionUtil.JAVA_SPEC <= 21) {
+            module.ensureNativeAccess(owner, methodName);
+        } else {
+            module.ensureNativeAccess(owner, methodName, currentClass);
+        }
+
     }
 
     static <Z> LookupNativeLibraries createNativeLibraries(BiConsumer<LookupNativeLibraries, Z> loadLibraryFunc, List<Z> libDescs) {

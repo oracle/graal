@@ -48,7 +48,7 @@ public final class JVMCIVersionCheck {
      */
     private static final Map<String, Version> JVMCI_MIN_VERSIONS = Map.of(
                     "21", new Version(23, 1, 22),
-                    "22", new Version("22+18", 3));
+                    "22", new Version("22+20", 2));
 
     private static final int NA = 0;
     /**
