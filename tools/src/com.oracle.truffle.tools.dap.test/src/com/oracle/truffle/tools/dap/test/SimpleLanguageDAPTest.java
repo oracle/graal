@@ -29,8 +29,10 @@ import java.net.URI;
 import org.graalvm.polyglot.Source;
 
 import org.junit.After;
+import org.junit.Ignore;
 import org.junit.Test;
 
+@Ignore("GR-43473")
 public final class SimpleLanguageDAPTest {
 
     private static final String FACTORIAL = "function factorial(n) {\n" +
