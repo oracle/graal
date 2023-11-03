@@ -182,8 +182,8 @@ public class JfrThreadLocal implements ThreadListener {
             BufferNode node = buffer.getNode();
             // Signal to thread iterating list that this node can be removed
             node.setBuffer(WordFactory.nullPointer());
-            SubstrateJVM.getSamplerBufferPool().pushFullBuffer(buffer);
             assert SamplerBufferAccess.verify(buffer);
+            SubstrateJVM.getSamplerBufferPool().pushFullBuffer(buffer);
             samplerBuffer.set(isolateThread, WordFactory.nullPointer());
         }
     }
