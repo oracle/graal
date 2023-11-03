@@ -58,10 +58,11 @@ public final class ObjectLayout {
 
     public ObjectLayout(SubstrateTargetDescription target, int referenceSize, int objectAlignment, int hubOffset,
                     int firstFieldOffset, int arrayLengthOffset, int arrayBaseOffset, int fixedIdentityHashOffset) {
-        assert CodeUtil.isPowerOf2(referenceSize);
-        assert CodeUtil.isPowerOf2(objectAlignment);
-        assert hubOffset < firstFieldOffset && hubOffset < arrayLengthOffset;
-        assert fixedIdentityHashOffset == -1 || (fixedIdentityHashOffset > 0 && fixedIdentityHashOffset < arrayLengthOffset);
+        assert CodeUtil.isPowerOf2(referenceSize) : referenceSize;
+        assert CodeUtil.isPowerOf2(objectAlignment) : objectAlignment;
+        assert arrayLengthOffset % Integer.BYTES == 0;
+        assert hubOffset < firstFieldOffset && hubOffset < arrayLengthOffset : hubOffset;
+        assert fixedIdentityHashOffset == -1 || (fixedIdentityHashOffset > 0 && fixedIdentityHashOffset < arrayLengthOffset) : fixedIdentityHashOffset;
 
         this.target = target;
         this.referenceSize = referenceSize;
