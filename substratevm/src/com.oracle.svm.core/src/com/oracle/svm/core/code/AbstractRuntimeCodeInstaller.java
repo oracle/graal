@@ -33,6 +33,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.thread.JavaVMOperation;
+import com.oracle.svm.core.util.VMError;
 
 public class AbstractRuntimeCodeInstaller {
     protected Pointer allocateCodeMemory(long size) {
@@ -44,11 +45,13 @@ public class AbstractRuntimeCodeInstaller {
     }
 
     protected void makeCodeMemoryReadOnly(Pointer start, long size) {
-        RuntimeCodeInfoAccess.makeCodeMemoryExecutableReadOnly((CodePointer) start, WordFactory.unsigned(size));
+        boolean result = RuntimeCodeInfoAccess.makeCodeMemoryExecutableReadOnly((CodePointer) start, WordFactory.unsigned(size));
+        VMError.guarantee(result, "Failed to make code memory read only.");
     }
 
     protected void makeCodeMemoryWriteableNonExecutable(Pointer start, long size) {
-        RuntimeCodeInfoAccess.makeCodeMemoryWriteableNonExecutable((CodePointer) start, WordFactory.unsigned(size));
+        boolean result = RuntimeCodeInfoAccess.makeCodeMemoryWriteableNonExecutable((CodePointer) start, WordFactory.unsigned(size));
+        VMError.guarantee(result, "Failed to make code memory writable.");
     }
 
     protected static void doInstallPrepared(SharedMethod method, CodeInfo codeInfo, SubstrateInstalledCode installedCode) {

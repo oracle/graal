@@ -241,12 +241,12 @@ public final class RuntimeCodeInfoAccess {
         CommittedMemoryProvider.get().free(codeStart, codeSize, WordFactory.unsigned(SubstrateOptions.codeAlignment()), true);
     }
 
-    public static void makeCodeMemoryExecutableReadOnly(CodePointer codeStart, UnsignedWord codeSize) {
-        CommittedMemoryProvider.get().protect(codeStart, codeSize, EnumSet.of(CommittedMemoryProvider.Access.READ, CommittedMemoryProvider.Access.EXECUTE));
+    public static boolean makeCodeMemoryExecutableReadOnly(CodePointer codeStart, UnsignedWord codeSize) {
+        return CommittedMemoryProvider.get().protect(codeStart, codeSize, EnumSet.of(CommittedMemoryProvider.Access.READ, CommittedMemoryProvider.Access.EXECUTE));
     }
 
-    public static void makeCodeMemoryWriteableNonExecutable(CodePointer start, UnsignedWord size) {
-        CommittedMemoryProvider.get().protect(start, size, EnumSet.of(CommittedMemoryProvider.Access.READ, CommittedMemoryProvider.Access.WRITE));
+    public static boolean makeCodeMemoryWriteableNonExecutable(CodePointer start, UnsignedWord size) {
+        return CommittedMemoryProvider.get().protect(start, size, EnumSet.of(CommittedMemoryProvider.Access.READ, CommittedMemoryProvider.Access.WRITE));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
