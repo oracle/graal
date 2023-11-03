@@ -120,117 +120,6 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
                           ])
 }
 
-_renaissance_pre014_config = {
-    "akka-uct": {
-        "group": "actors-akka",
-        "legacy-group": "actors",
-        "requires-recompiled-harness": ["0.9.0", "0.10.0", "0.11.0"]
-    },
-    "reactors": {
-        "group": "actors-reactors",
-        "legacy-group": "actors",
-        "requires-recompiled-harness": True
-    },
-    "scala-kmeans": {
-        "group": "scala-stdlib"
-    },
-    "scala-doku": {
-        "group": "scala-sat"
-    },
-    "mnemonics": {
-        "group": "jdk-streams"
-    },
-    "par-mnemonics": {
-        "group": "jdk-streams"
-    },
-    "rx-scrabble": {
-        "group": "rx"
-    },
-    "als": {
-        "group": "apache-spark",
-        "requires-recompiled-harness": True
-    },
-    "chi-square": {
-        "group": "apache-spark",
-        "requires-recompiled-harness": True
-    },
-    "db-shootout": {  # GR-17975, GR-17943 (with --report-unsupported-elements-at-runtime)
-        "group": "database",
-        "requires-recompiled-harness": ["0.9.0", "0.10.0", "0.11.0"]
-    },
-    "dec-tree": {
-        "group": "apache-spark",
-        "requires-recompiled-harness": True
-    },
-    "dotty": {
-        "group": "scala-dotty"
-    },
-    "finagle-chirper": {
-        "group": "twitter-finagle",
-        "requires-recompiled-harness": True
-    },
-    "finagle-http": {
-        "group": "twitter-finagle",
-        "requires-recompiled-harness": True
-    },
-    "fj-kmeans": {
-        "group": "jdk-concurrent"
-    },
-    "future-genetic": {
-        "group": "jdk-concurrent"
-    },
-    "gauss-mix": {
-        "group": "apache-spark",
-        "requires-recompiled-harness": True
-    },
-    "log-regression": {
-        "group": "apache-spark",
-        "requires-recompiled-harness": True
-    },
-    "movie-lens": {
-        "group": "apache-spark",
-        "requires-recompiled-harness": True
-    },
-    "naive-bayes": {
-        "group": "apache-spark",
-        "requires-recompiled-harness": True
-    },
-    "page-rank": {
-        "group": "apache-spark",
-        "requires-recompiled-harness": True
-    },
-    "neo4j-analytics": {
-        "group": "neo4j",
-        "requires-recompiled-harness": True
-    },
-    "philosophers": {
-        "group": "scala-stm",
-        "requires-recompiled-harness": ["0.12.0", "0.13.0"]
-    },
-    "scala-stm-bench7": {
-        "group": "scala-stm",
-        "requires-recompiled-harness": ["0.12.0", "0.13.0"]
-    },
-    "scrabble": {
-        "group": "jdk-streams"
-    }
-}
-
-
-def pre014_benchmark_group(benchmark, suite_version):
-    if suite_version in ["0.9.0", "0.10.0", "0.11.0"]:
-        return _renaissance_pre014_config[benchmark].get("legacy-group", _renaissance_pre014_config[benchmark]["group"])
-    else:
-        return _renaissance_pre014_config[benchmark]["group"]
-
-
-def pre014_requires_recompiled_harness(benchmark, suite_version):
-    requires_harness = _renaissance_pre014_config[benchmark].get("requires-recompiled-harness", False)
-    if isinstance(requires_harness, list):
-        return suite_version in requires_harness
-    return requires_harness
-
-
 class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
     """
     Building an image for a renaissance benchmark requires all libraries for the group this benchmark belongs to
@@ -342,77 +231,13 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
             self.benchmark_name = benchmarks[0]
         run_args = self.postprocessRunArgs(self.benchmarkName(), self.runArgs(bmSuiteArgs))
         vm_args = self.vmArgs(bmSuiteArgs)
-        if self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"]:
-            return ['-cp', self.create_pre014_classpath(self.benchmarkName())] + vm_args + ['-jar', self.renaissancePath()] + run_args + [self.benchmarkName()]
-        else:
-            # use renaissance standalone mode as of renaissance 0.14.0
-            return vm_args + ["-jar", self.standalone_jar_path(self.benchmarkName())] + run_args + [self.benchmarkName()]
+        # use renaissance standalone mode as of renaissance 0.14.0
+        return vm_args + ["-jar", self.standalone_jar_path(self.benchmarkName())] + run_args + [self.benchmarkName()]
 
     def successPatterns(self):
         return super(RenaissanceNativeImageBenchmarkSuite, self).successPatterns() + [
             _successful_stage_pattern
         ]
-
-    def create_pre014_classpath(self, benchmarkName):
-        custom_harness = pre014_requires_recompiled_harness(benchmarkName, self.version())
-        harness_project = RenaissanceNativeImageBenchmarkSuite.RenaissancePre014Project('harness', custom_harness, self)
-        group_project = RenaissanceNativeImageBenchmarkSuite.RenaissancePre014Project(pre014_benchmark_group(benchmarkName, self.version()), custom_harness, self, harness_project)
-        return ':'.join([mx.classpath(harness_project), mx.classpath(group_project)])
-
-    class RenaissancePre014Dependency(mx.ClasspathDependency):
-        def __init__(self, name, path): # pylint: disable=super-init-not-called
-            mx.Dependency.__init__(self, _suite, name, None)
-            self.path = path
-
-        def classpath_repr(self, resolve=True):
-            return self.path
-
-        def _walk_deps_visit_edges(self, *args, **kwargs):
-            pass
-
-    class RenaissancePre014Project(mx.ClasspathDependency):
-        def __init__(self, group, requires_recompiled_harness, renaissance_suite, dep_project=None): # pylint: disable=super-init-not-called
-            mx.Dependency.__init__(self, _suite, group, None)
-            self.suite = renaissance_suite
-            self.deps = self.collect_group_dependencies(group, requires_recompiled_harness)
-            if dep_project is not None:
-                self.deps.append(dep_project)
-
-        def _walk_deps_visit_edges(self, visited, in_edge, preVisit=None, visit=None, ignoredEdges=None, visitEdge=None):
-            deps = [(mx.DEP_STANDARD, self.deps)]
-            self._walk_deps_visit_edges_helper(deps, visited, in_edge, preVisit, visit, ignoredEdges, visitEdge)
-
-        def classpath_repr(self, resolve=True):
-            return None
-
-        def get_dependencies(self, path, group):
-            deps = []
-            for jar in list_jars(path):
-                deps.append(RenaissanceNativeImageBenchmarkSuite.RenaissancePre014Dependency(os.path.basename(jar), mx.join(path, jar)))
-
-            if self.suite.version() in ["0.9.0", "0.10.0", "0.11.0"]:
-                if group == 'apache-spark':
-                    # breeze jar is replaced with a patched jar because of IncompatibleClassChange errors due to a bug in the Scala compiler
-                    invalid_bytecode_jar = 'breeze_2.11-0.11.2.jar'
-                    lib_dep = RenaissanceNativeImageBenchmarkSuite.RenaissancePre014Dependency(invalid_bytecode_jar, mx.join(path, invalid_bytecode_jar))
-                    if lib_dep in deps:
-                        deps.remove(lib_dep)
-                    lib_path = RenaissanceNativeImageBenchmarkSuite.renaissance_additional_lib(self.suite, 'SPARK_BREEZE_PATCHED')
-                    deps.append(RenaissanceNativeImageBenchmarkSuite.RenaissancePre014Dependency(os.path.basename(lib_path), lib_path))
-            return deps
-
-        def collect_group_dependencies(self, group, requires_recompiled_harness):
-            if group == 'harness':
-                if requires_recompiled_harness:
-                    path = RenaissanceNativeImageBenchmarkSuite.harness_path(self.suite)
-                else:
-                    unpacked_renaissance = RenaissanceNativeImageBenchmarkSuite.renaissance_unpacked(self.suite)
-                    path = mx.join(unpacked_renaissance, 'renaissance-harness')
-            else:
-                unpacked_renaissance = RenaissanceNativeImageBenchmarkSuite.renaissance_unpacked(self.suite)
-                path = mx.join(unpacked_renaissance, 'benchmarks', group)
-            return self.get_dependencies(path, group)
-
 
 mx_benchmark.add_bm_suite(RenaissanceNativeImageBenchmarkSuite())
 
