@@ -54,6 +54,8 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.proxy.ProxyArray;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -67,8 +69,10 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.Source;
@@ -1814,5 +1818,109 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         assertEquals("Arity error - expected: 0-1 actual: 2", ArityException.create(0, 1, 2).getMessage());
         assertEquals("Arity error - expected: 0+ actual: unknown", ArityException.create(0, -1, -1).getMessage());
         assertEquals("Arity error - expected: 1+ actual: 0", ArityException.create(1, -1, 0).getMessage());
+    }
+
+    @Test
+    public void testIsInvocableMemberWithReadSideEffects() throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
+        setupEnv(Context.create()); // we need no multi threaded context.
+        var obj = new IsInvocableUnknown();
+        InteropLibrary memberLib = createLibrary(InteropLibrary.class, obj);
+        String memberName = IsInvocableUnknown.MEMBER_NAME;
+        /*
+         * If hasMemberReadSideEffects(), a language may not be able to determine, without side
+         * effects, if the member is invocable, so the invariant that if invokeMember succeeds
+         * isMemberInvocable must have returned true is lifted.
+         */
+        obj.invocable = false;
+        assertFalse(memberLib.isMemberInvocable(obj, memberName));
+        obj.readSideEffects = true;
+        assertEquals(42, memberLib.invokeMember(obj, memberName));
+        // Invariant contract violation
+        obj.readSideEffects = false;
+        assertFails(() -> memberLib.invokeMember(obj, memberName), AssertionError.class);
+
+        obj.invocable = true;
+        assertTrue(memberLib.isMemberInvocable(obj, memberName));
+        obj.readSideEffects = true;
+        assertEquals(42, memberLib.invokeMember(obj, memberName));
+        obj.readSideEffects = false;
+        assertEquals(42, memberLib.invokeMember(obj, memberName));
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportLibrary(InteropLibrary.class)
+    static class IsInvocableUnknown implements TruffleObject {
+
+        static final String MEMBER_NAME = "getter";
+        boolean invocable = false;
+        boolean readSideEffects = true;
+
+        @ExportMessage
+        final boolean hasMembers() {
+            return true;
+        }
+
+        @ExportMessage
+        final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+            return ProxyArray.fromArray(MEMBER_NAME);
+        }
+
+        @ExportMessage
+        final boolean isMemberReadable(String member) {
+            return switch (member) {
+                case MEMBER_NAME -> true;
+                default -> false;
+            };
+        }
+
+        @ExportMessage
+        final boolean isMemberInvocable(String member) {
+            return switch (member) {
+                case MEMBER_NAME -> invocable;
+                default -> false;
+            };
+        }
+
+        @ExportMessage
+        final boolean hasMemberReadSideEffects(String member) {
+            return switch (member) {
+                case MEMBER_NAME -> readSideEffects;
+                default -> false;
+            };
+        }
+
+        @ExportMessage
+        final Object readMember(String member) throws UnknownIdentifierException {
+            return switch (member) {
+                case MEMBER_NAME -> ((ProxyExecutable) a -> 42);
+                default -> throw UnknownIdentifierException.create(member);
+            };
+        }
+
+        @ExportMessage
+        final Object invokeMember(String member, @SuppressWarnings("unused") Object[] arguments) throws UnknownIdentifierException {
+            return switch (member) {
+                case MEMBER_NAME -> 42;
+                default -> throw UnknownIdentifierException.create(member);
+            };
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasLanguage() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        Class<? extends TruffleLanguage<?>> getLanguage() {
+            return ProxyLanguage.class;
+        }
+
+        @TruffleBoundary
+        @ExportMessage
+        final Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+            return getClass().getSimpleName();
+        }
     }
 }
