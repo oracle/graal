@@ -55,7 +55,6 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
@@ -64,7 +63,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerPolicy.SimulateClassInitializerInlineScope;
 import com.oracle.svm.hosted.fieldfolding.IsStaticFinalFieldInitializedNode;
@@ -739,22 +737,14 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
      * Make sure that constants added into the image heap have the correct kind. Constants for
      * sub-integer types are often just integer constants in the Graal IR, i.e., we cannot rely on
      * the JavaKind of the constant to match the type of the field or array.
-     *
-     * The second part is temporary until all constants embedded in graphs are ImageHeapConstant:
-     * While currently a graph can contain both {@link ImageHeapConstant} and
-     * {@link SubstrateObjectConstant} as roots, it is never allowed that a
-     * {@link ImageHeapConstant} references a {@link SubstrateObjectConstant}.
      */
     private JavaConstant adaptForImageHeap(JavaConstant value, JavaKind storageKind) {
         if (value.getJavaKind() != storageKind) {
             assert value instanceof PrimitiveConstant && value.getJavaKind().getStackKind() == storageKind.getStackKind() : "only sub-int values can have a mismatch of the JavaKind: " +
                             value.getJavaKind() + ", " + storageKind;
             return JavaConstant.forPrimitive(storageKind, value.asLong());
-
-        } else if (storageKind == JavaKind.Object && !(value instanceof ImageHeapConstant)) {
-            return bb.getUniverse().getHeapScanner().createImageHeapConstant(value, new ObjectScanner.OtherReason("SimulateClassInitializerGraphDecoder"));
-
         } else {
+            assert !storageKind.isObject() || value.isNull() || value instanceof ImageHeapConstant : "Expected ImageHeapConstant, found: " + value;
             return value;
         }
     }
