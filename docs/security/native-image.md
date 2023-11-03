@@ -96,6 +96,8 @@ The security report section of the native image [build output](../reference-manu
 
 ## Miscellaneous
 
+Setting the security manager is not allowed. For more information see the [compatibility documentation](../reference-manual/native-image/Compatibility.md#security-manager).
+
 Native Image provides multiple ways to specify a certificate file used to define the default TrustStore.
 While the default behavior for `native-image` is to capture and use the default TrustStore from the build-time host environment, this can be changed at run time by setting the "javax.net.ssl.trustStore\*" system properties.
 See the [documentation](../reference-manual/native-image/CertificateManagement.md) for more details.

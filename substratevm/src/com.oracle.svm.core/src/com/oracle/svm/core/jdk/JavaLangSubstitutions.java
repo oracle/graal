@@ -32,6 +32,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.net.URL;
+import java.security.Permission;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
@@ -407,23 +408,34 @@ final class Target_java_lang_System {
     @Alias
     private static native void checkKey(String key);
 
-    /*
-     * Note that there is no substitution for getSecurityManager, but instead getSecurityManager it
-     * is intrinsified in SubstrateGraphBuilderPlugins to always return null. This allows better
-     * constant folding of SecurityManager code already during static analysis.
+    /**
+     * Force System.Never in case it was set at build time via the `-Djava.security.manager=allow`
+     * passed to the image builder.
+     */
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias, isFinal = true) //
+    private static int allowSecurityManager = 1;
+
+    /**
+     * We do not support the {@link SecurityManager} so this method must throw a
+     * {@link SecurityException} when 'java.security.manager' is set to anything but
+     * <code>disallow</code>.
+     * 
+     * @see System#setSecurityManager(SecurityManager)
+     * @see SecurityManager
      */
     @Substitute
-    private static void setSecurityManager(SecurityManager s) {
-        if (s != null) {
-            /*
-             * We deliberately treat this as a non-recoverable fatal error. We want to prevent bugs
-             * where an exception is silently ignored by an application and then necessary security
-             * checks are not in place.
-             */
-            throw VMError.shouldNotReachHere("Installing a SecurityManager is not yet supported");
+    private static void setSecurityManager(SecurityManager sm) {
+        if (sm != null) {
+            /* Read the property collected at isolate creation as that is what happens on the JVM */
+            String smp = SystemPropertiesSupport.singleton().getSavedProperties().get("java.security.manager");
+            if (smp != null && !smp.equals("disallow")) {
+                throw new SecurityException("Setting the SecurityManager is not supported by Native Image");
+            } else {
+                throw new UnsupportedOperationException(
+                                "The Security Manager is deprecated and will be removed in a future release");
+            }
         }
     }
-
 }
 
 final class NotAArch64 implements BooleanSupplier {
@@ -626,6 +638,14 @@ final class Target_jdk_internal_loader_BootLoader {
     // Checkstyle: stop
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ClassLoaderValueMapFieldValueTransformer.class, isFinal = true)//
     static ConcurrentHashMap<?, ?> CLASS_LOADER_VALUE_MAP;
+    // Checkstyle: resume
+}
+
+@TargetClass(value = jdk.internal.logger.LoggerFinderLoader.class)
+final class Target_jdk_internal_logger_LoggerFinderLoader {
+    // Checkstyle: stop
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset, isFinal = true)//
+    static Permission READ_PERMISSION;
     // Checkstyle: resume
 }
 
