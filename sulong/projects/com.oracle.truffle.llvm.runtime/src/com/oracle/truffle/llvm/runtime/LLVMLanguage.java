@@ -29,16 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.lang.ref.ReferenceQueue;
-import java.lang.ref.WeakReference;
-import java.nio.ByteOrder;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -87,12 +77,20 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.target.TargetTriple;
 import com.oracle.truffle.llvm.runtime.types.Type;
-
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.Pair;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
+
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
                 byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE, LLVMLanguage.LLVM_MACHO_MIME_TYPE,
@@ -767,7 +765,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             synchronized (libraryCacheLock) {
                 CallTarget cached = getCachedLibrary(source);
                 if (cached == null) {
-                    BitcodeID id = idGenerater.generateID();
+                    BitcodeID id = idGenerater.generateID(source.getName());
                     cached = getCapability(Loader.class).load(getContext(), source, id);
                     LibraryCacheEntry entry = new LibraryCacheEntry(this, source, cached, id);
                     if (entry.isCachable()) {
@@ -779,12 +777,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             }
         } else {
             // just get the id here and give it to the parserDriver
-            return getCapability(Loader.class).load(getContext(), source, idGenerater.generateID());
+            return getCapability(Loader.class).load(getContext(), source, idGenerater.generateID(source.getName()));
         }
-    }
-
-    public MapCursor<LibraryCacheKey, LibraryCacheEntry> getLibraryCache() {
-        return libraryCache.getEntries();
     }
 
     private void lazyCacheCleanup() {
@@ -795,7 +789,19 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
          */
         LibraryCacheEntry ref = (LibraryCacheEntry) libraryCacheQueue.poll();
         if (ref != null) {
-            libraryCache.removeKey(ref.key);
+            if (LibraryLocator.loggingEnabled()) {
+                LibraryLocator.traceStaticInits(getContext(), "LLVMLanguage lazy cached clean up, entry", ref.key.path);
+                BitcodeID bitcodeID = ref.id.get();
+                if (bitcodeID != null) {
+                    LibraryLocator.traceStaticInits(getContext(), "LLVMLanguage lazy cached clean up, bitcode id name", bitcodeID.getName());
+                    LibraryLocator.traceStaticInits(getContext(), "LLVMLanguage lazy cached clean up, bitcode id", bitcodeID.getId());
+                } else {
+                    LibraryLocator.traceStaticInits(getContext(), "LLVMLanguage lazy cached clean up, bitcode id", bitcodeID);
+                }
+            }
+            if (libraryCache.get(ref.key) == ref) {
+                libraryCache.removeKey(ref.key);
+            }
         }
     }
 
@@ -805,6 +811,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             lazyCacheCleanup();
             LibraryCacheKey key = new LibraryCacheKey(source);
             LibraryCacheEntry entry = libraryCache.get(key);
+            if (LibraryLocator.loggingEnabled()) {
+                LibraryLocator.traceStaticInits(getContext(), "LLVMLanguage get cached library, source name", source.getName());
+                LibraryLocator.traceStaticInits(getContext(), "LLVMLanguage get cached library, source", source);
+                LibraryLocator.traceStaticInits(getContext(), "LLVMLanguage get cached library, entry", entry);
+            }
             if (entry == null) {
                 return null;
             }

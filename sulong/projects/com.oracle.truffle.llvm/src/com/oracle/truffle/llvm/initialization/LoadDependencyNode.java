@@ -66,6 +66,10 @@ public final class LoadDependencyNode extends LLVMNode {
     public CallTarget execute() {
         LLVMContext context = getContext();
         CallTarget callTarget = context.getCalltargetFromCache(libraryName);
+        if (LibraryLocator.loggingEnabled()) {
+            LibraryLocator.traceStaticInits(context, "load dependency execute, loading library", libraryLocator);
+            LibraryLocator.traceStaticInits(context, "load dependency execute, call target is", callTarget);
+        }
         if (callTarget != null) {
             return callTarget;
         } else {
@@ -90,6 +94,9 @@ public final class LoadDependencyNode extends LLVMNode {
             return createNativeLibraryCallTarget(nativeFile);
         } else {
             CallTarget cached = getLanguage().getCachedLibrary(source);
+            if (LibraryLocator.loggingEnabled()) {
+                LibraryLocator.traceStaticInits(context, "load dependency execute, cached library", cached);
+            }
             if (cached != null) {
                 return cached;
             }
@@ -119,5 +126,9 @@ public final class LoadDependencyNode extends LLVMNode {
             LoadNativeNode loadNative = LoadNativeNode.create(getLanguage(), file);
             return loadNative.getCallTarget();
         }
+    }
+
+    public String getLibraryName() {
+        return libraryName;
     }
 }
