@@ -3564,7 +3564,7 @@ public abstract class InteropLibrary extends Library {
             try {
                 Object result = delegate.invokeMember(receiver, identifier, arguments);
                 assert delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
-                assert wasInvocable || isMultiThreaded(receiver) : violationInvariant(receiver, identifier);
+                assert wasInvocable || isMultiThreaded(receiver) || delegate.hasMemberReadSideEffects(receiver, identifier) : violationInvariant(receiver, identifier);
                 assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
