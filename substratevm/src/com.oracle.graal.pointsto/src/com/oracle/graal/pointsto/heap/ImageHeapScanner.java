@@ -434,6 +434,13 @@ public abstract class ImageHeapScanner {
 
     private void notifyAnalysis(ImageHeapArray array, AnalysisType arrayType, int elementIndex, ScanReason reason, Consumer<ScanReason> onAnalysisModified, JavaConstant elementValue) {
         if (scanningObserver != null && arrayType.getComponentType().getJavaKind() == JavaKind.Object) {
+            if (elementValue.getJavaKind() != JavaKind.Object) {
+                /*
+                 * WordBase values (except RelocatedPointer) are transformed to their raw Int value,
+                 * however an array of such values will still have an Object type.
+                 */
+                return;
+            }
             /* Notify the points-to analysis of the scan. */
             boolean analysisModified = notifyAnalysis(array, arrayType, elementValue, elementIndex, reason);
             if (analysisModified && onAnalysisModified != null) {
