@@ -34,6 +34,7 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
@@ -42,9 +43,6 @@ import java.util.stream.Stream;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableMapCursor;
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.word.WordTypes;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -98,6 +96,9 @@ import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -202,18 +203,21 @@ public class JNIAccessFeature implements Feature {
         @Override
         public void register(ConfigurationCondition condition, boolean unsafeAllocated, Class<?> clazz) {
             assert !unsafeAllocated : "unsafeAllocated can be only set via Unsafe.allocateInstance, not via JNI.";
+            Objects.requireNonNull(clazz, () -> nullErrorMessage("class"));
             abortIfSealed();
             registerConditionalConfiguration(condition, () -> newClasses.add(clazz));
         }
 
         @Override
-        public void register(ConfigurationCondition condition, boolean queriedOnly, Executable... methods) {
+        public void register(ConfigurationCondition condition, boolean queriedOnly, Executable... executables) {
+            requireNonNull(executables, "executable");
             abortIfSealed();
-            registerConditionalConfiguration(condition, () -> newMethods.addAll(Arrays.asList(methods)));
+            registerConditionalConfiguration(condition, () -> newMethods.addAll(Arrays.asList(executables)));
         }
 
         @Override
         public void register(ConfigurationCondition condition, boolean finalIsWritable, Field... fields) {
+            requireNonNull(fields, "field");
             abortIfSealed();
             registerConditionalConfiguration(condition, () -> registerFields(finalIsWritable, fields));
         }
@@ -621,5 +625,15 @@ public class JNIAccessFeature implements Feature {
              */
             return false;
         }
+    }
+
+    private static void requireNonNull(Object[] values, String kind) {
+        for (Object value : values) {
+            Objects.requireNonNull(value, () -> nullErrorMessage(kind));
+        }
+    }
+
+    private static String nullErrorMessage(String kind) {
+        return "Cannot register null value as " + kind + " for JNI access. Please ensure that all values you register are not null.";
     }
 }

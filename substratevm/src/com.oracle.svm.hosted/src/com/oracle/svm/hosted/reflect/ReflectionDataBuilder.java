@@ -56,6 +56,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -166,6 +167,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public void register(ConfigurationCondition condition, boolean unsafeInstantiated, Class<?> clazz) {
+        Objects.requireNonNull(clazz, () -> nullErrorMessage("class"));
         checkNotSealed();
         register(analysisUniverse -> registerConditionalConfiguration(condition,
                         () -> analysisUniverse.getBigbang().postTask(debug -> registerClass(clazz, unsafeInstantiated))));
@@ -269,6 +271,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public void register(ConfigurationCondition condition, boolean queriedOnly, Executable... executables) {
+        requireNonNull(executables, "executable");
         checkNotSealed();
         register(analysisUniverse -> registerConditionalConfiguration(condition, () -> {
             for (Executable executable : executables) {
@@ -397,6 +400,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public void register(ConfigurationCondition condition, boolean finalIsWritable, Field... fields) {
+        requireNonNull(fields, "field");
         checkNotSealed();
         registerInternal(condition, fields);
     }
@@ -1059,5 +1063,15 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     @Override
     public int getReflectionFieldsCount() {
         return registeredFields.size();
+    }
+
+    private static void requireNonNull(Object[] values, String kind) {
+        for (Object value : values) {
+            Objects.requireNonNull(value, () -> nullErrorMessage(kind));
+        }
+    }
+
+    private static String nullErrorMessage(String kind) {
+        return "Cannot register null value as " + kind + " for reflection. Please ensure that all values you register are not null.";
     }
 }
