@@ -24,8 +24,6 @@
  */
 package jdk.graal.compiler.hotspot.meta;
 
-import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
-import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCallee;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 import static jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
@@ -33,12 +31,17 @@ import static jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffec
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.MARK_WORD_LOCATION;
+import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
+import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCallee;
+import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
 import static org.graalvm.word.LocationIdentity.any;
 
 import java.util.function.BiConsumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect;
@@ -55,8 +58,6 @@ import jdk.graal.compiler.hotspot.stubs.Stub;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.word.Word;
 import jdk.graal.compiler.word.WordTypes;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -178,6 +179,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
         Class<?> resultType = descriptor.getResultType();
         GraalError.guarantee(descriptor.getTransition() != SAFEPOINT || resultType.isPrimitive() || Word.class.isAssignableFrom(resultType),
                         "non-leaf foreign calls must return objects in thread local storage: %s", descriptor);
+        GraalError.guarantee(outgoingCcType.equals(NativeCall), "only NativeCall");
         return register(HotSpotForeignCallLinkageImpl.create(metaAccess,
                         codeCache,
                         wordTypes,
@@ -244,9 +246,8 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
         HotSpotForeignCallLinkage targetLinkage = stub.getTargetLinkage();
         linkage.setCompiledStub(stub);
         register(linkage);
-        if (foreignCalls.get(targetLinkage.getDescriptor().getSignature()) == null) {
-            register(targetLinkage);
-        }
+        HotSpotForeignCallLinkage registeredTargetLinkage = foreignCalls.get(targetLinkage.getDescriptor().getSignature());
+        GraalError.guarantee(registeredTargetLinkage != null, "%s should already be registered", targetLinkage);
     }
 
     public static final boolean PREPEND_THREAD = true;

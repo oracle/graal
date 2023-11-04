@@ -41,7 +41,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
 
-import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.word.HotSpotWordTypes;
 import org.graalvm.collections.EconomicMap;
@@ -52,6 +51,7 @@ import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecode;
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -106,6 +106,7 @@ import jdk.graal.compiler.replacements.SnippetCounter;
 import jdk.graal.compiler.replacements.SnippetIntegerHistogram;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.classfile.ClassfileBytecode;
+import jdk.graal.compiler.word.WordTypes;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.TargetDescription;
@@ -717,9 +718,11 @@ public class SymbolicSnippetEncoder {
                 // Filter these out for now. These can't easily be handled because these positions
                 // description snippet methods which might not be available in the runtime.
                 return null;
-            } else if (o instanceof HotSpotForeignCallsProvider || o instanceof GraalHotSpotVMConfig || o instanceof HotSpotWordTypes || o instanceof TargetDescription ||
+            } else if (o instanceof ForeignCallsProvider || o instanceof GraalHotSpotVMConfig || o instanceof WordTypes || o instanceof TargetDescription ||
                             o instanceof SnippetReflectionProvider) {
-                return new EncodedSnippets.GraalCapability(o.getClass());
+                // These objects should be recovered from the runtime environment instead of being
+                // embedded in the node.
+                throw new GraalError("%s shouldn't be reachable from snippets", o);
             } else if (o instanceof Stamp) {
                 return filterStamp(debug, (Stamp) o);
             } else if (o instanceof StampPair) {
