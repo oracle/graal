@@ -724,7 +724,7 @@ public class NativeImageGenerator {
 
                     }
                 } catch (Throwable e) {
-                    throw VMError.shouldNotReachHere(e);
+                    throw debug.handle(e);
                 }
             }
 
