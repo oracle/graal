@@ -97,7 +97,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     private final Map<String, PathsOptionInfo> pathOptions;
     private final Set<String> stableOptionNames;
 
-    private boolean experimentalOptionsAreUnlocked = false;
+    private int numberOfActiveUnlockExperimentalVMOptions = 0;
     private Set<String> illegalExperimentalOptions = new HashSet<>(0);
 
     APIOptionHandler(NativeImage nativeImage) {
@@ -307,11 +307,21 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             return true;
         }
         if (ENTER_UNLOCK_SCOPE.equals(headArg)) {
-            experimentalOptionsAreUnlocked = true;
+            if (args.numberOfFirstObservedActiveUnlockExperimentalVMOptions < 0) {
+                /*
+                 * Remember numberOfExperimentalOptionsUnlocks per ArgumentQueue for verification
+                 * purposes only. Each queue cannot lock more than it unlocks.
+                 */
+                args.numberOfFirstObservedActiveUnlockExperimentalVMOptions = numberOfActiveUnlockExperimentalVMOptions;
+            }
+            numberOfActiveUnlockExperimentalVMOptions++;
         } else if (LEAVE_UNLOCK_SCOPE.equals(headArg)) {
-            VMError.guarantee(experimentalOptionsAreUnlocked, "ensureConsistentUnlockScopes() missed an open unlock scope");
-            experimentalOptionsAreUnlocked = false;
-        } else if (!experimentalOptionsAreUnlocked && !OptionOrigin.isAPI(args.argumentOrigin) && headArg.startsWith(NativeImage.oH) && stableOptionNames.stream().noneMatch(p -> headArg.matches(p))) {
+            if (numberOfActiveUnlockExperimentalVMOptions <= 0 || numberOfActiveUnlockExperimentalVMOptions <= args.numberOfFirstObservedActiveUnlockExperimentalVMOptions) {
+                throw VMError.shouldNotReachHere("Unlocking of experimental options in inconsistent state: trying to lock more scopes than exist or allowed.");
+            }
+            numberOfActiveUnlockExperimentalVMOptions--;
+        } else if (numberOfActiveUnlockExperimentalVMOptions == 0 && !OptionOrigin.isAPI(args.argumentOrigin) && headArg.startsWith(NativeImage.oH) &&
+                        stableOptionNames.stream().noneMatch(p -> headArg.matches(p))) {
             illegalExperimentalOptions.add(headArg);
         }
         for (Entry<String, GroupInfo> entry : groupInfos.entrySet()) {

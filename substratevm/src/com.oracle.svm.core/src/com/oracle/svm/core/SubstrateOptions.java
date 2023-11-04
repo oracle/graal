@@ -1022,4 +1022,12 @@ public class SubstrateOptions {
 
     @Option(help = "Include all classes, methods, fields, and resources from given paths", type = OptionType.Debug) //
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeAllFromPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+
+    public static class TruffleStableOptions {
+
+        @Option(help = "Automatically copy the necessary language resources to the resources/languages directory next to the produced image." +
+                        "Language resources for each language are specified in the native-image-resources.filelist file located in the language home directory." +
+                        "If there is no native-image-resources.filelist file in the language home directory or the file is empty, then no resources are copied.", type = User, stability = OptionStability.STABLE)//
+        public static final HostedOptionKey<Boolean> CopyLanguageResources = new HostedOptionKey<>(true);
+    }
 }
