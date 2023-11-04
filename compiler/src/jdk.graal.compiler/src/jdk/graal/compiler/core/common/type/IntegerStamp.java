@@ -24,11 +24,11 @@
  */
 package jdk.graal.compiler.core.common.type;
 
-import static jdk.vm.ci.code.CodeUtil.isPowerOf2;
 import static jdk.graal.compiler.core.common.calc.FloatConvert.I2D;
 import static jdk.graal.compiler.core.common.calc.FloatConvert.I2F;
 import static jdk.graal.compiler.core.common.calc.FloatConvert.L2D;
 import static jdk.graal.compiler.core.common.calc.FloatConvert.L2F;
+import static jdk.vm.ci.code.CodeUtil.isPowerOf2;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -39,7 +39,6 @@ import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.calc.ReinterpretUtils;
 import jdk.graal.compiler.core.common.spi.LIRKindTool;
 import jdk.graal.compiler.debug.GraalError;
-
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -1095,7 +1094,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
                     },
 
-                    new ArithmeticOpTable.BinaryOp.Sub(true, false) {
+                    new ArithmeticOpTable.BinaryOp.Sub(false, false) {
 
                         @Override
                         public Constant foldConstant(Constant const1, Constant const2) {
@@ -1487,7 +1486,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
                     },
 
-                    new ArithmeticOpTable.BinaryOp.Div(true, false) {
+                    new ArithmeticOpTable.BinaryOp.Div(false, false) {
 
                         @Override
                         public Constant foldConstant(Constant const1, Constant const2) {

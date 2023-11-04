@@ -39,7 +39,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.PrimitiveConstant;
 
@@ -79,8 +78,8 @@ public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArit
                 return ConstantNode.forPrimitive(stamp, zero);
             }
         }
-        boolean associative = op.isAssociative();
-        if (associative) {
+        boolean mayReassociate = BinaryArithmeticNode.mayReassociate(op, stamp);
+        if (mayReassociate) {
             if (forX instanceof AddNode) {
                 AddNode x = (AddNode) forX;
                 if (x.getY() == forY) {
@@ -129,7 +128,7 @@ public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArit
             if (op.isNeutral(c)) {
                 return forX;
             }
-            if (associative && self != null) {
+            if (mayReassociate && self != null) {
                 ValueNode reassociated = reassociateMatchedValues(self, ValueNode.isConstantPredicate(), forX, forY, view);
                 if (reassociated != self) {
                     return reassociated;
@@ -153,7 +152,7 @@ public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArit
                  */
                 return NegateNode.create(forY, view);
             }
-            if (associative && self != null) {
+            if (mayReassociate && self != null) {
                 return reassociateMatchedValues(self, ValueNode.isConstantPredicate(), forX, forY, view);
             }
         }
