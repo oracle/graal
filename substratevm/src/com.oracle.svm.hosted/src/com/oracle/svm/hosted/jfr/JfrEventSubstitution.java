@@ -43,6 +43,7 @@ import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.internal.misc.Unsafe;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.SecuritySupport;
@@ -66,6 +67,8 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
     private final ConcurrentHashMap<ResolvedJavaField, ResolvedJavaField> fieldSubstitutions;
     private final Map<String, Class<? extends jdk.jfr.Event>> mirrorEventMapping;
 
+    private static final Method registerMirror = JavaVersionUtil.JAVA_SPEC < 22 ? ReflectionUtil.lookupMethod(SecuritySupport.class, "registerMirror", Class.class) : null;
+
     JfrEventSubstitution(MetaAccessProvider metaAccess) {
         baseEventType = metaAccess.lookupJavaType(jdk.internal.event.Event.class);
         ResolvedJavaType jdkJfrEventWriter = metaAccess.lookupJavaType(EventWriter.class);
@@ -73,7 +76,11 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
         typeSubstitution = new ConcurrentHashMap<>();
         methodSubstitutions = new ConcurrentHashMap<>();
         fieldSubstitutions = new ConcurrentHashMap<>();
-        mirrorEventMapping = createMirrorEventsMapping();
+        if (JavaVersionUtil.JAVA_SPEC < 22) {
+            mirrorEventMapping = createMirrorEventsMapping();
+        } else {
+            mirrorEventMapping = null;
+        }
     }
 
     @Override
@@ -150,10 +157,12 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
             Class<? extends jdk.internal.event.Event> newEventClass = OriginalClassProvider.getJavaClass(eventType).asSubclass(jdk.internal.event.Event.class);
             eventType.initialize();
 
-            // It is crucial that mirror events are registered before the actual events.
-            Class<? extends jdk.jfr.Event> mirrorEventClass = mirrorEventMapping.get(newEventClass.getName());
-            if (mirrorEventClass != null) {
-                SecuritySupport.registerMirror(mirrorEventClass);
+            if (JavaVersionUtil.JAVA_SPEC < 22) {
+                // It is crucial that mirror events are registered before the actual events.
+                Class<? extends jdk.jfr.Event> mirrorEventClass = mirrorEventMapping.get(newEventClass.getName());
+                if (mirrorEventClass != null) {
+                    registerMirror.invoke(null, mirrorEventClass);
+                }
             }
 
             SecuritySupport.registerEvent(newEventClass);
