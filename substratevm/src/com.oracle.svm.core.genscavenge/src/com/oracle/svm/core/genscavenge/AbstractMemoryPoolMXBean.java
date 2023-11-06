@@ -40,6 +40,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.heap.AbstractMXBean;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.util.UnsignedUtils;
 
 import sun.management.Util;
 
@@ -74,11 +75,17 @@ public abstract class AbstractMemoryPoolMXBean extends AbstractMXBean implements
     abstract void afterCollection();
 
     MemoryUsage memoryUsage(UnsignedWord usedAndCommitted) {
-        return new MemoryUsage(getInitialValue().rawValue(), usedAndCommitted.rawValue(), usedAndCommitted.rawValue(), getMaximumValue().rawValue());
+        return memoryUsage(usedAndCommitted, usedAndCommitted);
     }
 
     MemoryUsage memoryUsage(UnsignedWord used, UnsignedWord committed) {
-        return new MemoryUsage(getInitialValue().rawValue(), used.rawValue(), committed.rawValue(), getMaximumValue().rawValue());
+        /*
+         * Actual memory usage may temporarily exceed the maximum. It would be better to return
+         * UNDEFINED as the maximum value but this could break compatibility (i.e., we only do that
+         * starting with GraalVM 24.0).
+         */
+        long max = UnsignedUtils.max(getMaximumValue(), UnsignedUtils.max(used, committed)).rawValue();
+        return new MemoryUsage(getInitialValue().rawValue(), used.rawValue(), committed.rawValue(), max);
     }
 
     @Override
