@@ -119,23 +119,18 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
     /**
      * Set to true to debug a problem reaching a fixpoint in {@link #postProcess}.
      */
-    private static final boolean LOG;
+    private final boolean log;
 
     /*
      * GR-49601: only check non boolean assertion calls for now.
      */
-    private static final boolean VERIFY_BOOLEAN_ASSERTION_CONDITIONS;
+    private final boolean verifyBooleanAssertionConditions;
 
     public static final String ENABLE_LOGGING_PROPERTY_NAME = "test.graal.assert.enableLog";
 
     public static final String ENABLE_BOOLEAN_ASSERTION_CONDITION_CHEKING = "test.graal.assert.enableBooleabConditions";
 
     public static final String ALL_PATHS_MUST_ASSERT_PROPERTY_NAME = "test.graal.assert.allPathsMustAssert";
-
-    static {
-        LOG = Boolean.getBoolean(ENABLE_LOGGING_PROPERTY_NAME);
-        VERIFY_BOOLEAN_ASSERTION_CONDITIONS = Boolean.getBoolean(ENABLE_BOOLEAN_ASSERTION_CONDITION_CHEKING);
-    }
 
     /**
      * Determine if all paths used during assertion checking in callees must have assertions used.
@@ -202,6 +197,9 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
                 nonEmptyAssertionCtor.add(ctor);
             }
         }
+
+        log = Boolean.getBoolean(ENABLE_LOGGING_PROPERTY_NAME);
+        verifyBooleanAssertionConditions = Boolean.getBoolean(ENABLE_BOOLEAN_ASSERTION_CONDITION_CHEKING);
 
         propagateStaticExcludeList();
 
@@ -496,7 +494,7 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
         int iteration = 0;
         boolean change = true;
         while (change) {
-            if (LOG) {
+            if (log) {
                 TTY.printf("Before iteration %d%n", iteration);
                 for (Map.Entry<ResolvedJavaMethod, MethodInfo> e : methodInfos.entrySet()) {
                     TTY.printf("%s", e.getValue());
@@ -552,7 +550,7 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
             if (!callerInfo.callsAssertionTransitively && calleeInfo != null && calleeInfo.callsAssertionTransitively) {
                 callerInfo.callsAssertionTransitively = true;
                 change = true;
-                if (LOG) {
+                if (log) {
                     TTY.printf("Change was true, caller %s did not call assertions but callee %s did so caller does as well, iteration %s%n", callerInfo.method, callee, iteration);
                 }
             }
@@ -569,7 +567,7 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
             MethodInfo calleeInfo = methodInfos.get(callee);
             if (calleeInfo != null && calleeInfo.correctAssertionMethod && calleeInfo.callsAssertionTransitively) {
                 calleeIt.remove();
-                if (LOG) {
+                if (log) {
                     TTY.printf("Change was true, %s was removed from not valid calls of %s doing iteration %s%n", callee, callerInfo.method, iteration);
                 }
             }
@@ -597,7 +595,7 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
              */
             if (calleeInfo == null || calleeInfo.correctAssertionMethod && (!calleeMustCallAssertionMethodOnAllPaths || calleeInfo.callsAssertionTransitively)) {
                 patchIT.remove();
-                if (LOG) {
+                if (log) {
                     TTY.printf("Change was true, %s was removed from patch calls of %s doing iteration %s%n", callee, callerInfo.method, iteration);
                 }
                 // can make more stuff actually correct assertions
@@ -846,7 +844,7 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
      * messages like null checks, because the surrounding code ensures enough context information is
      * present.
      */
-    private static boolean trivialCondition(IfNode ifC, Collection<ResolvedJavaMethod> excludeList, boolean trueSucc) {
+    private boolean trivialCondition(IfNode ifC, Collection<ResolvedJavaMethod> excludeList, boolean trueSucc) {
         LogicNode condition = ifC.condition();
         if (condition instanceof IsNullNode) {
             /*
@@ -860,7 +858,7 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
                 return true;
             }
         }
-        if (!VERIFY_BOOLEAN_ASSERTION_CONDITIONS) {
+        if (!verifyBooleanAssertionConditions) {
             if (condition instanceof CompareNode c) {
                 boolean trueConstantCheckIsFailure = trueSucc;
 

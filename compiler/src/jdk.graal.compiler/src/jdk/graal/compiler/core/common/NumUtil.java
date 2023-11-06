@@ -25,11 +25,10 @@
 package jdk.graal.compiler.core.common;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.CodeUtil;
-
-import java.nio.charset.StandardCharsets;
 
 /**
  * A collection of static utility functions that check ranges of numbers.
@@ -287,7 +286,7 @@ public class NumUtil {
         }
     }
 
-   /**
+    /**
      * Ensure the supplied double is a finite, positive number.
      */
     public static boolean assertPositiveDouble(double d) {

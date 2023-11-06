@@ -220,7 +220,7 @@ public abstract class Edges extends Fields {
      * @param value the node to be written to the edge
      */
     public void setNode(Node node, int index, Node value) {
-        assert index < directCount : index + ">=" + directCount;
+        assert index < directCount : index;
         Node old = getNodeUnsafe(node, offsets[index]);
         initializeNode(node, index, value);
         update(node, old, value);
