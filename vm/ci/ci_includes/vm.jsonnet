@@ -75,7 +75,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
   },
 
   diskspace_required: {
-    java21_linux_amd64: "30GB",
+    linux_amd64: "30GB",
   },
 
   maven_deploy_base_functions: {
