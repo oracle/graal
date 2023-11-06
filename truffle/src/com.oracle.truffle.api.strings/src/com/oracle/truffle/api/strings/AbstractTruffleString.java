@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,7 +61,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString.Encoding;
-import com.oracle.truffle.api.strings.TruffleStringFactory.ToIndexableNodeGen;
+import com.oracle.truffle.api.strings.TruffleString.ToIndexableNode;
 
 /**
  * Abstract base class for Truffle strings. Useful when a value can be both a {@link TruffleString}
@@ -1313,8 +1313,8 @@ public abstract class AbstractTruffleString {
             }
         }
         return TruffleString.EqualNode.checkContentEquals(TruffleString.EqualNode.getUncached(), this, b,
-                        ToIndexableNodeGen.getUncached(),
-                        ToIndexableNodeGen.getUncached(),
+                        ToIndexableNode.getUncached(),
+                        ToIndexableNode.getUncached(),
                         InlinedConditionProfile.getUncached(),
                         InlinedBranchProfile.getUncached(),
                         InlinedConditionProfile.getUncached());
@@ -1442,7 +1442,7 @@ public abstract class AbstractTruffleString {
 
         @TruffleBoundary
         private static void copy(Node location, TruffleString src, byte[] dst, int dstFrom, int dstStride) {
-            Object arrayA = ToIndexableNodeGen.getUncached().execute(location, src, src.data());
+            Object arrayA = ToIndexableNode.getUncached().execute(location, src, src.data());
             TStringOps.arraycopyWithStride(location,
                             arrayA, src.offset(), src.stride(), 0,
                             dst, 0, dstStride, dstFrom, src.length());

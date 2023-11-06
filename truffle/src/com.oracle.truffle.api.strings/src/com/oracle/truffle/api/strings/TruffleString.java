@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,14 +73,19 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.DenyReplace;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
@@ -2475,7 +2480,10 @@ public final class TruffleString extends AbstractTruffleString {
         }
     }
 
+    @GenerateUncached(false)
     abstract static class ToIndexableNode extends AbstractInternalNode {
+
+        private static final ToIndexableNode UNCACHED = new Uncached();
 
         abstract Object execute(Node node, AbstractTruffleString a, Object data);
 
@@ -2498,7 +2506,7 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         @Specialization
-        byte[] doLazyConcat(AbstractTruffleString a, @SuppressWarnings("unused") LazyConcat data) {
+        final byte[] doLazyConcat(AbstractTruffleString a, @SuppressWarnings("unused") LazyConcat data) {
             return doLazyConcatIntl(this, a);
         }
 
@@ -2518,6 +2526,47 @@ public final class TruffleString extends AbstractTruffleString {
                 data.setBytes((TruffleString) a, NumberConversion.longToString(data.value, a.length()));
             }
             return data.bytes;
+        }
+
+        public static ToIndexableNode getUncached() {
+            return UNCACHED;
+        }
+
+        @DenyReplace
+        @GenerateCached(false)
+        @GenerateUncached(false)
+        @GenerateInline(false)
+        private static final class Uncached extends ToIndexableNode {
+
+            @Override
+            public Object execute(Node node, AbstractTruffleString a, Object data) {
+                if (data instanceof byte[] byteData) {
+                    return byteData;
+                } else if (data instanceof NativePointer nativePointer && Encoding.isSupported(a.encoding())) {
+                    return nativePointer;
+                }
+                return doMaterialize(node, a, data);
+            }
+
+            @TruffleBoundary
+            private Object doMaterialize(Node node, AbstractTruffleString a, Object data) {
+                if (data instanceof NativePointer nativePointer) {
+                    assert !TStringGuards.isSupportedEncoding(a.encoding());
+                    return ToIndexableNode.doNativeUnsupported(node, a, nativePointer, InlinedConditionProfile.getUncached());
+                } else if (data instanceof LazyConcat) {
+                    return doLazyConcat(a, (LazyConcat) data);
+                } else if (data instanceof LazyLong) {
+                    return ToIndexableNode.doLazyLong(node, a, (LazyLong) data, InlinedConditionProfile.getUncached());
+                } else {
+                    assert false : data;
+                    throw CompilerDirectives.shouldNotReachHere();
+                }
+            }
+
+            @Override
+            public boolean isAdoptable() {
+                return false;
+            }
         }
     }
 
@@ -2621,7 +2670,7 @@ public final class TruffleString extends AbstractTruffleString {
      *
      * @see CodeRange
      * @see GetCodeRangeNode
-     * 
+     *
      * @since 23.0
      */
     public abstract static class GetCodeRangeImpreciseNode extends AbstractPublicNode {
@@ -3765,7 +3814,7 @@ public final class TruffleString extends AbstractTruffleString {
          * <p>
          * Usage example: A node that scans a string for a known set of code points and escapes them
          * with '\'.
-         * 
+         *
          * <pre>
          * {@code
          * abstract static class StringEscapeNode extends Node {
@@ -3813,7 +3862,7 @@ public final class TruffleString extends AbstractTruffleString {
          * @param codePointSet The set of codepoints to look for. This parameter is expected to be
          *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
          *            constant}.
-         * 
+         *
          * @since 23.0
          */
         public abstract int execute(AbstractTruffleString a, int fromByteIndex, int toByteIndex, CodePointSet codePointSet);
