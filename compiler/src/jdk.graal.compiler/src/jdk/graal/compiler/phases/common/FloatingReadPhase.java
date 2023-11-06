@@ -228,7 +228,7 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
         EconomicMap<LoopBeginNode, EconomicSet<LocationIdentity>> modifiedInLoops = null;
         if (graph.hasLoops()) {
             modifiedInLoops = EconomicMap.create(Equivalence.IDENTITY);
-            ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, false, false);
+            ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeFrequency(true).build();
             for (Loop<?> l : cfg.getLoops()) {
                 HIRLoop loop = (HIRLoop) l;
                 processLoop(loop, modifiedInLoops);

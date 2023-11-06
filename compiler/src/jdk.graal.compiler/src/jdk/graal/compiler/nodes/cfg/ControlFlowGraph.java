@@ -116,18 +116,14 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
         void exit(HIRBlock b, V value);
     }
 
-    public static ControlFlowGraph computeForSchedule(StructuredGraph graph) {
-        return compute(graph, true, true, true, true, true, false);
-    }
-
-    public static ControlFlowGraph compute(StructuredGraph graph, boolean connectBlocks, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
-        return compute(graph, connectBlocks, true, computeLoops, computeDominators, computePostdominators);
-    }
-
     private static final MemUseTrackerKey CFG_MEMORY = DebugContext.memUseTracker("CFGComputation");
 
-    public static ControlFlowGraph compute(StructuredGraph graph, boolean connectBlocks, boolean computeFrequency, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
-        return compute(graph, false, connectBlocks, computeFrequency, computeLoops, computeDominators, computePostdominators);
+    public static ControlFlowGraphBuilder newBuilder(StructuredGraph structuredGraph) {
+        return new ControlFlowGraphBuilder(structuredGraph);
+    }
+
+    public static ControlFlowGraph computeForSchedule(StructuredGraph graph) {
+        return compute(graph, true, true, true, true, true, false);
     }
 
     /**
@@ -141,7 +137,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
      * @param computePostdominators
      */
     @SuppressWarnings("try")
-    public static ControlFlowGraph compute(StructuredGraph graph, boolean backendBlocks, boolean connectBlocks, boolean computeFrequency, boolean computeLoops, boolean computeDominators,
+    static ControlFlowGraph compute(StructuredGraph graph, boolean backendBlocks, boolean connectBlocks, boolean computeFrequency, boolean computeLoops, boolean computeDominators,
                     boolean computePostdominators) {
 
         try (DebugCloseable c = CFG_MEMORY.start(graph.getDebug())) {

@@ -58,7 +58,7 @@ public class LockEliminationPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, false);
+        ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeDominators(true).computeFrequency(true).build();
         for (MonitorExitNode monitorExitNode : graph.getNodes(MonitorExitNode.TYPE)) {
             FixedNode next = monitorExitNode.next();
             if ((next instanceof MonitorEnterNode)) {

@@ -404,7 +404,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
     private List<CallTree> exploreGraph(InliningPhaseContext context, CallTree caller, StructuredGraph graph, int exploreRound) {
         caller.exploredIndex = exploreRound;
 
-        ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, false, true, false);
+        ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeDominators(true).computeFrequency(true).build();
         EconomicSet<AbstractBeginNode> deoptimizedBlocks = EconomicSet.create();
         EconomicSet<AbstractBeginNode> inInterpreterBlocks = EconomicSet.create();
         List<CallTree> children = new ArrayList<>();

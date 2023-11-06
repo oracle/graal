@@ -76,7 +76,7 @@ public class NodeCostUtil {
             cfg = graph.getLastSchedule().getCFG();
             blockToNodes = b -> graph.getLastSchedule().getBlockToNodesMap().get(b);
         } else {
-            cfg = ControlFlowGraph.compute(graph, true, true, false, false);
+            cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeFrequency(true).build();
             BlockMap<List<FixedNode>> nodes = new BlockMap<>(cfg);
             for (HIRBlock b : cfg.getBlocks()) {
                 ArrayList<FixedNode> curNodes = new ArrayList<>();
