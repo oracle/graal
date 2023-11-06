@@ -73,8 +73,8 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     notify_groups:: ['deploy'],
   },
 
-  diskspace_required: {
-    linux_amd64: "30GB",
+  default_diskspace_required(os, arch, large): {
+    'diskspace_required': if (large) then '30GB' else '25GB',
   },
 
   maven_deploy_base_functions: {
