@@ -39,8 +39,8 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Activation;
 import jdk.graal.compiler.debug.DebugHandlersFactory;
 import jdk.graal.compiler.debug.DebugOptions;
-import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntime.HotSpotGC;
+import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.phases.OnStackReplacementPhase;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.java.StableMethodNameFormatter;
@@ -59,7 +59,6 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.serviceprovider.GraalUnsafeAccess;
-
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
@@ -285,28 +284,25 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
      */
     protected PhaseSuite<HighTierContext> configGraphBuilderSuite(PhaseSuite<HighTierContext> suite, boolean shouldDebugNonSafepoints, boolean shouldRetainLocalVariables, boolean eagerResolving,
                     boolean isOSR) {
-        if (shouldDebugNonSafepoints || shouldRetainLocalVariables || isOSR || eagerResolving) {
-            PhaseSuite<HighTierContext> newGbs = suite.copy();
-            GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) newGbs.findPhase(GraphBuilderPhase.class).previous();
-            GraphBuilderConfiguration graphBuilderConfig = graphBuilderPhase.getGraphBuilderConfig();
-            if (shouldDebugNonSafepoints) {
-                graphBuilderConfig = graphBuilderConfig.withNodeSourcePosition(true);
-            }
-            if (shouldRetainLocalVariables) {
-                graphBuilderConfig = graphBuilderConfig.withRetainLocalVariables(true);
-            }
-            if (eagerResolving) {
-                graphBuilderConfig = graphBuilderConfig.withEagerResolving(true);
-                graphBuilderConfig = graphBuilderConfig.withUnresolvedIsError(true);
-            }
-            GraphBuilderPhase newGraphBuilderPhase = new HotSpotGraphBuilderPhase(graphBuilderConfig);
-            newGbs.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);
-            if (isOSR) {
-                newGbs.appendPhase(new OnStackReplacementPhase());
-            }
-            return newGbs;
+        PhaseSuite<HighTierContext> newGbs = suite.copy();
+        GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) newGbs.findPhase(GraphBuilderPhase.class).previous();
+        GraphBuilderConfiguration graphBuilderConfig = graphBuilderPhase.getGraphBuilderConfig();
+        if (shouldDebugNonSafepoints) {
+            graphBuilderConfig = graphBuilderConfig.withNodeSourcePosition(true);
         }
-        return suite;
+        if (shouldRetainLocalVariables) {
+            graphBuilderConfig = graphBuilderConfig.withRetainLocalVariables(true);
+        }
+        if (eagerResolving) {
+            graphBuilderConfig = graphBuilderConfig.withEagerResolving(true);
+            graphBuilderConfig = graphBuilderConfig.withUnresolvedIsError(true);
+        }
+        GraphBuilderPhase newGraphBuilderPhase = new HotSpotGraphBuilderPhase(graphBuilderConfig);
+        newGbs.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);
+        if (isOSR) {
+            newGbs.appendPhase(new OnStackReplacementPhase());
+        }
+        return newGbs;
     }
 
     @Override
