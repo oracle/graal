@@ -303,7 +303,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         String translatedOption = translateOption(args);
         if (translatedOption != null) {
             args.poll();
-            nativeImage.addPlainImageBuilderArg(NativeImage.injectHostedOptionOrigin(translatedOption, args.argumentOrigin + OptionOrigin.isAPISuffix));
+            nativeImage.addPlainImageBuilderArg(translatedOption, args.argumentOrigin + OptionOrigin.isAPISuffix);
             return true;
         }
         if (ENTER_UNLOCK_SCOPE.equals(headArg)) {

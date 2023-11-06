@@ -76,6 +76,7 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.hosted.ProgressReporterFeature.UserRecommendation;
@@ -89,6 +90,7 @@ import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.hosted.util.CPUType;
 import com.oracle.svm.hosted.util.DiagnosticUtils;
+import com.oracle.svm.hosted.util.JDKArgsUtils;
 import com.oracle.svm.hosted.util.VMErrorReporter;
 import com.oracle.svm.util.ImageBuildStatistics;
 
@@ -254,6 +256,7 @@ public class ProgressReporter {
 
         printFeatures(features);
         printExperimentalOptions(classLoader);
+        printEnvironmentVariableOptions();
         printResourceInfo();
     }
 
@@ -401,6 +404,17 @@ public class ProgressReporter {
 
     private static boolean isStableOrInternalOrigin(OptionOrigin origin) {
         return origin.isStable() || origin.isInternal();
+    }
+
+    private void printEnvironmentVariableOptions() {
+        String envVarValue = SubstrateOptions.BuildOutputNativeImageOptionsEnvVarValue.getValue();
+        if (envVarValue != null && !envVarValue.isEmpty()) {
+            l().printLineSeparator();
+            l().yellowBold().a(" ").doclink("Picked up " + SubstrateOptions.NATIVE_IMAGE_OPTIONS_ENV_VAR, "#glossary-picked-up-ni-options").reset().a(":").println();
+            for (String arg : JDKArgsUtils.parseArgsFromEnvVar(envVarValue, SubstrateOptions.NATIVE_IMAGE_OPTIONS_ENV_VAR, msg -> UserError.abort(msg))) {
+                l().a(" - '%s'", arg).println();
+            }
+        }
     }
 
     private void printResourceInfo() {

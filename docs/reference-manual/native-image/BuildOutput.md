@@ -128,6 +128,12 @@ A list of all active experimental options, including their origin and possible A
 Using experimental options should be avoided in production and can change in any release.
 If you rely on experimental features and would like an option to be considered stable, please file an issue.
 
+#### <a name="glossary-picked-up-ni-options"></a>Picked up `NATIVE_IMAGE_OPTIONS`
+Additional build options picked up via the `NATIVE_IMAGE_OPTIONS` environment variable.
+Similar to `JAVA_TOOL_OPTIONS`, the value of the environment variable is prepended to the options supplied to `native-image`.
+Argument files are not allowed to be passed via `NATIVE_IMAGE_OPTIONS`.
+The `NATIVE_IMAGE_OPTIONS` environment variable is designed to be used by users, build environments, or tools to inject additional build options.
+
 #### <a name="glossary-build-resources"></a>Build Resources
 The memory limit and number of threads used by the build process.
 
