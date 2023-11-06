@@ -42,6 +42,8 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     # JDK latest only works on MacOS Ventura (GR-49652)
     # sc.weekly + $.sulong + sc.labsjdkLatest + sc.darwin_amd64 + sc.llvm4 + sc.gateTags(basicTags) + { name: "weekly-sulong-basic-nwcc-llvm-v40-jdk-latest-darwin-amd64", timelimit: "0:45:00" },
     # sc.gate + $.sulong + sc.labsjdkLatest + sc.darwin_amd64 + sc.llvmBundled + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk-latest-darwin-amd64", timelimit: "0:45:00", capabilities+: ["!darwin_bigsur", "ram16gb"] },
+    # remove the following build once GR-49652 is fixed
+    sc.gate + $.sulong + sc.labsjdk21 + sc.darwin_amd64 + sc.llvmBundled + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk21-darwin-amd64", timelimit: "0:45:00", capabilities+: ["!darwin_bigsur", "ram16gb"] },
 
     sc.gate + $.sulong + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk-latest-linux-amd64" },
     sc.gate + $.sulong + sc.labsjdk21 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk21-linux-amd64" },
