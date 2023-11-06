@@ -92,20 +92,18 @@ local sc = (import "ci_common/sulong-common.jsonnet");
   coverage_builds::
     sc.mapPrototypePlatformName([sc.weekly + $.sulong + sc.coverage($.regular_builds)],
     [
-      [sc.linux_amd64,    [sc.labsjdkLatest]],
-      # JDK latest only works on MacOS Ventura (GR-49652)
-      # [sc.darwin_amd64,   [sc.labsjdkLatest]],
-      [sc.windows_amd64,  [sc.labsjdkLatest]],
-      [sc.linux_aarch64,  [sc.labsjdkLatest]],
-      [sc.darwin_aarch64, [sc.labsjdkLatest]],
+      [sc.linux_amd64,    [sc.labsjdk21]],
+      [sc.darwin_amd64,   [sc.labsjdk21]],
+      [sc.windows_amd64,  [sc.labsjdk21]],
+      [sc.linux_aarch64,  [sc.labsjdk21]],
+      [sc.darwin_aarch64, [sc.labsjdk21]],
     ],
     [
-      { name: "weekly-sulong-coverage-jdk-latest-linux-amd64",    timelimit: "1:00:00" },
-      # JDK latest only works on MacOS Ventura (GR-49652)
-      # { name: "weekly-sulong-coverage-jdk-latest-darwin-amd64",   timelimit: "1:00:00" },
-      { name: "weekly-sulong-coverage-jdk-latest-windows-amd64",  timelimit: "1:00:00" },
-      { name: "weekly-sulong-coverage-jdk-latest-linux-aarch64",  timelimit: "1:00:00" },
-      { name: "weekly-sulong-coverage-jdk-latest-darwin-aarch64", timelimit: "1:00:00" },
+      { name: "weekly-sulong-coverage-jdk21-linux-amd64",    timelimit: "1:00:00" },
+      { name: "weekly-sulong-coverage-jdk21-darwin-amd64",   timelimit: "1:00:00" },
+      { name: "weekly-sulong-coverage-jdk21-windows-amd64",  timelimit: "1:00:00" },
+      { name: "weekly-sulong-coverage-jdk21-linux-aarch64",  timelimit: "1:00:00" },
+      { name: "weekly-sulong-coverage-jdk21-darwin-aarch64", timelimit: "1:00:00" },
     ]),
 
   builds: [ sc.defBuild(b) for b in self.regular_builds + self.standalone_builds + self.coverage_builds ],
