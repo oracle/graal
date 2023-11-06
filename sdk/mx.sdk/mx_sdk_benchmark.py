@@ -569,7 +569,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                     mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                 if self.measureLatency:
-                    if not [c.get("requests-per-second") for c in self.loadConfiguration("latency") if c.get("requests-per-second")]:
+                    if not any([c.get("requests-per-second") for c in self.loadConfiguration("latency")]):
                         # Calibrate for latency measurements (without RSS tracker) if no fixed request rate has been provided in the config
                         with EmptyEnv(self.get_env()):
                             measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, [self])
