@@ -124,7 +124,7 @@ public enum CPUTypeAMD64 implements CPUType {
         name = cpuTypeName;
         parent = cpuTypeParent;
         specificFeatures = features.length > 0 ? EnumSet.copyOf(List.of(features)) : EnumSet.noneOf(CPUFeature.class);
-        assert parent == null || parent.getFeatures().stream().noneMatch(f -> specificFeatures.contains(f)) : "duplicate features detected but not allowed";
+        assert parent == null || parent.getFeatures().stream().noneMatch(specificFeatures::contains) : "duplicate features detected but not allowed";
     }
 
     @Override
@@ -139,7 +139,7 @@ public enum CPUTypeAMD64 implements CPUType {
 
     @Override
     public String getSpecificFeaturesString() {
-        return specificFeatures.stream().map(f -> f.name()).collect(Collectors.joining(" + "));
+        return specificFeatures.stream().map(Enum::name).collect(Collectors.joining(" + "));
     }
 
     public EnumSet<CPUFeature> getFeatures() {

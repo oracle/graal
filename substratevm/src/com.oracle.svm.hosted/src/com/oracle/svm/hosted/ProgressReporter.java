@@ -48,14 +48,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionStability;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.serviceprovider.GraalServices;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
@@ -96,6 +92,11 @@ import com.oracle.svm.hosted.util.CPUType;
 import com.oracle.svm.hosted.util.DiagnosticUtils;
 import com.oracle.svm.hosted.util.VMErrorReporter;
 import com.oracle.svm.util.ImageBuildStatistics;
+
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionStability;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 
 public class ProgressReporter {
     private static final boolean IS_CI = SubstrateUtil.isRunningInCI();
@@ -260,7 +261,7 @@ public class ProgressReporter {
         int numFeatures = features.size();
         if (numFeatures > 0) {
             l().a(" ").a(numFeatures).a(" ").doclink("user-specific feature(s)", "#glossary-user-specific-features").a(":").println();
-            features.sort((a, b) -> a.getClass().getName().compareTo(b.getClass().getName()));
+            features.sort(Comparator.comparing(a -> a.getClass().getName()));
             for (Feature feature : features) {
                 printFeature(l(), feature);
             }
@@ -343,7 +344,7 @@ public class ProgressReporter {
                     origins = origin.toString();
                     String valueString;
                     if (hok.getDescriptor().getOptionValueType() == Boolean.class) {
-                        valueString = Boolean.valueOf(value.toString()) ? "+" : "-";
+                        valueString = Boolean.parseBoolean(value.toString()) ? "+" : "-";
                         optionPrefix += valueString;
                     } else {
                         valueString = value.toString();
@@ -436,7 +437,7 @@ public class ProgressReporter {
     private void printAnalysisStatistics(AnalysisUniverse universe, Collection<String> libraries) {
         String actualFormat = "%,9d ";
         String totalFormat = " (%4.1f%% of %,8d total)";
-        long reachableTypes = universe.getTypes().stream().filter(t -> t.isReachable()).count();
+        long reachableTypes = universe.getTypes().stream().filter(AnalysisType::isReachable).count();
         long totalTypes = universe.getTypes().size();
         recordJsonMetric(AnalysisResults.TYPES_TOTAL, totalTypes);
         recordJsonMetric(AnalysisResults.DEPRECATED_CLASS_TOTAL, totalTypes);
@@ -445,14 +446,14 @@ public class ProgressReporter {
         l().a(actualFormat, reachableTypes).doclink("reachable types", "#glossary-reachability").a("  ")
                         .a(totalFormat, Utils.toPercentage(reachableTypes, totalTypes), totalTypes).println();
         Collection<AnalysisField> fields = universe.getFields();
-        long reachableFields = fields.stream().filter(f -> f.isAccessed()).count();
+        long reachableFields = fields.stream().filter(AnalysisField::isAccessed).count();
         int totalFields = fields.size();
         recordJsonMetric(AnalysisResults.FIELD_TOTAL, totalFields);
         recordJsonMetric(AnalysisResults.FIELD_REACHABLE, reachableFields);
         l().a(actualFormat, reachableFields).doclink("reachable fields", "#glossary-reachability").a(" ")
                         .a(totalFormat, Utils.toPercentage(reachableFields, totalFields), totalFields).println();
         Collection<AnalysisMethod> methods = universe.getMethods();
-        long reachableMethods = methods.stream().filter(m -> m.isReachable()).count();
+        long reachableMethods = methods.stream().filter(AnalysisMethod::isReachable).count();
         int totalMethods = methods.size();
         recordJsonMetric(AnalysisResults.METHOD_TOTAL, totalMethods);
         recordJsonMetric(AnalysisResults.METHOD_REACHABLE, reachableMethods);
@@ -617,7 +618,7 @@ public class ProgressReporter {
 
         int numCodeItems = codeBreakdown.size();
         int numHeapItems = heapBreakdown.getSortedBreakdownEntries().size();
-        long totalCodeBytes = codeBreakdown.values().stream().collect(Collectors.summingLong(Long::longValue));
+        long totalCodeBytes = codeBreakdown.values().stream().mapToLong(Long::longValue).sum();
 
         p.l().a(String.format("%9s for %s more packages", ByteFormattingUtil.bytesToHuman(totalCodeBytes - printedCodeBytes), numCodeItems - printedCodeItems))
                         .jumpToMiddle()
@@ -648,7 +649,7 @@ public class ProgressReporter {
 
         if (optionalError.isPresent()) {
             Path errorReportPath = NativeImageOptions.getErrorFilePath(parsedHostedOptions);
-            Optional<FeatureHandler> featureHandler = optionalGenerator.isEmpty() ? Optional.empty() : Optional.ofNullable(optionalGenerator.get().featureHandler);
+            Optional<FeatureHandler> featureHandler = optionalGenerator.map(nativeImageGenerator -> nativeImageGenerator.featureHandler);
             ReportUtils.report("GraalVM Native Image Error Report", errorReportPath, p -> VMErrorReporter.generateErrorReport(p, buildOutputLog, classLoader, featureHandler, optionalError.get()),
                             false);
             if (ImageSingletonsSupport.isInstalled()) {
@@ -738,9 +739,7 @@ public class ProgressReporter {
                 pathToTypes.computeIfAbsent(path, p -> new ArrayList<>()).add(artifactType.name().toLowerCase());
             }
         });
-        pathToTypes.forEach((path, typeNames) -> {
-            l().a(" ").link(path).dim().a(" (").a(String.join(", ", typeNames)).a(")").reset().println();
-        });
+        pathToTypes.forEach((path, typeNames) -> l().a(" ").link(path).dim().a(" (").a(String.join(", ", typeNames)).a(")").reset().println());
     }
 
     private Path reportBuildOutput(Path jsonOutputFile) {
@@ -862,7 +861,7 @@ public class ProgressReporter {
                         sb.append(rest);
                     } else {
                         int remainingSpaceDivBy2 = (maxLength - sbLength) / 2;
-                        sb.append(rest.substring(0, remainingSpaceDivBy2 - 1) + "~" + rest.substring(restLength - remainingSpaceDivBy2, restLength));
+                        sb.append(rest, 0, remainingSpaceDivBy2 - 1).append("~").append(rest, restLength - remainingSpaceDivBy2, restLength);
                     }
                     break;
                 }
@@ -965,11 +964,6 @@ public class ProgressReporter {
 
         public final T blueBold() {
             colorStrategy.blueBold(this);
-            return getThis();
-        }
-
-        public final T magentaBold() {
-            colorStrategy.magentaBold(this);
             return getThis();
         }
 
@@ -1079,7 +1073,13 @@ public class ProgressReporter {
         }
 
         final void printLineParts() {
-            lineParts.forEach(ProgressReporter.this::print);
+            /*
+             * This uses a copy of the array to avoid any ConcurrentModificationExceptions in case
+             * progress is still being printed.
+             */
+            for (String part : lineParts.toArray(new String[0])) {
+                print(part);
+            }
         }
 
         void flushln() {
@@ -1102,9 +1102,9 @@ public class ProgressReporter {
         private BuildStage activeBuildStage = null;
 
         private ScheduledFuture<?> periodicPrintingTask;
-        private AtomicBoolean isCancelled = new AtomicBoolean();
+        private boolean isCancelled;
 
-        T start(BuildStage stage) {
+        void start(BuildStage stage) {
             assert activeBuildStage == null;
             activeBuildStage = stage;
             appendStageStart();
@@ -1114,18 +1114,17 @@ public class ProgressReporter {
             if (activeBuildStage.hasPeriodicProgress) {
                 startPeriodicProgress();
             }
-            return getThis();
         }
 
         private void startPeriodicProgress() {
-            isCancelled.set(false);
+            isCancelled = false;
             periodicPrintingTask = executor.scheduleAtFixedRate(new Runnable() {
                 int countdown;
                 int numPrints;
 
                 @Override
                 public void run() {
-                    if (isCancelled.get()) {
+                    if (isCancelled) {
                         return;
                     }
                     if (--countdown < 0) {
@@ -1155,7 +1154,7 @@ public class ProgressReporter {
 
         void end(double totalTime) {
             if (activeBuildStage.hasPeriodicProgress) {
-                isCancelled.set(true);
+                isCancelled = true;
                 periodicPrintingTask.cancel(false);
             }
             if (activeBuildStage.hasProgressBar) {
@@ -1219,10 +1218,9 @@ public class ProgressReporter {
         }
 
         @Override
-        CharacterwiseStagePrinter start(BuildStage stage) {
+        void start(BuildStage stage) {
             super.start(stage);
             builderIO.progressReporter = ProgressReporter.this;
-            return getThis();
         }
 
         @Override
@@ -1346,7 +1344,7 @@ public class ProgressReporter {
         }
     }
 
-    final class ColorlessStrategy implements ColorStrategy {
+    static final class ColorlessStrategy implements ColorStrategy {
     }
 
     final class ColorfulStrategy implements ColorStrategy {
