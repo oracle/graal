@@ -37,7 +37,7 @@ import java.lang.annotation.Target;
  * 
  * <pre>
  *    +--------------------------------------------------+
- *    | object header (see HostedConfiguration)          |
+ *    | object header (same header as for arrays)        |
  *    +--------------------------------------------------+
  *    | array length                                     |
  *    +--------------------------------------------------+

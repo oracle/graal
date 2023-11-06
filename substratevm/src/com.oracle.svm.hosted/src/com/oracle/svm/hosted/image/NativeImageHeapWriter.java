@@ -392,6 +392,7 @@ public final class NativeImageHeapWriter {
             } else {
                 idHashOffset = ((HostedInstanceClass) clazz).getIdentityHashOffset();
             }
+            assert idHashOffset > 0;
             bufferBytes.putInt(info.getIndexInBuffer(idHashOffset), info.getIdentityHashCode());
 
         } else if (clazz.isArray()) {

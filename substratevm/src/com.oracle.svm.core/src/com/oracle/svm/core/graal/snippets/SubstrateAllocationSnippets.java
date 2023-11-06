@@ -420,25 +420,6 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         return ConfigurationValues.getObjectLayout().getFirstFieldOffset();
     }
 
-    @Override
-    protected UnsignedWord arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize) {
-        /*
-         * We do an unsigned multiplication so that a negative array length will result in an array
-         * size greater than Integer.MAX_VALUE.
-         */
-        long size = ((length & 0xFFFFFFFFL) << log2ElementSize) + arrayBaseOffset;
-
-        /* Add the identity hashcode field if necessary. */
-        if (ConfigurationValues.getObjectLayout().isIdentityHashFieldSynthetic()) {
-            int align = Integer.BYTES;
-            size = (size + align - 1) & -align;
-            size += Integer.BYTES;
-        }
-
-        size = (size + objectAlignment() - 1) & -objectAlignment();
-        return WordFactory.unsigned(size);
-    }
-
     @Fold
     public static int afterArrayLengthOffset() {
         return ConfigurationValues.getObjectLayout().getArrayLengthOffset() + ConfigurationValues.getObjectLayout().sizeInBytes(JavaKind.Int);
@@ -465,13 +446,14 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         return obj;
     }
 
-    private static int objectAlignment() {
-        return ConfigurationValues.getObjectLayout().getAlignment();
-    }
-
     @Override
     public final int arrayLengthOffset() {
         return ConfigurationValues.getObjectLayout().getArrayLengthOffset();
+    }
+
+    @Override
+    protected final int objectAlignment() {
+        return ConfigurationValues.getObjectLayout().getAlignment();
     }
 
     public static int getArrayBaseOffset(int layoutEncoding) {
@@ -510,8 +492,8 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     private static native Object callNewMultiArray(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word hub, int rank, Word dimensions);
 
     @Override
-    public void initializeObjectHeader(Word memory, Word objectHeader, boolean isArray) {
-        Heap.getHeap().getObjectHeader().initializeHeaderOfNewObject(memory, objectHeader);
+    public void initializeObjectHeader(Word memory, Word objectHeader, boolean isArrayLike) {
+        Heap.getHeap().getObjectHeader().initializeHeaderOfNewObject(memory, objectHeader, isArrayLike);
     }
 
     @Override

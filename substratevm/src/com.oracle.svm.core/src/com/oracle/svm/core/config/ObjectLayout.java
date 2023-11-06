@@ -25,8 +25,6 @@
 package com.oracle.svm.core.config;
 
 import org.graalvm.nativeimage.AnnotationAccess;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.word.WordBase;
 
@@ -49,8 +47,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * <ol type="a">
  * <li>In the object header, at a fixed offset for all objects (see
  * {@link #isIdentityHashFieldInObjectHeader()}).</li>
- * <li>In a synthetic field (outside the object header), at a type or object specific offset (see
- * {@link #isIdentityHashFieldSynthetic()}).</li>
+ * <li>At a type specific offset, potentially outside the object header (see
+ * {@link #isIdentityHashFieldAtTypeSpecificOffset()}).</li>
  * <li>Outside the object header, at a type and object state specific offset (see
  * {@link #isIdentityHashFieldOptional()}).</li>
  * </ol>
@@ -66,19 +64,17 @@ public final class ObjectLayout {
     private final int arrayLengthOffset;
     private final int arrayBaseOffset;
     private final int objectHeaderIdentityHashOffset;
-    private final boolean isIdentityHashFieldSynthetic;
-    private final boolean isIdentityHashFieldOptional;
+    private final int identityHashMode;
 
     public ObjectLayout(SubstrateTargetDescription target, int referenceSize, int objectAlignment, int hubOffset, int firstFieldOffset, int arrayLengthOffset, int arrayBaseOffset,
-                    int identityHashOffset, IdentityHashPosition identityHashPos) {
+                    int headerIdentityHashOffset, IdentityHashMode identityHashMode) {
         assert CodeUtil.isPowerOf2(referenceSize) : referenceSize;
         assert CodeUtil.isPowerOf2(objectAlignment) : objectAlignment;
         assert arrayLengthOffset % Integer.BYTES == 0;
         assert hubOffset < firstFieldOffset && hubOffset < arrayLengthOffset : hubOffset;
-        assert arrayLengthOffset % Integer.BYTES == 0;
-        assert identityHashPos == IdentityHashPosition.OBJECT_HEADER || identityHashPos == IdentityHashPosition.SYNTHETIC_FIELD || identityHashPos == IdentityHashPosition.OPTIONAL;
-        assert (identityHashPos == IdentityHashPosition.OBJECT_HEADER && identityHashOffset > 0 && identityHashOffset < arrayLengthOffset && identityHashOffset % Integer.BYTES == 0) ||
-                        (identityHashPos != IdentityHashPosition.OBJECT_HEADER && identityHashOffset == -1);
+        assert identityHashMode == IdentityHashMode.OBJECT_HEADER || identityHashMode == IdentityHashMode.TYPE_SPECIFIC || identityHashMode == IdentityHashMode.OPTIONAL;
+        assert (identityHashMode != IdentityHashMode.OPTIONAL && headerIdentityHashOffset > 0 && headerIdentityHashOffset < arrayLengthOffset && headerIdentityHashOffset % Integer.BYTES == 0) ||
+                        (identityHashMode == IdentityHashMode.OPTIONAL && headerIdentityHashOffset == -1);
 
         this.target = target;
         this.referenceSize = referenceSize;
@@ -88,10 +84,8 @@ public final class ObjectLayout {
         this.firstFieldOffset = firstFieldOffset;
         this.arrayLengthOffset = arrayLengthOffset;
         this.arrayBaseOffset = arrayBaseOffset;
-        this.objectHeaderIdentityHashOffset = identityHashOffset;
-        this.isIdentityHashFieldSynthetic = identityHashPos == IdentityHashPosition.SYNTHETIC_FIELD;
-        this.isIdentityHashFieldOptional = identityHashPos == IdentityHashPosition.OPTIONAL;
-
+        this.objectHeaderIdentityHashOffset = headerIdentityHashOffset;
+        this.identityHashMode = identityHashMode.value;
     }
 
     /** The minimum alignment of objects (instances and arrays). */
@@ -112,7 +106,6 @@ public final class ObjectLayout {
     }
 
     /**
-     * 
      * The size (in bytes) of values with the given kind.
      */
     public int sizeInBytes(JavaKind kind) {
@@ -163,32 +156,32 @@ public final class ObjectLayout {
         return arrayLengthOffset;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean isIdentityHashFieldOptional() {
-        return isIdentityHashFieldOptional;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean isIdentityHashFieldSynthetic() {
-        return isIdentityHashFieldSynthetic;
-    }
-
     /**
      * Indicates whether all objects, including arrays, always contain an identity hash code field
      * at a specific offset in the object header.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isIdentityHashFieldInObjectHeader() {
-        return objectHeaderIdentityHashOffset >= 0;
+        return identityHashMode == IdentityHashMode.OBJECT_HEADER.value;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isIdentityHashFieldAtTypeSpecificOffset() {
+        return identityHashMode == IdentityHashMode.TYPE_SPECIFIC.value;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isIdentityHashFieldOptional() {
+        return identityHashMode == IdentityHashMode.OPTIONAL.value;
     }
 
     /** If {@link #isIdentityHashFieldInObjectHeader()}, then returns that offset. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getObjectHeaderIdentityHashOffset() {
         if (GraalDirectives.inIntrinsic()) {
-            ReplacementsUtil.dynamicAssert(isIdentityHashFieldInObjectHeader(), "must check before calling");
+            ReplacementsUtil.dynamicAssert(objectHeaderIdentityHashOffset > 0, "must check before calling");
         } else {
-            assert isIdentityHashFieldInObjectHeader();
+            assert objectHeaderIdentityHashOffset > 0 : "must check before calling";
         }
         return objectHeaderIdentityHashOffset;
     }
@@ -216,7 +209,7 @@ public final class ObjectLayout {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getArrayIdentityHashOffset(long unalignedSize) {
-        if (isIdentityHashFieldInObjectHeader()) {
+        if (isIdentityHashFieldInObjectHeader() || isIdentityHashFieldAtTypeSpecificOffset()) {
             return getObjectHeaderIdentityHashOffset();
         }
         int align = Integer.BYTES;
@@ -226,7 +219,7 @@ public final class ObjectLayout {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long computeArrayTotalSize(long unalignedSize, boolean withOptionalIdHashField) {
         long size = unalignedSize;
-        if ((withOptionalIdHashField && isIdentityHashFieldOptional()) || isIdentityHashFieldSynthetic()) {
+        if (withOptionalIdHashField && isIdentityHashFieldOptional()) {
             size = getArrayIdentityHashOffset(size) + Integer.BYTES;
         }
         return alignUp(size);
@@ -234,7 +227,7 @@ public final class ObjectLayout {
 
     public int getMinImageHeapInstanceSize() {
         int unalignedSize = firstFieldOffset; // assumes no always-present "synthetic fields"
-        if (!isIdentityHashFieldInObjectHeader()) {
+        if (isIdentityHashFieldAtTypeSpecificOffset() || isIdentityHashFieldOptional()) {
             int idHashOffset = NumUtil.roundUp(unalignedSize, Integer.BYTES);
             unalignedSize = idHashOffset + Integer.BYTES;
         }
@@ -259,13 +252,18 @@ public final class ObjectLayout {
         return type.getJavaKind();
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public enum IdentityHashPosition {
+    public enum IdentityHashMode {
         /* At a fixed offset, for all objects (part of the object header). */
-        OBJECT_HEADER,
-        /* At a type-specific offset (outside the object header). */
-        SYNTHETIC_FIELD,
+        OBJECT_HEADER(0),
+        /* At a type-specific offset (potentially outside the object header). */
+        TYPE_SPECIFIC(1),
         /* At a type and object-state specific offset (outside the object header). */
-        OPTIONAL
+        OPTIONAL(2);
+
+        final int value;
+
+        IdentityHashMode(int value) {
+            this.value = value;
+        }
     }
 }

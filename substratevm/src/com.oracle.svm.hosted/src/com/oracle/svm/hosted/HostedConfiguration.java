@@ -48,7 +48,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.config.ObjectLayout.IdentityHashPosition;
+import com.oracle.svm.core.config.ObjectLayout.IdentityHashMode;
 import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.monitor.MultiThreadedMonitorSupport;
@@ -101,21 +101,21 @@ public class HostedConfiguration {
             CompressEncoding compressEncoding = new CompressEncoding(SubstrateOptions.SpawnIsolates.getValue() ? 1 : 0, 0);
             ImageSingletons.add(CompressEncoding.class, compressEncoding);
 
-            ObjectLayout objectLayout = createObjectLayout(IdentityHashPosition.SYNTHETIC_FIELD);
+            ObjectLayout objectLayout = createObjectLayout(IdentityHashMode.TYPE_SPECIFIC);
             ImageSingletons.add(ObjectLayout.class, objectLayout);
 
             ImageSingletons.add(HybridLayoutSupport.class, new HybridLayoutSupport());
         }
     }
 
-    public static ObjectLayout createObjectLayout(IdentityHashPosition identityHashCodeMode) {
-        return createObjectLayout(JavaKind.Object, identityHashCodeMode);
+    public static ObjectLayout createObjectLayout(IdentityHashMode identityHashMode) {
+        return createObjectLayout(JavaKind.Object, identityHashMode);
     }
 
     /**
-     * Defines the layout of objects. The monitor slot and the identity hash code fields are
-     * appended to the individual objects (unless there is an otherwise unused gap in the object
-     * that can be used).
+     * Defines the serial/epsilon GC object layout. The monitor slot and the identity hash code
+     * fields are appended to instance objects (unless there is an otherwise unused gap in the
+     * object that can be used).
      *
      * The layout of instance objects is:
      * <ul>
@@ -128,12 +128,12 @@ public class HostedConfiguration {
      * The layout of array objects is:
      * <ul>
      * <li>64 bit hub reference</li>
+     * <li>32 bit identity hashcode</li>
      * <li>32 bit array length</li>
-     * <li>array elements (length * reference or primitive)</li>
-     * <li>32 bit identity hashcode (if needed)</li>
+     * <li>array elements (length * elementSize)</li>
      * </ul>
      */
-    public static ObjectLayout createObjectLayout(JavaKind referenceKind, IdentityHashPosition identityHashCodePosition) {
+    public static ObjectLayout createObjectLayout(JavaKind referenceKind, IdentityHashMode identityHashMode) {
         SubstrateTargetDescription target = ConfigurationValues.getTarget();
         int referenceSize = target.arch.getPlatformKind(referenceKind).getSizeInBytes();
         int intSize = target.arch.getPlatformKind(JavaKind.Int).getSizeInBytes();
@@ -142,22 +142,24 @@ public class HostedConfiguration {
         int hubOffset = 0;
         int headerSize = hubOffset + referenceSize;
 
-        int objectHeaderIdentityHashOffset;
-        if (identityHashCodePosition == IdentityHashPosition.OBJECT_HEADER) {
-            objectHeaderIdentityHashOffset = headerSize;
+        int extraArrayHeaderSize = 0;
+        int headerIdentityHashOffset = headerSize;
+        if (identityHashMode == IdentityHashMode.OBJECT_HEADER) {
             headerSize += intSize;
+        } else if (identityHashMode == IdentityHashMode.TYPE_SPECIFIC) {
+            extraArrayHeaderSize = intSize;
         } else {
-            assert identityHashCodePosition == IdentityHashPosition.SYNTHETIC_FIELD || identityHashCodePosition == IdentityHashPosition.OPTIONAL;
-            objectHeaderIdentityHashOffset = -1;
+            assert identityHashMode == IdentityHashMode.OPTIONAL;
+            headerIdentityHashOffset = -1;
         }
 
         headerSize += SubstrateOptions.AdditionalHeaderBytes.getValue();
 
         int firstFieldOffset = headerSize;
-        int arrayLengthOffset = headerSize;
+        int arrayLengthOffset = headerSize + extraArrayHeaderSize;
         int arrayBaseOffset = arrayLengthOffset + intSize;
 
-        return new ObjectLayout(target, referenceSize, objectAlignment, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset, objectHeaderIdentityHashOffset, identityHashCodePosition);
+        return new ObjectLayout(target, referenceSize, objectAlignment, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset, headerIdentityHashOffset, identityHashMode);
     }
 
     public SVMHost createHostVM(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,

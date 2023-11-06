@@ -203,7 +203,8 @@ public class LayoutEncoding {
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
         if (withOptionalIdHashField && ol.isIdentityHashFieldOptional()) {
             int afterIdHashField = hub.getIdentityHashOffset() + Integer.BYTES;
-            if (size.belowThan(afterIdHashField)) { // fits in a gap between fields
+            if (size.belowThan(afterIdHashField)) {
+                /* Identity hash is at the end of the object and does not fit in a gap. */
                 size = WordFactory.unsigned(ol.alignUp(afterIdHashField));
             }
         }
@@ -303,7 +304,7 @@ public class LayoutEncoding {
 
         DynamicHub hub = KnownIntrinsics.readHub(obj);
         int encoding = hub.getLayoutEncoding();
-        if (isArrayLike(encoding)) {
+        if (ol.isIdentityHashFieldOptional() && isArrayLike(encoding)) {
             long unalignedSize = getArrayElementOffset(encoding, ArrayLengthNode.arrayLength(obj)).rawValue();
             return (int) ol.getArrayIdentityHashOffset(unalignedSize);
         } else {

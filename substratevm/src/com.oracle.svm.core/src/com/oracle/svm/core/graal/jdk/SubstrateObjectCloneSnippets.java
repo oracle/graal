@@ -172,8 +172,8 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
             BarrieredAccess.writeObject(result, monitorOffset, null);
         }
 
-        /* Reset identity hashcode if we use a synthetic field. */
-        if (ConfigurationValues.getObjectLayout().isIdentityHashFieldSynthetic()) {
+        /* Reset identity hashcode if it is potentially outside the object header. */
+        if (ConfigurationValues.getObjectLayout().isIdentityHashFieldAtTypeSpecificOffset()) {
             int offset = LayoutEncoding.getIdentityHashOffset(result);
             ObjectAccess.writeInt(result, offset, 0);
         }

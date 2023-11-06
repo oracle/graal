@@ -136,11 +136,13 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    public void initializeHeaderOfNewObject(Pointer objectPointer, Word encodedHub) {
+    public void initializeHeaderOfNewObject(Pointer objectPointer, Word encodedHub, boolean isArrayLike) {
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
+        boolean isIdentityHashFieldInObjectHeader = ol.isIdentityHashFieldInObjectHeader() || ol.isIdentityHashFieldAtTypeSpecificOffset() && isArrayLike;
         if (getReferenceSize() == Integer.BYTES) {
             dynamicAssert(encodedHub.and(WordFactory.unsigned(0xFFFFFFFF00000000L)).isNull(), "hub can only use 32 bits");
-            if (ol.isIdentityHashFieldInObjectHeader()) {
+            if (isIdentityHashFieldInObjectHeader) {
+                /* Use a single 64-bit write to initialize the hub and the identity hashcode. */
                 dynamicAssert(ol.getObjectHeaderIdentityHashOffset() == getHubOffset() + 4, "assumed layout to optimize initializing write");
                 objectPointer.writeLong(getHubOffset(), encodedHub.rawValue(), LocationIdentity.INIT_LOCATION);
             } else {
@@ -148,7 +150,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
             }
         } else {
             objectPointer.writeWord(getHubOffset(), encodedHub, LocationIdentity.INIT_LOCATION);
-            if (ol.isIdentityHashFieldInObjectHeader()) {
+            if (isIdentityHashFieldInObjectHeader) {
                 objectPointer.writeInt(ol.getObjectHeaderIdentityHashOffset(), 0, LocationIdentity.INIT_LOCATION);
             }
         }
@@ -158,10 +160,11 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Override
     public boolean hasOptionalIdentityHashField(Word header) {
         if (GraalDirectives.inIntrinsic()) {
-            ReplacementsUtil.staticAssert(isIdentityHasFieldOptional(), "use only when optional hashcode fields are support");
+            ReplacementsUtil.staticAssert(isIdentityHasFieldOptional(), "use only when hashcode fields are optional");
         } else {
-            VMError.guarantee(isIdentityHasFieldOptional(), "use only when optional hashcode fields are support");
+            VMError.guarantee(isIdentityHasFieldOptional(), "use only when hashcode fields are optional");
         }
+
         UnsignedWord inFieldState = IDHASH_STATE_IN_FIELD.shiftLeft(IDHASH_STATE_SHIFT);
         return header.and(IDHASH_STATE_BITS).equal(inFieldState);
     }
@@ -195,11 +198,12 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Override
     public void setIdentityHashFromAddress(Pointer ptr, Word currentHeader) {
         if (GraalDirectives.inIntrinsic()) {
-            ReplacementsUtil.staticAssert(isIdentityHasFieldOptional(), "must always access field");
+            ReplacementsUtil.staticAssert(isIdentityHasFieldOptional(), "use only when hashcode fields are optional");
         } else {
-            VMError.guarantee(isIdentityHasFieldOptional());
-            assert !hasIdentityHashFromAddress(currentHeader);
+            assert isIdentityHasFieldOptional() : "use only when hashcode fields are optional";
+            assert !hasIdentityHashFromAddress(currentHeader) : "must not already have a hashcode";
         }
+
         UnsignedWord fromAddressState = IDHASH_STATE_FROM_ADDRESS.shiftLeft(IDHASH_STATE_SHIFT);
         UnsignedWord newHeader = currentHeader.and(IDHASH_STATE_BITS.not()).or(fromAddressState);
         writeHeaderToObject(ptr.toObjectNonNull(), newHeader);
@@ -218,14 +222,16 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static boolean hasIdentityHashFromAddressInline(Word header) {
         if (GraalDirectives.inIntrinsic()) {
-            ReplacementsUtil.staticAssert(isIdentityHasFieldOptional(), "must always access field");
+            ReplacementsUtil.staticAssert(isIdentityHasFieldOptional(), "use only when hashcode fields are optional");
         } else {
             assert isIdentityHasFieldOptional();
         }
+
         UnsignedWord fromAddressState = IDHASH_STATE_FROM_ADDRESS.shiftLeft(IDHASH_STATE_SHIFT);
         return header.and(IDHASH_STATE_BITS).equal(fromAddressState);
     }
 
+    @AlwaysInline(value = "Helper method that needs to be optimized away.")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void dynamicAssert(boolean condition, String msg) {
         if (GraalDirectives.inIntrinsic()) {

@@ -115,6 +115,21 @@ public abstract class AllocationSnippets implements Snippets {
         return callNewMultiArrayStub(hub, rank, dims);
     }
 
+    protected UnsignedWord arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize) {
+        int alignment = objectAlignment();
+        return WordFactory.unsigned(arrayAllocationSize(length, arrayBaseOffset, log2ElementSize, alignment));
+    }
+
+    public static long arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize, int alignment) {
+        /*
+         * We do an unsigned multiplication so that a negative array length will result in an array
+         * size greater than Integer.MAX_VALUE.
+         */
+        long size = ((length & 0xFFFFFFFFL) << log2ElementSize) + arrayBaseOffset + (alignment - 1);
+        long mask = ~(alignment - 1);
+        return size & mask;
+    }
+
     /**
      * Maximum number of long stores to emit when zeroing an object with a constant size. Larger
      * objects have their bodies initialized in a loop.
@@ -340,8 +355,6 @@ public abstract class AllocationSnippets implements Snippets {
 
     protected abstract int instanceHeaderSize();
 
-    protected abstract UnsignedWord arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize);
-
     public abstract void initializeObjectHeader(Word memory, Word hub, boolean isArray);
 
     protected abstract Object callNewInstanceStub(Word hub);
@@ -357,6 +370,8 @@ public abstract class AllocationSnippets implements Snippets {
     protected abstract Object verifyOop(Object obj);
 
     public abstract int arrayLengthOffset();
+
+    protected abstract int objectAlignment();
 
     public enum FillContent {
         DO_NOT_FILL,

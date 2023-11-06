@@ -438,27 +438,12 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    protected UnsignedWord arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize) {
-        int alignment = objectAlignment();
-        return WordFactory.unsigned(arrayAllocationSize(length, arrayBaseOffset, log2ElementSize, alignment));
-    }
-
-    public static long arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize, int alignment) {
-        /*
-         * We do an unsigned multiplication so that a negative array length will result in an array
-         * size greater than Integer.MAX_VALUE.
-         */
-        long size = ((length & 0xFFFFFFFFL) << log2ElementSize) + arrayBaseOffset + (alignment - 1);
-        long mask = ~(alignment - 1);
-        return size & mask;
-    }
-
-    @Override
     public final int arrayLengthOffset() {
         return HotSpotReplacementsUtil.arrayLengthOffset(INJECTED_VMCONFIG);
     }
 
-    private static int objectAlignment() {
+    @Override
+    protected final int objectAlignment() {
         return HotSpotReplacementsUtil.objectAlignment(INJECTED_VMCONFIG);
     }
 

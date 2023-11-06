@@ -75,7 +75,7 @@ public final class IdentityHashCodeSupport {
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     public static int generateIdentityHashCode(Object obj) {
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
-        VMError.guarantee(!ol.isIdentityHashFieldOptional(), "Snippet must handle this case");
+        VMError.guarantee(!ol.isIdentityHashFieldOptional(), "Optional hash is handled in snippet");
 
         int newHashCode = generateRandomHashCode();
         int offset = LayoutEncoding.getIdentityHashOffset(obj);
