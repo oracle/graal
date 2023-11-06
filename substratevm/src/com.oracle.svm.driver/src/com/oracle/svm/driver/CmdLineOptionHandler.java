@@ -167,7 +167,7 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             /* Using agentlib to allow interoperability with other agents */
             nativeImage.addImageBuilderJavaArgs("-agentlib:jdwp=transport=dt_socket,server=y,address=" + address + ",suspend=y");
             /* Disable watchdog mechanism */
-            nativeImage.addPlainImageBuilderArg(nativeImage.oHDeadlockWatchdogInterval + "0");
+            nativeImage.addPlainImageBuilderArg(NativeImage.injectHostedOptionOrigin(nativeImage.oHDeadlockWatchdogInterval + "0", OptionOrigin.originDriver));
             return true;
         }
 
