@@ -101,6 +101,7 @@ import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexGeneralPurposeRMOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexGeneralPurposeRVMOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMROp;
+import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import jdk.graal.compiler.asm.amd64.AVXKind;
 import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
@@ -1542,6 +1543,11 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         return ((AMD64) target.arch).getFeatures().contains(CPUFeature.AVX);
     }
 
+    private boolean supportFullAVX512() {
+        TargetDescription target = getLIRGen().target();
+        return AMD64BaseAssembler.supportsFullAVX512(((AMD64) target.arch).getFeatures());
+    }
+
     private static AVXSize getRegisterSize(Value a) {
         AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
         if (kind.isXMM()) {
@@ -1561,7 +1567,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         return result;
     }
 
-    protected Variable emitVectorBlend(Value zeroValue, Value oneValue, Value mask) {
+    public Variable emitVectorBlend(Value zeroValue, Value oneValue, Value mask) {
         AVXSize size = getRegisterSize(zeroValue);
         assert size == AVXSize.XMM || size == AVXSize.YMM : size;
         AMD64Kind inputKind = ((AMD64Kind) zeroValue.getPlatformKind()).getScalar();
@@ -1596,29 +1602,44 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     }
 
     protected enum AMD64MathMinMaxFloatOp {
-        Min(VexRVMOp.VMINSS, VexRVMOp.VMINSD, VexRVMOp.VMINPS, VexRVMOp.VMINPD),
-        Max(VexRVMOp.VMAXSS, VexRVMOp.VMAXSD, VexRVMOp.VMAXPS, VexRVMOp.VMAXPD);
+        Min(VexRVMOp.VMINSS, VexRVMOp.VMINSD, VexRVMOp.VMINPS, VexRVMOp.VMINPD, VexRVMOp.EVMINSS, VexRVMOp.EVMINSD, VexRVMOp.EVMINPS, VexRVMOp.EVMINPD),
+        Max(VexRVMOp.VMAXSS, VexRVMOp.VMAXSD, VexRVMOp.VMAXPS, VexRVMOp.VMAXPD, VexRVMOp.EVMAXSS, VexRVMOp.EVMAXSD, VexRVMOp.EVMAXPS, VexRVMOp.EVMAXPD);
 
         private final VexRVMOp scalarSingleOp;
         private final VexRVMOp scalarDoubleOp;
+        private final VexRVMOp evexScalarSingleOp;
+        private final VexRVMOp evexScalarDoubleOp;
         private final VexRVMOp vectorSingleOp;
         private final VexRVMOp vectorDoubleOp;
+        private final VexRVMOp evexVectorSingleOp;
+        private final VexRVMOp evexVectorDoubleOp;
 
-        AMD64MathMinMaxFloatOp(VexRVMOp scalarSingleOp, VexRVMOp scalarDoubleOp, VexRVMOp vectorSingleOp, VexRVMOp vectorDoubleOp) {
+        AMD64MathMinMaxFloatOp(VexRVMOp scalarSingleOp, VexRVMOp scalarDoubleOp, VexRVMOp vectorSingleOp, VexRVMOp vectorDoubleOp, VexRVMOp evexScalarSingleOp, VexRVMOp evexScalarDoubleOp,
+                        VexRVMOp evexVectorSingleOp, VexRVMOp evexVectorDoubleOp) {
             this.scalarSingleOp = scalarSingleOp;
             this.scalarDoubleOp = scalarDoubleOp;
             this.vectorSingleOp = vectorSingleOp;
             this.vectorDoubleOp = vectorDoubleOp;
+            this.evexScalarSingleOp = evexScalarSingleOp;
+            this.evexScalarDoubleOp = evexScalarDoubleOp;
+            this.evexVectorSingleOp = evexVectorSingleOp;
+            this.evexVectorDoubleOp = evexVectorDoubleOp;
         }
 
-        public VexRVMOp getAVXOp(AMD64Kind kind) {
-            switch (kind.getScalar()) {
-                case SINGLE:
-                    return kind.getVectorLength() > 1 ? vectorSingleOp : scalarSingleOp;
-                case DOUBLE:
-                    return kind.getVectorLength() > 1 ? vectorDoubleOp : scalarDoubleOp;
-                default:
-                    throw GraalError.shouldNotReachHereUnexpectedValue(kind.getScalar()); // ExcludeFromJacocoGeneratedReport
+        public VexRVMOp getAVXOp(AMD64Kind kind, boolean useEvex) {
+            if (useEvex) {
+                return switch (kind.getScalar()) {
+                    case SINGLE -> kind.getVectorLength() > 1 ? evexVectorSingleOp : evexScalarSingleOp;
+                    case DOUBLE -> kind.getVectorLength() > 1 ? evexVectorDoubleOp : evexScalarDoubleOp;
+                    default -> throw GraalError.shouldNotReachHereUnexpectedValue(kind.getScalar()); // ExcludeFromJacocoGeneratedReport
+                };
+            } else {
+                GraalError.guarantee(AVXKind.getRegisterSize(kind) != AVXSize.ZMM, "Can only emit ZMM sized min/max op using EVEX!");
+                return switch (kind.getScalar()) {
+                    case SINGLE -> kind.getVectorLength() > 1 ? vectorSingleOp : scalarSingleOp;
+                    case DOUBLE -> kind.getVectorLength() > 1 ? vectorDoubleOp : scalarDoubleOp;
+                    default -> throw GraalError.shouldNotReachHereUnexpectedValue(kind.getScalar()); // ExcludeFromJacocoGeneratedReport
+                };
             }
         }
 
@@ -1700,7 +1721,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
 
         // vmaxps/vmaxpd/vminps/vminpd result, a', b'
         LIRKind resultKind = LIRKind.combine(atmp, btmp);
-        AllocatableValue result = emitBinary(resultKind, minmaxop.getAVXOp(kind), atmp, btmp);
+        AllocatableValue result = emitBinary(resultKind, minmaxop.getAVXOp(kind, supportFullAVX512()), atmp, btmp);
 
         if (checkAndMergeNaN) {
             // move NaN elements in a to result (result' = isNaN(a) ? a : result)

@@ -106,7 +106,7 @@ public class AMD64HotSpotZVectorReadBarrierOp extends AMD64HotSpotZLoadBarriered
             } else {
                 broadcastSize = AVXSize.ZMM;
             }
-            broadcastOp = VexRMOp.VPBROADCASTQ;
+            broadcastOp = VexRMOp.EVPBROADCASTQ;
         } else if (features.contains(AMD64.CPUFeature.AVX2)) {
             broadcastSize = size;
             broadcastOp = VexRMOp.VPBROADCASTQ;
