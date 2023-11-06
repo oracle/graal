@@ -468,15 +468,16 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         register_community_tools_distribution(_suite, register_distribution)
         register_community_languages_distribution(_suite, register_distribution)
 
-    maven_resource_bundle = mx.get_env('MAVEN_RESOURCE_BUNDLE')
-    if register_distribution and maven_resource_bundle is not None:
-        register_distribution(mx.LayoutTARDistribution(_suite, 'MAVEN_RESOURCE_BUNDLE', [], {
-            './': 'file:' + os.path.realpath(maven_resource_bundle)
+    maven_bundle_path = mx.get_env('MAVEN_BUNDLE_PATH')
+    maven_bundle_artifact_id = mx.get_env('MAVEN_BUNDLE_ARTIFACT_ID')
+    if bool(maven_bundle_path) != bool(maven_bundle_artifact_id):
+        mx.abort(f"Both $MAVEN_BUNDLE_PATH and $MAVEN_BUNDLE_ARTIFACT_ID must be either set or not set. Got:\n$MAVEN_BUNDLE_PATH={'' if maven_bundle_path is None else maven_bundle_path}\n$MAVEN_BUNDLE_ARTIFACT_ID={'' if maven_bundle_artifact_id is None else maven_bundle_artifact_id}")
+    if register_distribution and maven_bundle_path is not None:
+        register_distribution(mx.LayoutTARDistribution(_suite, 'MAVEN_BUNDLE', [], {
+            './': 'file:' + os.path.realpath(maven_bundle_path)
         }, None, True, None, maven={
             'groupId': 'org.graalvm.polyglot',
-            'artifactId': 'maven-{edition}-resource-bundle'.format(
-                edition='ee' if mx.suite('vm-enterprise', fatalIfMissing=False) else 'ce',
-            ),
+            'artifactId': maven_bundle_artifact_id,
             'version': mx_sdk_vm_impl.graalvm_version('graalvm'),
             'tag': 'resource-bundle',
         }))
