@@ -30,6 +30,7 @@ import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.hotspot.meta.HotSpotGraalConstantFieldProvider;
@@ -51,14 +52,15 @@ import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.gc.CardTableBarrierSet;
 import jdk.graal.compiler.nodes.gc.G1BarrierSet;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.graal.compiler.nodes.loop.LoopsDataProviderImpl;
 import jdk.graal.compiler.nodes.memory.FixedAccessNode;
 import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
+import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.tiers.CompilerConfiguration;
 import jdk.graal.compiler.replacements.classfile.ClassfileBytecodeProvider;
-
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
@@ -205,8 +207,10 @@ public abstract class HotSpotBackendFactory {
                 HotSpotSuitesProvider suites = createSuites(config, graalRuntime, compilerConfiguration, plugins, registers, replacements, options);
                 providers.setSuites(suites);
             }
-            assert replacements == replacements.getProviders().getReplacements();
-            assert providers.getGraphBuilderPlugins() == plugins;
+            Replacements replacements2 = replacements.getProviders().getReplacements();
+            assert replacements == replacements2 : Assertions.errorMessageContext("replacements", replacements, "replacements2", replacements2);
+            Plugins plugins2 = providers.getGraphBuilderPlugins();
+            assert plugins2 == plugins : Assertions.errorMessageContext("plugins", plugins, "plugins2", plugins2);
         }
         try (InitTimer rt = timer("instantiate backend")) {
             return createBackend(config, graalRuntime, providers);

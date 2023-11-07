@@ -196,7 +196,7 @@ public class GeneratedFoldPlugin extends GeneratedPlugin {
             if (processor.getAnnotation(param, processor.getType(INJECTED_PARAMETER_CLASS_NAME)) == null) {
                 constantArgument(processor, out, deps, argCount, param.asType(), argCount, true);
             } else {
-                out.printf("        assert args.get(%d).isNullConstant();\n", argCount);
+                out.printf("        assert args.get(%d).isNullConstant() : \"Must be null constant \" + args.get(%d);\n", argCount, argCount);
                 out.printf("        %s arg%d = %s;\n", param.asType(), argCount, deps.find(processor, (DeclaredType) param.asType()).getExpression(processor, intrinsicMethod));
             }
             argCount++;

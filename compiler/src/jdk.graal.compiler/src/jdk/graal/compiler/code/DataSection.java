@@ -34,11 +34,11 @@ import java.util.Objects;
 import java.util.function.BiConsumer;
 
 import jdk.graal.compiler.code.DataSection.Data;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.meta.SerializableConstant;
 import jdk.vm.ci.meta.VMConstant;
@@ -313,7 +313,7 @@ public final class DataSection implements Iterable<Data> {
             if (Options.ForceAdversarialLayout.getValue(option)) {
                 if (position % (itemAlignment * 2) == 0) {
                     position = position + itemAlignment;
-                    assert position % itemAlignment == 0;
+                    assert position % itemAlignment == 0 : Assertions.errorMessage(position, itemAlignment);
                 }
             }
             d.ref.setOffset(position);
@@ -373,7 +373,7 @@ public final class DataSection implements Iterable<Data> {
      */
     public void buildDataSection(ByteBuffer buffer, Patches patch, BiConsumer<DataSectionReference, Integer> onEmit) {
         checkClosed();
-        assert buffer.remaining() >= sectionSize;
+        assert buffer.remaining() >= sectionSize : buffer + " " + sectionSize;
         int start = buffer.position();
         for (Data d : dataItems) {
             buffer.position(start + d.ref.getOffset());

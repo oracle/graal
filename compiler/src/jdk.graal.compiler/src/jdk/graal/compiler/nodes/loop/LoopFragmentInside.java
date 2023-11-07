@@ -32,6 +32,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
 import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
@@ -150,7 +151,8 @@ public class LoopFragmentInside extends LoopFragment {
 
     @Override
     public void insertBefore(LoopEx loop) {
-        assert this.isDuplicate() && this.original().loop() == loop;
+        assert this.isDuplicate();
+        assert this.original().loop() == loop : "Original loop " + this.original().loop() + " != " + loop;
 
         patchNodes(dataFixBefore);
 
@@ -170,7 +172,8 @@ public class LoopFragmentInside extends LoopFragment {
      * iteration limit to account for the duplication.
      */
     public void insertWithinAfter(LoopEx loop, EconomicMap<LoopBeginNode, OpaqueNode> opaqueUnrolledStrides) {
-        assert isDuplicate() && original().loop() == loop;
+        assert isDuplicate();
+        assert original().loop() == loop : original().loop() + "!=" + loop;
 
         patchNodes(dataFixWithinAfter);
 
@@ -213,7 +216,8 @@ public class LoopFragmentInside extends LoopFragment {
         // Remove any safepoints from the original copy leaving only the duplicated one, inverted
         // ones have their safepoint between the limit check and the backedge that have been removed
         // already.
-        assert loop.whole().nodes().filter(SafepointNode.class).count() == nodes().filter(SafepointNode.class).count() || loop.counted.isInverted();
+        assert loop.whole().nodes().filter(SafepointNode.class).count() == nodes().filter(SafepointNode.class).count() ||
+                        loop.counted.isInverted() : "No safepoints left in the original loop or the loop is inverted " + loop;
         for (SafepointNode safepoint : loop.whole().nodes().filter(SafepointNode.class)) {
             graph().removeFixed(safepoint);
         }
@@ -257,7 +261,7 @@ public class LoopFragmentInside extends LoopFragment {
             extremum = ConstantNode.forIntegerBits(bits, helper.minValue());
             overflowCheck = IntegerBelowNode.create(SubNode.create(limit, extremum, NodeView.DEFAULT), opaque, NodeView.DEFAULT);
         } else {
-            assert counted.getDirection() == InductionVariable.Direction.Down;
+            assert counted.getDirection() == InductionVariable.Direction.Down : counted.getDirection();
             // limit - counterStride could overflow if max - limit < -counterStride
             // i.e., counterStride < limit - max
             extremum = ConstantNode.forIntegerBits(bits, helper.maxValue());
@@ -619,7 +623,7 @@ public class LoopFragmentInside extends LoopFragment {
             if (loopBegin.loopEnds().count() == 1) {
                 ValueNode b = phi.valueAt(loopBegin.loopEnds().first()); // back edge value
                 if (b == null) {
-                    assert phi instanceof GuardPhiNode;
+                    assert phi instanceof GuardPhiNode : Assertions.errorMessage(phi);
                     first = null;
                 } else {
                     first = peel.prim(b); // corresponding value in the peel
@@ -726,7 +730,7 @@ public class LoopFragmentInside extends LoopFragment {
         LoopBeginNode loopBegin = original().loop().loopBegin();
         if (loopBegin.isPhiAtMerge(b)) {
             PhiNode phi = (PhiNode) b;
-            assert phi.valueCount() == 2;
+            assert phi.valueCount() == 2 : Assertions.errorMessage(phi);
             return phi.valueAt(1);
         } else if (nodesReady) {
             ValueNode v = getDuplicatedNode(b);
@@ -765,7 +769,7 @@ public class LoopFragmentInside extends LoopFragment {
                 end.safeDelete();
             }
         } else {
-            assert endsToMerge.size() > 1;
+            assert endsToMerge.size() > 1 : endsToMerge;
             AbstractMergeNode newExitMerge = graph.add(new MergeNode());
             newExit = newExitMerge;
             FrameState state = loopBegin.stateAfter();

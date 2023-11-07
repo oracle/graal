@@ -33,8 +33,11 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.cfg.Loop;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -51,8 +54,8 @@ import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.ValueProxyNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
-import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
+import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.GuardedNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.extended.RawLoadNode;
@@ -70,8 +73,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.virtual.phases.ea.ReadEliminationBlockState.CacheEntry;
 import jdk.graal.compiler.virtual.phases.ea.ReadEliminationBlockState.LoadCacheEntry;
 import jdk.graal.compiler.virtual.phases.ea.ReadEliminationBlockState.UnsafeLoadCacheEntry;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -171,7 +172,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                             state.addCacheEntry(identifier, load);
                         }
                     } else {
-                        assert node instanceof FixedNode;
+                        assert node instanceof FixedNode : Assertions.errorMessage(node, state, effects, lastFixedNode);
                         // regular high tier memory access
                         LocationIdentity location = ((MemoryAccess) node).getLocationIdentity();
                         if (location.isSingle()) {

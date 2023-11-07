@@ -105,8 +105,8 @@ public class InliningPhase extends AbstractInliningPhase {
             }
         }
 
-        assert data.inliningDepth() == 0 || count == limit;
-        assert data.graphCount() == 0 || count == limit;
+        assert data.inliningDepth() == 0 || count == limit : data.inliningDepth() + " " + count + " " + limit;
+        assert data.graphCount() == 0 || count == limit : data.graphCount() + " " + count + " " + limit;
     }
 
 }

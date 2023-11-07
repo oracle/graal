@@ -35,6 +35,7 @@ import jdk.graal.compiler.core.common.type.ArithmeticStamp;
 import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
@@ -127,7 +128,8 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
 
     @Override
     public Stamp foldStamp(Stamp stampX, Stamp stampY) {
-        assert stampX.isCompatible(x.stamp(NodeView.DEFAULT)) && stampY.isCompatible(y.stamp(NodeView.DEFAULT));
+        assert stampX.isCompatible(x.stamp(NodeView.DEFAULT)) : Assertions.errorMessageContext("this", this, "xStamp", x.stamp(NodeView.DEFAULT), "stampX", stampX);
+        assert stampY.isCompatible(y.stamp(NodeView.DEFAULT)) : Assertions.errorMessageContext("this", this, "xStamp", x.stamp(NodeView.DEFAULT), "stampX", stampX);
         return getArithmeticOp().foldStamp(stampX, stampY);
     }
 
@@ -368,7 +370,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             return branchlessMin(v2, v1, view);
         }
         int bits = ((IntegerStamp) v1.stamp(view)).getBits();
-        assert ((IntegerStamp) v2.stamp(view)).getBits() == bits;
+        assert ((IntegerStamp) v2.stamp(view)).getBits() == bits : bits + " and v2 " + v2;
         ValueNode t1 = sub(v1, v2, view);
         ValueNode t2 = RightShiftNode.create(t1, bits - 1, view);
         ValueNode t3 = AndNode.create(t1, t2, view);
@@ -380,7 +382,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             return branchlessMax(v2, v1, view);
         }
         int bits = ((IntegerStamp) v1.stamp(view)).getBits();
-        assert ((IntegerStamp) v2.stamp(view)).getBits() == bits;
+        assert ((IntegerStamp) v2.stamp(view)).getBits() == bits : bits + " and v2 " + v2;
         if (v2.isDefaultConstant()) {
             // prefer a & ~(a>>31) to a - (a & (a>>31))
             return AndNode.create(v1, NotNode.create(RightShiftNode.create(v1, bits - 1, view)), view);
@@ -521,7 +523,8 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             return node;
         }
 
-        assert matchBinary != null && otherValue1 != null;
+        assert matchBinary != null;
+        assert otherValue1 != null;
         ValueNode matchValue = match.getValue(matchBinary);
         ValueNode otherValue2 = match.getOtherValue(matchBinary);
 
@@ -677,7 +680,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             invertM1 = match1 == ReassociateMatch.y && match2 == ReassociateMatch.x;
             invertM2 = match1 == ReassociateMatch.x && match2 == ReassociateMatch.x;
         }
-        assert !(invertM1 && invertM2) && !(invertA && aSub);
+        assert !(invertM1 && invertM2) && !(invertA && aSub) : Assertions.errorMessageContext("node", node, "invertM1", invertM1, "invertM2", invertM2, "invertA", invertA, "aSub", aSub);
         ValueNode m1 = match1.getValue(node);
         ValueNode m2 = match2.getValue(other);
         ValueNode a = match2.getOtherValue(other);
@@ -762,7 +765,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
      */
     @SuppressWarnings("deprecation")
     public BinaryNode maybeCommuteInputs() {
-        assert this instanceof BinaryCommutative;
+        assert this instanceof BinaryCommutative : Assertions.errorMessageContext("this", this);
         if (!y.isConstant() && (x.isConstant() || x.getId() > y.getId())) {
             ValueNode tmp = x;
             x = y;

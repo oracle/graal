@@ -31,6 +31,7 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_2;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
@@ -42,7 +43,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
 import jdk.vm.ci.meta.JavaConstant;
 
 @NodeInfo(allowedUsageTypes = Guard, cycles = CYCLES_2, size = SIZE_2)
@@ -58,7 +58,8 @@ public final class NullCheckNode extends ImplicitNullCheckNode implements LIRLow
     public NullCheckNode(ValueNode object, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation) {
         super(TYPE, StampFactory.forVoid());
         this.object = object;
-        assert (deoptReasonAndAction == null) == (deoptSpeculation == null);
+        assert (deoptReasonAndAction == null) == (deoptSpeculation == null) : Assertions.errorMessageContext("object", object, "deoptReasonAction", deoptReasonAndAction, "deoptSpeculation",
+                        deoptSpeculation);
         this.deoptReasonAndAction = deoptReasonAndAction;
         this.deoptSpeculation = deoptSpeculation;
     }

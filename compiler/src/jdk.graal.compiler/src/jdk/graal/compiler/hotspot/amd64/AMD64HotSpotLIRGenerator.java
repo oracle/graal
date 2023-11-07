@@ -41,6 +41,7 @@ import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import jdk.graal.compiler.core.common.spi.LIRKindTool;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
@@ -80,7 +81,6 @@ import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.gen.MoveFactory;
 import jdk.graal.compiler.lir.gen.MoveFactory.BackupSlotProvider;
 import jdk.graal.compiler.phases.util.Providers;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -124,7 +124,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     protected AMD64HotSpotLIRGenerator(LIRKindTool lirKindTool, AMD64ArithmeticLIRGenerator arithmeticLIRGen, BarrierSetLIRGenerator barrierSetLIRGen, MoveFactory moveFactory,
                     HotSpotProviders providers, GraalHotSpotVMConfig config, LIRGenerationResult lirGenRes) {
         super(lirKindTool, arithmeticLIRGen, barrierSetLIRGen, moveFactory, providers, lirGenRes);
-        assert config.basicLockSize == 8;
+        int basicLockSize = config.basicLockSize;
+        assert basicLockSize == 8 : basicLockSize;
         this.config = config;
     }
 
@@ -254,7 +255,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     private HotSpotLockStack getLockStack() {
-        assert debugInfoBuilder != null && debugInfoBuilder.lockStack() != null;
+        assert debugInfoBuilder != null;
+        assert debugInfoBuilder.lockStack() != null;
         return debugInfoBuilder.lockStack();
     }
 
@@ -440,7 +442,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     public void emitUnwind(Value exception) {
         ForeignCallLinkage linkage = getForeignCalls().lookupForeignCall(HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER);
         CallingConvention outgoingCc = linkage.getOutgoingCallingConvention();
-        assert outgoingCc.getArgumentCount() == 2;
+        int argumentCount = outgoingCc.getArgumentCount();
+        assert argumentCount == 2 : argumentCount;
         RegisterValue exceptionParameter = (RegisterValue) outgoingCc.getArgument(0);
         emitMove(exceptionParameter, exception);
         append(new AMD64HotSpotUnwindOp(exceptionParameter));
@@ -511,7 +514,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     public Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         LIRKind inputKind = pointer.getValueKind(LIRKind.class);
         LIRKindTool lirKindTool = getLIRKindTool();
-        assert inputKind.getPlatformKind() == lirKindTool.getObjectKind().getPlatformKind();
+        LIRKind objectKind = lirKindTool.getObjectKind();
+        assert inputKind.getPlatformKind() == objectKind.getPlatformKind() : Assertions.errorMessageContext("inputKind", inputKind, "lirKindToolObjectKind",
+                        objectKind, "pointer", pointer);
         if (inputKind.isReference(0)) {
             // oop
             Variable result = newVariable(lirKindTool.getNarrowOopKind());
@@ -533,7 +538,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         LIRKind inputKind = pointer.getValueKind(LIRKind.class);
         LIRKindTool lirKindTool = getLIRKindTool();
-        assert inputKind.getPlatformKind() == lirKindTool.getNarrowOopKind().getPlatformKind();
+        assert inputKind.getPlatformKind() == lirKindTool.getNarrowOopKind().getPlatformKind() : Assertions.errorMessageContext("inputKind", inputKind, "lirKindToolObjectKind",
+                        lirKindTool.getNarrowOopKind(), "pointer", pointer);
         if (inputKind.isReference(0)) {
             // oop
             Variable result = newVariable(lirKindTool.getObjectKind());

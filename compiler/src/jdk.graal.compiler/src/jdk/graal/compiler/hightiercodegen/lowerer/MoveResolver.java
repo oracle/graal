@@ -41,6 +41,8 @@ import java.util.stream.IntStream;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
+
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.nodes.AbstractEndNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
@@ -325,7 +327,7 @@ public class MoveResolver<S, T extends S> {
         while (!stack.isEmpty()) {
             int current = stack.pop();
 
-            assert colors.get(current) != Color.Black;
+            assert colors.get(current) != Color.Black : "Must not be black " + current;
 
             /*
              * The node appears on the stack for the second time, this means all nodes reachable
@@ -575,8 +577,8 @@ public class MoveResolver<S, T extends S> {
         private int addNode(Function<Integer, Node> constructor) {
             // The node id is the current number of nodes (the next index in the nodes list).
             int numNodes = nodes.size();
-            assert numNodes == moves.size();
-            assert numNodes == incomingMoves.size();
+            assert numNodes == moves.size() : Assertions.errorMessage(numNodes, moves.size(), moves);
+            assert numNodes == incomingMoves.size() : Assertions.errorMessage(numNodes, incomingMoves.size(), incomingMoves);
 
             Node node = constructor.apply(numNodes);
             nodes.add(node);

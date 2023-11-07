@@ -26,7 +26,9 @@ package jdk.graal.compiler.nodes;
 
 import static jdk.graal.compiler.graph.iterators.NodePredicates.isNotA;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
@@ -37,14 +39,13 @@ import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
@@ -293,7 +294,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     }
 
     public void setLoopOrigFrequency(double loopOrigFrequency) {
-        assert loopOrigFrequency >= 0;
+        assert NumUtil.assertNonNegativeDouble(loopOrigFrequency);
         this.loopOrigFrequency = loopOrigFrequency;
     }
 
@@ -343,7 +344,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     }
 
     public EndNode forwardEnd() {
-        assert forwardEndCount() == 1;
+        assert forwardEndCount() == 1 : forwardEnds();
         return forwardEndAt(0);
     }
 
@@ -372,7 +373,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
             int idx = loopEnd.endIndex();
             for (LoopEndNode le : loopEnds()) {
                 int leIdx = le.endIndex();
-                assert leIdx != idx;
+                assert leIdx != idx : Assertions.errorMessageContext("this", this, "end", end, "otherEnd", le);
                 if (leIdx > idx) {
                     le.setEndIndex(leIdx - 1);
                 }
@@ -409,7 +410,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         }
         for (LoopEndNode end : loopEnds()) {
             int idx = index - forwardEndCount();
-            assert idx >= 0;
+            assert NumUtil.assertNonNegativeInt(idx);
             if (end.endIndex() == idx) {
                 return end;
             }
@@ -458,7 +459,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     }
 
     public LoopEndNode getSingleLoopEnd() {
-        assert loopEnds().count() == 1;
+        assert loopEnds().count() == 1 : loopEnds();
         return loopEnds().first();
     }
 

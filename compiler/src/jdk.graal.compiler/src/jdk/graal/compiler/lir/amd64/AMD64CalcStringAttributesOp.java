@@ -223,7 +223,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
     }
 
     private void emitLatin1(CompilationResultBuilder crb, AMD64MacroAssembler asm, Register arr, Register len, Register lengthTail, Register ret, Register vecMask) {
-        assert stride.log2 == 0;
+        assert stride.log2 == 0 : stride.log2;
         Label tailLessThan32 = new Label();
         Label tailLessThan16 = new Label();
         Label tailLessThan8 = new Label();
@@ -361,7 +361,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
     }
 
     private void emitBMP(CompilationResultBuilder crb, AMD64MacroAssembler asm, Register arr, Register len, Register lengthTail, Register ret, Register vecMaskAscii) {
-        assert stride.log2 == 1;
+        assert stride.log2 == 1 : stride.log2;
         Register vecMaskBMP = asRegister(vectorTemp[1]);
         Register vecArray = asm.isAVX() ? null : asRegister(vectorTemp[2]);
         Label latin1Entry = new Label();
@@ -580,7 +580,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
      *      https://lemire.me/blog/2020/10/20/ridiculously-fast-unicode-utf-8-validation/</a>
      */
     private void emitUTF8(CompilationResultBuilder crb, AMD64MacroAssembler asm, Register arr, Register len, Register lengthTail, Register ret, Register vecArray) {
-        assert stride.log2 == 0;
+        assert stride.log2 == 0 : stride.log2;
         Register tmp = asRegister(temp[0]);
         Register vecMask = asRegister(vectorTemp[1]);
         Register vecMaskCB = asRegister(vectorTemp[2]);
@@ -903,7 +903,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
      * Get PSHUFB lookup table, extended to 32 bytes if vector size is YMM.
      */
     private byte[] getStaticLUT(byte[] table) {
-        assert table.length == XMM.getBytes();
+        assert table.length == XMM.getBytes() : table.length;
         if (supportsAVX2AndYMM()) {
             byte[] ret = Arrays.copyOf(table, table.length * 2);
             System.arraycopy(table, 0, ret, table.length, table.length);
@@ -952,7 +952,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
     }
 
     private void emitUTF16(CompilationResultBuilder crb, AMD64MacroAssembler asm, Register arr, Register len, Register lengthTail, Register ret, Register vecArray) {
-        assert stride.log2 == 1;
+        assert stride.log2 == 1 : stride.log2;
         Register vecArrayTail = asRegister(vectorTemp[1]);
         Register vecMaskAscii = asRegister(vectorTemp[2]);
         Register vecMaskLatin = asRegister(vectorTemp[3]);
@@ -1244,7 +1244,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
     }
 
     private void emitUTF32(CompilationResultBuilder crb, AMD64MacroAssembler asm, Register arr, Register len, Register lengthTail, Register ret, Register vecArray) {
-        assert stride.log2 == 2;
+        assert stride.log2 == 2 : stride.log2;
         Register vecMaskAscii = asRegister(vectorTemp[1]);
         Register vecMaskLatin1 = asRegister(vectorTemp[2]);
         Register vecMaskBMP = asRegister(vectorTemp[3]);

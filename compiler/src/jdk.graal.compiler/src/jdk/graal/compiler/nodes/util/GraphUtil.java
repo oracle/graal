@@ -33,35 +33,16 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
-import jdk.graal.compiler.nodes.AbstractBeginNode;
-import jdk.graal.compiler.nodes.AbstractEndNode;
-import jdk.graal.compiler.nodes.GuardNode;
-import jdk.graal.compiler.nodes.IfNode;
-import jdk.graal.compiler.nodes.PhiNode;
-import jdk.graal.compiler.nodes.StateSplit;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.extended.MultiGuardNode;
-import jdk.graal.compiler.nodes.java.LoadIndexedNode;
-import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
-import jdk.graal.compiler.nodes.java.MonitorIdNode;
-import jdk.graal.compiler.nodes.spi.ArrayLengthProvider;
-import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.graal.compiler.nodes.spi.CoreProvidersDelegate;
-import jdk.graal.compiler.nodes.spi.LimitedValueProxy;
-import jdk.graal.compiler.nodes.spi.SimplifierTool;
-import jdk.graal.compiler.nodes.spi.ValueProxy;
-import jdk.graal.compiler.nodes.spi.VirtualizerTool;
-import jdk.graal.compiler.nodes.type.StampTool;
-import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
-import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
+
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.code.SourceStackTraceBailoutException;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Graph;
@@ -72,6 +53,8 @@ import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.graph.NodeStack;
 import jdk.graal.compiler.graph.Position;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
+import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.AbstractEndNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.ControlSinkNode;
@@ -80,23 +63,41 @@ import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.GuardNode;
+import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.LoopEndNode;
 import jdk.graal.compiler.nodes.LoopExitNode;
 import jdk.graal.compiler.nodes.MergeNode;
 import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.PhiNode;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ProxyNode;
+import jdk.graal.compiler.nodes.StateSplit;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.ValueProxyNode;
 import jdk.graal.compiler.nodes.WithExceptionNode;
+import jdk.graal.compiler.nodes.extended.MultiGuardNode;
+import jdk.graal.compiler.nodes.java.LoadIndexedNode;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.java.MonitorIdNode;
 import jdk.graal.compiler.nodes.memory.MemoryPhiNode;
+import jdk.graal.compiler.nodes.spi.ArrayLengthProvider;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.nodes.spi.CoreProvidersDelegate;
+import jdk.graal.compiler.nodes.spi.LimitedValueProxy;
+import jdk.graal.compiler.nodes.spi.SimplifierTool;
+import jdk.graal.compiler.nodes.spi.ValueProxy;
+import jdk.graal.compiler.nodes.spi.VirtualizerTool;
+import jdk.graal.compiler.nodes.type.StampTool;
+import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
+import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Assumptions;
@@ -208,7 +209,7 @@ public class GraphUtil {
             if (merge.phiPredecessorCount() == 1) {
                 if (merge instanceof LoopBeginNode) {
                     LoopBeginNode loopBegin = (LoopBeginNode) merge;
-                    assert merge.forwardEndCount() == 1;
+                    assert merge.forwardEndCount() == 1 : Assertions.errorMessageContext("merge", merge);
                     for (LoopExitNode loopExit : loopBegin.loopExits().snapshot()) {
                         if (markedNodes.contains(loopExit)) {
                             /*
@@ -503,7 +504,7 @@ public class GraphUtil {
         boolean loopRemoved = false;
         for (LoopBeginNode begin : graph.getNodes(LoopBeginNode.TYPE)) {
             if (begin.loopEnds().isEmpty()) {
-                assert begin.forwardEndCount() == 1;
+                assert begin.forwardEndCount() == 1 : Assertions.errorMessage(begin);
                 graph.reduceDegenerateLoopBegin(begin);
                 loopRemoved = true;
             } else {
@@ -732,10 +733,11 @@ public class GraphUtil {
     /**
      * Returns the length of the array described by the value parameter, or null if it is not
      * available. Details of the different modes are documented in
-     * {@link ArrayLengthProvider.FindLengthMode}.
+     * {@link jdk.graal.compiler.nodes.spi.ArrayLengthProvider.FindLengthMode}.
      *
      * @param value The start value.
-     * @param mode The mode as documented in {@link ArrayLengthProvider.FindLengthMode}.
+     * @param mode The mode as documented in
+     *            {@link jdk.graal.compiler.nodes.spi.ArrayLengthProvider.FindLengthMode}.
      * @return The array length if one was found, or null otherwise.
      */
     public static ValueNode arrayLength(ValueNode value, ArrayLengthProvider.FindLengthMode mode, ConstantReflectionProvider constantReflection) {
@@ -826,7 +828,7 @@ public class GraphUtil {
                 }
                 visitedPhiInputs.put(input, length);
             }
-            assert length.stamp(NodeView.DEFAULT).getStackKind() == JavaKind.Int;
+            assert length.stamp(NodeView.DEFAULT).getStackKind() == JavaKind.Int : Assertions.errorMessage(length, phi);
 
             if (i == 0) {
                 assert singleLength == null;
@@ -911,7 +913,7 @@ public class GraphUtil {
         }
 
         /* We reached a "normal" node, which is the original value. */
-        assert !(cur instanceof LimitedValueProxy) && !(cur instanceof PhiNode);
+        assert !(cur instanceof LimitedValueProxy) && !(cur instanceof PhiNode) : Assertions.errorMessageContext("cur", cur);
         return cur;
     }
 
@@ -1137,7 +1139,8 @@ public class GraphUtil {
         int sourceLengthInt = replacedSourceLength.asJavaConstant().asInt();
         if (sourceAlias instanceof VirtualObjectNode) {
             VirtualObjectNode sourceVirtual = (VirtualObjectNode) sourceAlias;
-            assert sourceLengthInt == sourceVirtual.entryCount();
+            assert sourceLengthInt == sourceVirtual.entryCount() : Assertions.errorMessageContext("sourceLengthInt", sourceLengthInt, "virtual", sourceVirtual, "sourceVirtual.EntryCount",
+                            sourceVirtual.entryCount());
         }
 
         if (fromInt < 0 || newLengthInt < 0 || fromInt > sourceLengthInt) {
@@ -1292,7 +1295,7 @@ public class GraphUtil {
                         GraalError.shouldNotReachHereUnexpectedValue(phi); // ExcludeFromJacocoGeneratedReport
                     }
                 }
-                assert loopBegin.phis().count() == replacementPhis.size();
+                assert loopBegin.phis().count() == replacementPhis.size() : Assertions.errorMessage(loopBegin, loopBegin.phis(), replacementPhis);
 
                 loopBegin.removeEnd(trueEnd);
                 loopBegin.removeEnd(falseEnd);
@@ -1306,7 +1309,8 @@ public class GraphUtil {
                 int i = 0;
                 for (PhiNode phi : loopBegin.phis()) {
                     PhiNode replacementPhi = replacementPhis.get(phi);
-                    assert (phi instanceof ValuePhiNode && replacementPhi instanceof ValuePhiNode) || (phi instanceof MemoryPhiNode && replacementPhi instanceof MemoryPhiNode);
+                    assert (phi instanceof ValuePhiNode && replacementPhi instanceof ValuePhiNode) ||
+                                    (phi instanceof MemoryPhiNode && replacementPhi instanceof MemoryPhiNode) : Assertions.errorMessageContext("phi", phi, "replacementPhi", replacementPhi);
                     ValueNode replacementValue = replacementPhi.singleValueOrThis();
                     phi.addInput(replacementValue);
                     i++;
@@ -1356,6 +1360,11 @@ public class GraphUtil {
             break;
         }
         return null;
+    }
+
+    public static boolean assertIsConstant(ValueNode n) {
+        assert n.isConstant() : "Node " + n + " must be constant";
+        return true;
     }
 
 }

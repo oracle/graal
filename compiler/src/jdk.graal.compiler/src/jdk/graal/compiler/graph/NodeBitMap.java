@@ -30,6 +30,7 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
 
 public final class NodeBitMap extends NodeIdAccessor implements NodeIterable<Node> {
@@ -134,7 +135,7 @@ public final class NodeBitMap extends NodeIdAccessor implements NodeIterable<Nod
     }
 
     public void intersect(NodeBitMap other) {
-        assert graph() == other.graph();
+        assert graph() == other.graph() : Assertions.errorMessageContext("this.graph", graph, "otherGraph", other.graph);
         int commonLength = Math.min(bits.length, other.bits.length);
         for (int i = commonLength; i < bits.length; i++) {
             bits[i] = 0;
@@ -145,7 +146,7 @@ public final class NodeBitMap extends NodeIdAccessor implements NodeIterable<Nod
     }
 
     public void union(NodeBitMap other) {
-        assert graph() == other.graph();
+        assert graph() == other.graph() : Assertions.errorMessageContext("this.graph", graph, "otherGraph", other.graph);
         grow();
         if (bits.length < other.bits.length) {
             bits = Arrays.copyOf(bits, other.bits.length);
@@ -184,7 +185,7 @@ public final class NodeBitMap extends NodeIdAccessor implements NodeIterable<Nod
     }
 
     protected Node nextMarkedNode(int fromNodeId) {
-        assert fromNodeId >= 0;
+        assert fromNodeId >= 0 : fromNodeId;
         int wordIndex = fromNodeId >> SHIFT;
         int wordsInUse = bits.length;
         if (wordIndex < wordsInUse) {

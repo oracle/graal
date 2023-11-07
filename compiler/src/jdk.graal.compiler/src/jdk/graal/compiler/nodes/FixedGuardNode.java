@@ -211,7 +211,7 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
 
     @Override
     public int intKeyAt(int i) {
-        assert i == 0;
+        assert i == 0 : i;
         return ((IntegerEqualsNode) condition()).getY().asJavaConstant().asInt();
     }
 

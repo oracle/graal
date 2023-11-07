@@ -236,7 +236,7 @@ public abstract class ProfileData {
 
         private LoopFrequencyData(double loopFrequency, ProfileSource profileSource) {
             super(profileSource);
-            assert loopFrequency >= 1.0;
+            assert loopFrequency >= 1.0 : loopFrequency;
             this.loopFrequency = loopFrequency;
         }
 

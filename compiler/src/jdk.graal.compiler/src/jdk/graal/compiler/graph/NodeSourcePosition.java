@@ -33,6 +33,7 @@ import java.util.Objects;
 
 import jdk.graal.compiler.bytecode.BytecodeDisassembler;
 import jdk.graal.compiler.bytecode.Bytecodes;
+import jdk.graal.compiler.debug.Assertions;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
@@ -208,8 +209,8 @@ public class NodeSourcePosition extends BytecodePosition implements Iterable<Nod
             if (isPlaceholder()) {
                 return new NodeSourcePosition(newSourceLanguagePosition, link, getMethod(), 0);
             }
-            assert link == null || isSubstitution || verifyCaller(this, link) : link;
-            assert !isSubstitution || marker == None;
+            assert link == null || isSubstitution || verifyCaller(this, link);
+            assert !isSubstitution || marker == None : Assertions.errorMessage(isSubstitution, marker);
             return new NodeSourcePosition(newSourceLanguagePosition, link, getMethod(), getBCI(), isSubstitution ? Substitution : None);
         } else {
             return new NodeSourcePosition(newSourceLanguagePosition, getCaller().addCaller(getSourceLanguage(), link, isSubstitution), getMethod(), getBCI(), marker);
@@ -251,7 +252,7 @@ public class NodeSourcePosition extends BytecodePosition implements Iterable<Nod
         NodeSourcePosition current = this;
         NodeSourcePosition caller = getCaller();
         while (caller != null) {
-            assert verifyCaller(current, caller) : current;
+            assert verifyCaller(current, caller);
             current = caller;
             caller = caller.getCaller();
         }

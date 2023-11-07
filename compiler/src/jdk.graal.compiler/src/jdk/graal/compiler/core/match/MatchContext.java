@@ -31,6 +31,7 @@ import java.util.List;
 
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.core.gen.NodeLIRBuilder;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugOptions;
@@ -154,7 +155,7 @@ public class MatchContext {
         this.builder = builder;
         this.rule = rule;
         this.root = node;
-        assert index == schedule.getBlockToNodesMap().get(rootBlock).indexOf(node);
+        assert index == schedule.getBlockToNodesMap().get(rootBlock).indexOf(node) : Assertions.errorMessage(node, index, rootBlock, schedule);
         this.schedule = schedule;
         // The root should be the last index since all the inputs must be scheduled before it.
         this.rootBlock = rootBlock;
@@ -221,7 +222,8 @@ public class MatchContext {
         }
         if (emitBlock != null) {
             // There must be no side effects between nodes that are affected by side effects
-            assert startIndexSideEffect != -1 && endIndexSideEffect != -1;
+            assert startIndexSideEffect != -1;
+            assert endIndexSideEffect != -1;
             final List<Node> nodes = blockToNodesMap.get(emitBlock);
             for (int i = startIndexSideEffect; i <= endIndexSideEffect; i++) {
                 Node node = nodes.get(i);
@@ -293,8 +295,8 @@ public class MatchContext {
                         for (int j = emitIndex + 1; j < i; j++) {
                             if (nodes.get(j) == in) {
                                 logFailedMatch("Earliest position in block is too late %s", in);
-                                assert consumed.find(root).ignoresSideEffects;
-                                assert verifyInputsDifferentBlock(root) != MatchPattern.Result.OK;
+                                assert consumed.find(root).ignoresSideEffects : Assertions.errorMessage(consumed, consumed.find(root), root);
+                                assert verifyInputsDifferentBlock(root) != MatchPattern.Result.OK : Assertions.errorMessage(verifyInputsDifferentBlock(root));
                                 return MatchPattern.Result.tooLate(node, rule.getPattern());
                             }
                         }
@@ -302,7 +304,7 @@ public class MatchContext {
                 }
             }
         }
-        assert verifyInputsDifferentBlock(root) == MatchPattern.Result.OK;
+        assert verifyInputsDifferentBlock(root) == MatchPattern.Result.OK : Assertions.errorMessage(verifyInputsDifferentBlock(root));
         return MatchPattern.Result.OK;
     }
 

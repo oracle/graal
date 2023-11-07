@@ -26,11 +26,12 @@
 package jdk.graal.compiler.core.amd64;
 
 import jdk.graal.compiler.asm.amd64.AMD64Address;
-import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
-import jdk.graal.compiler.core.common.type.IntegerStamp;
-import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.Stride;
+import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
+import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -39,7 +40,6 @@ import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.calc.NegateNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.phases.common.AddressLoweringByNodePhase.AddressLowering;
-
 import jdk.vm.ci.meta.JavaConstant;
 
 public class AMD64AddressLowering extends AddressLowering {
@@ -169,7 +169,8 @@ public class AMD64AddressLowering extends AddressLowering {
             }
             return improved;
         } else {
-            assert ret.getBase() == originalBase && ret.getIndex() == originalIndex;
+            assert ret.getBase() == originalBase : ret.getBase() + " vs " + originalBase;
+            assert ret.getIndex() == originalIndex : ret.getIndex() + " vs " + originalIndex;
         }
         return false;
     }
@@ -191,7 +192,7 @@ public class AMD64AddressLowering extends AddressLowering {
             return improveConstDisp(address, node, c, null, shift, negateExtractedDisplacement);
         } else {
             if (node.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
-                assert IntegerStamp.getBits(node.stamp(NodeView.DEFAULT)) == ADDRESS_BITS;
+                assert IntegerStamp.getBits(node.stamp(NodeView.DEFAULT)) == ADDRESS_BITS : Assertions.errorMessageContext("node", node);
 
                 /*
                  * we can't swallow zero-extends because of multiple reasons:

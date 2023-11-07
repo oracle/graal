@@ -29,6 +29,7 @@ import jdk.graal.compiler.core.common.type.ArithmeticOpTable.ShiftOp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.ShiftOp.Shl;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -37,7 +38,6 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
@@ -126,7 +126,7 @@ public final class LeftShiftNode extends ShiftNode<Shl> {
                         if (stamp.getStackKind() == JavaKind.Long) {
                             return new AndNode(other.getX(), ConstantNode.forLong(-1L << amount));
                         } else {
-                            assert stamp.getStackKind() == JavaKind.Int;
+                            assert stamp.getStackKind() == JavaKind.Int : Assertions.errorMessage(leftShiftNode, op, stamp, forX, forY);
                             return new AndNode(other.getX(), ConstantNode.forInt(-1 << amount));
                         }
                     }

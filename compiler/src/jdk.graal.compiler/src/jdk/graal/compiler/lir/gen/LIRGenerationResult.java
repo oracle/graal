@@ -24,17 +24,17 @@
  */
 package jdk.graal.compiler.lir.gen;
 
-import jdk.graal.compiler.lir.LIR;
-import jdk.graal.compiler.lir.LIRInstruction;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.CompilationIdentifier.Verbosity;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.lir.LIR;
+import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.framemap.FrameMap;
 import jdk.graal.compiler.lir.framemap.FrameMapBuilder;
-
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.RegisterConfig;
 

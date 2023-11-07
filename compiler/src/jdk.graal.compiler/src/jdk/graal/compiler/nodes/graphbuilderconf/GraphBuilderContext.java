@@ -24,9 +24,9 @@
  */
 package jdk.graal.compiler.nodes.graphbuilderconf;
 
-import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.graal.compiler.core.common.GraalOptions.StrictDeoptInsertionChecks;
 import static jdk.graal.compiler.core.common.type.StampFactory.objectNonNull;
+import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
@@ -36,17 +36,13 @@ import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.DeoptimizeNode;
-import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
-import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
-import jdk.graal.compiler.nodes.extended.GuardingNode;
-import jdk.graal.compiler.nodes.java.InstanceOfDynamicNode;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.DynamicPiNode;
 import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
@@ -70,8 +66,11 @@ import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.calc.SignExtendNode;
 import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
+import jdk.graal.compiler.nodes.extended.GuardingNode;
+import jdk.graal.compiler.nodes.java.InstanceOfDynamicNode;
 import jdk.graal.compiler.nodes.type.StampTool;
-
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.DeoptimizationAction;

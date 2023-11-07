@@ -39,6 +39,7 @@ import jdk.graal.compiler.phases.SingleRunSubphase;
 import jdk.graal.compiler.phases.VerifyPhase;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * Verifies that compiler phases (subclasses of {@link BasePhase}) are stateless, at least to the
@@ -74,6 +75,19 @@ public class VerifyStatelessPhases extends VerifyPhase<CoreProviders> {
                     if (!(isPrivate(modifiers) && isStatic(modifiers) && isVolatile(modifiers))) {
                         throw new VerificationError("Compiler phase fields marked @SharedGlobalPhaseState must be private static volatile, but found %s.", field);
                     }
+                    continue;
+                }
+
+                ResolvedJavaField f = metaAccess.lookupJavaField(field);
+
+                String name = f.getName();
+                if (f.isFinal() && name.equals("$VALUES") || name.equals("ENUM$VALUES")) {
+                    // generated int[] field for EnumClass::values()
+                    continue;
+                } else if (name.startsWith("$SwitchMap$") || name.startsWith("$SWITCH_TABLE$")) {
+                    // javac and ecj generate a static field in an inner class for a switch on an
+                    // enum named $SwitchMap$p$k$g$EnumClass and $SWITCH_TABLE$p$k$g$EnumClass,
+                    // respectively
                     continue;
                 }
 

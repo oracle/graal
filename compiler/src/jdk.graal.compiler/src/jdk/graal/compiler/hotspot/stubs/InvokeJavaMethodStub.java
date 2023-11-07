@@ -47,7 +47,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.GraphKit;
 import jdk.graal.compiler.replacements.nodes.ReadRegisterNode;
 import jdk.graal.compiler.word.WordCastNode;
-
 import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -126,7 +125,8 @@ public class InvokeJavaMethodStub extends AbstractForeignCallStub {
             }
             targetArguments[2] = value;
         }
-        assert HotSpotHostForeignCallsProvider.INVOKE_STATIC_METHOD_ONE_ARG.getResultType() == long.class;
+        assert HotSpotHostForeignCallsProvider.INVOKE_STATIC_METHOD_ONE_ARG.getResultType() == long.class : "Must be long method but is " +
+                        HotSpotHostForeignCallsProvider.INVOKE_STATIC_METHOD_ONE_ARG.getResultType();
         Stamp returnStamp = StampFactory.forKind(JavaKind.Long);
         ValueNode result = kit.append(new StubForeignCallNode(returnStamp, HotSpotHostForeignCallsProvider.INVOKE_STATIC_METHOD_ONE_ARG, targetArguments));
         return result;

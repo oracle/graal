@@ -25,7 +25,6 @@
 package jdk.graal.compiler.lir.framemap;
 
 import jdk.graal.compiler.lir.VirtualStackSlot;
-
 import jdk.vm.ci.meta.ValueKind;
 
 /**

@@ -105,6 +105,7 @@ import org.graalvm.collections.EconomicMap;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
@@ -364,7 +365,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
     }
 
     private ForeignCallDescriptor buildDescriptor(JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, LocationIdentity killedLocation, long routine) {
-        assert !uninit || kind == JavaKind.Object;
+        assert !uninit || kind == JavaKind.Object : Assertions.errorMessage(kind, aligned, disjoint, uninit, killedLocation, routine);
         boolean killAny = killedLocation.isAny();
         boolean killInit = killedLocation.isInit();
         String name = kind + (aligned ? "Aligned" : "") + (disjoint ? "Disjoint" : "") + (uninit ? "Uninit" : "") + "Arraycopy" + (killInit ? "KillInit" : killAny ? "KillAny" : "");
@@ -416,14 +417,14 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         registerArraycopyDescriptor(descMap, kind, true, true, uninit, arrayLocation, alignedDisjointRoutine);
 
         if (kind.isPrimitive()) {
-            assert !uninit;
+            assert !uninit : Assertions.errorMessage(kind, routine, alignedRoutine, disjointRoutine, alignedDisjointRoutine, uninit);
             EconomicMap<Long, ForeignCallDescriptor> killInitDescMap = EconomicMap.create();
             registerArraycopyDescriptor(killInitDescMap, kind, false, false, uninit, LocationIdentity.init(), routine);
             registerArraycopyDescriptor(killInitDescMap, kind, true, false, uninit, LocationIdentity.init(), alignedRoutine);
             registerArraycopyDescriptor(killInitDescMap, kind, false, true, uninit, LocationIdentity.init(), disjointRoutine);
             registerArraycopyDescriptor(killInitDescMap, kind, true, true, uninit, LocationIdentity.init(), alignedDisjointRoutine);
         } else {
-            assert kind.isObject();
+            assert kind.isObject() : Assertions.errorMessage(kind, routine, alignedRoutine, disjointRoutine, alignedDisjointRoutine, uninit);
             EconomicMap<Long, ForeignCallDescriptor> killAnyDescMap = EconomicMap.create();
             registerArraycopyDescriptor(killAnyDescMap, kind, false, false, uninit, LocationIdentity.any(), routine);
             registerArraycopyDescriptor(killAnyDescMap, kind, true, false, uninit, LocationIdentity.any(), alignedRoutine);

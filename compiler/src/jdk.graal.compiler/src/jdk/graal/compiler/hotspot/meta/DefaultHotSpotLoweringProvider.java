@@ -56,6 +56,7 @@ import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugHandlersFactory;
 import jdk.graal.compiler.debug.GraalError;
@@ -308,7 +309,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                     HotSpotAllocationSnippets.Templates allocationSnippetTemplates) {
         super.initialize(options, runtime, providers);
 
-        assert target == providers.getCodeCache().getTarget();
+        assert target == providers.getCodeCache().getTarget() : Assertions.errorMessage(target, providers.getCodeCache().getTarget());
         instanceofSnippets = new InstanceOfSnippets.Templates(options, runtime, providers);
         allocationSnippets = allocationSnippetTemplates;
         monitorSnippets = new MonitorSnippets.Templates(options, runtime, providers, config);
@@ -994,7 +995,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         List<ValueNode> arguments = node.getArguments();
 
         if (node.getExceptionKind() == BytecodeExceptionKind.CLASS_CAST) {
-            assert arguments.size() == 2;
+            assert arguments.size() == 2 : Assertions.errorMessage(node, arguments);
             /*
              * The foreign call expects the second argument to be the hub of the failing type check.
              * But when creating the BytecodeExceptionNode for dynamic type checks, it is difficult
@@ -1009,7 +1010,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                             graph.addOrUniqueWithInputs(ClassGetHubNode.create(arguments.get(1), metaAccess, constantReflection)));
         }
 
-        assert descriptor.getArgumentTypes().length == arguments.size();
+        assert descriptor.getArgumentTypes().length == arguments.size() : Assertions.errorMessage(node, descriptor, arguments);
         ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(descriptor, node.stamp(NodeView.DEFAULT), arguments));
         /*
          * If a deoptimization is necessary then the stub itself will initiate the deoptimization
@@ -1045,7 +1046,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     }
 
     private ReadNode createReadVirtualMethod(StructuredGraph graph, ValueNode hub, int vtableEntryOffset) {
-        assert vtableEntryOffset > 0;
+        assert vtableEntryOffset > 0 : Assertions.errorMessage(hub, vtableEntryOffset);
         // We use LocationNode.ANY_LOCATION for the reads that access the vtable
         // entry as HotSpot does not guarantee that this is a final value.
         Stamp methodStamp = MethodPointerStamp.methodNonNull();

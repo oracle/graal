@@ -213,7 +213,9 @@ public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
      */
     public void elementRor(ASIMDSize size, ElementSize eSize, Register dst, Register src, int rorAmt) {
         int byteRorAmt = eSize.bytes() * rorAmt;
-        assert byteRorAmt >= 0 && byteRorAmt < size.bytes(); // can't perform a full rotation
+
+        // can't perform a full rotation
+        assert byteRorAmt >= 0 && byteRorAmt < size.bytes() : byteRorAmt + " " + size;
 
         extVVV(size, dst, src, src, byteRorAmt);
     }
@@ -240,7 +242,7 @@ public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
         } else if (sameWidth && dst.getRegisterCategory().equals(CPU)) {
             umovGX(srcESize, dst, src, index);
         } else if (dst.getRegisterCategory().equals(CPU)) {
-            assert !sameWidth;
+            assert !sameWidth : dstESize + " " + srcESize + " " + dst + " " + src + " " + index;
             smovGX(dstESize, srcESize, dst, src, index);
         } else {
             assert dst.getRegisterCategory().equals(SIMD);

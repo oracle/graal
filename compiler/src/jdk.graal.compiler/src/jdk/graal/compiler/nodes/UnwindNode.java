@@ -27,12 +27,12 @@ package jdk.graal.compiler.nodes;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_8;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -50,7 +50,7 @@ public final class UnwindNode extends MemoryMapControlSinkNode implements Lowera
 
     public UnwindNode(ValueNode exception) {
         super(TYPE);
-        assert exception.getStackKind() == JavaKind.Object;
+        assert exception.getStackKind() == JavaKind.Object : Assertions.errorMessage(this, exception);
         this.exception = exception;
     }
 

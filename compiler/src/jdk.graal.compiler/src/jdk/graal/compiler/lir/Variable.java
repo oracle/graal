@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.lir;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -48,7 +49,7 @@ public class Variable extends AllocatableValue {
      */
     public Variable(ValueKind<?> kind, int index) {
         super(kind);
-        assert index >= 0;
+        assert NumUtil.assertNonNegativeInt(index);
         this.index = index;
     }
 

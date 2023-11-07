@@ -24,17 +24,18 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static jdk.graal.compiler.core.CompilationWrapper.ExceptionAction.Diagnose;
 import static jdk.graal.compiler.core.CompilationWrapper.ExceptionAction.ExitVM;
 import static jdk.graal.compiler.core.GraalCompilerOptions.CompilationBailoutAsFailure;
 import static jdk.graal.compiler.core.GraalCompilerOptions.CompilationFailureAction;
 import static jdk.graal.compiler.core.phases.HighTier.Options.Inline;
 import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsing;
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import java.io.PrintStream;
 
 import org.graalvm.collections.EconomicMap;
+
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.CompilationPrinter;
@@ -59,7 +60,6 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;

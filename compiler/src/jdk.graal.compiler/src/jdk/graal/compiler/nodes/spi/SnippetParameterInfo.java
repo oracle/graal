@@ -26,14 +26,14 @@ package jdk.graal.compiler.nodes.spi;
 
 import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 
-import jdk.graal.compiler.api.replacements.Snippet;
+import java.util.BitSet;
 
+import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Local;
 import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import java.util.BitSet;
 
 /**
  * Metadata required for processing of snippets.
@@ -68,7 +68,7 @@ public class SnippetParameterInfo {
         }
         if (method.hasReceiver()) {
             // Receiver must be constant.
-            assert (constant & 1) == 0;
+            assert (constant & 1) == 0 : Assertions.errorMessage(constant);
             constant |= 1;
         }
         this.constantParametersBits = constant;

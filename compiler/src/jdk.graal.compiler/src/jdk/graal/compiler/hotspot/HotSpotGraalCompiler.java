@@ -59,6 +59,8 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.serviceprovider.GraalUnsafeAccess;
+import jdk.graal.compiler.debug.Assertions;
+
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
@@ -216,7 +218,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
                     OptionValues options) {
         int entryBCI = graph.getEntryBCI();
         ResolvedJavaMethod method = graph.method();
-        assert options == graph.getOptions();
+        assert options == graph.getOptions() : Assertions.errorMessage(options, graph.getOptions());
         HotSpotBackend backend = graalRuntime.getHostBackend();
         HotSpotProviders providers = backend.getProviders();
         final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;

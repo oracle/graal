@@ -308,7 +308,7 @@ public class AMD64Move {
             if (size == OperandSize.QWORD) {
                 masm.leaq(asRegister(result, AMD64Kind.QWORD), address.toAddress());
             } else {
-                assert size == OperandSize.DWORD;
+                assert size == OperandSize.DWORD : size;
                 masm.lead(asRegister(result, AMD64Kind.DWORD), address.toAddress());
             }
         }
@@ -342,7 +342,7 @@ public class AMD64Move {
             super(TYPE);
             this.result = result;
             this.slot = slot;
-            assert slot instanceof VirtualStackSlot || slot instanceof StackSlot;
+            assert slot instanceof VirtualStackSlot || slot instanceof StackSlot : slot;
         }
 
         @Override
@@ -418,7 +418,8 @@ public class AMD64Move {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            assert asRegister(cmpValue).equals(AMD64.rax) && asRegister(result).equals(AMD64.rax);
+            assert asRegister(cmpValue).equals(AMD64.rax) : cmpValue;
+            assert asRegister(result).equals(AMD64.rax) : result;
 
             if (crb.target.isMP) {
                 masm.lock();

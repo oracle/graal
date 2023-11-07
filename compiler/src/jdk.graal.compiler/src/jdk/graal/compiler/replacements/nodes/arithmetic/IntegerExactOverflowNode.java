@@ -25,11 +25,13 @@
 
 package jdk.graal.compiler.replacements.nodes.arithmetic;
 
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_2;
+
+import java.util.List;
+
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.nodes.spi.Canonicalizable;
-import jdk.graal.compiler.nodes.spi.Simplifiable;
-import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.IfNode;
@@ -37,11 +39,9 @@ import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.BinaryNode;
-
-import java.util.List;
-
-import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
-import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_2;
+import jdk.graal.compiler.nodes.spi.Canonicalizable;
+import jdk.graal.compiler.nodes.spi.Simplifiable;
+import jdk.graal.compiler.nodes.spi.SimplifierTool;
 
 @NodeInfo(cycles = CYCLES_2, size = SIZE_2)
 public abstract class IntegerExactOverflowNode extends LogicNode implements Canonicalizable.Binary<ValueNode>, Simplifiable {
@@ -51,7 +51,6 @@ public abstract class IntegerExactOverflowNode extends LogicNode implements Cano
 
     public IntegerExactOverflowNode(NodeClass<? extends IntegerExactOverflowNode> c, ValueNode x, ValueNode y) {
         super(c);
-        assert x != null && y != null;
         this.x = x;
         this.y = y;
     }
@@ -74,7 +73,7 @@ public abstract class IntegerExactOverflowNode extends LogicNode implements Cano
      */
     @SuppressWarnings("deprecation")
     public LogicNode maybeCommuteInputs() {
-        assert this instanceof BinaryCommutative;
+        assert this instanceof BinaryCommutative : this;
         if (!y.isConstant() && (x.isConstant() || x.getId() > y.getId())) {
             ValueNode tmp = x;
             x = y;

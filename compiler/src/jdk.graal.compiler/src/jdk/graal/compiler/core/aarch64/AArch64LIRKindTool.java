@@ -41,7 +41,7 @@ public class AArch64LIRKindTool implements LIRKindTool {
         } else if (bits <= 32) {
             return LIRKind.value(AArch64Kind.DWORD);
         } else {
-            assert bits <= 64;
+            assert bits <= 64 : bits;
             return LIRKind.value(AArch64Kind.QWORD);
         }
     }

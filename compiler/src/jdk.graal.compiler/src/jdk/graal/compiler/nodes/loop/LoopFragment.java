@@ -30,6 +30,18 @@ import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
+import org.graalvm.collections.UnmodifiableEconomicMap;
+
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.DebugCloseable;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Graph;
+import jdk.graal.compiler.graph.Graph.DuplicationReplacement;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeBitMap;
+import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.EndNode;
@@ -52,17 +64,6 @@ import jdk.graal.compiler.nodes.java.MonitorEnterNode;
 import jdk.graal.compiler.nodes.spi.NodeWithState;
 import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
-import org.graalvm.collections.UnmodifiableEconomicMap;
-import jdk.graal.compiler.debug.DebugCloseable;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.graph.Graph;
-import jdk.graal.compiler.graph.Graph.DuplicationReplacement;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.NodeBitMap;
-import jdk.graal.compiler.graph.iterators.NodeIterable;
-
 import jdk.vm.ci.meta.TriState;
 
 public abstract class LoopFragment {
@@ -194,7 +195,7 @@ public abstract class LoopFragment {
                     public Node replacement(Node o) {
                         Node r1 = dataFix.replacement(o);
                         if (r1 != o) {
-                            assert cfgFix.replacement(o) == o;
+                            assert cfgFix.replacement(o) == o : Assertions.errorMessage(cfgFix, o, r1);
                             return r1;
                         }
                         Node r2 = cfgFix.replacement(o);
@@ -547,7 +548,7 @@ public abstract class LoopFragment {
                         continue;
                     }
                     if (vpn.value() == null) {
-                        assert vpn instanceof GuardProxyNode;
+                        assert vpn instanceof GuardProxyNode : Assertions.errorMessage(vpn);
                         vpn.replaceAtUsages(null);
                         continue;
                     }

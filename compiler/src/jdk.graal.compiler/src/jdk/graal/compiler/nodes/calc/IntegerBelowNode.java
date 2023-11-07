@@ -29,6 +29,7 @@ import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -39,7 +40,6 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -87,7 +87,8 @@ public final class IntegerBelowNode extends IntegerLowerThanNode {
     public static class BelowOp extends LowerOp {
         @Override
         protected CompareNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue, NodeView view) {
-            assert newX.stamp(NodeView.DEFAULT) instanceof IntegerStamp && newY.stamp(NodeView.DEFAULT) instanceof IntegerStamp;
+            assert newX.stamp(NodeView.DEFAULT) instanceof IntegerStamp : Assertions.errorMessageContext("newX", newX);
+            assert newY.stamp(NodeView.DEFAULT) instanceof IntegerStamp : Assertions.errorMessageContext("newY", newY);
             return new IntegerBelowNode(newX, newY);
         }
 
@@ -151,11 +152,11 @@ public final class IntegerBelowNode extends IntegerLowerThanNode {
                 return result;
             }
             if (forX.stamp(view) instanceof IntegerStamp) {
-                assert forY.stamp(view) instanceof IntegerStamp;
+                assert forY.stamp(view) instanceof IntegerStamp : Assertions.errorMessageContext("this", this, "forX", forX, "forY", forY);
                 IntegerStamp xStamp = (IntegerStamp) forX.stamp(view);
                 IntegerStamp yStamp = (IntegerStamp) forY.stamp(view);
                 int bits = xStamp.getBits();
-                assert yStamp.getBits() == bits;
+                assert yStamp.getBits() == bits : Assertions.errorMessageContext("this", this, "yStamp", yStamp);
                 LogicNode logic = canonicalizeRangeFlip(forX, forY, bits, false, view);
                 if (logic != null) {
                     return logic;
@@ -202,7 +203,7 @@ public final class IntegerBelowNode extends IntegerLowerThanNode {
 
         @Override
         protected boolean addCanOverflow(IntegerStamp a, IntegerStamp b) {
-            assert a.getBits() == b.getBits();
+            assert a.getBits() == b.getBits() : Assertions.errorMessageContext("a", a, "b", b);
             // a + b |<| a
             if (a.getBits() == Long.SIZE) {
                 return Long.compareUnsigned(upperBound(a) + upperBound(b), upperBound(a)) < 0;

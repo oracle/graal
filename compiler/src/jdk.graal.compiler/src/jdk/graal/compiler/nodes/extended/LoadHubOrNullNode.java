@@ -31,6 +31,7 @@ import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -44,7 +45,6 @@ import jdk.graal.compiler.nodes.spi.StampProvider;
 import jdk.graal.compiler.nodes.spi.Virtualizable;
 import jdk.graal.compiler.nodes.spi.VirtualizerTool;
 import jdk.graal.compiler.nodes.type.StampTool;
-
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -62,7 +62,7 @@ public final class LoadHubOrNullNode extends FloatingNode implements Lowerable, 
     }
 
     private static AbstractPointerStamp hubStamp(StampProvider stampProvider, ValueNode value) {
-        assert value.stamp(NodeView.DEFAULT) instanceof ObjectStamp;
+        assert value.stamp(NodeView.DEFAULT) instanceof ObjectStamp : Assertions.errorMessageContext("value", value);
         return stampProvider.createHubStamp(((ObjectStamp) value.stamp(NodeView.DEFAULT))).asMaybeNull();
     }
 

@@ -26,6 +26,8 @@ package jdk.graal.compiler.core.common.util;
 
 import static jdk.graal.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.Assertions;
 import sun.misc.Unsafe;
 
 /**
@@ -85,10 +87,12 @@ public abstract class UnsafeArrayTypeReader extends AbstractTypeReader {
     }
 
     protected static long readOffset(byte[] data, long byteIndex, int numBytes) {
-        assert byteIndex >= 0;
-        assert numBytes > 0;
-        assert byteIndex + numBytes <= data.length;
-        assert Unsafe.ARRAY_BYTE_INDEX_SCALE == 1;
+        assert NumUtil.assertNonNegativeLong(byteIndex);
+        assert NumUtil.assertPositiveInt(numBytes);
+        int length = data.length;
+        assert byteIndex + numBytes <= length : Assertions.errorMessageContext("byteIndex", byteIndex, "numBytes", numBytes, "length", length);
+        int arrayByteIndexScale = Unsafe.ARRAY_BYTE_INDEX_SCALE;
+        assert arrayByteIndexScale == 1 : Assertions.errorMessageContext("unsafe array byte index scale ", arrayByteIndexScale);
 
         return byteIndex + Unsafe.ARRAY_BYTE_BASE_OFFSET;
     }

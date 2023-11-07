@@ -64,31 +64,31 @@ public class TypeGuardInlineInfo extends AbstractInlineInfo {
 
     @Override
     public ResolvedJavaMethod methodAt(int index) {
-        assert index == 0;
+        assert index == 0 : index;
         return concrete;
     }
 
     @Override
     public Inlineable inlineableElementAt(int index) {
-        assert index == 0;
+        assert index == 0 : index;
         return inlineableElement;
     }
 
     @Override
     public double probabilityAt(int index) {
-        assert index == 0;
+        assert index == 0 : index;
         return 1.0;
     }
 
     @Override
     public double relevanceAt(int index) {
-        assert index == 0;
+        assert index == 0 : index;
         return 1.0;
     }
 
     @Override
     public void setInlinableElement(int index, Inlineable inlineableElement) {
-        assert index == 0;
+        assert index == 0 : index;
         this.inlineableElement = inlineableElement;
     }
 

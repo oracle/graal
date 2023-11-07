@@ -25,6 +25,7 @@
 package jdk.graal.compiler.nodes;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -53,7 +54,7 @@ public final class GuardProxyNode extends ProxyNode implements GuardingNode {
 
     @Override
     public ProxyNode duplicateOn(LoopExitNode newProxyPoint, ValueNode newOriginalNode) {
-        assert newOriginalNode instanceof GuardingNode;
+        assert newOriginalNode instanceof GuardingNode : Assertions.errorMessageContext("this", this, "newOriginalNode", newOriginalNode);
         return graph().addWithoutUnique(new GuardProxyNode((GuardingNode) newOriginalNode, newProxyPoint));
     }
 }

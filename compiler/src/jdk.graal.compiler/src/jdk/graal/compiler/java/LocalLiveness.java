@@ -82,7 +82,9 @@ import java.util.Arrays;
 import java.util.BitSet;
 
 import org.graalvm.collections.Pair;
+
 import jdk.graal.compiler.bytecode.BytecodeStream;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.java.BciBlockMapping.BciBlock;
 
@@ -126,8 +128,8 @@ public abstract class LocalLiveness {
 
         for (int id = 0; id < blocks.size(); id++) {
             BciBlock block = blocks.get(id);
-            assert block.getId() == id;
-            assert asyncSuccessors.size() == id;
+            assert block.getId() == id : Assertions.errorMessage(block, id);
+            assert asyncSuccessors.size() == id : Assertions.errorMessage(asyncSuccessors, id);
 
             if (block.isInstructionBlock()) {
                 /*

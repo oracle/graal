@@ -25,9 +25,9 @@
 package jdk.graal.compiler.nodes.graphbuilderconf;
 
 import static java.lang.String.format;
+import static jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.LateClassPlugins.CLOSED_LATE_CLASS_PLUGIN;
 import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
-import static jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.LateClassPlugins.CLOSED_LATE_CLASS_PLUGIN;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -46,6 +46,7 @@ import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
+
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
@@ -60,7 +61,6 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -488,7 +488,7 @@ public class InvocationPlugins {
     void put(Type declaringClass, InvocationPlugin plugin, boolean allowOverwrite) {
         assert resolvedRegistrations == null : "registration is closed";
         String internalName = MetaUtil.toInternalName(declaringClass.getTypeName());
-        assert plugin.isStatic || plugin.argumentTypes[0] == declaringClass;
+        assert plugin.isStatic || plugin.argumentTypes[0] == declaringClass : plugin;
         assert deferredRegistrations != null : "initial registration is closed - use " + LateRegistration.class.getName() + " for late registrations";
 
         ClassPlugins classPlugins = registrations.get(internalName);

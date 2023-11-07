@@ -318,7 +318,7 @@ public final class AArch64ArrayCopyWithConversionsOp extends AArch64ComplexVecto
                 asm.neon.uzp1VVV(FullReg, srcESize.narrow(), v(2), v(2), v(3));
                 asm.neon.xtnVV(dstESize, v(0), v(0));
                 asm.neon.xtnVV(dstESize, v(2), v(2));
-                assert strideDst.value == 1;
+                assert strideDst.value == 1 : strideDst;
                 asm.fstr(64, v(0), createBaseRegisterOnlyAddress(64, arrayDst));
                 asm.fstr(64, v(2), createRegisterOffsetAddress(64, arrayDst, len, false));
                 break;
@@ -357,7 +357,7 @@ public final class AArch64ArrayCopyWithConversionsOp extends AArch64ComplexVecto
                 break;
             case 2:
                 // 1 -> 4 byte inflation
-                assert strideSrc.value == 1;
+                assert strideSrc.value == 1 : strideSrc;
                 asm.fldr(64, v(0), createBaseRegisterOnlyAddress(64, arraySrc));
                 asm.fldr(64, v(2), createRegisterOffsetAddress(64, arraySrc, len, false));
                 asm.neon.uxtlVV(srcESize, v(0), v(0));

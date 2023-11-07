@@ -36,6 +36,7 @@ import jdk.graal.compiler.hotspot.meta.HotSpotRegistersProvider;
 import org.graalvm.collections.EconomicMap;
 import jdk.graal.compiler.asm.Assembler;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.debug.BenchmarkCounters;
 import jdk.graal.compiler.lir.LIRInstruction;
@@ -63,8 +64,8 @@ public abstract class HotSpotCounterOp extends LIRInstruction {
     public HotSpotCounterOp(LIRInstructionClass<? extends HotSpotCounterOp> c, String[] names, String[] groups, Value[] increments, HotSpotRegistersProvider registers, GraalHotSpotVMConfig config) {
         super(c);
 
-        assert names.length == groups.length;
-        assert groups.length == increments.length;
+        assert names.length == groups.length : Assertions.errorMessage(names, groups);
+        assert groups.length == increments.length : Assertions.errorMessage(groups, increments);
 
         this.names = names;
         this.groups = groups;

@@ -30,6 +30,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
+
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.RetryableBailoutException;
 import jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
@@ -610,7 +612,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
         int curMaxDominatorDepth = 0;
         for (int i = 1; i < blocks.length; i++) {
             HIRBlock block = blocks[i];
-            assert block.getPredecessorCount() > 0;
+            assert NumUtil.assertPositiveInt(block.getPredecessorCount());
             HIRBlock dominator = null;
             for (int j = 0; j < block.getPredecessorCount(); j++) {
                 HIRBlock pred = block.getPredecessorAt(j);
@@ -803,7 +805,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
             for (LoopEndNode len : lb.loopEnds()) {
                 HIRBlock endBlock = blockFor(len);
                 assert endBlock != null;
-                assert endBlock.relativeFrequency >= 0D;
+                assert endBlock.relativeFrequency >= 0D : Assertions.errorMessageContext("endblock", endBlock, "endblock.rf", endBlock.relativeFrequency);
                 loopEndFrequency += endBlock.relativeFrequency;
                 source = source.combine(endBlock.frequencySource);
             }
@@ -833,7 +835,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
             for (LoopExitNode lex : lb.loopExits()) {
                 HIRBlock lexBlock = blockFor(lex);
                 assert lexBlock != null;
-                assert lexBlock.relativeFrequency >= 0D;
+                assert lexBlock.relativeFrequency >= 0D : Assertions.errorMessageContext("lexBlock", lexBlock);
                 loopExitFrequencySum += lexBlock.relativeFrequency;
                 source = source.combine(lexBlock.frequencySource);
             }
@@ -979,7 +981,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
             HIRBlock pred = b.getPredecessorAt(0);
             relativeFrequency = pred.relativeFrequency;
             if (pred.getSuccessorCount() > 1) {
-                assert pred.getEndNode() instanceof ControlSplitNode;
+                assert pred.getEndNode() instanceof ControlSplitNode : Assertions.errorMessage(pred, pred.getEndNode());
                 ControlSplitNode controlSplit = (ControlSplitNode) pred.getEndNode();
                 relativeFrequency = multiplyRelativeFrequencies(relativeFrequency, controlSplit.probability(b.getBeginNode()));
                 if (computingLocalLoopFrequencies) {
@@ -1140,7 +1142,8 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
                         for (int i = 0; i < b.getSuccessorCount(); i++) {
                             HIRBlock sux = b.getSuccessorAt(i);
                             if (sux.getLoop() != loop) {
-                                assert sux.getLoopDepth() < loop.getDepth();
+                                assert sux.getLoopDepth() < loop.getDepth() : Assertions.errorMessageContext("sux", sux, "sux.loopDepth", sux.getLoopDepth(), "loop", loop, "loop.loopDepth",
+                                                loop.getDepth());
                                 loop.getNaturalExits().add(sux);
                             }
                         }
@@ -1150,7 +1153,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
                     if (!graph.getGuardsStage().areFrameStatesAtDeopts()) {
                         for (LoopExitNode exit : loopBegin.loopExits()) {
                             HIRBlock exitBlock = nodeToBlock.get(exit);
-                            assert exitBlock.getPredecessorCount() == 1;
+                            assert exitBlock.getPredecessorCount() == 1 : Assertions.errorMessage(exit, exitBlock);
                             computeLoopBlocks(exitBlock.getFirstPredecessor(), loop, stack, true);
                             loop.getLoopExits().add(exitBlock);
                         }
@@ -1166,8 +1169,10 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
                                 if (sux.getLoop() != loop) {
                                     AbstractBeginNode begin = sux.getBeginNode();
                                     if (!loopBegin.isLoopExit(begin)) {
-                                        assert !(begin instanceof LoopBeginNode);
-                                        assert sux.getLoopDepth() < loop.getDepth();
+                                        assert !(begin instanceof LoopBeginNode) : Assertions.errorMessageContext("begin", begin);
+                                        assert sux.getLoopDepth() < loop.getDepth() : Assertions.errorMessageContext("sux", sux, "sux.loopDepth", sux.getLoopDepth(), "loop", loop,
+                                                        "loop.loopDepth",
+                                                        loop.getDepth());
                                         graph.getDebug().log(DebugContext.VERBOSE_LEVEL, "Unexpected loop exit with %s, including whole branch in the loop", sux);
                                         computeLoopBlocks(sux, loop, stack, false);
                                     }
@@ -1245,7 +1250,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
                     return null;
                 }
             } else {
-                assert iterB.getId() < iterA.getId();
+                assert iterB.getId() < iterA.getId() : Assertions.errorMessageContext("a", a, "b", b, "iterB.id", iterB.getId(), "iterA.id", iterA.getId());
                 iterB = iterB.getPostdominator();
                 if (iterB == null) {
                     return null;

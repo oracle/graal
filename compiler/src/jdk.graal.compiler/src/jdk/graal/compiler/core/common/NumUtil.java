@@ -25,6 +25,7 @@
 package jdk.graal.compiler.core.common;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.CodeUtil;
@@ -150,24 +151,24 @@ public class NumUtil {
     }
 
     public static boolean isUnsignedNbit(int n, int value) {
-        assert n > 0 && n < 32;
+        assert n > 0 && n < 32 : n;
         return 32 - Integer.numberOfLeadingZeros(value) <= n;
     }
 
     public static boolean isUnsignedNbit(int n, long value) {
-        assert n > 0 && n < 64;
+        assert n > 0 && n < 64 : n;
         return 64 - Long.numberOfLeadingZeros(value) <= n;
     }
 
     public static boolean isSignedNbit(int n, int value) {
-        assert n > 0 && n < 32;
+        assert n > 0 && n < 32 : n;
         int min = -(1 << (n - 1));
         int max = (1 << (n - 1)) - 1;
         return value >= min && value <= max;
     }
 
     public static boolean isSignedNbit(int n, long value) {
-        assert n > 0 && n < 64;
+        assert n > 0 && n < 64 : n;
         long min = -(1L << (n - 1));
         long max = (1L << (n - 1)) - 1;
         return value >= min && value <= max;
@@ -193,7 +194,7 @@ public class NumUtil {
      * @return A number with n bits set to 1.
      */
     public static long getNbitNumberLong(int n) {
-        assert n >= 0 && n <= 64;
+        assert n >= 0 && n <= 64 : n;
         if (n < 64) {
             return (1L << n) - 1;
         } else {
@@ -284,4 +285,59 @@ public class NumUtil {
             throw GraalError.shouldNotReachHere("Must be one of java's core datatypes int/long but is " + bits);
         }
     }
+
+    /**
+     * Ensure the supplied double is a finite, positive number.
+     */
+    public static boolean assertPositiveDouble(double d) {
+        assert Double.isFinite(d) && d >= 0 : "expected finite positive double, got " + d;
+        return true;
+    }
+
+    public static boolean assertFiniteDouble(double d) {
+        assert Double.isFinite(d) : "expected finite  double, got " + d;
+        return true;
+    }
+
+    public static boolean assertNonNegativeInt(int i) {
+        assert i >= 0 : "expected positive int, got " + i;
+        return true;
+    }
+
+    public static boolean assertPositiveInt(int i) {
+        assert i > 0 : "expected positive int, got " + i;
+        return true;
+    }
+
+    public static boolean assertNonNegativeLong(long l) {
+        assert l >= 0L : "expected positive long, got " + l;
+        return true;
+    }
+
+    public static boolean assertNonNegativeDouble(double d) {
+        assert d >= 0D : "expected  positive double, got " + d;
+        return true;
+    }
+
+    public static final int ASSERTION_TRUNCATE_ARR_LENGTH = 1024;
+
+    public static boolean assertArrayLength(Object[] o, int length) {
+        assert o.length == length : "Length of array " + arrayToString(o, ASSERTION_TRUNCATE_ARR_LENGTH) + " !=" + length;
+        return true;
+    }
+
+    public static boolean assertArrayLength(Object[] o, int minLength, int maxLength) {
+        assert o.length >= minLength && o.length <= maxLength : "Length of array " + arrayToString(o, ASSERTION_TRUNCATE_ARR_LENGTH) + " is not in [" + minLength + ":" + maxLength + "]";
+        return true;
+    }
+
+    public static String arrayToString(Object[] a, int truncateAfter) {
+        if (a.length <= truncateAfter) {
+            return Arrays.toString(a);
+        }
+        String s = Arrays.toString(Arrays.copyOf(a, truncateAfter));
+        // Replace trailing "]" with ", ...]"
+        return s.substring(0, s.length() - 1) + ", ...]";
+    }
+
 }

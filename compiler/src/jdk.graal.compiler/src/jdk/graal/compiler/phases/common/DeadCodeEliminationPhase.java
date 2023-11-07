@@ -26,6 +26,7 @@ package jdk.graal.compiler.phases.common;
 
 import java.util.Optional;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeFlood;
@@ -102,7 +103,7 @@ public class DeadCodeEliminationPhase extends Phase {
             return;
         } else {
             // Some nodes are not marked alive and therefore dead => proceed.
-            assert totalNodeCount > totalMarkedCount;
+            assert totalNodeCount > totalMarkedCount : Assertions.errorMessage(totalNodeCount, totalMarkedCount, flood);
         }
 
         deleteNodes(flood, graph);

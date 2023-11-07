@@ -84,7 +84,7 @@ public final class AArch64EncodeArrayOp extends AArch64ComplexVectorOp {
         this.vectorTempValue = allocateConsecutiveVectorRegisters(tool, charset == CharsetName.ASCII ? 7 : 6);
 
         this.charset = charset;
-        assert charset == CharsetName.ASCII || charset == CharsetName.ISO_8859_1;
+        assert charset == CharsetName.ASCII || charset == CharsetName.ISO_8859_1 : charset;
     }
 
     @Override

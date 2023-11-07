@@ -24,26 +24,24 @@
  */
 package jdk.graal.compiler.replacements.arraycopy;
 
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.DEOPT_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
+import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 
 import java.util.EnumMap;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.replacements.ReplacementsUtil;
-import jdk.graal.compiler.replacements.SnippetCounter;
-import jdk.graal.compiler.replacements.SnippetIntegerHistogram;
-import jdk.graal.compiler.replacements.SnippetTemplate;
-import jdk.graal.compiler.replacements.Snippets;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.api.replacements.Fold.InjectedParameter;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.api.replacements.Snippet.NonNullParameter;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.CallTargetNode;
@@ -73,9 +71,12 @@ import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.ReplacementsUtil;
+import jdk.graal.compiler.replacements.SnippetCounter;
+import jdk.graal.compiler.replacements.SnippetIntegerHistogram;
+import jdk.graal.compiler.replacements.SnippetTemplate;
+import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.BasicArrayCopyNode;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -662,7 +663,7 @@ public abstract class ArrayCopySnippets implements Snippets {
             args.add("destPos", arraycopy.getDestinationPosition());
             args.add("length", arraycopy.getLength());
             if (snippetInfo != arraycopyNativeExceptionSnippet) {
-                assert arrayTypeCheck != ArrayCopyTypeCheck.UNDEFINED_ARRAY_TYPE_CHECK;
+                assert arrayTypeCheck != ArrayCopyTypeCheck.UNDEFINED_ARRAY_TYPE_CHECK : "Must not be arrayTypeCheck " + Assertions.errorMessageContext("arrayCopy", arraycopy);
                 args.addConst("arrayTypeCheck", arrayTypeCheck);
             }
             Object locationIdentity = arraycopy.killsAnyLocation() ? LocationIdentity.any() : NamedLocationIdentity.getArrayLocation(elementKind);
@@ -720,7 +721,7 @@ public abstract class ArrayCopySnippets implements Snippets {
             for (Node originalNode : duplicates.getKeys()) {
                 if (originalNode instanceof InvokeNode) {
                     InvokeNode invoke = (InvokeNode) duplicates.get(originalNode);
-                    assert invoke.asNode().graph() == graph;
+                    assert invoke.asNode().graph() == graph : "Graphs must match " + Assertions.errorMessageContext("invoke", invoke, "invoke.graph", invoke.asNode().graph(), "graph", graph);
                     CallTargetNode call = invoke.callTarget();
 
                     if (!call.targetMethod().equals(originalArraycopy)) {

@@ -49,6 +49,7 @@ import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecode;
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeSourcePosition;
@@ -73,7 +74,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderTool;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.SideEffectsState;
 import jdk.graal.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import jdk.graal.compiler.nodes.java.MonitorIdNode;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaKind;
@@ -297,15 +297,15 @@ public final class FrameStateBuilder implements SideEffectsState {
         this.canVerifyKind = other.canVerifyKind;
         this.verifyState = other.verifyState;
 
-        assert locals.length == code.getMaxLocals();
-        assert stack.length == Math.max(1, code.getMaxStackSize());
+        assert locals.length == code.getMaxLocals() : Assertions.errorMessage(locals, code.getMaxLocals());
+        assert stack.length == Math.max(1, code.getMaxStackSize()) : Assertions.errorMessage(stack, stack.length);
 
         assert other.graph != null;
         graph = other.graph;
         shouldRetainLocalVariables = other.shouldRetainLocalVariables;
         monitorIds = other.monitorIds.length == 0 ? other.monitorIds : other.monitorIds.clone();
 
-        assert lockedObjects.length == monitorIds.length;
+        assert lockedObjects.length == monitorIds.length : Assertions.errorMessage(lockedObjects, monitorIds);
 
         if (other.sideEffects != null) {
             sideEffects = new ArrayList<>();
@@ -494,7 +494,8 @@ public final class FrameStateBuilder implements SideEffectsState {
         for (int i = 0; i < stackSize(); i++) {
             ValueNode x = stack[i];
             ValueNode y = other.stack[i];
-            assert x != null && y != null;
+            assert x != null;
+            assert y != null;
             if (x != y && (x == TWO_SLOT_MARKER || x.isDeleted() || y == TWO_SLOT_MARKER || y.isDeleted() || x.getStackKind() != y.getStackKind())) {
                 throw new GraalError(incompatibilityErrorMessage("mismatch in stack types", other));
             }
@@ -575,7 +576,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             phi.addInput(currentValue);
         }
         phi.addInput(otherValue);
-        assert phi.valueCount() == block.phiPredecessorCount() + 1;
+        assert phi.valueCount() == block.phiPredecessorCount() + 1 : Assertions.errorMessage(phi, block);
         return phi;
     }
 
@@ -684,7 +685,7 @@ public final class FrameStateBuilder implements SideEffectsState {
         monitorIds = Arrays.copyOf(monitorIds, monitorIds.length + 1);
         lockedObjects[lockedObjects.length - 1] = object;
         monitorIds[monitorIds.length - 1] = monitorId;
-        assert lockedObjects.length == monitorIds.length;
+        assert lockedObjects.length == monitorIds.length : Assertions.errorMessage(this, object, monitorId, lockedObjects, monitorIds);
     }
 
     /**
@@ -698,7 +699,7 @@ public final class FrameStateBuilder implements SideEffectsState {
         } finally {
             lockedObjects = lockedObjects.length == 1 ? ValueNode.EMPTY_ARRAY : Arrays.copyOf(lockedObjects, lockedObjects.length - 1);
             monitorIds = monitorIds.length == 1 ? EMPTY_MONITOR_ARRAY : Arrays.copyOf(monitorIds, monitorIds.length - 1);
-            assert lockedObjects.length == monitorIds.length;
+            assert lockedObjects.length == monitorIds.length : Assertions.errorMessage(lockedObjects, monitorIds);
         }
     }
 
@@ -711,7 +712,7 @@ public final class FrameStateBuilder implements SideEffectsState {
      */
     public int lockDepth(boolean includeParents) {
         int depth = lockedObjects.length;
-        assert depth == monitorIds.length;
+        assert depth == monitorIds.length : Assertions.errorMessage(this, includeParents, depth, monitorIds);
         if (includeParents && parser.getParent() != null) {
             depth += parser.getParent().frameState.lockDepth(true);
         }
@@ -729,7 +730,7 @@ public final class FrameStateBuilder implements SideEffectsState {
                 return true;
             }
         }
-        assert lockedObjects.length == monitorIds.length;
+        assert lockedObjects.length == monitorIds.length : Assertions.errorMessage(this, value, lockedObjects, monitorIds);
         for (int i = 0; i < lockedObjects.length; i++) {
             if (lockedObjects[i] == value || monitorIds[i] == value) {
                 return true;
@@ -823,8 +824,8 @@ public final class FrameStateBuilder implements SideEffectsState {
 
     private boolean verifyKind(JavaKind slotKind, ValueNode x) {
         assert x != null;
-        assert x != TWO_SLOT_MARKER;
-        assert slotKind.getSlotCount() > 0;
+        assert x != TWO_SLOT_MARKER : x;
+        assert slotKind.getSlotCount() > 0 : Assertions.errorMessage(slotKind);
 
         if (canVerifyKind) {
             GraalError.guarantee(x.getStackKind() == slotKind.getStackKind(), "x %s stack kind %s does not match slot kind %s", x, x.getStackKind(), slotKind);
@@ -843,7 +844,7 @@ public final class FrameStateBuilder implements SideEffectsState {
     public ValueNode loadLocal(int i, JavaKind slotKind) {
         ValueNode x = locals[i];
         assert verifyKind(slotKind, x);
-        assert slotKind.needsTwoSlots() ? locals[i + 1] == TWO_SLOT_MARKER : (i == locals.length - 1 || locals[i + 1] != TWO_SLOT_MARKER);
+        assert slotKind.needsTwoSlots() ? locals[i + 1] == TWO_SLOT_MARKER : (i == locals.length - 1 || locals[i + 1] != TWO_SLOT_MARKER) : Assertions.errorMessage(slotKind, locals, i);
         return x;
     }
 
@@ -978,25 +979,25 @@ public final class FrameStateBuilder implements SideEffectsState {
         switch (opcode) {
             case POP: {
                 ValueNode w1 = xpop();
-                assert w1 != TWO_SLOT_MARKER;
+                assert w1 != TWO_SLOT_MARKER : w1;
                 break;
             }
             case POP2: {
                 xpop();
                 ValueNode w2 = xpop();
-                assert w2 != TWO_SLOT_MARKER;
+                assert w2 != TWO_SLOT_MARKER : w2;
                 break;
             }
             case DUP: {
                 ValueNode w1 = xpeek();
-                assert w1 != TWO_SLOT_MARKER;
+                assert w1 != TWO_SLOT_MARKER : w1;
                 xpush(w1);
                 break;
             }
             case DUP_X1: {
                 ValueNode w1 = xpop();
                 ValueNode w2 = xpop();
-                assert w1 != TWO_SLOT_MARKER;
+                assert w1 != TWO_SLOT_MARKER : w1;
                 xpush(w1);
                 xpush(w2);
                 xpush(w1);
@@ -1006,7 +1007,7 @@ public final class FrameStateBuilder implements SideEffectsState {
                 ValueNode w1 = xpop();
                 ValueNode w2 = xpop();
                 ValueNode w3 = xpop();
-                assert w1 != TWO_SLOT_MARKER;
+                assert w1 != TWO_SLOT_MARKER : w1;
                 xpush(w1);
                 xpush(w3);
                 xpush(w2);
@@ -1049,8 +1050,8 @@ public final class FrameStateBuilder implements SideEffectsState {
             case SWAP: {
                 ValueNode w1 = xpop();
                 ValueNode w2 = xpop();
-                assert w1 != TWO_SLOT_MARKER;
-                assert w2 != TWO_SLOT_MARKER;
+                assert w1 != TWO_SLOT_MARKER : w1;
+                assert w2 != TWO_SLOT_MARKER : w2;
                 xpush(w1);
                 xpush(w2);
                 break;
@@ -1175,10 +1176,10 @@ public final class FrameStateBuilder implements SideEffectsState {
                 assert param == null || param instanceof ParameterNode || param.isConstant();
             }
         }
-        assert stackSize == 0;
+        assert stackSize == 0 : stackSize;
         ValueNode[] newStack = ValueNode.EMPTY_ARRAY;
         ValueNode[] locks = ValueNode.EMPTY_ARRAY;
-        assert monitorIds.length == 0;
+        assert monitorIds.length == 0 : monitorIds;
         stateAfterStart = graph.add(
                         new FrameState(null, new ResolvedJavaMethodBytecode(original), 0, newLocals, newStack, stackSize, null, null, locks, Collections.emptyList(), FrameState.StackState.BeforePop));
         return stateAfterStart;

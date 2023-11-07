@@ -38,6 +38,7 @@ import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.framemap.ReferenceMapBuilder;
+import jdk.graal.compiler.debug.Assertions;
 
 import jdk.vm.ci.code.Location;
 import jdk.vm.ci.code.ReferenceMap;
@@ -117,13 +118,13 @@ public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
                     Value baseValue = state.getLiveBasePointers().get(baseVariable.index);
                     assert baseValue.getPlatformKind().getVectorLength() == 1 &&
                                     ((LIRKind) baseValue.getValueKind()).isReference(0) &&
-                                    !((LIRKind) baseValue.getValueKind()).isDerivedReference();
+                                    !((LIRKind) baseValue.getValueKind()).isDerivedReference() : Assertions.errorMessage(baseValue);
                     base = toLocation(baseValue, 0);
                 }
 
                 for (int i = 0; i < kind.getPlatformKind().getVectorLength(); i++) {
                     if (kind.isReference(i)) {
-                        assert kind.isCompressedReference(i) ? (bytes < uncompressedReferenceSize) : (bytes == uncompressedReferenceSize);
+                        assert kind.isCompressedReference(i) ? (bytes < uncompressedReferenceSize) : (bytes == uncompressedReferenceSize) : Assertions.errorMessage(kind, bytes);
                         objects[idx] = toLocation(obj, i * bytes);
                         derivedBase[idx] = base;
                         sizeInBytes[idx] = bytes;

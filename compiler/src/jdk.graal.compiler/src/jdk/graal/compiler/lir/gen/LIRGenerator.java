@@ -556,7 +556,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
                 emitHashTableSwitch(h, keys, defaultTarget, targets, value);
             } else {
                 int minValue = keyConstants[0].asInt();
-                assert valueRange < Integer.MAX_VALUE;
+                assert valueRange < Integer.MAX_VALUE : valueRange;
                 LabelRef[] targets = new LabelRef[(int) valueRange];
                 for (int i = 0; i < valueRange; i++) {
                     targets[i] = defaultTarget;

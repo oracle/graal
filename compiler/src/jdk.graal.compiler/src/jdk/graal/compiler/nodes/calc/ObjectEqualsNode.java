@@ -29,6 +29,7 @@ import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -49,7 +50,6 @@ import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 import jdk.graal.compiler.nodes.virtual.VirtualBoxingNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -65,8 +65,7 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
 
     public ObjectEqualsNode(ValueNode x, ValueNode y) {
         super(TYPE, x, y);
-        assert x.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp;
-        assert y.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp;
+        assert x.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp && y.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp : Assertions.errorMessageContext("x", x, "y", y);
     }
 
     public static LogicNode create(ValueNode x, ValueNode y, ConstantReflectionProvider constantReflection, NodeView view) {
@@ -116,7 +115,8 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
                 return LogicConstantNode.forBoolean(false);
             }
             if (nonConstant instanceof AbstractNewObjectNode || nonConstant instanceof AllocatedObjectNode) {
-                assert !(nonConstant instanceof BoxNode); // guard against class hierarchy changes
+                // guard against class hierarchy changes
+                assert !(nonConstant instanceof BoxNode) : Assertions.errorMessageContext("nonConstant", nonConstant);
                 // a constant can never be equals to a new object
                 return LogicConstantNode.forBoolean(false);
             }
@@ -181,9 +181,9 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
                     MetaAccessProvider metaAccess = tool.getMetaAccess();
                     if (type.equals(metaAccess.lookupJavaType(Integer.class)) || type.equals(metaAccess.lookupJavaType(Long.class))) {
                         // both are virtual without identity: check contents
-                        assert xVirtual.entryCount() == 1 && yVirtual.entryCount() == 1;
+                        assert xVirtual.entryCount() == 1 && yVirtual.entryCount() == 1 : Assertions.errorMessageContext("x", xVirtual, "y", yVirtual);
                         assert xVirtual.entryKind(tool.getMetaAccessExtensionProvider(), 0).getStackKind() == JavaKind.Int ||
-                                        xVirtual.entryKind(tool.getMetaAccessExtensionProvider(), 0) == JavaKind.Long;
+                                        xVirtual.entryKind(tool.getMetaAccessExtensionProvider(), 0) == JavaKind.Long : Assertions.errorMessage(x, y, xVirtual);
                         return new IntegerEqualsNode(tool.getEntry(xVirtual, 0), tool.getEntry(yVirtual, 0));
                     }
                 }
