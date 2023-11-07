@@ -345,8 +345,7 @@ public class PolyglotTypeMappings {
                     return guestOptional;
                 }
             } catch (InteropException e) {
-                throw UnsupportedTypeException.create(new Object[]{value},
-                        EspressoError.format("Could not cast foreign object to Optional: %s", e.getMessage()));
+                throw UnsupportedTypeException.create(new Object[]{value}, "Could not cast foreign object to Optional", e);
             }
         }
     }
@@ -372,8 +371,7 @@ public class PolyglotTypeMappings {
                 meta.java_math_BigDecimal_init.invokeDirect(guestBigDecimal, guestBigInteger, scale, guestMathContext);
                 return guestBigDecimal;
             } catch (InteropException e) {
-                throw UnsupportedTypeException.create(new Object[]{value},
-                        EspressoError.format("Could not cast foreign object to BigDecimal: %s", e.getMessage()));
+                throw UnsupportedTypeException.create(new Object[]{value}, "Could not cast foreign object to BigDecimal", e);
             }
         }
 
