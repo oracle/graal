@@ -918,7 +918,7 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
         '-H:CLibraryPath=' + sourcepath,
         '--native-image-info',
         '-cp', classpath('com.oracle.svm.test'),
-        '-Dgraal.LogFile=graal.log',
+        '-Djdk.graal.LogFile=graal.log',
         '-g',
     ] + svm_experimental_options([
         '-H:+VerifyNamingConventions',
@@ -1327,7 +1327,7 @@ libgraal_build_args = [
     '-H:+PreserveFramePointer',
     '-H:-DeleteLocalSymbols',
 
-    # Configure -Dlibgraal.HeapDumpOnOutOfMemoryError=true
+    # Configure -Djdk.libgraal.HeapDumpOnOutOfMemoryError=true
     '--enable-monitoring=heapdump',
     '-H:HeapDumpDefaultFilenamePrefix=libgraal_pid',
 

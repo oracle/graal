@@ -74,7 +74,7 @@
       "--jvm=${JVM}",
       "--jvm-config=${JVM_CONFIG}",
       "-XX:+PrintConcurrentLocks",
-      "-Dgraal.CompilationFailureAction=Diagnose",
+      "-Djdk.graal.CompilationFailureAction=Diagnose",
       "-XX:+CITime"] +
       self.min_heap_size +
       self.max_heap_size,

@@ -236,17 +236,17 @@ public abstract class CompilationWrapper<T> {
             for (ExceptionAction action : alternatives) {
                 String option = GraalCompilerOptions.CompilationFailureAction.getName();
                 if (action == ExceptionAction.Silent) {
-                    ps.printf("- To disable compilation failure notifications, set %s to %s (e.g., -Dgraal.%s=%s).%n",
+                    ps.printf("- To disable compilation failure notifications, set %s to %s (e.g., -Djdk.graal.%s=%s).%n",
                                     option, action,
                                     option, action);
                 } else if (action == ExceptionAction.Print) {
                     ps.printf("- To print a message for a compilation failure without retrying the compilation, " +
-                                    "set %s to %s (e.g., -Dgraal.%s=%s).%n",
+                                    "set %s to %s (e.g., -Djdk.graal.%s=%s).%n",
                                     option, action,
                                     option, action);
                 } else if (action == ExceptionAction.Diagnose) {
                     ps.printf("- To capture more information for diagnosing or reporting a compilation failure, " +
-                                    "set %s to %s or %s (e.g., -Dgraal.%s=%s).%n",
+                                    "set %s to %s or %s (e.g., -Djdk.graal.%s=%s).%n",
                                     option, action,
                                     ExceptionAction.ExitVM,
                                     option, action);

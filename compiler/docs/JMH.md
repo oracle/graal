@@ -23,7 +23,7 @@ If you want to run a Truffle JMH benchmark, try:
 
 ```
 cd compiler
-mx benchmark truffle:JMH_1_21 -- -Dgraal.CompileGraalWithC1Only=false -- BenchmarkName
+mx benchmark truffle:JMH_1_21 -- -Djdk.graal.CompileGraalWithC1Only=false -- BenchmarkName
 ```
 
 If you do not know or want to learn more, continue reading.

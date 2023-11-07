@@ -1288,7 +1288,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                    '--vm.DCompileTheWorld.Classpath=' + mx.library('DACAPO_MR1_BACH').get_path(resolve=True),
                    '--vm.DCompileTheWorld.Verbose=false',
                    '--vm.DCompileTheWorld.MultiThreaded=false',
-                   '--vm.Dlibgraal.ShowConfiguration=info',
+                   '--vm.Djdk.libgraal.ShowConfiguration=info',
                    '--metric=instructions',
                    '-w', '1',
                    '-i', '5'] + vmArgs
@@ -1623,5 +1623,5 @@ def register_graalvm_vms():
             if libgraal_location is not None:
                 import mx_graal_benchmark
                 mx_graal_benchmark.build_jvmci_vm_variants('server', 'graal-core-libgraal',
-                                                           ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location)],
+                                                           ['-server', '-XX:+EnableJVMCI', '-Djdk.graal.CompilerConfiguration=community', '-Djvmci.Compiler=graal', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location)],
                                                            mx_graal_benchmark._graal_variants, suite=_suite, priority=15, hosted=False)

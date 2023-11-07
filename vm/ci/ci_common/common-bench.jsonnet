@@ -259,8 +259,8 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
       ] + xms + xmx + [
         "--experimental-options",
         "--engine.CompilationFailureAction=ExitVM",
-        "-Dgraal.DumpOnError=true",
-        "-Dgraal.PrintGraph=File",
+        "-Djdk.graal.DumpOnError=true",
+        "-Djdk.graal.PrintGraph=File",
         "--js-vm=graal-js",
         "--js-vm-config=default",
         "--jvm=server",

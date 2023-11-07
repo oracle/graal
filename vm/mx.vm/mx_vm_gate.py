@@ -177,8 +177,8 @@ def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
         '-XX:JVMCIThreadsPerNativeLibraryRuntime=1',
         '-XX:JVMCICompilerIdleDelay=0',
         '-XX:JVMCIThreads=1',
-        '-Dlibgraal.PrintCompilation=true',
-        '-Dlibgraal.LogFile=' + compiler_log_file,
+        '-Djdk.libgraal.PrintCompilation=true',
+        '-Djdk.libgraal.LogFile=' + compiler_log_file,
     ]
 
     def extra_check(compiler_log):
@@ -201,24 +201,28 @@ def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
             table = f'  Count    Stub{nl}  ' + f'{nl}  '.join((f'{count:<8d} {stub}') for stub, count in stub_compilations.items())
             mx.abort(f'Following stubs were compiled more than once according to compiler log:{nl}{table}')
 
-    args = check_stub_sharing + ['-Dgraal.ShowConfiguration=verbose'] + _get_CountUppercase_vmargs()
+    # Test that legacy `-D.graal` options work.
+    show_config_args = ('-Djdk.graal.ShowConfiguration=verbose', '-Dgraal.ShowConfiguration=verbose')
 
-    # Verify execution via raw java launcher in `mx graalvm-home`.
-    for jre_name, jre, jre_args in jres:
+    for show_config_arg in show_config_args:
+        args = check_stub_sharing + [show_config_arg] + _get_CountUppercase_vmargs()
+
+        # Verify execution via raw java launcher in `mx graalvm-home`.
+        for jre_name, jre, jre_args in jres:
+            try:
+                cmd = [join(jre, 'bin', 'java')] + jre_args + args
+                mx.log(f'{jre_name}: {" ".join(cmd)}')
+                mx.run(cmd)
+            finally:
+                _check_compiler_log(compiler_log_file, expect, extra_check=extra_check)
+
+        # Verify execution via `mx vm`.
+        import mx_compiler
         try:
-            cmd = [join(jre, 'bin', 'java')] + jre_args + args
-            mx.log(f'{jre_name}: {" ".join(cmd)}')
-            mx.run(cmd)
+            mx.log(f'mx.run_vm: args={extra_vm_arguments + args}')
+            mx_compiler.run_vm(extra_vm_arguments + args)
         finally:
-            _check_compiler_log(compiler_log_file, expect, extra_check=extra_check)
-
-    # Verify execution via `mx vm`.
-    import mx_compiler
-    try:
-        mx.log(f'mx.run_vm: args={extra_vm_arguments + args}')
-        mx_compiler.run_vm(extra_vm_arguments + args)
-    finally:
-        _check_compiler_log(compiler_log_file, expect)
+            _check_compiler_log(compiler_log_file, expect)
 
 def _test_libgraal_fatal_error_handling():
     """
@@ -226,8 +230,8 @@ def _test_libgraal_fatal_error_handling():
     """
     graalvm_home = mx_sdk_vm_impl.graalvm_home()
     vmargs = ['-XX:+PrintFlagsFinal',
-              '-Dlibgraal.CrashAt=*',
-              '-Dlibgraal.CrashAtIsFatal=true']
+              '-Djdk.libgraal.CrashAt=*',
+              '-Djdk.libgraal.CrashAtIsFatal=true']
     cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + _get_CountUppercase_vmargs()
     out = mx.OutputCapture()
     scratch_dir = mkdtemp(dir='.')
@@ -284,16 +288,16 @@ def _test_libgraal_oome_dumping():
     }
     if mx.is_windows():
         # GR-39501
-        mx.log('-Dlibgraal.HeapDumpOnOutOfMemoryError=true is not supported on Windows')
+        mx.log('-Djdk.libgraal.HeapDumpOnOutOfMemoryError=true is not supported on Windows')
         return
 
     for n, v in inputs.items():
-        vmargs = ['-Dlibgraal.CrashAt=*',
-                  '-Dlibgraal.Xmx128M',
-                  '-Dlibgraal.PrintGC=true',
-                  '-Dlibgraal.HeapDumpOnOutOfMemoryError=true',
-                  f'-Dlibgraal.HeapDumpPath={n}',
-                  '-Dlibgraal.CrashAtThrowsOOME=true']
+        vmargs = ['-Djdk.libgraal.CrashAt=*',
+                  '-Djdk.libgraal.Xmx128M',
+                  '-Djdk.libgraal.PrintGC=true',
+                  '-Djdk.libgraal.HeapDumpOnOutOfMemoryError=true',
+                  f'-Djdk.libgraal.HeapDumpPath={n}',
+                  '-Djdk.libgraal.CrashAtThrowsOOME=true']
         cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + _get_CountUppercase_vmargs()
         mx.run(cmd, cwd=scratch_dir)
         heap_dumps = glob.glob(v)
@@ -316,10 +320,10 @@ def _test_libgraal_systemic_failure_detection():
     graalvm_home = mx_sdk_vm_impl.graalvm_home()
     for rate in (-1, 1):
         vmargs = [
-            '-Dgraal.CrashAt=*',
-            f'-Dgraal.SystemicCompilationFailureRate={rate}',
-            '-Dgraal.DumpOnError=false',
-            '-Dgraal.CompilationFailureAction=Silent'
+            '-Djdk.graal.CrashAt=*',
+            f'-Djdk.graal.SystemicCompilationFailureRate={rate}',
+            '-Djdk.graal.DumpOnError=false',
+            '-Djdk.graal.CompilationFailureAction=Silent'
         ]
         cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + _get_CountUppercase_vmargs()
         out = mx.OutputCapture()
@@ -356,7 +360,7 @@ def _test_libgraal_CompilationTimeout_JIT():
 
     graalvm_home = mx_sdk_vm_impl.graalvm_home()
     compiler_log_file = abspath('graal-compiler.log')
-    G = '-Dgraal.' #pylint: disable=invalid-name
+    G = '-Djdk.graal.' #pylint: disable=invalid-name
     for vm_can_exit in (False, True):
         vm_exit_delay = 0 if not vm_can_exit else 2
         vmargs = [f'{G}CompilationWatchDogStartDelay=1',  # set compilation timeout to 1 sec
@@ -385,7 +389,7 @@ def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
     graalvm_home = mx_sdk_vm_impl.graalvm_home()
     compiler_log_file = abspath('graal-compiler.log')
     truffle_log_file = abspath('truffle-compiler.log')
-    G = '-Dgraal.' #pylint: disable=invalid-name
+    G = '-Djdk.graal.' #pylint: disable=invalid-name
     P = '-Dpolyglot.engine.' #pylint: disable=invalid-name
     for vm_can_exit in (False, True):
         vm_exit_delay = 0 if not vm_can_exit else 2
@@ -437,9 +441,9 @@ def _test_libgraal_ctw(extra_vm_arguments):
             mx_compiler.ctw([
                f'-DCompileTheWorld.Config=Inline=false {" ".join(mx_compiler._compiler_error_options(prefix=""))}',
                 '-XX:+EnableJVMCI',
-                '-Dgraal.InlineDuringParsing=false',
-                '-Dgraal.TrackNodeSourcePosition=true',
-                '-Dgraal.LogFile=' + compiler_log_file,
+                '-Djdk.graal.InlineDuringParsing=false',
+                '-Djdk.graal.TrackNodeSourcePosition=true',
+                '-Djdk.graal.LogFile=' + compiler_log_file,
                 '-DCompileTheWorld.Verbose=true',
                 '-DCompileTheWorld.MethodFilter=StackOverflowError.*,String.*',
                 '-Djvmci.ForceTranslateFailure=nmethod/StackOverflowError:hotspot,method/String.hashCode:native,valueOf',
@@ -452,8 +456,8 @@ def _test_libgraal_ctw(extra_vm_arguments):
             '-esa',
             '-XX:+EnableJVMCI',
             '-DCompileTheWorld.MultiThreaded=true',
-            '-Dgraal.InlineDuringParsing=false',
-            '-Dgraal.TrackNodeSourcePosition=true',
+            '-Djdk.graal.InlineDuringParsing=false',
+            '-Djdk.graal.TrackNodeSourcePosition=true',
             '-DCompileTheWorld.Verbose=false',
             '-DCompileTheWorld.HugeMethodLimit=4000',
             '-DCompileTheWorld.MaxCompiles=150000',

@@ -168,7 +168,7 @@ mx_gate.add_jacoco_includes(['jdk.graal.compiler.*'])
 mx_gate.add_jacoco_excludes(['com.oracle.truffle'])
 mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution', '@ExcludeFromJacocoInstrumentation'])
 
-def _get_graal_option(vmargs, name, default=None, prefix='-Dgraal.'):
+def _get_graal_option(vmargs, name, default=None, prefix='-Djdk.graal.'):
     """
     Gets the value of the `name` Graal option in `vmargs`.
 
@@ -350,7 +350,7 @@ def _remove_empty_entries(a, filter_gcs=False):
         a = [x for x in a if not x.endswith('GC') or not x.startswith('-XX:+Use')]
     return [x for x in a if x]
 
-def _compiler_error_options(default_compilation_failure_action='ExitVM', vmargs=None, prefix='-Dgraal.'):
+def _compiler_error_options(default_compilation_failure_action='ExitVM', vmargs=None, prefix='-Djdk.graal.'):
     """
     Gets options to be prefixed to the VM command line related to Graal compilation errors to improve
     the chance of graph dumps being emitted and preserved in CI build logs.
@@ -497,10 +497,10 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     # Run ctw against rt.jar on hosted
     ctw_flags = [
         '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM CompilationBailoutAsFailure=false', '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
-        '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false', '-Dgraal.TrackNodeSourcePosition=true',
+        '-DCompileTheWorld.MultiThreaded=true', '-Djdk.graal.InlineDuringParsing=false', '-Djdk.graal.TrackNodeSourcePosition=true',
         '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
     ]
-    ctw_phaseplan_fuzzing_flags = ['-DCompileTheWorld.FuzzPhasePlan=true', '-Dgraal.PrintGraphStateDiff=true']
+    ctw_phaseplan_fuzzing_flags = ['-DCompileTheWorld.FuzzPhasePlan=true', '-Djdk.graal.PrintGraphStateDiff=true']
     with Task('CTW:hosted', tasks, tags=GraalTags.ctw, report=True) as t:
         if t:
             ctw(ctw_flags, _remove_empty_entries(extraVMarguments))
@@ -560,21 +560,21 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
     for name in dacapo_suite.benchmarkList(bmSuiteArgs):
         iterations = dacapo_gate_iterations.get(name, -1)
         with Task(prefix + 'DaCapo:' + name, tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
-            if t: _gate_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
+            if t: _gate_dacapo(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     with mx_gate.Task('Dacapo benchmark daily workload', tasks, tags=['dacapo_daily'], report=task_report_component) as t:
         if t:
             for name in dacapo_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
                 for _ in range(default_iterations * scala_daily_scaling_factor):
-                    _gate_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
+                    _gate_dacapo(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     with mx_gate.Task('Dacapo benchmark weekly workload', tasks, tags=['dacapo_weekly'], report=task_report_component) as t:
         if t:
             for name in dacapo_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
                 for _ in range(default_iterations * scala_weekly_scaling_factor):
-                    _gate_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
+                    _gate_dacapo(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     # ensure we can also run on C2
     with Task(prefix + 'DaCapo_C2:fop', tasks, tags=GraalTags.test, report=task_report_component) as t:
@@ -586,7 +586,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
     # ensure we can run with --enable-preview
     with Task(prefix + 'DaCapo_enable-preview:fop', tasks, tags=GraalTags.test, report=task_report_component) as t:
         if t:
-            _gate_dacapo('fop', 8, ['--enable-preview', '-Dgraal.CompilationFailureAction=ExitVM'])
+            _gate_dacapo('fop', 8, ['--enable-preview', '-Djdk.graal.CompilationFailureAction=ExitVM'])
 
     # run Scala DaCapo benchmarks #
     ###############################
@@ -597,21 +597,21 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
     for name in scala_dacapo_suite.benchmarkList(bmSuiteArgs):
         iterations = scala_dacapo_gate_iterations.get(name, -1)
         with Task(prefix + 'ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
-            if t: _gate_scala_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
+            if t: _gate_scala_dacapo(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     with mx_gate.Task('ScalaDacapo benchmark daily workload', tasks, tags=['scala_dacapo_daily'], report=task_report_component) as t:
         if t:
             for name in scala_dacapo_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(scala_dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
                 for _ in range(default_iterations * scala_dacapo_daily_scaling_factor):
-                    _gate_scala_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
+                    _gate_scala_dacapo(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     with mx_gate.Task('ScalaDacapo benchmark weekly workload', tasks, tags=['scala_dacapo_weekly'], report=task_report_component) as t:
         if t:
             for name in scala_dacapo_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(scala_dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
                 for _ in range(default_iterations * scala_dacapo_weekly_scaling_factor):
-                    _gate_scala_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
+                    _gate_scala_dacapo(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     # run Renaissance benchmarks #
     ###############################
@@ -624,21 +624,21 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
         iterations = renaissance_gate_iterations.get(name, -1)
         with Task(prefix + 'Renaissance:' + name, tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
             if t:
-                _gate_renaissance(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + enable_assertions)
+                _gate_renaissance(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + enable_assertions)
 
     with mx_gate.Task('Renaissance benchmark daily workload', tasks, tags=['renaissance_daily'], report=task_report_component) as t:
         if t:
             for name in renaissance_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(renaissance_suite.renaissanceIterations().get(name, -1) * default_iterations_reduction)
                 for _ in range(default_iterations):
-                    _gate_renaissance(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + enable_assertions)
+                    _gate_renaissance(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + enable_assertions)
 
     with mx_gate.Task('Renaissance benchmark weekly workload', tasks, tags=['renaissance_weekly'], report=task_report_component) as t:
         if t:
             for name in renaissance_suite.benchmarkList(bmSuiteArgs):
                 iterations = int(renaissance_suite.renaissanceIterations().get(name, -1) * default_iterations_reduction)
                 for _ in range(default_iterations * daily_weekly_jobs_ratio):
-                    _gate_renaissance(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + enable_assertions)
+                    _gate_renaissance(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + enable_assertions)
 
     # run benchmark with non default setup #
     ########################################
@@ -658,7 +658,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
                 fd, logFile = tempfile.mkstemp()
                 os.close(fd) # Don't leak file descriptors
                 try:
-                    _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Dgraal.LogFile=' + logFile, '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-Dgraal.TimedDynamicCounters=1000', '-XX:JVMCICounterSize=10'])
+                    _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Djdk.graal.LogFile=' + logFile, '-Djdk.graal.LIRProfileMoves=true', '-Djdk.graal.GenericDynamicCounters=true', '-Djdk.graal.TimedDynamicCounters=1000', '-XX:JVMCICounterSize=10'])
                     with open(logFile) as fp:
                         haystack = fp.read()
                         needle = 'MoveOperations (dynamic counters)'
@@ -697,16 +697,16 @@ _registers = {
 if mx.get_arch() not in _registers:
     mx.warn('No registers for register pressure tests are defined for architecture ' + mx.get_arch())
 
-_defaultFlags = ['-Dgraal.CompilationWatchDogStartDelay=60']
-_assertionFlags = ['-esa', '-Dgraal.DetailedAsserts=true']
+_defaultFlags = ['-Djdk.graal.CompilationWatchDogStartDelay=60']
+_assertionFlags = ['-esa', '-Djdk.graal.DetailedAsserts=true']
 _graalErrorFlags = _compiler_error_options()
-_graalEconomyFlags = ['-Dgraal.CompilerConfiguration=economy']
-_verificationFlags = ['-Dgraal.VerifyGraalGraphs=true', '-Dgraal.VerifyGraalGraphEdges=true', '-Dgraal.VerifyGraalPhasesSize=true']
+_graalEconomyFlags = ['-Djdk.graal.CompilerConfiguration=economy']
+_verificationFlags = ['-Djdk.graal.VerifyGraalGraphs=true', '-Djdk.graal.VerifyGraalGraphEdges=true', '-Djdk.graal.VerifyGraalPhasesSize=true']
 _coopFlags = ['-XX:-UseCompressedOops']
 _gcVerificationFlags = ['-XX:+UnlockDiagnosticVMOptions', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC']
 _g1VerificationFlags = ['-XX:-UseSerialGC', '-XX:+UseG1GC']
-_exceptionFlags = ['-Dgraal.StressInvokeWithExceptionNode=true']
-_registerPressureFlags = ['-Dgraal.RegisterPressure=' + _registers[mx.get_arch()]]
+_exceptionFlags = ['-Djdk.graal.StressInvokeWithExceptionNode=true']
+_registerPressureFlags = ['-Djdk.graal.RegisterPressure=' + _registers[mx.get_arch()]]
 
 graal_bootstrap_tests = [
     BootstrapTest('BootstrapWithSystemAssertionsFullVerify', _defaultFlags + _assertionFlags + _verificationFlags + _graalErrorFlags, tags=GraalTags.bootstrapfullverify),
@@ -798,7 +798,7 @@ def _unittest_config_participant(config):
                 mainClassArgs.extend(['-JUnitOpenPackages', jmd.name + '/*'])
                 vmArgs.append('--add-modules=' + jmd.name)
 
-    vmArgs.append('-Dgraal.TrackNodeSourcePosition=true')
+    vmArgs.append('-Djdk.graal.TrackNodeSourcePosition=true')
     vmArgs.append('-esa')
 
     # Always run unit tests without UseJVMCICompiler unless explicitly requested
@@ -883,7 +883,7 @@ def _parseVmArgs(args, addDefaultArgs=True):
     argsPrefix = []
     options_file = join(mx.primary_suite().dir, 'graal.options')
     if exists(options_file):
-        argsPrefix.append('-Dgraal.options.file=' + options_file)
+        argsPrefix.append('-Djdk.graal.options.file=' + options_file)
 
     if '-version' in args:
         ignoredArgs = args[args.index('-version') + 1:]
@@ -899,12 +899,12 @@ def _parseVmArgs(args, addDefaultArgs=True):
 
     # It is safe to assume that Network dumping is the desired default when using mx.
     # Mx is never used in production environments.
-    if not any(a.startswith('-Dgraal.PrintGraph=') for a in args):
-        argsPrefix.append('-Dgraal.PrintGraph=Network')
+    if not any(a.startswith('-Djdk.graal.PrintGraph=') for a in args):
+        argsPrefix.append('-Djdk.graal.PrintGraph=Network')
 
     # Likewise, one can assume that objdump is safe to access when using mx.
-    if not any(a.startswith('-Dgraal.ObjdumpExecutables=') for a in args):
-        argsPrefix.append('-Dgraal.ObjdumpExecutables=objdump,gobjdump')
+    if not any(a.startswith('-Djdk.graal.ObjdumpExecutables=') for a in args):
+        argsPrefix.append('-Djdk.graal.ObjdumpExecutables=objdump,gobjdump')
 
     # The GraalVM locator must be disabled so that Truffle languages
     # are loaded from the class path. This is the configuration expected
@@ -1109,8 +1109,8 @@ def run_java(args, out=None, err=None, addDefaultArgs=True, command_mapper_hooks
         finally:
             # Collate AggratedMetricsFile
             for a in vm_args:
-                if a.startswith('-Dgraal.AggregatedMetricsFile='):
-                    metrics_file = a[len('-Dgraal.AggregatedMetricsFile='):]
+                if a.startswith('-Djdk.graal.AggregatedMetricsFile='):
+                    metrics_file = a[len('-Djdk.graal.AggregatedMetricsFile='):]
                     if metrics_file:
                         collate_metrics([metrics_file])
 
@@ -1343,7 +1343,7 @@ def phaseplan_fuzz_jtt_tests(args, extraVMarguments=None, extraUnitTestArguments
         help='Determine the odds of skipping the insertion of a phase in low tier')
 
     args, parsed_args = parse_split_args(args, parser, "--")
-    vm_args = _remove_empty_entries(extraVMarguments) + ['-Dtest.graal.compilationplan.fuzzing=true', '-Dgraal.PrintGraphStateDiff=true', '--verbose']
+    vm_args = _remove_empty_entries(extraVMarguments) + ['-Dtest.graal.compilationplan.fuzzing=true', '-Djdk.graal.PrintGraphStateDiff=true', '--verbose']
 
     if parsed_args.seed:
         vm_args.append('-Dtest.graal.compilationplan.fuzzing.seed=' + parsed_args.seed)
