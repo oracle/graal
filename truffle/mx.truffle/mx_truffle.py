@@ -697,6 +697,20 @@ class TCKUnittestConfig(mx_unittest.MxUnittestConfig):
         else:
             mx.logv('Truffle TCK unnittest config is ignored because _shouldRunTCKUnittestConfig is False.')
 
+    @staticmethod
+    def _has_disable_assertions_option(vm_args):
+        for vm_arg in vm_args:
+            if vm_arg in ('-da', '-disableassertions'):
+                return True
+        return False
+
+    def apply(self, config):
+        vmArgs, mainClass, mainClassArgs = config
+        if not TCKUnittestConfig._has_disable_assertions_option(vmArgs):
+            # Assert for enter/return parity of ProbeNode
+            vmArgs = vmArgs + ['-Dpolyglot.engine.AssertProbes=true', '-Dpolyglot.engine.AllowExperimentalOptions=true']
+        return (vmArgs, mainClass, mainClassArgs)
+
 
 mx_unittest.register_unittest_config(TCKUnittestConfig())
 
@@ -827,6 +841,7 @@ def tck(args):
             # "-Dpolyglot.engine.CompilationFailureAction=Throw", GR-49399
             "-Dpolyglot.engine.CompileImmediately=true",
             "-Dpolyglot.engine.BackgroundCompilation=false",
+            "-Dtck.inlineVerifierInstrument=false",
         ]
         unittest(unitTestOptions + ["--"] + jvmOptions + compileOptions + tests)
 
