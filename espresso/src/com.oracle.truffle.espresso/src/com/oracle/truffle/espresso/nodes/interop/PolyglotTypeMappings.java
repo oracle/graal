@@ -37,6 +37,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
@@ -314,10 +315,10 @@ public class PolyglotTypeMappings {
     }
 
     public interface InternalTypeConverter {
-        StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso);
+        StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) throws UnsupportedTypeException;
     }
 
-    public class TypeConverterImpl implements TypeConverter {
+    public static class TypeConverterImpl implements TypeConverter {
         private final Object receiver;
         private final DirectCallNode callNode;
 
@@ -331,7 +332,7 @@ public class PolyglotTypeMappings {
         }
     }
 
-    public final class OptionalTypeConverter implements InternalTypeConverter {
+    public static final class OptionalTypeConverter implements InternalTypeConverter {
 
         @Override
         public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) {
@@ -351,7 +352,7 @@ public class PolyglotTypeMappings {
         }
     }
 
-    public final class BigDecimalTypeConverter implements InternalTypeConverter {
+    public static final class BigDecimalTypeConverter implements InternalTypeConverter {
 
         @Override
         public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) {
@@ -383,7 +384,7 @@ public class PolyglotTypeMappings {
         }
     }
 
-    public final class BuiltinArrayTypeConverter implements InternalTypeConverter {
+    public static final class BuiltinArrayTypeConverter implements InternalTypeConverter {
 
         private final ArrayKlass klass;
 
@@ -392,15 +393,16 @@ public class PolyglotTypeMappings {
         }
 
         @Override
-        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) {
+        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) throws UnsupportedTypeException {
             if (!interop.hasArrayElements(value)) {
-                throw new ClassCastException();
+                throw UnsupportedTypeException.create(new Object[]{value},
+                                EspressoError.format("Could not cast foreign object to %s: %s", klass.getNameAsString(), "foreign object has no array elements"));
             }
             return StaticObject.createForeign(toEspresso.getLanguage(), klass, value, interop);
         }
     }
 
-    public final class BuiltinExceptionTypeConverter implements InternalTypeConverter {
+    public static final class BuiltinExceptionTypeConverter implements InternalTypeConverter {
 
         private final ObjectKlass exceptionKlass;
         private final Method messageConstructor;
@@ -411,9 +413,10 @@ public class PolyglotTypeMappings {
         }
 
         @Override
-        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) {
+        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) throws UnsupportedTypeException {
             if (!interop.isException(value)) {
-                throw new ClassCastException();
+                throw UnsupportedTypeException.create(new Object[]{value},
+                                EspressoError.format("Could not cast foreign object to %s: %s", exceptionKlass.getNameAsString(), "foreign object is not an exception"));
             }
             EspressoContext context = meta.getContext();
             // an espresso foreign exception type value will be passed from Interop invocations
@@ -430,7 +433,8 @@ public class PolyglotTypeMappings {
             StaticObject result = context.getAllocator().createNew(exceptionKlass);
             StaticObject guestMessage;
             try {
-                guestMessage = (StaticObject) interop.getExceptionMessage(foreignException);
+                String message = interop.asString(interop.getExceptionMessage(foreignException));
+                guestMessage = meta.toGuestString(message);
             } catch (UnsupportedMessageException e) {
                 guestMessage = StaticObject.NULL;
             }

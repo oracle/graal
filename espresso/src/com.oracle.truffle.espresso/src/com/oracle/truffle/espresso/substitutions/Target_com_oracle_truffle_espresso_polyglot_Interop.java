@@ -4233,7 +4233,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
                 throw EspressoException.wrap(converted, meta);
             }
-        } catch (UnsupportedMessageException | ClassCastException e) {
+        } catch (UnsupportedMessageException | UnsupportedTypeException e) {
             // throw the original exception then
             throw ex;
         }
