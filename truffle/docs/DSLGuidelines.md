@@ -88,10 +88,26 @@ For instance, with host inlining and our code example, the cost of fully inlinin
 
 `size(Node#execute) + size(Node#doIt1) + size(Node#doIt2) + 2 * size(Node#helper)`
 
-Solution: refactor the code to avoid the duplication. If this means "merging" guards, one can create an inline node
-to profile the individual guards, or perform the checks in the `@Specialization` body using appropriate inline
-Truffle profiles. Example of the former:
+Solution: refactor the code to avoid the duplication. The concrete approach differs depending on concrete
+situation. There is no one-size-fits-all solution. General advice is to try to merge the `@Specialization`s
+that contain the code duplication. For our example:
 
+```java
+class MyNode extends Node {
+  // ...
+  static boolean isMyObject1or2(Object o) {
+    return o instanceof MyObject1 || o instanceof MyObject2;
+  }
+
+  @Specialization(guards = "isMyObject1or2(o)")
+  void doIt1(Object o) { helper(o); }
+}
+```
+
+Some additional tips that may not always be applicable:
+
+* If there is a concern that the individual "merged" checks are not profiled, one create an inline node
+to profile the individual checks. For our example:
 ```java
 @GenerateInline
 @GenerateCached(false)
@@ -121,8 +137,7 @@ Note that if the guard needs to be used for multiple specializations, or will be
 we are duplicating the guard logic in the same way as we were duplicating the logic inside the specializations.
 This may be acceptable as guards tend to be simple, but the user needs to assess if that is a good trade-off.
 
-Alternative is also finding a way to restructure the code to avoid the code duplication during the PE process
-altogether, but there is no generic recipe for that.
+* Push any checks that would be done in the guard(s) into the `@Specialization` body and profile them using cheap inline profiles.
 
 ## Avoid duplicated calls to helper methods/nodes
 
@@ -217,9 +232,8 @@ the [lazily initialized nodes](https://github.com/oracle/graal/blob/master/truff
 For Code-paths that are performance sensitive in the interpreter:
 * The footprint increase may be justified by the performance
 * Use the handwritten lazily initialized `@Child` field pattern if applicable
-* Refactor the code to avoid such situation
+* If possible restructure the code to avoid such situation
 
 ## Avoid generating cached, uncached, and inline variant of one node
 
-Nodes that have all the 3 variants generated seem to cause problems to the SVM heuristics
-and calls to their `execute` method are sometimes not devirtualized.
+If possible avoid having all three variants, because it increases the PE code footprint.
