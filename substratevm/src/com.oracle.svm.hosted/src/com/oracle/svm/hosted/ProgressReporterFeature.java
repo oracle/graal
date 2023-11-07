@@ -43,6 +43,7 @@ import com.oracle.svm.hosted.ProgressReporter.DirectPrinter;
 import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
 import com.oracle.svm.hosted.util.CPUTypeAArch64;
 import com.oracle.svm.hosted.util.CPUTypeAMD64;
+import com.oracle.svm.hosted.util.CPUTypeRISCV64;
 import com.oracle.svm.util.LogUtils;
 
 @AutomaticallyRegisteredFeature
@@ -102,6 +103,7 @@ public class ProgressReporterFeature implements InternalFeature {
         return switch (SubstrateUtil.getArchitectureName()) {
             case "aarch64" -> CPUTypeAArch64.nativeSupportsMoreFeaturesThanSelected();
             case "amd64" -> CPUTypeAMD64.nativeSupportsMoreFeaturesThanSelected();
+            case "riscv64" -> CPUTypeRISCV64.nativeSupportsMoreFeaturesThanSelected();
             default -> false;
         };
     }
