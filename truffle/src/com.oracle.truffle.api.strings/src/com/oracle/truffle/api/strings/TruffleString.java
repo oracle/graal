@@ -3076,12 +3076,17 @@ public final class TruffleString extends AbstractTruffleString {
             a.checkEncoding(expectedEncoding);
             int h = a.hashCode;
             if (cacheMiss.profile(this, h == 0)) {
-                h = calculateHashCodeNode.execute(this, a, toIndexableNode.execute(this, a, a.data()));
-                if (h == 0) {
-                    h--;
-                }
-                a.hashCode = h;
+                h = calculateHash(a, toIndexableNode, calculateHashCodeNode);
             }
+            return h;
+        }
+
+        final int calculateHash(AbstractTruffleString a, ToIndexableNode toIndexableNode, TStringOpsNodes.CalculateHashCodeNode calculateHashCodeNode) {
+            int h = calculateHashCodeNode.execute(this, a, toIndexableNode.execute(this, a, a.data()));
+            if (h == 0) {
+                h--;
+            }
+            a.hashCode = h;
             return h;
         }
 
@@ -3102,6 +3107,10 @@ public final class TruffleString extends AbstractTruffleString {
          */
         public static HashCodeNode getUncached() {
             return TruffleStringFactory.HashCodeNodeGen.getUncached();
+        }
+
+        static int calculateHashCodeUncached(AbstractTruffleString a) {
+            return getUncached().calculateHash(a, ToIndexableNode.getUncached(), TStringOpsNodesFactory.CalculateHashCodeNodeGen.getUncached());
         }
     }
 

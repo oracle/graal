@@ -210,7 +210,7 @@ public abstract class AbstractTruffleString {
 
     /**
      * Returns {@code true} if this string is compatible to the given encoding.
-     * 
+     *
      * @since 22.1
      * @deprecated use {@link #isCompatibleToUncached(Encoding)} instead.
      */
@@ -1331,7 +1331,7 @@ public abstract class AbstractTruffleString {
     @Override
     public final int hashCode() {
         if (!isHashCodeCalculated()) {
-            return hashCodeUncached(TruffleString.Encoding.get(encoding()));
+            return TruffleString.HashCodeNode.calculateHashCodeUncached(this);
         }
         return hashCode;
     }
