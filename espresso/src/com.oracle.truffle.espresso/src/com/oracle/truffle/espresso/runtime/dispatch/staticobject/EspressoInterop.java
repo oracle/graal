@@ -83,10 +83,9 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoFunction;
 import com.oracle.truffle.espresso.runtime.InteropUtils;
-import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
-import com.oracle.truffle.espresso.vm.VM;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 /**
  * BaseInterop (isNull, is/asString, meta-instance, identity, exceptions, toDisplayString) Support
@@ -700,10 +699,9 @@ public class EspressoInterop extends BaseInterop {
             }
             throw UnknownIdentifierException.create(member);
         } catch (EspressoException e) {
-            Meta meta = e.getGuestException().getKlass().getMeta();
-            EspressoLanguage language = receiver.getKlass().getContext().getLanguage();
-            Object stack = meta.HIDDEN_FRAMES.getHiddenObject(e.getGuestException());
-            if (meta.polyglot != null && (e.getGuestException().getKlass() == meta.polyglot.ForeignException || stack == VM.StackTrace.FOREIGN_MARKER_STACK_TRACE)) {
+            if (InteropUtils.isForeignException(e)) {
+                EspressoLanguage language = receiver.getKlass().getContext().getLanguage();
+                Meta meta = e.getGuestException().getKlass().getMeta();
                 // rethrow the original foreign exception when leaving espresso interop
                 throw (AbstractTruffleException) meta.java_lang_Throwable_backtrace.getObject(e.getGuestException()).rawForeignObject(language);
             }

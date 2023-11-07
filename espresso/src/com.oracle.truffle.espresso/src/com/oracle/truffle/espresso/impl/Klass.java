@@ -352,11 +352,10 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                 }
                 throw UnknownIdentifierException.create(member);
             } catch (EspressoException e) {
-                Meta meta = receiver.getMeta();
-                Object stack = meta.HIDDEN_FRAMES.getHiddenObject(e.getGuestException());
-                if (meta.polyglot != null && (e.getGuestException().getKlass() == meta.polyglot.ForeignException || stack == VM.StackTrace.FOREIGN_MARKER_STACK_TRACE)) {
+                if (InteropUtils.isForeignException(e)) {
+                    Meta meta = e.getGuestException().getKlass().getMeta();
                     // rethrow the original foreign exception when leaving espresso interop
-                    throw (AbstractTruffleException) receiver.getMeta().java_lang_Throwable_backtrace.getObject(e.getGuestException()).rawForeignObject(receiver.getLanguage());
+                    throw (AbstractTruffleException) meta.java_lang_Throwable_backtrace.getObject(e.getGuestException()).rawForeignObject(receiver.getLanguage());
                 }
                 throw e;
             }

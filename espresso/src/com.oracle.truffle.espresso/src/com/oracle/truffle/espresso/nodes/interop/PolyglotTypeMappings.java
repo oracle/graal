@@ -32,7 +32,6 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.options.OptionMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -335,7 +334,7 @@ public class PolyglotTypeMappings {
     public static final class OptionalTypeConverter implements InternalTypeConverter {
 
         @Override
-        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) {
+        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) throws UnsupportedTypeException {
             try {
                 Object result = interop.invokeMember(value, "orElse", StaticObject.NULL);
                 if (interop.isNull(result)) {
@@ -346,8 +345,8 @@ public class PolyglotTypeMappings {
                     return guestOptional;
                 }
             } catch (InteropException e) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw EspressoError.shouldNotReachHere();
+                throw UnsupportedTypeException.create(new Object[]{value},
+                        EspressoError.format("Could not cast foreign object to Optional: %s", e.getMessage()));
             }
         }
     }
@@ -355,7 +354,7 @@ public class PolyglotTypeMappings {
     public static final class BigDecimalTypeConverter implements InternalTypeConverter {
 
         @Override
-        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) {
+        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) throws UnsupportedTypeException {
             try {
                 // state required to reconstruct in guest
                 int scale = interop.asInt(interop.invokeMember(value, "scale"));
@@ -373,8 +372,8 @@ public class PolyglotTypeMappings {
                 meta.java_math_BigDecimal_init.invokeDirect(guestBigDecimal, guestBigInteger, scale, guestMathContext);
                 return guestBigDecimal;
             } catch (InteropException e) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw EspressoError.shouldNotReachHere();
+                throw UnsupportedTypeException.create(new Object[]{value},
+                        EspressoError.format("Could not cast foreign object to BigDecimal: %s", e.getMessage()));
             }
         }
 

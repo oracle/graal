@@ -27,6 +27,7 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.vm.VM;
 
 public class InteropUtils {
 
@@ -78,5 +79,19 @@ public class InteropUtils {
             return unwrap(language, (StaticObject) object, meta);
         }
         return object;
+    }
+
+    public static boolean isForeignException(EspressoException e) {
+        assert e != null;
+        StaticObject guestException = e.getGuestException();
+        Meta meta = guestException.getKlass().getMeta();
+        if (meta.polyglot == null) {
+            return false;
+        }
+        if (guestException.getKlass() == meta.polyglot.ForeignException) {
+            return true;
+        }
+        Object stack = meta.HIDDEN_FRAMES.getHiddenObject(guestException);
+        return stack == VM.StackTrace.FOREIGN_MARKER_STACK_TRACE;
     }
 }
