@@ -211,8 +211,12 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
                     MethodHandleAccessProvider methodHandleAccess, ResolvedJavaMethod original, int bci, StampPair returnStamp, ValueNode[] arguments) {
         ValueNode methodHandleNode = getReceiver(arguments);
         if (methodHandleNode.isConstant()) {
+            // Do not force bytecode generation as it can involve making a JavaCall
+            // on a libgraal CompilerThread which is illegal as of JDK-8318694.
+            // More importantly, classloading must not be triggered from a CompilerThread.
+            boolean forceBytecodeGeneration = false;
             return getTargetInvokeNode(adder, factory, intrinsicMethod, methodHandleAccess, bci, returnStamp, arguments,
-                            methodHandleAccess.resolveInvokeBasicTarget(methodHandleNode.asJavaConstant(), true), original);
+                            methodHandleAccess.resolveInvokeBasicTarget(methodHandleNode.asJavaConstant(), forceBytecodeGeneration), original);
         }
         return null;
     }
