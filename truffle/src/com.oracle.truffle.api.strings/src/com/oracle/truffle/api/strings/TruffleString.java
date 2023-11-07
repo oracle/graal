@@ -3076,17 +3076,17 @@ public final class TruffleString extends AbstractTruffleString {
             a.checkEncoding(expectedEncoding);
             int h = a.hashCode;
             if (cacheMiss.profile(this, h == 0)) {
-                h = calculateHash(a, toIndexableNode, calculateHashCodeNode);
+                Object arrayA = toIndexableNode.execute(this, a, a.data());
+                h = a.setHashCode(maskZero(calculateHashCodeNode.execute(this, a, arrayA)));
             }
             return h;
         }
 
-        final int calculateHash(AbstractTruffleString a, ToIndexableNode toIndexableNode, TStringOpsNodes.CalculateHashCodeNode calculateHashCodeNode) {
-            int h = calculateHashCodeNode.execute(this, a, toIndexableNode.execute(this, a, a.data()));
+        private static int maskZero(int rawHashCode) {
+            int h = rawHashCode;
             if (h == 0) {
                 h--;
             }
-            a.hashCode = h;
             return h;
         }
 
@@ -3109,8 +3109,13 @@ public final class TruffleString extends AbstractTruffleString {
             return TruffleStringFactory.HashCodeNodeGen.getUncached();
         }
 
+        /**
+         * Calculates the hash code for {@link AbstractTruffleString#hashCode()}. This method is
+         * only called if the hashCode field is zero, so we don't need to check that again here.
+         */
         static int calculateHashCodeUncached(AbstractTruffleString a) {
-            return getUncached().calculateHash(a, ToIndexableNode.getUncached(), TStringOpsNodesFactory.CalculateHashCodeNodeGen.getUncached());
+            Object arrayA = ToIndexableNode.getUncached().execute(getUncached(), a, a.data());
+            return a.setHashCode(maskZero(TStringOps.hashCodeWithStride(getUncached(), a, arrayA, a.stride())));
         }
     }
 

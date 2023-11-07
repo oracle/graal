@@ -125,7 +125,7 @@ public abstract class AbstractTruffleString {
      * Cached {@link TruffleString.HashCodeNode hash code}. The hash method never returns zero, so a
      * hashCode value of zero always means that the hash is not calculated yet.
      */
-    int hashCode = 0;
+    int hashCode;
 
     AbstractTruffleString(Object data, int offset, int length, int stride, Encoding encoding, int flags, int codePointLength, int codeRange) {
         validateData(data, offset, length, stride);
@@ -397,6 +397,11 @@ public abstract class AbstractTruffleString {
 
     final boolean isHashCodeCalculated() {
         return hashCode != 0;
+    }
+
+    final int setHashCode(int hashCode) {
+        assert hashCode != 0 : "hashCode must not be zero";
+        return this.hashCode = hashCode;
     }
 
     // don't use this on fast path
