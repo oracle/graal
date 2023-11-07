@@ -2542,7 +2542,14 @@ public final class TruffleString extends AbstractTruffleString {
             public Object execute(Node node, AbstractTruffleString a, Object data) {
                 if (data instanceof byte[] byteData) {
                     return byteData;
-                } else if (data instanceof NativePointer nativePointer && Encoding.isSupported(a.encoding())) {
+                } else {
+                    // Outlined to keep this method as trivial as possible
+                    return doNativeOrLazy(node, a, data);
+                }
+            }
+
+            private Object doNativeOrLazy(Node node, AbstractTruffleString a, Object data) {
+                if (data instanceof NativePointer nativePointer && Encoding.isSupported(a.encoding())) {
                     return nativePointer;
                 }
                 return doMaterialize(node, a, data);
