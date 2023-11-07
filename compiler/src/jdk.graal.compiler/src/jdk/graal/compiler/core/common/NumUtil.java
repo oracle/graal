@@ -24,11 +24,10 @@
  */
 package jdk.graal.compiler.core.common;
 
-// JaCoCo Exclude
-
-import jdk.vm.ci.code.CodeUtil;
-
 import java.nio.charset.StandardCharsets;
+
+import jdk.graal.compiler.debug.GraalError;
+import jdk.vm.ci.code.CodeUtil;
 
 /**
  * A collection of static utility functions that check ranges of numbers.
@@ -274,5 +273,15 @@ public class NumUtil {
             hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
         }
         return new String(hexChars, StandardCharsets.UTF_8);
+    }
+
+    public static long addExact(long a, long b, int bits) {
+        if (bits == 32) {
+            return Math.addExact((int) a, (int) b);
+        } else if (bits == 64) {
+            return Math.addExact(a, b);
+        } else {
+            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes int/long but is " + bits);
+        }
     }
 }
