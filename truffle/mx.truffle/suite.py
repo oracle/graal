@@ -836,8 +836,9 @@ suite = {
       "javaCompliance" : "22+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
-      # disable SpotBugs as long JDK 22 is unsupported [GR-49566]
+      # disable SpotBugs and Jacoco as long as JDK 22 is unsupported [GR-49566]
       "spotbugs" : "false",
+      "jacoco" : "exclude",
     },
 
     "com.oracle.truffle.nfi.backend.spi" : {
