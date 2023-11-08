@@ -33,10 +33,11 @@ import tempfile
 import json
 from genericpath import exists
 from os.path import basename, dirname, getsize
+from pathlib import Path
 from traceback import print_tb
 import subprocess
 import zipfile
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Sequence
 
 import mx
 import mx_benchmark
@@ -234,6 +235,20 @@ class NativeImageBenchmarkConfig:
         # benchmarks are allowed to use experimental options
         # the bundle might also inject experimental options, but they will be appropriately locked/unlocked.
         self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')] + svm_experimental_options(base_image_build_args) + bundle_args
+
+    def get_instrument_image_build_stats_file(self) -> Path:
+        """
+        Produce a unique path to put image build stats for 'instrument-image' stages.
+
+        The 'image_build_statistics.json' file produced by the build gets overwritten by any subsequent
+        builds (other 'instrument-image' iterations or the 'image' stage).
+        Because of this, we need unique paths for stats files produced by the instrumentation builds.
+
+        :param iteration: The instrumented iteration (see :attr:`NativeImageVM.instrumented_iterations`)
+        :return: A unique path to store the instrumented image build stats for the given iteration
+        """
+        return Path(self.image_build_stats_file).parent / f"image_build_statistics-instrument.json"
+
 
     def check_runnable(self):
         # TODO remove once there is load available for the specified benchmarks
@@ -803,6 +818,47 @@ class NativeImageVM(GraalVm):
             }, ['total_memory_bytes'])
         ]
 
+    def _get_image_build_stats_rules(self, template: dict, keys: Sequence[str]) -> Sequence[mx_benchmark.Rule]:
+        """
+        Produces rules that parse the ``image_build_statistics.json`` (and its variants from instrumented builds).
+
+        Which rules depend on the stages being run.
+
+        For the ``image`` stage, creates a rule that reads ``image_build_statistics.json`` and uses the template as-is
+        to produce a datapoint.
+
+        For the ``instrument-image`` stage, creates one rule that reads the associated build stats files
+        (see :func:`BenchmarkConfig.get_instrument_image_build_stats_file`).
+
+        :param template: Replacement template for the datapoint. Should produce a datapoint from the
+                         ``image_build_statistics.json`` file.
+                         The ``metric.object`` key must be used for the datapoint, it will be prefixed with
+                         ``instrument-`` in the rules for the instrumented iterations.
+        :param keys: List of keys to extract from the json file.
+        :return: The list of rules for the various image build stats files
+        """
+
+        rules = []
+
+        # If the 'image' stage was run, create a rule with the template as-is. This will produce datapoints from the
+        # build stats produced by the final 'image' stage.
+        if "image" in self.stages_info.stages_till_now:
+            rules.append(mx_benchmark.JsonFixedFileRule(self.config.image_build_stats_file, template, keys))
+
+        # We're prefixing metric.object with 'instrument-', so it must exist.
+        # If metrics without metric.object are ever used here, the function needs to alternatively prefix metrtic.name.
+        assert "metric.object" in template
+
+        # Prefix metric.object with 'instrument-' for instrumentation data
+        instrument_template = template.copy()
+        instrument_template["metric.object"] = "instrument-" + template["metric.object"]
+
+        # Only add rule if the stage actually ran. Otherwise, the json file is not available and parsing will fail.
+        if "instrument-image" in self.stages_info.stages_till_now:
+            rules.append(mx_benchmark.JsonFixedFileRule(self.config.get_instrument_image_build_stats_file(), instrument_template, keys))
+
+        return rules
+
     def image_build_statistics_rules(self, output, benchmarks, bmSuiteArgs):
         objects_list = ["total_array_store",
                         "total_assertion_error_nullary",
@@ -822,7 +878,7 @@ class NativeImageVM(GraalVm):
             metric_objects.append(obj + "_after_high_tier")
         rules = []
         for i in range(0, len(metric_objects)):
-            rules.append(mx_benchmark.JsonFixedFileRule(self.config.image_build_stats_file, {
+            rules += self._get_image_build_stats_rules({
                 "benchmark": benchmarks[0],
                 "metric.name": "image-build-stats",
                 "metric.type": "numeric",
@@ -832,7 +888,7 @@ class NativeImageVM(GraalVm):
                 "metric.better": "lower",
                 "metric.iteration": 0,
                 "metric.object": metric_objects[i].replace("_", "-").replace("total-", ""),
-            }, [metric_objects[i]]))
+            }, [metric_objects[i]])
         return rules
 
     def image_build_timers_rules(self, output, benchmarks, bmSuiteArgs):
@@ -846,31 +902,29 @@ class NativeImageVM(GraalVm):
         for i in range(0, len(measured_phases)):
             phase = measured_phases[i]
             value_name = phase + "_time"
-            rules.append(
-                mx_benchmark.JsonFixedFileRule(self.config.image_build_stats_file, {
-                    "benchmark": benchmarks[0],
-                    "metric.name": "compile-time",
-                    "metric.type": "numeric",
-                    "metric.unit": "ms",
-                    "metric.value": ("<" + value_name + ">", NativeImageTimeToInt()),
-                    "metric.score-function": "id",
-                    "metric.better": "lower",
-                    "metric.iteration": 0,
-                    "metric.object": phase,
-                }, [value_name]))
+            rules += self._get_image_build_stats_rules({
+                "benchmark": benchmarks[0],
+                "metric.name": "compile-time",
+                "metric.type": "numeric",
+                "metric.unit": "ms",
+                "metric.value": ("<" + value_name + ">", NativeImageTimeToInt()),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0,
+                "metric.object": phase,
+            }, [value_name])
             value_name = phase + "_memory"
-            rules.append(
-                mx_benchmark.JsonFixedFileRule(self.config.image_build_stats_file, {
-                    "benchmark": benchmarks[0],
-                    "metric.name": "compile-time",
-                    "metric.type": "numeric",
-                    "metric.unit": "B",
-                    "metric.value": ("<" + value_name + ">", NativeImageTimeToInt()),
-                    "metric.score-function": "id",
-                    "metric.better": "lower",
-                    "metric.iteration": 0,
-                    "metric.object": phase + "_memory",
-                }, [value_name]))
+            rules += self._get_image_build_stats_rules({
+                "benchmark": benchmarks[0],
+                "metric.name": "compile-time",
+                "metric.type": "numeric",
+                "metric.unit": "B",
+                "metric.value": ("<" + value_name + ">", NativeImageTimeToInt()),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0,
+                "metric.object": phase + "_memory",
+            }, [value_name])
         return rules
 
     def rules(self, output, benchmarks, bmSuiteArgs):
@@ -948,6 +1002,12 @@ class NativeImageVM(GraalVm):
             if self.config.bundle_path is not None:
                 NativeImageVM.copy_bundle_output(self.config, self.config.instrumentation_executable_name)
             if s.exit_code == 0:
+                # Move build stats file to a unique location so that it is not overwritten later and can be used to extract
+                # per-iteration build information
+                # Move instead of copy to prevent the file being confused with the image build stats for the 'image' stage.
+                # TODO Rewrite now that we don't have pgo iterations anymore
+                mx.move(self.config.image_build_stats_file, self.config.get_instrument_image_build_stats_file())
+
                 image_size = os.stat(os.path.join(self.config.output_dir, self.config.instrumentation_executable_name)).st_size
                 out('Instrumented image size: ' + str(image_size) + ' B')
 
