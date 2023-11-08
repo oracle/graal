@@ -86,7 +86,7 @@ public final class DeferredCommonPool extends ForkJoinPool {
 
     @SuppressWarnings("unchecked")
     public <T> List<Future<T>> invokeAllUninterruptibly(Collection<? extends Callable<T>> tasks) {
-        VMError.guarantee(JavaVersionUtil.JAVA_SPEC >= 22, "invokeAllUninterruptibly only exits in JDK 22+");
+        VMError.guarantee(JavaVersionUtil.JAVA_SPEC >= 22, "invokeAllUninterruptibly only exists in JDK 22+");
         var m = ReflectionUtil.lookupMethod(ForkJoinPool.class, "invokeAllUninterruptibly", Collection.class);
         try {
             return (List<Future<T>>) m.invoke(ForkJoinPool.commonPool(), tasks);
