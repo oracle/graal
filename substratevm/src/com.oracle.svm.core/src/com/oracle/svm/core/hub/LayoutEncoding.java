@@ -140,6 +140,11 @@ public class LayoutEncoding {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    public static int forDynamicHub(ResolvedJavaType type, int vtableOffset, int vtableIndexShift) {
+        return forArrayLike(type, true, false, vtableOffset, vtableIndexShift);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static int forArrayLike(ResolvedJavaType type, boolean isHybrid, boolean objectElements, int arrayBaseOffset, int arrayIndexShift) {
         assert isHybrid != type.isArray();
         int tag = isHybrid ? (objectElements ? ARRAY_TAG_HYBRID_OBJECT_VALUE : ARRAY_TAG_HYBRID_PRIMITIVE_VALUE)

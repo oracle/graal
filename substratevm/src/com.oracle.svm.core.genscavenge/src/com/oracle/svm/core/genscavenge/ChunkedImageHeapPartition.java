@@ -38,6 +38,8 @@ import com.oracle.svm.core.genscavenge.AbstractImageHeapLayouter.AbstractImageHe
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 
+import jdk.graal.compiler.debug.Assertions;
+
 /**
  * An unstructured image heap partition that just contains a linear sequence of image heap objects.
  */
@@ -134,7 +136,7 @@ public class ChunkedImageHeapPartition extends AbstractImageHeapPartition {
         for (ImageHeapObject obj : sorted) {
             long objSize = obj.getSize();
             if (objSize != currentObjectsSize) {
-                assert objSize > currentObjectsSize && objSize >= ConfigurationValues.getObjectLayout().getMinImageHeapObjectSize();
+                assert objSize > currentObjectsSize && objSize >= ConfigurationValues.getObjectLayout().getMinImageHeapObjectSize() : Assertions.errorMessage(obj, objSize);
                 currentObjectsSize = objSize;
                 currentQueue = new ArrayDeque<>();
                 map.put(currentObjectsSize, currentQueue);

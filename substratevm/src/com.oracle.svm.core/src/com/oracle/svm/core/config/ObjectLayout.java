@@ -54,6 +54,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * object needs the field, the object is resized during garbage collection to accommodate the
  * field.</li>
  * </ol>
+ * 
+ * See this classes instantiation sites (such as {@code HostedConfiguration#createObjectLayout}) for
+ * more details on the exact object layout for a given configuration.
  */
 public final class ObjectLayout {
 
