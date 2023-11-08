@@ -45,9 +45,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -103,6 +100,9 @@ import com.oracle.svm.hosted.substitute.ComputedValueField;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.Indent;
 import jdk.internal.vm.annotation.Contended;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
@@ -363,7 +363,7 @@ public class UniverseBuilder {
          */
         HostedType type = lookupType(aField.getType());
 
-        HostedField hField = new HostedField(aField, holder, type, staticAnalysisResultsBuilder.makeTypeProfile(aField));
+        HostedField hField = new HostedField(aField, holder, type);
         assert !hUniverse.fields.containsKey(aField);
         hUniverse.fields.put(aField, hField);
     }
@@ -375,7 +375,7 @@ public class UniverseBuilder {
                             assert method.isOriginalMethod();
                             for (MultiMethod multiMethod : method.getAllMultiMethods()) {
                                 HostedMethod hMethod = (HostedMethod) multiMethod;
-                                hMethod.staticAnalysisResults = staticAnalysisResultsBuilder.makeOrApplyResults(hMethod.getWrapped());
+                                staticAnalysisResultsBuilder.makeOrApplyResults(hMethod.getWrapped());
                             }
                         });
 

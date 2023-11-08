@@ -36,8 +36,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.graphio.GraphOutput;
-import jdk.graal.compiler.graphio.GraphStructure;
 import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -58,7 +56,6 @@ import com.oracle.graal.pointsto.flow.FilterTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalReceiverTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalReturnTypeFlow;
-import com.oracle.graal.pointsto.flow.InstanceOfTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.MergeTypeFlow;
@@ -85,6 +82,8 @@ import com.oracle.svm.hosted.dashboard.ToJson.JsonObject;
 import com.oracle.svm.hosted.dashboard.ToJson.JsonString;
 import com.oracle.svm.hosted.dashboard.ToJson.JsonValue;
 
+import jdk.graal.compiler.graphio.GraphOutput;
+import jdk.graal.compiler.graphio.GraphStructure;
 import jdk.vm.ci.code.BytecodePosition;
 
 /**
@@ -421,7 +420,6 @@ class PointsToJsonObject extends JsonObject {
             names.put(CloneTypeFlow.class, "clone");
             names.put(FilterTypeFlow.class, "filter");
             names.put(FormalReceiverTypeFlow.class, "formalReceiver");
-            names.put(InstanceOfTypeFlow.class, "instanceOf");
             names.put(OffsetLoadTypeFlow.LoadIndexedTypeFlow.class, "loadIndexed");
             names.put(MergeTypeFlow.class, "merge");
             names.put(MonitorEnterTypeFlow.class, "monitorEnter");

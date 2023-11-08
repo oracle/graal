@@ -31,7 +31,6 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.graal.reachability.ReachabilityAnalysisEngine;
 import com.oracle.graal.reachability.ReachabilityMethodProcessingHandler;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
@@ -45,7 +44,6 @@ public class NativeImageReachabilityAnalysisEngine extends ReachabilityAnalysisE
 
     private final AnnotationSubstitutionProcessor annotationSubstitutionProcessor;
     private final DynamicHubInitializer dynamicHubInitializer;
-    private final boolean strengthenGraalGraphs;
     private final CustomTypeFieldHandler unknownFieldHandler;
 
     @SuppressWarnings("this-escape")
@@ -55,7 +53,6 @@ public class NativeImageReachabilityAnalysisEngine extends ReachabilityAnalysisE
         super(options, universe, universe.hostVM(), metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, new SubstrateUnsupportedFeatures(), debugContext, timerCollection,
                         reachabilityMethodProcessingHandler);
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
-        this.strengthenGraalGraphs = SubstrateOptions.parseOnce();
         this.dynamicHubInitializer = new DynamicHubInitializer(this);
         this.unknownFieldHandler = new CustomTypeFieldHandler(this, metaAccess) {
             @Override
@@ -67,11 +64,6 @@ public class NativeImageReachabilityAnalysisEngine extends ReachabilityAnalysisE
                 }
             }
         };
-    }
-
-    @Override
-    public boolean strengthenGraalGraphs() {
-        return strengthenGraalGraphs;
     }
 
     @Override

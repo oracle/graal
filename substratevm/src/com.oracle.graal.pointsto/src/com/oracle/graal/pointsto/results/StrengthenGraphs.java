@@ -33,6 +33,20 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicSet;
+
+import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
+import com.oracle.graal.pointsto.flow.MethodTypeFlow;
+import com.oracle.graal.pointsto.flow.TypeFlow;
+import com.oracle.graal.pointsto.infrastructure.Universe;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.svm.util.ImageBuildStatistics;
+
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -87,21 +101,6 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase.CustomSimplification;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
-
-import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
-import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
-import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
-import com.oracle.graal.pointsto.flow.MethodTypeFlow;
-import com.oracle.graal.pointsto.flow.TypeFlow;
-import com.oracle.graal.pointsto.infrastructure.Universe;
-import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.graal.pointsto.typestate.TypeState;
-import com.oracle.svm.util.ImageBuildStatistics;
-
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -157,14 +156,14 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
     @Override
     @SuppressWarnings("try")
-    public StaticAnalysisResults makeOrApplyResults(AnalysisMethod m) {
+    public void makeOrApplyResults(AnalysisMethod m) {
         if (!m.isImplementationInvoked()) {
-            return StaticAnalysisResults.NO_RESULTS;
+            return;
         }
         PointsToAnalysisMethod method = PointsToAnalysis.assertPointsToAnalysisMethod(m);
         MethodTypeFlow methodTypeFlow = method.getTypeFlow();
         if (!methodTypeFlow.flowsGraphCreated()) {
-            return StaticAnalysisResults.NO_RESULTS;
+            return;
         }
         DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).build();
         StructuredGraph graph = method.decodeAnalyzedGraph(debug, methodTypeFlow.getMethodFlowsGraph().getNodeFlows().getKeys());
@@ -190,20 +189,6 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         while (cursor.advance()) {
             cursor.getKey().clear();
         }
-        /*
-         * All information from the static analysis has been incorporated into the graph. There is
-         * no benefit in keeping results around anymore.
-         */
-        return StaticAnalysisResults.NO_RESULTS;
-    }
-
-    @Override
-    public JavaTypeProfile makeTypeProfile(AnalysisField field) {
-        /*
-         * Since LoadFieldNode are improved directly in this class, there is no need to provide a
-         * type profile for fields.
-         */
-        return null;
     }
 
     /*

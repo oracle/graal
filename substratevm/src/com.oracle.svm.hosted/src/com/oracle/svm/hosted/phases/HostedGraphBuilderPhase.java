@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
+import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.phases.SubstrateGraphBuilderPhase.SubstrateBytecodeParser;
+
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.FrameStateBuilder;
@@ -38,12 +42,6 @@ import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.word.WordTypes;
-
-import com.oracle.graal.pointsto.results.StaticAnalysisResults;
-import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
-import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.phases.SubstrateGraphBuilderPhase.SubstrateBytecodeParser;
-
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -93,9 +91,7 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
 
     @Override
     public MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, JavaTypeProfile profile) {
-        StaticAnalysisResults staticAnalysisResults = getMethod().getProfilingInfo();
-        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp,
-                        staticAnalysisResults.getTypeProfile(bci()), staticAnalysisResults.getMethodProfile(bci()), staticAnalysisResults.getStaticTypeProfile(bci()));
+        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp);
     }
 
 }

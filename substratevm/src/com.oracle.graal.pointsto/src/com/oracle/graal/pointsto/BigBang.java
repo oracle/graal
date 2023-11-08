@@ -28,12 +28,6 @@ import java.io.PrintWriter;
 import java.util.List;
 import java.util.function.Function;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.word.WordTypes;
-
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -45,6 +39,11 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.svm.common.meta.MultiMethod;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 
@@ -94,8 +93,6 @@ public interface BigBang extends ReachabilityAnalysis {
     boolean extendedAsserts();
 
     void runAnalysis(DebugContext debug, Function<AnalysisUniverse, Boolean> duringAnalysisAction) throws InterruptedException;
-
-    boolean strengthenGraalGraphs();
 
     /** You can blacklist certain callees here. */
     @SuppressWarnings("unused")

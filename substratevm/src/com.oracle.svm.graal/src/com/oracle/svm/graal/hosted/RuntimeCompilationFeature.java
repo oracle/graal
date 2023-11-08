@@ -40,26 +40,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.api.runtime.GraalRuntime;
-import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
-import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.lir.phases.LIRSuites;
-import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.GraphEncoder;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionStability;
-import jdk.graal.compiler.phases.OptimisticOptimizations;
-import jdk.graal.compiler.phases.tiers.Suites;
-import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.word.WordTypes;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.AfterCompilationAccess;
@@ -71,7 +51,6 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -113,17 +92,33 @@ import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
-import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
-import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
-import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 
+import jdk.graal.compiler.api.runtime.GraalRuntime;
+import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.phases.LIRSuites;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.GraphEncoder;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionStability;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.phases.tiers.Suites;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -688,56 +683,6 @@ public abstract class RuntimeCompilationFeature {
                 }
             }
         }
-    }
-}
-
-/**
- * The graphs for runtime compilation use the analysis universe, but we want to incorporate static
- * analysis results from the hosted universe. So we temporarily convert metadata objects to the
- * hosted universe, and the final type back to the analysis universe.
- */
-class RuntimeStrengthenStampsPhase extends StrengthenStampsPhase {
-
-    private final HostedUniverse hUniverse;
-    private final GraalGraphObjectReplacer objectReplacer;
-
-    RuntimeStrengthenStampsPhase(HostedUniverse hUniverse, GraalGraphObjectReplacer objectReplacer) {
-        this.hUniverse = hUniverse;
-        this.objectReplacer = objectReplacer;
-    }
-
-    @Override
-    protected HostedType toHosted(ResolvedJavaType type) {
-        if (type == null) {
-            return null;
-        }
-        assert type instanceof AnalysisType;
-        return hUniverse.lookup(type);
-    }
-
-    @Override
-    protected HostedField toHosted(ResolvedJavaField field) {
-        if (field == null) {
-            return null;
-        }
-        assert field instanceof AnalysisField;
-        return hUniverse.lookup(field);
-    }
-
-    @Override
-    protected ResolvedJavaType toTarget(ResolvedJavaType type) {
-        AnalysisType result = ((HostedType) type).getWrapped();
-
-        if (!objectReplacer.typeCreated(result)) {
-            /*
-             * The SubstrateType has not been created during analysis. We cannot crate new types at
-             * this point, because it can make objects reachable that the static analysis has not
-             * seen.
-             */
-            return null;
-        }
-
-        return result;
     }
 }
 

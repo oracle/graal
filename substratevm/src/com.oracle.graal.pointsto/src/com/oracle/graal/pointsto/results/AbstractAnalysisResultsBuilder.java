@@ -32,7 +32,6 @@ import java.util.stream.Stream;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.infrastructure.Universe;
-import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
@@ -81,9 +80,7 @@ public abstract class AbstractAnalysisResultsBuilder {
         return bb;
     }
 
-    public abstract StaticAnalysisResults makeOrApplyResults(AnalysisMethod method);
-
-    public abstract JavaTypeProfile makeTypeProfile(AnalysisField field);
+    public abstract void makeOrApplyResults(AnalysisMethod method);
 
     protected JavaTypeProfile makeTypeProfile(TypeState typeState) {
         if (typeState == null || PointstoOptions.AnalysisSizeCutoff.getValue(bb.getOptions()) != -1 &&

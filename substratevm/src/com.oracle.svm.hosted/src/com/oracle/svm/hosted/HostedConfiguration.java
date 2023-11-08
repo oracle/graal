@@ -31,12 +31,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.core.common.CompressEncoding;
-import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -50,7 +44,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.results.AbstractAnalysisResultsBuilder;
 import com.oracle.graal.pointsto.results.DefaultResultsBuilder;
-import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
@@ -76,6 +69,12 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.internal.ValueBased;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -218,13 +217,8 @@ public class HostedConfiguration {
     }
 
     public AbstractAnalysisResultsBuilder createStaticAnalysisResultsBuilder(Inflation bb, HostedUniverse universe) {
-        if (bb instanceof PointsToAnalysis) {
-            PointsToAnalysis pta = (PointsToAnalysis) bb;
-            if (SubstrateOptions.parseOnce()) {
-                return new SubstrateStrengthenGraphs(pta, universe);
-            } else {
-                return new StaticAnalysisResultsBuilder(pta, universe);
-            }
+        if (bb instanceof PointsToAnalysis pta) {
+            return new SubstrateStrengthenGraphs(pta, universe);
         } else {
             return new DefaultResultsBuilder(bb, universe);
         }

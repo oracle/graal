@@ -99,7 +99,6 @@ import com.oracle.svm.hosted.phases.ConstantFoldLoadFieldPlugin;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils.AccumulativeInlineScope;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils.AlwaysInlineScope;
-import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
 
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
@@ -710,12 +709,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
             protected PhaseSuite<HighTierContext> getAfterParseSuite() {
                 PhaseSuite<HighTierContext> suite = super.getAfterParseSuite();
                 if (Options.RemoveUnneededDeoptSupport.getValue()) {
-                    var iterator = suite.findPhase(StrengthenStampsPhase.class);
-                    if (iterator == null) {
-                        suite.prependPhase(new RemoveUnneededDeoptSupport());
-                    } else {
-                        iterator.add(new RemoveUnneededDeoptSupport());
-                    }
+                    suite.prependPhase(new RemoveUnneededDeoptSupport());
                 }
 
                 return suite;
