@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -710,22 +710,26 @@ final class TStringOps {
     }
 
     static int hashCodeWithStride(Node location, AbstractTruffleString a, Object arrayA, int stride) {
-        return hashCodeWithStrideIntl(location, arrayA, a.offset(), a.length(), stride);
+        int offset = a.offset();
+        int length = a.length();
+        int hashCode = hashCodeWithStrideIntl(arrayA, offset, length, stride);
+        TStringConstants.truffleSafePointPollNow(location, length);
+        return hashCode;
     }
 
-    private static int hashCodeWithStrideIntl(Node location, Object array, int offset, int length, int stride) {
+    private static int hashCodeWithStrideIntl(Object array, int offset, int length, int stride) {
         final boolean isNative = isNativePointer(array);
         final byte[] stubArray = stubArray(array, isNative);
         validateRegion(stubArray, offset, length, stride, isNative);
         final long stubOffset = stubOffset(array, offset, isNative);
         switch (stride) {
             case 0:
-                return runHashCode(location, stubArray, stubOffset, length, 0, isNative);
+                return runHashCode(stubArray, stubOffset, length, 0, isNative);
             case 1:
-                return runHashCode(location, stubArray, stubOffset, length, 1, isNative);
+                return runHashCode(stubArray, stubOffset, length, 1, isNative);
             default:
                 assert stride == 2;
-                return runHashCode(location, stubArray, stubOffset, length, 2, isNative);
+                return runHashCode(stubArray, stubOffset, length, 2, isNative);
         }
     }
 
@@ -1275,11 +1279,13 @@ final class TStringOps {
         return 0;
     }
 
-    private static int runHashCode(Node location, byte[] array, long offset, int length, int stride, boolean isNative) {
+    /**
+     * Intrinsic candidate.
+     */
+    private static int runHashCode(byte[] array, long offset, int length, int stride, boolean isNative) {
         int hash = 0;
         for (int i = 0; i < length; i++) {
             hash = 31 * hash + readValue(array, offset, stride, i, isNative);
-            TStringConstants.truffleSafePointPoll(location, i + 1);
         }
         return hash;
     }
