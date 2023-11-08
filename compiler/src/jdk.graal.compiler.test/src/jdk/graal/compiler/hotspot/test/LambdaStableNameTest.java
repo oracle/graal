@@ -25,24 +25,29 @@
 
 package jdk.graal.compiler.hotspot.test;
 
-import java.math.BigInteger;
-import java.util.Collections;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.runtime.JVMCI;
-import jdk.graal.compiler.api.runtime.GraalJVMCICompiler;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.DebugContext.Builder;
-import jdk.graal.compiler.hotspot.meta.HotSpotJITClassInitializationPlugin;
-import jdk.graal.compiler.java.LambdaUtils;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.runtime.RuntimeProvider;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import java.math.BigInteger;
+import java.util.Collections;
+
 import org.junit.Test;
 import org.objectweb.asm.Type;
+
+import jdk.graal.compiler.api.runtime.GraalJVMCICompiler;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext.Builder;
+import jdk.graal.compiler.hotspot.meta.HotSpotJITClassInitializationPlugin;
+import jdk.graal.compiler.java.GraphBuilderPhase;
+import jdk.graal.compiler.java.LambdaUtils;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.runtime.RuntimeProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.runtime.JVMCI;
 
 public class LambdaStableNameTest {
     private String findStableLambdaName(ResolvedJavaType type) {
@@ -51,7 +56,8 @@ public class LambdaStableNameTest {
         GraalJVMCICompiler compiler = (GraalJVMCICompiler) JVMCI.getRuntime().getCompiler();
         Providers providers = compiler.getGraalRuntime().getCapability(RuntimeProvider.class).getHostBackend().getProviders();
         final HotSpotJITClassInitializationPlugin initializationPlugin = new HotSpotJITClassInitializationPlugin();
-        return LambdaUtils.findStableLambdaName(initializationPlugin, providers, type, options, debug, this);
+        return LambdaUtils.findStableLambdaName(initializationPlugin, providers, type, options, debug, this,
+                        config -> new GraphBuilderPhase.Instance(providers, config, OptimisticOptimizations.NONE, null));
     }
 
     @Test
