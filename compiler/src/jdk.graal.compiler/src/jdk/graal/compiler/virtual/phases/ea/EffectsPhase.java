@@ -103,7 +103,7 @@ public abstract class EffectsPhase<CoreProvidersT extends CoreProviders> extends
                 ControlFlowGraph cfg;
                 if (unscheduled) {
                     schedule = null;
-                    cfg = ControlFlowGraph.compute(graph, true, true, false, false);
+                    cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeFrequency(true).build();
                 } else {
                     new SchedulePhase(strategy).apply(graph, context, false);
                     schedule = graph.getLastSchedule();

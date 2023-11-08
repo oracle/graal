@@ -68,7 +68,7 @@ public class InsertGuardFencesPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, false, false, false);
+        ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeFrequency(true).build();
         for (AbstractBeginNode beginNode : graph.getNodes(AbstractBeginNode.TYPE)) {
             if (hasPotentialUnsafeAccess(cfg, beginNode)) {
                 graph.getDebug().log(DebugContext.VERBOSE_LEVEL, "Adding speculation fence at %s because of unguarded fixed access", beginNode);

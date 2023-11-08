@@ -902,7 +902,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         try {
             /* Check that the control flow graph can be computed, to catch problems early. */
-            assert CFGVerifier.verify(ControlFlowGraph.compute(graph, true, true, true, true));
+            assert CFGVerifier.verify(
+                            ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeDominators(true).computePostdominators(true).computeFrequency(true).build());
         } catch (Throwable ex) {
             throw GraalError.shouldNotReachHere(ex, "Control flow graph not valid after partial evaluation"); // ExcludeFromJacocoGeneratedReport
         }

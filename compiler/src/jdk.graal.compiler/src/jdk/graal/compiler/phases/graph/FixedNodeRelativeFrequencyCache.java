@@ -146,7 +146,7 @@ public class FixedNodeRelativeFrequencyCache implements ToDoubleFunction<FixedNo
 
     private void computeLazyCFG(FixedNode node) {
         if (lastCFG == null || !lastCFGMark.isCurrent()) {
-            lastCFG = ControlFlowGraph.compute(node.graph(), false, false, false, false);
+            lastCFG = ControlFlowGraph.newBuilder(node.graph()).computeFrequency(true).build();
             lastCFGMark = node.graph().getMark();
         }
     }

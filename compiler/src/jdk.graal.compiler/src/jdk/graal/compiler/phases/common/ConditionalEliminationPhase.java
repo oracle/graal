@@ -182,7 +182,8 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             NodeMap<HIRBlock> nodeToBlock = null;
             ControlFlowGraph cfg = null;
             if (fullSchedule) {
-                cfg = ControlFlowGraph.compute(graph, true, true, true, true, true, true);
+                cfg = ControlFlowGraph.newBuilder(graph).backendBlocks(true).connectBlocks(true).computeFrequency(true).computeLoops(true).computeDominators(true).computePostdominators(
+                                true).build();
                 if (moveGuards && Options.MoveGuardsUpwards.getValue(graph.getOptions())) {
                     cfg.visitDominatorTree(new MoveGuardsUpwards(), graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL));
                 }
@@ -195,7 +196,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                 blockToNodes = r.getBlockToNodesMap();
                 nodeToBlock = r.getNodeToBlockMap();
             } else {
-                cfg = ControlFlowGraph.compute(graph, true, true, true, true);
+                cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeDominators(true).computePostdominators(true).computeFrequency(true).build();
                 nodeToBlock = cfg.getNodeToBlock();
                 blockToNodes = getBlockToNodes(cfg);
             }
