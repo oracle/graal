@@ -36,6 +36,7 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.BootstrapMethodIntrospection;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.serviceprovider.BootstrapMethodIntrospectionImpl;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
@@ -77,17 +78,6 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
      * was introduced in JVMCI 22.3.
      */
     private static final Method lookupMethodWithCaller = ReflectionUtil.lookupMethod(true, ConstantPool.class, "lookupMethod", int.class, int.class, ResolvedJavaMethod.class);
-
-    /**
-     * The interface jdk.vm.ci.meta.ConstantPool.BootstrapMethodInvocation was introduced in JVMCI
-     * 22.1.
-     */
-    private static final Class<?> bsmClass = ReflectionUtil.lookupClass(true, "jdk.vm.ci.meta.ConstantPool$BootstrapMethodInvocation");
-    private static final Method bsmGetMethod = bsmClass == null ? null : ReflectionUtil.lookupMethod(bsmClass, "getMethod");
-    private static final Method bsmIsInvokeDynamic = bsmClass == null ? null : ReflectionUtil.lookupMethod(bsmClass, "isInvokeDynamic");
-    private static final Method bsmGetName = bsmClass == null ? null : ReflectionUtil.lookupMethod(bsmClass, "getName");
-    private static final Method bsmGetType = bsmClass == null ? null : ReflectionUtil.lookupMethod(bsmClass, "getType");
-    private static final Method bsmGetStaticArguments = bsmClass == null ? null : ReflectionUtil.lookupMethod(bsmClass, "getStaticArguments");
 
     @Override
     public void loadReferencedType(int cpi, int opcode, boolean initialize) {
@@ -199,80 +189,42 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
         if (cpLookupBootstrapMethodInvocation != null) {
             try {
                 Object bootstrapMethodInvocation = cpLookupBootstrapMethodInvocation.invoke(wrapped, cpi, opcode);
-                return new WrappedBootstrapMethodInvocation(bootstrapMethodInvocation);
-            } catch (Throwable ignored) {
-                // GR-38955 - understand why exception is thrown
+                if (bootstrapMethodInvocation != null) {
+                    return new WrappedBootstrapMethodInvocation(bootstrapMethodInvocation);
+                }
+            } catch (InvocationTargetException ex) {
+                throw rethrow(ex.getCause());
+            } catch (IllegalAccessException e) {
+                throw GraalError.shouldNotReachHere(e, "The method lookupBootstrapMethodInvocation should be accessible.");
             }
         }
         return null;
     }
 
-    public class WrappedBootstrapMethodInvocation implements BootstrapMethodIntrospection {
-        private final Object wrapped;
+    @SuppressWarnings("unchecked")
+    static <E extends Throwable> RuntimeException rethrow(Throwable ex) throws E {
+        throw (E) ex;
+    }
+
+    public class WrappedBootstrapMethodInvocation extends BootstrapMethodIntrospectionImpl {
 
         public WrappedBootstrapMethodInvocation(Object wrapped) {
-            this.wrapped = wrapped;
+            super(wrapped);
         }
 
         @Override
         public ResolvedJavaMethod getMethod() {
-            if (bsmGetMethod != null) {
-                try {
-                    return universe.lookup((ResolvedJavaMethod) bsmGetMethod.invoke(wrapped));
-                } catch (Throwable t) {
-                    throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
-                }
-            }
-            throw GraalError.shouldNotReachHere("unexpected null"); // ExcludeFromJacocoGeneratedReport
-        }
-
-        @Override
-        public boolean isInvokeDynamic() {
-            if (bsmIsInvokeDynamic != null) {
-                try {
-                    return (boolean) bsmIsInvokeDynamic.invoke(wrapped);
-                } catch (Throwable t) {
-                    throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
-                }
-            }
-            throw GraalError.shouldNotReachHere("unexpected null"); // ExcludeFromJacocoGeneratedReport
-        }
-
-        @Override
-        public String getName() {
-            if (bsmGetName != null) {
-                try {
-                    return (String) bsmGetName.invoke(wrapped);
-                } catch (Throwable t) {
-                    throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
-                }
-            }
-            throw GraalError.shouldNotReachHere("unexpected null"); // ExcludeFromJacocoGeneratedReport
+            return universe.lookup(super.getMethod());
         }
 
         @Override
         public JavaConstant getType() {
-            if (bsmGetType != null) {
-                try {
-                    return lookupConstant((JavaConstant) bsmGetType.invoke(wrapped));
-                } catch (Throwable t) {
-                    throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
-                }
-            }
-            throw GraalError.shouldNotReachHere("unexpected null"); // ExcludeFromJacocoGeneratedReport
+            return lookupConstant(super.getType());
         }
 
         @Override
         public List<JavaConstant> getStaticArguments() {
-            if (bsmGetStaticArguments != null) {
-                try {
-                    List<?> original = (List<?>) bsmGetStaticArguments.invoke(wrapped);
-                    return original.stream().map(e -> lookupConstant((JavaConstant) e)).collect(Collectors.toList());
-                } catch (Throwable t) {
-                    throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
-                }
-            }
-            throw GraalError.shouldNotReachHere("unexpected null"); // ExcludeFromJacocoGeneratedReport
+            return super.getStaticArguments().stream().map(WrappedConstantPool.this::lookupConstant).collect(Collectors.toList());
         }
     }
 }

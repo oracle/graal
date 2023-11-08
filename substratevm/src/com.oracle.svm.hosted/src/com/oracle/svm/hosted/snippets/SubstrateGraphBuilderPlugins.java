@@ -850,11 +850,11 @@ public class SubstrateGraphBuilderPlugins {
         });
     }
 
-    private static class FieldOffsetConstantProvider implements Function<CoreProviders, JavaConstant> {
+    public static class FieldOffsetConstantProvider implements Function<CoreProviders, JavaConstant> {
 
         private final Field javaField;
 
-        FieldOffsetConstantProvider(Field javaField) {
+        public FieldOffsetConstantProvider(Field javaField) {
             this.javaField = javaField;
         }
 
