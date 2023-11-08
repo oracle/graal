@@ -108,7 +108,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
         /*
          * This method is used to unwrap an espresso object to temporarily use the original interop
-         * value.
+         * value. Foreign exception and converted foreign to guest objects are not unwrapped by
+         * this method.
          */
         static Object unwrapForeign(EspressoLanguage language, StaticObject object) {
             if (object.isForeignObject()) {
