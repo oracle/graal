@@ -24,11 +24,11 @@
  */
 package jdk.graal.compiler.hotspot.stubs;
 
+import static jdk.graal.compiler.nodes.ConstantNode.forBoolean;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCallee;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
 import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
-import static jdk.graal.compiler.nodes.ConstantNode.forBoolean;
 
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -43,7 +43,6 @@ import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import jdk.graal.compiler.hotspot.meta.HotSpotLoweringProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
-import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -52,7 +51,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.GraphKit;
 import jdk.graal.compiler.replacements.nodes.ReadRegisterNode;
 import jdk.graal.compiler.word.WordTypes;
-
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotSignature;
 import jdk.vm.ci.meta.JavaMethod;
@@ -193,7 +191,7 @@ public abstract class AbstractForeignCallStub extends Stub {
      *             getAndClearObjectResult(thread());
      *             DeoptimizeCallerNode.deopt(None, RuntimeConstraint);
      *         }
-     *         return verifyObject(getAndClearObjectResult(thread()));
+     *         return getAndClearObjectResult(thread());
      *     }
      * </pre>
      *
@@ -236,7 +234,6 @@ public abstract class AbstractForeignCallStub extends Stub {
             ForeignCallSnippets.Templates foreignCallSnippets = lowerer.getForeignCallSnippets();
             ResolvedJavaMethod handlePendingException = foreignCallSnippets.handlePendingException.getMethod();
             ResolvedJavaMethod getAndClearObjectResult = foreignCallSnippets.getAndClearObjectResult.getMethod();
-            ResolvedJavaMethod verifyObject = foreignCallSnippets.verifyObject.getMethod();
             ResolvedJavaMethod thisMethod = getGraphMethod();
             HotSpotGraphKit kit = new HotSpotGraphKit(debug, thisMethod, providers, wordTypes, providers.getGraphBuilderPlugins(), compilationId, toString(), false, true);
             StructuredGraph graph = kit.getGraph();
@@ -247,8 +244,7 @@ public abstract class AbstractForeignCallStub extends Stub {
                 kit.createIntrinsicInvoke(handlePendingException, thread, forBoolean(shouldClearException, graph), forBoolean(isObjectResult, graph));
             }
             if (isObjectResult) {
-                InvokeNode object = kit.createIntrinsicInvoke(getAndClearObjectResult, thread);
-                result = kit.createIntrinsicInvoke(verifyObject, object);
+                result = kit.createIntrinsicInvoke(getAndClearObjectResult, thread);
             }
             kit.append(new ReturnNode(linkage.getDescriptor().getResultType() == void.class ? null : result));
             debug.dump(DebugContext.VERBOSE_LEVEL, graph, "Initial stub graph");
