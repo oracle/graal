@@ -42,6 +42,8 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     # JDK latest only works on MacOS Ventura (GR-49652)
     # sc.weekly + $.sulong + sc.labsjdkLatest + sc.darwin_amd64 + sc.llvm4 + sc.gateTags(basicTags) + { name: "weekly-sulong-basic-nwcc-llvm-v40-jdk-latest-darwin-amd64", timelimit: "0:45:00" },
     # sc.gate + $.sulong + sc.labsjdkLatest + sc.darwin_amd64 + sc.llvmBundled + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk-latest-darwin-amd64", timelimit: "0:45:00", capabilities+: ["!darwin_bigsur", "ram16gb"] },
+    # remove the following build once GR-49652 is fixed
+    sc.gate + $.sulong + sc.labsjdk21 + sc.darwin_amd64 + sc.llvmBundled + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk21-darwin-amd64", timelimit: "0:45:00", capabilities+: ["!darwin_bigsur", "ram16gb"] },
 
     sc.gate + $.sulong + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk-latest-linux-amd64" },
     sc.gate + $.sulong + sc.labsjdk21 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk21-linux-amd64" },
@@ -92,20 +94,18 @@ local sc = (import "ci_common/sulong-common.jsonnet");
   coverage_builds::
     sc.mapPrototypePlatformName([sc.weekly + $.sulong + sc.coverage($.regular_builds)],
     [
-      [sc.linux_amd64,    [sc.labsjdkLatest]],
-      # JDK latest only works on MacOS Ventura (GR-49652)
-      # [sc.darwin_amd64,   [sc.labsjdkLatest]],
-      [sc.windows_amd64,  [sc.labsjdkLatest]],
-      [sc.linux_aarch64,  [sc.labsjdkLatest]],
-      [sc.darwin_aarch64, [sc.labsjdkLatest]],
+      [sc.linux_amd64,    [sc.labsjdk21]],
+      [sc.darwin_amd64,   [sc.labsjdk21]],
+      [sc.windows_amd64,  [sc.labsjdk21]],
+      [sc.linux_aarch64,  [sc.labsjdk21]],
+      [sc.darwin_aarch64, [sc.labsjdk21]],
     ],
     [
-      { name: "weekly-sulong-coverage-jdk-latest-linux-amd64",    timelimit: "1:00:00" },
-      # JDK latest only works on MacOS Ventura (GR-49652)
-      # { name: "weekly-sulong-coverage-jdk-latest-darwin-amd64",   timelimit: "1:00:00" },
-      { name: "weekly-sulong-coverage-jdk-latest-windows-amd64",  timelimit: "1:00:00" },
-      { name: "weekly-sulong-coverage-jdk-latest-linux-aarch64",  timelimit: "1:00:00" },
-      { name: "weekly-sulong-coverage-jdk-latest-darwin-aarch64", timelimit: "1:00:00" },
+      { name: "weekly-sulong-coverage-jdk21-linux-amd64",    timelimit: "1:00:00" },
+      { name: "weekly-sulong-coverage-jdk21-darwin-amd64",   timelimit: "1:00:00" },
+      { name: "weekly-sulong-coverage-jdk21-windows-amd64",  timelimit: "1:00:00" },
+      { name: "weekly-sulong-coverage-jdk21-linux-aarch64",  timelimit: "1:00:00" },
+      { name: "weekly-sulong-coverage-jdk21-darwin-aarch64", timelimit: "1:00:00" },
     ]),
 
   builds: [ sc.defBuild(b) for b in self.regular_builds + self.standalone_builds + self.coverage_builds ],
