@@ -292,7 +292,7 @@ public abstract class SwitchNode extends ControlSplitNode {
             }
             assertTrue(succ.next() instanceof SwitchCaseProbabilityNode,
                             "Cannot inject switch probability, since key successor %s is not a SwitchCaseProbabilityNode",
-                            this, succ.next());
+                            succ.next());
             SwitchCaseProbabilityNode caseProbabilityNode = (SwitchCaseProbabilityNode) succ.next();
 
             ValueNode probabilityNode = caseProbabilityNode.getProbability();
