@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.core.config;
 
-import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.replacements.ReplacementsUtil;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.word.WordBase;
@@ -35,6 +32,9 @@ import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
@@ -60,6 +60,7 @@ public final class ObjectLayout {
                     int firstFieldOffset, int arrayLengthOffset, int arrayBaseOffset, int fixedIdentityHashOffset) {
         assert CodeUtil.isPowerOf2(referenceSize) : referenceSize;
         assert CodeUtil.isPowerOf2(objectAlignment) : objectAlignment;
+        assert arrayLengthOffset % Integer.BYTES == 0;
         assert hubOffset < firstFieldOffset && hubOffset < arrayLengthOffset : hubOffset;
         assert fixedIdentityHashOffset == -1 || (fixedIdentityHashOffset > 0 && fixedIdentityHashOffset < arrayLengthOffset) : fixedIdentityHashOffset;
 

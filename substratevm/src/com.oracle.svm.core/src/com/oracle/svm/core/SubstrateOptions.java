@@ -564,6 +564,16 @@ public class SubstrateOptions {
     @Option(help = "How many bytes to pad fields and classes marked @Contended with.") //
     public static final HostedOptionKey<Integer> ContendedPaddingWidth = new HostedOptionKey<>(128);
 
+    @Option(help = "Add additional header bytes to each object, for diagnostic purposes.", type = OptionType.Debug) //
+    public static final HostedOptionKey<Integer> AdditionalHeaderBytes = new HostedOptionKey<>(0, SubstrateOptions::validateAdditionalHeaderBytes);
+
+    private static void validateAdditionalHeaderBytes(HostedOptionKey<Integer> optionKey) {
+        int value = optionKey.getValue();
+        if (value < 0 || value % 4 != 0) {
+            throw UserError.abort("The option '%s' must be 0 or a multiple of 4.", optionKey.getName());
+        }
+    }
+
     /*
      * Isolate tear down options.
      */
