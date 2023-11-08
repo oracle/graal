@@ -1088,18 +1088,12 @@ public abstract class Source {
         useContent = enforceInterfaceContracts(useContent);
         String relativePathInLanguageHome = null;
         if (useTruffleFile != null) {
-            TruffleFile relativeFileInResourceCache = SourceAccessor.ACCESSOR.engineSupport().relativizeToInternalResourceCache(useTruffleFile);
-            if (relativeFileInResourceCache != null) {
-                useTruffleFile = relativeFileInResourceCache;
-                relativePathInLanguageHome = relativeFileInResourceCache.getPath();
-            } else {
-                /*
-                 * The relativePathInLanguageHome has to be calculated also for Sources created in
-                 * the image execution time. They have to have the same hash code as sources created
-                 * during the context pre-initialization.
-                 */
-                relativePathInLanguageHome = SourceAccessor.ACCESSOR.engineSupport().getRelativePathInLanguageHome(useTruffleFile);
-            }
+            /*
+             * The relativePathInLanguageHome has to be calculated also for Sources created in the
+             * image execution time. They have to have the same hash code as sources created during
+             * the context pre-initialization.
+             */
+            relativePathInLanguageHome = SourceAccessor.ACCESSOR.engineSupport().getRelativePathInResourceRoot(useTruffleFile);
             if (relativePathInLanguageHome != null) {
                 Object fsEngineObject = SourceAccessor.ACCESSOR.languageSupport().getFileSystemEngineObject(SourceAccessor.ACCESSOR.languageSupport().getFileSystemContext(useTruffleFile));
                 if (SourceAccessor.ACCESSOR.engineSupport().inContextPreInitialization(fsEngineObject)) {

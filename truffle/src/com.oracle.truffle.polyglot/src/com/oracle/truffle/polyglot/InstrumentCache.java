@@ -294,6 +294,10 @@ final class InstrumentCache {
         return internalResources.keySet();
     }
 
+    Collection<InternalResourceCache> getResources() {
+        return internalResources.values();
+    }
+
     String getWebsite() {
         return website;
     }

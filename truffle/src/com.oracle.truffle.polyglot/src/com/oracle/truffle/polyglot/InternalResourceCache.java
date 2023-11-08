@@ -46,27 +46,21 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.provider.InternalResourceProvider;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
-import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.polyglot.io.FileSystem;
 
-import java.io.IOError;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.FileSystemException;
 import java.nio.file.Files;
-import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.security.CodeSource;
 import java.util.Collection;
@@ -79,8 +73,6 @@ import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -91,20 +83,30 @@ import java.util.stream.StreamSupport;
 final class InternalResourceCache {
 
     private static final char[] FILE_SYSTEM_SPECIAL_CHARACTERS = {'/', '\\', ':'};
-    private static final String OVERRIDDEN_CACHE_ROOT = "polyglot.engine.resourcePath";
-    private static final String OVERRIDDEN_COMPONENT_ROOT = "polyglot.engine.resourcePath.%s";
-    private static final String OVERRIDDEN_RESOURCE_ROOT = "polyglot.engine.resourcePath.%s.%s";
-
-    private static final Lock unpackLock = new ReentrantLock();
-
     private static final Map<Collection<AbstractClassLoaderSupplier>, Map<String, Map<String, Supplier<InternalResourceCache>>>> optionalInternalResourcesCaches = new HashMap<>();
     private static final Map<String, Map<String, Supplier<InternalResourceCache>>> nativeImageCache = TruffleOptions.AOT ? new HashMap<>() : null;
-    private static volatile Pair<Path, Boolean> cacheRoot;
+
+    /**
+     * Recomputed before the analyses by a substitution in the {@code TruffleBaseFeature} based on
+     * the {@code CopyLanguageResources} option value. The field must not be declared as
+     * {@code final} to make the substitution function correctly.
+     */
+    private static boolean useInternalResources = true;
 
     private final String id;
     private final String resourceId;
     private final Supplier<InternalResource> resourceFactory;
-    private volatile FileSystem resourceFileSystem;
+
+    /**
+     * This field is reset to {@code null} by the {@code TruffleBaseFeature} before writing the
+     * native image heap.
+     */
+    private InternalResourceRoots.Root owningRoot;
+    /**
+     * This field is reset to {@code null} by the {@code TruffleBaseFeature} before writing the
+     * native image heap.
+     */
+    private volatile Path path;
 
     InternalResourceCache(String languageId, String resourceId, Supplier<InternalResource> resourceFactory) {
         this.id = Objects.requireNonNull(languageId);
@@ -112,8 +114,50 @@ final class InternalResourceCache {
         this.resourceFactory = Objects.requireNonNull(resourceFactory);
     }
 
-    FileSystem getResourceFileSystem(PolyglotEngineImpl polyglotEngine) throws IOException {
-        return getResourceFileSystemImpl((resource) -> EngineAccessor.LANGUAGE.createInternalResourceEnv(resource, () -> polyglotEngine.inEnginePreInitialization));
+    String getResourceId() {
+        return resourceId;
+    }
+
+    Path getPathOrNull() {
+        return path;
+    }
+
+    Path getPath(PolyglotEngineImpl polyglotEngine) throws IOException {
+        if (usesInternalResources()) {
+            Path result = path;
+            if (result == null) {
+                synchronized (this) {
+                    result = path;
+                    if (result == null) {
+                        result = installResource((resource) -> EngineAccessor.LANGUAGE.createInternalResourceEnv(resource, () -> polyglotEngine.inEnginePreInitialization));
+                        path = result;
+                    }
+                }
+            }
+            return result;
+        } else {
+            throw new IllegalArgumentException("Internal resources are restricted. To enable them, use '-H:+CopyLanguageResources' during the native image build.");
+        }
+    }
+
+    void initializeOwningRoot(InternalResourceRoots.Root root) {
+        assert owningRoot == null;
+        assert path == null;
+        owningRoot = root;
+        path = switch (root.kind()) {
+            case RESOURCE -> root.path();
+            case COMPONENT -> root.path().resolve(sanitize(resourceId));
+            case UNVERSIONED -> findStandaloneResourceRoot(root.path());
+            case VERSIONED -> null;
+        };
+    }
+
+    /**
+     * Resets state for unit test execution. This method is intended only for testing.
+     */
+    void clearCache() {
+        owningRoot = null;
+        path = null;
     }
 
     /**
@@ -125,13 +169,17 @@ final class InternalResourceCache {
      */
     static Path installRuntimeResource(InternalResource resource) throws IOException {
         InternalResourceCache cache = createRuntimeResourceCache(resource);
-        return cache.getResourceFileSystemImpl(InternalResourceCache::createInternalResourceEnvReflectively).parsePath("").toAbsolutePath();
+        synchronized (cache) {
+            return cache.installResource(InternalResourceCache::createInternalResourceEnvReflectively);
+        }
     }
 
     private static InternalResourceCache createRuntimeResourceCache(InternalResource resource) {
         InternalResource.Id id = resource.getClass().getAnnotation(InternalResource.Id.class);
         assert id != null : resource.getClass() + " must be annotated by @InternalResource.Id";
-        return new InternalResourceCache(PolyglotEngineImpl.ENGINE_ID, id.value(), () -> resource);
+        InternalResourceCache cache = new InternalResourceCache(PolyglotEngineImpl.ENGINE_ID, id.value(), () -> resource);
+        InternalResourceRoots.initializeRuntimeResource(cache);
+        return cache;
     }
 
     private static InternalResource.Env createInternalResourceEnvReflectively(InternalResource resource) {
@@ -144,62 +192,43 @@ final class InternalResourceCache {
         }
     }
 
-    private FileSystem getResourceFileSystemImpl(Function<InternalResource, InternalResource.Env> createEnv) throws IOException {
-        FileSystem result = resourceFileSystem;
-        if (result == null) {
-            synchronized (this) {
-                result = resourceFileSystem;
-                if (result == null) {
-                    Path root = findOverriddenResourceRoot();
-                    if (root == null) {
-                        if (hasExplicitCacheRoot()) {
-                            root = findStandaloneResourceRoot(getExplicitCacheRoot());
-                        } else if (ImageInfo.inImageRuntimeCode()) {
-                            root = findStandaloneResourceRoot(findCacheRootOnNativeImage());
-                        } else {
-                            InternalResource resource = resourceFactory.get();
-                            InternalResource.Env env = createEnv.apply(resource);
-                            String versionHash = resource.versionHash(env);
-                            if (versionHash.getBytes().length > 128) {
-                                throw new IOException("The version hash length is restricted to a maximum of 128 bytes.");
-                            }
-                            root = findCacheRootOnHotSpot().resolve(Path.of(sanitize(id), sanitize(resourceId), sanitize(versionHash)));
-                            unpackResourceFiles(root, resource, env);
-                        }
-                    }
-                    ResettableCachedRoot rootSupplier = new ResettableCachedRoot(root);
-                    result = FileSystems.newInternalResourceFileSystem(rootSupplier);
-                    resourceFileSystem = result;
-                }
-            }
+    private Path installResource(Function<InternalResource, InternalResource.Env> resourceEnvProvider) throws IOException {
+        Objects.requireNonNull(resourceEnvProvider, "ResourceEnvProvider must be non-null.");
+        assert Thread.holdsLock(this) : "Unpacking must be called under lock";
+        assert owningRoot.kind() == InternalResourceRoots.Root.Kind.VERSIONED;
+        assert !ImageInfo.inImageRuntimeCode() : "Must not be called in the image execution time.";
+        InternalResource resource = resourceFactory.get();
+        InternalResource.Env env = resourceEnvProvider.apply(resource);
+        String versionHash = resource.versionHash(env);
+        if (versionHash.getBytes().length > 128) {
+            throw new IOException("The version hash length is restricted to a maximum of 128 bytes.");
         }
-        return result;
-    }
-
-    private static void unpackResourceFiles(Path target, InternalResource resource, InternalResource.Env env) throws IOException {
-        unpackLock.lock();
-        try {
-            if (!Files.exists(target)) {
-                Path parent = target.getParent();
-                if (parent == null) {
-                    throw CompilerDirectives.shouldNotReachHere("Target must have a parent directory but was " + target);
-                }
-                Path owner = Files.createDirectories(Objects.requireNonNull(parent));
-                Path tmpDir = Files.createTempDirectory(owner, null);
-                resource.unpackFiles(env, tmpDir);
-                try {
-                    Files.move(tmpDir, target, StandardCopyOption.ATOMIC_MOVE);
-                } catch (FileAlreadyExistsException existsException) {
-                    // race with other process that already moved the folder just unlink the tmp
-                    // directory
+        Path target = owningRoot.path().resolve(Path.of(sanitize(id), sanitize(resourceId), sanitize(versionHash)));
+        if (!Files.exists(target)) {
+            Path parent = target.getParent();
+            if (parent == null) {
+                throw CompilerDirectives.shouldNotReachHere("Target must have a parent directory but was " + target);
+            }
+            Path owner = Files.createDirectories(Objects.requireNonNull(parent));
+            Path tmpDir = Files.createTempDirectory(owner, null);
+            resource.unpackFiles(env, tmpDir);
+            try {
+                Files.move(tmpDir, target, StandardCopyOption.ATOMIC_MOVE);
+            } catch (FileAlreadyExistsException existsException) {
+                // race with other process that already moved the folder just unlink the tmp
+                // directory
+                unlink(tmpDir);
+            } catch (FileSystemException fsException) {
+                // On some filesystem implementations, the generic FileSystemException is thrown
+                // instead of FileAlreadyExistsException. We need to check if this is the case.
+                if (Files.isDirectory(target)) {
                     unlink(tmpDir);
                 }
-            } else {
-                verifyResourceRoot(target);
             }
-        } finally {
-            unpackLock.unlock();
+        } else {
+            verifyResourceRoot(target);
         }
+        return target;
     }
 
     private static void verifyResourceRoot(Path resourceRoot) throws IOException {
@@ -215,18 +244,6 @@ final class InternalResourceCache {
         return root.resolve(Path.of(sanitize(id), sanitize(resourceId)));
     }
 
-    private Path findOverriddenResourceRoot() throws IOException {
-        String value = System.getProperty(String.format(OVERRIDDEN_RESOURCE_ROOT, id, resourceId));
-        if (value != null) {
-            return Paths.get(value).toRealPath();
-        }
-        value = System.getProperty(String.format(OVERRIDDEN_COMPONENT_ROOT, id));
-        if (value != null) {
-            return Paths.get(value).resolve(sanitize(resourceId)).toRealPath();
-        }
-        return null;
-    }
-
     private static String sanitize(String pathElement) {
         String result = pathElement;
         for (char fileSystemsSpecialChar : FILE_SYSTEM_SPECIAL_CHARACTERS) {
@@ -235,108 +252,13 @@ final class InternalResourceCache {
         return result;
     }
 
-    private static boolean hasExplicitCacheRoot() throws IOException {
-        Pair<Path, Boolean> res = cacheRoot;
-        if (res == null) {
-            String resourcesFolder = System.getProperty(OVERRIDDEN_CACHE_ROOT);
-            if (resourcesFolder != null) {
-                Path cache = Paths.get(resourcesFolder).toRealPath();
-                res = Pair.create(cache, true);
-                cacheRoot = res;
-            }
-        }
-        return res != null && res.getRight();
-    }
-
-    private static Path getExplicitCacheRoot() {
-        Pair<Path, Boolean> res = cacheRoot;
-        if (res == null || !res.getRight()) {
-            throw CompilerDirectives.shouldNotReachHere("Can be only called when hasExplicitCacheRoot() returned true");
-        }
-        return res.getLeft();
-    }
-
-    private static Path findCacheRootOnHotSpot() throws IOException {
-        Pair<Path, Boolean> res = cacheRoot;
-        if (res == null) {
-            String userHomeValue = System.getProperty("user.home");
-            if (userHomeValue == null) {
-                throw CompilerDirectives.shouldNotReachHere("The 'user.home' system property is not set.");
-            }
-            Path userHome = Paths.get(userHomeValue);
-            Path container = switch (InternalResource.OS.getCurrent()) {
-                case DARWIN -> userHome.resolve(Path.of("Library", "Caches"));
-                case LINUX -> {
-                    Path userCacheDir = null;
-                    String xdgCacheValue = System.getenv("XDG_CACHE_HOME");
-                    if (xdgCacheValue != null) {
-                        try {
-                            Path xdgCacheDir = Path.of(xdgCacheValue);
-                            // Do not fail when XDG_CACHE_HOME value is invalid. Fall back to
-                            // $HOME/.cache.
-                            if (xdgCacheDir.isAbsolute()) {
-                                userCacheDir = xdgCacheDir;
-                            } else {
-                                emitWarning("The value of the environment variable 'XDG_CACHE_HOME' is not an absolute path. Using the default cache folder '%s'.", userHome.resolve(".cache"));
-                            }
-                        } catch (InvalidPathException notPath) {
-                            emitWarning("The value of the environment variable 'XDG_CACHE_HOME' is not a valid path. Using the default cache folder '%s'.", userHome.resolve(".cache"));
-                        }
-                    }
-                    if (userCacheDir == null) {
-                        userCacheDir = userHome.resolve(".cache");
-                    }
-                    yield userCacheDir;
-                }
-                case WINDOWS -> userHome.resolve(Path.of("AppData", "Local"));
-            };
-            Path cache = container.resolve("org.graalvm.polyglot");
-            cache = Files.createDirectories(cache).toRealPath();
-            res = Pair.create(cache, false);
-            cacheRoot = res;
-        }
-        return res.getLeft();
-    }
-
-    private static void emitWarning(String message, Object... args) {
-        PrintStream out = System.err;
-        out.printf(message + "%n", args);
-    }
-
-    private static Path findCacheRootOnNativeImage() {
-        Pair<Path, Boolean> res = cacheRoot;
-        if (res == null) {
-            assert ImageInfo.inImageRuntimeCode() : "Can be called only in the native-image execution time.";
-            Path executable = getExecutablePath();
-            Path cache = executable.resolveSibling("resources");
-            res = Pair.create(cache, false);
-            cacheRoot = res;
-        }
-        return res.getLeft();
-    }
-
-    private static Path getExecutablePath() {
-        assert ImageInfo.inImageRuntimeCode();
-        if (useInternalResources) {
-            if (ImageInfo.isExecutable()) {
-                return Path.of(ProcessProperties.getExecutableName());
-            } else if (ImageInfo.isSharedLibrary()) {
-                return Path.of(ProcessProperties.getObjectFile(InternalResourceCacheSymbol.SYMBOL));
-            } else {
-                throw CompilerDirectives.shouldNotReachHere("Should only be invoked within native image runtime code.");
-            }
-        } else {
-            throw new IllegalArgumentException("Lookup an executable name is restricted. " +
-                            "To enable it, use '-H:+CopyLanguageResources' during the native image build.");
-        }
-    }
-
     /**
-     * Recomputed before the analyses by a substitution in the {@code TruffleBaseFeature} based on
-     * the {@code CopyLanguageResources} option value. The field must not be declared as
-     * {@code final} to make the substitution function correctly.
+     * Returns true if internal resources are enabled. Internal resources can be disabled in the
+     * native image using {-H:-CopyLanguageResources} option.
      */
-    private static boolean useInternalResources = true;
+    public static boolean usesInternalResources() {
+        return useInternalResources;
+    }
 
     /**
      * Collects optional internal resources for native-image build. This method is called
@@ -353,13 +275,6 @@ final class InternalResourceCache {
      */
     static void resetNativeImageState() {
         nativeImageCache.clear();
-    }
-
-    private void resetFileSystemNativeImageState() {
-        FileSystem fs = resourceFileSystem;
-        if (fs != null) {
-            ((ResettableCachedRoot) FileSystems.getInternalResourceFileSystemRoot(fs)).resourceCacheRoot = null;
-        }
     }
 
     /**
@@ -399,34 +314,31 @@ final class InternalResourceCache {
             instruments = requiredInstruments;
         }
         for (LanguageCache language : languages) {
-            for (String resourceId : language.getResourceIds()) {
-                InternalResourceCache cache = language.getResourceCache(resourceId);
+            for (InternalResourceCache cache : language.getResources()) {
                 result |= cache.copyResourcesForNativeImage(target);
             }
         }
         for (InstrumentCache instrument : instruments) {
-            for (String resourceId : instrument.getResourceIds()) {
-                InternalResourceCache cache = instrument.getResourceCache(resourceId);
+            for (InternalResourceCache cache : instrument.getResources()) {
                 result |= cache.copyResourcesForNativeImage(target);
             }
         }
         // Always install engine resources
-        for (String resourceId : getEngineResourceIds()) {
-            InternalResourceCache cache = getEngineResource(resourceId);
+        for (InternalResourceCache cache : getEngineResources()) {
             result |= cache.copyResourcesForNativeImage(target);
         }
         return result;
     }
 
     private boolean copyResourcesForNativeImage(Path target) throws IOException {
-        Path resourceRoot = findStandaloneResourceRoot(target);
-        unlink(resourceRoot);
-        Files.createDirectories(resourceRoot);
+        Path root = findStandaloneResourceRoot(target);
+        unlink(root);
+        Files.createDirectories(root);
         InternalResource resource = resourceFactory.get();
         InternalResource.Env env = EngineAccessor.LANGUAGE.createInternalResourceEnv(resource, () -> false);
-        resource.unpackFiles(env, resourceRoot);
-        if (isEmpty(resourceRoot)) {
-            Files.deleteIfExists(resourceRoot);
+        resource.unpackFiles(env, root);
+        if (isEmpty(root)) {
+            Files.deleteIfExists(root);
             return false;
         } else {
             return true;
@@ -436,6 +348,15 @@ final class InternalResourceCache {
     static Collection<String> getEngineResourceIds() {
         Map<String, Supplier<InternalResourceCache>> engineResources = loadOptionalInternalResources(EngineAccessor.locatorOrDefaultLoaders()).get(PolyglotEngineImpl.ENGINE_ID);
         return engineResources != null ? engineResources.keySet() : List.of();
+    }
+
+    static Collection<InternalResourceCache> getEngineResources() {
+        Map<String, Supplier<InternalResourceCache>> engineResources = loadOptionalInternalResources(EngineAccessor.locatorOrDefaultLoaders()).get(PolyglotEngineImpl.ENGINE_ID);
+        if (engineResources != null) {
+            return engineResources.values().stream().map(Supplier::get).collect(Collectors.toList());
+        } else {
+            return List.of();
+        }
     }
 
     static InternalResourceCache getEngineResource(String resourceId) {
@@ -531,69 +452,13 @@ final class InternalResourceCache {
         Files.deleteIfExists(path);
     }
 
-    /**
-     * Sets the {@link #cacheRoot} in unit tests. This method is called reflectively by the
-     * {@code InternalResourceTest}.
-     */
-    @SuppressWarnings("unused")
-    private static void setTestCacheRoot(Path root, boolean disposeResourceFileSystem) {
-        cacheRoot = root == null ? null : Pair.create(root, false);
-        for (LanguageCache language : LanguageCache.languages().values()) {
-            for (String resourceId : language.getResourceIds()) {
-                InternalResourceCache cache = language.getResourceCache(resourceId);
-                if (disposeResourceFileSystem) {
-                    cache.resourceFileSystem = null;
-                } else {
-                    cache.resetFileSystemNativeImageState();
-                }
-            }
-        }
-        for (InstrumentCache instrument : InstrumentCache.load()) {
-            for (String resourceId : instrument.getResourceIds()) {
-                InternalResourceCache cache = instrument.getResourceCache(resourceId);
-                if (disposeResourceFileSystem) {
-                    cache.resourceFileSystem = null;
-                } else {
-                    cache.resetFileSystemNativeImageState();
-                }
-            }
-        }
-    }
-
-    private final class ResettableCachedRoot implements Supplier<Path> {
-
-        private volatile Path resourceCacheRoot;
-
-        ResettableCachedRoot(Path resourceCacheRoot) {
-            Objects.requireNonNull(resourceCacheRoot, "ResourceCacheRoot must be non-null.");
-            this.resourceCacheRoot = resourceCacheRoot;
-        }
-
-        @Override
-        public Path get() {
-            Path res = resourceCacheRoot;
-            if (res == null) {
-                if (ImageInfo.inImageBuildtimeCode()) {
-                    throw CompilerDirectives.shouldNotReachHere("Reintroducing internal resource cache path into an image heap.");
-                }
-                try {
-                    res = findOverriddenResourceRoot();
-                    if (res == null) {
-                        Path cache;
-                        if (hasExplicitCacheRoot()) {
-                            cache = getExplicitCacheRoot();
-                        } else {
-                            cache = findCacheRootOnNativeImage();
-                        }
-                        res = findStandaloneResourceRoot(cache);
-                    }
-                    resourceCacheRoot = res;
-                } catch (IOException ioe) {
-                    throw new IOError(ioe);
-                }
-            }
-            return res;
-        }
+    @Override
+    public String toString() {
+        return "InternalResourceCache[" +
+                        "componentId='" + id + '\'' +
+                        ", resourceId='" + resourceId + '\'' +
+                        ", resourceRoot=" + path +
+                        '}';
     }
 
     private static final class OptionalResourceSupplier implements Supplier<InternalResourceCache> {

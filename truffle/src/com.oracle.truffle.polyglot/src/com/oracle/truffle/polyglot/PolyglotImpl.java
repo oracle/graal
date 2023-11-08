@@ -272,6 +272,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         PolyglotEngineImpl impl = null;
         try {
             validateSandbox(sandboxPolicy);
+            InternalResourceRoots.ensureInitialized();
             if (TruffleOptions.AOT) {
                 EngineAccessor.ACCESSOR.initializeNativeImageTruffleLocator();
             }
@@ -435,6 +436,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      * Used for preinitialized contexts and fallback engine.
      */
     PolyglotEngineImpl createDefaultEngine(TruffleLanguage<Object> hostLanguage) {
+        InternalResourceRoots.ensureInitialized();
         Map<String, String> options = getAPIAccess().readOptionsFromSystemProperties();
         LogConfig logConfig = new LogConfig();
         SandboxPolicy sandboxPolicy = SandboxPolicy.TRUSTED;
@@ -546,7 +548,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     @Override
     public FileSystem allowLanguageHomeAccess(FileSystem fileSystem) {
-        return FileSystems.allowLanguageHomeAccess(fileSystem);
+        return FileSystems.allowInternalResourceAccess(fileSystem);
     }
 
     @Override
