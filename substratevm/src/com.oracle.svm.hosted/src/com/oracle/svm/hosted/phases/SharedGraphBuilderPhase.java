@@ -141,6 +141,7 @@ import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance {
 
@@ -915,6 +916,15 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                     DynamicHub typeClass = (DynamicHub) ((DirectSubstrateObjectConstant) type).getObject();
                     boolean isPrimitive = typeClass.isPrimitive();
 
+                    for (JavaConstant argument : staticArguments) {
+                        if (argument instanceof ImageHeapInstance imageHeapInstance) {
+                            Object arg = ((DirectSubstrateObjectConstant) imageHeapInstance.getHostedObject()).getObject();
+                            if (arg instanceof UnresolvedJavaType) {
+                                return arg;
+                            }
+                        }
+                    }
+
                     if (isBootstrapInvocationInvalid(bootstrap, parameterLength, staticArguments, isVarargs, typeClass.getHostedJavaClass())) {
                         /*
                          * The number of provided arguments does not match the signature of the
@@ -1007,7 +1017,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                         Object argConstant = loadConstantDynamic(argCpi, opcode == Opcodes.INVOKEDYNAMIC ? Opcodes.LDC : opcode);
                         if (argConstant instanceof ValueNode valueNode) {
                             currentNode = valueNode;
-                        } else if (argConstant instanceof Throwable) {
+                        } else if (argConstant instanceof Throwable || argConstant instanceof UnresolvedJavaType) {
                             /* A nested constant dynamic threw. */
                             return argConstant;
                         } else {

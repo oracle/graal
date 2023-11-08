@@ -32,8 +32,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.BootstrapMethodIntrospection;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.serviceprovider.BootstrapMethodIntrospectionImpl;
@@ -64,7 +66,27 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
     }
 
     private JavaConstant lookupConstant(JavaConstant constant) {
-        return universe.lookup(constant);
+        return universe.lookup(extractResolvedType(constant));
+    }
+
+    public JavaConstant extractResolvedType(JavaConstant constant) {
+        if (constant != null && constant.getJavaKind().isObject() && !constant.isNull()) {
+            SnippetReflectionProvider snippetReflection = GraalAccess.getOriginalSnippetReflection();
+            if (snippetReflection.asObject(Object.class, constant) instanceof ResolvedJavaType resolvedJavaType) {
+                /*
+                 * BootstrapMethodInvocation.getStaticArguments can output a constant containing a
+                 * HotspotJavaType when a static argument of type Class if loaded lazily in pull
+                 * mode. In this case, the type has to be converted back to a Class, as it would
+                 * cause a hotspot value to be reachable otherwise.
+                 *
+                 * If the constant contains an UnresolvedJavaType, it cannot be converted as a
+                 * Class. It is not a problem for this type to be reachable, so those constants can
+                 * be handled later.
+                 */
+                return snippetReflection.forObject(OriginalClassProvider.getJavaClass(resolvedJavaType));
+            }
+        }
+        return constant;
     }
 
     /**

@@ -82,6 +82,7 @@ import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
 
@@ -174,6 +175,16 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
             JavaConstant type = ((ImageHeapInstance) bootstrap.getType()).getHostedObject();
             MethodType methodType = (MethodType) ((DirectSubstrateObjectConstant) type).getObject();
 
+            for (JavaConstant argument : staticArgumentsList) {
+                if (argument instanceof ImageHeapInstance imageHeapInstance) {
+                    Object arg = ((DirectSubstrateObjectConstant) imageHeapInstance.getHostedObject()).getObject();
+                    if (arg instanceof UnresolvedJavaType unresolvedJavaType) {
+                        handleUnresolvedType(unresolvedJavaType);
+                        return;
+                    }
+                }
+            }
+
             if (!bootstrapMethodHandler.checkBootstrapParameters(bootstrap.getMethod(), staticArgumentsList, false)) {
                 WrongMethodTypeException cause = new WrongMethodTypeException("Cannot convert " + methodType + " to correct MethodType");
                 replaceWithThrowingAtRuntime(this, new BootstrapMethodError("Bootstrap method initialization exception", cause));
@@ -186,6 +197,10 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
              */
 
             Object initializedCallSite = bootstrapMethodHandler.resolveLinkedObject(bci, cpi, opcode, bootstrap, parameterLength, staticArgumentsList, isVarargs, false);
+            if (initializedCallSite instanceof UnresolvedJavaType unresolvedJavaType) {
+                handleUnresolvedType(unresolvedJavaType);
+                return;
+            }
             if (initializedCallSite instanceof Throwable) {
                 return;
             }
