@@ -50,7 +50,7 @@ public class TestMirrorEvents extends JfrRecordingTest {
     public void test() throws Throwable {
         Recording recording = new Recording();
 
-        // Disable all events except Mirror Events.
+        // Disable all events except mirror events.
         recording.enable("jdk.ThreadSleep");
         recording.enable("jdk.VirtualThreadStart");
         recording.enable("jdk.VirtualThreadEnd");
@@ -59,7 +59,7 @@ public class TestMirrorEvents extends JfrRecordingTest {
         recording.setDestination(path);
         recording.start();
 
-        // Generate some mirror event emissions.
+        // Generate some event emissions.
         Runnable eventEmitter = () -> {
             try {
                 Thread.sleep(100);
@@ -90,7 +90,6 @@ public class TestMirrorEvents extends JfrRecordingTest {
             assertTrue("Mirror event metadata not applied correctly.", !eventType.getName().equals("jdk.internal.event.ThreadSleepEvent") &&
                             !eventType.getName().equals("jdk.internal.event.VirtualThreadStartEvent") && !eventType.getName().equals("jdk.internal.event.VirtualThreadEndEvent"));
 
-            System.out.println(eventType.getName());
             if (eventType.getName().equals("jdk.ThreadSleep") && eventType.getCategoryNames().contains("Java Application") && eventType.getLabel().equals("Java Thread Sleep")) {
                 foundSleepEvent = true;
             }
