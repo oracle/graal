@@ -29,6 +29,7 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.IterableNodeType;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.InputType;
@@ -40,7 +41,6 @@ import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.extended.GuardedNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
-
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -58,7 +58,8 @@ public final class IntegerAddExactNode extends AddNode implements GuardedNode, I
     public IntegerAddExactNode(ValueNode x, ValueNode y, GuardingNode guard) {
         super(TYPE, x, y);
         setStamp(x.stamp(NodeView.DEFAULT).unrestricted());
-        assert x.stamp(NodeView.DEFAULT).isCompatible(y.stamp(NodeView.DEFAULT)) && x.stamp(NodeView.DEFAULT) instanceof IntegerStamp;
+        assert x.stamp(NodeView.DEFAULT).isCompatible(y.stamp(NodeView.DEFAULT)) : Assertions.errorMessageContext("x", y, "y", y);
+        assert x.stamp(NodeView.DEFAULT) instanceof IntegerStamp : Assertions.errorMessageContext("x", x, "y", y);
         this.guard = guard;
     }
 
@@ -79,7 +80,7 @@ public final class IntegerAddExactNode extends AddNode implements GuardedNode, I
         IntegerStamp b = (IntegerStamp) stampY;
 
         int bits = a.getBits();
-        assert bits == b.getBits();
+        assert bits == b.getBits() : Assertions.errorMessageContext("x", stampX, "y", stampY);
 
         // if an overflow is possible the node will throw so do not expose bound information to
         // avoid
@@ -120,12 +121,12 @@ public final class IntegerAddExactNode extends AddNode implements GuardedNode, I
     private ValueNode canonicalXYconstant(ValueNode forX, ValueNode forY) {
         JavaConstant xConst = forX.asJavaConstant();
         JavaConstant yConst = forY.asJavaConstant();
-        assert xConst.getJavaKind() == yConst.getJavaKind();
+        assert xConst.getJavaKind() == yConst.getJavaKind() : Assertions.errorMessageContext("forX", forX, "forY", forY);
         try {
             if (xConst.getJavaKind() == JavaKind.Int) {
                 return ConstantNode.forInt(Math.addExact(xConst.asInt(), yConst.asInt()));
             } else {
-                assert xConst.getJavaKind() == JavaKind.Long;
+                assert xConst.getJavaKind() == JavaKind.Long : Assertions.errorMessage(forX, forY, xConst, yConst);
                 return ConstantNode.forLong(Math.addExact(xConst.asLong(), yConst.asLong()));
             }
         } catch (ArithmeticException ex) {

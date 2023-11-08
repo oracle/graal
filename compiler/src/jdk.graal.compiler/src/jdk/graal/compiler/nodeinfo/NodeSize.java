@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.nodeinfo;
 
+import jdk.graal.compiler.core.common.NumUtil;
+
 /**
  * Constants representing the abstract number of CPU instructions needed to represent a node. This
  * ignores byte sizes of instructions (i.e., 32/64/variable-length).
@@ -92,11 +94,11 @@ public enum NodeSize {
     public static final int IGNORE_SIZE_CONTRACT_FACTOR = 0xFFFF;
 
     public static NodeSize compute(NodeSize base, int opCount) {
-        assert opCount >= 0;
+        assert NumUtil.assertNonNegativeInt(opCount);
         if (opCount == 0) {
             return SIZE_0;
         }
-        assert base.ordinal() > SIZE_0.ordinal();
+        assert base.ordinal() > SIZE_0.ordinal() : base;
         int log2 = log2(base.value * opCount);
         for (int i = base.ordinal(); i < VALUES.length; i++) {
             if (log2(VALUES[i].value) == log2) {
@@ -107,11 +109,11 @@ public enum NodeSize {
     }
 
     public static NodeSize compute(int rawValue) {
-        assert rawValue >= 0;
+        assert NumUtil.assertNonNegativeInt(rawValue);
         if (rawValue == 0) {
             return SIZE_0;
         }
-        assert rawValue > 0;
+        assert NumUtil.assertPositiveInt(rawValue);
         for (int i = SIZE_0.ordinal(); i < VALUES.length - 1; i++) {
             if (VALUES[i].value >= rawValue && rawValue <= VALUES[i + 1].value) {
                 int r1 = VALUES[i].value;

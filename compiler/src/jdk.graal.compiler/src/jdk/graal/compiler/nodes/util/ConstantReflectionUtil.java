@@ -27,11 +27,11 @@ package jdk.graal.compiler.nodes.util;
 import java.nio.ByteOrder;
 
 import jdk.graal.compiler.core.common.Stride;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NodeView;
-
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -67,9 +67,9 @@ public final class ConstantReflectionUtil {
      * @return the bytes read, zero-extended to an int value.
      */
     public static int readTypePunned(ConstantReflectionProvider provider, JavaConstant array, JavaKind arrayKind, Stride stride, int index) {
-        assert arrayKind == JavaKind.Byte || arrayKind == JavaKind.Char || arrayKind == JavaKind.Int;
-        assert stride.value <= 4;
-        assert stride.value >= arrayKind.getByteCount();
+        assert arrayKind == JavaKind.Byte || arrayKind == JavaKind.Char || arrayKind == JavaKind.Int : arrayKind;
+        assert stride.value <= 4 : stride.value;
+        assert stride.value >= arrayKind.getByteCount() : Assertions.errorMessageContext("stride.val", stride.value, "arrayKind", arrayKind);
         if (arrayKind == JavaKind.Byte) {
             int i = index * stride.value;
             if (stride == Stride.S1) {
@@ -100,7 +100,7 @@ public final class ConstantReflectionUtil {
             if (stride == Stride.S2) {
                 return provider.readArrayElement(array, index).asInt() & 0xffff;
             } else {
-                assert stride == Stride.S4;
+                assert stride == Stride.S4 : Assertions.errorMessage(stride);
                 int i = index * 2;
                 if (ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN)) {
                     return (provider.readArrayElement(array, i).asInt() & 0xffff) |
@@ -111,7 +111,7 @@ public final class ConstantReflectionUtil {
                 }
             }
         } else {
-            assert stride == Stride.S4;
+            assert stride == Stride.S4 : stride;
             return provider.readArrayElement(array, index).asInt();
         }
     }

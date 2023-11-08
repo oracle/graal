@@ -29,6 +29,7 @@ import jdk.graal.compiler.core.common.type.ArithmeticOpTable.ShiftOp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.ShiftOp.Shr;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -37,7 +38,6 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
 import jdk.vm.ci.code.CodeUtil;
 
 @NodeInfo(shortName = ">>")
@@ -123,7 +123,8 @@ public final class RightShiftNode extends ShiftNode<Shr> {
                     if (other instanceof RightShiftNode) {
                         int total = amount + otherAmount;
                         if (total != (total & mask)) {
-                            assert other.getX().stamp(view) instanceof IntegerStamp;
+                            assert other.getX().stamp(view) instanceof IntegerStamp : Assertions.errorMessageContext("rightShiftNode", rightShiftNode, "forX", forX, "forY", forY, "other", other,
+                                            "other.x", other.getX());
                             IntegerStamp istamp = (IntegerStamp) other.getX().stamp(view);
 
                             if (istamp.isPositive()) {
@@ -137,7 +138,9 @@ public final class RightShiftNode extends ShiftNode<Shr> {
                              * if we cannot replace both shifts with a constant, replace them by a
                              * full shift for this kind
                              */
-                            assert total >= mask;
+                            assert total >= mask : Assertions.errorMessageContext(
+                                            "rightShiftNode", rightShiftNode, "forX", forX, "forY", forY, "other", other,
+                                            "other.x", other.getX(), "total", total, "mask", mask);
                             return new RightShiftNode(other.getX(), ConstantNode.forInt(mask));
                         }
                         return new RightShiftNode(other.getX(), ConstantNode.forInt(total));

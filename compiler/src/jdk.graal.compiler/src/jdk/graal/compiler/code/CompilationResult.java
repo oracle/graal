@@ -494,7 +494,7 @@ public class CompilationResult {
      */
     public void recordDataPatch(int codePos, Reference ref) {
         checkOpen();
-        assert codePos >= 0 && ref != null;
+        assert codePos >= 0 && ref != null : codePos + " " + ref;
         dataPatches.add(new DataPatch(codePos, ref));
     }
 
@@ -508,7 +508,7 @@ public class CompilationResult {
      * @param note a note attached to data patch for use by post-processing tools
      */
     public void recordDataPatchWithNote(int codePos, Reference ref, Object note) {
-        assert codePos >= 0 && ref != null;
+        assert codePos >= 0 && ref != null : codePos + " " + ref;
         dataPatches.add(new DataPatch(codePos, ref, note));
     }
 

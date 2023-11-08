@@ -34,8 +34,11 @@ import java.util.EnumSet;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.Indent;
@@ -46,7 +49,6 @@ import jdk.graal.compiler.lir.StandardOp.ValueMoveOp;
 import jdk.graal.compiler.lir.framemap.FrameMap;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.PostAllocationOptimizationPhase;
-
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterConfig;
@@ -250,7 +252,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
                                 data.entryValueNum = currentValueNum;
                             }
                             int valueNum = data.entryValueNum;
-                            assert valueNum > 0;
+                            assert NumUtil.assertPositiveInt(valueNum);
                             boolean newState = false;
 
                             if (block.getId() == blockIds[0] || block.isExceptionEntry()) {
@@ -456,7 +458,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
          * The state merge function for dataflow joins.
          */
         private static boolean mergeState(int[] dest, int[] source, int defNum) {
-            assert dest.length == source.length;
+            assert dest.length == source.length : Assertions.errorMessage(dest, source);
             boolean changed = false;
             for (int idx = 0; idx < source.length; idx++) {
                 int phiNum = defNum + idx;
@@ -476,7 +478,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
         }
 
         private static void copyState(int[] dest, int[] source) {
-            assert dest.length == source.length;
+            assert dest.length == source.length : Assertions.errorMessage(dest, source);
             for (int idx = 0; idx < source.length; idx++) {
                 dest[idx] = source[idx];
             }
@@ -524,7 +526,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
          * Encodes a value number + the is-object information to a number to be stored in a state.
          */
         private static int encodeValueNum(int valueNum, boolean isObjectKind) {
-            assert valueNum > 0;
+            assert NumUtil.assertPositiveInt(valueNum);
             if (isObjectKind) {
                 return -valueNum;
             }

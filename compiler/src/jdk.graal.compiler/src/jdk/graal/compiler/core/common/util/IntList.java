@@ -55,7 +55,7 @@ public final class IntList {
      *            equal to {@code array.length}
      */
     public IntList(int[] array, int initialSize) {
-        assert initialSize <= array.length;
+        assert initialSize <= array.length : "Initial size must be < than array length but is " + initialSize + " vs array length " + array.length;
         this.array = array;
         this.size = initialSize;
     }

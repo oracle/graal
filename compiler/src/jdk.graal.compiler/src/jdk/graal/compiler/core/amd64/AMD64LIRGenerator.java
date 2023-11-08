@@ -135,6 +135,7 @@ import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.gen.LIRGenerator;
 import jdk.graal.compiler.lir.gen.MoveFactory;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.debug.Assertions;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
@@ -299,9 +300,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     public void emitCompareAndSwapBranch(LIRKind kind, AMD64AddressValue address, Value expectedValue, Value newValue, Condition condition, LabelRef trueLabel, LabelRef falseLabel,
                     double trueLabelProbability, BarrierType barrierType) {
-        assert kind.getPlatformKind().getSizeInBytes() <= expectedValue.getValueKind().getPlatformKind().getSizeInBytes();
-        assert kind.getPlatformKind().getSizeInBytes() <= newValue.getValueKind().getPlatformKind().getSizeInBytes();
-        assert condition == Condition.EQ || condition == Condition.NE;
+        assert kind.getPlatformKind().getSizeInBytes() <= expectedValue.getValueKind().getPlatformKind().getSizeInBytes() : kind + " " + expectedValue;
+        assert kind.getPlatformKind().getSizeInBytes() <= newValue.getValueKind().getPlatformKind().getSizeInBytes() : kind + " " + newValue;
+        assert condition == Condition.EQ || condition == Condition.NE : Assertions.errorMessage(condition, address, expectedValue, newValue);
         AMD64Kind memKind = (AMD64Kind) kind.getPlatformKind();
         RegisterValue raxValue = AMD64.rax.asValue(kind);
         emitMove(raxValue, expectedValue);
@@ -482,7 +483,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                     // negating EQ and NE does not make any sense as we would need to negate
                     // unorderedIsTrue as well (otherwise, we would no longer fulfill the Java
                     // NaN semantics)
-                    assert unorderedIsTrue == AMD64ControlFlow.trueOnUnordered(finalCondition.negate());
+                    assert unorderedIsTrue == AMD64ControlFlow.trueOnUnordered(finalCondition.negate()) : Assertions.errorMessage(cmpKind, left, right, cond, unorderedIsTrue, finalCondition);
                     finalCondition = finalCondition.negate();
                     finalTrueValue = falseValue;
                     finalFalseValue = trueValue;
@@ -940,7 +941,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @SuppressWarnings("unchecked")
     protected boolean supports(EnumSet<?> runtimeCheckedCPUFeatures, CPUFeature feature) {
-        assert runtimeCheckedCPUFeatures == null || runtimeCheckedCPUFeatures.isEmpty() || runtimeCheckedCPUFeatures.iterator().next() instanceof CPUFeature;
+        assert runtimeCheckedCPUFeatures == null || runtimeCheckedCPUFeatures.isEmpty() ||
+                        runtimeCheckedCPUFeatures.iterator().next() instanceof CPUFeature : Assertions.errorMessage(runtimeCheckedCPUFeatures);
         EnumSet<CPUFeature> typedFeatures = (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures;
         return typedFeatures != null && typedFeatures.contains(feature) || ((AMD64) target().arch).getFeatures().contains(feature);
     }

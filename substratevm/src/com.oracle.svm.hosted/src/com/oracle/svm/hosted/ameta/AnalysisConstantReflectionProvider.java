@@ -30,6 +30,7 @@ import java.util.function.ObjIntConsumer;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.ObjectScanner;
@@ -42,6 +43,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -416,6 +418,11 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     @Override
     public JavaConstant forObject(Object object) {
         validateRawObjectConstant(object);
+        if (object instanceof RelocatedPointer pointer) {
+            return new RelocatableConstant(pointer);
+        } else if (object instanceof WordBase word) {
+            return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), word.rawValue());
+        }
         /* Redirect constant lookup through the shadow heap. */
         return universe.getHeapScanner().createImageHeapConstant(super.forObject(object), ObjectScanner.OtherReason.UNKNOWN);
     }

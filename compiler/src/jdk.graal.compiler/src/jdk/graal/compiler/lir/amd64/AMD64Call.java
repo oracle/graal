@@ -31,6 +31,7 @@ import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.code.CompilationResult.MarkId;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstructionClass;
@@ -231,7 +232,7 @@ public class AMD64Call {
         int movPos = masm.position();
         masm.movq(AMD64.rax, nonOopBits);
         int before = masm.position();
-        assert movPos + INLINE_CACHE_MOV_SIZE == before;
+        assert movPos + INLINE_CACHE_MOV_SIZE == before : Assertions.errorMessage(movPos, before);
         masm.call();
         int after = masm.position();
         Call call = crb.recordDirectCall(before, after, callTarget, info);

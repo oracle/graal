@@ -107,9 +107,9 @@ public class ForeignCallStub extends AbstractForeignCallStub {
             ValueNode[] targetArguments = new ValueNode[1 + params.length];
             targetArguments[0] = thread;
             System.arraycopy(params, 0, targetArguments, 1, params.length);
-            return kit.append(new StubForeignCallNode(providers.getForeignCalls(), stamp, target.getDescriptor(), targetArguments));
+            return kit.append(new StubForeignCallNode(stamp, target.getDescriptor(), targetArguments));
         } else {
-            return kit.append(new StubForeignCallNode(providers.getForeignCalls(), stamp, target.getDescriptor(), params));
+            return kit.append(new StubForeignCallNode(stamp, target.getDescriptor(), params));
         }
     }
 }

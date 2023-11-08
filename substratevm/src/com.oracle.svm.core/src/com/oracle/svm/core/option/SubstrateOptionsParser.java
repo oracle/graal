@@ -33,9 +33,6 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.options.OptionDescriptor;
-import jdk.graal.compiler.options.OptionDescriptors;
-import jdk.graal.compiler.options.OptionKey;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -46,6 +43,10 @@ import com.oracle.svm.common.option.UnsupportedOptionClassException;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
+
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionDescriptors;
+import jdk.graal.compiler.options.OptionKey;
 
 /**
  * This class contains methods for parsing options and matching them against
@@ -178,13 +179,17 @@ public class SubstrateOptionsParser {
         /* Ensure descriptor is loaded */
         OptionDescriptor optionDescriptor = option.loadDescriptor();
         Field field;
+        APIOption[] apiOptions;
         try {
             field = optionDescriptor.getDeclaringClass().getDeclaredField(optionDescriptor.getFieldName());
+            apiOptions = field.getAnnotationsByType(APIOption.class);
         } catch (ReflectiveOperationException ex) {
-            throw VMError.shouldNotReachHere(ex);
+            /*
+             * Options whose fields cannot be looked up (e.g., due to stripped sources) cannot be
+             * API options by definition.
+             */
+            apiOptions = new APIOption[0];
         }
-
-        APIOption[] apiOptions = field.getAnnotationsByType(APIOption.class);
 
         if (optionDescriptor.getOptionValueType() == Boolean.class) {
             VMError.guarantee(value.equals("+") || value.equals("-"), "Boolean option value can be only + or -");

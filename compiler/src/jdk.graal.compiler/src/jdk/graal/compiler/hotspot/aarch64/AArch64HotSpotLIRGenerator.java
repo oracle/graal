@@ -26,13 +26,13 @@
 
 package jdk.graal.compiler.hotspot.aarch64;
 
-import static jdk.vm.ci.code.ValueUtil.isStackSlot;
-import static jdk.vm.ci.meta.JavaConstant.INT_0;
-import static jdk.vm.ci.meta.JavaConstant.LONG_0;
 import static jdk.graal.compiler.lir.LIRValueUtil.asConstant;
 import static jdk.graal.compiler.lir.LIRValueUtil.asJavaConstant;
 import static jdk.graal.compiler.lir.LIRValueUtil.isConstantValue;
 import static jdk.graal.compiler.lir.LIRValueUtil.isJavaConstant;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
+import static jdk.vm.ci.meta.JavaConstant.INT_0;
+import static jdk.vm.ci.meta.JavaConstant.LONG_0;
 
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -52,6 +52,7 @@ import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import jdk.graal.compiler.core.common.spi.LIRKindTool;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotBackend;
@@ -85,7 +86,6 @@ import jdk.graal.compiler.lir.aarch64.AArch64SpinWaitOp;
 import jdk.graal.compiler.lir.gen.BarrierSetLIRGenerator;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.gen.MoveFactory;
-
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CallingConvention;
@@ -214,14 +214,14 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     }
 
     private HotSpotLockStack getLockStack() {
-        assert debugInfoBuilder != null && debugInfoBuilder.lockStack() != null;
+        assert debugInfoBuilder != null && debugInfoBuilder.lockStack() != null : debugInfoBuilder;
         return debugInfoBuilder.lockStack();
     }
 
     @Override
     public Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         LIRKind inputKind = pointer.getValueKind(LIRKind.class);
-        assert inputKind.getPlatformKind() == AArch64Kind.QWORD;
+        assert inputKind.getPlatformKind() == AArch64Kind.QWORD : inputKind;
         if (inputKind.isReference(0)) {
             // oop
             Variable result = newVariable(LIRKind.compressedReference(AArch64Kind.DWORD));
@@ -242,7 +242,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     @Override
     public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
         LIRKind inputKind = pointer.getValueKind(LIRKind.class);
-        assert inputKind.getPlatformKind() == AArch64Kind.DWORD;
+        assert inputKind.getPlatformKind() == AArch64Kind.DWORD : Assertions.errorMessage(inputKind, pointer);
         if (inputKind.isReference(0)) {
             // oop
             Variable result = newVariable(LIRKind.reference(AArch64Kind.QWORD));
@@ -416,7 +416,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     public void emitUnwind(Value exception) {
         ForeignCallLinkage linkage = getForeignCalls().lookupForeignCall(HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER);
         CallingConvention outgoingCc = linkage.getOutgoingCallingConvention();
-        assert outgoingCc.getArgumentCount() == 2;
+        assert outgoingCc.getArgumentCount() == 2 : Assertions.errorMessage(outgoingCc);
         RegisterValue exceptionParameter = (RegisterValue) outgoingCc.getArgument(0);
         emitMove(exceptionParameter, exception);
         append(new AArch64HotSpotUnwindOp(config, exceptionParameter));

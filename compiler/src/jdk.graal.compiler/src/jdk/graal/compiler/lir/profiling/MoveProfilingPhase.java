@@ -28,8 +28,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRInsertionBuffer;
@@ -41,7 +43,6 @@ import jdk.graal.compiler.lir.profiling.MoveProfiler.MoveStatistics;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
-
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -122,7 +123,9 @@ public class MoveProfilingPhase extends PostAllocationOptimizationPhase {
         protected final void insertBenchmarkCounter(BasicBlock<?> block) {
             int size = names.size();
             if (size > 0) { // Don't pollute LIR when nothing has to be done
-                assert size > 0 && size == groups.size() && size == increments.size();
+                assert NumUtil.assertPositiveInt(size);
+                assert size == groups.size() : Assertions.errorMessageContext("size", size, "groups", groups);
+                assert size == increments.size() : Assertions.errorMessageContext("size", size, "increments", increments);
                 ArrayList<LIRInstruction> instructions = lirGenRes.getLIR().getLIRforBlock(block);
                 LIRInstruction inst = diagnosticLirGenTool.createMultiBenchmarkCounter(names.toArray(new String[size]), groups.toArray(new String[size]),
                                 increments.toArray(new Value[size]));

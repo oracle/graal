@@ -30,8 +30,8 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.replacements.classfile.ClassfileConstant.Utf8;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -63,7 +63,7 @@ public class Classfile {
 
         // magic
         int magic = stream.readInt();
-        assert magic == MAGIC;
+        assert magic == MAGIC : Assertions.errorMessage(magic);
 
         int minor = stream.readUnsignedShort();
         int major = stream.readUnsignedShort();

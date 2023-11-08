@@ -124,7 +124,7 @@ public class Fields {
      *            the value is copied unchanged.
      */
     public void copy(Object from, Object to, ObjectTransformer trans) {
-        assert from.getClass() == to.getClass();
+        assert from.getClass() == to.getClass() : from + " " + to;
         for (int index = 0; index < offsets.length; index++) {
             long offset = offsets[index];
             Class<?> type = types[index];
@@ -341,42 +341,42 @@ public class Fields {
     }
 
     public boolean getBoolean(Object n, int i) {
-        assert types[i] == boolean.class;
+        assert types[i] == boolean.class : types[i];
         return UNSAFE.getBoolean(n, offsets[i]);
     }
 
     public byte getByte(Object n, int i) {
-        assert types[i] == byte.class;
+        assert types[i] == byte.class : types[i];
         return UNSAFE.getByte(n, offsets[i]);
     }
 
     public short getShort(Object n, int i) {
-        assert types[i] == short.class;
+        assert types[i] == short.class : types[i];
         return UNSAFE.getShort(n, offsets[i]);
     }
 
     public char getChar(Object n, int i) {
-        assert types[i] == char.class;
+        assert types[i] == char.class : types[i];
         return UNSAFE.getChar(n, offsets[i]);
     }
 
     public int getInt(Object n, int i) {
-        assert types[i] == int.class;
+        assert types[i] == int.class : types[i];
         return UNSAFE.getInt(n, offsets[i]);
     }
 
     public long getLong(Object n, int i) {
-        assert types[i] == long.class;
+        assert types[i] == long.class : types[i];
         return UNSAFE.getLong(n, offsets[i]);
     }
 
     public float getFloat(Object n, int i) {
-        assert types[i] == float.class;
+        assert types[i] == float.class : types[i];
         return UNSAFE.getFloat(n, offsets[i]);
     }
 
     public double getDouble(Object n, int i) {
-        assert types[i] == double.class;
+        assert types[i] == double.class : types[i];
         return UNSAFE.getDouble(n, offsets[i]);
     }
 

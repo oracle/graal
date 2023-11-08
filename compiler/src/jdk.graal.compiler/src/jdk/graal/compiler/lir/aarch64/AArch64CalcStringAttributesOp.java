@@ -61,6 +61,7 @@ import jdk.graal.compiler.asm.aarch64.AArch64Assembler.ShiftType;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.code.DataSection;
 import jdk.graal.compiler.core.common.Stride;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.LIRInstructionClass;
@@ -299,7 +300,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
      * Implements the operation described in {@link CalcStringAttributesEncoding#BMP}.
      */
     private void emitBMP(AArch64MacroAssembler asm, Register arr, Register len, Register tmp, Register ret, Label end) {
-        assert stride.log2 == 1;
+        assert stride.log2 == 1 : stride;
         Label tailLessThan32 = new Label();
         Label tailLessThan16 = new Label();
         Label tailLessThan8 = new Label();
@@ -544,7 +545,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
      *      https://lemire.me/blog/2020/10/20/ridiculously-fast-unicode-utf-8-validation/</a>
      */
     private void emitUTF8(CompilationResultBuilder crb, AArch64MacroAssembler asm, Register arr, Register len, Register tmp, Register ret, Label end) {
-        assert stride.log2 == 0;
+        assert stride.log2 == 0 : stride;
         Label tailLessThan32 = new Label();
         Label tailLessThan32Continue = new Label();
         Label tailLessThan16 = new Label();
@@ -1006,7 +1007,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
     }
 
     private static void setCodepointCountOuterLoopRefAddress(AArch64MacroAssembler asm, Register arr, Register refAddressTail, Register refAddressOuter, int outerBlockSize, int innerBlockSize) {
-        assert outerBlockSize > innerBlockSize * 2;
+        assert outerBlockSize > innerBlockSize * 2 : Assertions.errorMessage(outerBlockSize, innerBlockSize);
         asm.adds(64, refAddressOuter, arr, outerBlockSize);
         asm.csel(64, refAddressOuter, refAddressTail, refAddressOuter, ConditionFlag.VS);
         asm.cmp(64, refAddressOuter, refAddressTail);
@@ -1065,7 +1066,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
      * Implements the operation described in {@link CalcStringAttributesEncoding#UTF_16}.
      */
     private void emitUTF16(CompilationResultBuilder crb, AArch64MacroAssembler asm, Register arr, Register len, Register tmp, Register ret, Label end) {
-        assert stride.log2 == 1;
+        assert stride.log2 == 1 : stride;
         Label tailLessThan32 = new Label();
         Label tailLessThan32Continue = new Label();
         Label tailLessThan16 = new Label();
@@ -1430,7 +1431,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
      * Implements the operation described in {@link CalcStringAttributesEncoding#UTF_32}.
      */
     private void emitUTF32(AArch64MacroAssembler asm, Register arr, Register len, Register ret, Label end) {
-        assert stride.log2 == 2;
+        assert stride.log2 == 2 : stride;
         Label tailLessThan64 = new Label();
         Label tailLessThan32 = new Label();
         Label tailLessThan64Continue = new Label();

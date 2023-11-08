@@ -26,29 +26,11 @@ package com.oracle.svm.core.cpufeature;
 
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.Set;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.core.riscv64.RISCV64ReflectionUtil;
-import jdk.graal.compiler.core.riscv64.ShadowedRISCV64;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.graph.Node.InjectedNodeParameter;
-import jdk.graal.compiler.graph.Node.NodeIntrinsicFactory;
-import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.LogicNode;
-import jdk.graal.compiler.nodes.NodeView;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.calc.ConditionalNode;
-import jdk.graal.compiler.nodes.calc.IntegerTestNode;
-import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -64,12 +46,28 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Node.InjectedNodeParameter;
+import jdk.graal.compiler.graph.Node.NodeIntrinsicFactory;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.ConditionalNode;
+import jdk.graal.compiler.nodes.calc.IntegerTestNode;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.riscv64.RISCV64;
 
 @AutomaticallyRegisteredFeature
 class RuntimeCPUFeatureCheckFeature implements InternalFeature {
@@ -367,10 +365,8 @@ public final class RuntimeCPUFeatureCheckImpl {
             return ((AMD64) arch).getFeatures();
         } else if (arch instanceof AArch64) {
             return ((AArch64) arch).getFeatures();
-        } else if (ShadowedRISCV64.instanceOf(arch)) {
-            Method getFeatures = RISCV64ReflectionUtil.lookupMethod(ShadowedRISCV64.riscv64OrNull, "getFeatures");
-            getFeatures.setAccessible(true);
-            return (EnumSet<?>) RISCV64ReflectionUtil.invokeMethod(getFeatures, arch);
+        } else if (arch instanceof RISCV64) {
+            return ((RISCV64) arch).getFeatures();
         } else {
             throw GraalError.shouldNotReachHere("unsupported architecture"); // ExcludeFromJacocoGeneratedReport
         }

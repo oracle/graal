@@ -32,8 +32,12 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.core.common.RetryableBailoutException;
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
+import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Graph.Mark;
@@ -444,9 +448,9 @@ public abstract class LoopTransformations {
         mainLoopBegin.setLoopOrigFrequency(originalFrequency);
         postLoopBegin.setLoopOrigFrequency(originalFrequency);
 
-        assert preLoopExitNode.predecessor() instanceof IfNode;
-        assert mainLoopExitNode.predecessor() instanceof IfNode;
-        assert postLoopExitNode.predecessor() instanceof IfNode;
+        assert preLoopExitNode.predecessor() instanceof IfNode : Assertions.errorMessage(preLoopExitNode);
+        assert mainLoopExitNode.predecessor() instanceof IfNode : Assertions.errorMessage(mainLoopExitNode);
+        assert postLoopExitNode.predecessor() instanceof IfNode : Assertions.errorMessage(postLoopExitNode);
 
         setSingleVisitedLoopFrequencySplitProbability(preLoopExitNode);
         setSingleVisitedLoopFrequencySplitProbability(postLoopExitNode);
@@ -544,12 +548,12 @@ public abstract class LoopTransformations {
             for (ProxyNode proxy : exit.proxies()) {
                 for (Node usage : proxy.usages().snapshot()) {
                     if (usage instanceof PhiNode && ((PhiNode) usage).merge() == mainMergeNode) {
-                        assert usage instanceof PhiNode;
+                        assert usage instanceof PhiNode : Assertions.errorMessage(usage);
                         // replace with the post loop proxy
                         PhiNode pUsage = (PhiNode) usage;
                         // get the other input phi at pre loop end
                         Node v = pUsage.valueAt(0);
-                        assert v instanceof PhiNode;
+                        assert v instanceof PhiNode : Assertions.errorMessage(v);
                         PhiNode vP = (PhiNode) v;
                         usage.replaceAtUsages(vP.valueAt(postEndNode));
                         usage.safeDelete();
@@ -776,6 +780,17 @@ public abstract class LoopTransformations {
         return condition.hasMoreThanOneUsage();
     }
 
+    public static boolean strideAdditionOverflows(LoopEx loop) {
+        final int bits = ((IntegerStamp) loop.counted().getLimitCheckedIV().valueNode().stamp(NodeView.DEFAULT)).getBits();
+        long stride = loop.counted().getLimitCheckedIV().constantStride();
+        try {
+            NumUtil.addExact(stride, stride, bits);
+            return false;
+        } catch (ArithmeticException ae) {
+            return true;
+        }
+    }
+
     public static boolean isUnrollableLoop(LoopEx loop) {
         if (!loop.isCounted() || !loop.counted().getLimitCheckedIV().isConstantStride() || !loop.loop().getChildren().isEmpty() || loop.loopBegin().loopEnds().count() != 1 ||
                         loop.loopBegin().loopExits().count() > 1 || loop.counted().isInverted()) {
@@ -796,11 +811,8 @@ public abstract class LoopTransformations {
         if (countedLoopExitConditionHasMultipleUsages(loop)) {
             return false;
         }
-        long stride = loop.counted().getLimitCheckedIV().constantStride();
-        try {
-            Math.addExact(stride, stride);
-        } catch (ArithmeticException ae) {
-            condition.getDebug().log(DebugContext.VERBOSE_LEVEL, "isUnrollableLoop %s doubling the stride overflows %d", loopBegin, stride);
+        if (strideAdditionOverflows(loop)) {
+            condition.getDebug().log(DebugContext.VERBOSE_LEVEL, "isUnrollableLoop %s doubling the stride overflows %d", loopBegin, loop.counted().getLimitCheckedIV().constantStride());
             return false;
         }
         if (!loop.canDuplicateLoop()) {

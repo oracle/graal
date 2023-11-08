@@ -34,6 +34,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 
+import org.graalvm.collections.Pair;
+
+import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.core.common.cfg.BlockMap;
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.Indent;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRValueUtil;
@@ -44,21 +55,11 @@ import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.gen.MoveFactory;
 import jdk.graal.compiler.lir.phases.AllocationPhase;
 import jdk.graal.compiler.lir.phases.LIRPhase;
-import org.graalvm.collections.Pair;
-import jdk.graal.compiler.core.common.LIRKind;
-import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
-import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.core.common.cfg.BlockMap;
-import jdk.graal.compiler.debug.Assertions;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.debug.Indent;
 import jdk.graal.compiler.options.NestedBooleanOptionKey;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterAttributes;
@@ -243,14 +244,14 @@ public class LinearScan {
 
     public int getFirstLirInstructionId(BasicBlock<?> block) {
         int result = ir.getLIRforBlock(block).get(0).id();
-        assert result >= 0;
+        assert NumUtil.assertNonNegativeInt(result);
         return result;
     }
 
     public int getLastLirInstructionId(BasicBlock<?> block) {
         ArrayList<LIRInstruction> instructions = ir.getLIRforBlock(block);
         int result = instructions.get(instructions.size() - 1).id();
-        assert result >= 0;
+        assert NumUtil.assertNonNegativeInt(result);
         return result;
     }
 
@@ -277,7 +278,7 @@ public class LinearScan {
         Value operand = LIRValueUtil.stripCast(op);
         if (isRegister(operand)) {
             int number = asRegister(operand).number;
-            assert number < firstVariableNumber;
+            assert number < firstVariableNumber : number + " " + firstVariableNumber;
             return number;
         }
         assert LIRValueUtil.isVariable(operand) : operand;
@@ -368,7 +369,7 @@ public class LinearScan {
         assert isLegal(operand);
         int operandNumber = operandNumber(operand);
         Interval interval = new Interval(ir, operand, operandNumber, intervalEndMarker, rangeEndMarker);
-        assert operandNumber < intervalsSize;
+        assert operandNumber < intervalsSize : operandNumber + " " + intervalsSize;
         assert intervals[operandNumber] == null;
         intervals[operandNumber] = interval;
         return interval;
@@ -388,7 +389,7 @@ public class LinearScan {
             intervals = Arrays.copyOf(intervals, intervals.length + (intervals.length >> SPLIT_INTERVALS_CAPACITY_RIGHT_SHIFT) + 1);
         }
         intervalsSize++;
-        assert intervalsSize <= intervals.length;
+        assert intervalsSize <= intervals.length : intervalsSize + " " + intervals.length;
         /*
          * Note that these variables are not managed and must therefore never be inserted into the
          * LIR
@@ -396,7 +397,7 @@ public class LinearScan {
         Variable variable = new Variable(source.kind(), numVariables++);
 
         Interval interval = createInterval(variable);
-        assert intervals[intervalsSize - 1] == interval;
+        assert intervals[intervalsSize - 1] == interval : intervals[intervalsSize - 1] + " " + interval;
         return interval;
     }
 
@@ -428,7 +429,7 @@ public class LinearScan {
 
     public Interval intervalFor(Value operand) {
         int operandNumber = operandNumber(operand);
-        assert operandNumber < intervalsSize;
+        assert operandNumber < intervalsSize : operandNumber + " " + intervalsSize;
         return intervals[operandNumber];
     }
 
@@ -477,7 +478,7 @@ public class LinearScan {
     public LIRInstruction instructionForId(int opId) {
         assert isEven(opId) : "opId not even";
         LIRInstruction instr = opIdToInstructionMap[opIdToIndex(opId)];
-        assert instr.id() == opId;
+        assert instr.id() == opId : Assertions.errorMessage(instr, opId);
         return instr;
     }
 
@@ -523,7 +524,7 @@ public class LinearScan {
         int from = -1;
         for (Interval interval : intervals) {
             assert interval != null;
-            assert from <= interval.from();
+            assert from <= interval.from() : from + " " + interval.from();
             from = interval.from();
         }
         return true;

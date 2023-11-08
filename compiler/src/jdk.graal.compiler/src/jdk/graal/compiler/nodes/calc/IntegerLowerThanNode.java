@@ -30,6 +30,7 @@ import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -41,7 +42,6 @@ import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -113,7 +113,7 @@ public abstract class IntegerLowerThanNode extends CompareNode {
             IntegerStamp xStamp = (IntegerStamp) xStampGeneric;
             if (yStampGeneric instanceof IntegerStamp) {
                 IntegerStamp yStamp = (IntegerStamp) yStampGeneric;
-                assert yStamp.getBits() == xStamp.getBits();
+                assert yStamp.getBits() == xStamp.getBits() : Assertions.errorMessageContext("this", this, "mirror", mirror, "strict", strict, "xStamp", xStamp, "yStamp", yStamp);
                 Stamp s = getOp().getSucceedingStampForX(xStamp, yStamp, mirror, strict);
                 if (s != null) {
                     return s;
@@ -579,7 +579,7 @@ public abstract class IntegerLowerThanNode extends CompareNode {
 
         protected IntegerStamp getSucceedingStampForX(IntegerStamp xStamp, IntegerStamp yStamp, boolean mirror, boolean strict) {
             int bits = xStamp.getBits();
-            assert yStamp.getBits() == bits;
+            assert yStamp.getBits() == bits : Assertions.errorMessageContext("this", this, "xStamp", xStamp, "yStamp", yStamp, "mirror", mirror, "strict", strict);
             if (mirror) {
                 long low = lowerBound(yStamp);
                 if (strict) {

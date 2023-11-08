@@ -30,6 +30,7 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 
 import java.util.Arrays;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.hotspot.nodes.type.KlassPointerStamp;
 import jdk.graal.compiler.hotspot.word.KlassPointer;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -38,7 +39,6 @@ import jdk.graal.compiler.nodes.TypeCheckHints;
 import jdk.graal.compiler.replacements.SnippetCounter;
 import jdk.graal.compiler.replacements.SnippetCounter.Group;
 import jdk.graal.compiler.word.Word;
-
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -167,7 +167,7 @@ public class TypeCheckSnippetUtils {
             }
         }
         if (positiveOnly && index != hubs.length) {
-            assert index < hubs.length;
+            assert index < hubs.length : Assertions.errorMessage(index, hubs);
             hubs = Arrays.copyOf(hubs, index);
             isPositive = Arrays.copyOf(isPositive, index);
         }

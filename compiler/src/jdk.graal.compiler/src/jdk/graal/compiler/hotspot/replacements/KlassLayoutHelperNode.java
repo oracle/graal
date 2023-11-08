@@ -24,17 +24,17 @@
  */
 package jdk.graal.compiler.hotspot.replacements;
 
+import static jdk.vm.ci.runtime.JVMCI.getRuntime;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_1;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import jdk.graal.compiler.api.runtime.GraalJVMCICompiler;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.Node.NodeIntrinsicFactory;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.nodes.spi.Canonicalizable;
-import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -43,6 +43,8 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.extended.LoadHubNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.spi.Canonicalizable;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
@@ -62,11 +64,9 @@ public final class KlassLayoutHelperNode extends FloatingNode implements Canonic
 
     public static final NodeClass<KlassLayoutHelperNode> TYPE = NodeClass.create(KlassLayoutHelperNode.class);
     @Input protected ValueNode klass;
-    protected final GraalHotSpotVMConfig config;
 
-    public KlassLayoutHelperNode(@InjectedNodeParameter GraalHotSpotVMConfig config, ValueNode klass) {
+    public KlassLayoutHelperNode(ValueNode klass) {
         super(TYPE, StampFactory.forKind(JavaKind.Int));
-        this.config = config;
         this.klass = klass;
     }
 
@@ -90,6 +90,7 @@ public final class KlassLayoutHelperNode extends FloatingNode implements Canonic
                 ObjectStamp objectStamp = (ObjectStamp) hubStamp;
                 ResolvedJavaType type = objectStamp.type();
                 if (type != null && !type.isJavaLangObject()) {
+                    GraalHotSpotVMConfig config = getConfig();
                     if (!type.isArray() && !type.isInterface()) {
                         /*
                          * Definitely some form of instance type.
@@ -110,8 +111,12 @@ public final class KlassLayoutHelperNode extends FloatingNode implements Canonic
         if (tool.allUsagesAvailable() && hasNoUsages()) {
             return null;
         } else {
-            return canonical(this, config, klass, stamp(NodeView.DEFAULT), tool.getConstantReflection(), tool.getMetaAccess());
+            return canonical(this, getConfig(), klass, stamp(NodeView.DEFAULT), tool.getConstantReflection(), tool.getMetaAccess());
         }
+    }
+
+    private static GraalHotSpotVMConfig getConfig() {
+        return ((GraalJVMCICompiler) getRuntime().getCompiler()).getGraalRuntime().getCapability(GraalHotSpotVMConfig.class);
     }
 
     private static ValueNode canonical(KlassLayoutHelperNode klassLayoutHelperNode, GraalHotSpotVMConfig config, ValueNode klass, Stamp stamp, ConstantReflectionProvider constantReflection,
@@ -137,7 +142,7 @@ public final class KlassLayoutHelperNode extends FloatingNode implements Canonic
             }
         }
         if (self == null) {
-            self = new KlassLayoutHelperNode(config, klass);
+            self = new KlassLayoutHelperNode(klass);
         }
         return self;
     }

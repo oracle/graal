@@ -430,7 +430,8 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
         protected void finalizeGraph(StructuredGraph graph) {
             if (!GraalOptions.SnippetCounters.getValue(graph.getOptions()) || graph.getNodes().filter(SnippetCounterNode.class).isEmpty()) {
                 int sideEffectCount = 0;
-                assert (sideEffectCount = graph.getNodes().filter(e -> hasSideEffect(e)).count()) >= 0;
+                int countSE = graph.getNodes().filter(e -> hasSideEffect(e)).count();
+                assert (sideEffectCount = countSE) >= 0 : "Side effect counts must match " + sideEffectCount + " " + countSE;
                 new ConvertDeoptimizeToGuardPhase(CanonicalizerPhase.create()).apply(graph, replacements.getProviders());
                 assert sideEffectCount == graph.getNodes().filter(e -> hasSideEffect(e)).count() : "deleted side effecting node";
 

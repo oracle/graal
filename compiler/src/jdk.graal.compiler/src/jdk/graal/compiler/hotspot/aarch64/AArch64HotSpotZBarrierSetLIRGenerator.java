@@ -35,6 +35,7 @@ import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
@@ -46,7 +47,6 @@ import jdk.graal.compiler.lir.aarch64.AArch64AddressValue;
 import jdk.graal.compiler.lir.aarch64.AArch64Call;
 import jdk.graal.compiler.lir.aarch64.AArch64FrameMap;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
@@ -85,7 +85,7 @@ public class AArch64HotSpotZBarrierSetLIRGenerator extends AArch64BarrierSetLIRG
      */
     public static void emitBarrier(CompilationResultBuilder crb, AArch64MacroAssembler masm, Label success, Register resultReg, GraalHotSpotVMConfig config, ForeignCallLinkage callTarget,
                     AArch64Address address, LIRInstruction op, AArch64FrameMap frameMap) {
-        assert !resultReg.equals(address.getBase()) && !resultReg.equals(address.getOffset());
+        assert !resultReg.equals(address.getBase()) && !resultReg.equals(address.getOffset()) : Assertions.errorMessage(resultReg, address, op);
 
         final Label entryPoint = new Label();
         final Label continuation = new Label();

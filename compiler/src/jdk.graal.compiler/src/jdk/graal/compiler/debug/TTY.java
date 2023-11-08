@@ -68,7 +68,8 @@ public class TTY {
          * constructed.
          */
         public void remove() {
-            assert thread == Thread.currentThread();
+            Thread currentThread = Thread.currentThread();
+            assert thread == currentThread : Assertions.errorMessage(thread, currentThread);
             if (previous != null) {
                 log.set(previous);
             }

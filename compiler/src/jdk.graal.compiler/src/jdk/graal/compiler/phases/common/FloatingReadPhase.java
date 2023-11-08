@@ -34,12 +34,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 
-import jdk.graal.compiler.phases.graph.ReentrantNodeIterator;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableMapCursor;
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Graph.NodeEventScope;
@@ -78,7 +80,7 @@ import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.phases.common.util.EconomicSetNodeEventListener;
-import org.graalvm.word.LocationIdentity;
+import jdk.graal.compiler.phases.graph.ReentrantNodeIterator;
 
 public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProviders> {
 
@@ -433,7 +435,7 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
                 MemoryKill lastLocationAccess = state.getLastLocationAccess(locationIdentity);
                 try (DebugCloseable position = accessNode.withNodeSourcePosition()) {
                     FloatingAccessNode floatingNode = accessNode.asFloatingNode();
-                    assert floatingNode.getLastLocationAccess() == lastLocationAccess;
+                    assert floatingNode.getLastLocationAccess() == lastLocationAccess : Assertions.errorMessage(floatingNode, floatingNode.getLastLocationAccess(), lastLocationAccess);
                     graph.replaceFixedWithFloating(accessNode, floatingNode);
                     graph.getOptimizationLog().report(FloatingReadPhase.class, "FixedWithFloatingReplacement", accessNode);
                 }

@@ -264,9 +264,9 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                 int previousIndex = blockToNodes.size();
                 for (int i = blockToNodes.size() - 1; i >= 0; --i) {
                     Node currentNode = blockToNodes.get(i);
-                    assert currentNodeMap.get(currentNode) == currentBlock;
-                    assert !(currentNode instanceof PhiNode) && !(currentNode instanceof ProxyNode);
-                    assert visited.isMarked(currentNode);
+                    assert currentNodeMap.get(currentNode) == currentBlock : Assertions.errorMessageContext("currentNodeMap", currentNodeMap, "currentBlock", currentBlock);
+                    assert !(currentNode instanceof PhiNode) && !(currentNode instanceof ProxyNode) : currentNode;
+                    assert visited.isMarked(currentNode) : Assertions.errorMessageContext("visited", visited, "currentNode", currentNode);
                     if (currentNode instanceof FixedNode) {
                         // For these nodes, the earliest is at the same time the latest block.
                     } else {
@@ -349,7 +349,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                 List<Node> nodes = blockToNodesMap.get(b);
                 for (Node n : nodes) {
                     assert n.isAlive();
-                    assert nodeMap.get(n) == b;
+                    assert nodeMap.get(n) == b : Assertions.errorMessage(n, b);
                     StructuredGraph g = (StructuredGraph) n.graph();
                     if (g.hasLoops() && g.getGuardsStage() == GuardsStage.AFTER_FSA && n instanceof DeoptimizeNode) {
                         assert b.getLoopDepth() == 0 : n;
@@ -368,7 +368,8 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             dominatorChain.add(latestBlock);
             while (current != earliestBlock) {
                 // Current is an intermediate dominator between earliestBlock and latestBlock.
-                assert earliestBlock.strictlyDominates(current) && current.strictlyDominates(latestBlock);
+                assert earliestBlock.strictlyDominates(current) : Assertions.errorMessageContext("earliestBlock", earliestBlock, "current", current);
+                assert current.strictlyDominates(latestBlock) : Assertions.errorMessageContext("latestBlock", latestBlock, "current", current);
                 if (current.canKill(location)) {
                     dominatorChain.clear();
                 }
@@ -377,8 +378,9 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             }
 
             // The first element of dominatorChain now contains the latest possible block.
-            assert dominatorChain.size() >= 1;
-            assert dominatorChain.get(dominatorChain.size() - 1).getDominator() == earliestBlock;
+            assert dominatorChain.size() >= 1 : Assertions.errorMessageContext("dominatorChain", dominatorChain);
+            HIRBlock dominator = dominatorChain.get(dominatorChain.size() - 1).getDominator();
+            assert dominator == earliestBlock : Assertions.errorMessageContext("dominator", dominator, "earliestBlock", earliestBlock);
 
             HIRBlock lastBlock = earliestBlock;
             for (int i = dominatorChain.size() - 1; i >= 0; --i) {
@@ -461,7 +463,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             for (Node n : earliestSorting) {
                 if (n != fixedEndNode) {
                     if (n instanceof FixedNode) {
-                        assert nodeMap.get(n) == b;
+                        assert nodeMap.get(n) == b : Assertions.errorMessageContext("n", n, "b", b);
                         checkWatchList(b, nodeMap, unprocessed, result, watchList, n);
                         sortIntoList(n, b, result, nodeMap, unprocessed, null);
                     } else if (nodeMap.get(n) == b && n instanceof FloatingReadNode) {
@@ -485,7 +487,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
 
             for (Node n : latestBlockToNodesMap.get(b)) {
                 assert nodeMap.get(n) == b : n;
-                assert !(n instanceof FixedNode);
+                assert !(n instanceof FixedNode) : n;
                 if (unprocessed.isMarked(n)) {
                     sortIntoList(n, b, result, nodeMap, unprocessed, fixedEndNode);
                 }
@@ -544,8 +546,8 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
         }
 
         private static void sortIntoList(Node n, HIRBlock b, ArrayList<Node> result, NodeMap<HIRBlock> nodeMap, NodeBitMap unprocessed, Node excludeNode) {
-            assert unprocessed.isMarked(n) : n;
-            assert nodeMap.get(n) == b;
+            assert unprocessed.isMarked(n) : Assertions.errorMessage(n);
+            assert nodeMap.get(n) == b : Assertions.errorMessage(n);
 
             if (n instanceof PhiNode) {
                 return;
@@ -572,7 +574,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                         NodeBitMap moveInputsIntoDominator) {
             HIRBlock latestBlock = null;
             if (!currentNode.hasUsages()) {
-                assert currentNode instanceof GuardNode;
+                assert currentNode instanceof GuardNode : Assertions.errorMessage(currentNode);
                 latestBlock = earliestBlock;
             } else {
                 assert currentNode.hasUsages();
@@ -689,7 +691,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
 
         private static HIRBlock calcLatestBlockForUsage(Node node, Node usage, HIRBlock earliestBlock, HIRBlock initialLatestBlock, NodeMap<HIRBlock> currentNodeMap,
                         NodeBitMap moveInputsToDominator) {
-            assert !(node instanceof PhiNode);
+            assert !(node instanceof PhiNode) : node;
             HIRBlock currentBlock = initialLatestBlock;
             if (usage instanceof PhiNode) {
                 // An input to a PhiNode is used at the end of the predecessor block that
@@ -1065,7 +1067,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                     assert stack.isEmpty();
                     assert blockNodes.isEmpty();
                     if (newBlock != null) {
-                        assert block.getNodeCount() == newBlock.getNodeCount();
+                        assert block.getNodeCount() == newBlock.getNodeCount() : Assertions.errorMessage(block, newBlock);
                         block.head = newBlock.head;
                         block.tail = newBlock.tail;
                     }

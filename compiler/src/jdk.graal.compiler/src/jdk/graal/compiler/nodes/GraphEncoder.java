@@ -29,15 +29,16 @@ import java.util.Deque;
 import java.util.Iterator;
 import java.util.Objects;
 
-import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableMapCursor;
+
 import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.util.FrequencyEncoder;
 import jdk.graal.compiler.core.common.util.TypeConversion;
 import jdk.graal.compiler.core.common.util.TypeReader;
 import jdk.graal.compiler.core.common.util.TypeWriter;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Edges;
@@ -46,8 +47,8 @@ import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeList;
 import jdk.graal.compiler.graph.NodeMap;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
+import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.replacements.nodes.MethodHandleWithExceptionNode;
-
 import jdk.vm.ci.code.Architecture;
 
 /**
@@ -254,8 +255,8 @@ public class GraphEncoder {
 
         NodeOrder nodeOrder = new NodeOrder(graph);
         int nodeCount = nodeOrder.nextOrderId;
-        assert nodeOrder.orderIds.get(graph.start()) == START_NODE_ORDER_ID;
-        assert nodeOrder.orderIds.get(graph.start().next()) == FIRST_NODE_ORDER_ID;
+        assert nodeOrder.orderIds.get(graph.start()) == START_NODE_ORDER_ID : nodeOrder.orderIds.get(graph.start());
+        assert nodeOrder.orderIds.get(graph.start().next()) == FIRST_NODE_ORDER_ID : nodeOrder.orderIds.get(graph.start().next());
 
         if (nodeReferences != null) {
             for (var nodeReference : nodeReferences) {
@@ -273,8 +274,10 @@ public class GraphEncoder {
             Node node = cursor.getKey();
             Integer orderId = cursor.getValue();
 
-            assert !(node instanceof AbstractBeginNode) || nodeOrder.orderIds.get(((AbstractBeginNode) node).next()) == orderId + BEGIN_NEXT_ORDER_ID_OFFSET;
-            assert nodeStartOffsets[orderId] == 0;
+            assert !(node instanceof AbstractBeginNode) || nodeOrder.orderIds.get(((AbstractBeginNode) node).next()) == orderId + BEGIN_NEXT_ORDER_ID_OFFSET : Assertions.errorMessageContext(
+                            "node",
+                            node, "orderId", orderId);
+            assert nodeStartOffsets[orderId] == 0 : nodeStartOffsets[orderId];
             nodeStartOffsets[orderId] = writer.getBytesWritten();
 
             /* Write out the type, properties, and edges. */
@@ -538,27 +541,27 @@ class GraphComparison {
         Deque<Pair<Node, Node>> workList = new ArrayDeque<>();
 
 
-        assert actualGraph.isRecordingInlinedMethods() == expectedGraph.isRecordingInlinedMethods();
+        assert actualGraph.isRecordingInlinedMethods() == expectedGraph.isRecordingInlinedMethods() : Assertions.errorMessage(actualGraph, expectedGraph);
         if (actualGraph.isRecordingInlinedMethods()) {
             assert expectedGraph.getMethods().equals(actualGraph.getMethods());
         }
 
-        assert actualGraph.allowAssumptions() == expectedGraph.allowAssumptions();
+        assert actualGraph.allowAssumptions() == expectedGraph.allowAssumptions() : Assertions.errorMessage(actualGraph, expectedGraph);
         if (actualGraph.getAssumptions() != null) {
-            assert expectedGraph.getAssumptions().equals(actualGraph.getAssumptions());
+            assert expectedGraph.getAssumptions().equals(actualGraph.getAssumptions()) : Assertions.errorMessage(actualGraph, expectedGraph);
         }
 
-        assert expectedGraph.hasUnsafeAccess() == actualGraph.hasUnsafeAccess();
+        assert expectedGraph.hasUnsafeAccess() == actualGraph.hasUnsafeAccess() : Assertions.errorMessage(actualGraph, expectedGraph);
 
         pushToWorklist(expectedGraph.start(), actualGraph.start(), nodeMapping, workList);
         while (!workList.isEmpty()) {
             Pair<Node, Node> pair = workList.removeFirst();
             Node expectedNode = pair.getLeft();
             Node actualNode = pair.getRight();
-            assert expectedNode.getClass() == actualNode.getClass();
+            assert expectedNode.getClass() == actualNode.getClass() : Assertions.errorMessage(expectedNode, actualNode);
 
             NodeClass<?> nodeClass = expectedNode.getNodeClass();
-            assert nodeClass == actualNode.getNodeClass();
+            assert nodeClass == actualNode.getNodeClass() : Assertions.errorMessage(expectedNode, actualNode);
 
             if (expectedNode instanceof MergeNode) {
                 /* The order of the ends can be different, so ignore them. */
@@ -572,7 +575,7 @@ class GraphComparison {
 
             if (expectedNode instanceof LoopEndNode) {
                 LoopEndNode actualLoopEnd = (LoopEndNode) actualNode;
-                assert actualLoopEnd.loopBegin().loopEnds().snapshot().indexOf(actualLoopEnd) == actualLoopEnd.endIndex();
+                assert actualLoopEnd.loopBegin().loopEnds().snapshot().indexOf(actualLoopEnd) == actualLoopEnd.endIndex() :  Assertions.errorMessage(actualLoopEnd, actualLoopEnd.loopBegin().loopEnds());
             } else {
                 for (int i = 0; i < nodeClass.getData().getCount(); i++) {
                     Object expectedProperty = nodeClass.getData().get(expectedNode, i);
@@ -600,7 +603,7 @@ class GraphComparison {
     protected static void verifyPhi(PhiNode expectedPhi, PhiNode actualPhi, NodeMap<Node> nodeMapping, Deque<Pair<Node, Node>> workList) {
         AbstractMergeNode expectedMergeNode = expectedPhi.merge();
         AbstractMergeNode actualMergeNode = actualPhi.merge();
-        assert actualMergeNode == nodeMapping.get(expectedMergeNode);
+        assert actualMergeNode == nodeMapping.get(expectedMergeNode):Assertions.errorMessage(actualMergeNode,nodeMapping);
 
         for (EndNode expectedEndNode : expectedMergeNode.ends) {
             EndNode actualEndNode = (EndNode) nodeMapping.get(expectedEndNode);
@@ -636,14 +639,14 @@ class GraphComparison {
     }
 
     protected static void verifyNodeEqual(Node expectedNode, Node actualNode, NodeMap<Node> nodeMapping, Deque<Pair<Node, Node>> workList, boolean ignoreEndNode) {
-        assert expectedNode.getClass() == actualNode.getClass();
+        assert expectedNode.getClass() == actualNode.getClass() : Assertions.errorMessage(expectedNode,actualNode);
         if (ignoreEndNode && expectedNode instanceof EndNode) {
             return;
         }
 
         Node existing = nodeMapping.get(expectedNode);
         if (existing != null) {
-            assert existing == actualNode;
+            assert existing == actualNode : Assertions.errorMessage(existing,actualNode);
         } else {
             pushToWorklist(expectedNode, actualNode, nodeMapping, workList);
         }

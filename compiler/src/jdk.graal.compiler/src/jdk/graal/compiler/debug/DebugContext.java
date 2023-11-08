@@ -618,7 +618,7 @@ public final class DebugContext implements AutoCloseable {
                     if (handler instanceof DebugDumpHandler) {
                         dumpHandlers.add((DebugDumpHandler) handler);
                     } else {
-                        assert handler instanceof DebugVerifyHandler;
+                        assert handler instanceof DebugVerifyHandler : handler;
                         verifyHandlers.add((DebugVerifyHandler) handler);
                     }
                 }

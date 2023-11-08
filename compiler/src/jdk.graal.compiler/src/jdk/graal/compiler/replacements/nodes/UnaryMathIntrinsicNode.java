@@ -32,9 +32,9 @@ import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -42,9 +42,9 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.UnaryNode;
 import jdk.graal.compiler.nodes.spi.ArithmeticLIRLowerable;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
@@ -146,7 +146,8 @@ public final class UnaryMathIntrinsicNode extends UnaryNode implements Arithmeti
 
     protected UnaryMathIntrinsicNode(ValueNode value, UnaryOperation op) {
         super(TYPE, op.computeStamp(value.stamp(NodeView.DEFAULT)), value);
-        assert value.stamp(NodeView.DEFAULT) instanceof FloatStamp && PrimitiveStamp.getBits(value.stamp(NodeView.DEFAULT)) == 64;
+        assert value.stamp(NodeView.DEFAULT) instanceof FloatStamp : Assertions.errorMessageContext("value", value);
+        assert PrimitiveStamp.getBits(value.stamp(NodeView.DEFAULT)) == 64 : value;
         this.operation = op;
     }
 

@@ -29,17 +29,20 @@ import static jdk.graal.compiler.hotspot.word.HotSpotOperation.HotspotOpcode.POI
 import static jdk.graal.compiler.nodes.ConstantNode.forBoolean;
 import static org.graalvm.word.LocationIdentity.any;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.bytecode.BridgeMethodUtils;
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.hotspot.nodes.LoadIndexedPointerNode;
 import jdk.graal.compiler.hotspot.nodes.type.KlassPointerStamp;
 import jdk.graal.compiler.hotspot.nodes.type.MetaspacePointerStamp;
 import jdk.graal.compiler.hotspot.nodes.type.MethodPointerStamp;
-import jdk.graal.compiler.hotspot.nodes.LoadIndexedPointerNode;
 import jdk.graal.compiler.hotspot.word.HotSpotOperation;
 import jdk.graal.compiler.hotspot.word.HotSpotOperation.HotspotOpcode;
 import jdk.graal.compiler.hotspot.word.PointerCastNode;
@@ -58,8 +61,6 @@ import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.word.WordOperationPlugin;
 import jdk.graal.compiler.word.WordTypes;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -105,13 +106,13 @@ public class HotSpotWordOperationPlugin extends WordOperationPlugin {
         switch (operation.opcode()) {
             case POINTER_EQ:
             case POINTER_NE:
-                assert args.length == 2;
+                assert args.length == 2 : args;
                 HotspotOpcode opcode = operation.opcode();
                 ValueNode left = args[0];
                 ValueNode right = args[1];
                 assert left.stamp(NodeView.DEFAULT) instanceof MetaspacePointerStamp : left + " " + left.stamp(NodeView.DEFAULT);
                 assert right.stamp(NodeView.DEFAULT) instanceof MetaspacePointerStamp : right + " " + right.stamp(NodeView.DEFAULT);
-                assert opcode == POINTER_EQ || opcode == POINTER_NE;
+                assert opcode == POINTER_EQ || opcode == POINTER_NE : opcode;
 
                 PointerEqualsNode comparison = b.add(new PointerEqualsNode(left, right));
                 ValueNode eqValue = b.add(forBoolean(opcode == POINTER_EQ));
@@ -120,31 +121,31 @@ public class HotSpotWordOperationPlugin extends WordOperationPlugin {
                 break;
 
             case IS_NULL:
-                assert args.length == 1;
+                assert args.length == 1 : args;
                 ValueNode pointer = args[0];
-                assert pointer.stamp(NodeView.DEFAULT) instanceof MetaspacePointerStamp;
+                assert pointer.stamp(NodeView.DEFAULT) instanceof MetaspacePointerStamp : Assertions.errorMessage(pointer);
 
                 LogicNode isNull = b.add(IsNullNode.create(pointer));
                 b.addPush(returnKind, ConditionalNode.create(isNull, b.add(forBoolean(true)), b.add(forBoolean(false)), NodeView.DEFAULT));
                 break;
 
             case FROM_POINTER:
-                assert args.length == 1;
+                assert args.length == 1 : args;
                 b.addPush(returnKind, PointerCastNode.create(StampFactory.forKind(wordKind), args[0]));
                 break;
 
             case TO_KLASS_POINTER:
-                assert args.length == 1;
+                assert args.length == 1 : args;
                 b.addPush(returnKind, PointerCastNode.create(KlassPointerStamp.klass(), args[0]));
                 break;
 
             case TO_METHOD_POINTER:
-                assert args.length == 1;
+                assert args.length == 1 : args;
                 b.addPush(returnKind, PointerCastNode.create(MethodPointerStamp.method(), args[0]));
                 break;
 
             case READ_KLASS_POINTER:
-                assert args.length == 2 || args.length == 3;
+                assert args.length == 2 || args.length == 3 : args;
                 Stamp readStamp = KlassPointerStamp.klass();
                 AddressNode address = makeAddress(b, args[0], args[1]);
                 LocationIdentity location;

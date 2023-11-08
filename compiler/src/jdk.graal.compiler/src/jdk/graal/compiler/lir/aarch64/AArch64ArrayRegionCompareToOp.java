@@ -344,7 +344,7 @@ public final class AArch64ArrayRegionCompareToOp extends AArch64ComplexVectorOp 
                     Register arrayA, Register arrayB, Register len,
                     Register vecArrayA1, Register vecArrayA2, Register vecArrayB1, Register vecArrayB2,
                     Register tmp, Register ret, Label entry, Label nextTail, Label tailLoaded, Label end, int nBytes) {
-        assert nBytes <= 8;
+        assert nBytes <= 8 : nBytes;
         int bitsA = loadBits(strideA, strideMax, nBytes);
         int bitsB = loadBits(strideB, strideMax, nBytes);
         if (strideMax.value < nBytes) {

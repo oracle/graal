@@ -173,7 +173,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
             int wordSize = 8;
             Register scratch = sc.getRegister();
             final int frameSize = frameMap.frameSize();
-            assert totalFrameSize > 0;
+            assert totalFrameSize > 0 : totalFrameSize;
             AArch64Address.AddressingMode addressingMode = AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED;
             if (AArch64Address.isValidImmediateAddress(64, addressingMode, frameSize)) {
                 masm.ldp(64, fp, lr, AArch64Address.createImmediateAddress(64, addressingMode, sp, frameSize));
@@ -200,7 +200,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
             int wordSize = crb.target.arch.getWordSize();
             assert frameSize + 2 * wordSize == totalFrameSize : "total framesize should be framesize + 2 words";
             Register scratch = sc.getRegister();
-            assert totalFrameSize > 0;
+            assert totalFrameSize > 0 : totalFrameSize;
             AArch64Address.AddressingMode addressingMode = AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED;
             if (AArch64Address.isValidImmediateAddress(64, addressingMode, frameSize)) {
                 masm.sub(64, sp, sp, totalFrameSize);
@@ -460,7 +460,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                             masm.mov(scratch, pendingImplicitException.state.deoptSpeculation.asLong());
                             masm.str(qwordSizeInBits, scratch, pendingSpeculation);
                         } else {
-                            assert deoptSpeculation.getJavaKind() == JavaKind.Int;
+                            assert deoptSpeculation.getJavaKind() == JavaKind.Int : deoptSpeculation;
                             AArch64Address pendingSpeculation = AArch64Address.createImmediateAddress(dwordSizeInBits, IMMEDIATE_UNSIGNED_SCALED, thread, config.pendingFailedSpeculationOffset);
                             masm.mov(scratch, pendingImplicitException.state.deoptSpeculation.asInt());
                             masm.str(dwordSizeInBits, scratch, pendingSpeculation);

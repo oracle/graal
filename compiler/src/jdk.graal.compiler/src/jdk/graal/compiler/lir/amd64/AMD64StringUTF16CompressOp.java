@@ -43,11 +43,11 @@ import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.Stride;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -161,7 +161,7 @@ public final class AMD64StringUTF16CompressOp extends AMD64ComplexVectorOp {
         Label labelReturnZero = new Label();
         Label labelDone = new Label();
 
-        assert len.number != result.number;
+        assert len.number != result.number : Assertions.errorMessageContext("len", len, "result", result);
 
         // Save length for return.
         masm.push(len);

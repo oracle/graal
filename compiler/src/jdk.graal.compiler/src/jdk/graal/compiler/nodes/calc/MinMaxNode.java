@@ -33,6 +33,7 @@ import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
@@ -45,7 +46,6 @@ import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
@@ -108,7 +108,7 @@ public abstract class MinMaxNode<OP> extends BinaryArithmeticNode<OP> implements
         if (constantValue.isJavaConstant() && constantValue.asJavaConstant().getJavaKind().isNumericFloat()) {
             JavaConstant constant = constantValue.asJavaConstant();
             JavaKind kind = constant.getJavaKind();
-            assert kind == JavaKind.Float || kind == JavaKind.Double;
+            assert kind == JavaKind.Float || kind == JavaKind.Double : Assertions.errorMessage(constantValue, otherValue, constant, kind);
             if ((kind == JavaKind.Float && Float.isNaN(constant.asFloat())) || (kind == JavaKind.Double && Double.isNaN(constant.asDouble()))) {
                 // If either value is NaN, then the result is NaN.
                 return constantValue;

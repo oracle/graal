@@ -28,12 +28,18 @@ import java.net.URI;
 import java.nio.Buffer;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.truffle.phases.DeoptimizeOnExceptionPhase;
-import jdk.graal.compiler.truffle.phases.InstrumentPhase;
-import jdk.graal.compiler.truffle.substitutions.GraphBuilderInvocationPluginProvider;
-import jdk.graal.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
 import org.graalvm.collections.EconomicMap;
+
+import com.oracle.truffle.compiler.ConstantFieldInfo;
+import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime.InlineKind;
+import com.oracle.truffle.compiler.TruffleSourceLanguagePosition;
+
 import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.SourceLanguagePosition;
@@ -64,15 +70,10 @@ import jdk.graal.compiler.replacements.ReplacementsImpl;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
-
-import com.oracle.truffle.compiler.ConstantFieldInfo;
-import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
-import com.oracle.truffle.compiler.TruffleCompilable;
-import com.oracle.truffle.compiler.TruffleCompilationTask;
-import com.oracle.truffle.compiler.TruffleCompilerRuntime;
-import com.oracle.truffle.compiler.TruffleSourceLanguagePosition;
-import com.oracle.truffle.compiler.TruffleCompilerRuntime.InlineKind;
-
+import jdk.graal.compiler.truffle.phases.DeoptimizeOnExceptionPhase;
+import jdk.graal.compiler.truffle.phases.InstrumentPhase;
+import jdk.graal.compiler.truffle.substitutions.GraphBuilderInvocationPluginProvider;
+import jdk.graal.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -426,7 +427,7 @@ public abstract class PartialEvaluator {
             assert !context.graph.isSubstitution();
             decoder.decode(context.graph.method());
         }
-        assert listener.graphSize == NodeCostUtil.computeGraphSize(listener.graph);
+        assert listener.graphSize == NodeCostUtil.computeGraphSize(listener.graph) : Assertions.errorMessage(listener.graph, listener.graphSize);
     }
 
     /**

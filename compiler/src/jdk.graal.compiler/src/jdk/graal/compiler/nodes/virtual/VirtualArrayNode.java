@@ -29,6 +29,7 @@ import java.nio.ByteOrder;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.Verbosity;
@@ -38,7 +39,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.ArrayLengthProvider;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.nodes.spi.VirtualizerTool;
-
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -124,7 +124,7 @@ public class VirtualArrayNode extends VirtualObjectNode implements ArrayLengthPr
 
     @Override
     public JavaKind entryKind(MetaAccessExtensionProvider metaAccessExtensionProvider, int index) {
-        assert index >= 0 && index < length;
+        assert index >= 0 && index < length : index + " " + length;
         return metaAccessExtensionProvider.getStorageKind(componentType);
     }
 
@@ -164,7 +164,7 @@ public class VirtualArrayNode extends VirtualObjectNode implements ArrayLengthPr
     public static ValueNode virtualizeByteArrayRead(ValueNode entry, JavaKind accessKind, Stamp targetStamp) {
         assert !entry.isIllegalConstant();
         assert targetStamp.getStackKind().isPrimitive();
-        assert accessKind.getBitCount() <= PrimitiveStamp.getBits(targetStamp);
+        assert accessKind.getBitCount() <= PrimitiveStamp.getBits(targetStamp) : Assertions.errorMessageContext("entry", entry, "accessKind", accessKind, "targetStamp", targetStamp);
         return entry;
     }
 }

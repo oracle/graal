@@ -232,22 +232,16 @@ public abstract class ImageHeapScanner {
          */
         AnalysisType type = metaAccess.lookupJavaType(constant);
 
-        ImageHeapConstant newImageHeapConstant;
         if (type.isArray()) {
             Integer length = constantReflection.readArrayLength(constant);
             if (type.getComponentType().isPrimitive()) {
-                newImageHeapConstant = new ImageHeapPrimitiveArray(type, constant, asObject(constant), length);
+                return new ImageHeapPrimitiveArray(type, constant, asObject(constant), length);
             } else {
-                newImageHeapConstant = createImageHeapObjectArray(constant, type, length, reason);
+                return createImageHeapObjectArray(constant, type, length, reason);
             }
         } else {
-            newImageHeapConstant = createImageHeapInstance(constant, type, reason);
-            AnalysisType typeFromClassConstant = (AnalysisType) constantReflection.asJavaType(constant);
-            if (typeFromClassConstant != null) {
-                typeFromClassConstant.registerAsReachable(reason);
-            }
+            return createImageHeapInstance(constant, type, reason);
         }
-        return newImageHeapConstant;
     }
 
     private ImageHeapArray createImageHeapObjectArray(JavaConstant constant, AnalysisType type, int length, ScanReason reason) {
@@ -255,7 +249,7 @@ public abstract class ImageHeapScanner {
         /* Read hosted array element values only when the array is initialized. */
         array.constantData.hostedValuesReader = new AnalysisFuture<>(() -> {
             type.registerAsReachable(reason);
-            ScanReason arrayReason = new ArrayScan(type, constant, reason);
+            ScanReason arrayReason = new ArrayScan(type, array, reason);
             Object[] elementValues = new Object[length];
             for (int idx = 0; idx < length; idx++) {
                 final JavaConstant rawElementValue = constantReflection.readArrayElement(constant, idx);
@@ -275,6 +269,11 @@ public abstract class ImageHeapScanner {
         ImageHeapInstance instance = new ImageHeapInstance(type, constant);
         /* Read hosted field values only when the receiver is initialized. */
         instance.constantData.hostedValuesReader = new AnalysisFuture<>(() -> {
+            /* If this is a Class constant register the corresponding type as reachable. */
+            AnalysisType typeFromClassConstant = (AnalysisType) constantReflection.asJavaType(instance);
+            if (typeFromClassConstant != null) {
+                typeFromClassConstant.registerAsReachable(reason);
+            }
             /* We are about to query the type's fields, the type must be marked as reachable. */
             type.registerAsReachable(reason);
             ResolvedJavaField[] instanceFields = type.getInstanceFields(true);
@@ -289,7 +288,7 @@ public abstract class ImageHeapScanner {
                     continue;
                 }
                 hostedFieldValues[field.getPosition()] = new AnalysisFuture<>(() -> {
-                    ScanReason fieldReason = new FieldScan(field, constant, reason);
+                    ScanReason fieldReason = new FieldScan(field, instance, reason);
                     JavaConstant value = createFieldValue(field, instance, rawFieldValue, fieldReason);
                     instance.setFieldValue(field, value);
                     return value;
@@ -435,6 +434,13 @@ public abstract class ImageHeapScanner {
 
     private void notifyAnalysis(ImageHeapArray array, AnalysisType arrayType, int elementIndex, ScanReason reason, Consumer<ScanReason> onAnalysisModified, JavaConstant elementValue) {
         if (scanningObserver != null && arrayType.getComponentType().getJavaKind() == JavaKind.Object) {
+            if (elementValue.getJavaKind() != JavaKind.Object) {
+                /*
+                 * WordBase values (except RelocatedPointer) are transformed to their raw Int value,
+                 * however an array of such values will still have an Object type.
+                 */
+                return;
+            }
             /* Notify the points-to analysis of the scan. */
             boolean analysisModified = notifyAnalysis(array, arrayType, elementValue, elementIndex, reason);
             if (analysisModified && onAnalysisModified != null) {

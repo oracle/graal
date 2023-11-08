@@ -51,7 +51,7 @@ public class CommunityCompilerConfigurationFactory extends CompilerConfiguration
 
     protected CommunityCompilerConfigurationFactory(int priority, String info) {
         super(NAME, info, priority);
-        assert priority > EconomyCompilerConfigurationFactory.AUTO_SELECTION_PRIORITY;
+        assert priority > EconomyCompilerConfigurationFactory.AUTO_SELECTION_PRIORITY : priority;
     }
 
     @Override

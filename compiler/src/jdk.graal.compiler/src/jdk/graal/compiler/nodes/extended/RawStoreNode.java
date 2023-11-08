@@ -28,22 +28,23 @@ import static jdk.graal.compiler.nodeinfo.InputType.State;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.nodes.java.StoreFieldNode;
-import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.StateSplit;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.java.StoreFieldNode;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.Virtualizable;
 import jdk.graal.compiler.nodes.spi.VirtualizerTool;
-import org.graalvm.word.LocationIdentity;
-
+import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -88,7 +89,7 @@ public class RawStoreNode extends UnsafeAccessNode implements StateSplit, Lowera
         this.value = value;
         this.needsBarrier = needsBarrier;
         this.stateAfter = stateAfter;
-        assert accessKind != JavaKind.Void && accessKind != JavaKind.Illegal;
+        assert accessKind != JavaKind.Void && accessKind != JavaKind.Illegal : Assertions.errorMessageContext("object", object, "offset", offset, "value", value, "accessKind", accessKind);
     }
 
     @NodeIntrinsic
@@ -149,7 +150,7 @@ public class RawStoreNode extends UnsafeAccessNode implements StateSplit, Lowera
 
     @Override
     public ValueNode cloneAsFieldAccess(ResolvedJavaField field) {
-        assert field.getJavaKind() == accessKind() && !field.isInternal();
+        assert field.getJavaKind() == accessKind() && !field.isInternal() : Assertions.errorMessageContext("field", field, "accessKind", accessKind);
         assert graph().isBeforeStage(GraphState.StageFlag.FLOATING_READS) : "cannot add more precise memory location after floating read phase";
         return new StoreFieldNode(field.isStatic() ? null : object(), field, value(), stateAfter(), getMemoryOrder());
     }

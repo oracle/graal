@@ -182,7 +182,7 @@ public final class GraalDirectives {
      * @param probability the probability value between 0.0 and 1.0 that should be injected
      */
     public static boolean injectBranchProbability(double probability, boolean condition) {
-        assert probability >= 0.0 && probability <= 1.0;
+        assert probability >= 0.0 && probability <= 1.0 : "Probability must be between [0D;1D] but is " + probability;
         return condition;
     }
 

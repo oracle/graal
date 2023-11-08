@@ -29,6 +29,7 @@ import jdk.graal.compiler.asm.aarch64.AArch64Address;
 import jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.aarch64.AArch64AddressValue;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
@@ -38,7 +39,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
@@ -149,7 +149,7 @@ public class AArch64AddressNode extends AddressNode implements LIRLowerable {
     }
 
     public void setDisplacement(long displacement, int scaleFactor, AArch64Address.AddressingMode addressingMode) {
-        assert scaleFactor == 1 || bitMemoryTransferSize / Byte.SIZE == scaleFactor;
+        assert scaleFactor == 1 || bitMemoryTransferSize / Byte.SIZE == scaleFactor : Assertions.errorMessageContext("scaleFactor", scaleFactor, "bitMemoryTransfeSize", bitMemoryTransferSize);
         this.displacement = NumUtil.safeToInt(displacement);
         this.scaleFactor = scaleFactor;
         this.addressingMode = addressingMode;

@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Optional;
 
 import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.Position;
@@ -51,7 +52,6 @@ import jdk.graal.compiler.nodes.extended.MultiGuardNode;
 import jdk.graal.compiler.nodes.memory.FixedAccessNode;
 import jdk.graal.compiler.nodes.memory.MemoryAccess;
 import jdk.graal.compiler.phases.Phase;
-
 import jdk.vm.ci.meta.DeoptimizationReason;
 
 /**
@@ -123,7 +123,7 @@ public class InsertGuardFencesPhase extends Phase {
         if (ifNode.trueSuccessor() == beginNode) {
             otherBegin = ifNode.falseSuccessor();
         } else {
-            assert ifNode.falseSuccessor() == beginNode;
+            assert ifNode.falseSuccessor() == beginNode : Assertions.errorMessage(ifNode, ifNode.falseSuccessor(), beginNode);
             otherBegin = ifNode.trueSuccessor();
         }
         if (!(otherBegin.next() instanceof DeoptimizeNode)) {
@@ -144,7 +144,7 @@ public class InsertGuardFencesPhase extends Phase {
         if (ifNode.trueSuccessor() == beginNode) {
             otherBegin = ifNode.falseSuccessor();
         } else {
-            assert ifNode.falseSuccessor() == beginNode;
+            assert ifNode.falseSuccessor() == beginNode : Assertions.errorMessage(ifNode, ifNode.falseSuccessor(), beginNode);
             otherBegin = ifNode.trueSuccessor();
         }
         if (otherBegin.next() instanceof DeoptimizeNode) {

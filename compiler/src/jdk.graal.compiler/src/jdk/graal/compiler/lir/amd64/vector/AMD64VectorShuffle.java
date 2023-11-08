@@ -24,9 +24,6 @@
  */
 package jdk.graal.compiler.lir.amd64.vector;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VEXTRACTF128;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VEXTRACTF32X4;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VEXTRACTF32X8;
@@ -61,6 +58,9 @@ import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPSHUFB;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPXOR;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.XMM;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.ZMM;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMRIOp;
@@ -70,12 +70,12 @@ import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.asm.amd64.AVXKind;
 import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.amd64.AMD64LIRInstruction;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
@@ -114,7 +114,7 @@ public class AMD64VectorShuffle {
 
         public LongToVectorOp(AllocatableValue result, AllocatableValue value) {
             super(TYPE);
-            assert result.getPlatformKind() == AMD64Kind.V128_QWORD || result.getPlatformKind() == AMD64Kind.V256_QWORD || result.getPlatformKind() == AMD64Kind.V512_QWORD;
+            assert result.getPlatformKind() == AMD64Kind.V128_QWORD || result.getPlatformKind() == AMD64Kind.V256_QWORD || result.getPlatformKind() == AMD64Kind.V512_QWORD : result;
             this.result = result;
             this.value = value;
         }
@@ -551,8 +551,8 @@ public class AMD64VectorShuffle {
 
         public ExtractByteOp(AllocatableValue result, AllocatableValue vector, int selector) {
             super(TYPE);
-            assert result.getPlatformKind() == AMD64Kind.DWORD;
-            assert ((AMD64Kind) vector.getPlatformKind()).getScalar() == AMD64Kind.BYTE;
+            assert result.getPlatformKind() == AMD64Kind.DWORD : result;
+            assert ((AMD64Kind) vector.getPlatformKind()).getScalar() == AMD64Kind.BYTE : Assertions.errorMessage(vector);
             this.result = result;
             this.vector = vector;
             this.selector = selector;
@@ -572,8 +572,8 @@ public class AMD64VectorShuffle {
 
         public ExtractShortOp(AllocatableValue result, AllocatableValue vector, int selector) {
             super(TYPE);
-            assert result.getPlatformKind() == AMD64Kind.DWORD;
-            assert ((AMD64Kind) vector.getPlatformKind()).getScalar() == AMD64Kind.WORD;
+            assert result.getPlatformKind() == AMD64Kind.DWORD : result;
+            assert ((AMD64Kind) vector.getPlatformKind()).getScalar() == AMD64Kind.WORD : vector;
             this.result = result;
             this.vector = vector;
             this.selector = selector;
@@ -593,8 +593,8 @@ public class AMD64VectorShuffle {
 
         public ExtractIntOp(AllocatableValue result, AllocatableValue vector, int selector) {
             super(TYPE);
-            assert result.getPlatformKind() == AMD64Kind.DWORD;
-            assert ((AMD64Kind) vector.getPlatformKind()).getScalar() == AMD64Kind.DWORD;
+            assert result.getPlatformKind() == AMD64Kind.DWORD : result;
+            assert ((AMD64Kind) vector.getPlatformKind()).getScalar() == AMD64Kind.DWORD : vector;
             this.result = result;
             this.vector = vector;
             this.selector = selector;
@@ -627,8 +627,8 @@ public class AMD64VectorShuffle {
 
         public ExtractLongOp(AllocatableValue result, AllocatableValue vector, int selector) {
             super(TYPE);
-            assert result.getPlatformKind() == AMD64Kind.QWORD;
-            assert ((AMD64Kind) vector.getPlatformKind()).getScalar() == AMD64Kind.QWORD;
+            assert result.getPlatformKind() == AMD64Kind.QWORD : result;
+            assert ((AMD64Kind) vector.getPlatformKind()).getScalar() == AMD64Kind.QWORD : vector;
             this.result = result;
             this.vector = vector;
             this.selector = selector;

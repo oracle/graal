@@ -76,7 +76,7 @@ public final class IllegalStamp extends Stamp {
 
     @Override
     public Stamp constant(Constant c, MetaAccessProvider meta) {
-        assert ((PrimitiveConstant) c).getJavaKind() == JavaKind.Illegal;
+        assert ((PrimitiveConstant) c).getJavaKind() == JavaKind.Illegal : c;
         return this;
     }
 
@@ -87,13 +87,13 @@ public final class IllegalStamp extends Stamp {
 
     @Override
     public Stamp meet(Stamp other) {
-        assert other instanceof IllegalStamp;
+        assert other instanceof IllegalStamp : other;
         return this;
     }
 
     @Override
     public Stamp join(Stamp other) {
-        assert other instanceof IllegalStamp;
+        assert other instanceof IllegalStamp : other;
         return this;
     }
 
@@ -123,7 +123,7 @@ public final class IllegalStamp extends Stamp {
 
     @Override
     public Stamp improveWith(Stamp other) {
-        assert other instanceof IllegalStamp;
+        assert other instanceof IllegalStamp : other;
         return this;
     }
 

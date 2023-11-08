@@ -113,7 +113,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
         AMD64MacroAssembler asm = (AMD64MacroAssembler) crb.asm;
         int pos = asm.position();
         asm.movl(new AMD64Address(rsp, -bangOffset), AMD64.rax);
-        assert asm.position() - pos >= PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
+        assert asm.position() - pos >= PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE : asm.position() + "-" + pos;
     }
 
     /**
@@ -154,7 +154,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
             }
             if (!isStub && asm.position() == verifiedEntryPointOffset) {
                 asm.subqWide(rsp, frameSize);
-                assert asm.position() - verifiedEntryPointOffset >= PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
+                assert asm.position() - verifiedEntryPointOffset >= PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE : asm.position() + "-" + verifiedEntryPointOffset;
             } else {
                 asm.decrementq(rsp, frameSize);
             }
@@ -380,7 +380,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
                             asm.movl(new AMD64Address(thread, config.pendingFailedSpeculationOffset + 4), (int) (speculationAsLong >> 32));
                         }
                     } else {
-                        assert deoptSpeculation.getJavaKind() == JavaKind.Int;
+                        assert deoptSpeculation.getJavaKind() == JavaKind.Int : deoptSpeculation;
                         int speculationAsInt = pendingImplicitException.state.deoptSpeculation.asInt();
                         asm.movl(new AMD64Address(thread, config.pendingFailedSpeculationOffset), speculationAsInt);
                     }

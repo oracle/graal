@@ -32,6 +32,7 @@ import java.util.List;
 
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
@@ -44,7 +45,6 @@ import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -68,7 +68,7 @@ public class IntegerNegExactOverflowNode extends LogicNode implements Simplifiab
                 if (cst.getJavaKind() == JavaKind.Int) {
                     Math.negateExact(cst.asInt());
                 } else {
-                    assert cst.getJavaKind() == JavaKind.Long;
+                    assert cst.getJavaKind() == JavaKind.Long : Assertions.errorMessage(cst);
                     Math.negateExact(cst.asLong());
                 }
             } catch (ArithmeticException ex) {

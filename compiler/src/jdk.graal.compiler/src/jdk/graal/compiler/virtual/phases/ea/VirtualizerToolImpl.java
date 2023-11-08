@@ -28,6 +28,7 @@ import static jdk.graal.compiler.core.common.GraalOptions.MaximumEscapeAnalysisA
 
 import java.util.List;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
@@ -48,7 +49,6 @@ import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
 import jdk.graal.compiler.nodes.virtual.VirtualInstanceNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -178,7 +178,7 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
             if (entryKind == JavaKind.Int) {
                 if (accessKind.needsTwoSlots()) {
                     // Storing double word value two int slots
-                    assert virtual.entryKind(getMetaAccessExtensionProvider(), index + 1) == JavaKind.Int;
+                    assert virtual.entryKind(getMetaAccessExtensionProvider(), index + 1) == JavaKind.Int : Assertions.errorMessage(virtual, index, value, theAccessKind, offset);
                     state.setEntry(virtual.getObjectId(), index + 1, getIllegalConstant());
                 } else if (oldValue.getStackKind() == JavaKind.Double || oldValue.getStackKind() == JavaKind.Long) {
                     // Splitting double word constant by storing over it with an int

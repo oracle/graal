@@ -29,16 +29,16 @@ import static jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph.common
 import java.util.Iterator;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.Indent;
 import jdk.graal.compiler.lir.LIRInsertionBuffer;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRValueUtil;
+import jdk.graal.compiler.lir.alloc.lsra.Interval.SpillState;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.AllocationPhase;
-import jdk.graal.compiler.lir.alloc.lsra.Interval.SpillState;
-
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
 
@@ -91,7 +91,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends LinearScanAlloca
                     if (firstSpillChild == null || splitChild.from() < firstSpillChild.from()) {
                         firstSpillChild = splitChild;
                     } else {
-                        assert firstSpillChild.from() < splitChild.from();
+                        assert firstSpillChild.from() < splitChild.from() : Assertions.errorMessage(firstSpillChild, splitChild);
                     }
                     // iterate all blocks where the interval has use positions
                     for (BasicBlock<?> splitBlock : blocksForInterval(splitChild)) {

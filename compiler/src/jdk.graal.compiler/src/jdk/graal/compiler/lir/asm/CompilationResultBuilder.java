@@ -24,9 +24,9 @@
  */
 package jdk.graal.compiler.lir.asm;
 
+import static jdk.graal.compiler.core.common.GraalOptions.IsolatedLoopHeaderAlignment;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
-import static jdk.graal.compiler.core.common.GraalOptions.IsolatedLoopHeaderAlignment;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -40,6 +40,7 @@ import java.util.Objects;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.asm.AbstractAddress;
 import jdk.graal.compiler.asm.Assembler;
 import jdk.graal.compiler.asm.Label;
@@ -52,6 +53,7 @@ import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.spi.CodeGenProviders;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.type.DataPointerConstant;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.GraalError;
@@ -69,7 +71,6 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.DebugInfo;
@@ -419,7 +420,7 @@ public class CompilationResultBuilder {
     }
 
     public AbstractAddress asFloatConstRef(JavaConstant value, int alignment) {
-        assert value.getJavaKind() == JavaKind.Float;
+        assert value.getJavaKind() == JavaKind.Float : value;
         return recordDataReferenceInCode(value, alignment);
     }
 
@@ -431,7 +432,7 @@ public class CompilationResultBuilder {
     }
 
     public AbstractAddress asDoubleConstRef(JavaConstant value, int alignment) {
-        assert value.getJavaKind() == JavaKind.Double;
+        assert value.getJavaKind() == JavaKind.Double : value;
         return recordDataReferenceInCode(value, alignment);
     }
 
@@ -439,7 +440,7 @@ public class CompilationResultBuilder {
      * Returns the address of a long constant that is embedded as a data reference into the code.
      */
     public AbstractAddress asLongConstRef(JavaConstant value) {
-        assert value.getJavaKind() == JavaKind.Long;
+        assert value.getJavaKind() == JavaKind.Long : value;
         return recordDataReferenceInCode(value, 8);
     }
 
@@ -457,7 +458,7 @@ public class CompilationResultBuilder {
     public boolean isSuccessorEdge(LabelRef edge) {
         assert lir != null;
         int[] order = lir.codeEmittingOrder();
-        assert order[currentBlockIndex] == edge.getSourceBlock().getId();
+        assert order[currentBlockIndex] == edge.getSourceBlock().getId() : Assertions.errorMessage(order[currentBlockIndex], edge, edge.getSourceBlock());
         BasicBlock<?> nextBlock = LIR.getNextBlock(lir.getControlFlowGraph(), order, currentBlockIndex);
         return nextBlock == edge.getTargetBlock();
     }
@@ -503,8 +504,8 @@ public class CompilationResultBuilder {
      * Emits code for {@code lir} in its {@linkplain LIR#codeEmittingOrder() code emitting order}.
      */
     public void emitLIR() {
-        assert currentBlockIndex == 0;
-        assert lastImplicitExceptionOffset == Integer.MIN_VALUE;
+        assert currentBlockIndex == 0 : currentBlockIndex;
+        assert lastImplicitExceptionOffset == Integer.MIN_VALUE : lastImplicitExceptionOffset;
         this.currentBlockIndex = 0;
         this.lastImplicitExceptionOffset = Integer.MIN_VALUE;
         frameContext.enter(this);
@@ -512,7 +513,9 @@ public class CompilationResultBuilder {
         BasicBlock<?> previousBlock = null;
         for (int blockId : lir.codeEmittingOrder()) {
             BasicBlock<?> b = lir.getBlockById(blockId);
-            assert (b == null && lir.codeEmittingOrder()[currentBlockIndex] == AbstractControlFlowGraph.INVALID_BLOCK_ID) || lir.codeEmittingOrder()[currentBlockIndex] == blockId;
+            assert (b == null && lir.codeEmittingOrder()[currentBlockIndex] == AbstractControlFlowGraph.INVALID_BLOCK_ID) ||
+                            lir.codeEmittingOrder()[currentBlockIndex] == blockId : Assertions.errorMessageContext("b", b, "lir.codeOrder", lir.codeEmittingOrder(), "currentBlockIndex",
+                                            currentBlockIndex, "blockId", blockId);
             if (b != null) {
                 if (b.isAligned() && previousBlock != null) {
                     boolean hasSuccessorB = false;
