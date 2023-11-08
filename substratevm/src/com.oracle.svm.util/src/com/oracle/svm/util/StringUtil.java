@@ -109,4 +109,15 @@ public class StringUtil {
     public static String toDotSeparated(String string) {
         return string.replace('/', '.');
     }
+
+    public static int numberOfCharsInString(char c, String s) {
+        int count = 0;
+        for (int i = 0; i < s.length(); i++) {
+            if (s.charAt(i) == c) {
+                count++;
+            }
+        }
+
+        return count;
+    }
 }

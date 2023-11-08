@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -94,6 +94,11 @@ public class ResourceConfigurationTest {
                 @Override
                 public void addResources(UnresolvedConfigurationCondition condition, String pattern) {
                     addedResources.add(pattern);
+                }
+
+                @Override
+                public void addGlob(UnresolvedConfigurationCondition condition, String module, String glob) {
+                    throw VMError.shouldNotReachHere("Unused function.");
                 }
 
                 @Override

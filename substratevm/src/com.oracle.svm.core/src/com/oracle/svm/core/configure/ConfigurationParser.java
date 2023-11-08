@@ -69,6 +69,8 @@ public abstract class ConfigurationParser {
     public static final String NAME_KEY = "name";
     public static final String TYPE_KEY = "type";
     public static final String PROXY_KEY = "proxy";
+    public static final String MODULE_KEY = "module";
+    public static final String GLOB_KEY = "glob";
     private final Map<String, Set<String>> seenUnknownAttributesByType = new HashMap<>();
     private final boolean strictSchema;
 
