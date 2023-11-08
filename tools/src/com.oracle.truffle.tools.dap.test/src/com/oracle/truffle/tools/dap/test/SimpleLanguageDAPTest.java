@@ -33,12 +33,10 @@ import java.nio.file.StandardOpenOption;
 import org.graalvm.polyglot.Source;
 
 import org.junit.After;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import static com.oracle.truffle.tools.dap.test.DAPTester.getFilePath;
 
-@Ignore("GR-43473")
 public final class SimpleLanguageDAPTest {
 
     private static final String FACTORIAL = "function factorial(n) {\n" +
@@ -1022,7 +1020,7 @@ public final class SimpleLanguageDAPTest {
                 "{\"event\":\"continued\",\"body\":{\"threadId\":1,\"allThreadsContinued\":false},\"type\":\"event\"}",
                 "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":9,\"command\":\"continue\"}"
         );
-        tester.finish();
+        tester.finish(false);
     }
 
     @Test
