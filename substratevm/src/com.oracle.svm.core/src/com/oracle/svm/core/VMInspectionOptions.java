@@ -166,11 +166,7 @@ public final class VMInspectionOptions {
 
     @Fold
     public static boolean hasNmtSupport() {
-        return hasAllOrKeywordMonitoringSupport(MONITORING_NMT_NAME) && !Platform.includedIn(WINDOWS.class); // TODO
-                                                                                                             // no
-                                                                                                             // windows
-                                                                                                             // for
-                                                                                                             // now?
+        return hasAllOrKeywordMonitoringSupport(MONITORING_NMT_NAME) && !Platform.includedIn(WINDOWS.class);
     }
 
     @Option(help = "Dumps all runtime compiled methods on SIGUSR2.", type = OptionType.User) //

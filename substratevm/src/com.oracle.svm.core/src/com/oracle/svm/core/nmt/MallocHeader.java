@@ -30,6 +30,11 @@ import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.PointerBase;
 
+/**
+ * A "malloc header" is used to cache metadata about the native allocation (calloc/realloc/malloc).
+ * To do this, a small amount of additional space is requested contiguous to the user allocation.
+ * This metadata is later used to update the memory tracking once the block is freed.
+ */
 @RawStructure
 public interface MallocHeader extends PointerBase {
     @RawField

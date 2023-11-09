@@ -51,8 +51,9 @@ class MallocMemoryInfo {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void deaccountMalloc(long allocationSize) {
-        count.decrementAndGet();
-        size.addAndGet(-allocationSize);
+        long lastCount = count.decrementAndGet();
+        long lastSize = size.addAndGet(-allocationSize);
+        assert lastSize >= 0 && lastCount >= 0;
     }
 
     long getSize() {

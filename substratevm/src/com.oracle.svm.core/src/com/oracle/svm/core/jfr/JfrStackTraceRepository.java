@@ -51,6 +51,7 @@ import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.jfr.utils.JfrVisited;
 import com.oracle.svm.core.locks.VMMutex;
+import com.oracle.svm.core.nmt.NmtFlag;
 import com.oracle.svm.core.sampler.SamplerSampleWriter;
 import com.oracle.svm.core.sampler.SamplerSampleWriterData;
 import com.oracle.svm.core.sampler.SamplerSampleWriterDataAccess;
@@ -193,7 +194,7 @@ public class JfrStackTraceRepository implements JfrRepository {
              * the thread-local buffer to the C heap because the thread-local buffer will be
              * overwritten or freed at some point.
              */
-            Pointer to = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(size);
+            Pointer to = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(size, NmtFlag.mtTracing.ordinal());
             if (to.isNonNull()) {
                 UnmanagedMemoryUtil.copy(start, to, size);
                 entry.setRawStackTrace(to);

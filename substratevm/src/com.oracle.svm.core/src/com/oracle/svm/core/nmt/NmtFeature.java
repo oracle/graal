@@ -31,16 +31,30 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-
+import com.oracle.svm.core.jdk.RuntimeSupport;
 
 @AutomaticallyRegisteredFeature
 public class NmtFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return isInConfiguration();
+    }
+
+    public static boolean isInConfiguration() {
         return VMInspectionOptions.hasNmtSupport();
     }
+
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(NativeMemoryTracking.class, new NativeMemoryTracking());
     }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        RuntimeSupport runtime = RuntimeSupport.getRuntimeSupport();
+
+        runtime.addShutdownHook(NativeMemoryTracking.shutdownHook());
+        runtime.addStartupHook(NativeMemoryTracking.startupHook());
+    }
+
 }

@@ -76,6 +76,14 @@ public final class UnmanagedMemory {
         return result;
     }
 
+    public static <T extends PointerBase> T malloc(UnsignedWord size, int flag) {
+        T result = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(size, flag);
+        if (result.isNull()) {
+            throw new OutOfMemoryError("malloc of unmanaged memory");
+        }
+        return result;
+    }
+
     /**
      * Allocates {@code size} bytes of unmanaged memory. The content of the memory is undefined.
      * <p>
@@ -138,6 +146,14 @@ public final class UnmanagedMemory {
         return result;
     }
 
+    public static <T extends PointerBase> T realloc(T ptr, UnsignedWord size, int flag) {
+        T result = ImageSingletons.lookup(UnmanagedMemorySupport.class).realloc(ptr, size, flag);
+        if (result.isNull()) {
+            throw new OutOfMemoryError("realloc of unmanaged memory");
+        }
+        return result;
+    }
+
     /**
      * Frees unmanaged memory that was previously allocated using methods of this class.
      *
@@ -148,9 +164,8 @@ public final class UnmanagedMemory {
     }
 
     /**
-     * Temporarily the same as {@link UnmanagedMemory#free(PointerBase)}. Will later be different
-     * because it will not attempt to perform any NMT operations. This is crucial for releasing
-     * memory allocated by C libraries which will not have NMT "malloc headers". If
+     * Will not attempt to perform any NMT operations. This is crucial for releasing memory
+     * allocated by C libraries which will not have NMT "malloc headers". If
      * {@link UnmanagedMemory#free(PointerBase)} is used instead, a segfault will occur.
      */
     public static void untrackedFree(PointerBase ptr) {

@@ -40,7 +40,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.nmt.NmtVirtualMemoryData;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.util.UnsignedUtils;
 
@@ -52,7 +51,7 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
 
     @Override
     @Uninterruptible(reason = "Called during isolate initialization.")
-    public int initialize(Pointer reservedAddressSpace, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer, NmtVirtualMemoryData nmtData) {
+    public int initialize(Pointer reservedAddressSpace, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer) {
         boolean haveDynamicMethodResolution = DynamicMethodAddressResolutionHeapSupport.isEnabled();
         UnsignedWord preHeapRequiredBytes = WordFactory.zero();
         UnsignedWord alignment = WordFactory.unsigned(Heap.getHeap().getPreferredAddressSpaceAlignment());
@@ -72,7 +71,7 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
         Pointer heapBase;
         Pointer allocatedMemory = WordFactory.nullPointer();
         if (reservedAddressSpace.isNull()) {
-            heapBase = allocatedMemory = VirtualMemoryProvider.get().reserve(totalAddressSpaceSize, alignment, false, nmtData);
+            heapBase = allocatedMemory = VirtualMemoryProvider.get().reserve(totalAddressSpaceSize, alignment, false);
             if (allocatedMemory.isNull()) {
                 return CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED;
             }
@@ -101,7 +100,7 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
         Word imageHeapBegin = IMAGE_HEAP_BEGIN.get();
         UnsignedWord imageHeapSizeInFile = getImageHeapSizeInFile();
         Pointer imageHeap = heapBase.add(Heap.getHeap().getImageHeapOffsetInAddressSpace());
-        int result = commitAndCopyMemory(imageHeapBegin, imageHeapSizeInFile, imageHeap, nmtData);
+        int result = commitAndCopyMemory(imageHeapBegin, imageHeapSizeInFile, imageHeap);
         if (result != CEntryPointErrors.NO_ERROR) {
             freeImageHeap(allocatedMemory);
             return result;
@@ -146,8 +145,8 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
     }
 
     @Uninterruptible(reason = "Called during isolate initialization.")
-    protected int commitAndCopyMemory(Pointer loadedImageHeap, UnsignedWord imageHeapSize, Pointer newImageHeap, NmtVirtualMemoryData nmtData) {
-        Pointer actualNewImageHeap = VirtualMemoryProvider.get().commit(newImageHeap, imageHeapSize, Access.READ | Access.WRITE, nmtData);
+    protected int commitAndCopyMemory(Pointer loadedImageHeap, UnsignedWord imageHeapSize, Pointer newImageHeap) {
+        Pointer actualNewImageHeap = VirtualMemoryProvider.get().commit(newImageHeap, imageHeapSize, Access.READ | Access.WRITE);
         if (actualNewImageHeap.isNull() || actualNewImageHeap.notEqual(newImageHeap)) {
             return CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED;
         }

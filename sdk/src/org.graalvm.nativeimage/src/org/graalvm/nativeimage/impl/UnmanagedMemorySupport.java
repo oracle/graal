@@ -49,7 +49,7 @@ public interface UnmanagedMemorySupport {
     <T extends PointerBase> T malloc(UnsignedWord size, int flag);
 
     <T extends PointerBase> T calloc(UnsignedWord size);
-    <T extends PointerBase> T calloc(UnsignedWord size,  int flag);
+    <T extends PointerBase> T calloc(UnsignedWord size, int flag);
 
     <T extends PointerBase> T realloc(T ptr, UnsignedWord size);
     <T extends PointerBase> T realloc(T ptr, UnsignedWord size, int flag);

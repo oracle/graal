@@ -46,6 +46,7 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
+import com.oracle.svm.core.nmt.NmtFlag;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.util.VMError;
 
@@ -55,12 +56,12 @@ final class Target_jdk_internal_misc_Unsafe_Core {
 
     @Substitute
     private long allocateMemory0(long bytes) {
-        return UnmanagedMemory.malloc(WordFactory.unsigned(bytes)).rawValue();
+        return UnmanagedMemory.malloc(WordFactory.unsigned(bytes), NmtFlag.mtOther.ordinal()).rawValue();
     }
 
     @Substitute
     private long reallocateMemory0(long address, long bytes) {
-        return UnmanagedMemory.realloc(WordFactory.unsigned(address), WordFactory.unsigned(bytes)).rawValue();
+        return UnmanagedMemory.realloc(WordFactory.unsigned(address), WordFactory.unsigned(bytes), NmtFlag.mtOther.ordinal()).rawValue();
     }
 
     @Substitute

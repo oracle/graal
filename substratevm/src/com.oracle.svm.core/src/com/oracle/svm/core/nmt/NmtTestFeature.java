@@ -26,22 +26,18 @@
 
 package com.oracle.svm.core.nmt;
 
-import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawStructure;
-import org.graalvm.word.PointerBase;
-import org.graalvm.word.UnsignedWord;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.ImageSingletons;
 
-@RawStructure
-public interface NmtVirtualMemoryData extends PointerBase {
-    @RawField
-    UnsignedWord getReserved();
+/** This feature is required to omit the startup and shutdown hooks. */
+class NmtTestFeature implements Feature {
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(NativeMemoryTracking.class, new NativeMemoryTracking());
+    }
 
-    @RawField
-    void setReserved(UnsignedWord value);
-
-    @RawField
-    UnsignedWord getCommitted();
-
-    @RawField
-    void setCommitted(UnsignedWord value);
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return !NmtFeature.isInConfiguration();
+    }
 }

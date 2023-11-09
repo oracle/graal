@@ -27,10 +27,20 @@ package com.oracle.svm.core.nmt;
 
 import com.oracle.svm.core.Uninterruptible;
 
+/** These category flag names match their counterparts in Hotspot. */
 public enum NmtFlag {
-    Jfr("jfr"),
-    Nmt("native-memory-tracking"),
-    Default("untracked");
+    mtJavaHeap("Java Heap"),
+    mtThread("Thread"),
+    mtThreadStack("Thread Stack"),
+    mtServiceability("Serviceability"),
+    mtGC("GC"),
+    mtInternal("Internal"), // Memory used by VM, outside other categories
+    mtCode("Code"),
+    mtOther("Other"), // Memory not used by VM (Unsafe)
+    mtNMT("Native Memory Tracking"), // Memory used by NMT itself
+    mtTest("Test"), // Test type for verifying NMT
+    mtTracing("Tracing"), // JFR
+    mtNone("Unknown"); // This is the default category
 
     private final String name;
 

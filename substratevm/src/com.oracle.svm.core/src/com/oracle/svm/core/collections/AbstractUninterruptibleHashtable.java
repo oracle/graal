@@ -42,7 +42,7 @@ public abstract class AbstractUninterruptibleHashtable implements Uninterruptibl
     private static final int DEFAULT_TABLE_LENGTH = 2053;
 
     private final UninterruptibleEntry[] table;
-    private int size;
+    protected int size;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public AbstractUninterruptibleHashtable() {
@@ -93,6 +93,26 @@ public abstract class AbstractUninterruptibleHashtable implements Uninterruptibl
             return newEntry;
         }
         return WordFactory.nullPointer();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void remove(UninterruptibleEntry valueOnStack) {
+        int index = Integer.remainderUnsigned(valueOnStack.getHash(), DEFAULT_TABLE_LENGTH);
+        UninterruptibleEntry entry = table[index];
+        UninterruptibleEntry prev = WordFactory.nullPointer();
+        while (entry.isNonNull()) {
+            if (isEqual(valueOnStack, entry)) {
+                if (prev.isNull()) {
+                    table[index] = entry.getNext();
+                } else {
+                    prev.setNext(entry.getNext());
+                }
+                free(entry);
+                return;
+            }
+            prev = entry;
+            entry = entry.getNext();
+        }
     }
 
     @Override

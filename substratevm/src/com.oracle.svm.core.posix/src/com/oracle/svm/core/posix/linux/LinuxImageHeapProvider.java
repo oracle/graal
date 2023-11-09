@@ -58,7 +58,6 @@ import com.oracle.svm.core.code.DynamicMethodAddressResolutionHeapSupport;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.nmt.NmtVirtualMemoryData;
 import com.oracle.svm.core.os.AbstractImageHeapProvider;
 import com.oracle.svm.core.os.CopyingImageHeapProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
@@ -105,7 +104,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
 
     @Override
     @Uninterruptible(reason = "Called during isolate initialization.")
-    public int initialize(Pointer reservedAddressSpace, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer, NmtVirtualMemoryData nmtData) {
+    public int initialize(Pointer reservedAddressSpace, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer) {
         // If we are the first isolate, we might be able to use the existing image heap (see below)
         SignedWord fd = CACHED_IMAGE_FD.get().read();
         boolean firstIsolate = false;
@@ -141,7 +140,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
 
         // If we cannot find or open the image file, fall back to copy it from memory.
         if (fd.equal(CANNOT_OPEN_FD)) {
-            return fallbackCopyingProvider.initialize(reservedAddressSpace, reservedSize, basePointer, endPointer, nmtData);
+            return fallbackCopyingProvider.initialize(reservedAddressSpace, reservedSize, basePointer, endPointer);
         }
 
         boolean haveDynamicMethodResolution = DynamicMethodAddressResolutionHeapSupport.isEnabled();
@@ -199,7 +198,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
         Pointer heapBase;
         Pointer allocatedMemory = WordFactory.nullPointer();
         if (reservedAddressSpace.isNull()) {
-            heapBase = allocatedMemory = VirtualMemoryProvider.get().reserve(totalAddressSpaceSize, alignment, false, nmtData);
+            heapBase = allocatedMemory = VirtualMemoryProvider.get().reserve(totalAddressSpaceSize, alignment, false);
             if (allocatedMemory.isNull()) {
                 return CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED;
             }
@@ -227,7 +226,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
         // Create memory mappings from the image file.
         UnsignedWord fileOffset = CACHED_IMAGE_HEAP_OFFSET.get().read();
         Pointer imageHeap = heapBase.add(imageHeapOffsetInAddressSpace);
-        imageHeap = VirtualMemoryProvider.get().mapFile(imageHeap, imageHeapSizeInFile, fd, fileOffset, Access.READ, nmtData);
+        imageHeap = VirtualMemoryProvider.get().mapFile(imageHeap, imageHeapSizeInFile, fd, fileOffset, Access.READ);
         if (imageHeap.isNull()) {
             freeImageHeap(allocatedMemory);
             return CEntryPointErrors.MAP_HEAP_FAILED;
@@ -235,16 +234,8 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
 
         Pointer relocPointer = IMAGE_HEAP_A_RELOCATABLE_POINTER.get();
         ComparableWord relocatedValue = relocPointer.readWord(0);
-        ComparableWord mappedValue = imageHeap.readWord(relocPointer.subtract(imageHeapBegin)); // ***
-                                                                                                // What
-                                                                                                // is
-                                                                                                // this
-                                                                                                // mappedValue?
+        ComparableWord mappedValue = imageHeap.readWord(relocPointer.subtract(imageHeapBegin));
         if (relocatedValue.notEqual(mappedValue)) {
-            // TODO what is actually happening in this block?
-            // *** this is checking to see if they've been mapped correctly? [GDB: this doesn't
-            // actually get entered it seems]
-
             /*
              * Addresses were relocated by dynamic linker, so copy them, but first remap the pages
              * to avoid swapping them in from disk.

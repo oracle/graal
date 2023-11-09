@@ -46,9 +46,6 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.nmt.NativeMemoryTracking;
-import com.oracle.svm.core.nmt.NmtFlag;
-import com.oracle.svm.core.nmt.NmtVirtualMemoryData;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -125,13 +122,10 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
 
     /** Sentinel value indicating that no special alignment is required. */
     private static final UnsignedWord UNALIGNED = WordFactory.zero();
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean executable) {
-        return reserve(nbytes, alignment, executable, WordFactory.nullPointer());
-    }
+
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean executable, NmtVirtualMemoryData nmtData) {
+    public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean executable) {
         if (nbytes.equal(0)) {
             return WordFactory.nullPointer();
         }
@@ -165,11 +159,6 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
         Pointer reserved = MemoryAPI.VirtualAlloc(WordFactory.nullPointer(), nbytes.add(requiredAlignment), MemoryAPI.MEM_RESERVE(), MemoryAPI.PAGE_NOACCESS());
         if (reserved.isNull()) {
             return WordFactory.nullPointer();
-        }
-        if (nmtData.isNull()) {
-            NativeMemoryTracking.recordReserve(nbytes.add(requiredAlignment), NmtFlag.Default.ordinal());
-        } else {
-            nmtData.setReserved(nmtData.getReserved().add(nbytes.add(requiredAlignment)));
         }
         return requiredAlignment.equal(UNALIGNED) ? reserved : PointerUtils.roundUp(reserved, requiredAlignment);
     }
@@ -295,11 +284,6 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access) {
-        return mapFile(start, nbytes, fileHandle, offset, access, WordFactory.nullPointer());
-    }
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access, NmtVirtualMemoryData nmtData) {
         if ((start.isNonNull() && !isAligned(start)) || nbytes.equal(0)) {
             return WordFactory.nullPointer();
         }
@@ -328,11 +312,6 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
         if (fileView.isNull()) {
             /* Restore a normal allocation as the caller is unaware of placeholders. */
             replacePlaceholder(start, nbytes);
-        }
-        if (nmtData.isNull()) {
-            NativeMemoryTracking.recordCommit(nbytes, NmtFlag.Default.ordinal());
-        } else {
-            nmtData.setCommitted(nmtData.getCommitted().add(nbytes));
         }
         return fileView;
     }
@@ -373,19 +352,8 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer commit(PointerBase start, UnsignedWord nbytes, int access) {
-        return commit(start, nbytes, access, WordFactory.nullPointer());
-    }
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer commit(PointerBase start, UnsignedWord nbytes, int access,  NmtVirtualMemoryData nmtData) {
         if ((start.isNonNull() && !isAligned(start)) || nbytes.equal(0)) {
             return WordFactory.nullPointer();
-        }
-
-        if (nmtData.isNull()) {
-            NativeMemoryTracking.recordCommit(nbytes, NmtFlag.Default.ordinal());
-        } else {
-            nmtData.setCommitted(nmtData.getCommitted().add(nbytes));
         }
 
         /*

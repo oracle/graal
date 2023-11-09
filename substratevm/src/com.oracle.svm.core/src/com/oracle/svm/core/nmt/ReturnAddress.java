@@ -26,33 +26,17 @@
 
 package com.oracle.svm.core.nmt;
 
-import com.oracle.svm.core.Uninterruptible;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
 
-class VirtualMemorySnapshot { // TODO this is the same as MallocMemorySnapshot. Maybe we can reduce
-    // code duplication. Lets do that last once we know ALL the methods
-    // these classes we'll need
-    private VirtualMemoryInfo[] categories;
-    private VirtualMemoryInfo total;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.PointerBase;
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    VirtualMemorySnapshot() {
-        total = new VirtualMemoryInfo();
-        categories = new VirtualMemoryInfo[NmtFlag.values().length];
-        for (int i = 0; i < categories.length; i++) {
-            categories[i] = new VirtualMemoryInfo();
-        }
-    }
+@RawStructure
+public interface ReturnAddress extends PointerBase {
+    @RawField
+    Pointer get();
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    VirtualMemoryInfo getInfoByCategory(int flag) {
-        assert flag < categories.length;
-        return categories[flag];
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    VirtualMemoryInfo getTotalInfo() {
-        return total;
-    }
+    @RawField
+    void set(Pointer value);
 }

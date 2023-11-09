@@ -34,6 +34,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.nmt.NmtFlag;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
 
@@ -61,7 +62,7 @@ public final class JfrBufferAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static JfrBuffer allocate(UnsignedWord dataSize, JfrBufferType bufferType) {
         UnsignedWord headerSize = JfrBufferAccess.getHeaderSize();
-        JfrBuffer result = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(headerSize.add(dataSize));
+        JfrBuffer result = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(headerSize.add(dataSize), NmtFlag.mtTracing.ordinal());
         if (result.isNonNull()) {
             result.setSize(dataSize);
             result.setBufferType(bufferType);

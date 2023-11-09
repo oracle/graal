@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.nmt.NmtFlag;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.thread.NativeSpinLockUtils;
 import com.oracle.svm.core.thread.VMOperation;
@@ -47,7 +48,7 @@ public final class JfrBufferNodeAccess {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static JfrBufferNode allocate(JfrBuffer buffer) {
-        JfrBufferNode node = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(SizeOf.unsigned(JfrBufferNode.class));
+        JfrBufferNode node = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(SizeOf.unsigned(JfrBufferNode.class), NmtFlag.mtTracing.ordinal());
         if (node.isNonNull()) {
             node.setBuffer(buffer);
             node.setNext(WordFactory.nullPointer());
