@@ -30,6 +30,7 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.svm.core.jfr.JfrExecutionSamplerSupported;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -153,7 +154,7 @@ class JfrRecurringCallbackExecutionSamplerFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        if (JfrFeature.isExecutionSamplerSupported() && !ImageSingletons.contains(JfrExecutionSampler.class)) {
+        if (JfrExecutionSamplerSupported.isSupported() && !ImageSingletons.contains(JfrExecutionSampler.class)) {
             JfrRecurringCallbackExecutionSampler sampler = new JfrRecurringCallbackExecutionSampler();
             ImageSingletons.add(JfrExecutionSampler.class, sampler);
 

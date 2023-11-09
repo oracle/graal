@@ -102,6 +102,11 @@ public class SafepointProfilingSampler implements ProfilingSampler, ThreadListen
         prefixTree.reset();
     }
 
+    @Override
+    public boolean isAsyncSampler() {
+        return false;
+    }
+
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate inside the safepoint sampler.")
     private void sampleThreadStack(SamplingStackVisitor.StackTrace stackTrace, SamplerStats samplerStats) {
         samplerStats.started();

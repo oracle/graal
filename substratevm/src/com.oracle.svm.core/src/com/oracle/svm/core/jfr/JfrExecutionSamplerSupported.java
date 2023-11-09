@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.sampler;
 
-import org.graalvm.collections.LockFreePrefixTree;
+package com.oracle.svm.core.jfr;
 
-public interface ProfilingSampler {
-    LockFreePrefixTree prefixTree();
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-    void reset();
+import com.oracle.svm.core.graal.RuntimeCompilation;
 
-    boolean isAsyncSampler();
+/**
+ * Returns {@code true} if the Native Image is built with JFR execution sampler support.
+ */
+@Platforms(Platform.HOSTED_ONLY.class)
+public class JfrExecutionSamplerSupported {
+
+    public static boolean isSupported() {
+        if (ImageSingletons.contains(JfrExecutionSamplerSupported.class)) {
+            return !RuntimeCompilation.isEnabled() && ImageSingletons.lookup(JfrExecutionSamplerSupported.class).isSupported0();
+        } else {
+            return false;
+        }
+    }
+
+    protected boolean isSupported0() {
+        return HasJfrSupport.get();
+    }
 }
