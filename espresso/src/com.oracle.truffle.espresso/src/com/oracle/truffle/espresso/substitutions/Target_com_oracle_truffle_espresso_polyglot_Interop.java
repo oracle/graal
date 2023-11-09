@@ -108,8 +108,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
         /*
          * This method is used to unwrap an espresso object to temporarily use the original interop
-         * value. Foreign exception and converted foreign to guest objects are not unwrapped by
-         * this method.
+         * value. Foreign exception and converted foreign to guest objects are not unwrapped by this
+         * method.
          */
         static Object unwrapForeign(EspressoLanguage language, StaticObject object) {
             if (object.isForeignObject()) {
@@ -3418,7 +3418,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * <p>
      * Throws UnsupportedMessageException if and only if {@link HasHashEntries} returns
      * {@code false}.
-     * 
+     *
      * @since 21.1
      */
     @Substitution
@@ -3484,7 +3484,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * <p>
      * Throws UnknownKeyException if mapping for the specified key is not {@link IsHashEntryReadable
      * readable}, e.g. when the hash does not contain specified key.
-     * 
+     *
      * @see IsHashEntryReadable
      * @see ReadHashValueOrDefault
      * @since 21.1
@@ -3533,7 +3533,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * Throws UnsupportedMessageException if the receiver does not support reading at all. An empty
      * receiver with no readable hash entries supports the read operation (even though there is
      * nothing to read), therefore it returns the {@code defaultValue} for all arguments instead.
-     * 
+     *
      * @see IsHashEntryReadable
      * @see ReadHashValue
      * @since 21.1
@@ -3683,7 +3683,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * <p>
      * Throws UnsupportedTypeException if the provided key type or value type is not allowed to be
      * written.
-     * 
+     *
      * @since 21.1
      */
     @Substitution
@@ -3767,7 +3767,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * <p>
      * Throws UnknownKeyException if the given mapping is not {@link IsHashEntryRemovable
      * removable}, e.g. the receiver does not have a mapping for given key.
-     * 
+     *
      * @see IsHashEntryRemovable
      * @since 21.1
      */
@@ -3885,7 +3885,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * <p>
      * Throws UnsupportedMessageException if and only if {@link HasHashEntries} returns
      * {@code false} for the same receiver.
-     * 
+     *
      * @since 21.1
      */
     @Substitution
@@ -3921,7 +3921,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * <p>
      * Throws UnsupportedMessageException if and only if {@link HasHashEntries} returns
      * {@code false} for the same receiver.
-     * 
+     *
      * @since 21.1
      */
     @Substitution
