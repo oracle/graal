@@ -74,6 +74,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
   },
 
   default_diskspace_required(os, arch, large): {
+    # `os` and `arch` are not yet used
     'diskspace_required': if (large) then '30GB' else '25GB',
   },
 
