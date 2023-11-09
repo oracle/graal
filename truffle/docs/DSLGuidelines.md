@@ -7,51 +7,119 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/DSLGuideline
 
 # Truffle DSL Guidelines
 
-The general high-level guideline for partially evaluated (PE) code is to **minimize code duplication during
+This document describes some Truffle DSL guidelines. Keep in mind that those are only guidelines that do not have
+to be strictly followed in every case. The most important part is the reasoning behind every guideline - use
+that to assess the trade-offs for the specific situation at hand and to chose appropriate solution.
+
+One of the general high-level guidelines for partially evaluated (PE) code is to **minimize code duplication during
 the PE process**. This not only helps the Truffle compilation that uses partial evaluation, but also
 [host inlining](https://github.com/oracle/graal/blob/master/truffle/docs/HostCompilation.md), which
 follows similar rules to PE when compiling the interpreter.
 
-The general high-level guideline for any Truffle interpreter code is to have as little code as possible
+Another general high-level guideline for any Truffle interpreter code is to have as little code as possible
 in order to **minimize the native-image size**. This applies to runtime code and PE code, but is even
 more important for PE code, since native-image also AOT compiles it, but the host-inlining greatly
-increases the amount of code the AOT compilation produces and on top of that native-image also needs
-to retain serialized Graal IR graphs of it for runtime compilation.
+increases the amount of code the AOT compilation produces, and on top of that native-image also needs
+to retain serialized Graal IR graphs of all PE code for runtime compilation.
 
 ## Avoid subclassing for minor changes
 
 Example:
 ```java
-class MyBaseNode extends Node {
-  // ...
+abstract class MyBaseNode extends Node {
+  abstract int execute(Object o);
+
+  @Specialization(guards = "arg == 0")
+  int doZero(int arg) { /* ... */ }
+
+  @Specialization(guards = "arg != 0")
+  int doInt(int arg) { /* ... */ }
 
   @Specialization
-  doIt1(Object arg) { /* ... */ }
+  int doOther(Object o) { throw new AbstractMethodError(); }
+}
 
+abstract class Node1 extends MyBaseNode {
   @Specialization
-  doIt2(Object arg) { /* ... */ }
-
-  // ...
-  abstract int doSomething();
+  @Override
+  final int doOther(Object o) { return 42; }
 }
 
-class Node1 {
+abstract class Node2 extends MyBaseNode {
+  @Specialization
   @Override
-  final int doSomething() { return 42; }
-}
-
-class Node2 {
-  @Override
-  final int doSomething() { return -1; }
+  final int doOther(Object o) { return -1; }
 }
 ```
 
-Why: native-image footprint.
+Why: native-image binary size
 
 Truffle DSL will generate multiple `execute` and `executeAndSpecialize` methods,
 which will contain the same code. Native-image does not deduplicate the code.
 
-Solution: extract the common logic to an inline node and use delegation instead of inheritance.
+Solution: use delegation to a child node instead of inheritance or, if the code is simple enough,
+inline all the implementations and switch on a field value or argument to the execute method.
+Example of the former:
+
+```java
+abstract class MyNodeHandleOther extends Node {
+    abstract int execute(Object o);
+}
+
+abstract class MyNode extends Node {
+  @Child MyNodeHandleOther otherHandler;
+
+  MyNode(MyNodeHandleOther otherHandler) {
+      this.otherHandler = otherHandler;
+  }
+
+  abstract int execute(Object o);
+
+  @Specialization(guards = "arg == 0")
+  int doZero(int arg) { /* ... */ }
+
+  @Specialization(guards = "arg != 0")
+  int doInt(int arg) { /* ... */ }
+
+  @Specialization
+  int doOther(Object o) {
+      return otherHandler.execute(o);
+  }
+}
+```
+
+Alternative solution: if the common code is only one `@Specialization` or there is a simple and efficient guard
+that captures all the common `@Specialization`s, then move the common `@Specialization`s to an inline node and
+in all the former subclasses add one `@Specialization` that delegates to the common inline node.
+
+```java
+@GenerateCached(false)
+@GenerateInline
+abstract class MyCommonNode extends Node {
+  abstract int execute(Node node, Object o);
+
+  @Specialization(guards = "arg == 0")
+  int doZero(int arg) { /* ... */ }
+
+  @Specialization(guards = "arg != 0")
+  int doInt(int arg) { /* ... */ }
+}
+
+abstract class Node1 extends Node {
+    abstract int execute(Object o);
+
+    @Specialization
+    int doInts(int o,
+               @Cached MyCommonNode node) {
+        return node.execute(this, o);
+    }
+
+    @Specialization
+    int doOther(Object o) { return 42; }
+}
+
+// analogically for Node2
+```
 
 ## Avoid duplicated Specializations
 
@@ -61,23 +129,22 @@ When two or more `@Specialization`s differ only in guards or in some minor detai
 that delegate to the same helper method. Example:
 
 ```java
-class MyNode extends Node {
-  // ...
+abstract class MyNode extends Node {
+  abstract void execute(Object o);
 
   @Specialization
-  void doIt1(MyObject1 o) { helper(o); }
+  void doObj1(MyObject1 o) { helper(o); }
 
   @Specialization
-  void doIt2(MyObject2 o) { helper(o); }
+  void doObj2(MyObject2 o) { helper(o); }
 
   void helper(Object o) { /* some code */ }
 
-  // ... maybe more @Specializations
+  // ... more @Specializations
 }
 ```
 
 Why:
-* native-image footprint
 * code duplication during PE
 
 We want to reduce code duplication as seen by PE process and not by the developer. Refactoring the code
@@ -90,46 +157,33 @@ For instance, with host inlining and our code example, the cost of fully inlinin
 
 Solution: refactor the code to avoid the duplication. The concrete approach differs depending on concrete
 situation. There is no one-size-fits-all solution. General advice is to try to merge the `@Specialization`s
-that contain the code duplication. For our example:
+that contain the code duplication. One can create an inline node that profiles the now merged conditions
+that used to be implicitly profiled by being separate `@Specialization`s. For example:
 
-```java
-class MyNode extends Node {
-  // ...
-  static boolean isMyObject1or2(Object o) {
-    return o instanceof MyObject1 || o instanceof MyObject2;
-  }
-
-  @Specialization(guards = "isMyObject1or2(o)")
-  void doIt1(Object o) { helper(o); }
-}
-```
-
-Some additional tips that may not always be applicable:
-
-* If there is a concern that the individual "merged" checks are not profiled, one create an inline node
-to profile the individual checks. For our example:
 ```java
 @GenerateInline
 @GenerateCached(false)
-class GuardNode extends Node {
-  public boolean execute(Node inliningTarget, Object o);
+abstract class GuardNode extends Node {
+  abstract boolean execute(Node inliningTarget, Object o);
 
   @Specialization
-  static boolean o1(MyObject1 o) { return true; }
+  static boolean doObj1(MyObject1 o) { return true; }
 
   @Specialization
-  static boolean o2(MyObject2 o) { return true; }
+  static boolean doObj2(MyObject2 o) { return true; }
 
   @Fallback
-  static boolean o2(Object o) { return false; }
+  static boolean doFallback(Object o) { return false; }
 }
 
-class MyNode extends Node {
-  // ...
+abstract class MyNode extends Node {
+  abstract void execute(Object o);
 
-  @Specialization(guards = "guardNode.execute(this, o)")
-  void doIt1(Object o,
+  @Specialization(guards = "guardNode.execute(this, o)", limit = "1")
+  void doObj(Object o,
              @Cached GuardNode guardNode) { helper(o); }
+
+  // ...other @Specializations
 }
 ```
 
@@ -137,14 +191,12 @@ Note that if the guard needs to be used for multiple specializations, or will be
 we are duplicating the guard logic in the same way as we were duplicating the logic inside the specializations.
 This may be acceptable as guards tend to be simple, but the user needs to assess if that is a good trade-off.
 
-* Push any checks that would be done in the guard(s) into the `@Specialization` body and profile them using cheap inline profiles.
-
 ## Avoid duplicated calls to helper methods/nodes
 
 Example:
-```
+```java
 @Specialization
-void foo(boolean b, Object o) {
+void doDefault(boolean b, Object o) {
   if (b) {
     helper.execute(o, 42);
   } else {
@@ -159,7 +211,7 @@ Why: code duplication during PE
 The PE process has to explore each call separately and only in later phases the Graal compiler may deduplicate the code.
 
 Solution: common-out the calls if possible
-```
+```java
   int num = b ? 42 : -1;
   helper.execute(o, num);
 ```
@@ -208,9 +260,9 @@ shared nodes along with their inlining target node to the inner node.
 Avoid inlining large nodes that are used only on rarely executed code-paths.
 
 Example:
-```
+```java
 @Specialization
-void s1(Object arg,
+void doObject(Object arg,
     @Bind("this") Node inliningTarget,
     @Cached LargeInlineNode n) {
 
@@ -221,7 +273,7 @@ void s1(Object arg,
 }
 ```
 
-Why: memory footprint.
+Why: runtime memory footprint
 
 All the fields of `LargeInlineNode` node will be inlined into the caller node (or Specialization data-class)
 increasing its memory footprint significantly.
