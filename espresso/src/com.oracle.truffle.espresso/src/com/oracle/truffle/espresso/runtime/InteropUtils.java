@@ -71,7 +71,7 @@ public class InteropUtils {
         }
         // We need to unwrap foreign exceptions which are stored in guest throwable backtrace.
         // They only exist if polyglot is in use though.
-        if (meta.polyglot == null || object.getKlass() == null) {
+        if (meta.polyglot == null || StaticObject.isNull(object)) {
             return object;
         }
         if (meta.java_lang_Throwable.isAssignableFrom(object.getKlass())) {
