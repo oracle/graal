@@ -26,9 +26,9 @@ package com.oracle.svm.core.code;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.util.TypeConversion;
-import org.graalvm.compiler.options.Option;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.util.TypeConversion;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -200,7 +200,7 @@ public final class CodeInfoDecoder {
             }
         }
 
-        assert entryIP == method;
+        assert entryIP == method : entryIP;
         assert decodeMethodStart(loadEntryFlags(info, entryOffset), sizeEncoding);
 
         do {
@@ -351,7 +351,7 @@ public final class CodeInfoDecoder {
     }
 
     private static boolean decodeMethodStart(int entryFlags, long sizeEncoding) {
-        assert sizeEncoding != initialSizeEncoding();
+        assert sizeEncoding != initialSizeEncoding() : sizeEncoding;
 
         switch (extractFS(entryFlags)) {
             case FS_NO_CHANGE:

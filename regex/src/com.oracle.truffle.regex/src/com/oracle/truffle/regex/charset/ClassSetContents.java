@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.regex.charset;
 
-import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
+import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import org.graalvm.collections.EconomicSet;
@@ -93,7 +93,7 @@ public final class ClassSetContents implements JsonConvertible {
     }
 
     public static ClassSetContents createPOSIXCollationElement(int codePoint) {
-        return new ClassSetContents(Kind.POSIXCollationElement, CodePointSet.create(codePoint), EconomicSet.create(), true);
+        return new ClassSetContents(Kind.POSIXCollationElement, CodePointSet.create(codePoint), EconomicSet.create(), false);
     }
 
     public static ClassSetContents createPOSIXCollationElement(String string) {
@@ -103,7 +103,7 @@ public final class ClassSetContents implements JsonConvertible {
     }
 
     public static ClassSetContents createPOSIXCollationEquivalenceClass(int codePoint) {
-        return new ClassSetContents(Kind.POSIXCollationEquivalenceClass, CodePointSet.create(codePoint), EconomicSet.create(), true);
+        return new ClassSetContents(Kind.POSIXCollationEquivalenceClass, CodePointSet.create(codePoint), EconomicSet.create(), false);
     }
 
     public static ClassSetContents createPOSIXCollationEquivalenceClass(String string) {
@@ -115,9 +115,9 @@ public final class ClassSetContents implements JsonConvertible {
     public ClassSetContents caseFold(CodePointSetAccumulator tmp) {
         EconomicSet<String> foldedStrings = EconomicSet.create(strings.size());
         for (String string : strings) {
-            foldedStrings.add(CaseFoldTable.simpleCaseFold(string));
+            foldedStrings.add(CaseFoldData.icuSimpleCaseFold(string));
         }
-        return new ClassSetContents(kind, CaseFoldTable.simpleCaseFold(codePointSet, tmp), foldedStrings, mayContainStrings);
+        return new ClassSetContents(kind, CaseFoldData.simpleCaseFold(codePointSet, tmp), foldedStrings, mayContainStrings);
     }
 
     public EconomicSet<String> getStrings() {
@@ -134,6 +134,10 @@ public final class ClassSetContents implements JsonConvertible {
 
     public boolean isRange() {
         return kind == Kind.Range;
+    }
+
+    public boolean isPosixCollationEquivalenceClass() {
+        return kind == Kind.POSIXCollationEquivalenceClass;
     }
 
     public boolean isAllowedInRange() {

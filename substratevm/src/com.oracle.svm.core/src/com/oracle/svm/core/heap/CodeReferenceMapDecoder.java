@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.heap;
 
-import org.graalvm.compiler.core.common.util.AbstractTypeReader;
-import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
+import jdk.graal.compiler.core.common.util.AbstractTypeReader;
+import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;

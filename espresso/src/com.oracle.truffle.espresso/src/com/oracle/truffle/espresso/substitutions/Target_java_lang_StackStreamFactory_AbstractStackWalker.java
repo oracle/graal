@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 @EspressoSubstitutions(nameProvider = Target_java_lang_StackStreamFactory_AbstractStackWalker.Provider.class)
 public final class Target_java_lang_StackStreamFactory_AbstractStackWalker {

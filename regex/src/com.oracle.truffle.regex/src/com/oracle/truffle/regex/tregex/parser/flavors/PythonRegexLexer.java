@@ -46,6 +46,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
+import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
 import org.graalvm.shadowed.com.ibm.icu.lang.UCharacter;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -59,7 +60,6 @@ import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.PyErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
 import com.oracle.truffle.regex.charset.ClassSetContents;
 import com.oracle.truffle.regex.tregex.parser.RegexLexer;
 import com.oracle.truffle.regex.tregex.parser.Token;
@@ -168,14 +168,6 @@ public final class PythonRegexLexer extends RegexLexer {
         super(source, compilationBuffer);
         this.mode = mode;
         this.globalFlags = new PythonFlags(source.getFlags());
-        parseInlineGlobalFlags();
-        if (globalFlags.isVerbose() && source.getFlags().indexOf('x') == -1) {
-            // The global verbose flag was set inside the expression. Let's scan it for global
-            // flags again.
-            globalFlags = new PythonFlags(source.getFlags()).addFlag('x');
-            parseInlineGlobalFlags();
-        }
-        globalFlags = globalFlags.fixFlags(source, mode);
     }
 
     private static int lookupCharacterByName(String characterName) {
@@ -206,98 +198,24 @@ public final class PythonRegexLexer extends RegexLexer {
         return localeData;
     }
 
-    private void parseInlineGlobalFlags() {
-        Deque<Boolean> groupVerbosityStack = new ArrayDeque<>();
-        groupVerbosityStack.push(globalFlags.isVerbose());
-        while (findChars('[', '(', ')', '#')) {
-            if (isEscaped()) {
-                advance();
-            } else {
-                switch (consumeChar()) {
-                    case '[':
-                        // skip first char after '[' because a ']' directly after the opening
-                        // bracket doesn't close the character class in python
-                        advance();
-                        // find end of character class
-                        while (findChars(']')) {
-                            if (!isEscaped()) {
-                                break;
-                            }
-                            advance();
-                        }
-                        break;
-                    case '(':
-                        if (consumingLookahead("?") && !atEnd()) {
-                            int ch = consumeChar();
-                            if (ch == '#') {
-                                while (findChars(')')) {
-                                    if (!isEscaped()) {
-                                        break;
-                                    }
-                                    advance();
-                                }
-                            } else {
-                                PythonFlags positiveFlags = PythonFlags.EMPTY_INSTANCE;
-                                while (!atEnd() && PythonFlags.isValidFlagChar(ch)) {
-                                    positiveFlags = addFlag(positiveFlags, ch);
-                                    ch = consumeChar();
-                                }
-                                if (!positiveFlags.equals(PythonFlags.EMPTY_INSTANCE) || ch == '-') {
-                                    switch (ch) {
-                                        case ')':
-                                            globalFlags = globalFlags.addFlags(positiveFlags);
-                                            break;
-                                        case ':':
-                                            groupVerbosityStack.push(groupVerbosityStack.peek() || positiveFlags.isVerbose());
-                                            break;
-                                        case '-':
-                                            if (atEnd()) {
-                                                // malformed local flags
-                                                continue;
-                                            }
-                                            ch = consumeChar();
-                                            PythonFlags negativeFlags = PythonFlags.EMPTY_INSTANCE;
-                                            while (!atEnd() && PythonFlags.isValidFlagChar(ch)) {
-                                                negativeFlags = negativeFlags.addFlag(ch);
-                                                ch = consumeChar();
-                                            }
-                                            groupVerbosityStack.push((groupVerbosityStack.peek() || positiveFlags.isVerbose()) && !negativeFlags.isVerbose());
-                                            break;
-                                        default:
-                                            // malformed local flags
-                                            break;
-                                    }
-                                } else {
-                                    // not inline flags after all
-                                    groupVerbosityStack.push(groupVerbosityStack.peek());
-                                }
-                            }
-                        } else {
-                            groupVerbosityStack.push(groupVerbosityStack.peek());
-                        }
-                        break;
-                    case ')':
-                        if (groupVerbosityStack.size() > 1) {
-                            groupVerbosityStack.pop();
-                        }
-                        break;
-                    case '#':
-                        if (groupVerbosityStack.peek() && findChars('\n')) {
-                            advance();
-                        }
-                        break;
-                }
-            }
-        }
-        position = 0;
+    public void fixFlags() {
+        globalFlags = globalFlags.fixFlags(source, mode);
     }
 
-    PythonFlags getGlobalFlags() {
+    public PythonFlags getGlobalFlags() {
         return globalFlags;
     }
 
-    PythonFlags getLocalFlags() {
+    public void addGlobalFlags(PythonFlags newGlobalFlags) {
+        globalFlags = globalFlags.addFlags(newGlobalFlags);
+    }
+
+    public PythonFlags getLocalFlags() {
         return flagsStack.isEmpty() ? globalFlags : flagsStack.peek();
+    }
+
+    public void pushLocalFlags(PythonFlags localFlags) {
+        flagsStack.push(localFlags);
     }
 
     public void popLocalFlags() {
@@ -326,6 +244,11 @@ public final class PythonRegexLexer extends RegexLexer {
 
     @Override
     protected boolean featureEnabledBoundedQuantifierEmptyMin() {
+        return true;
+    }
+
+    @Override
+    protected boolean featureEnabledPossessiveQuantifiers() {
         return true;
     }
 
@@ -414,8 +337,8 @@ public final class PythonRegexLexer extends RegexLexer {
         if (getLocalFlags().isLocale()) {
             getLocaleData().caseFoldUnfold(charClass, caseFoldTmp);
         } else {
-            CaseFoldTable.CaseFoldingAlgorithm caseFolding = getLocalFlags().isUnicode(mode) ? CaseFoldTable.CaseFoldingAlgorithm.PythonUnicode : CaseFoldTable.CaseFoldingAlgorithm.PythonAscii;
-            CaseFoldTable.applyCaseFoldUnfold(charClass, caseFoldTmp, caseFolding);
+            CaseFoldData.CaseFoldUnfoldAlgorithm caseFolding = getLocalFlags().isUnicode(mode) ? CaseFoldData.CaseFoldUnfoldAlgorithm.PythonUnicode : CaseFoldData.CaseFoldUnfoldAlgorithm.PythonAscii;
+            CaseFoldData.applyCaseFoldUnfold(charClass, caseFoldTmp, caseFolding);
         }
     }
 
@@ -487,7 +410,7 @@ public final class PythonRegexLexer extends RegexLexer {
     @Override
     protected Token handleBoundedQuantifierSyntaxError() throws RegexSyntaxException {
         position = getLastTokenPosition() + 1;
-        return charClass('{');
+        return literalChar('{');
     }
 
     @Override
@@ -614,7 +537,7 @@ public final class PythonRegexLexer extends RegexLexer {
 
     @Override
     protected RegexSyntaxException handleUnmatchedLeftBracket() {
-        return syntaxErrorAtAbs(PyErrorMessages.UNTERMINATED_CHARACTER_SET, getLastTokenPosition());
+        return syntaxErrorAtAbs(PyErrorMessages.UNTERMINATED_CHARACTER_SET, getLastCharacterClassBeginPosition());
     }
 
     @Override
@@ -635,7 +558,7 @@ public final class PythonRegexLexer extends RegexLexer {
             if (codePoint > 0xff) {
                 handleOctalOutOfRange();
             }
-            return charClass(codePoint);
+            return literalChar(codePoint);
         }
         return null;
     }
@@ -747,6 +670,8 @@ public final class PythonRegexLexer extends RegexLexer {
                         throw syntaxErrorAtRel(PyErrorMessages.unknownExtensionP(ch2), 3);
                 }
             }
+            case '>':
+                return Token.createAtomicGroupBegin();
             case '(':
                 return parseConditionalBackReference();
             case '-':
@@ -810,7 +735,7 @@ public final class PythonRegexLexer extends RegexLexer {
                     groupNumber = namedCaptureGroups.get(result.groupName).get(0);
                     namedReference = true;
                 } else {
-                    throw syntaxErrorAtRel(PyErrorMessages.unknownGroupName(result.groupName), result.groupName.length() + 1);
+                    throw syntaxErrorAtRel(PyErrorMessages.unknownGroupName(result.groupName, mode), result.groupName.length() + 1);
                 }
                 break;
             default:
@@ -917,7 +842,6 @@ public final class PythonRegexLexer extends RegexLexer {
             PythonFlags otherTypes = PythonFlags.TYPE_FLAGS_INSTANCE.delFlags(positiveFlags);
             newFlags = newFlags.delFlags(otherTypes);
         }
-        flagsStack.push(newFlags);
         return Token.createInlineFlags(newFlags, false);
     }
 
@@ -945,7 +869,7 @@ public final class PythonRegexLexer extends RegexLexer {
                     assert namedCaptureGroups.get(result.groupName).size() == 1;
                     return Token.createBackReference(namedCaptureGroups.get(result.groupName).get(0), true);
                 } else {
-                    throw syntaxErrorAtRel(PyErrorMessages.unknownGroupName(result.groupName), result.groupName.length() + 1);
+                    throw syntaxErrorAtRel(PyErrorMessages.unknownGroupName(result.groupName, mode), result.groupName.length() + 1);
                 }
             default:
                 throw CompilerDirectives.shouldNotReachHere();

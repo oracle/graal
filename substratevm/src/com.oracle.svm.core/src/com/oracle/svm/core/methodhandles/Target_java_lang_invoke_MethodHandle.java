@@ -42,11 +42,9 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.invoke.MethodHandleUtils;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
-import com.oracle.svm.core.jdk.JDK21OrLater;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_AccessibleObject;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Method;
@@ -139,7 +137,6 @@ final class Target_java_lang_invoke_MethodHandle {
     }
 
     @Substitute(polymorphicSignature = true)
-    @TargetElement(onlyWith = JDK21OrLater.class)
     static Object linkToNative(Object... args) throws Throwable {
         if (LinkToNativeSupport.isAvailable()) {
             return LinkToNativeSupport.singleton().linkToNative(args);

@@ -25,6 +25,7 @@
 package com.oracle.svm.truffle.api;
 
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.GC_LOCATIONS;
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -33,12 +34,12 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.deopt.DeoptimizationRuntime;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -61,7 +62,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 
 public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
 
-    public static final SubstrateForeignCallDescriptor FOREIGN_POLL = SnippetRuntime.findForeignCall(SubstrateThreadLocalHandshake.class, "pollStub", true, GC_LOCATIONS);
+    public static final SubstrateForeignCallDescriptor FOREIGN_POLL = SnippetRuntime.findForeignCall(SubstrateThreadLocalHandshake.class, "pollStub", NO_SIDE_EFFECT, GC_LOCATIONS);
 
     static final SubstrateThreadLocalHandshake SINGLETON = new SubstrateThreadLocalHandshake();
 

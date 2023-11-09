@@ -27,8 +27,8 @@ package com.oracle.svm.core.jfr;
 import java.lang.reflect.Field;
 import java.util.List;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.NumUtil;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -92,7 +92,7 @@ public class SubstrateJVM {
     private String dumpPath;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateJVM(List<Configuration> configurations) {
+    public SubstrateJVM(List<Configuration> configurations, boolean writeFile) {
         this.knownConfigurations = configurations;
 
         options = new JfrOptionSet();
@@ -112,7 +112,7 @@ public class SubstrateJVM {
         threadLocal = new JfrThreadLocal();
         globalMemory = new JfrGlobalMemory();
         samplerBufferPool = new SamplerBufferPool();
-        unlockedChunkWriter = new JfrChunkWriter(globalMemory, stackTraceRepo, methodRepo, typeRepo, symbolRepo, threadRepo);
+        unlockedChunkWriter = writeFile ? new JfrChunkFileWriter(globalMemory, stackTraceRepo, methodRepo, typeRepo, symbolRepo, threadRepo) : new JfrChunkNoWriter();
         recorderThread = new JfrRecorderThread(globalMemory, unlockedChunkWriter);
 
         jfrLogging = new JfrLogging();
@@ -486,7 +486,7 @@ public class SubstrateJVM {
      * See {@link JVM#flush}.
      */
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    public boolean flush(Target_jdk_jfr_internal_EventWriter writer, int uncommittedSize, int requestedSize) {
+    public boolean flush(Target_jdk_jfr_internal_event_EventWriter writer, int uncommittedSize, int requestedSize) {
         assert writer != null;
         assert uncommittedSize >= 0;
 
@@ -524,8 +524,13 @@ public class SubstrateJVM {
     @Uninterruptible(reason = "Accesses a native JFR buffer.")
     public long commit(long nextPosition) {
         assert nextPosition != 0 : "invariant";
-        JfrBuffer current = threadLocal.getJavaBuffer();
-        assert current.isNonNull() : "invariant";
+
+        JfrBuffer current = threadLocal.getExistingJavaBuffer();
+        if (current.isNull()) {
+            /* This is a commit for a recording session that is no longer active - ignore it. */
+            return nextPosition;
+        }
+
         Pointer next = WordFactory.pointer(nextPosition);
         assert next.aboveOrEqual(current.getCommittedPos()) : "invariant";
         assert next.belowOrEqual(JfrBufferAccess.getDataEnd(current)) : "invariant";
@@ -627,14 +632,14 @@ public class SubstrateJVM {
     /**
      * See {@link JVM#getEventWriter}.
      */
-    public Target_jdk_jfr_internal_EventWriter getEventWriter() {
+    public Target_jdk_jfr_internal_event_EventWriter getEventWriter() {
         return JfrThreadLocal.getEventWriter();
     }
 
     /**
      * See {@link JVM#newEventWriter}.
      */
-    public Target_jdk_jfr_internal_EventWriter newEventWriter() {
+    public Target_jdk_jfr_internal_event_EventWriter newEventWriter() {
         return threadLocal.newEventWriter();
     }
 
@@ -695,26 +700,6 @@ public class SubstrateJVM {
 
     public Object getConfiguration(Class<? extends Event> eventClass) {
         return DynamicHub.fromClass(eventClass).getJfrEventConfiguration();
-    }
-
-    public void setExcluded(Thread thread, boolean excluded) {
-        JfrThreadLocal.setExcluded(thread, excluded);
-    }
-
-    public boolean isExcluded(Thread thread) {
-        /*
-         * Only the current thread is passed to this method in JDK 17, 19, and 20. Eventually, we
-         * will need to implement that in a more general way though, see GR-44616.
-         */
-        if (!thread.equals(Thread.currentThread())) {
-            return false;
-        }
-        return isCurrentThreadExcluded();
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean isCurrentThreadExcluded() {
-        return JfrThreadLocal.isCurrentThreadExcluded();
     }
 
     private static class JfrBeginRecordingOperation extends JavaVMOperation {

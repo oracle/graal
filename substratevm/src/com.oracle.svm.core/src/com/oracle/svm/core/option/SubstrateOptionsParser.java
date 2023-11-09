@@ -33,9 +33,6 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.options.OptionDescriptor;
-import org.graalvm.compiler.options.OptionDescriptors;
-import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -46,6 +43,10 @@ import com.oracle.svm.common.option.UnsupportedOptionClassException;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
+
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionDescriptors;
+import jdk.graal.compiler.options.OptionKey;
 
 /**
  * This class contains methods for parsing options and matching them against
@@ -175,16 +176,22 @@ public class SubstrateOptionsParser {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public static String commandArgument(OptionKey<?> option, String value, String apiOptionName) {
+        /* Ensure descriptor is loaded */
+        OptionDescriptor optionDescriptor = option.loadDescriptor();
         Field field;
+        APIOption[] apiOptions;
         try {
-            field = option.getDescriptor().getDeclaringClass().getDeclaredField(option.getDescriptor().getFieldName());
+            field = optionDescriptor.getDeclaringClass().getDeclaredField(optionDescriptor.getFieldName());
+            apiOptions = field.getAnnotationsByType(APIOption.class);
         } catch (ReflectiveOperationException ex) {
-            throw VMError.shouldNotReachHere(ex);
+            /*
+             * Options whose fields cannot be looked up (e.g., due to stripped sources) cannot be
+             * API options by definition.
+             */
+            apiOptions = new APIOption[0];
         }
 
-        APIOption[] apiOptions = field.getAnnotationsByType(APIOption.class);
-
-        if (option.getDescriptor().getOptionValueType() == Boolean.class) {
+        if (optionDescriptor.getOptionValueType() == Boolean.class) {
             VMError.guarantee(value.equals("+") || value.equals("-"), "Boolean option value can be only + or -");
             for (APIOption apiOption : apiOptions) {
                 String selected = selectVariant(apiOption, apiOptionName);
@@ -195,7 +202,9 @@ public class SubstrateOptionsParser {
                     }
                 }
             }
-            return HOSTED_OPTION_PREFIX + value + option;
+            String optionString = HOSTED_OPTION_PREFIX + value + option;
+            assert apiOptionName == null : "The API option " + apiOptionName + " not found for " + optionString;
+            return optionString;
         } else {
             String apiOptionWithValue = null;
             for (APIOption apiOption : apiOptions) {
@@ -210,7 +219,8 @@ public class SubstrateOptionsParser {
                                 apiOptionWithValue = optionName;
                             } else {
                                 /* Option with custom value. Use form with valueSeparator */
-                                apiOptionWithValue = optionName + apiOption.valueSeparator()[0] + value;
+                                String valueSeparator = APIOption.Utils.valueSeparatorToString(apiOption.valueSeparator()[0]);
+                                apiOptionWithValue = optionName + valueSeparator + value;
                             }
                         }
                     } else if (apiOption.fixedValue()[0].equals(value)) {

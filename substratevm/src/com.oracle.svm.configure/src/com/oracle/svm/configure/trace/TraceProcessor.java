@@ -31,7 +31,7 @@ import java.io.StringWriter;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.util.json.JSONParser;
+import jdk.graal.compiler.util.json.JSONParser;
 
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.util.LogUtils;

@@ -26,7 +26,7 @@ package com.oracle.svm.configure.trace;
 
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.phases.common.LazyValue;
+import jdk.graal.compiler.phases.common.LazyValue;
 
 public class LazyValueUtils {
     static final LazyValue<?> NULL_VALUE = new LazyValue<>(() -> null);

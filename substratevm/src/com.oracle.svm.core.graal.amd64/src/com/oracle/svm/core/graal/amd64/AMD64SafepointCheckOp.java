@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
-import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.asm.amd64.AMD64Assembler;
-import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
-import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.Opcode;
-import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
-import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.asm.amd64.AMD64Address;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler;
+import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
+import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.Opcode;
+import jdk.graal.compiler.lir.amd64.AMD64LIRInstruction;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;

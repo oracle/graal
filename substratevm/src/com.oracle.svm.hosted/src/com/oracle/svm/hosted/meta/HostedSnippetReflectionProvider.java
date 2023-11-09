@@ -24,36 +24,69 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
 
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 
+import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionProvider {
+    private ImageHeapScanner heapScanner;
 
-    public HostedSnippetReflectionProvider(WordTypes wordTypes) {
+    public HostedSnippetReflectionProvider(ImageHeapScanner heapScanner, WordTypes wordTypes) {
         super(wordTypes);
+        this.heapScanner = heapScanner;
+    }
+
+    public void setHeapScanner(ImageHeapScanner heapScanner) {
+        this.heapScanner = heapScanner;
     }
 
     @Override
     public JavaConstant forObject(Object object) {
-        if (object instanceof WordBase word && !(object instanceof RelocatedPointer)) {
+        if (object instanceof RelocatedPointer pointer) {
             /* Relocated pointers are subject to relocation, so we don't know their value yet. */
+            return new RelocatableConstant(pointer);
+        } else if (object instanceof WordBase word) {
             return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), word.rawValue());
         }
-        return super.forObject(object);
+        AnalysisConstantReflectionProvider.validateRawObjectConstant(object);
+        /* Redirect constant lookup through the shadow heap. */
+        return heapScanner.createImageHeapConstant(super.forObject(object), OtherReason.UNKNOWN);
+    }
+
+    @Override
+    public JavaConstant forBoxed(JavaKind kind, Object value) {
+        if (kind == JavaKind.Object) {
+            return forObject(value);
+        }
+        return JavaConstant.forBoxedPrimitive(value);
+    }
+
+    @Override
+    public JavaConstant unwrapConstant(JavaConstant constant) {
+        if (constant instanceof ImageHeapConstant heapConstant && heapConstant.getHostedObject() != null) {
+            return heapConstant.getHostedObject();
+        }
+        return constant;
     }
 
     @Override
     public <T> T asObject(Class<T> type, JavaConstant c) {
         JavaConstant constant = c;
+        if (constant instanceof RelocatableConstant relocatable) {
+            return type.cast(relocatable.getPointer());
+        }
         if (constant instanceof ImageHeapConstant imageHeapConstant) {
             constant = imageHeapConstant.getHostedObject();
             if (constant == null) {

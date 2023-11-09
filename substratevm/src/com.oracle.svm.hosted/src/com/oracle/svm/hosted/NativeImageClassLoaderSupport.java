@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.hosted;
 
+import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromModule;
+import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromPath;
+import static com.oracle.svm.core.util.VMError.guarantee;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.io.File;
@@ -35,11 +38,8 @@ import java.lang.module.ModuleReader;
 import java.lang.module.ModuleReference;
 import java.lang.module.ResolvedModule;
 import java.lang.reflect.Method;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
@@ -47,7 +47,6 @@ import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayDeque;
@@ -74,16 +73,17 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionValues;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionValues;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
+import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -114,14 +114,18 @@ public class NativeImageClassLoaderSupport {
 
     private final ConcurrentHashMap<String, LinkedHashSet<String>> serviceProviders;
 
-    private final URLClassLoader classPathClassLoader;
-    private final ClassLoader classLoader;
+    private final NativeImageClassLoader classLoader;
 
     public final ModuleFinder upgradeAndSystemModuleFinder;
     public final ModuleLayer moduleLayerForImageBuild;
     public final ModuleFinder modulepathModuleFinder;
 
     public final AnnotationExtractor annotationExtractor;
+
+    private Set<String> javaModuleNamesToInclude;
+    private Set<Path> javaPathsToInclude;
+
+    private final Set<Class<?>> classesToIncludeUnconditionally = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     @SuppressWarnings("this-escape")
     protected NativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath, String[] modulePath) {
@@ -131,10 +135,10 @@ public class NativeImageClassLoaderSupport {
         emptySet = EconomicSet.create();
         builderURILocations = EconomicSet.create();
         serviceProviders = new ConcurrentHashMap<>();
-        classPathClassLoader = new URLClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), defaultSystemClassLoader);
 
-        imagecp = Arrays.stream(classPathClassLoader.getURLs())
-                        .map(Util::urlToPath)
+        imagecp = Arrays.stream(classpath)
+                        .map(Path::of)
+                        .flatMap(NativeImageClassLoaderSupport::toRealPath)
                         .collect(Collectors.toUnmodifiableList());
 
         String builderClassPathString = System.getProperty("java.class.path");
@@ -146,34 +150,57 @@ public class NativeImageClassLoaderSupport {
         }
         buildcp = Arrays.stream(builderClassPathEntries)
                         .map(Path::of)
-                        .map(Util::toRealPath)
+                        .flatMap(NativeImageClassLoaderSupport::toRealPath)
                         .collect(Collectors.toUnmodifiableList());
         buildcp.stream().map(Path::toUri).forEach(builderURILocations::add);
 
         imagemp = Arrays.stream(modulePath)
                         .map(Path::of)
-                        .map(Util::toRealPath)
+                        .flatMap(NativeImageClassLoaderSupport::toRealPath)
                         .collect(Collectors.toUnmodifiableList());
 
         buildmp = Optional.ofNullable(System.getProperty("jdk.module.path")).stream()
                         .flatMap(s -> Arrays.stream(s.split(File.pathSeparator)))
                         .map(Path::of)
-                        .map(Util::toRealPath)
+                        .flatMap(NativeImageClassLoaderSupport::toRealPath)
                         .collect(Collectors.toUnmodifiableList());
 
         upgradeAndSystemModuleFinder = createUpgradeAndSystemModuleFinder();
-        ModuleLayer moduleLayer = createModuleLayer(imagemp.toArray(Path[]::new), classPathClassLoader);
+
+        ModuleFinder modulePathsFinder = ModuleFinder.of(imagemp.toArray(Path[]::new));
+        Set<String> moduleNames = modulePathsFinder.findAll().stream()
+                        .map(moduleReference -> moduleReference.descriptor().name())
+                        .collect(Collectors.toSet());
+
+        /**
+         * When building a moduleLayer for the module-path passed to native-image we need to be able
+         * to resolve against system modules that are not used by the moduleLayer in which the
+         * image-builder got loaded into. To do so we use {@link upgradeAndSystemModuleFinder} as
+         * {@code ModuleFinder after} in
+         * {@link Configuration#resolve(ModuleFinder, ModuleFinder, Collection)}.
+         */
+        Configuration configuration = ModuleLayer.boot().configuration().resolve(modulePathsFinder, upgradeAndSystemModuleFinder, moduleNames);
+
+        classLoader = new NativeImageClassLoader(imagecp, configuration, defaultSystemClassLoader);
+
+        ModuleLayer moduleLayer = ModuleLayer.defineModules(configuration, List.of(ModuleLayer.boot()), ignored -> classLoader).layer();
         adjustBootLayerQualifiedExports(moduleLayer);
         moduleLayerForImageBuild = moduleLayer;
         allLayers(moduleLayerForImageBuild).stream()
                         .flatMap(layer -> layer.modules().stream())
                         .forEach(this::registerModulePathServiceProviders);
 
-        classLoader = getSingleClassloader(moduleLayer);
-
         modulepathModuleFinder = ModuleFinder.of(modulepath().toArray(Path[]::new));
 
         annotationExtractor = new SubstrateAnnotationExtractor();
+    }
+
+    private static Stream<Path> toRealPath(Path p) {
+        try {
+            return Stream.of(p.toRealPath());
+        } catch (IOException e) {
+            return Stream.empty();
+        }
     }
 
     List<Path> classpath() {
@@ -184,12 +211,49 @@ public class NativeImageClassLoaderSupport {
         return imagecp;
     }
 
-    public ClassLoader getClassLoader() {
+    public NativeImageClassLoader getClassLoader() {
         return classLoader;
     }
 
+    private static Path stringToPath(String path) {
+        return Path.of(Path.of(path).toAbsolutePath().toUri().normalize());
+    }
+
     public void loadAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
+        guarantee(javaModuleNamesToInclude == null, "This method should be executed only once.");
+        javaModuleNamesToInclude = Collections.unmodifiableSet(new HashSet<>(IncludeAllFromModule.getValue(parsedHostedOptions).values()));
+        /* Verify all modules are present */
+        final Set<String> allModules = Stream.concat(modulepathModuleFinder.findAll().stream(), upgradeAndSystemModuleFinder.findAll().stream())
+                        .map(m -> m.descriptor().name())
+                        .collect(Collectors.toSet());
+        javaModuleNamesToInclude.stream()
+                        .filter(m -> !allModules.contains(m))
+                        .findAny().ifPresent(m -> missingFromSetOfEntriesError(m, allModules, "module-path", IncludeAllFromModule));
+
+        javaPathsToInclude = IncludeAllFromPath.getValue(parsedHostedOptions).values().stream()
+                        .map(NativeImageClassLoaderSupport::stringToPath)
+                        .map(Path::toAbsolutePath)
+                        .collect(Collectors.toUnmodifiableSet());
+        /* Verify all paths are present */
+        javaPathsToInclude.stream()
+                        .filter(p -> !classpath().contains(p))
+                        .findAny().ifPresent(p -> missingFromSetOfEntriesError(p, classpath(), "classpath", IncludeAllFromPath));
+
         new LoadClassHandler(executor, imageClassLoader).run();
+    }
+
+    private static void missingFromSetOfEntriesError(Object entry, Collection<?> allEntries, String typeOfEntry,
+                    HostedOptionKey<LocatableMultiOptionValue.Strings> option) {
+        String sortedEntries = allEntries.stream()
+                        .map(Object::toString)
+                        .collect(Collectors.joining(System.lineSeparator() + "   ", "   ", ""));
+
+        throw UserError.abort("The option %s does not match any of the %s entries. To fix, change the option to match one of the %s entries: %s%s",
+                        SubstrateOptionsParser.commandArgument(option, entry.toString()),
+                        typeOfEntry,
+                        typeOfEntry,
+                        System.lineSeparator(),
+                        sortedEntries);
     }
 
     private HostedOptionParser hostedOptionParser;
@@ -224,65 +288,6 @@ public class NativeImageClassLoaderSupport {
 
     public boolean noEntryForURI(EconomicSet<String> set) {
         return set == emptySet;
-    }
-
-    protected static class Util {
-
-        static URL[] verifyClassPathAndConvertToURLs(String[] classpath) {
-            Stream<Path> pathStream = new LinkedHashSet<>(Arrays.asList(classpath)).stream().map(Path::of).filter(Util::verifyClassPathEntry);
-            return pathStream.map(v -> {
-                try {
-                    return toRealPath(v).toUri().toURL();
-                } catch (MalformedURLException e) {
-                    throw UserError.abort("Invalid classpath element '%s'. Make sure that all paths provided with '%s' are correct.", v, SubstrateOptions.IMAGE_CLASSPATH_PREFIX);
-                }
-            }).toArray(URL[]::new);
-        }
-
-        static Path toRealPath(Path p) {
-            try {
-                return p.toRealPath();
-            } catch (IOException e) {
-                throw UserError.abort("Path entry '%s' does not map to a real path.", p);
-            }
-        }
-
-        private static boolean verifyClassPathEntry(Path cpEntry) {
-            if (ClasspathUtils.isJar(cpEntry)) {
-                return true;
-            }
-            if (Files.isDirectory(cpEntry) && Files.isReadable(cpEntry)) {
-                return true;
-            }
-            return false;
-        }
-
-        static Path urlToPath(URL url) {
-            try {
-                return Paths.get(url.toURI());
-            } catch (URISyntaxException e) {
-                throw VMError.shouldNotReachHere(e);
-            }
-        }
-    }
-
-    private ModuleLayer createModuleLayer(Path[] modulePaths, ClassLoader parent) {
-        ModuleFinder modulePathsFinder = ModuleFinder.of(modulePaths);
-        Set<String> moduleNames = modulePathsFinder.findAll().stream().map(moduleReference -> moduleReference.descriptor().name()).collect(Collectors.toSet());
-
-        /**
-         * When building a moduleLayer for the module-path passed to native-image we need to be able
-         * to resolve against system modules that are not used by the moduleLayer in which the
-         * image-builder got loaded into. To do so we use {@link upgradeAndSystemModuleFinder} as
-         * {@code ModuleFinder after} in
-         * {@link Configuration#resolve(ModuleFinder, ModuleFinder, Collection)}.
-         */
-        Configuration configuration = ModuleLayer.boot().configuration().resolve(modulePathsFinder, upgradeAndSystemModuleFinder, moduleNames);
-        /**
-         * For the modules we want to build an image for, a ModuleLayer is needed that can be
-         * accessed with a single classloader so we can use it for {@link ImageClassLoader}.
-         */
-        return ModuleLayer.defineModulesWithOneLoader(configuration, List.of(ModuleLayer.boot()), parent).layer();
     }
 
     /**
@@ -337,19 +342,6 @@ public class NativeImageClassLoaderSupport {
                 }
             }
         }
-    }
-
-    private ClassLoader getSingleClassloader(ModuleLayer moduleLayer) {
-        ClassLoader singleClassloader = classPathClassLoader;
-        for (Module module : moduleLayer.modules()) {
-            ClassLoader moduleClassLoader = module.getClassLoader();
-            if (singleClassloader == classPathClassLoader) {
-                singleClassloader = moduleClassLoader;
-            } else {
-                VMError.guarantee(singleClassloader == moduleClassLoader);
-            }
-        }
-        return singleClassloader;
     }
 
     private void registerModulePathServiceProviders(Module module) {
@@ -659,11 +651,15 @@ public class NativeImageClassLoaderSupport {
                     System.out.println("Total processed entries: " + entriesProcessed.longValue() + ", current entry: " + currentlyProcessedEntry);
                 }, 5, 1, TimeUnit.MINUTES);
 
-                List<String> requiresInit = Arrays.asList(
-                                "jdk.internal.vm.ci", "jdk.internal.vm.compiler", "com.oracle.graal.graal_enterprise",
+                List<String> requiresInit = new ArrayList<>(Arrays.asList(
+                                "jdk.internal.vm.ci", "jdk.graal.compiler", "com.oracle.graal.graal_enterprise",
                                 "org.graalvm.nativeimage", "org.graalvm.truffle", "org.graalvm.truffle.runtime",
                                 "org.graalvm.truffle.compiler", "com.oracle.truffle.enterprise", "org.graalvm.jniutils",
-                                "org.graalvm.nativebridge");
+                                "org.graalvm.nativebridge"));
+
+                Set<String> additionalSystemModules = upgradeAndSystemModuleFinder.findAll().stream().map(v -> v.descriptor().name()).collect(Collectors.toSet());
+                additionalSystemModules.retainAll(getJavaModuleNamesToInclude());
+                requiresInit.addAll(additionalSystemModules);
 
                 for (ModuleReference moduleReference : upgradeAndSystemModuleFinder.findAll()) {
                     if (requiresInit.contains(moduleReference.descriptor().name())) {
@@ -689,6 +685,7 @@ public class NativeImageClassLoaderSupport {
             }
             try (ModuleReader moduleReader = moduleReference.open()) {
                 Module module = optionalModule.get();
+                final boolean includeUnconditionally = javaModuleNamesToInclude.contains(module.getName());
                 var container = moduleReference.location().orElseThrow();
                 if (ModuleLayer.boot().equals(module.getLayer())) {
                     builderURILocations.add(container);
@@ -698,7 +695,7 @@ public class NativeImageClassLoaderSupport {
                     String className = extractClassName(moduleResource, fileSystemSeparatorChar);
                     if (className != null) {
                         currentlyProcessedEntry = moduleReferenceLocation + fileSystemSeparatorChar + moduleResource;
-                        executor.execute(() -> handleClassFileName(container, module, className));
+                        executor.execute(() -> handleClassFileName(container, module, className, includeUnconditionally));
                     }
                     entriesProcessed.increment();
                 });
@@ -708,6 +705,7 @@ public class NativeImageClassLoaderSupport {
         }
 
         private void loadClassesFromPath(Path path) {
+            final boolean includeUnconditionally = javaPathsToInclude.contains(path);
             if (ClasspathUtils.isJar(path)) {
                 try {
                     URI container = path.toAbsolutePath().toUri();
@@ -721,7 +719,7 @@ public class NativeImageClassLoaderSupport {
                     }
                     if (probeJarFileSystem != null) {
                         try (FileSystem jarFileSystem = probeJarFileSystem) {
-                            loadClassesFromPath(container, jarFileSystem.getPath("/"), null, Collections.emptySet());
+                            loadClassesFromPath(container, jarFileSystem.getPath("/"), null, Collections.emptySet(), includeUnconditionally);
                         }
                     }
                 } catch (ClosedByInterruptException ignored) {
@@ -731,13 +729,13 @@ public class NativeImageClassLoaderSupport {
                 }
             } else {
                 URI container = path.toUri();
-                loadClassesFromPath(container, path, ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT, ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES);
+                loadClassesFromPath(container, path, ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT, ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES, includeUnconditionally);
             }
         }
 
         private static final String CLASS_EXTENSION = ".class";
 
-        private void loadClassesFromPath(URI container, Path root, Path excludeRoot, Set<Path> excludes) {
+        private void loadClassesFromPath(URI container, Path root, Path excludeRoot, Set<Path> excludes, boolean includeUnconditionally) {
             boolean useFilter = root.equals(excludeRoot);
             if (useFilter) {
                 String excludesStr = excludes.stream().map(Path::toString).collect(Collectors.joining(", "));
@@ -763,7 +761,7 @@ public class NativeImageClassLoaderSupport {
                     String className = extractClassName(fileName, fileSystemSeparatorChar);
                     if (className != null) {
                         currentlyProcessedEntry = file.toUri().toString();
-                        executor.execute(() -> handleClassFileName(container, null, className));
+                        executor.execute(() -> handleClassFileName(container, null, className, includeUnconditionally));
                     }
                     entriesProcessed.increment();
                     return FileVisitResult.CONTINUE;
@@ -847,7 +845,7 @@ public class NativeImageClassLoaderSupport {
             return strippedClassFileName.equals("module-info") ? null : strippedClassFileName.replace(fileSystemSeparatorChar, '.');
         }
 
-        private void handleClassFileName(URI container, Module module, String className) {
+        private void handleClassFileName(URI container, Module module, String className, boolean includeUnconditionally) {
             synchronized (classes) {
                 EconomicSet<String> classNames = classes.get(container);
                 if (classNames == null) {
@@ -876,8 +874,12 @@ public class NativeImageClassLoaderSupport {
                 ImageClassLoader.handleClassLoadingError(t);
             }
             if (clazz != null) {
+                if (includeUnconditionally) {
+                    classesToIncludeUnconditionally.add(clazz);
+                }
                 imageClassLoader.handleClass(clazz);
             }
+            imageClassLoader.watchdog.recordActivity();
         }
     }
 
@@ -912,5 +914,19 @@ public class NativeImageClassLoaderSupport {
                 }
             }
         }
+    }
+
+    public Set<String> getJavaModuleNamesToInclude() {
+        return javaModuleNamesToInclude;
+    }
+
+    public Set<Path> getJavaPathsToInclude() {
+        return javaPathsToInclude;
+    }
+
+    public List<Class<?>> getClassesToIncludeUnconditionally() {
+        return classesToIncludeUnconditionally.stream()
+                        .sorted(Comparator.comparing(Class::getTypeName))
+                        .collect(Collectors.toList());
     }
 }

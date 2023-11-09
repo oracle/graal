@@ -30,14 +30,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ForkJoinPool;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -77,6 +70,12 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.internal.ValueBased;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -139,13 +138,13 @@ public class HostedConfiguration {
     public static ObjectLayout createObjectLayout(JavaKind referenceKind, boolean disableOptionalIdentityHash) {
         SubstrateTargetDescription target = ConfigurationValues.getTarget();
         int referenceSize = target.arch.getPlatformKind(referenceKind).getSizeInBytes();
-        int headerSize = referenceSize;
         int intSize = target.arch.getPlatformKind(JavaKind.Int).getSizeInBytes();
         int objectAlignment = 8;
 
-        int headerOffset = 0;
+        int hubOffset = 0;
+        int headerSize = hubOffset + referenceSize;
+
         int identityHashCodeOffset;
-        int firstFieldOffset;
         if (!disableOptionalIdentityHash && SubstrateOptions.SpawnIsolates.getValue() && headerSize + referenceSize <= objectAlignment) {
             /*
              * References are relative to the heap base, so we should be able to use fewer bits in
@@ -157,15 +156,18 @@ public class HostedConfiguration {
              * individual object was assigned an identity hash code after allocation.
              */
             identityHashCodeOffset = -1;
-            firstFieldOffset = headerOffset + headerSize;
         } else { // need all object header bits except for lowest-order bits freed up by alignment
-            identityHashCodeOffset = headerOffset + referenceSize;
-            firstFieldOffset = identityHashCodeOffset + intSize;
+            identityHashCodeOffset = headerSize;
+            headerSize += intSize;
         }
-        int arrayLengthOffset = firstFieldOffset;
+
+        headerSize += SubstrateOptions.AdditionalHeaderBytes.getValue();
+
+        int firstFieldOffset = headerSize;
+        int arrayLengthOffset = headerSize;
         int arrayBaseOffset = arrayLengthOffset + intSize;
 
-        return new ObjectLayout(target, referenceSize, objectAlignment, headerOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset, identityHashCodeOffset);
+        return new ObjectLayout(target, referenceSize, objectAlignment, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset, identityHashCodeOffset);
     }
 
     public SVMHost createHostVM(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
@@ -173,10 +175,10 @@ public class HostedConfiguration {
         return new SVMHost(options, classLoader, classInitializationSupport, automaticSubstitutions, platform);
     }
 
-    public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse,
-                    RuntimeConfiguration runtimeConfiguration, boolean deoptimizeAll, SnippetReflectionProvider aSnippetReflection, ForkJoinPool executor) {
+    public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse, RuntimeConfiguration runtimeConfiguration, boolean deoptimizeAll,
+                    SnippetReflectionProvider aSnippetReflection) {
 
-        return new CompileQueue(debug, featureHandler, hostedUniverse, runtimeConfiguration, deoptimizeAll, aSnippetReflection, executor);
+        return new CompileQueue(debug, featureHandler, hostedUniverse, runtimeConfiguration, deoptimizeAll, aSnippetReflection);
     }
 
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {

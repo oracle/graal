@@ -25,8 +25,8 @@
 package com.oracle.svm.core.option;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionValues;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 
 /**

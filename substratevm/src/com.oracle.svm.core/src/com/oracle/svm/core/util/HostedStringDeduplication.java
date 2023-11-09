@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

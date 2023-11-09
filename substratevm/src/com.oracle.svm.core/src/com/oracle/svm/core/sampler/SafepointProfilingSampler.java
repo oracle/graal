@@ -34,7 +34,7 @@ import java.util.LongSummaryStatistics;
 import java.util.concurrent.TimeUnit;
 
 import org.graalvm.collections.LockFreePrefixTree;
-import org.graalvm.compiler.options.Option;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.Threading;
@@ -100,6 +100,11 @@ public class SafepointProfilingSampler implements ProfilingSampler, ThreadListen
     @Override
     public void reset() {
         prefixTree.reset();
+    }
+
+    @Override
+    public boolean isAsyncSampler() {
+        return false;
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate inside the safepoint sampler.")

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.graal.isolated;
 
-import org.graalvm.compiler.code.CompilationResult;
+import jdk.graal.compiler.code.CompilationResult;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;

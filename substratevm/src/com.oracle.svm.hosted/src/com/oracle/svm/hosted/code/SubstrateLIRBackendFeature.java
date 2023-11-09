@@ -26,10 +26,10 @@ package com.oracle.svm.hosted.code;
 
 import java.util.Map;
 
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.java.LoadExceptionObjectNode;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.java.LoadExceptionObjectNode;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateOptions;

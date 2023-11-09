@@ -24,7 +24,8 @@
  */
 package com.oracle.svm.core.foreign;
 
-import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+import java.lang.foreign.MemorySegment;
+import java.util.Optional;
 
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
@@ -32,23 +33,14 @@ import com.oracle.svm.core.annotate.TargetClass;
 
 /**
  * System lookups allow to search for symbols in a fixed set of OS-dependent, standard, "curated"
- * libraries. The provided libraries are not really defined in the documentation.
- *
- * System lookups are currently unsupported, but this would be possible and might be useful to do
- * so. There would be two issues to solve; other than that, the JDK's implementation can be reused:
- * <ul>
- * <li>The library path(s): there might not be a JDK on the machine running the native image (on
- * linux64, the loaded libraries are {libc, libm, libdl})</li>
- * <li>Library loading: libraries are currently loaded in "the global scope", which is not exactly
- * the correct behavior</li>
- * </ul>
+ * libraries. The provided libraries are not really defined in the documentation, so the best we can
+ * do is load the exact same libraries as HotSpot.
  */
 @TargetClass(className = "jdk.internal.foreign.SystemLookup")
-@Substitute
 public final class Target_jdk_internal_foreign_SystemLookup {
     @Substitute
-    public static Target_jdk_internal_foreign_SystemLookup getInstance() {
-        throw unsupportedFeature("Default lookup is not yet supported.");
+    public Optional<MemorySegment> find(String name) {
+        return RuntimeSystemLookup.INSTANCE.find(name);
     }
 }
 

@@ -45,9 +45,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.Indent;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -94,6 +94,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.ameta.ReadableJavaField;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.heap.PodSupport;
@@ -1016,7 +1017,7 @@ public class UniverseBuilder {
 
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
         for (HostedType type : hUniverse.getTypes()) {
-            hUniverse.bb.getHeartbeatCallback().run();
+            hUniverse.hostVM().recordActivity();
 
             int layoutHelper;
             boolean canInstantiateAsInstance = false;
@@ -1116,7 +1117,7 @@ public class UniverseBuilder {
                 ((ComputedValueField) aField.wrapped).processSubstrate(hMetaAccess);
             }
 
-            if (!hField.hasLocation() && Modifier.isStatic(hField.getModifiers()) && !aField.isWritten() && aField.isValueAvailable()) {
+            if (!hField.hasLocation() && Modifier.isStatic(hField.getModifiers()) && !aField.isWritten() && ReadableJavaField.isValueAvailable(aField)) {
                 hField.setUnmaterializedStaticConstant();
             }
         }

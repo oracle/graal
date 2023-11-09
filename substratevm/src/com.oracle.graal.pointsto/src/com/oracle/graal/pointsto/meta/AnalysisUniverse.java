@@ -37,14 +37,15 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
@@ -219,7 +220,7 @@ public class AnalysisUniverse implements Universe {
         if (result == null) {
             result = createType(type);
         }
-        assert typesById[result.getId()].equals(result);
+        assert typesById[result.getId()].equals(result) : result;
         return result;
     }
 
@@ -319,7 +320,7 @@ public class AnalysisUniverse implements Universe {
              * by other threads.
              */
             Object oldValue = types.put(type, newValue);
-            assert oldValue == claim;
+            assert oldValue == claim : oldValue + " != " + claim;
             claim = null;
 
             return newValue;
@@ -351,7 +352,7 @@ public class AnalysisUniverse implements Universe {
         if (!(rawField instanceof ResolvedJavaField)) {
             return rawField;
         }
-        assert !(rawField instanceof AnalysisField);
+        assert !(rawField instanceof AnalysisField) : rawField;
 
         ResolvedJavaField field = (ResolvedJavaField) rawField;
 
@@ -432,7 +433,7 @@ public class AnalysisUniverse implements Universe {
         if (!(rawMethod instanceof ResolvedJavaMethod)) {
             return rawMethod;
         }
-        assert !(rawMethod instanceof AnalysisMethod);
+        assert !(rawMethod instanceof AnalysisMethod) : rawMethod;
 
         ResolvedJavaMethod method = (ResolvedJavaMethod) rawMethod;
         method = substitutions.lookup(method);
@@ -470,8 +471,8 @@ public class AnalysisUniverse implements Universe {
 
     @Override
     public WrappedSignature lookup(Signature signature, ResolvedJavaType defaultAccessingClass) {
-        assert !(signature instanceof WrappedSignature);
-        assert !(defaultAccessingClass instanceof WrappedJavaType);
+        assert !(signature instanceof WrappedSignature) : signature;
+        assert !(defaultAccessingClass instanceof WrappedJavaType) : defaultAccessingClass;
         WrappedSignature result = signatures.get(signature);
         if (result == null) {
             WrappedSignature newValue = new WrappedSignature(this, signature, defaultAccessingClass);
@@ -483,8 +484,8 @@ public class AnalysisUniverse implements Universe {
 
     @Override
     public WrappedConstantPool lookup(ConstantPool constantPool, ResolvedJavaType defaultAccessingClass) {
-        assert !(constantPool instanceof WrappedConstantPool);
-        assert !(defaultAccessingClass instanceof WrappedJavaType);
+        assert !(constantPool instanceof WrappedConstantPool) : constantPool;
+        assert !(defaultAccessingClass instanceof WrappedJavaType) : defaultAccessingClass;
         WrappedConstantPool result = constantPools.get(constantPool);
         if (result == null) {
             WrappedConstantPool newValue = new AnalysisConstantPool(this, constantPool, defaultAccessingClass);
@@ -496,6 +497,16 @@ public class AnalysisUniverse implements Universe {
 
     @Override
     public JavaConstant lookup(JavaConstant constant) {
+        if (constant == null || constant.isNull() || constant.getJavaKind().isPrimitive()) {
+            return constant;
+        }
+        return heapScanner.createImageHeapConstant(fromHosted(constant), ObjectScanner.OtherReason.UNKNOWN);
+    }
+
+    /**
+     * Convert a hosted HotSpotObjectConstant into a SubstrateObjectConstant.
+     */
+    public JavaConstant fromHosted(JavaConstant constant) {
         if (constant == null) {
             return null;
         } else if (constant.getJavaKind().isObject() && !constant.isNull()) {
@@ -516,6 +527,9 @@ public class AnalysisUniverse implements Universe {
         }
     }
 
+    /**
+     * Convert a hosted SubstrateObjectConstant into a HotSpotObjectConstant.
+     */
     public JavaConstant toHosted(JavaConstant constant) {
         if (constant == null) {
             return null;
@@ -532,7 +546,7 @@ public class AnalysisUniverse implements Universe {
 
     public AnalysisType getType(int typeId) {
         AnalysisType result = typesById[typeId];
-        assert result.getId() == typeId;
+        assert result.getId() == typeId : result;
         return result;
     }
 

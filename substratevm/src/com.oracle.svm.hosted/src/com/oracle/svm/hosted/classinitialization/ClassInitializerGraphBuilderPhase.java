@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.hosted.classinitialization;
 
-import org.graalvm.compiler.java.BytecodeParser;
-import org.graalvm.compiler.java.GraphBuilderPhase;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.java.BytecodeParser;
+import jdk.graal.compiler.java.GraphBuilderPhase;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
 
 import com.oracle.svm.hosted.phases.SharedGraphBuilderPhase;
 

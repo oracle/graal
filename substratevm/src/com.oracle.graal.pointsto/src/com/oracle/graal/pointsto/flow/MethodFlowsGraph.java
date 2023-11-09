@@ -37,8 +37,8 @@ import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.EncodedGraph.EncodedNodeReference;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.EncodedGraph.EncodedNodeReference;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -290,13 +290,11 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
     }
 
     public void setParameter(int index, FormalParamTypeFlow parameter) {
-        assert index >= 0 && index < this.parameters.length;
         parameters[index] = parameter;
     }
 
     @Override
     public FormalParamTypeFlow getParameter(int idx) {
-        assert idx >= 0 && idx < this.parameters.length;
         return parameters[idx];
     }
 
@@ -313,7 +311,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
     }
 
     public void addNodeFlow(EncodedNodeReference key, TypeFlow<?> flow) {
-        assert flow != null && !(flow instanceof AllInstantiatedTypeFlow);
+        assert flow != null && !(flow instanceof AllInstantiatedTypeFlow) : flow;
         if (nodeFlows == null) {
             nodeFlows = EconomicMap.create();
         }
@@ -407,7 +405,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
      *
      * @return a list containing all the callers for the given context sensitive method
      */
-    public List<MethodFlowsGraph> callers(PointsToAnalysis bb) {
+    public List<MethodFlowsGraph> allNonStubCallers(PointsToAnalysis bb) {
         /*
          * This list is seldom needed thus it is created lazily instead of storing a mapping from a
          * caller context to a caller graph for each method graph.
@@ -423,7 +421,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
                         /* The invoke has been replaced by the context insensitive one. */
                         invoke = callerInvoke.getTargetMethod().getContextInsensitiveVirtualInvoke(method.getMultiMethodKey());
                     }
-                    for (MethodFlowsGraph calleeFlowGraph : invoke.getOriginalCalleesFlows(bb)) {
+                    for (MethodFlowsGraph calleeFlowGraph : invoke.getAllNonStubCalleesFlows(bb)) {
                         // 'this' method graph was found among the callees of an invoke flow in one
                         // of the clones of the caller methods, hence we regiter that clone as a
                         // caller for 'this' method clone
@@ -439,14 +437,16 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
 
     /**
      * Given a context sensitive caller, i.e., another MethodFlowsGraph, identify the InvokeTypeFlow
-     * belonging to the caller that linked to this callee.
+     * belonging to the caller that linked to this callee. Note if multiple invokes within the
+     * caller target this method, then only the first found matching invoke typeflow will be
+     * returned.
      *
      * @param callerFlowGraph the context sensitive caller.
      * @return the InvokeTypeFlow object belonging to the caller that linked to this callee.
      */
     public InvokeTypeFlow invokeFlow(MethodFlowsGraph callerFlowGraph, PointsToAnalysis bb) {
         for (InvokeTypeFlow callerInvoke : callerFlowGraph.getInvokes().getValues()) {
-            for (MethodFlowsGraph calleeFlowGraph : callerInvoke.getOriginalCalleesFlows(bb)) {
+            for (MethodFlowsGraph calleeFlowGraph : callerInvoke.getAllNonStubCalleesFlows(bb)) {
                 // 'this' method graph was found among the callees of an invoke flow in the caller
                 // method clone, hence we register return it
                 if (calleeFlowGraph.equals(this)) {

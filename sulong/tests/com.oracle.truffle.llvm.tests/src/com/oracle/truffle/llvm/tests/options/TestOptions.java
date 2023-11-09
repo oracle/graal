@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,6 +37,7 @@ public final class TestOptions {
     public static final String TEST_AOT_IMAGE = System.getProperty("sulongtest.testAOTImage");
     public static final String TEST_AOT_ARGS = System.getProperty("sulongtest.testAOTArgs");
     public static final String TEST_FILTER = System.getProperty("sulongtest.testFilter");
+    public static final String TEST_NAME_FILTER = System.getProperty("sulongtest.testNameFilter");
     public static final String PROJECT_ROOT = System.getProperty("sulongtest.projectRoot");
     public static final String CONFIG_ROOT = System.getProperty("sulongtest.configRoot");
 

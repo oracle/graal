@@ -24,10 +24,10 @@
  */
 package com.oracle.graal.pointsto.nodes;
 
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.RawLoadNode;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.util.UnsafePartitionKind;

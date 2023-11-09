@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.util;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateUtil;

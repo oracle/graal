@@ -214,10 +214,17 @@ public class VarHandleFeature implements InternalFeature {
     private Object processReachableHandle(Object obj) {
         VarHandleInfo info = infos.get(obj.getClass());
         if (info != null && processedVarHandles.putIfAbsent(obj, true) == null) {
-            VMError.guarantee(markAsUnsafeAccessed != null, "New VarHandle found after static analysis");
-
             Field field = findVarHandleField(obj);
-            markAsUnsafeAccessed.accept(field);
+            /*
+             * It is OK if we see a new VarHandle after analysis, as long as the field itself was
+             * already registered as Unsafe accessed by another VarHandle during analysis. This can
+             * happen when the late class initializer analysis determines that a class is safe for
+             * initialization at build time after the analysis.
+             */
+            if (processedVarHandles.putIfAbsent(field, true) == null) {
+                VMError.guarantee(markAsUnsafeAccessed != null, "New VarHandle found after static analysis");
+                markAsUnsafeAccessed.accept(field);
+            }
         }
         return obj;
     }

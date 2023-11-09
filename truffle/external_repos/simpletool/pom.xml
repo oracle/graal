@@ -39,128 +39,106 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  SOFTWARE.
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>com.oracle</groupId>
-  <artifactId>simpletool</artifactId>
-  <version>${graalvm.version}</version>
-  <name>simpletool</name>
-  <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.source>1.8</maven.compiler.source>
-    <maven.compiler.target>1.8</maven.compiler.target>
-    <graalvm.version>24.0.0-dev</graalvm.version>
-  </properties>
-  <profiles>
-    <profile>
-      <id>jdk11-graalvm</id>
-      <activation>
-        <jdk>[11,</jdk>
-      </activation>
-      <properties>
-        <jar.dir>${project.build.directory}/jars</jar.dir>
-        <test.argLine>--upgrade-module-path=${jar.dir}/truffle-api.jar</test.argLine>
-      </properties>
-      <build>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.oracle</groupId>
+    <artifactId>simpletool</artifactId>
+    <version>${graalvm.version}</version>
+    <name>simpletool</name>
+    <properties>
+        <graalvm.version>24.0.0-dev</graalvm.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <m2e.apt.activation>jdt_apt</m2e.apt.activation>
+    </properties>
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.graalvm.polyglot</groupId>
+            <artifactId>polyglot</artifactId>
+            <version>${graalvm.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.graalvm.truffle</groupId>
+            <artifactId>truffle-api</artifactId>
+            <version>${graalvm.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.graalvm.truffle</groupId>
+            <artifactId>truffle-runtime</artifactId>
+            <version>${graalvm.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.graalvm.sdk</groupId>
+            <artifactId>jniutils</artifactId>
+            <version>${graalvm.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- needed to run tests -->
+        <dependency>
+            <groupId>org.graalvm.js</groupId>
+            <artifactId>js-language</artifactId>
+            <version>${graalvm.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.graalvm.js</groupId>
+            <artifactId>js-launcher</artifactId>
+            <version>${graalvm.version}</version>
+        </dependency>
+    </dependencies>
+    <build>
         <plugins>
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-dependency-plugin</artifactId>
-            <version>2.10</version>
+            <version>3.2.0</version>
             <executions>
               <execution>
-                <id>copy</id>
-                <phase>process-test-classes</phase>
+                <id>copy-dependencies</id>
+                <phase>package</phase>
                 <goals>
-                  <goal>copy</goal>
+                  <goal>copy-dependencies</goal>
                 </goals>
                 <configuration>
-                  <artifactItems>
-                    <artifactItem>
-                      <groupId>org.graalvm.truffle</groupId>
-                      <artifactId>truffle-api</artifactId>
-                      <version>${graalvm.version}</version>
-                      <type>jar</type>
-                      <overWrite>true</overWrite>
-                      <destFileName>truffle-api.jar</destFileName>
-                    </artifactItem>
-                  </artifactItems>
-                  <outputDirectory>${jar.dir}</outputDirectory>
+                  <outputDirectory>${project.build.directory}/modules</outputDirectory>
+                  <stripVersion>true</stripVersion>
                 </configuration>
               </execution>
             </executions>
           </plugin>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>17</source>
+                    <target>17</target>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.graalvm.truffle</groupId>
+                            <artifactId>truffle-dsl-processor</artifactId>
+                            <version>${graalvm.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.1.2</version>
+                <configuration>
+                    <useModulePath>true</useModulePath>
+                </configuration>
+            </plugin>
         </plugins>
-      </build>
-    </profile>
-    <profile>
-      <id>jdk8-graalvm</id>
-      <activation>
-        <jdk>1.8</jdk>
-      </activation>
-      <properties>
-        <test.argLine>-XX:-UseJVMCIClassLoader</test.argLine>
-      </properties>
-    </profile>
-  </profiles>
-  <dependencies>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.13.1</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.graalvm.truffle</groupId>
-      <artifactId>truffle-api</artifactId>
-      <version>${graalvm.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.graalvm.truffle</groupId>
-      <artifactId>truffle-dsl-processor</artifactId>
-      <version>${graalvm.version}</version>
-    </dependency>
-  </dependencies>
-  <build>
-    <plugins>
-      <plugin>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.8.0</version>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.9</version>
-        <configuration>
-          <!--Disables classpath issolation making testing simpler, not for use in production scenarios -->
-          <argLine>-Dgraalvm.locatorDisabled=true ${test.argLine}</argLine>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-shade-plugin</artifactId>
-        <version>3.1.1</version>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>shade</goal>
-            </goals>
-            <configuration>
-              <finalName>simpletool</finalName>
-              <artifactSet>
-                <excludes>
-                  <exclude>junit:junit</exclude>
-                  <exclude>org.graalvm.truffle:truffle-api</exclude>
-                  <exclude>org.graalvm.truffle:truffle-dsl-processor</exclude>
-                  <exclude>org.graalvm.truffle:truffle-tck</exclude>
-                  <exclude>org.graalvm:graal-sdk</exclude>
-                </excludes>
-              </artifactSet>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-    </plugins>
-  </build>
+    </build>
 </project>

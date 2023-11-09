@@ -596,7 +596,7 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
 
         HotSpotMetaAccessProvider meta = (HotSpotMetaAccessProvider) getMetaAccess();
         HotSpotResolvedObjectType resolvedType = (HotSpotResolvedObjectType) meta.lookupJavaType(type);
-        return resolvedType.instanceSize();
+        return Math.abs(resolvedType.instanceSize());
     }
 
     private static boolean fieldIsNotEligible(Class<?> clazz, ResolvedJavaField f) {

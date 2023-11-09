@@ -112,7 +112,7 @@ public final class ConcurrentLightHashMap {
                      * Corner case: setting the first key again, so nothing to do since semantics is
                      * put-if-absent.
                      */
-                    assert oldEntry.getKey() == newKey;
+                    assert oldEntry.getKey() == newKey : newKey;
                     /* Return the current value associated with newKey. */
                     return oldEntry.getValue();
                 }

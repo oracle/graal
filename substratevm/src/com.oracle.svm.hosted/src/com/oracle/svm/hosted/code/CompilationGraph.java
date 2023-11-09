@@ -28,12 +28,12 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.EncodedGraph;
-import org.graalvm.compiler.nodes.GraphEncoder;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
+import jdk.graal.compiler.nodes.EncodedGraph;
+import jdk.graal.compiler.nodes.GraphEncoder;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.svm.hosted.meta.HostedMethod;

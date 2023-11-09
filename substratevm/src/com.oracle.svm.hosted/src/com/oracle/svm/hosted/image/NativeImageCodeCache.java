@@ -46,15 +46,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.DeadlockWatchdog;
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.code.DataSection;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.options.Option;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.code.DataSection;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -83,6 +83,7 @@ import com.oracle.svm.core.code.ImageCodeInfo.HostedImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -123,6 +124,8 @@ public abstract class NativeImageCodeCache {
         public static final HostedOptionKey<Boolean> VerifyDeoptimizationEntryPoints = new HostedOptionKey<>(false);
     }
 
+    private int codeAreaSize;
+
     protected final NativeImageHeap imageHeap;
 
     private final Map<HostedMethod, CompilationResult> compilations;
@@ -155,7 +158,14 @@ public abstract class NativeImageCodeCache {
 
     public abstract int getCodeCacheSize();
 
-    public abstract int getCodeAreaSize();
+    public int getCodeAreaSize() {
+        assert codeAreaSize >= 0;
+        return codeAreaSize;
+    }
+
+    public void setCodeAreaSize(int codeAreaSize) {
+        this.codeAreaSize = codeAreaSize;
+    }
 
     public Pair<HostedMethod, CompilationResult> getFirstCompilation() {
         return orderedCompilations.get(0);
@@ -180,7 +190,7 @@ public abstract class NativeImageCodeCache {
         return compilations.get(method);
     }
 
-    public abstract void layoutMethods(DebugContext debug, BigBang bb, ForkJoinPool threadPool);
+    public abstract void layoutMethods(DebugContext debug, BigBang bb);
 
     public void layoutConstants() {
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
@@ -252,13 +262,19 @@ public abstract class NativeImageCodeCache {
         return ConfigurationValues.getObjectLayout().alignUp(getConstantsSize());
     }
 
-    public void buildRuntimeMetadata(SnippetReflectionProvider snippetReflection, ForkJoinPool threadPool, CFunctionPointer firstMethod, UnsignedWord codeSize) {
+    public void buildRuntimeMetadata(DebugContext debug, SnippetReflectionProvider snippetReflectionProvider) {
+        buildRuntimeMetadata(debug, snippetReflectionProvider, new MethodPointer(getFirstCompilation().getLeft(), true), WordFactory.signed(getCodeAreaSize()));
+    }
+
+    protected void buildRuntimeMetadata(DebugContext debug, SnippetReflectionProvider snippetReflection, CFunctionPointer firstMethod, UnsignedWord codeSize) {
         // Build run-time metadata.
         HostedFrameInfoCustomization frameInfoCustomization = new HostedFrameInfoCustomization();
         CodeInfoEncoder.Encoders encoders = new CodeInfoEncoder.Encoders();
         CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(frameInfoCustomization, encoders);
+        DeadlockWatchdog watchdog = ImageSingletons.lookup(DeadlockWatchdog.class);
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
             encodeMethod(codeInfoEncoder, pair);
+            watchdog.recordActivity();
         }
 
         HostedUniverse hUniverse = imageHeap.hUniverse;
@@ -408,7 +424,7 @@ public abstract class NativeImageCodeCache {
             verifyDeoptEntries(imageCodeInfo);
         }
 
-        assert verifyMethods(hUniverse, threadPool, codeInfoEncoder, imageCodeInfo);
+        assert verifyMethods(debug, hUniverse, codeInfoEncoder, imageCodeInfo);
     }
 
     protected HostedImageCodeInfo installCodeInfo(SnippetReflectionProvider snippetReflection, CFunctionPointer firstMethod, UnsignedWord codeSize, CodeInfoEncoder codeInfoEncoder,
@@ -481,20 +497,20 @@ public abstract class NativeImageCodeCache {
          * All DeoptEntries not corresponding to exception objects must have an exception handler.
          */
         boolean hasExceptionHandler = result.getExceptionOffset() != 0;
-        if (!targetFrame.duringCall() && !targetFrame.rethrowException()) {
-            if (!hasExceptionHandler) {
-                return error(method, encodedBci, "no exception handler registered for deopt entry");
-            }
-        } else if (!targetFrame.duringCall() && targetFrame.rethrowException()) {
-            if (hasExceptionHandler) {
-                return error(method, encodedBci, "exception handler registered for rethrowException");
-            }
-        } else if (targetFrame.duringCall() && !targetFrame.rethrowException()) {
-            if (!hasExceptionHandler) {
-                return error(method, encodedBci, "no exception handler registered for deopt entry");
-            }
-        } else {
-            return error(method, encodedBci, "invalid encoded bci");
+        switch (targetFrame.getStackState()) {
+            case BeforePop:
+            case AfterPop:
+                if (!hasExceptionHandler) {
+                    return error(method, encodedBci, "no exception handler registered for deopt entry");
+                }
+                break;
+            case Rethrow:
+                if (hasExceptionHandler) {
+                    return error(method, encodedBci, "exception handler registered for rethrowException");
+                }
+                break;
+            default:
+                return error(method, encodedBci, "invalid encoded bci");
         }
 
         /*
@@ -551,12 +567,12 @@ public abstract class NativeImageCodeCache {
         return true;
     }
 
-    protected boolean verifyMethods(HostedUniverse hUniverse, ForkJoinPool threadPool, CodeInfoEncoder codeInfoEncoder, CodeInfo codeInfo) {
+    protected boolean verifyMethods(DebugContext debug, HostedUniverse hUniverse, CodeInfoEncoder codeInfoEncoder, CodeInfo codeInfo) {
         /*
          * Run method verification in parallel to reduce computation time.
          */
         BigBang bb = hUniverse.getBigBang();
-        CompletionExecutor executor = new CompletionExecutor(bb, threadPool, bb.getHeartbeatCallback());
+        CompletionExecutor executor = new CompletionExecutor(debug, bb);
         try {
             executor.init();
             executor.start();

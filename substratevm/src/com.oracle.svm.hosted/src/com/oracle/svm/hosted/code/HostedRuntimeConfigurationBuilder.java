@@ -24,21 +24,22 @@
  */
 package com.oracle.svm.hosted.code;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.bytecode.BytecodeProvider;
-import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
-import org.graalvm.compiler.nodes.spi.LoopsDataProvider;
-import org.graalvm.compiler.nodes.spi.LoweringProvider;
-import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
-import org.graalvm.compiler.nodes.spi.Replacements;
-import org.graalvm.compiler.nodes.spi.StampProvider;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.word.WordTypes;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.bytecode.BytecodeProvider;
+import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
+import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
+import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
+import jdk.graal.compiler.nodes.spi.LoweringProvider;
+import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
+import jdk.graal.compiler.nodes.spi.Replacements;
+import jdk.graal.compiler.nodes.spi.StampProvider;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.word.WordTypes;
 
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
@@ -61,13 +62,15 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
 
     private final HostedUniverse universe;
     private final HostedProviders analysisProviders;
+    private final ImageHeapScanner heapScanner;
 
-    public HostedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, HostedUniverse universe, HostedMetaAccess metaAccess, HostedProviders analysisProviders,
-                    ClassInitializationSupport classInitializationSupport, LoopsDataProvider originalLoopsDataProvider,
+    public HostedRuntimeConfigurationBuilder(OptionValues options, ImageHeapScanner heapScanner, SVMHost hostVM, HostedUniverse universe, HostedMetaAccess metaAccess,
+                    HostedProviders analysisProviders, ClassInitializationSupport classInitializationSupport, LoopsDataProvider originalLoopsDataProvider,
                     SubstratePlatformConfigurationProvider platformConfig) {
         super(options, hostVM, metaAccess, SubstrateBackendFactory.get()::newBackend, classInitializationSupport, originalLoopsDataProvider, platformConfig);
         this.universe = universe;
         this.analysisProviders = analysisProviders;
+        this.heapScanner = heapScanner;
     }
 
     @Override
@@ -95,7 +98,7 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
 
     @Override
     protected SnippetReflectionProvider createSnippetReflectionProvider(WordTypes wordTypes) {
-        return new HostedSnippetReflectionProvider(wordTypes);
+        return new HostedSnippetReflectionProvider(heapScanner, wordTypes);
     }
 
     @Override

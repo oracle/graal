@@ -40,9 +40,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.ReinterpretNode;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -511,9 +511,22 @@ class ABIs {
         @Override
         protected List<Adapter.Adaptation> generateAdaptations(NativeEntryPointInfo nep) {
             var adaptations = super.generateAdaptations(nep);
-            /* Drop the rax parametersAssignment */
-            assert adaptations.get(adaptations.size() - 1) == null;
-            adaptations.set(adaptations.size() - 1, Adapter.drop());
+            var assignments = nep.parametersAssignment();
+
+            if (assignments.length > 0) {
+                final int last = assignments.length - 1;
+                if (assignments[last].equals(X86_64Architecture.Regs.rax)) {
+                    /*
+                     * This branch is only taken when the function is variadic, that is when rax is
+                     * passed as an additional pseudo-parameter, where it will contain the number of
+                     * XMM registers passed as arguments. However, we need to remove the rax
+                     * assignment since rax will already be assigned separately in
+                     * SubstrateAMD64RegisterConfig.getCallingConvention and later used in
+                     * SubstrateAMD64NodeLIRBuilder.visitInvokeArguments.
+                     */
+                    adaptations.set(last, Adapter.drop());
+                }
+            }
             return adaptations;
         }
 

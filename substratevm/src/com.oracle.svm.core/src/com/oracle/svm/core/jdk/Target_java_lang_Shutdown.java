@@ -61,7 +61,7 @@ public final class Target_java_lang_Shutdown {
     static native void shutdown();
 
     @Substitute
-    @TargetElement(onlyWith = JDK21OrLater.class)
+    @TargetElement
     @SuppressWarnings("unused")
     private static void logRuntimeExit(int status) {
         // Disable exit logging (GR-45418/JDK-8301627)

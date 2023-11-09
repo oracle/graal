@@ -28,11 +28,11 @@ import java.io.PrintWriter;
 import java.util.List;
 import java.util.function.Function;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.word.WordTypes;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -58,7 +58,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
  *
  * @see PointsToAnalysis
  */
-public interface BigBang extends ReachabilityAnalysis, HeapScanning {
+public interface BigBang extends ReachabilityAnalysis {
     HostVM getHostVM();
 
     UnsupportedFeatures getUnsupportedFeatures();
@@ -90,8 +90,6 @@ public interface BigBang extends ReachabilityAnalysis, HeapScanning {
     WordTypes getWordTypes();
 
     DebugContext getDebug();
-
-    Runnable getHeartbeatCallback();
 
     boolean extendedAsserts();
 

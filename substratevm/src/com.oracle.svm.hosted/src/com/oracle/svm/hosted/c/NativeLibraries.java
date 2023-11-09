@@ -47,12 +47,12 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.hotspot.JVMCIVersionCheck;
-import org.graalvm.compiler.word.BarrieredAccess;
-import org.graalvm.compiler.word.ObjectAccess;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
+import jdk.graal.compiler.word.BarrieredAccess;
+import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
@@ -550,13 +550,13 @@ public final class NativeLibraries {
         }
     }
 
-    public void finish(ImageClassLoader loader) {
+    public void finish() {
         libraryPaths.addAll(SubstrateOptions.CLibraryPath.getValue().values().stream().map(Path::toString).collect(Collectors.toList()));
         for (NativeCodeContext context : compilationUnitToContext.values()) {
             if (context.isInConfiguration()) {
                 libraries.addAll(context.getDirectives().getLibraries());
                 libraryPaths.addAll(context.getDirectives().getLibraryPaths());
-                new CAnnotationProcessor(this, context).process(cache, loader);
+                new CAnnotationProcessor(this, context).process(cache);
             }
         }
     }

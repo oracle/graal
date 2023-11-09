@@ -60,7 +60,7 @@ import com.oracle.truffle.espresso.ffi.SignatureCallNode;
 import com.oracle.truffle.espresso.ffi.TruffleByteBuffer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.perf.DebugCounter;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Collect;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 import com.oracle.truffle.nfi.api.SignatureLibrary;
@@ -113,9 +113,12 @@ public class NFINativeAccess implements NativeAccess {
         StringBuilder sb = new StringBuilder(64);
         sb.append('(');
         boolean isFirst = true;
-        for (int i = 0; i < nativeSignature.getParameterCount(); ++i) {
+        for (int i = 0; i < nativeSignature.getParameterCount() + nativeSignature.getVarArgsParameterCount(); ++i) {
             if (!isFirst) {
                 sb.append(',');
+            }
+            if (i == nativeSignature.getParameterCount()) {
+                sb.append("...");
             }
             sb.append(nfiType(nativeSignature.parameterTypeAt(i)));
             isFirst = false;
@@ -245,7 +248,7 @@ public class NFINativeAccess implements NativeAccess {
 
         @ExplodeLoop
         Object doExecute(Object[] arguments, InteropLibrary delegateInterop) throws ArityException {
-            final int paramCount = nativeSignature.getParameterCount();
+            final int paramCount = nativeSignature.getParameterCount() + nativeSignature.getVarArgsParameterCount();
             CompilerAsserts.partialEvaluationConstant(paramCount);
             if (arguments.length != paramCount) {
                 CompilerDirectives.transferToInterpreter();
@@ -281,7 +284,10 @@ public class NFINativeAccess implements NativeAccess {
                         break;
                 }
                 return ret;
-            } catch (UnsupportedTypeException | UnsupportedMessageException e) {
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere("This can be caused by mixing native/ffi symbols with llvm signatures and vice-versa", e);
+            } catch (UnsupportedTypeException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             } catch (AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
@@ -374,7 +380,7 @@ public class NFINativeAccess implements NativeAccess {
 
         @ExplodeLoop
         Object doExecute(Object[] arguments, InteropLibrary delegateInterop) throws ArityException {
-            final int paramCount = nativeSignature.getParameterCount();
+            final int paramCount = nativeSignature.getParameterCount() + nativeSignature.getVarArgsParameterCount();
             CompilerAsserts.partialEvaluationConstant(paramCount);
             if (arguments.length != paramCount) {
                 CompilerDirectives.transferToInterpreter();

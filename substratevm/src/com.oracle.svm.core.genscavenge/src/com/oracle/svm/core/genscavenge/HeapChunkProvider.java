@@ -251,7 +251,8 @@ final class HeapChunkProvider {
         UnalignedHeapChunk.initialize(result, chunkSize);
         assert objectSize.belowOrEqual(HeapChunk.availableObjectMemory(result)) : "UnalignedHeapChunk insufficient for requested object";
 
-        if (HeapParameters.getZapProducedHeapChunks()) {
+        /* Avoid zapping if unaligned chunks are pre-zeroed. */
+        if (!CommittedMemoryProvider.get().areUnalignedChunksZeroed() && HeapParameters.getZapProducedHeapChunks()) {
             zap(result, HeapParameters.getProducedHeapChunkZapWord());
         }
         return result;

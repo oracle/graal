@@ -78,6 +78,7 @@ import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -85,6 +86,7 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
@@ -122,6 +124,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     private PolyglotValueDispatch disconnectedBigIntegerHostValue;
     private volatile Object defaultFileSystemContext;
 
+    private static volatile AbstractPolyglotImpl isolatePolyglot;
+
     /**
      * Internal method do not use.
      */
@@ -158,6 +162,16 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         return (PolyglotImpl) polyglot;
     }
 
+    static AbstractPolyglotImpl findIsolatePolyglot() {
+        return isolatePolyglot;
+    }
+
+    static void setIsolatePolyglot(AbstractPolyglotImpl instance) {
+        assert instance != null;
+        assert isolatePolyglot == null;
+        isolatePolyglot = instance;
+    }
+
     PolyglotEngineImpl getPreinitializedEngine() {
         return preInitializedEngineRef.get();
     }
@@ -174,11 +188,19 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public Object initializeModuleToUnnamedAccess(Lookup unnamedLookup, Object unnamedAccess, Object unnamedAPIAccess, Object unnamedIOAccess, Object unnamedManagementAccess) {
         ModuleToUnnamedBridge bridge = ModuleToUnnamedBridge.create(unnamedLookup, unnamedAccess, unnamedAPIAccess, unnamedIOAccess, unnamedManagementAccess);
-        setConstructors(Objects.requireNonNull(bridge.getAPIAccess()));
-        setIO(Objects.requireNonNull(bridge.getIOAccess()));
-        setMonitoring(Objects.requireNonNull(bridge.getManagementAccess()));
-        initialize();
+        AbstractPolyglotImpl impl = getRootImpl();
+        while (impl != null) {
+            initializeModuleToUnnamedBridge(impl, bridge);
+            impl = impl.getNextOrNull();
+        }
         return bridge.getModuleAccess();
+    }
+
+    private static void initializeModuleToUnnamedBridge(AbstractPolyglotImpl impl, ModuleToUnnamedBridge bridge) {
+        impl.setConstructors(Objects.requireNonNull(bridge.getAPIAccess()));
+        impl.setIO(Objects.requireNonNull(bridge.getIOAccess()));
+        impl.setMonitoring(Objects.requireNonNull(bridge.getManagementAccess()));
+        impl.initialize();
     }
 
     @Override
@@ -252,6 +274,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         PolyglotEngineImpl impl = null;
         try {
             validateSandbox(sandboxPolicy);
+            InternalResourceRoots.ensureInitialized();
             if (TruffleOptions.AOT) {
                 EngineAccessor.ACCESSOR.initializeNativeImageTruffleLocator();
             }
@@ -415,6 +438,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      * Used for preinitialized contexts and fallback engine.
      */
     PolyglotEngineImpl createDefaultEngine(TruffleLanguage<Object> hostLanguage) {
+        InternalResourceRoots.ensureInitialized();
         Map<String, String> options = getAPIAccess().readOptionsFromSystemProperties();
         LogConfig logConfig = new LogConfig();
         SandboxPolicy sandboxPolicy = SandboxPolicy.TRUSTED;
@@ -525,8 +549,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
-    public FileSystem allowLanguageHomeAccess(FileSystem fileSystem) {
-        return FileSystems.allowLanguageHomeAccess(fileSystem);
+    public FileSystem allowInternalResourceAccess(FileSystem fileSystem) {
+        return FileSystems.allowInternalResourceAccess(fileSystem);
     }
 
     @Override
@@ -566,6 +590,28 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public ThreadScope createThreadScope() {
         return null;
+    }
+
+    @Override
+    public boolean isInCurrentEngineHostCallback(Object engine) {
+        RootNode topMostGuestToHostRootNode = Truffle.getRuntime().iterateFrames((f) -> {
+            RootNode root = ((RootCallTarget) f.getCallTarget()).getRootNode();
+            if (EngineAccessor.HOST.isGuestToHostRootNode(root)) {
+                return root;
+            }
+            return null;
+        });
+        if (topMostGuestToHostRootNode == null) {
+            return false;
+        } else {
+            PolyglotSharingLayer sharing = (PolyglotSharingLayer) EngineAccessor.NODES.getSharingLayer(topMostGuestToHostRootNode);
+            PolyglotEngineImpl rootEngine = sharing.engine;
+            if (rootEngine == engine) {
+                return true;
+            } else {
+                return false;
+            }
+        }
     }
 
     @Override

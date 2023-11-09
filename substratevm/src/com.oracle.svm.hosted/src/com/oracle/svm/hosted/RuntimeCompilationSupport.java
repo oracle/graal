@@ -24,9 +24,10 @@
  */
 package com.oracle.svm.hosted;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
 public interface RuntimeCompilationSupport {
-    void onCompileQueueCreation(HostedUniverse universe, CompileQueue compileQueue);
+    void onCompileQueueCreation(BigBang bb, HostedUniverse hUniverse, CompileQueue compileQueue);
 }

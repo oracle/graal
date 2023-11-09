@@ -31,15 +31,15 @@ import java.util.Map;
 import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.core.common.FieldIntrospection;
-import org.graalvm.compiler.core.common.Fields;
-import org.graalvm.compiler.graph.Edges;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.lir.CompositeValue;
-import org.graalvm.compiler.lir.CompositeValueClass;
-import org.graalvm.compiler.lir.LIRInstruction;
-import org.graalvm.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.core.common.FieldIntrospection;
+import jdk.graal.compiler.core.common.Fields;
+import jdk.graal.compiler.graph.Edges;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.CompositeValue;
+import jdk.graal.compiler.lir.CompositeValueClass;
+import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.graal.compiler.lir.LIRInstructionClass;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 

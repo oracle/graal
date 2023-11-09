@@ -33,6 +33,7 @@ SUNWprivate_1.1 {
                 mokapotAttachThread;
                 mokapotGetRTLD_DEFAULT;
                 mokapotGetProcessHandle;
+                mokapotCaptureState;
                 getPackageAt;
 
                 # Espresso management native API

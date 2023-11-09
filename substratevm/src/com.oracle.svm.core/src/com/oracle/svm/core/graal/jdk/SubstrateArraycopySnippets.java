@@ -24,25 +24,26 @@
  */
 package com.oracle.svm.core.graal.jdk;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
 import java.util.Map;
 
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.InputType;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.Snippets;
-import org.graalvm.compiler.replacements.arraycopy.ArrayCopyNode;
-import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.InputType;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.nodes.spi.Lowerable;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.Snippets;
+import jdk.graal.compiler.replacements.arraycopy.ArrayCopyNode;
+import jdk.graal.compiler.replacements.nodes.BasicArrayCopyNode;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.JavaMemoryUtil;
@@ -60,7 +61,7 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import jdk.vm.ci.meta.JavaKind;
 
 public final class SubstrateArraycopySnippets extends SubstrateTemplates implements Snippets {
-    private static final SubstrateForeignCallDescriptor ARRAYCOPY = SnippetRuntime.findForeignCall(SubstrateArraycopySnippets.class, "doArraycopy", false, LocationIdentity.any());
+    private static final SubstrateForeignCallDescriptor ARRAYCOPY = SnippetRuntime.findForeignCall(SubstrateArraycopySnippets.class, "doArraycopy", HAS_SIDE_EFFECT, LocationIdentity.any());
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{ARRAYCOPY};
 
     public static void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {

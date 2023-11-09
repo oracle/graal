@@ -29,10 +29,10 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.nodes.GraphEncoder;
-import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.GraphEncoder;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.StructuredGraph;
 
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;

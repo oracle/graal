@@ -27,15 +27,17 @@ package com.oracle.svm.core.jni.access;
 import java.lang.reflect.Modifier;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.compiler.nodes.NamedLocationIdentity;
-import org.graalvm.compiler.word.BarrieredAccess;
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
+import jdk.graal.compiler.word.BarrieredAccess;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -71,15 +73,25 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
     }
 
     private final int modifiers;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
     private int vtableOffset = VTABLE_OFFSET_NOT_YET_COMPUTED;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
     private CodePointer nonvirtualTarget;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
     private PointerBase newObjectTarget; // for constructors
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
     private CodePointer callWrapper;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
     @SuppressWarnings("unused") private CodePointer varargsWrapper;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
     @SuppressWarnings("unused") private CodePointer arrayWrapper;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
     @SuppressWarnings("unused") private CodePointer valistWrapper;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
     @SuppressWarnings("unused") private CodePointer varargsNonvirtualWrapper;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
     @SuppressWarnings("unused") private CodePointer arrayNonvirtualWrapper;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
     @SuppressWarnings("unused") private CodePointer valistNonvirtualWrapper;
 
     @Platforms(HOSTED_ONLY.class)

@@ -48,7 +48,7 @@ import jdk.jfr.Label;
 import jdk.jfr.Name;
 import jdk.jfr.StackTrace;
 
-@Name("org.graalvm.compiler.truffle.Deoptimization")
+@Name("jdk.graal.compiler.truffle.Deoptimization")
 @Category("Truffle Compiler")
 @Label("Deoptimization")
 @Description("Truffle Call Target Deoptimization")

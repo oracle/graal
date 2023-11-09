@@ -33,10 +33,10 @@ import java.nio.file.StandardOpenOption;
 import org.graalvm.polyglot.Source;
 
 import org.junit.After;
-import org.junit.Ignore;
 import org.junit.Test;
 
-@Ignore("GR-43473")
+import static com.oracle.truffle.tools.dap.test.DAPTester.getFilePath;
+
 public final class SimpleLanguageDAPTest {
 
     private static final String FACTORIAL = "function factorial(n) {\n" +
@@ -1020,7 +1020,7 @@ public final class SimpleLanguageDAPTest {
                 "{\"event\":\"continued\",\"body\":{\"threadId\":1,\"allThreadsContinued\":false},\"type\":\"event\"}",
                 "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":9,\"command\":\"continue\"}"
         );
-        tester.finish();
+        tester.finish(false);
     }
 
     @Test
@@ -1194,18 +1194,6 @@ public final class SimpleLanguageDAPTest {
         file.deleteOnExit();
         Files.writeString(file.toPath(), content, StandardOpenOption.TRUNCATE_EXISTING);
         return file;
-    }
-
-    private static String getFilePath(File file) {
-        String path;
-        try {
-            path = file.getCanonicalPath();
-        } catch (IOException ex) {
-            path = file.getAbsolutePath();
-        }
-        // We need to escape backlash for correct JSON:
-        path = path.replace("\\", "\\\\");
-        return path;
     }
 
     private static String replaceNewLines(String nl) {

@@ -26,11 +26,11 @@ package com.oracle.svm.core.heap.dump;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.word.ObjectAccess;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -1073,12 +1073,12 @@ public class HeapDumpWriter {
         /*
          * HotSpot writes Class objects only as GC_CLASS_DUMP and never as GC_INSTANCE_DUMP records.
          * It also always uses the address of the mirror class as the class id. This has the effect
-         * that the heap dump only contains a very limited set of information for class objects.
+         * that the heap dump only contains very limited information about Class objects.
          *
-         * It is handy to have detailed information about the DynamicHub in the heap dump. Ideally,
-         * we would just write both a GC_CLASS_DUMP and a GC_INSTANCE_DUMP record with the same id
-         * but that breaks VisualVM in a weird way. Therefore, we are using different ids for the
-         * GC_CLASS_DUMP and GC_INSTANCE_DUMP records.
+         * For Native Image, we choose a different approach because it is handy to have detailed
+         * information about the DynamicHub in the heap dump. Ideally, we would just write both a
+         * GC_CLASS_DUMP and a GC_INSTANCE_DUMP record with the same id but that breaks VisualVM in
+         * a weird way. So, we generate an artificial id for GC_CLASS_DUMP entries.
          */
         Word hubAddress = Word.objectToUntrackedPointer(hub);
         if (hubAddress.isNonNull()) {

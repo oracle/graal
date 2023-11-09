@@ -49,6 +49,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public final class PointsToAnalysisMethod extends AnalysisMethod {
 
     private MethodTypeFlow typeFlow;
+    /** The parsing context in which given method was parsed, preserved after analysis. */
+    private Object parsingReason;
 
     private Set<InvokeTypeFlow> invokedBy;
     private Set<InvokeTypeFlow> implementationInvokedBy;
@@ -97,7 +99,7 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
 
     @Override
     public boolean registerAsInvoked(Object reason) {
-        assert reason instanceof InvokeTypeFlow || reason instanceof String;
+        assert reason instanceof InvokeTypeFlow || reason instanceof String : reason;
         if (invokedBy != null && reason instanceof InvokeTypeFlow) {
             invokedBy.add((InvokeTypeFlow) reason);
         }
@@ -106,7 +108,7 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
 
     @Override
     public boolean registerAsImplementationInvoked(Object reason) {
-        assert reason instanceof InvokeTypeFlow || reason instanceof String;
+        assert reason instanceof InvokeTypeFlow || reason instanceof String : reason;
         if (implementationInvokedBy != null && reason instanceof InvokeTypeFlow) {
             implementationInvokedBy.add((InvokeTypeFlow) reason);
         }
@@ -147,9 +149,18 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
         return getTypeFlow().getInvokes().getValues();
     }
 
+    /**
+     * Set parsing reason when the {@link #typeFlow} is initialized. We cannot initialize it in the
+     * constructor because that may be too early, before the flows graph is actually initialized and
+     * a parsing reason is available.
+     */
+    public void setParsingReason(Object parsingReason) {
+        this.parsingReason = parsingReason;
+    }
+
     @Override
     public Object getParsingReason() {
-        return typeFlow.getParsingReason();
+        return parsingReason;
     }
 
     public InvokeTypeFlow initAndGetContextInsensitiveInvoke(PointsToAnalysis bb, BytecodePosition originalLocation, boolean isSpecial, MultiMethodKey callerMultiMethodKey) {
@@ -169,7 +180,7 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
      */
     private static InvokeTypeFlow createContextInsensitiveInvoke(PointsToAnalysis bb, PointsToAnalysisMethod method, BytecodePosition originalLocation, boolean isSpecial,
                     MultiMethodKey callerMultiMethodKey) {
-        assert !method.isStatic();
+        assert !method.isStatic() : method;
         /*
          * The context insensitive invoke has actual parameters and return flows that will be linked
          * to the original actual parameters and return flows at each call site where it will be

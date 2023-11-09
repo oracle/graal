@@ -1,6 +1,4 @@
 #
-# ----------------------------------------------------------------------------------------------------
-#
 # Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
@@ -24,7 +22,6 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
-# ----------------------------------------------------------------------------------------------------
 
 import re
 import os
@@ -520,13 +517,13 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHJarBa
     def whitebox_dependency(dist):
         return itertools.chain(
             (dep.name.startswith('GRAAL') for dep in dist.deps),
-            (dep.name.startswith('org.graalvm.compiler') for dep in dist.archived_deps())
+            (dep.name.startswith('jdk.graal.compiler') for dep in dist.archived_deps())
         )
 
     def filter_distribution(self, dist):
         return super(JMHDistWhiteboxBenchmarkSuite, self).filter_distribution(dist) and \
                any(JMHDistWhiteboxBenchmarkSuite.whitebox_dependency(dist)) and \
-               not any(dep.name.startswith('com.oracle.truffle.enterprise.dispatch.jmh') for dep in dist.deps)
+               not any(dep.name.startswith('com.oracle.truffle.enterprise.jmh') for dep in dist.deps)
 
 
     def extraVmArgs(self):
@@ -536,7 +533,15 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHJarBa
                  '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED',
                  '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
                  '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=ALL-UNNAMED',
-                 '--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.graph=ALL-UNNAMED']
+                 '--add-exports=jdk.graal.compiler/jdk.graal.compiler.graph=ALL-UNNAMED',
+                 '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.benchmark=ALL-UNNAMED',
+                 '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.debug=ALL-UNNAMED',
+                 '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.library=ALL-UNNAMED',
+                 '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.memory=ALL-UNNAMED',
+                 '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.nodes=ALL-UNNAMED',
+                 '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.strings=ALL-UNNAMED',
+                 '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl=ALL-UNNAMED',
+                 '--add-exports=org.graalvm.truffle/com.oracle.truffle.api=ALL-UNNAMED']
         return extra + super(JMHDistWhiteboxBenchmarkSuite, self).extraVmArgs()
 
     def getJMHEntry(self, bmSuiteArgs):

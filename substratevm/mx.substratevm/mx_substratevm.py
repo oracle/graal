@@ -1,7 +1,5 @@
 #
-# ----------------------------------------------------------------------------------------------------
-#
-# Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -24,20 +22,19 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
-# ----------------------------------------------------------------------------------------------------
-
-from __future__ import print_function
 
 import os
 import re
 import tempfile
 from glob import glob
 from contextlib import contextmanager
+from distutils.dir_util import mkpath  # pylint: disable=no-name-in-module
 from os.path import join, exists, dirname
 import pipes
 from argparse import ArgumentParser
 import fnmatch
 import collections
+from io import StringIO
 
 import mx
 import mx_compiler
@@ -56,10 +53,6 @@ from mx_unittest import _run_tests, _VMLauncher
 import sys
 
 
-if sys.version_info[0] < 3:
-    from StringIO import StringIO
-else:
-    from io import StringIO
 
 suite = mx.suite('substratevm')
 svmSuites = [suite]
@@ -76,7 +69,7 @@ def graal_compiler_flags():
     def adjusted_exports(line):
         """
         Turns e.g.
-        --add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.stack=jdk.internal.vm.compiler,org.graalvm.nativeimage.builder
+        --add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.stack=jdk.graal.compiler,org.graalvm.nativeimage.builder
         into:
         --add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.stack=ALL-UNNAMED
         """
@@ -224,6 +217,27 @@ def vm_executable_path(executable, config=None):
     return join(_vm_home(config), 'bin', executable)
 
 
+def _escape_for_args_file(arg):
+    if not (arg.startswith('\\Q') and arg.endswith('\\E')):
+        arg = arg.replace('\\', '\\\\')
+        if ' ' in arg:
+            arg = '\"' + arg + '\"'
+    return arg
+
+
+def _maybe_convert_to_args_file(args):
+    total_command_line_args_length = sum([len(arg) for arg in args])
+    if total_command_line_args_length < 80:
+        # Do not use argument file when total command line length is reasonable,
+        # so that both code paths are exercised on all platforms
+        return args
+    else:
+        # Use argument file to avoid exceeding the command line length limit on Windows
+        with tempfile.NamedTemporaryFile(delete=False, mode='w', prefix='ni_args_', suffix='.args') as args_file:
+            args_file.write('\n'.join([_escape_for_args_file(a) for a in args]))
+        return ['@' + args_file.name]
+
+
 @contextmanager
 def native_image_context(common_args=None, hosted_assertions=True, native_image_cmd='', config=None, build_if_missing=False):
     common_args = [] if common_args is None else common_args
@@ -254,7 +268,7 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
             raise mx.abort('The built GraalVM for config ' + str(config) + ' does not contain a native-image command')
 
     def _native_image(args, **kwargs):
-        mx.run([native_image_cmd] + args, **kwargs)
+        return mx.run([native_image_cmd] + _maybe_convert_to_args_file(args), **kwargs)
 
     def is_launcher(launcher_path):
         with open(launcher_path, 'rb') as fp:
@@ -268,12 +282,20 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
         verbose_image_build_option = ['--verbose'] if mx.get_opts().verbose else []
         _native_image(verbose_image_build_option + ['--macro:native-image-launcher'])
 
-    def query_native_image(all_args, option):
-
+    def query_native_image(all_args):
         stdoutdata = []
         def stdout_collector(x):
             stdoutdata.append(x.rstrip())
-        _native_image(['--dry-run', '--verbose'] + all_args, out=stdout_collector)
+        stderrdata = []
+        def stderr_collector(x):
+            stderrdata.append(x.rstrip())
+        exit_code = _native_image(['--dry-run', '--verbose'] + all_args, nonZeroIsFatal=False, out=stdout_collector, err=stderr_collector)
+        if exit_code != 0:
+            for line in stdoutdata:
+                print(line)
+            for line in stderrdata:
+                print(line)
+            mx.abort('Failed to query native-image.')
 
         def remove_quotes(val):
             if len(val) >= 2 and val.startswith("'") and val.endswith("'"):
@@ -281,19 +303,24 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
             else:
                 return val
 
-        result = None
+        path_regex = re.compile(r'^-H:Path(@[^=]*)?=')
+        name_regex = re.compile(r'^-H:Name(@[^=]*)?=')
+        path = name = None
         for line in stdoutdata:
             arg = remove_quotes(line.rstrip('\\').strip())
-            m = re.match(option, arg)
-            if m:
-                result = arg[m.end():]
+            path_matcher = path_regex.match(arg)
+            if path_matcher:
+                path = arg[path_matcher.end():]
+            name_matcher = name_regex.match(arg)
+            if name_matcher:
+                name = arg[name_matcher.end():]
 
-        return result
+        assert path is not None and name is not None
+        return path, name
 
     def native_image_func(args, **kwargs):
         all_args = base_args + common_args + args
-        path = query_native_image(all_args, r'^-H:Path(@[^=]*)?=')
-        name = query_native_image(all_args, r'^-H:Name(@[^=]*)?=')
+        path, name = query_native_image(all_args)
         image = join(path, name)
         _native_image(all_args, **kwargs)
         return image
@@ -301,7 +328,7 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
     yield native_image_func
 
 native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
-_native_unittest_features = '--features=com.oracle.svm.test.ImageInfoTest$TestFeature,com.oracle.svm.test.ServiceLoaderTest$TestFeature,com.oracle.svm.test.SecurityServiceTest$TestFeature'
+_native_unittest_features = '--features=com.oracle.svm.test.ImageInfoTest$TestFeature,com.oracle.svm.test.ServiceLoaderTest$TestFeature,com.oracle.svm.test.SecurityServiceTest$TestFeature,com.oracle.svm.test.ReflectionRegistrationTest$TestFeature'
 
 IMAGE_ASSERTION_FLAGS = svm_experimental_options(['-H:+VerifyGraalGraphs', '-H:+VerifyPhases'])
 
@@ -353,7 +380,7 @@ def truffle_unittest_task(extra_build_args=None):
     # White Box Truffle compilation tests that need access to compiler graphs.
     if '-Ob' not in extra_build_args:
         # GR-44492
-        native_unittest(['org.graalvm.compiler.truffle.test.ContextLookupCompilationTest'] + truffle_args(extra_build_args + svm_experimental_options(['-H:-SupportCompileInIsolates'])))
+        native_unittest(['jdk.graal.compiler.truffle.test.ContextLookupCompilationTest'] + truffle_args(extra_build_args + svm_experimental_options(['-H:-SupportCompileInIsolates'])))
 
 
 def truffle_context_pre_init_unittest_task(extra_build_args):
@@ -462,9 +489,26 @@ def native_unittests_task(extra_build_args=None):
         # GR-24075
         mx_unittest.add_global_ignore_glob('com.oracle.svm.test.ProcessPropertiesTest')
 
+    # add resources that are not in jar but in the separate directory
+    cp_entry_name = join(svmbuild_dir(), 'cpEntryDir')
+    resources_from_dir = join(cp_entry_name, 'resourcesFromDir')
+    simple_dir = join(cp_entry_name, 'simpleDir')
+
+    mkpath(cp_entry_name)
+    mkpath(resources_from_dir)
+    mkpath(simple_dir)
+
+    for i in range(4):
+        with open(join(cp_entry_name, "resourcesFromDir", f'cond-resource{i}.txt'), 'w') as out:
+            out.write(f"Conditional file{i}" + '\n')
+
+        with open(join(cp_entry_name, "simpleDir", f'simple-resource{i}.txt'), 'w') as out:
+            out.write(f"Simple file{i}" + '\n')
+
     additional_build_args = svm_experimental_options([
         '-H:AdditionalSecurityProviders=com.oracle.svm.test.SecurityServiceTest$NoOpProvider',
         '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.SecurityServiceTest$JCACompliantNoOpService',
+        '-cp', cp_entry_name
     ])
     if extra_build_args is not None:
         additional_build_args += extra_build_args
@@ -1016,9 +1060,13 @@ driver_build_args = [
     '--features=com.oracle.svm.driver.APIOptionFeature',
     '--initialize-at-build-time=com.oracle.svm.driver',
     '--link-at-build-time=com.oracle.svm.driver,com.oracle.svm.driver.metainf',
-] + svm_experimental_options([
+]
+
+driver_exe_build_args = driver_build_args + svm_experimental_options([
+    '-H:+AllowJRTFileSystem',
     '-H:IncludeResources=com/oracle/svm/driver/launcher/.*',
     '-H:-ParseRuntimeOptions',
+    f'-R:MaxHeapSize={256 * 1024 * 1024}',
 ])
 
 additional_ni_dependencies = []
@@ -1057,7 +1105,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             destination="bin/<exe:native-image>",
             jar_distributions=["substratevm:SVM_DRIVER"],
             main_class=_native_image_launcher_main_class(),
-            build_args=driver_build_args,
+            build_args=driver_exe_build_args,
             extra_jvm_args=_native_image_launcher_extra_jvm_args(),
             home_finder=False,
         ),
@@ -1199,28 +1247,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     support_distributions=[
         "substratevm:POLYGLOT_NATIVE_API_HEADERS",
     ],
-    polyglot_lib_build_args=[
-        "--macro:truffle",
-        "--features=org.graalvm.polyglot.nativeapi.PolyglotNativeAPIFeature",
-        "-Dorg.graalvm.polyglot.nativeapi.libraryPath=${java.home}/lib/polyglot/",
-        # Temporary solution for polyglot-native-api.jar on classpath, will be fixed by modularization, GR-45104.
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.c.function=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.handles=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.headers=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.jvmstat=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.thread=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.threadlocal=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.util=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.hosted=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.hosted.c=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.hosted.c.util=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage/org.graalvm.nativeimage.impl=ALL-UNNAMED",
-    ] + svm_experimental_options([
-        "-H:CStandard=C11",
-        "-H:+SpawnIsolates",
-    ]),
     polyglot_lib_jar_dependencies=[
         "substratevm:POLYGLOT_NATIVE_API",
     ],
@@ -1262,10 +1288,10 @@ libgraal_jar_distributions = [
 
 libgraal_build_args = [
     ## Pass via JVM args opening up of packages needed for image builder early on
-    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.hotspot=ALL-UNNAMED',
-    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.options=ALL-UNNAMED',
-    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.compiler=ALL-UNNAMED',
-    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.compiler.hotspot=ALL-UNNAMED',
+    '-J--add-exports=jdk.graal.compiler/jdk.graal.compiler.hotspot=ALL-UNNAMED',
+    '-J--add-exports=jdk.graal.compiler/jdk.graal.compiler.options=ALL-UNNAMED',
+    '-J--add-exports=jdk.graal.compiler/jdk.graal.compiler.truffle=ALL-UNNAMED',
+    '-J--add-exports=jdk.graal.compiler/jdk.graal.compiler.truffle.hotspot=ALL-UNNAMED',
     '-J--add-exports=org.graalvm.jniutils/org.graalvm.jniutils=ALL-UNNAMED',
     '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler.hotspot.libgraal=ALL-UNNAMED',
     '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler.hotspot=ALL-UNNAMED',
@@ -1280,14 +1306,21 @@ libgraal_build_args = [
     # TruffleLibGraalJVMCIServiceLocator needs access to JVMCIServiceLocator
     '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
 
-    '--initialize-at-build-time=org.graalvm.compiler,org.graalvm.libgraal,com.oracle.truffle',
+    '--initialize-at-build-time=jdk.graal.compiler,org.graalvm.libgraal,com.oracle.truffle',
 
     '-H:+ReportExceptionStackTraces',
-] + svm_experimental_options([
+
+    # Set minimum based on libgraal-ee-pgo
+    '-J-Xms7g'
+] + ([
+    # If building on the console, use as many cores as available
+    f'--parallelism={mx.cpu_count()}',
+] if mx.is_interactive() else []) + svm_experimental_options([
     '-H:-UseServiceLoaderFeature',
     '-H:+AllowFoldMethods',
     '-Djdk.vm.ci.services.aot=true',
     '-Dtruffle.TruffleRuntime=',
+    '-H:+JNIEnhancedErrorCodes',
     '-H:InitialCollectionPolicy=LibGraal',
 
     # These 2 arguments provide walkable call stacks for a crash in libgraal
@@ -1345,7 +1378,7 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
 mx_sdk_vm.register_graalvm_component(libgraal)
 
 def _native_image_configure_extra_jvm_args():
-    packages = ['jdk.internal.vm.compiler/org.graalvm.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.ci/jdk.vm.ci.services', 'jdk.internal.vm.compiler/org.graalvm.compiler.core.common.util']
+    packages = ['jdk.graal.compiler/jdk.graal.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.ci/jdk.vm.ci.services', 'jdk.graal.compiler/jdk.graal.compiler.core.common.util']
     args = ['--add-exports=' + packageName + '=ALL-UNNAMED' for packageName in packages]
     if not mx_sdk_vm.jdk_enables_jvmci_by_default(get_jdk()):
         args.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'])
@@ -1512,9 +1545,9 @@ def clinittest(args):
         mx.ensure_dir_exists(build_dir)
 
         if new_class_init_policy:
-            policy_args = svm_experimental_options(['-H:-UseDeprecatedOldClassInitialization', '-H:+SimulateClassInitializer']) + ['--features=com.oracle.svm.test.clinit.TestClassInitializationFeatureNewPolicyFeature']
+            policy_args = svm_experimental_options(['-H:+SimulateClassInitializer']) + ['--features=com.oracle.svm.test.clinit.TestClassInitializationFeatureNewPolicyFeature']
         else:
-            policy_args = svm_experimental_options(['-H:+UseDeprecatedOldClassInitialization', '-H:-SimulateClassInitializer']) + ['--features=com.oracle.svm.test.clinit.TestClassInitializationFeatureOldPolicyFeature']
+            policy_args = svm_experimental_options(['-H:-StrictImageHeap', '-H:-SimulateClassInitializer']) + ['--features=com.oracle.svm.test.clinit.TestClassInitializationFeatureOldPolicyFeature']
 
         # Build and run the example
         binary_path = join(build_dir, 'clinittest')
@@ -1657,7 +1690,7 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
                         else:
                             # Linux objdump objdump --wide --syms
                             # 0000000000000000         *UND*	0000000000000000 JVM_InitStackTraceElement
-                            found_undef = line_tokens[1] = '*UND*'
+                            found_undef = line_tokens[1] == '*UND*'
                         if found_undef:
                             symbol_candiate = line_tokens[-1]
                             mx.logvv('Found undefined symbol: ' + symbol_candiate)
@@ -1882,30 +1915,14 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
     # com.oracle.svm.driver.NativeImage.BuildConfiguration.getBuilderJavaArgs().
     def compute_graal_compiler_flags_map(self):
         graal_compiler_flags_map = dict()
-        graal_compiler_flags_map['8'] = [
-            '-d64',
-            '-XX:-UseJVMCIClassLoader'
-        ]
-
-        graal_compiler_flags_map['11'] = [
-            # Disable the check for JDK-8 graal version.
-            '-Dsubstratevm.IgnoreGraalVersionCheck=true',
-        ]
 
         # Packages to add-export
         distributions_transitive = mx.classpath_entries(self.buildDependencies)
         required_exports = mx_javamodules.requiredExports(distributions_transitive, get_jdk())
         exports_flags = mx_sdk_vm.AbstractNativeImageConfig.get_add_exports_list(required_exports)
-        graal_compiler_flags_map['11'].extend(exports_flags)
-        # Currently JDK 17 and JDK 11 have the same flags
-        graal_compiler_flags_map['17'] = graal_compiler_flags_map['11']
-        # Currently JDK 19 and JDK 17 have the same flags
-        graal_compiler_flags_map['19'] = graal_compiler_flags_map['17']
-        graal_compiler_flags_map['19-ea'] = graal_compiler_flags_map['19']
-        # Currently JDK 20 and JDK 19 have the same flags
-        graal_compiler_flags_map['20'] = graal_compiler_flags_map['19']
-        # Currently JDK 22, JDK 21 and JDK 20 have the same flags
-        graal_compiler_flags_map['21'] = graal_compiler_flags_map['20']
+
+        graal_compiler_flags_map['21'] = exports_flags
+        # Currently JDK 22 has the same flags
         graal_compiler_flags_map['22'] = graal_compiler_flags_map['21']
         # DO NOT ADD ANY NEW ADD-OPENS OR ADD-EXPORTS HERE!
         #

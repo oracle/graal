@@ -48,18 +48,18 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import org.graalvm.compiler.options.Option;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
@@ -429,6 +429,8 @@ public final class ReflectionPlugins {
         if (PredefinedClassesSupport.isPredefined(clazz)) {
             return false;
         }
+        receiver.requireNonNull();
+
         return pushConstant(b, targetMethod, clazz::getName, JavaKind.Object, clazz.getClassLoader(), true) != null;
     }
 
@@ -516,6 +518,9 @@ public final class ReflectionPlugins {
         Supplier<String> targetParameters = () -> (receiverValue == null ? "" : receiverValue + "; ") +
                         Stream.of(argValues).map(arg -> arg instanceof Object[] ? Arrays.toString((Object[]) arg) : Objects.toString(arg)).collect(Collectors.joining(", "));
 
+        if (receiver != null) {
+            receiver.requireNonNull();
+        }
         Object returnValue;
         try {
             returnValue = reflectionMethod.invoke(receiverValue, argValues);
@@ -563,6 +568,7 @@ public final class ReflectionPlugins {
         if (receiverValue == null || receiverValue == NULL_MARKER) {
             return false;
         }
+        receiver.requireNonNull();
 
         b.add(ReachabilityRegistrationNode.create(() -> registerForRuntimeReflection((T) receiverValue, registrationCallback), reason));
         return true;

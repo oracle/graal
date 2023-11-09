@@ -30,7 +30,6 @@ import java.util.regex.Pattern;
 import org.graalvm.polyglot.Source;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
@@ -48,7 +47,6 @@ public class ITLDAPTest {
     }
 
     @Test
-    @Ignore("GR-43473")
     public void testOutput() throws Exception {
         Source source = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
                         "  PRINT(OUT, CONSTANT(\"one\ntwo\n\")),\n" +
@@ -138,7 +136,6 @@ public class ITLDAPTest {
     }
 
     @Test
-    @Ignore("GR-43473")
     public void testOutputEarly() throws Exception {
         Source source1 = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
                         "  PRINT(OUT, CONSTANT(\"Prologue to stdout\n\")),\n" +
@@ -187,7 +184,6 @@ public class ITLDAPTest {
 
     @SuppressWarnings("deprecation")
     @Test
-    @Ignore("GR-43473")
     public void testMultiThreading() throws Exception {
         Source source = Source.newBuilder(InstrumentationTestLanguage.ID, new URL("file:///path/TestThreads.itl")).content("ROOT(\n" +
                         "DEFINE(f,\n" +
@@ -298,7 +294,6 @@ public class ITLDAPTest {
 
     @SuppressWarnings("deprecation")
     @Test
-    @Ignore("GR-43473")
     public void testBadSourceReference() throws Exception {
         Source source = Source.newBuilder(InstrumentationTestLanguage.ID, new URL("file:///path/TestSrcRef.itl")).content("ROOT(\n" +
                         "  STATEMENT(),\n" +
@@ -348,7 +343,6 @@ public class ITLDAPTest {
     }
 
     @Test
-    @Ignore("GR-43473")
     public void testEagerSourceLoad() throws Exception {
         Source source1 = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
                         "  EXPRESSION(),\n" +

@@ -31,9 +31,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.code.SourceMapping;
-import org.graalvm.compiler.debug.DebugContext;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.code.SourceMapping;
+import jdk.graal.compiler.debug.DebugContext;
 
 import com.oracle.svm.core.util.VMError;
 
@@ -387,7 +387,7 @@ public final class CompilationResultFrameTree {
         }
 
         private <N extends FrameNode> N addChild(N newNode) {
-            assert newNode.parent == this;
+            assert newNode.parent == this : this;
             /* Add the new node at the end */
 
             /* Simple case, add as first child */

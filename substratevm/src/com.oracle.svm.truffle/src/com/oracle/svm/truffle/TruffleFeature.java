@@ -28,9 +28,9 @@ package com.oracle.svm.truffle;
 import static com.oracle.svm.graal.hosted.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.INLINE;
 import static com.oracle.svm.graal.hosted.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.INLINING_DISALLOWED;
 import static com.oracle.svm.graal.hosted.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.NO_DECISION;
-import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsingMaxDepth;
-import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
-import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
+import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsingMaxDepth;
+import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
+import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -104,27 +104,27 @@ import java.util.function.ToLongFunction;
 import java.util.function.UnaryOperator;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.phases.HighTier;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.nodes.spi.Replacements;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.phases.tiers.Suites;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.host.HostInliningPhase;
-import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
-import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.phases.HighTier;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.spi.Replacements;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.tiers.Suites;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.truffle.KnownTruffleTypes;
+import jdk.graal.compiler.truffle.PartialEvaluator;
+import jdk.graal.compiler.truffle.host.HostInliningPhase;
+import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
+import jdk.graal.compiler.truffle.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -409,13 +409,12 @@ public class TruffleFeature implements InternalFeature {
          * information available, otherwise SubstrateStackIntrospection cannot visit them.
          */
         for (ResolvedJavaMethod method : truffleRuntime.getAnyFrameMethod()) {
-            runtimeCompilationFeature.requireFrameInformationForMethod(method);
             /*
-             * To avoid corner case errors, we also force compilation of these methods. This only
+             * To avoid corner case errors, we also force these methods to be reachable. This only
              * affects builds where no Truffle language is included, because any real language makes
              * these methods reachable (and therefore compiled).
              */
-            config.registerAsRoot((AnalysisMethod) method, true, "Truffle stack frame support, registered in " + TruffleFeature.class);
+            runtimeCompilationFeature.requireFrameInformationForMethod(method, config, true);
         }
 
         /*

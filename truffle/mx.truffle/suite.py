@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.39.0",
+  "mxversion": "6.44.1",
   "name" : "truffle",
   "version" : "24.0.0",
   "release" : False,
@@ -83,6 +83,7 @@ suite = {
     "ANTLR4": {
       "moduleName": "org.antlr.antlr4.runtime",
       "digest" : "sha512:4abb69a3c6895edeec64c11d61886fbeb68eda5ebb21094f596e4f7add8afa9ff049c05fa916264b9185ac9013b16d8eabf44fb65da0b6871997c8f1473a3771",
+      "sourceDigest" : "sha512:611840da04cf2768f234ef06d69d95ed6edb2c55a48c3cffdf96ab23e76fc3bdd03e900155e454d2dd23ce8b644d48882a980aa6f5a76905dbbad57320d1cce0",
       "maven" : {
         "groupId" : "org.antlr",
         "artifactId" : "antlr4-runtime",
@@ -130,12 +131,14 @@ suite = {
       },
     },
 
-    # Deprecated: Do not use, replaced by TRUFFLE_JSON.
-    "TruffleJSON" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20230227.jar"],
-      "digest" : "sha512:2b48819e94ca82472ffbdd3befc214351e1cfd0f87eb97d4aed092b48f11b53a7d82a637b008e022254781d2439aefe45ca4794eea8ad05de69934c5317c9a27",
-      "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20230227-src.jar"],
-      "sourceDigest" : "sha512:ecf08ea386398a9834f560e0afbb1bc2630037e3b170fe6d5c60e23ed4e198072cec2cd3569bdc1cae22318cd5fb97123dc5bb6d1e138c08f8d5c612f486956a",
+    "XZ-1.9" : {
+      "digest" : "sha512:a4362db234d4e83683e90f5baf90c82107450cc4404acab96e3fab14b8a3d4588a19722171d32f27d18463682a6994cad9af0b1065c954e3a77ea7bdcf586bac",
+      "sourceDigest" : "sha512:5625f7392d1958466507f0530585c2c40c5b301981ab64115f489dc4599e3364acd7f00bfdc69aa3124d4641a562923dc3ee038faee5a52dd3cbe29a1a35e5ab",
+      "maven" : {
+        "groupId" : "org.tukaani",
+        "artifactId" : "xz",
+        "version" : "1.9",
+      },
     },
 
     "JSON" : {
@@ -196,9 +199,6 @@ suite = {
         "java.logging",
         "jdk.unsupported", # sun.misc.Unsafe
       ],
-      # We need to force javac as JDT has a bug that JDT ignores SuppressWarnings
-      # if warnings as errors is enabled. See GR-14683.
-      "forceJavac" : "true",
       "javaCompliance" : "17+",
       "checkstyleVersion" : "10.7.0",
       "workingSets" : "API,Truffle",
@@ -829,14 +829,16 @@ suite = {
     "com.oracle.truffle.nfi.backend.panama" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "javaPreviewNeeded" : "21+",
       "dependencies" : [
         "com.oracle.truffle.nfi.backend.spi",
       ],
       "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "21+",
+      "javaCompliance" : "22+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
+      # disable SpotBugs and Jacoco as long as JDK 22 is unsupported [GR-49566]
+      "spotbugs" : "false",
+      "jacoco" : "exclude",
     },
 
     "com.oracle.truffle.nfi.backend.spi" : {
@@ -1134,6 +1136,30 @@ suite = {
       "jacoco" : "exclude",
     },
 
+    "org.graalvm.shadowed.org.tukaani.xz" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "spotbugs" : "false",
+      "shadedDependencies" : [
+        "truffle:XZ-1.9",
+      ],
+      "class" : "ShadedLibraryProject",
+      "shade" : {
+        "packages" : {
+          "org.tukaani.xz" : "org.graalvm.shadowed.org.tukaani.xz",
+        },
+        "exclude" : [
+          "META-INF/MANIFEST.MF",
+          "META-INF/versions/9/module-info.java"
+        ],
+      },
+      "description" : "shaded XZ Java library.",
+      "allowsJavadocWarnings": True,
+      "javac.lint.overrides" : 'none',
+      "jacoco" : "exclude",
+    },
+
     "com.oracle.truffle.runtime.attach" : {
       "subDir" : "src",
       "native" : "shared_lib",
@@ -1181,7 +1207,9 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      "forceJavac" : "true",
+      # We need to force javac because the generated sources in this project
+      # produce warnings in JDT.
+      "forceJavac": True,
       "spotbugs" : "false",
       "requires" : [
       ],
@@ -1203,6 +1231,33 @@ suite = {
         },
       },
       "description" : "JSON shaded library.",
+      "allowsJavadocWarnings": True,
+      "javac.lint.overrides" : 'none',
+      "jacoco" : "exclude",
+    },
+
+    "org.graalvm.shadowed.org.antlr.v4.runtime" : {
+      # shaded ANTLR4 (org.antlr:antlr4-runtime) library
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "forceJavac" : "true",
+      "spotbugs" : "false",
+      "shadedDependencies" : [
+        "truffle:ANTLR4",
+      ],
+      "class" : "ShadedLibraryProject",
+      "shade" : {
+        "packages" : {
+          "org.antlr.v4.runtime" : "org.graalvm.shadowed.org.antlr.v4.runtime",
+        },
+        "exclude" : [
+          "META-INF/MANIFEST.MF",
+          "META-INF/maven/**",
+          "main/dot/org/antlr/v4/runtime/atn/images/*"
+        ],
+      },
+      "description" : "ANTLR4 shaded library.",
       "allowsJavadocWarnings": True,
       "javac.lint.overrides" : 'none',
       "jacoco" : "exclude",
@@ -1284,12 +1339,13 @@ suite = {
           "jdk.unsupported", # sun.misc.Unsafe
           "java.logging",
           "java.management",
+          "static jdk.internal.vm.ci",  # JVMCI module is not on the boot layer if not enabled
         ],
         "exports" : [
           # Qualified exports
-          "com.oracle.truffle.compiler to org.graalvm.truffle.runtime, jdk.internal.vm.compiler, org.graalvm.nativeimage.builder, com.oracle.truffle.enterprise, com.oracle.graal.graal_enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
-          "com.oracle.truffle.compiler.hotspot to org.graalvm.truffle.runtime, jdk.internal.vm.compiler",
-          "com.oracle.truffle.compiler.hotspot.libgraal to org.graalvm.truffle.runtime, jdk.internal.vm.compiler"
+          "com.oracle.truffle.compiler to org.graalvm.truffle.runtime, jdk.graal.compiler, org.graalvm.nativeimage.builder, com.oracle.truffle.enterprise, com.oracle.graal.graal_enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
+          "com.oracle.truffle.compiler.hotspot to org.graalvm.truffle.runtime, jdk.graal.compiler",
+          "com.oracle.truffle.compiler.hotspot.libgraal to org.graalvm.truffle.runtime, jdk.graal.compiler"
         ],
         "uses" : [
         ],
@@ -1322,12 +1378,13 @@ suite = {
           "jdk.unsupported", # sun.misc.Unsafe
           "java.logging",
           "java.management",
+          "static jdk.internal.vm.ci",  # JVMCI module is not on the boot layer if not enabled
         ],
         "exports" : [
           # Qualified exports
           "* to org.graalvm.truffle, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
           # necessary to instantiate access truffle compiler from the runtime during host compilation
-          "com.oracle.truffle.runtime.hotspot to jdk.internal.vm.compiler",
+          "com.oracle.truffle.runtime.hotspot to jdk.graal.compiler",
         ],
         "uses" : [
           "com.oracle.truffle.api.impl.TruffleLocator",
@@ -1536,9 +1593,6 @@ suite = {
       "distDependencies" : [
         "TRUFFLE_NFI",
       ],
-      "javaProperties" : {
-          "truffle.nfi.library" : "<path:TRUFFLE_NFI_NATIVE>/bin/<lib:trufflenfi>"
-      },
       "description" : """Implementation of the Truffle NFI using libffi.""",
       "allowsJavadocWarnings": True,
       "maven": {
@@ -1552,7 +1606,7 @@ suite = {
         "name" : "com.oracle.truffle.truffle_nfi_panama",
       },
       "subDir" : "src",
-      "javaCompliance" : "21+",
+      "javaCompliance" : "22+",
       "dependencies" : [
         "com.oracle.truffle.nfi.backend.panama",
       ],
@@ -1561,6 +1615,9 @@ suite = {
       ],
       "description" : """Implementation of the Truffle NFI using CLinker from project panama.""",
       "allowsJavadocWarnings": True,
+      "maven": {
+        "tag": ["default", "public"],
+      },
       "noMavenJavadoc": True,  # the maven deploy job refuses to build javadoc if javaCompliance is higher than 17
     },
 
@@ -1692,8 +1749,9 @@ suite = {
 
     "TRUFFLE_DSL_PROCESSOR" : {
       "subDir" : "src",
-      "dependencies" : ["truffle:ANTLR4",
-                        "com.oracle.truffle.dsl.processor"],
+      "dependencies" : [
+        "com.oracle.truffle.dsl.processor",
+      ],
       "distDependencies" : [],
       "description" : "The Truffle DSL Processor generates source code for nodes that are declared using the DSL.",
       "allowsJavadocWarnings": True,
@@ -1920,12 +1978,21 @@ suite = {
       "maven" : False,
     },
 
+    "TRUFFLE_XZ_GRAALVM_SUPPORT" : {
+      "native" : True,
+      "description" : "Truffle support distribution for XZ Java library",
+      "layout" : {
+        "native-image.properties" : "file:mx.truffle/language-xz.properties",
+      },
+      "maven" : False,
+    },
+
     "LOCATOR": {
       "subDir": "src",
       "moduleInfo" : {
         "name" : "org.graalvm.locator",
         "exports" : [
-          "com.oracle.graalvm.locator to jdk.internal.vm.compiler.management",
+          "com.oracle.graalvm.locator to jdk.graal.compiler.management",
         ],
       },
       "dependencies": ["com.oracle.graalvm.locator"],
@@ -1944,7 +2011,7 @@ suite = {
         ],
         "exports" : [
           # Qualified exports.
-          "org.graalvm.shadowed.com.ibm.icu.lang to org.graalvm.js, org.graalvm.py",
+          "org.graalvm.shadowed.com.ibm.icu.lang to com.oracle.truffle.regex, org.graalvm.js, org.graalvm.py",
           "org.graalvm.shadowed.com.ibm.icu.math to org.graalvm.js, org.graalvm.py",
           "org.graalvm.shadowed.com.ibm.icu.number to org.graalvm.js, org.graalvm.py",
           "org.graalvm.shadowed.com.ibm.icu.text to org.graalvm.js, org.graalvm.py",
@@ -1970,6 +2037,34 @@ suite = {
       "maven" : {
         "groupId" : "org.graalvm.shadowed",
         "artifactId" : "icu4j",
+        "tag": ["default", "public"],
+      },
+    },
+
+    "TRUFFLE_XZ" : {
+      # This distribution defines a module.
+      "moduleInfo" : {
+        "name" : "org.graalvm.shadowed.xz",
+        "requires" : [
+        ],
+        "exports" : [
+          # Qualified exports.
+          "org.graalvm.shadowed.org.tukaani.xz to org.graalvm.py, org.graalvm.r",
+          "org.graalvm.shadowed.org.tukaani.xz.* to org.graalvm.py, org.graalvm.r",
+        ],
+      },
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "spotbugs" : "false",
+      "dependencies" : [
+        "org.graalvm.shadowed.org.tukaani.xz",
+      ],
+      "description" : "shaded XZ Java module.",
+      "allowsJavadocWarnings" : True,
+      "maven" : {
+        "groupId" : "org.graalvm.shadowed",
+        "artifactId" : "xz",
         "tag": ["default", "public"],
       },
     },
@@ -2001,6 +2096,31 @@ suite = {
       "maven" : {
         "groupId" : "org.graalvm.shadowed",
         "artifactId" : "json",
+        "tag": ["default", "public"],
+      },
+    },
+
+    "TRUFFLE_ANTLR4" : {
+      # shaded ANTLR4 (org.antlr:antlr4-runtime) library module
+      "moduleInfo" : {
+        "name" : "org.graalvm.shadowed.antlr4",
+        "exports" : [
+          "org.graalvm.shadowed.org.antlr.v4.runtime*",
+        ],
+      },
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "spotbugs" : "false",
+      "dependencies" : [
+        "org.graalvm.shadowed.org.antlr.v4.runtime",
+      ],
+      "description" : "ANTLR4 shaded module.",
+      "allowsJavadocWarnings" : True,
+      "license" : "BSD-new",
+      "maven" : {
+        "groupId" : "org.graalvm.shadowed",
+        "artifactId" : "antlr4",
         "tag": ["default", "public"],
       },
     },

@@ -10,3 +10,4 @@ relative_elem_section/main;virtual-tables;runtime
 global_const_expressions/main;mediator;runtime
 dynamic_data_offset/main;constant-pools;runtime
 dynamic_elem_offset/main;virtual-tables;runtime
+unsafe_passive_data_segment

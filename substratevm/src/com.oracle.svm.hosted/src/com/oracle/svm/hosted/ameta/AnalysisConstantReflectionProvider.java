@@ -28,12 +28,12 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.ObjIntConsumer;
 
-import org.graalvm.compiler.core.common.type.TypedConstant;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
 
+import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
@@ -42,8 +42,11 @@ import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.annotate.InjectAccessors;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.ObjectConstantEquality;
@@ -52,20 +55,27 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
+import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.hosted.meta.HostedLookupSnippetReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.meta.RelocatableConstant;
 
+import jdk.graal.compiler.core.common.type.TypedConstant;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.MethodHandleAccessProvider;
+import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public class AnalysisConstantReflectionProvider extends SharedConstantReflectionProvider {
     private final AnalysisUniverse universe;
-    private final UniverseMetaAccess metaAccess;
+    protected final UniverseMetaAccess metaAccess;
+    private HostedMetaAccess hMetaAccess;
     private final ClassInitializationSupport classInitializationSupport;
     private final AnalysisMethodHandleAccessProvider methodHandleAccess;
     private SimulateClassInitializerSupport simulateClassInitializerSupport;
@@ -75,6 +85,10 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         this.metaAccess = metaAccess;
         this.classInitializationSupport = classInitializationSupport;
         this.methodHandleAccess = new AnalysisMethodHandleAccessProvider(universe);
+    }
+
+    public void setHostedMetaAccess(HostedMetaAccess hMetaAccess) {
+        this.hMetaAccess = hMetaAccess;
     }
 
     @Override
@@ -109,8 +123,9 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
              * Unbox by reading the known single field "value", which is a primitive field of the
              * correct unboxed type.
              */
-            AnalysisType type = (AnalysisType) imageHeapConstant.getType(metaAccess);
+            AnalysisType type = imageHeapConstant.getType(metaAccess);
             if (BOXING_CLASSES.contains(type.getJavaClass())) {
+                imageHeapConstant.ensureReaderInstalled();
                 ResolvedJavaField[] fields = type.getInstanceFields(true);
                 assert fields.length == 1 && fields[0].getName().equals("value");
                 return ((ImageHeapInstance) imageHeapConstant).readFieldValue((AnalysisField) fields[0]);
@@ -132,8 +147,8 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             return null;
         }
         if (array instanceof ImageHeapConstant) {
-            if (array instanceof ImageHeapArray) {
-                return ((ImageHeapArray) array).getLength();
+            if (array instanceof ImageHeapArray heapArray) {
+                return heapArray.getLength();
             }
             return null;
         }
@@ -150,6 +165,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
                 if (index < 0 || index >= heapArray.getLength()) {
                     return null;
                 }
+                heapArray.ensureReaderInstalled();
                 return replaceObject(heapArray.readElementValue(index));
             }
             return null;
@@ -162,6 +178,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     public void forEachArrayElement(JavaConstant array, ObjIntConsumer<JavaConstant> consumer) {
         if (array instanceof ImageHeapConstant) {
             if (array instanceof ImageHeapArray heapArray) {
+                heapArray.ensureReaderInstalled();
                 for (int index = 0; index < heapArray.getLength(); index++) {
                     JavaConstant element = heapArray.readElementValue(index);
                     consumer.accept(replaceObject(element), index);
@@ -174,11 +191,15 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     }
 
     @Override
-    public final JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
+    public JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
         return readValue(metaAccess, (AnalysisField) field, receiver, false);
     }
 
     public JavaConstant readValue(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant receiver, boolean returnSimulatedValues) {
+        return readValue(suppliedMetaAccess, field, receiver, returnSimulatedValues, true);
+    }
+
+    public JavaConstant readValue(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant receiver, boolean returnSimulatedValues, boolean readFromShadowHeap) {
         if (!field.isStatic()) {
             if (receiver.isNull() || !field.getDeclaringClass().isAssignableFrom(((TypedConstant) receiver).getType(metaAccess))) {
                 /*
@@ -198,18 +219,36 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         if (returnSimulatedValues) {
             value = readSimulatedValue(field);
         }
-        if (value == null && receiver instanceof ImageHeapConstant) {
+        if (value == null && field.isStatic() && returnSimulatedValues && readFromShadowHeap) {
+            /*
+             * The shadow heap uses simulated values for static fields by default. So, only when
+             * simulated values are explicitly requested we can read via the shadow heap. Otherwise,
+             * this will lead to recursive parsing request errors.
+             */
+            if (SimulateClassInitializerSupport.singleton().isEnabled()) {
+                /*
+                 * The "late initialization" doesn't work with heap snapshots because the wrong
+                 * value will be snapshot for classes proven late, so we only read via the shadow
+                 * heap if simulation of class initializers is enabled. The check and this comment
+                 * will be removed when the old initialization strategy is removed.
+                 */
+                value = field.getDeclaringClass().getOrComputeData().readFieldValue(field);
+            }
+        }
+        if (value == null && receiver instanceof ImageHeapConstant heapConstant) {
+            heapConstant.ensureReaderInstalled();
+            AnalysisError.guarantee(ReadableJavaField.isValueAvailable(field), "Value not yet available for %s", field);
             ImageHeapInstance heapObject = (ImageHeapInstance) receiver;
             value = heapObject.readFieldValue(field);
         }
         if (value == null) {
-            value = universe.lookup(ReadableJavaField.readFieldValue(suppliedMetaAccess, classInitializationSupport, field.wrapped, universe.toHosted(receiver)));
+            value = doReadValue(field, universe.toHosted(receiver), suppliedMetaAccess);
         }
         return interceptValue(suppliedMetaAccess, field, value);
     }
 
     /** Read the field value and wrap it in a value supplier without performing any replacements. */
-    public ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, HostedMetaAccess hMetaAccess, JavaConstant receiver, boolean returnSimulatedValues) {
+    public ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, JavaConstant receiver, boolean returnSimulatedValues) {
         if (returnSimulatedValues) {
             var simulatedValue = readSimulatedValue(field);
             if (simulatedValue != null) {
@@ -217,24 +256,34 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             }
         }
 
-        if (field.wrapped instanceof ReadableJavaField) {
-            ReadableJavaField readableField = (ReadableJavaField) field.wrapped;
-            if (readableField.isValueAvailableBeforeAnalysis()) {
-                /* Materialize and return the value. */
-                return ValueSupplier.eagerValue(universe.lookup(readableField.readValue(metaAccess, classInitializationSupport, receiver)));
-            } else {
-                /*
-                 * Return a lazy value. This applies to RecomputeFieldValue.Kind.FieldOffset and
-                 * RecomputeFieldValue.Kind.Custom. The value becomes available during hosted
-                 * universe building and is installed by calling
-                 * ComputedValueField.processSubstrate() or by ComputedValueField.readValue().
-                 * Attempts to materialize the value earlier will result in an error.
-                 */
-                return ValueSupplier.lazyValue(() -> universe.lookup(readableField.readValue(hMetaAccess, classInitializationSupport, receiver)),
-                                readableField::isValueAvailable);
-            }
+        if (ReadableJavaField.isValueAvailable(field)) {
+            /* Materialize and return the value. */
+            return ValueSupplier.eagerValue(doReadValue(field, receiver, metaAccess));
         }
-        return ValueSupplier.eagerValue(universe.lookup(ReadableJavaField.readFieldValue(metaAccess, classInitializationSupport, field.wrapped, receiver)));
+        /*
+         * Return a lazy value. First, this applies to fields annotated with
+         * RecomputeFieldValue.Kind.FieldOffset and RecomputeFieldValue.Kind.Custom whose value
+         * becomes available during hosted universe building and is installed by calling
+         * ComputedValueField.processSubstrate() or ComputedValueField.readValue(). Secondly, this
+         * applies to fields annotated with @UnknownObjectField whose value is set directly either
+         * during analysis or in a later phase. Attempts to materialize the value before it becomes
+         * available will result in an error.
+         */
+        return ValueSupplier.lazyValue(() -> doReadValue(field, receiver), () -> ReadableJavaField.isValueAvailable(field));
+    }
+
+    /**
+     * The {@link HostedMetaAccess} is used to access the {@link HostedField} in the re-computation
+     * of {@link RecomputeFieldValue.Kind#AtomicFieldUpdaterOffset} and
+     * {@link RecomputeFieldValue.Kind#TranslateFieldOffset} annotated fields .
+     */
+    private JavaConstant doReadValue(AnalysisField field, JavaConstant receiver) {
+        Objects.requireNonNull(hMetaAccess);
+        return doReadValue(field, receiver, hMetaAccess);
+    }
+
+    private JavaConstant doReadValue(AnalysisField field, JavaConstant receiver, UniverseMetaAccess access) {
+        return universe.fromHosted(ReadableJavaField.readFieldValue(access, classInitializationSupport, field.wrapped, receiver));
     }
 
     /**
@@ -262,7 +311,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             result = filterInjectedAccessor(field, result);
             result = replaceObject(result);
             result = interceptAssertionStatus(field, result);
-            result = interceptWordType(suppliedMetaAccess, field, result);
+            result = interceptWordField(suppliedMetaAccess, field, result);
         }
         return result;
     }
@@ -318,23 +367,17 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     }
 
     /**
-     * Intercept {@link Word} types. They are boxed objects in the hosted world, but primitive
-     * values in the runtime world.
+     * Intercept {@link Word} fields. {@link Word} values are boxed objects in the hosted world, but
+     * primitive values in the runtime world, so the default value of {@link Word} fields is 0.
+     * 
+     * {@link HostedLookupSnippetReflectionProvider} replaces relocatable pointers with
+     * {@link RelocatableConstant} and regular {@link WordBase} values with
+     * {@link PrimitiveConstant}. No other {@link WordBase} values can be reachable at this point.
      */
-    private JavaConstant interceptWordType(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant value) {
+    private JavaConstant interceptWordField(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant value) {
         if (value.getJavaKind() == JavaKind.Object) {
-            if (universe.hostVM().isRelocatedPointer(suppliedMetaAccess, value)) {
-                /*
-                 * Such pointers are subject to relocation therefore we don't know their values yet.
-                 * Therefore there should not be a relocated pointer constant in a function which is
-                 * compiled. RelocatedPointers are only allowed in non-constant fields. The caller
-                 * of readValue is responsible of handling the returned value correctly.
-                 */
-                return value;
-            } else if (suppliedMetaAccess.isInstanceOf(value, WordBase.class)) {
-                Object originalObject = universe.getSnippetReflection().asObject(Object.class, value);
-                return JavaConstant.forIntegerKind(universe.getWordKind(), ((WordBase) originalObject).rawValue());
-            } else if (value.isNull() && field.getType().isWordType()) {
+            VMError.guarantee(value instanceof RelocatableConstant || !suppliedMetaAccess.isInstanceOf(value, WordBase.class));
+            if (value.isNull() && field.getType().isWordType()) {
                 return JavaConstant.forIntegerKind(universe.getWordKind(), 0);
             }
         }
@@ -361,7 +404,38 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
 
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
-        return SubstrateObjectConstant.forObject(getHostVM().dynamicHub(type));
+        return universe.getHeapScanner().createImageHeapConstant(super.forObject(getHostVM().dynamicHub(type)), ObjectScanner.OtherReason.UNKNOWN);
+    }
+
+    @Override
+    public JavaConstant forString(String value) {
+        if (value == null) {
+            return JavaConstant.NULL_POINTER;
+        }
+        return universe.getHeapScanner().createImageHeapConstant(super.forString(value), ObjectScanner.OtherReason.UNKNOWN);
+    }
+
+    @Override
+    public JavaConstant forObject(Object object) {
+        validateRawObjectConstant(object);
+        if (object instanceof RelocatedPointer pointer) {
+            return new RelocatableConstant(pointer);
+        } else if (object instanceof WordBase word) {
+            return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), word.rawValue());
+        }
+        /* Redirect constant lookup through the shadow heap. */
+        return universe.getHeapScanner().createImageHeapConstant(super.forObject(object), ObjectScanner.OtherReason.UNKNOWN);
+    }
+
+    /**
+     * The raw object may never be an {@link ImageHeapConstant}. However, it can be a
+     * {@link SubstrateObjectConstant} coming from graphs prepared for run time compilation. In that
+     * case we'll get a double wrapping: the {@link SubstrateObjectConstant} parameter value will be
+     * wrapped in another {@link SubstrateObjectConstant} which will then be stored in a
+     * {@link ImageHeapConstant} in the shadow heap.
+     */
+    public static void validateRawObjectConstant(Object object) {
+        AnalysisError.guarantee(!(object instanceof ImageHeapConstant), "Unexpected ImageHeapConstant %s", object);
     }
 
     private SVMHost getHostVM() {

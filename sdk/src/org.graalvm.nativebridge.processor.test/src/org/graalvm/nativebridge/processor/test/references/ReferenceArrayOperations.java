@@ -89,4 +89,6 @@ public interface ReferenceArrayOperations {
     List<String> exchangeGuestSubArrayWithMarshalledResult(Record[] records, int offset, int length);
 
     Record[] getGuestObjects();
+
+    void fillHostWithMarshalledInOutParameter(Handler[] handlers, List<String> list);
 }

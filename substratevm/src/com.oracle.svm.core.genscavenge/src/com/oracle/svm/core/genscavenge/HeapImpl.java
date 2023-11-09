@@ -28,12 +28,13 @@ import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.compiler.api.directives.GraalDirectives;
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.nodes.extended.MembarNode;
+import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -47,6 +48,7 @@ import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunk;
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunkRegistry;
 import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
@@ -72,6 +74,8 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
+import com.oracle.svm.core.jfr.JfrTicks;
+import com.oracle.svm.core.jfr.events.SystemGCEvent;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
@@ -124,9 +128,9 @@ public final class HeapImpl extends Heap {
         this.gcImpl = new GCImpl();
         this.runtimeCodeInfoGcSupport = new RuntimeCodeInfoGCSupportImpl();
         HeapParameters.initialize();
-        DiagnosticThunkRegistry.singleton().register(new DumpHeapSettingsAndStatistics());
-        DiagnosticThunkRegistry.singleton().register(new DumpHeapUsage());
-        DiagnosticThunkRegistry.singleton().register(new DumpChunkInformation());
+        DiagnosticThunkRegistry.singleton().add(new DumpHeapSettingsAndStatistics());
+        DiagnosticThunkRegistry.singleton().add(new DumpHeapUsage());
+        DiagnosticThunkRegistry.singleton().add(new DumpChunkInformation());
     }
 
     @Fold
@@ -318,6 +322,7 @@ public final class HeapImpl extends Heap {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getClassCount() {
         return imageHeapInfo.dynamicHubCount;
     }
@@ -329,6 +334,9 @@ public final class HeapImpl extends Heap {
             ArrayList<Class<?>> list = new ArrayList<>(1024);
             ImageHeapWalker.walkRegions(imageHeapInfo, new ClassListBuilderVisitor(list));
             list.trimToSize();
+
+            /* Ensure that other threads see consistent values once the list is published. */
+            MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_STORE);
             classList = list;
         }
         assert classList.size() == imageHeapInfo.dynamicHubCount;
@@ -639,7 +647,7 @@ public final class HeapImpl extends Heap {
         if (printLocationInfo(log, ptr, allowJavaHeapAccess, allowUnsafeOperations)) {
             if (allowJavaHeapAccess && objectHeaderImpl.pointsToObjectHeader(ptr)) {
                 log.indent(true);
-                SubstrateDiagnostics.printObjectInfo(log, ptr);
+                SubstrateDiagnostics.printObjectInfo(log, ptr.toObject());
                 log.redent(false);
             }
             return true;
@@ -683,7 +691,7 @@ public final class HeapImpl extends Heap {
     @Override
     @Uninterruptible(reason = "Ensure that no GC can occur between modification of the object and this call.", callerMustBe = true)
     public void dirtyAllReferencesOf(Object obj) {
-        if (obj != null) {
+        if (SubstrateOptions.useRememberedSet() && obj != null) {
             ForcedSerialPostWriteBarrier.force(OffsetAddressNode.address(obj, 0), false);
         }
     }
@@ -867,6 +875,8 @@ public final class HeapImpl extends Heap {
                 log.string("Heap base: ").zhex(KnownIntrinsics.heapBase()).newline();
             }
             log.string("Object reference size: ").signed(ConfigurationValues.getObjectLayout().getReferenceSize()).newline();
+            log.string("Reserved object header bits: 0b").number(Heap.getHeap().getObjectHeader().getReservedBitsMask(), 2, false).newline();
+
             log.string("Aligned chunk size: ").unsigned(HeapParameters.getAlignedHeapChunkSize()).newline();
             log.string("Large array threshold: ").unsigned(HeapParameters.getLargeArrayThreshold()).newline();
 
@@ -936,6 +946,10 @@ final class Target_java_lang_Runtime {
 
     @Substitute
     private void gc() {
-        GCImpl.getGCImpl().maybeCauseUserRequestedCollection(GCCause.JavaLangSystemGC, true);
+        if (!SubstrateGCOptions.DisableExplicitGC.getValue()) {
+            long startTicks = JfrTicks.elapsedTicks();
+            GCImpl.getGCImpl().collectCompletely(GCCause.JavaLangSystemGC);
+            SystemGCEvent.emit(startTicks, false);
+        }
     }
 }

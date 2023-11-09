@@ -40,33 +40,42 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.fd.Fd;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
+
 public class WasiPathReadLinkNode extends WasmBuiltinRootNode {
-    public WasiPathReadLinkNode(WasmLanguage language, WasmInstance instance) {
-        super(language, instance);
+    public WasiPathReadLinkNode(WasmLanguage language, WasmModule module) {
+        super(language, module);
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         final Object[] args = frame.getArguments();
-        return pathReadLink(context, (int) args[0], (int) args[1], (int) args[2], (int) args[3], (int) args[4]);
+        return pathReadLink(context, memory(frame),
+                        (int) WasmArguments.getArgument(args, 0),
+                        (int) WasmArguments.getArgument(args, 1),
+                        (int) WasmArguments.getArgument(args, 2),
+                        (int) WasmArguments.getArgument(args, 3),
+                        (int) WasmArguments.getArgument(args, 4));
     }
 
     @TruffleBoundary
-    private int pathReadLink(WasmContext context, int fd, int pathAddress, int pathLength, int buf, int bufLen) {
+    private int pathReadLink(WasmContext context, WasmMemory memory, int fd, int pathAddress, int pathLength, int buf, int bufLen) {
         final Fd handle = context.fdManager().get(fd);
         if (handle == null) {
             return Errno.Badf.ordinal();
         }
-        return handle.pathReadLink(this, memory(), pathAddress, pathLength, buf, bufLen);
+        return handle.pathReadLink(this, memory, pathAddress, pathLength, buf, bufLen);
     }
 
     @Override

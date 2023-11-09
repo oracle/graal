@@ -71,8 +71,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.EspressoProperties;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.CallableFromNative;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.Inject;
@@ -321,8 +320,7 @@ public final class JniEnv extends NativeEnv {
 
     private JniEnv(EspressoContext context) {
         super(context);
-        EspressoProperties props = context.getVmProperties();
-        Path espressoLibraryPath = props.espressoHome().resolve("lib");
+        Path espressoLibraryPath = context.getEspressoLibs();
         nespressoLibrary = getNativeAccess().loadLibrary(Collections.singletonList(espressoLibraryPath), "nespresso", true);
         initializeNativeContext = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "initializeNativeContext",
                         NativeSignature.create(NativeType.POINTER, NativeType.POINTER));

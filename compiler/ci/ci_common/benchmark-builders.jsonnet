@@ -1,5 +1,6 @@
 {
   local c = (import '../../../ci/ci_common/common.jsonnet'),
+  local utils = (import '../../../ci/ci_common/common-utils.libsonnet'),
   local bc = (import '../../../ci/ci_common/bench-common.libsonnet'),
   local cc = (import 'compiler-common.libsonnet'),
   local bench = (import 'benchmark-suites.libsonnet'),
@@ -91,5 +92,5 @@
   local all_builds = main_builds + weekly_amd64_forks_builds + weekly_aarch64_forks_builds + profiling_builds + avx_builds + zgc_builds + zgc_avx_builds + aarch64_builds + no_tiered_builds + no_profile_info_builds,
   local filtered_builds = [b for b in all_builds if b.is_jdk_supported(b.jdk_version) && b.is_arch_supported(b.arch)],
   // adds a "defined_in" field to all builds mentioning the location of this current file
-  builds:: [{ defined_in: std.thisFile } + b for b in filtered_builds]
+  builds:: utils.add_defined_in(filtered_builds, std.thisFile),
 }

@@ -1,3 +1,28 @@
+#
+# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+# This code is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 only, as
+# published by the Free Software Foundation.  Oracle designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
+#
+# This code is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+# version 2 for more details (a copy is included in the LICENSE file that
+# accompanied this code).
+#
+# You should have received a copy of the GNU General Public License version
+# 2 along with this work; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+# or visit www.oracle.com if you need additional information or have any
+# questions.
+#
+
 suite = {
   "mxversion": "6.27.1",
   "name": "java-benchmarks",
@@ -31,9 +56,9 @@ suite = {
       "packedResource": True,
     },
 
-    "SHOPCART_0.3.7": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.3.7.zip"],
-      "digest": "sha512:ccc1fd65cabf98e08a2e6483f4391e8e0c86d4d6ed236ee35ef2a5c5c7eae2b87eed758a647d26589f16298f90d80f322ff30586eccf41899266fe55c971153c",
+    "SHOPCART_0.3.8": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.3.8.zip"],
+      "digest": "sha512:07eb59fae6a2245ef7dd628488e3c970336ba75c6a379899d222c418bb14d4b34019b25ce422e0f0e90cdd79c4ae7fc38f47c9c5a25d504e8a0f922fa28fa90a",
       "packedResource": True,
     },
 
@@ -49,9 +74,9 @@ suite = {
       "packedResource": True,
     },
 
-    "MICRONAUT_HW_1.0.4": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/micronaut-hello-world-1.0.4.zip"],
-      "digest": "sha512:7efa10d79ac0812dc9bcd41e64a404cca83cd8de9cbad77539b4a9eb0e23a16144a9cafc2b39c9db39639010f3be97ed897394f41a7dae05ca9743b65adfd69a",
+    "MICRONAUT_HW_1.0.5": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/micronaut-hello-world-1.0.5.zip"],
+      "digest": "sha512:71b998f46784ec807de8e8b6cc9c55ee043171a4601ea5594f51d9d982b396c72bf59c0e426d3dbf44db9162cb34c73bfef9be48f57b79590777e6ff7081262c",
       "packedResource": True,
     },
 

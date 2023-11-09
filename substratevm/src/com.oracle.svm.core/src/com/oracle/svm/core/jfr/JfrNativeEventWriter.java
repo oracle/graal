@@ -209,12 +209,12 @@ public final class JfrNativeEventWriter {
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putString(JfrNativeEventWriterData data, String string, CharReplacer replacer) {
         if (string == null) {
-            putByte(data, JfrChunkWriter.StringEncoding.NULL.getValue());
+            putByte(data, JfrChunkFileWriter.StringEncoding.NULL.getValue());
         } else if (string.isEmpty()) {
-            putByte(data, JfrChunkWriter.StringEncoding.EMPTY_STRING.getValue());
+            putByte(data, JfrChunkFileWriter.StringEncoding.EMPTY_STRING.getValue());
         } else {
             int mUTF8Length = UninterruptibleUtils.String.modifiedUTF8Length(string, false, replacer);
-            putByte(data, JfrChunkWriter.StringEncoding.UTF8_BYTE_ARRAY.getValue());
+            putByte(data, JfrChunkFileWriter.StringEncoding.UTF8_BYTE_ARRAY.getValue());
             putInt(data, mUTF8Length);
             if (ensureSize(data, mUTF8Length)) {
                 Pointer newPosition = UninterruptibleUtils.String.toModifiedUTF8(string, data.getCurrentPos(), data.getEndPos(), false, replacer);

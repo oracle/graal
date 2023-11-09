@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,19 +24,22 @@
  */
 package com.oracle.svm.core;
 
+import java.io.Console;
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
+import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.java.LambdaUtils;
-import org.graalvm.compiler.nodes.BreakpointNode;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.java.LambdaUtils;
+import jdk.graal.compiler.nodes.BreakpointNode;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -102,8 +105,26 @@ public class SubstrateUtil {
         return Services.IS_IN_NATIVE_IMAGE;
     }
 
+    private static final Method IS_TERMINAL_METHOD = ReflectionUtil.lookupMethod(true, Console.class, "isTerminal");
+
+    private static boolean isTTY() {
+        Console console = System.console();
+        if (console == null) {
+            return false;
+        }
+        if (IS_TERMINAL_METHOD != null) {
+            try {
+                return (boolean) IS_TERMINAL_METHOD.invoke(console);
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                throw new Error(e);
+            }
+        } else {
+            return true;
+        }
+    }
+
     public static boolean isRunningInCI() {
-        return System.console() == null || System.getenv("CI") != null;
+        return !isTTY() || System.getenv("CI") != null;
     }
 
     /**
@@ -392,7 +413,7 @@ public class SubstrateUtil {
             }
         }
         String mangled = out.toString();
-        assert mangled.matches("[a-zA-Z\\._][a-zA-Z0-9_]*");
+        assert mangled.matches("[a-zA-Z\\._][a-zA-Z0-9_]*") : mangled;
         /*-
          * To demangle, the following pipeline works for me (assuming no multi-byte characters):
          *

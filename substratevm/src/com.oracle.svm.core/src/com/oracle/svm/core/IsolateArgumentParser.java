@@ -28,7 +28,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -183,8 +183,19 @@ public class IsolateArgumentParser {
 
     public void verifyOptionValues() {
         for (int i = 0; i < OPTION_COUNT; i++) {
-            validate(OPTIONS[i], getOptionValue(i));
+            RuntimeOptionKey<?> option = OPTIONS[i];
+            if (shouldValidate(option)) {
+                validate(option, getOptionValue(i));
+            }
         }
+    }
+
+    private static boolean shouldValidate(RuntimeOptionKey<?> option) {
+        if (SubstrateOptions.UseSerialGC.getValue()) {
+            /* The serial GC supports changing the heap size at run-time to some degree. */
+            return option != SubstrateGCOptions.MinHeapSize && option != SubstrateGCOptions.MaxHeapSize && option != SubstrateGCOptions.MaxNewSize;
+        }
+        return true;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -206,7 +217,7 @@ public class IsolateArgumentParser {
         Class<?> optionValueType = OPTIONS[index].getDescriptor().getOptionValueType();
         long value = PARSED_OPTION_VALUES[index];
         if (optionValueType == Boolean.class) {
-            assert value == 0 || value == 1;
+            assert value == 0 || value == 1 : value;
             return value == 1;
         } else if (optionValueType == Integer.class) {
             return (int) value;

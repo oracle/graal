@@ -270,7 +270,7 @@ public final class DebugLocation {
     private boolean isValidLocation(int valueLength) {
         final int index = (int) address;
         return (isStack() && isIntAddress() && dataAccess.isValidStackIndex(frame, index)) || (isLocal() && isIntAddress() && dataAccess.isValidLocalIndex(frame, index)) ||
-                        (isGlobal() && isIntAddress() && dataAccess.isValidGlobalIndex(index)) || (isMemory() && dataAccess.isValidMemoryAddress(address, valueLength));
+                        (isGlobal() && isIntAddress() && dataAccess.isValidGlobalIndex(index)) || (isMemory() && dataAccess.isValidMemoryAddress(frame, address, valueLength));
     }
 
     /**
@@ -291,10 +291,10 @@ public final class DebugLocation {
             return (byte) dataAccess.loadI32FromLocals(frame, index);
         }
         if (isGlobal()) {
-            return (byte) dataAccess.loadI32FromGlobals(index);
+            return (byte) dataAccess.loadI32FromGlobals(frame, index);
         }
         if (isMemory()) {
-            return dataAccess.loadI8FromMemory(address);
+            return dataAccess.loadI8FromMemory(frame, address);
         }
         return DebugConstants.DEFAULT_I8;
     }
@@ -371,10 +371,10 @@ public final class DebugLocation {
             return (short) dataAccess.loadI32FromLocals(frame, (int) address);
         }
         if (isGlobal()) {
-            return (short) dataAccess.loadI32FromGlobals((int) address);
+            return (short) dataAccess.loadI32FromGlobals(frame, (int) address);
         }
         if (isMemory()) {
-            return dataAccess.loadI16FromMemory(address);
+            return dataAccess.loadI16FromMemory(frame, address);
         }
         return DebugConstants.DEFAULT_I16;
     }
@@ -441,10 +441,10 @@ public final class DebugLocation {
             return dataAccess.loadI32FromLocals(frame, index);
         }
         if (isGlobal()) {
-            return dataAccess.loadI32FromGlobals(index);
+            return dataAccess.loadI32FromGlobals(frame, index);
         }
         if (isMemory()) {
-            return dataAccess.loadI32FromMemory(address);
+            return dataAccess.loadI32FromMemory(frame, address);
         }
         return DebugConstants.DEFAULT_I32;
     }
@@ -522,10 +522,10 @@ public final class DebugLocation {
             return dataAccess.loadI64FromLocals(frame, index);
         }
         if (isGlobal()) {
-            return dataAccess.loadI64FromGlobals(index);
+            return dataAccess.loadI64FromGlobals(frame, index);
         }
         if (isMemory()) {
-            return dataAccess.loadI64FromMemory(address);
+            return dataAccess.loadI64FromMemory(frame, address);
         }
         return DebugConstants.DEFAULT_I64;
     }
@@ -592,10 +592,10 @@ public final class DebugLocation {
             return dataAccess.loadF32FromLocals(frame, index);
         }
         if (isGlobal()) {
-            return dataAccess.loadF32FromGlobals(index);
+            return dataAccess.loadF32FromGlobals(frame, index);
         }
         if (isMemory()) {
-            return dataAccess.loadF32FromMemory(address);
+            return dataAccess.loadF32FromMemory(frame, address);
         }
         return DebugConstants.DEFAULT_F32;
     }
@@ -618,10 +618,10 @@ public final class DebugLocation {
             return dataAccess.loadF64FromLocals(frame, index);
         }
         if (isGlobal()) {
-            return dataAccess.loadF64FromGlobals(index);
+            return dataAccess.loadF64FromGlobals(frame, index);
         }
         if (isMemory()) {
-            return dataAccess.loadF64FromMemory(address);
+            return dataAccess.loadF64FromMemory(frame, address);
         }
         return DebugConstants.DEFAULT_F64;
     }
@@ -645,7 +645,7 @@ public final class DebugLocation {
 
     private String loadStringFromMemory(int length) {
         if (isMemory()) {
-            return dataAccess.loadStringFromMemory(address, length);
+            return dataAccess.loadStringFromMemory(frame, address, length);
         }
         return DebugConstants.DEFAULT_STRING;
     }

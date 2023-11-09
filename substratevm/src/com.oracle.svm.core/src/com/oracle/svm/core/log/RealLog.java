@@ -27,8 +27,8 @@ package com.oracle.svm.core.log;
 
 import java.nio.charset.StandardCharsets;
 
-import org.graalvm.compiler.core.common.calc.UnsignedMath;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.core.common.calc.UnsignedMath;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -89,6 +89,14 @@ public class RealLog extends Log {
             spaces(spaces);
         }
 
+        return this;
+    }
+
+    @Override
+    @NeverInline("Logging is always slow-path code")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
+    public Log string(String value, int maxLen) {
+        rawString(value, maxLen);
         return this;
     }
 
@@ -177,6 +185,14 @@ public class RealLog extends Log {
             rawString("null");
         }
         return this;
+    }
+
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
+    public Log string(CCharPointer bytes, int length) {
+        if (length == 0) {
+            return this;
+        }
+        return rawBytes(bytes, WordFactory.unsigned(length));
     }
 
     @Override
@@ -661,7 +677,6 @@ public class RealLog extends Log {
                 printRemainingFramesCount(remaining);
             }
         }
-        newline();
         return this;
     }
 

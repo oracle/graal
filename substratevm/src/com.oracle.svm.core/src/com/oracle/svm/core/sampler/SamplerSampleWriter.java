@@ -25,7 +25,7 @@
 
 package com.oracle.svm.core.sampler;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -189,7 +189,6 @@ public final class SamplerSampleWriter {
         /* Put in the stack with other unprocessed buffers and send a signal to the JFR recorder. */
         SamplerBuffer oldBuffer = data.getSamplerBuffer();
         SubstrateJVM.getSamplerBufferPool().pushFullBuffer(oldBuffer);
-        SubstrateJVM.getRecorderThread().signal();
 
         /* Reinitialize data structure. */
         data.setSamplerBuffer(newBuffer);

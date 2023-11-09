@@ -26,8 +26,8 @@ package com.oracle.svm.core.genscavenge;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.nodes.PauseNode;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.nodes.PauseNode;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -35,7 +35,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
@@ -50,7 +49,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     static int getMaxSurvivorSpaces(Integer userValue) {
-        assert userValue == null || userValue >= 0;
+        assert userValue == null || userValue >= 0 : userValue;
         return (userValue != null) ? userValue : AbstractCollectionPolicy.MAX_TENURING_THRESHOLD;
     }
 
@@ -96,8 +95,9 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     }
 
     @Override
-    public boolean shouldCollectOnRequest(GCCause cause, boolean fullGC) {
-        return cause == GCCause.JavaLangSystemGC && !SubstrateGCOptions.DisableExplicitGC.getValue();
+    public boolean shouldCollectOnHint(boolean fullGC) {
+        /* Collection hints are not supported. */
+        return false;
     }
 
     @Fold

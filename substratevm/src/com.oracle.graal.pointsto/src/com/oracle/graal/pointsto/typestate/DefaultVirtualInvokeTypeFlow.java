@@ -26,6 +26,7 @@ package com.oracle.graal.pointsto.typestate;
 
 import java.lang.reflect.Modifier;
 import java.util.Collection;
+import java.util.Collections;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -102,7 +103,7 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
                 continue;
             }
 
-            assert !Modifier.isAbstract(method.getModifiers());
+            assert !Modifier.isAbstract(method.getModifiers()) : method;
 
             var calleeList = bb.getHostVM().getMultiMethodAnalysisPolicy().determineCallees(bb, PointsToAnalysis.assertPointsToAnalysisMethod(method), targetMethod, callerMultiMethodKey,
                             this);
@@ -111,7 +112,7 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
                     allOriginalCallees = false;
                 }
                 MethodFlowsGraphInfo calleeFlows = callee.getTypeFlow().getOrCreateMethodFlowsGraphInfo(bb, this);
-                assert callee.getTypeFlow().getMethod().equals(callee);
+                assert callee.getTypeFlow().getMethod().equals(callee) : callee;
 
                 /*
                  * Different receiver type can yield the same target method; although it is correct
@@ -133,6 +134,10 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
 
     @Override
     public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
+        /* Eagerly ensure context insensitive invoke is created before the saturated flag is set. */
+        AbstractVirtualInvokeTypeFlow contextInsensitiveInvoke = (AbstractVirtualInvokeTypeFlow) targetMethod.initAndGetContextInsensitiveInvoke(bb, source, false, callerMultiMethodKey);
+        contextInsensitiveInvoke.addInvokeLocation(getSource());
+
         setSaturated();
 
         /*
@@ -163,10 +168,6 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
                 calleeFlows.getReturnFlow().removeUse(actualReturn);
             }
         }
-
-        /* Link the saturated invoke. */
-        AbstractVirtualInvokeTypeFlow contextInsensitiveInvoke = (AbstractVirtualInvokeTypeFlow) targetMethod.initAndGetContextInsensitiveInvoke(bb, source, false, callerMultiMethodKey);
-        contextInsensitiveInvoke.addInvokeLocation(getSource());
 
         /*
          * Link the call site actual parameters to the saturated invoke actual parameters. The
@@ -214,8 +215,17 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
         }
     }
 
+    public Collection<AnalysisMethod> getCalleesForReturnLinking() {
+        if (isSaturated()) {
+            /* If the invoke has saturated, then it is not necessary to link the callees. */
+            return Collections.emptyList();
+        } else {
+            return super.getAllCallees();
+        }
+    }
+
     @Override
-    protected Collection<MethodFlowsGraph> getAllCalleesFlows(PointsToAnalysis bb) {
-        return DefaultInvokeTypeFlowUtil.getAllCalleesFlows(this);
+    public Collection<MethodFlowsGraph> getAllNonStubCalleesFlows(PointsToAnalysis bb) {
+        return DefaultInvokeTypeFlowUtil.getAllNonStubCalleesFlows(this);
     }
 }

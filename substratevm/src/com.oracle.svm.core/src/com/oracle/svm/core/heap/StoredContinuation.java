@@ -25,7 +25,7 @@
 package com.oracle.svm.core.heap;
 
 import com.oracle.svm.core.hub.Hybrid;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.function.CodePointer;
 
 /** Execution state of a continuation, use via {@link StoredContinuationAccess}. */

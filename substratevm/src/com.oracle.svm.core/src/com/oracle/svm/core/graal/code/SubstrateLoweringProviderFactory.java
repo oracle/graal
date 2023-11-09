@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.graal.code;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
-import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
-import org.graalvm.compiler.replacements.DefaultJavaLoweringProvider;
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
+import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
+import jdk.graal.compiler.replacements.DefaultJavaLoweringProvider;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.MetaAccessProvider;

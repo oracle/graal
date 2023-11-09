@@ -24,10 +24,11 @@
  */
 package com.oracle.svm.hosted.ameta;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
@@ -66,18 +67,33 @@ final class AnalysisMethodHandleAccessProvider implements MethodHandleAccessProv
     @Override
     public ResolvedJavaMethod resolveInvokeBasicTarget(JavaConstant methodHandle, boolean forceBytecodeGeneration) {
         JavaConstant originalMethodHandle = toOriginalConstant(methodHandle);
-        ResolvedJavaMethod originalTarget = originalMethodHandleAccess.resolveInvokeBasicTarget(originalMethodHandle, forceBytecodeGeneration);
+        if (originalMethodHandle == null) {
+            return null;
+        }
+        // In Native Image, bytecode generation is permissible.
+        ResolvedJavaMethod originalTarget = originalMethodHandleAccess.resolveInvokeBasicTarget(originalMethodHandle, true);
         return analysisUniverse.lookup(originalTarget);
     }
 
     @Override
     public ResolvedJavaMethod resolveLinkToTarget(JavaConstant memberName) {
         JavaConstant originalMemberName = toOriginalConstant(memberName);
+        if (originalMemberName == null) {
+            return null;
+        }
         ResolvedJavaMethod method = originalMethodHandleAccess.resolveLinkToTarget(originalMemberName);
         return analysisUniverse.lookup(method);
     }
 
-    private JavaConstant toOriginalConstant(JavaConstant constant) {
+    private JavaConstant toOriginalConstant(JavaConstant c) {
+        JavaConstant constant = c;
+        if (constant instanceof ImageHeapConstant imageHeapConstant) {
+            constant = imageHeapConstant.getHostedObject();
+        }
+
+        if (constant == null) {
+            return null;
+        }
         Object obj = analysisUniverse.getSnippetReflection().asObject(Object.class, constant);
         return originalSnippetReflection.forObject(obj);
     }

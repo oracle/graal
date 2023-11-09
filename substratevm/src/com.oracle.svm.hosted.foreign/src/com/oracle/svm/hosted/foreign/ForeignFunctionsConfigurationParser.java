@@ -37,6 +37,10 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
 import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
@@ -99,10 +103,20 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
         }
         if (map.containsKey(DOWNCALL_OPTION_TRIVIAL)) {
             if (asBoolean(map.get(DOWNCALL_OPTION_TRIVIAL, ""), DOWNCALL_OPTION_TRIVIAL)) {
-                res.add(Linker.Option.isTrivial());
+                res.add(OPTION_CRITICAL);
             }
         }
 
         return res;
+    }
+
+    private static final Linker.Option OPTION_CRITICAL;
+
+    static {
+        try {
+            OPTION_CRITICAL = (Linker.Option) ReflectionUtil.lookupMethod(Linker.Option.class, JavaVersionUtil.JAVA_SPEC >= 22 ? "critical" : "isTrivial").invoke(null);
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
     }
 }

@@ -37,7 +37,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
-import org.graalvm.compiler.processor.AbstractProcessor;
+import jdk.graal.compiler.processor.AbstractProcessor;
 
 // Checkstyle: allow Class.getSimpleName
 

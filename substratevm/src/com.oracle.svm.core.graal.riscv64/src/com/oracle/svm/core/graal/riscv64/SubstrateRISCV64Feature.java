@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.riscv64;
 
-import org.graalvm.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

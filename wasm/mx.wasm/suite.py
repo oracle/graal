@@ -271,6 +271,12 @@ suite = {
     },
 
     "WASM_LAUNCHER" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.wasm.launcher",
+        "exports" : [
+          "org.graalvm.wasm.launcher to org.graalvm.launcher",
+        ],
+      },
       "subDir" : "src",
       "dependencies" : [
         "org.graalvm.wasm.launcher",
@@ -278,6 +284,7 @@ suite = {
       "distDependencies" : [
         "sdk:LAUNCHER_COMMON",
       ],
+      "mainClass" : "org.graalvm.wasm.WasmLauncher",
       "license" : "UPL",
       "maven" : False,
     },
@@ -356,9 +363,18 @@ suite = {
     "WASM_GRAALVM_SUPPORT": {
       "native": True,
       "platformDependent": False,
-      "description": "Wasm support distribution for the GraalVM license files",
+      "description": "Wasm support distribution",
       "layout": {
         "./": "file:mx.wasm/native-image.properties",
+      },
+      "maven": False,
+    },
+
+    "WASM_GRAALVM_LICENSES": {
+      "native": True,
+      "platformDependent": False,
+      "description": "Wasm support distribution for the GraalVM license files",
+      "layout": {
         "LICENSE_WASM.txt": "file:LICENSE",
       },
       "maven": False,

@@ -49,7 +49,7 @@ public class AllocationContextSensitiveObject extends ContextSensitiveAnalysisOb
      */
     public AllocationContextSensitiveObject(PointsToAnalysis bb, AnalysisType type, BytecodePosition allocationSite, AnalysisContext context) {
         super(bb.getUniverse(), type, AnalysisObjectKind.AllocationContextSensitive);
-        assert bb.trackConcreteAnalysisObjects(type);
+        assert bb.trackConcreteAnalysisObjects(type) : type;
         this.allocationLabel = allocationSite;
         this.allocationContext = context;
         assert allocationSite != null;
@@ -65,8 +65,8 @@ public class AllocationContextSensitiveObject extends ContextSensitiveAnalysisOb
 
     @Override
     public ArrayElementsTypeFlow getArrayElementsFlow(PointsToAnalysis bb, boolean isStore) {
-        assert type.isArray();
-        assert bb.analysisPolicy().allocationSiteSensitiveHeap();
+        assert type.isArray() : type;
+        assert bb.analysisPolicy().allocationSiteSensitiveHeap() : "policy mismatch";
 
         if (!arrayElementsTypeStore.writeFlow().getState().canBeNull()) {
             /*

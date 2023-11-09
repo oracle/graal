@@ -366,7 +366,7 @@ final class PolyglotLocals {
         @Override
         public T get() {
             assert assertLanguageCreated(PolyglotFastThreadLocals.getContext(null), languageInstance.language);
-            return (T) PolyglotFastThreadLocals.getCurrentThread(sharingLayer).getThreadLocal(location);
+            return (T) location.readLocal(null, PolyglotFastThreadLocals.getCurrentThreadContextThreadLocals(sharingLayer), true);
         }
 
         @SuppressWarnings("unchecked")
@@ -441,7 +441,7 @@ final class PolyglotLocals {
         @Override
         public T get() {
             assert assertInstrumentCreated(PolyglotFastThreadLocals.getContext(null), instrument);
-            return (T) PolyglotFastThreadLocals.getCurrentThreadEngine(location.engine).getThreadLocal(location);
+            return (T) location.readLocal(null, PolyglotFastThreadLocals.getCurrentThreadContextThreadLocalsEngine(location.engine), true);
         }
 
         @SuppressWarnings("unchecked")
@@ -515,14 +515,14 @@ final class PolyglotLocals {
         }
 
         final Object readLocal(PolyglotContextImpl context, Object[] locals, boolean threadLocal) {
-            assert locals != null && index < locals.length && locals[index] != null : invalidLocalMessage(context, locals);
+            assert locals != null && index < locals.length && locals[index] != null : invalidLocalMessage(context == null ? PolyglotFastThreadLocals.getContext(null) : context, locals);
             Object result;
             if (CompilerDirectives.inCompiledCode() && CompilerDirectives.isPartialEvaluationConstant(this)) {
                 result = readLocalFast(locals, threadLocal);
             } else {
                 result = locals[index];
             }
-            assert result.getClass() == profiledType : invalidLocalMessage(context, locals);
+            assert result.getClass() == profiledType : invalidLocalMessage(context == null ? PolyglotFastThreadLocals.getContext(null) : context, locals);
             return result;
         }
 

@@ -31,13 +31,15 @@ public interface GC {
     /** Cause a full collection. */
     void collectCompletely(GCCause cause);
 
+    /**
+     * Notify the GC that it might be a good time to do a collection. The final decision is up to
+     * the GC and its policy.
+     */
+    void collectionHint(boolean fullGC);
+
     /** Human-readable name. */
     String getName();
 
     /** Human-readable default heap size. */
     String getDefaultMaxHeapSize();
-
-    /** Issue an optional GC request. */
-    default void maybeCauseUserRequestedCollection(@SuppressWarnings("unused") GCCause cause, @SuppressWarnings("unused") boolean fullGC) {
-    }
 }

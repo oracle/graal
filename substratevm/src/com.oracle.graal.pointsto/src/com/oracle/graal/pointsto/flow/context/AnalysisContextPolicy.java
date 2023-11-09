@@ -31,6 +31,7 @@ import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext.AnalysisContextKey;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
+
 import jdk.vm.ci.code.BytecodePosition;
 
 /** Provides logic for analysis context transitions. */
@@ -107,9 +108,7 @@ public abstract class AnalysisContextPolicy<C extends AnalysisContext> {
     }
 
     public static BytecodePosition[] peel(BytecodePosition[] labelList, int maxDepth) {
-
-        assert maxDepth >= 0;
-        assert labelList.length > maxDepth;
+        assert maxDepth >= 0 && labelList.length > maxDepth : maxDepth + ", " + labelList.length;
 
         BytecodePosition[] resultingLabelList = new BytecodePosition[maxDepth];
 

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.util.coder;
 
-import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
+import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.Pointer;
 
