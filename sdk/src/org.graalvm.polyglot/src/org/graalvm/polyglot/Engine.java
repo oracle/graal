@@ -2136,6 +2136,11 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public boolean isInCurrentEngineHostCallback(Object engine) {
+            return false;
+        }
+
+        @Override
         public OptionDescriptors createUnionOptionDescriptors(OptionDescriptors... optionDescriptors) {
             return OptionDescriptors.createUnion(optionDescriptors);
         }
