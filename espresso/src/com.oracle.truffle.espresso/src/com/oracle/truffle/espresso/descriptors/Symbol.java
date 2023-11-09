@@ -493,7 +493,6 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> setValue = StaticSymbols.putName("setValue");
         public static final Symbol<Name> entrySet = StaticSymbols.putName("entrySet");
         public static final Symbol<Name> hasNext = StaticSymbols.putName("hasNext");
-        public static final Symbol<Name> foreignObject = StaticSymbols.putName("foreignObject");
 
         // Hidden field names. Starts with a 0 in order for the names to be illegal identifiers.
 
