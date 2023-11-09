@@ -260,7 +260,7 @@
   micros_graal_whitebox: cc.compiler_benchmark + c.heap.default + {
     suite:: "micros-graal-whitebox",
     run+: [
-      self.benchmark_cmd + ["jmh-whitebox:*", "--"] + self.extra_vm_args
+      self.benchmark_cmd + ["jmh-whitebox:*", "--"] + self.extra_vm_args + ["--", "jdk.graal.compiler"]
     ],
     timelimit: "6:00:00",
     min_jdk_version:: 8,
