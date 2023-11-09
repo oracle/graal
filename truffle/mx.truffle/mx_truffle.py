@@ -622,60 +622,42 @@ def _collect_distributions(dist_filter, dist_collector):
                 collector.append(dist)
     suite_collector(mx.primary_suite(), dist_filter, dist_collector, set())
 
-def _collect_distributions_by_module_descriptor(required_services, entries_collector):
+
+def _collect_distributions_by_service(required_services, entries_collector):
     """
     Collects JAR distributions providing any service from requiredServices.
 
-    :param required_services: an iterable of service fully qualified names. At least one of them has to exist to include
-            distribution class path entries.
-    :param entries_collector: the list to add the class paths entries into.
-    :param properties_collector: the list to add the distribution Java properties into.
+    :param required_services: an iterable of service fully qualified names. At least one of them has to exist to include the JAR distribution
+    :param entries_collector: the list to add the distributions into.
     """
-    required_set = set(required_services)
+    required_services_set = set(required_services)
+    required_resources = [f'META-INF/services/{service}' for service in required_services]
 
     def provides_service(dist):
         if dist.isJARDistribution() and exists(dist.path):
             module_name = get_module_name(dist)
             if module_name:
+                # Named module - use the module-info's provides directive
                 jmd = as_java_module(dist, mx.get_jdk())
-                return len(required_set.intersection(jmd.provides.keys())) != 0
-        return False
-    _collect_distributions(provides_service, entries_collector)
-
-
-def _collect_distributions_by_resource(requiredResources, entries_collector):
-    """
-    Collects class path for JAR distributions containing any resource from requiredResources.
-
-    :param requiredResources: an iterable of resources. At least one of them has to exist to include the
-            distribution class path entries.
-    :param entries_collector: the list to add the class paths entries into.
-    :properties_collector: the list to add the distribution Java properties into.
-    """
-    def has_resource(dist):
-        if dist.isJARDistribution() and exists(dist.path):
-            if isdir(dist.path):
-                for requiredResource in requiredResources:
-                    if exists(join(dist.path, requiredResource)):
-                        return True
+                return len(required_services_set.intersection(jmd.provides.keys())) != 0
             else:
-                with zipfile.ZipFile(dist.path, "r") as zf:
-                    for requiredResource in requiredResources:
-                        try:
-                            zf.getinfo(requiredResource)
-                        except KeyError:
-                            pass
-                        else:
+                # Unnamed or automatic module - use META-INF/services
+                if isdir(dist.path):
+                    for required_resource in required_resources:
+                        if exists(join(dist.path, required_resource)):
                             return True
-                    return False
-        else:
-            return False
-    _collect_distributions(has_resource, entries_collector)
+                else:
+                    with zipfile.ZipFile(dist.path, "r") as zf:
+                        for required_resource in required_resources:
+                            try:
+                                zf.getinfo(required_resource)
+                            except KeyError:
+                                pass
+                            else:
+                                return True
+        return False
 
-
-def _collect_tck_providers(entries_collector):
-    _collect_distributions_by_module_descriptor(["org.graalvm.polyglot.tck.LanguageProvider"], entries_collector)
-    _collect_distributions_by_resource(["META-INF/services/org.graalvm.polyglot.tck.LanguageProvider"], entries_collector)
+    _collect_distributions(provides_service, entries_collector)
 
 
 class TCKUnittestConfig(mx_unittest.MxUnittestConfig):
@@ -685,13 +667,13 @@ class TCKUnittestConfig(mx_unittest.MxUnittestConfig):
 
     def processDeps(self, deps):
         if _shouldRunTCKUnittestConfig:
-            providers = []
-            _collect_tck_providers(providers)
+            tck_providers = []
+            _collect_distributions_by_service(["org.graalvm.polyglot.tck.LanguageProvider"], tck_providers)
             truffle_runtime = [mx.distribution(n) for n in resolve_truffle_dist_names()]
             mx.logv(f'Original unittest distributions {",".join([d.name for d in deps])}')
-            mx.logv(f'TCK providers distributions to add {",".join([d.name for d in providers])}')
+            mx.logv(f'TCK providers distributions to add {",".join([d.name for d in tck_providers])}')
             mx.logv(f'Truffle runtime used by the TCK {",".join([d.name for d in truffle_runtime])}')
-            deps.update(providers)
+            deps.update(tck_providers)
             deps.update(truffle_runtime)
             mx.logv(f'Merged unittest distributions {",".join([d.name for d in deps])}')
         else:
@@ -834,7 +816,8 @@ def tck(args):
         else:
             jdk = mx.get_jdk()
         if not _is_graalvm(jdk):
-            mx.abort("The 'compile' TCK configuration requires graalvm execution, run with --java-home=<path_to_graalvm>.")
+            mx.abort("The 'compile' TCK configuration requires graalvm execution, "
+                     "run with --java-home=<path_to_graalvm> or run with --use-graalvm.")
         compileOptions = [
             "-Dpolyglot.engine.AllowExperimentalOptions=true",
             "-Dpolyglot.engine.Mode=latency",
