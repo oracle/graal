@@ -392,10 +392,15 @@ public class PolyglotTypeMappings {
         @Override
         public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) throws UnsupportedTypeException {
             if (!interop.hasArrayElements(value)) {
-                throw UnsupportedTypeException.create(new Object[]{value},
-                                EspressoError.format("Could not cast foreign object to %s: %s", klass.getNameAsString(), "foreign object has no array elements"));
+                boundaryThrow(value);
             }
             return StaticObject.createForeign(toEspresso.getLanguage(), klass, value, interop);
+        }
+
+        @TruffleBoundary
+        private void boundaryThrow(Object value) throws UnsupportedTypeException {
+            throw UnsupportedTypeException.create(new Object[]{value},
+                    EspressoError.format("Could not cast foreign object to %s: %s", klass.getNameAsString(), "foreign object has no array elements"));
         }
     }
 
