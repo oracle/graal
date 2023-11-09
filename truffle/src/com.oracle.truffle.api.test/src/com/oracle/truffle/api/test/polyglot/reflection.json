@@ -216,5 +216,9 @@
   {
     "name": "com.oracle.truffle.polyglot.PolyglotLanguageInstance",
     "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.AutomaticLeaveTest$ContextCloser",
+    "allPublicMethods": true
   }
 ]

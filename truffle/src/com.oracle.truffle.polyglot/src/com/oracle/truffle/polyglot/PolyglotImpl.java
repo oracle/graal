@@ -81,11 +81,14 @@ import org.graalvm.polyglot.io.ProcessHandler;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.LogConfig;
@@ -517,6 +520,28 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public ThreadScope createThreadScope() {
         return null;
+    }
+
+    @Override
+    public boolean isInCurrentEngineHostCallback(Object engine) {
+        RootNode topMostGuestToHostRootNode = Truffle.getRuntime().iterateFrames((f) -> {
+            RootNode root = ((RootCallTarget) f.getCallTarget()).getRootNode();
+            if (EngineAccessor.HOST.isGuestToHostRootNode(root)) {
+                return root;
+            }
+            return null;
+        });
+        if (topMostGuestToHostRootNode == null) {
+            return false;
+        } else {
+            PolyglotSharingLayer sharing = (PolyglotSharingLayer) EngineAccessor.NODES.getSharingLayer(topMostGuestToHostRootNode);
+            PolyglotEngineImpl rootEngine = sharing.engine;
+            if (rootEngine == engine) {
+                return true;
+            } else {
+                return false;
+            }
+        }
     }
 
     @Override
