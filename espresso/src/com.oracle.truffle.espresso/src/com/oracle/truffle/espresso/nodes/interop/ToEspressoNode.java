@@ -177,7 +177,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             try {
                 Object metaObject = getMetaObjectOrThrow(value, interop);
-                ProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), targetType);
+                WrappedProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), targetType);
                 if (proxyKlass != null) {
                     targetType.safeInitialize();
                     return proxyKlass.createProxyInstance(value, getLanguage(), interop);
