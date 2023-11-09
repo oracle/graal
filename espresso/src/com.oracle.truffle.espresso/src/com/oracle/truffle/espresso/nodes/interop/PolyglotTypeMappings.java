@@ -376,7 +376,7 @@ public class PolyglotTypeMappings {
         }
 
         @TruffleBoundary
-        private StaticObject toByteArray(BigInteger bigInteger, Meta meta) {
+        private static StaticObject toByteArray(BigInteger bigInteger, Meta meta) {
             return StaticObject.wrap(bigInteger.toByteArray(), meta);
         }
     }
