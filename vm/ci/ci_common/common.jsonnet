@@ -5,8 +5,6 @@ local repo_config = import '../../../repo-configuration.libsonnet';
 local devkits = graal_common.devkits;
 
 {
-  Latest_java_version_str: std.toString(graal_common.labsjdkLatest.jdk_version),
-
   verify_name(build): {
     expected_prefix:: std.join('-', [target for target in build.targets if target != "mach5"]) + '-vm',
     expected_suffix:: build.os + '-' + build.arch,
