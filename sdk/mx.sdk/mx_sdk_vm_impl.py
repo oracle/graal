@@ -900,31 +900,45 @@ else:
 
 
 class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # pylint: disable=R0901
-    def __init__(self, base_name, theLicense=None, stage1=False, components=None, **kw_args):
+    def __init__(self, base_name, theLicense=None, stage1=False, components=None, include_native_image_resources_filelists=None, add_component_dependencies=True, is_graalvm=True, add_jdk_base=True, allow_incomplete_launchers=False, **kw_args):
         self.base_name = base_name
-        components_with_dependencies = [] if components is None else GraalVmLayoutDistribution._add_dependencies(components)
-        if components is not None:
-            for c in components:
+        _include_native_image_resources_filelists = not stage1 if include_native_image_resources_filelists is None else include_native_image_resources_filelists
+
+        if components is None:
+            components_with_dependencies = []
+        elif add_component_dependencies:
+            components_with_dependencies = GraalVmLayoutDistribution._add_dependencies(components)
+        else:
+            components_with_dependencies = components
+
+        if not allow_incomplete_launchers and components_with_dependencies is not None:
+            for c in components_with_dependencies:
                 if c.launcher_configs or c.library_configs:
                     mx.abort('Cannot define a GraalVM layout distribution with a forced list of components that includes launcher or library configs. '
                     'The corresponding projects refer to the global stage1 and final GraalVM distributions.')
-        name, base_dir, self.vm_config_name = _get_graalvm_configuration(base_name, components=components_with_dependencies, stage1=stage1)
+
+        if is_graalvm:
+            name, base_dir, self.vm_config_name = _get_graalvm_configuration(base_name, components=components_with_dependencies, stage1=stage1)
+        else:
+            name = base_name
+            base_dir = base_name.lower().replace('_', '-')
+            self.vm_config_name = None
 
         super(GraalVmLayoutDistribution, self).__init__(
             suite=_suite,
             name=name,
             deps=[],
             components=components_with_dependencies,
-            is_graalvm=True,
+            is_graalvm=is_graalvm,
             exclLibs=[],
             platformDependent=True,
             theLicense=theLicense,
             testDistribution=False,
-            add_jdk_base=True,
+            add_jdk_base=add_jdk_base,
             base_dir=base_dir,
             path=None,
             stage1=stage1,
-            include_native_image_resources_filelists=not stage1,
+            include_native_image_resources_filelists=_include_native_image_resources_filelists,
             **kw_args)
 
     @staticmethod
