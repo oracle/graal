@@ -307,8 +307,15 @@ public final class ResourcesFeature implements InternalFeature {
                 throw VMError.shouldNotReachHere("getResources for resourcePath " + resourcePath + " failed", e);
             }
 
+            // getResources could return same entry that was found by different(parent) classLoaders
+            Set<String> alreadyProcessedResources = new HashSet<>();
             while (urls.hasMoreElements()) {
                 URL url = urls.nextElement();
+                if (alreadyProcessedResources.contains(url.toString())) {
+                    continue;
+                }
+
+                alreadyProcessedResources.add(url.toString());
                 try {
                     InputStream is = url.openStream();
                     boolean fromJar = url.getProtocol().equalsIgnoreCase("jar");
