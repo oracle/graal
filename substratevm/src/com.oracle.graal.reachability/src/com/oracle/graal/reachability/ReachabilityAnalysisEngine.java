@@ -198,28 +198,10 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
         }
     }
 
+    /* Method is overwritten so that other classes in this package can invoke it. */
     @Override
-    public boolean registerTypeAsInHeap(AnalysisType t, Object reason) {
-        ReachabilityAnalysisType type = (ReachabilityAnalysisType) t;
-        if (!type.registerAsInHeap(reason)) {
-            return false;
-        }
-        if (type.registerAsInstantiated()) {
-            schedule(() -> onTypeInstantiated(type, reason));
-        }
-        return true;
-    }
-
-    @Override
-    public boolean registerTypeAsAllocated(AnalysisType t, Object reason) {
-        ReachabilityAnalysisType type = (ReachabilityAnalysisType) t;
-        if (!type.registerAsAllocated(reason)) {
-            return false;
-        }
-        if (type.registerAsInstantiated()) {
-            schedule(() -> onTypeInstantiated(type, reason));
-        }
-        return true;
+    protected void schedule(Runnable task) {
+        super.schedule(task);
     }
 
     /**
@@ -267,7 +249,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
      * NUMBER_OF_INVOKED_METHODS_ON_TYPE). and is one of the places that we should try to optimize
      * in near future.
      */
-    private void onTypeInstantiated(ReachabilityAnalysisType type, Object reason) {
+    protected void onTypeInstantiated(ReachabilityAnalysisType type, Object reason) {
         type.forAllSuperTypes(current -> {
             Set<ReachabilityAnalysisMethod> invokedMethods = ((ReachabilityAnalysisType) current).getInvokedVirtualMethods();
             for (ReachabilityAnalysisMethod curr : invokedMethods) {

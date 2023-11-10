@@ -30,8 +30,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.collections.EconomicMap;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.builder.TypeFlowGraphBuilder;
@@ -228,9 +226,9 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         return flowsGraph == null ? Collections.emptyList() : List.of(flowsGraph);
     }
 
-    public EconomicMap<Object, InvokeTypeFlow> getInvokes() {
+    public List<InvokeTypeFlow> getInvokes() {
         ensureFlowsGraphSealed();
-        return flowsGraph == null ? EconomicMap.emptyMap() : flowsGraph.getInvokes();
+        return flowsGraph == null ? List.of() : flowsGraph.getInvokes();
     }
 
     public TypeFlow<?> getParameter(int idx) {
