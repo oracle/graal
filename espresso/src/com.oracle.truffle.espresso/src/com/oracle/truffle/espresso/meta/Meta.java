@@ -1668,7 +1668,6 @@ public final class Meta extends ContextAccessImpl {
         public final Method VMHelper_getDynamicModuleDescriptor;
 
         public final ObjectKlass EspressoForeignList;
-        public final Field EspressoForeignList_foreignObject;
         public final ObjectKlass EspressoForeignCollection;
         public final ObjectKlass EspressoForeignIterable;
         public final ObjectKlass EspressoForeignIterator;
@@ -1737,7 +1736,6 @@ public final class Meta extends ContextAccessImpl {
             VMHelper_getDynamicModuleDescriptor = VMHelper.requireDeclaredMethod(Name.getDynamicModuleDescriptor, Signature.ModuleDescriptor_String_String);
 
             EspressoForeignList = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignList);
-            EspressoForeignList_foreignObject = EspressoForeignList.requireDeclaredField(Name.foreignObject, Type.java_lang_Object);
             EspressoForeignCollection = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignCollection);
             EspressoForeignIterable = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignIterable);
             EspressoForeignIterator = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignIterator);

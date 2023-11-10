@@ -39,7 +39,6 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.DRETURN;
 import static com.oracle.truffle.api.impl.asm.Opcodes.DUP;
 import static com.oracle.truffle.api.impl.asm.Opcodes.FLOAD;
 import static com.oracle.truffle.api.impl.asm.Opcodes.FRETURN;
-import static com.oracle.truffle.api.impl.asm.Opcodes.GETFIELD;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ICONST_0;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ILOAD;
 import static com.oracle.truffle.api.impl.asm.Opcodes.INVOKESPECIAL;
@@ -99,7 +98,6 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
     private static final String JL_OBJECT = "java/lang/Object";
     private static final String JL_THROWABLE = "java/lang/Throwable";
     private static final String JLR_UNDECLARED_THROWABLE_EX = "java/lang/reflect/UndeclaredThrowableException";
-    private static final String FOREIGN_OBJECT_FIELD_NAME = "foreignObject";
     private static final int VARARGS = 0x00000080;
 
     private final Meta meta;
@@ -115,8 +113,6 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
     private final ObjectKlass[] interfaces;
 
     private final ObjectKlass superKlass;
-
-    private final boolean hasForeignObjectField;
 
     /* proxy class access flags */
     private final int accessFlags;
@@ -147,45 +143,24 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         this.context = context;
         this.interfaces = parents;
         this.superKlass = superKlass;
-        this.hasForeignObjectField = superKlass == meta.polyglot.EspressoForeignList;
         this.accessFlags = ACC_PUBLIC | ACC_FINAL | ACC_SUPER;
         this.proxyClassLoader = context.getBindingsLoader();
         this.className = nextClassName(proxyClassContext(referencedTypes()));
     }
 
-    private enum ProxyType {
-        WRAPPED,
-        UNWRAPPED
-    }
-
     public static class GeneratedProxyBytes {
         public final byte[] bytes;
         public final String name;
-        private final ProxyType proxyType;
         private final ObjectKlass superklass;
 
         GeneratedProxyBytes(byte[] bytes, String name, ObjectKlass superKlass) {
             this.bytes = bytes;
             this.name = name;
             this.superklass = superKlass;
-            this.proxyType = getProxyType(superKlass);
         }
 
-        private static ProxyType getProxyType(ObjectKlass klass) {
-            return klass == klass.getMeta().polyglot.EspressoForeignList ? ProxyType.WRAPPED : ProxyType.UNWRAPPED;
-        }
-
-        public ProxyKlass getProxyKlass(EspressoContext context, ObjectKlass proxyKlass) {
-            switch (proxyType) {
-                case WRAPPED: {
-                    return new WrappedProxyKlass(proxyKlass, context, superklass);
-                }
-                case UNWRAPPED: {
-                    return new ProxyKlass(proxyKlass);
-                }
-                default:
-                    throw EspressoError.shouldNotReachHere();
-            }
+        public WrappedProxyKlass getProxyKlass(ObjectKlass proxyKlass) {
+            return new WrappedProxyKlass(proxyKlass);
         }
 
         public ObjectKlass getSuperklass() {
@@ -489,9 +464,6 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         mv.visitLabel(startBlock);
 
         mv.visitVarInsn(ALOAD, 0);
-        if (hasForeignObjectField) {
-            mv.visitFieldInsn(GETFIELD, superKlass.getNameAsString(), FOREIGN_OBJECT_FIELD_NAME, "Ljava/lang/Object;");
-        }
 
         mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop",
                         "toDisplayString",
@@ -774,9 +746,6 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             }
 
             mv.visitVarInsn(ALOAD, 0);
-            if (hasForeignObjectField) {
-                mv.visitFieldInsn(GETFIELD, superKlass.getNameAsString(), FOREIGN_OBJECT_FIELD_NAME, "Ljava/lang/Object;");
-            }
             mv.visitLdcInsn(Mangle.truffleJniMethodName(methodName, signature));
 
             if (parameterTypes.length > 0) {
