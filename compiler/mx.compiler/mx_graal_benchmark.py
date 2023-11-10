@@ -26,7 +26,6 @@
 import re
 import os
 from tempfile import mkstemp
-import itertools
 
 import mx
 import mx_benchmark
@@ -495,8 +494,7 @@ class JMHDistGraalCoreBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHJarB
 
     def filter_distribution(self, dist):
         return super(JMHDistGraalCoreBenchmarkSuite, self).filter_distribution(dist) and \
-               not any(JMHDistWhiteboxBenchmarkSuite.whitebox_dependency(dist)) and \
-               not any(dep.name.startswith('com.oracle.truffle.enterprise.dispatch.jmh') for dep in dist.deps)
+               not JMHDistWhiteboxBenchmarkSuite.is_whitebox_dependency(dist)
 
 
 mx_benchmark.add_bm_suite(JMHDistGraalCoreBenchmarkSuite())
@@ -514,16 +512,12 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHJarBa
         return "graal-compiler"
 
     @staticmethod
-    def whitebox_dependency(dist):
-        return itertools.chain(
-            (dep.name.startswith('GRAAL') for dep in dist.deps),
-            (dep.name.startswith('jdk.graal.compiler') for dep in dist.archived_deps())
-        )
+    def is_whitebox_dependency(dist):
+        return hasattr(dist, 'graalWhiteboxDistribution') and dist.graalWhiteboxDistribution
 
     def filter_distribution(self, dist):
         return super(JMHDistWhiteboxBenchmarkSuite, self).filter_distribution(dist) and \
-               any(JMHDistWhiteboxBenchmarkSuite.whitebox_dependency(dist)) and \
-               not any(dep.name.startswith('com.oracle.truffle.enterprise.jmh') for dep in dist.deps)
+               JMHDistWhiteboxBenchmarkSuite.is_whitebox_dependency(dist)
 
 
     def extraVmArgs(self):
