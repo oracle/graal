@@ -40,16 +40,13 @@ local visualizer = import 'visualizer/ci/ci.jsonnet';
 
 local verify_ci = (import 'ci/ci_common/ci-check.libsonnet').verify_ci;
 
-# JDK latest only works on MacOS Ventura (GR-49652)
-local exclude_latest_darwin_amd64(builds) = [b for b in builds if !(import 'ci/ci_common/common-utils.libsonnet').contains(b.name, "labsjdk-latest-darwin-amd64")];
-
 {
   # Ensure that non-hidden entries in ci/common.jsonnet and ci/ci_common/common.jsonnet can be resolved.
   assert std.length(std.toString(import 'ci/ci_common/common.jsonnet')) > 0,
   ci_resources:: (import 'ci/ci_common/ci-resources.libsonnet'),
   overlay: graal_common.ci.overlay,
   specVersion: "3",
-  builds: exclude_latest_darwin_amd64([common.add_excludes_guard(b) for b in (
+  builds: [common.add_excludes_guard(b) for b in (
     common.with_components(compiler.builds, ["compiler"]) +
     common.with_components(wasm.builds, ["wasm"]) +
     common.with_components(espresso.builds, ["espresso"]) +
@@ -62,7 +59,7 @@ local exclude_latest_darwin_amd64(builds) = [b for b in builds if !(import 'ci/c
     common.with_components(javadoc.builds, ["javadoc"]) +
     common.with_components(vm.builds, ["vm"]) +
     common.with_components(visualizer.builds, ["visualizer"])
-  )]),
+  )],
   assert verify_ci(self.builds),
   // verify that the run-spec demo works
   assert (import "ci/ci_common/run-spec-demo.jsonnet").check(),
