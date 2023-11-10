@@ -70,6 +70,10 @@ final class GuestRunnable implements Runnable {
             }
         } catch (EspressoExitException exitException) {
             /* Suppress */
+        } catch (Throwable t) { // TODO this should probably be removed
+            // Context.getCurrent().asValue(t).as(PolyglotException.class).printStackTrace();
+            t.printStackTrace();
+            System.exit(55); // some random exit code
         } finally {
             context.getThreadAccess().terminate(thread, exit);
             if (context.isClosing()) {

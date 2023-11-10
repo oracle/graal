@@ -240,11 +240,11 @@ public final class RubyFlavor extends RegexFlavor {
     }
 
     @Override
-    public BiPredicate<Integer, Integer> getEqualsIgnoreCasePredicate(RegexAST ast) {
+    public EqualsIgnoreCasePredicate getEqualsIgnoreCasePredicate(RegexAST ast) {
         return RubyFlavor::equalsIgnoreCase;
     }
 
-    private static boolean equalsIgnoreCase(int codePointA, int codePointB) {
+    private static boolean equalsIgnoreCase(int codePointA, int codePointB, boolean altMode) {
         return MultiCharacterCaseFolding.equalsIgnoreCase(CaseFoldData.CaseFoldAlgorithm.Ruby, codePointA, codePointB);
     }
 }

@@ -219,20 +219,42 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> unnamedModule = StaticSymbols.putName("unnamedModule");
         public static final Symbol<Name> nameAndId = StaticSymbols.putName("nameAndId");
         public static final Symbol<Name> HIDDEN_CLASS_LOADER_REGISTRY = StaticSymbols.putName("0HIDDEN_CLASS_LOADER_REGISTRY");
-        public static final Symbol<Name> HIDDEN_TREGEX = StaticSymbols.putName("0HIDDEN_TREGEX");
+        public static final Symbol<Name> HIDDEN_TREGEX_MATCH = StaticSymbols.putName("0HIDDEN_TREGEX_MATCH");
+        public static final Symbol<Name> HIDDEN_TREGEX_FULLMATCH = StaticSymbols.putName("0HIDDEN_TREGEX_FULLMATCH");
         public static final Symbol<Name> HIDDEN_TREGEX_SEARCH = StaticSymbols.putName("0HIDDEN_TREGEX_SEARCH");
+        public static final Symbol<Name> HIDDEN_TREGEX_UNSUPPORTED = StaticSymbols.putName("0HIDDEN_TREGEX_UNSUPPORTED");
 
+        public static final Symbol<Name> HIDDEN_TREGEX_TSTRING = StaticSymbols.putName("0HIDDEN_TREGEX_TSTRING");
+        public static final Symbol<Name> HIDDEN_TREGEX_OLD_LAST_BACKUP = StaticSymbols.putName("0HIDDEN_TREGEX_OLD_LAST_BACKUP");
+        public static final Symbol<Name> HIDDEN_TREGEX_MOD_COUNT_BACKUP = StaticSymbols.putName("0HIDDEN_TREGEX_MOD_COUNT_BACKUP");
+        public static final Symbol<Name> HIDDEN_TREGEX_TRANSPARENT_BOUNDS_BACKUP = StaticSymbols.putName("0HIDDEN_TREGEX_TRANSPARENT_BOUNDS_BACKUP");
+        public static final Symbol<Name> HIDDEN_TREGEX_ANCHORING_BOUNDS_BACKUP = StaticSymbols.putName("0HIDDEN_TREGEX_ANCHORING_BOUNDS_BACKUP");
+        public static final Symbol<Name> HIDDEN_TREGEX_FROM_BACKUP = StaticSymbols.putName("0HIDDEN_TREGEX_FROM_BACKUP");
+        public static final Symbol<Name> HIDDEN_TREGEX_TO_BACKUP = StaticSymbols.putName("0HIDDEN_TREGEX_TO_BACKUP");
+        public static final Symbol<Name> HIDDEN_TREGEX_MATCHING_MODE_BACKUP = StaticSymbols.putName("0HIDDEN_TREGEX_MATCHING_MODE_BACKUP");
+        public static final Symbol<Name> HIDDEN_TREGEX_SEARCH_FROM_BACKUP = StaticSymbols.putName("0HIDDEN_TREGEX_SEARCH_FROM_BACKUP");
         public static final Symbol<Name> parentPattern = StaticSymbols.putName("parentPattern");
         public static final Symbol<Name> pattern = StaticSymbols.putName("pattern");
         public static final Symbol<Name> flags0 = StaticSymbols.putName("flags0");
         public static final Symbol<Name> compiled = StaticSymbols.putName("compiled");
         public static final Symbol<Name> namedGroups = StaticSymbols.putName("namedGroups");
+        public static final Symbol<Name> matchRoot = StaticSymbols.putName("matchRoot");
+        public static final Symbol<Name> compile = StaticSymbols.putName("compile");
         public static final Symbol<Name> capturingGroupCount = StaticSymbols.putName("capturingGroupCount");
+        public static final Symbol<Name> groupCount = StaticSymbols.putName("groupCount");
         public static final Symbol<Name> text = StaticSymbols.putName("text");
         public static final Symbol<Name> match = StaticSymbols.putName("match");
         public static final Symbol<Name> search = StaticSymbols.putName("search");
         public static final Symbol<Name> modCount = StaticSymbols.putName("modCount");
         public static final Symbol<Name> to = StaticSymbols.putName("to");
+        public static final Symbol<Name> transparentBounds = StaticSymbols.putName("transparentBounds");
+        public static final Symbol<Name> anchoringBounds = StaticSymbols.putName("anchoringBounds");
+        public static final Symbol<Name> locals = StaticSymbols.putName("locals");
+        public static final Symbol<Name> localsPos = StaticSymbols.putName("localsPos");
+        public static final Symbol<Name> hitEnd = StaticSymbols.putName("hitEnd");
+        public static final Symbol<Name> requireEnd = StaticSymbols.putName("requireEnd");
+        public static final Symbol<Name> localTCNCount = StaticSymbols.putName("localTCNCount");
+        public static final Symbol<Name> localCount = StaticSymbols.putName("localCount");
 
         // j.l.Module
         public static final Symbol<Name> loader = StaticSymbols.putName("loader");
@@ -246,11 +268,15 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> hash = StaticSymbols.putName("hash");
         public static final Symbol<Name> hashCode = StaticSymbols.putName("hashCode");
         public static final Symbol<Name> length = StaticSymbols.putName("length");
+        public static final Symbol<Name> substring = StaticSymbols.putName("substring");
         public static final Symbol<Name> toCharArray = StaticSymbols.putName("toCharArray");
         public static final Symbol<Name> charAt = StaticSymbols.putName("charAt");
         public static final Symbol<Name> coder = StaticSymbols.putName("coder");
         public static final Symbol<Name> COMPACT_STRINGS = StaticSymbols.putName("COMPACT_STRINGS");
         public static final Symbol<Name> indexOf = StaticSymbols.putName("indexOf");
+
+        //j.l.CharSequence
+        public static final Symbol<Name> subSequence = StaticSymbols.putName("subSequence");
 
         // j.l.Throwable
         public static final Symbol<Name> backtrace = StaticSymbols.putName("backtrace");
@@ -271,9 +297,11 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> dispatchUncaughtException = StaticSymbols.putName("dispatchUncaughtException");
         public static final Symbol<Name> getStackTrace = StaticSymbols.putName("getStackTrace");
         public static final Symbol<Name> group = StaticSymbols.putName("group");
+        public static final Symbol<Name> reset = StaticSymbols.putName("reset");
         public static final Symbol<Name> groups = StaticSymbols.putName("groups");
         public static final Symbol<Name> first = StaticSymbols.putName("first");
         public static final Symbol<Name> last = StaticSymbols.putName("last");
+        public static final Symbol<Name> oldLast = StaticSymbols.putName("oldLast");
         public static final Symbol<Name> holder = StaticSymbols.putName("holder");
         public static final Symbol<Name> VTHREAD_GROUP = StaticSymbols.putName("VTHREAD_GROUP");
         public static final Symbol<Name> inheritedAccessControlContext = StaticSymbols.putName("inheritedAccessControlContext");
@@ -835,6 +863,8 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Type> java_lang_StackTraceElement = StaticSymbols.putType("Ljava/lang/StackTraceElement;");
         public static final Symbol<Type> java_lang_StackTraceElement_array = StaticSymbols.putType("[Ljava/lang/StackTraceElement;");
+        public static final Symbol<Type> java_util_regex_IntHashSet = StaticSymbols.putType("Ljava/util/regex/IntHashSet;");
+        public static final Symbol<Type> java_util_regex_IntHashSet_array = StaticSymbols.putType("[Ljava/util/regex/IntHashSet;");
 
         public static final Symbol<Type> java_lang_Error = StaticSymbols.putType("Ljava/lang/Error;");
         public static final Symbol<Type> java_lang_NoSuchFieldError = StaticSymbols.putType("Ljava/lang/NoSuchFieldError;");
@@ -938,6 +968,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_util_Optional = StaticSymbols.putType("Ljava/util/Optional;");
 
         public static final Symbol<Type> java_util_regex_Pattern = StaticSymbols.putType("Ljava/util/regex/Pattern;");
+        public static final Symbol<Type> java_util_regex_Pattern_Node = StaticSymbols.putType("Ljava/util/regex/Pattern$Node;");
         public static final Symbol<Type> java_util_regex_PatternSyntaxException = StaticSymbols.putType("Ljava/util/regex/PatternSyntaxException;");
         public static final Symbol<Type> java_util_regex_Matcher = StaticSymbols.putType("Ljava/util/regex/Matcher;");
 
@@ -1034,6 +1065,10 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Signature> Object = StaticSymbols.putSignature(Type.java_lang_Object);
         public static final Symbol<Signature> String = StaticSymbols.putSignature(Type.java_lang_String);
+        public static final Symbol<Signature> String_int_int = StaticSymbols.putSignature(Type.java_lang_String, Type._int, Type._int);
+        public static final Symbol<Signature> CharSequence_int_int = StaticSymbols.putSignature(Type.java_lang_CharSequence, Type._int, Type._int);
+        public static final Symbol<Signature> _void_CharSequence_Pattern = StaticSymbols.putSignature(Type._void, Type.java_util_regex_Pattern, Type.java_lang_CharSequence);
+        public static final Symbol<Signature> Matcher_CharSequence = StaticSymbols.putSignature(Type.java_util_regex_Matcher, Type.java_lang_CharSequence);
         public static final Symbol<Signature> ClassLoader = StaticSymbols.putSignature(Type.java_lang_ClassLoader);
         public static final Symbol<Signature> Map = StaticSymbols.putSignature(Type.java_util_Map);
         public static final Symbol<Signature> Map_Map = StaticSymbols.putSignature(Type.java_util_Map, Type.java_util_Map);
