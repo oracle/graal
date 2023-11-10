@@ -208,14 +208,12 @@
   local gates = {
     "gate-compiler-test-labsjdk-latest-linux-amd64": t("1:00:00") + c.mach5_target,
     "gate-compiler-test-labsjdk-latest-linux-aarch64": t("1:50:00") + s.avoid_xgene3,
-    # JDK latest only works on MacOS Ventura (GR-49652)
-    # "gate-compiler-test-labsjdk-latest-darwin-amd64": t("1:00:00") + c.mach5_target + s.ram16gb,
+    "gate-compiler-test-labsjdk-latest-darwin-amd64": t("1:00:00") + c.mach5_target + s.ram16gb,
     "gate-compiler-test-labsjdk-latest-darwin-aarch64": t("1:00:00"),
     "gate-compiler-test-labsjdk-latest-windows-amd64": t("1:30:00"),
     "gate-compiler-test_zgc-labsjdk-latest-linux-amd64": t("1:00:00") + c.mach5_target,
     "gate-compiler-test_zgc-labsjdk-latest-linux-aarch64": t("1:50:00") + s.avoid_xgene3,
-    # JDK latest only works on MacOS Ventura (GR-49652)
-    # "gate-compiler-test_zgc-labsjdk-latest-darwin-amd64": t("1:00:00") + c.mach5_target + s.ram16gb,
+    "gate-compiler-test_zgc-labsjdk-latest-darwin-amd64": t("1:00:00") + c.mach5_target + s.ram16gb,
     "gate-compiler-test_zgc-labsjdk-latest-darwin-aarch64": t("1:00:00"),
 
     # Style jobs need to stay on a JDK compatible with all the style
@@ -236,8 +234,7 @@
     "gate-compiler-truffle_xcomp-labsjdk-latest-linux-amd64": t("1:30:00"),
     "gate-compiler-truffle_xcomp_zgc-labsjdk-latest-linux-amd64": t("1:30:00"),
 
-    # JDK latest only works on MacOS Ventura (GR-49652)
-    # "gate-compiler-bootstrap_lite-labsjdk-latest-darwin-amd64": t("1:00:00") + c.mach5_target,
+    "gate-compiler-bootstrap_lite-labsjdk-latest-darwin-amd64": t("1:00:00") + c.mach5_target,
 
     "gate-compiler-bootstrap_full-labsjdk-latest-linux-amd64": s.many_cores + c.mach5_target,
     "gate-compiler-bootstrap_full_zgc-labsjdk-latest-linux-amd64": s.many_cores + c.mach5_target
