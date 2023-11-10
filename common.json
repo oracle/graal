@@ -60,6 +60,7 @@
   "pip": {
     "ninja_syntax": "==1.7.2",
     "lazy-object-proxy": "==1.6.0",
-    "pylint": "==2.4.4"
+    "pylint": "==2.4.4",
+    "black": "==23.11.0"
   }
 }

@@ -77,7 +77,7 @@ common + common.frequencies + {
 
   // Hardware definitions
   // ********************
-  local graal_common_extras = common.deps.pylint + {
+  local graal_common_extras = common.deps.pylint + common.deps.black + {
     logs+: [
       "*.bgv",
       "*/graal_dumps/*/*",

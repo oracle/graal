@@ -150,6 +150,13 @@ local common_json = import "../common.json";
       } else {},
     },
 
+    black:: {
+      packages+: {
+        # black is used to format python source code
+        "pip:black": common_json.pip.black,
+      },
+    },
+
     local code_tools = {
       downloads+: if 'jdk_version' in self && self.jdk_version > 21 then {
         TOOLS_JAVA_HOME: jdks_data['oraclejdk21'],
