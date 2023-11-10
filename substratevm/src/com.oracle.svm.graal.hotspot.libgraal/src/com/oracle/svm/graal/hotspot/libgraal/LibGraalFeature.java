@@ -753,37 +753,42 @@ final class HotSpotGraalOptionValuesUtil {
     // Support for CrashAtThrowsOOME
     static final GlobalAtomicLong OOME_CRASH_DONE = new GlobalAtomicLong(0);
 
-    private static final String LIBGRAAL_PREFIX = "libgraal.";
-    private static final String LIBGRAAL_XOPTION_PREFIX = "libgraal.X";
+    private static final String LEGACY_LIBGRAAL_PREFIX = "libgraal.";
+    private static final String LEGACY_LIBGRAAL_XOPTION_PREFIX = "libgraal.X";
+    private static final String LIBGRAAL_PREFIX = "jdk.libgraal.";
+    private static final String LIBGRAAL_XOPTION_PREFIX = "jdk.libgraal.X";
 
     static OptionValues initializeOptions() {
+
         // Parse "graal." options.
         RuntimeOptionValues options = RuntimeOptionValues.singleton();
         options.update(HotSpotGraalOptionValues.parseOptions());
 
-        // Parse "libgraal." options. This includes the XOptions as well
-        // as normal Graal options that are specified with the "libgraal."
+        // Parse "jdk.libgraal." options. This includes the XOptions as well
+        // as normal Graal options that are specified with the "jdk.libgraal."
         // prefix so that they're parsed only in libgraal and not jargraal.
         // A motivating use case for this is CompileTheWorld + libgraal
         // where one may want to see GC stats with the VerboseGC option.
         // Since CompileTheWorld also initializes jargraal, specifying this
-        // option with -Dgraal.VerboseGC would cause the VM to exit with an
-        // unknown option error. Specifying it as -Dlibgraal.VerboseGC=true
+        // option with -Djdk.graal.VerboseGC would cause the VM to exit with an
+        // unknown option error. Specifying it as -Djdk.libgraal.VerboseGC=true
         // avoids the error and provides the desired behavior.
         Map<String, String> savedProps = jdk.vm.ci.services.Services.getSavedProperties();
         EconomicMap<String, String> optionSettings = EconomicMap.create();
         for (Map.Entry<String, String> e : savedProps.entrySet()) {
-            String name = e.getKey();
-            if (name.startsWith(LIBGRAAL_PREFIX)) {
-                if (name.startsWith(LIBGRAAL_XOPTION_PREFIX)) {
-                    String xarg = removePrefix(name, LIBGRAAL_XOPTION_PREFIX) + e.getValue();
+            String key = e.getKey();
+            String name = withoutPrefix(key, LIBGRAAL_PREFIX, LEGACY_LIBGRAAL_PREFIX);
+            if (name != null) {
+                String xarg = withoutPrefix(key, LIBGRAAL_XOPTION_PREFIX, LEGACY_LIBGRAAL_XOPTION_PREFIX);
+                if (xarg != null) {
+                    xarg += e.getValue();
                     if (XOptions.setOption(xarg)) {
                         continue;
                     }
                 }
 
                 String value = e.getValue();
-                optionSettings.put(removePrefix(name, LIBGRAAL_PREFIX), value);
+                optionSettings.put(name, value);
             }
         }
         if (!optionSettings.isEmpty()) {
@@ -800,9 +805,14 @@ final class HotSpotGraalOptionValuesUtil {
         return options;
     }
 
-    private static String removePrefix(String value, String prefix) {
-        assert value.startsWith(prefix);
-        return value.substring(prefix.length());
+    private static String withoutPrefix(String value, String prefix, String prefixAlias) {
+        if (value.startsWith(prefix)) {
+            return value.substring(prefix.length());
+        }
+        if (value.startsWith(prefixAlias)) {
+            return value.substring(prefixAlias.length());
+        }
+        return null;
     }
 }
 
@@ -830,7 +840,7 @@ final class Target_jdk_graal_compiler_core_GraalCompiler {
     private static boolean notifyCrash(String crashMessage) {
         if (LibGraalOptions.CrashAtThrowsOOME.getValue()) {
             if (HotSpotGraalOptionValuesUtil.OOME_CRASH_DONE.compareAndSet(0L, 1L)) {
-                // The -Dlibgraal.Xmx option should also be employed to make this
+                // The -Djdk.libgraal.Xmx option should also be employed to make this
                 // this allocation fail quicky
                 String largeString = Arrays.toString(new int[Integer.MAX_VALUE - 1]);
                 throw new InternalError("Failed to trigger OOME: largeString.length=" + largeString.length());

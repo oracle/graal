@@ -52,19 +52,15 @@ public class HotSpotGraalOptionValues {
     /**
      * The name of the system property specifying a file containing extra Graal option settings.
      */
-    private static final String GRAAL_OPTIONS_FILE_PROPERTY_NAME = "graal.options.file";
-
-    /**
-     * The name of the system property specifying the Graal version.
-     */
-    private static final String GRAAL_VERSION_PROPERTY_NAME = "graal.version";
+    private static final String GRAAL_OPTIONS_FILE_PROPERTY_NAME = "jdk.graal.options.file";
 
     /**
      * The prefix for system properties that correspond to {@link Option} annotated fields. A field
      * named {@code MyOption} will have its value set from a system property with the name
      * {@code GRAAL_OPTION_PROPERTY_PREFIX + "MyOption"}.
      */
-    public static final String GRAAL_OPTION_PROPERTY_PREFIX = "graal.";
+    public static final String GRAAL_OPTION_PROPERTY_PREFIX = "jdk.graal.";
+    public static final String LEGACY_GRAAL_OPTION_PROPERTY_PREFIX = "graal.";
 
     /**
      * Gets the system property assignment that would set the current value for a given option.
@@ -129,10 +125,11 @@ public class HotSpotGraalOptionValues {
             EconomicMap<String, String> optionSettings = EconomicMap.create();
             for (Map.Entry<String, String> e : savedProps.entrySet()) {
                 String name = e.getKey();
+                if (name.startsWith(LEGACY_GRAAL_OPTION_PROPERTY_PREFIX)) {
+                    name = GRAAL_OPTION_PROPERTY_PREFIX + name.substring(LEGACY_GRAAL_OPTION_PROPERTY_PREFIX.length());
+                }
                 if (name.startsWith(GRAAL_OPTION_PROPERTY_PREFIX)) {
-                    if (name.equals("graal.PrintFlags") || name.equals("graal.ShowFlags")) {
-                        System.err.println("The " + name + " option has been removed and will be ignored. Use -XX:+JVMCIPrintProperties instead.");
-                    } else if (name.equals(GRAAL_OPTIONS_FILE_PROPERTY_NAME) || name.equals(GRAAL_VERSION_PROPERTY_NAME)) {
+                    if (name.equals(GRAAL_OPTIONS_FILE_PROPERTY_NAME)) {
                         // Ignore well known properties that do not denote an option
                     } else {
                         String value = e.getValue();

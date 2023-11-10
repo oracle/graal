@@ -140,7 +140,7 @@ public class OptionsParser {
             }
             IllegalArgumentException iae = new IllegalArgumentException(msg.toString());
             if (isFromLibGraal(iae)) {
-                msg.format("%nIf %s is a libgraal option, it must be specified with '-Dlibgraal.%s' as opposed to '-Dgraal.%s'.", name, name, name);
+                msg.format("%nIf %s is a libgraal option, it must be specified with '-Djdk.libgraal.%s' as opposed to '-Djdk.graal.%s'.", name, name, name);
                 iae = new IllegalArgumentException(msg.toString());
             }
             throw iae;

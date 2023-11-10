@@ -134,7 +134,7 @@ public final class AArch64CountPositivesOp extends AArch64ComplexVectorOp {
             // The original HotSpot code inlines the simple and most common case of aligned small
             // array which is not at the end of memory page, and calls into stubs for all other
             // cases. By default, we emit everything in a single stub, and it can be inlined via
-            // -Dgraal.InlineGraalStubs=true
+            // -Djdk.graal.InlineGraalStubs=true
             masm.mov(64, ary1, asRegister(arrayValue));
             masm.mov(32, len, asRegister(lengthValue));
 

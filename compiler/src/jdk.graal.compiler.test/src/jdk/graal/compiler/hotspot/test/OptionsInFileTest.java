@@ -64,8 +64,8 @@ public class OptionsInFileTest extends GraalCompilerTest {
             }
 
             List<String> vmArgs = withoutDebuggerArguments(getVMCommandLine());
-            vmArgs.removeIf(a -> a.startsWith("-Dgraal."));
-            vmArgs.add("-Dgraal.options.file=" + optionsFile);
+            vmArgs.removeIf(a -> a.startsWith("-Djdk.graal."));
+            vmArgs.add("-Djdk.graal.options.file=" + optionsFile);
             vmArgs.add("-XX:+JVMCIPrintProperties");
             Subprocess proc = SubprocessUtil.java(vmArgs);
             String[] expected = {

@@ -45,20 +45,20 @@ import jdk.vm.ci.meta.JavaConstant;
  * The phase is enabled with the following flag:
  *
  * <pre>
- * -Dgraal.TruffleInstrumentBoundaries
+ * -Djdk.graal.TruffleInstrumentBoundaries
  * </pre>
  *
  * The phase can be configured to only instrument callsites in specific methods, by providing the
  * following method filter flag:
  *
  * <pre>
- * -Dgraal.TruffleInstrumentBoundariesFilter
+ * -Djdk.graal.TruffleInstrumentBoundariesFilter
  * </pre>
  *
  * The flag:
  *
  * <pre>
- * -Dgraal.TruffleInstrumentBoundariesPerInlineSite
+ * -Djdk.graal.TruffleInstrumentBoundariesPerInlineSite
  * </pre>
  *
  * decides whether to treat different inlining sites separately when tracking the execution counts.

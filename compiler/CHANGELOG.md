@@ -3,6 +3,9 @@
 This changelog summarizes newly introduced optimizations and other compiler related changes.
 
 ## GraalVM for JDK 22 (Internal Version 24.0.0)
+* (GR-49876): Added `-Dgraal.PrintIntrinsics=true` to log the intrinsics used by Graal in the current runtime.
+* (GR-49960): The Graal options now use the `jdk.graal.` prefix (e.g. `-Djdk.graal.PrintCompilation=true`).
+  The legacy `graal.` prefix is deprecated but still supported (e.g. `-Dgraal.PrintCompilation=true`).
 * (GR-49610): The Graal module has been renamed from `jdk.internal.vm.compiler` to `jdk.graal.compiler`.
   Likewise, the compiler packages moved into the `jdk.graal.compiler` namespace.
   These renamings were done in preparation for [Project Galahad](https://openjdk.org/projects/galahad/).

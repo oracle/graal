@@ -10,7 +10,7 @@ hottest compilations by utilizing tree-diffing algorithms. A compilation unit co
 optimization tree. Read `OptimizationLog.md` first to understand the trees. It is possible to compare two JIT
 compilations, a JIT compilation with an AOT compilation, or two AOT compilations.
 
-The tool reads data from the optimization log, which is enabled using the flag `-Dgraal.OptimizationLog`
+The tool reads data from the optimization log, which is enabled using the flag `-Djdk.graal.OptimizationLog`
 (`-H:OptimizationLog` for Native Image). Read `OptimizationLog.md` to learn more.
 
 ## Usage
@@ -31,8 +31,8 @@ Run a benchmark with the optimization log and node source positions enabled. Nod
 optimization log to correlate individual optimizations with a position in the bytecode.
 
 ```sh
-mx benchmark renaissance:scrabble -- -Dgraal.TrackNodeSourcePosition=true -Dgraal.OptimizationLog=Directory \
-  -Dgraal.OptimizationLogPath=$PWD/scrabble_log
+mx benchmark renaissance:scrabble -- -Djdk.graal.TrackNodeSourcePosition=true -Djdk.graal.OptimizationLog=Directory \
+  -Djdk.graal.OptimizationLogPath=$PWD/scrabble_log
 ```
 
 The dump path is explicitly specified as an absolute path to avoid any surprises. Use the tool to display the logs in
@@ -55,8 +55,8 @@ otherwise the logs get merged together.
 
 ```sh
 rm -rf proftool_scrabble_*
-mx benchmark renaissance:scrabble --tracker none -- --profiler proftool -Dgraal.OptimizationLog=Directory \
-  -Dgraal.OptimizationLogPath=$PWD/scrabble_log
+mx benchmark renaissance:scrabble --tracker none -- --profiler proftool -Djdk.graal.OptimizationLog=Directory \
+  -Djdk.graal.OptimizationLogPath=$PWD/scrabble_log
 ```
 
 If the application subject to experiment is not a benchmark supported by `mx benchmark`, use `mx profrecord` as per
@@ -81,8 +81,8 @@ a JSON file.
 
 ```sh
 rm -rf proftool_scrabble_*
-mx benchmark renaissance:scrabble --tracker none -- --profiler proftool -Dgraal.OptimizationLog=Directory \
-  -Dgraal.OptimizationLogPath=$PWD/scrabble_log
+mx benchmark renaissance:scrabble --tracker none -- --profiler proftool -Djdk.graal.OptimizationLog=Directory \
+  -Djdk.graal.OptimizationLogPath=$PWD/scrabble_log
 mx profjson -E proftool_scrabble_* -o scrabble_prof.json
 ```
 
@@ -91,8 +91,8 @@ experiment again and get a slightly different result, which is caused by the inh
 
 ```sh
 rm -rf proftool_scrabble_*
-mx benchmark renaissance:scrabble --tracker none -- --profiler proftool -Dgraal.OptimizationLog=Directory \
-  -Dgraal.OptimizationLogPath=$PWD/scrabble_log_2
+mx benchmark renaissance:scrabble --tracker none -- --profiler proftool -Djdk.graal.OptimizationLog=Directory \
+  -Djdk.graal.OptimizationLogPath=$PWD/scrabble_log_2
 mx profjson -E proftool_scrabble_* -o scrabble_prof_2.json
 ```
 
@@ -108,8 +108,8 @@ Start with a profiled JIT benchmark and convert the proftool data:
 
 ```sh
 rm -rf proftool_scrabble_*
-mx benchmark renaissance:scrabble --tracker none -- --profiler proftool -Dgraal.OptimizationLog=Directory \
-  -Dgraal.OptimizationLogPath=$PWD/jit_scrabble_log
+mx benchmark renaissance:scrabble --tracker none -- --profiler proftool -Djdk.graal.OptimizationLog=Directory \
+  -Djdk.graal.OptimizationLogPath=$PWD/jit_scrabble_log
 mx profjson -E proftool_scrabble_* -o jit_scrabble_prof.json
 ```
 
