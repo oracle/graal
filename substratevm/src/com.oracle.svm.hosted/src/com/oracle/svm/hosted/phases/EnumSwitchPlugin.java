@@ -28,6 +28,18 @@ import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.util.ReflectionUtil;
+
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -37,19 +49,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugi
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.graal.compiler.phases.util.Providers;
-import org.graalvm.nativeimage.ImageSingletons;
-
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
-import com.oracle.svm.hosted.snippets.IntrinsificationPluginRegistry;
-import com.oracle.svm.hosted.snippets.ReflectionPlugins;
-import com.oracle.svm.util.ReflectionUtil;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -74,59 +73,51 @@ final class EnumSwitchPlugin implements NodePlugin {
     }
 
     @Override
-    public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+    public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod m, ValueNode[] args) {
+        VMError.guarantee(reason.duringAnalysis(), "plugin can only be used during parsing for analysis");
+        AnalysisMethod method = (AnalysisMethod) m;
+
         if (!method.getName().startsWith(METHOD_NAME_PREFIX) || !method.isStatic() || method.getSignature().getParameterCount(false) != 0) {
             return false;
         }
-
-        if (reason.duringAnalysis()) {
-            if (!method.getDeclaringClass().isInitialized()) {
-                /*
-                 * Declaring class is initialized at run time. Even if the enum itself is
-                 * initialized at image build time, we cannot invoke the switch-table method because
-                 * it is declared in the class that contains the switch.
-                 */
-                return false;
-            }
-
+        if (!method.getDeclaringClass().isInitialized()) {
             /*
-             * There is no easy link from the method to the enum that it is actually used for. But
-             * we need to ensure that invoking the method does not trigger any class initialization.
-             * Parsing the method is the easiest way to find out what the method is going to do. If
-             * any class initialization happens inside method, we must not invoke it. Note that we
-             * do not check for transitive callees, because we trust that the Eclipse compiler only
-             * emits calls that end up in the same class or in the JDK.
+             * Declaring class is initialized at run time. Even if the enum itself is initialized at
+             * image build time, we cannot invoke the switch-table method because it is declared in
+             * the class that contains the switch.
              */
-            AnalysisMethod aMethod = (AnalysisMethod) method;
-            EnumSwitchFeature feature = ImageSingletons.lookup(EnumSwitchFeature.class);
-            aMethod.ensureGraphParsed(feature.bb);
-            Boolean methodSafeForExecution = feature.methodsSafeForExecution.get(aMethod);
-            assert methodSafeForExecution != null : "after-parsing hook not executed for method " + aMethod.format("%H.%n(%p)");
-            if (!methodSafeForExecution.booleanValue()) {
-                return false;
-
-            }
-            try {
-                Method switchTableMethod = ReflectionUtil.lookupMethod(aMethod.getDeclaringClass().getJavaClass(), method.getName());
-                Object switchTable = switchTableMethod.invoke(null);
-                if (switchTable instanceof int[]) {
-                    ImageSingletons.lookup(ReflectionPlugins.ReflectionPluginRegistry.class).add(b.getMethod(), b.bci(), switchTable);
-                }
-            } catch (ReflectiveOperationException ex) {
-                throw GraalError.shouldNotReachHere(ex); // ExcludeFromJacocoGeneratedReport
-            }
+            return false;
+        }
+        /*
+         * There is no easy link from the method to the enum that it is actually used for. But we
+         * need to ensure that invoking the method does not trigger any class initialization.
+         * Parsing the method is the easiest way to find out what the method is going to do. If any
+         * class initialization happens inside method, we must not invoke it. Note that we do not
+         * check for transitive callees, because we trust that the Eclipse compiler only emits calls
+         * that end up in the same class or in the JDK.
+         */
+        EnumSwitchFeature feature = ImageSingletons.lookup(EnumSwitchFeature.class);
+        method.ensureGraphParsed(feature.bb);
+        Boolean methodSafeForExecution = feature.methodsSafeForExecution.get(method);
+        assert methodSafeForExecution != null : "after-parsing hook not executed for method " + method.format("%H.%n(%p)");
+        if (!methodSafeForExecution.booleanValue()) {
+            return false;
         }
 
-        Object switchTable = ImageSingletons.lookup(ReflectionPlugins.ReflectionPluginRegistry.class).get(b.getMethod(), b.bci());
-        if (switchTable != null) {
+        Object switchTable;
+        try {
+            Method switchTableMethod = ReflectionUtil.lookupMethod(method.getDeclaringClass().getJavaClass(), method.getName());
+            switchTable = switchTableMethod.invoke(null);
+        } catch (ReflectiveOperationException ex) {
+            throw GraalError.shouldNotReachHere(ex); // ExcludeFromJacocoGeneratedReport
+        }
+
+        if (switchTable instanceof int[]) {
             b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(switchTable), 1, true, b.getMetaAccess()));
             return true;
         }
         return false;
     }
-}
-
-final class EnumSwitchPluginRegistry extends IntrinsificationPluginRegistry {
 }
 
 @AutomaticallyRegisteredFeature
@@ -138,7 +129,6 @@ final class EnumSwitchFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
-        ImageSingletons.add(EnumSwitchPluginRegistry.class, new EnumSwitchPluginRegistry());
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
         bb = access.getBigBang();
         access.getHostVM().addMethodAfterParsingListener(this::onMethodParsed);
