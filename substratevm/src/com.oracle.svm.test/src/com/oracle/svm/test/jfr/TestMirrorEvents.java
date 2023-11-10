@@ -26,18 +26,15 @@
 
 package com.oracle.svm.test.jfr;
 
+import static org.junit.Assert.assertTrue;
+
+import java.util.List;
+
+import org.junit.Test;
+
 import jdk.jfr.EventType;
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
-import jdk.jfr.consumer.RecordingFile;
-import org.junit.Test;
-
-import java.nio.file.Path;
-import java.util.List;
-
-import com.oracle.svm.test.jfr.utils.JfrFileParser;
-
-import static org.junit.Assert.assertTrue;
 
 /**
  * This test checks that JFR mirror events have been set up correctly. If mirror events have not
@@ -48,18 +45,9 @@ public class TestMirrorEvents extends JfrRecordingTest {
 
     @Test
     public void test() throws Throwable {
-        Recording recording = new Recording();
+        String[] events = new String[]{"jdk.ThreadSleep", "jdk.VirtualThreadStart", "jdk.VirtualThreadEnd"};
+        Recording recording = startRecording(events);
 
-        // Disable all events except mirror events.
-        recording.enable("jdk.ThreadSleep");
-        recording.enable("jdk.VirtualThreadStart");
-        recording.enable("jdk.VirtualThreadEnd");
-
-        Path path = createTempJfrFile();
-        recording.setDestination(path);
-        recording.start();
-
-        // Generate some event emissions.
         Runnable eventEmitter = () -> {
             try {
                 Thread.sleep(100);
@@ -70,26 +58,20 @@ public class TestMirrorEvents extends JfrRecordingTest {
 
         VirtualStressor.execute(1, eventEmitter);
 
-        recording.stop();
-        recording.close();
+        stopRecording(recording, TestMirrorEvents::validateEvents);
+    }
 
-        // Some standard checks
-        JfrFileParser parser = new JfrFileParser(path);
-        parser.verify();
-
+    /**
+     * If the mirror event metadata is incorrect, we will see events with the wrong event name, e.g.
+     * "jdk.internal.event.ThreadSleepEvent" instead of "jdk.ThreadSleep".
+     */
+    private static void validateEvents(List<RecordedEvent> unfilteredEvents) {
         boolean foundSleepEvent = false;
         boolean foundVthreadStartEvent = false;
         boolean foundVthreadEndEvent = false;
 
-        List<RecordedEvent> recordedEvents = RecordingFile.readAllEvents(path);
-        assertTrue("No events were recorded.", recordedEvents.size() > 0);
-
-        for (RecordedEvent event : recordedEvents) {
+        for (RecordedEvent event : unfilteredEvents) {
             EventType eventType = event.getEventType();
-
-            assertTrue("Mirror event metadata not applied correctly.", !eventType.getName().equals("jdk.internal.event.ThreadSleepEvent") &&
-                            !eventType.getName().equals("jdk.internal.event.VirtualThreadStartEvent") && !eventType.getName().equals("jdk.internal.event.VirtualThreadEndEvent"));
-
             if (eventType.getName().equals("jdk.ThreadSleep") && eventType.getCategoryNames().contains("Java Application") && eventType.getLabel().equals("Java Thread Sleep")) {
                 foundSleepEvent = true;
             }
@@ -101,9 +83,8 @@ public class TestMirrorEvents extends JfrRecordingTest {
             }
         }
 
-        // The only events recorded should be the mirror events we explicitly enabled. If they were
-        // not found, it means their metadata is incorrect.
-        assertTrue("Mirror events containing correct metadata not found.", foundSleepEvent && foundVthreadStartEvent && foundVthreadEndEvent);
+        assertTrue(foundSleepEvent);
+        assertTrue(foundVthreadStartEvent);
+        assertTrue(foundVthreadEndEvent);
     }
-
 }

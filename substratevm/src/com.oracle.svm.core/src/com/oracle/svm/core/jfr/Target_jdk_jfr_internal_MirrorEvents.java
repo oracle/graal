@@ -25,6 +25,8 @@
  */
 package com.oracle.svm.core.jfr;
 
+import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.FromAlias;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -36,6 +38,6 @@ final class Target_jdk_jfr_internal_MirrorEvents {
 
     @Alias //
     @TargetElement(onlyWith = JDK22OrLater.class) //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true) //
+    @RecomputeFieldValue(kind = FromAlias, isFinal = true) //
     private static Class<?>[] mirrorEventClasses = new Class<?>[]{};
 }
