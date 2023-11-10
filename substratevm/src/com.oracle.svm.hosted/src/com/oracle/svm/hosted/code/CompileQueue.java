@@ -43,9 +43,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
-import com.oracle.graal.pointsto.infrastructure.GraphProvider.Purpose;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.phases.SubstrateIntrinsicGraphBuilder;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.svm.common.meta.MultiMethod;
@@ -74,18 +72,14 @@ import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.diagnostic.HostedHeapDumpFeature;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
-import com.oracle.svm.hosted.phases.HostedGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
-import com.oracle.svm.hosted.substitute.DeletedMethod;
 import com.oracle.svm.util.ImageBuildStatistics;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.asm.Assembler;
-import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
-import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecode;
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.code.DataSection;
 import jdk.graal.compiler.core.GraalCompiler;
@@ -125,7 +119,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
@@ -614,21 +607,11 @@ public class CompileQueue {
     private void parseAheadOfTimeCompiledMethods() {
 
         for (HostedMethod method : universe.getMethods()) {
-            if (parseOnce) {
-                if (SubstrateCompilationDirectives.singleton().isRegisteredForDeoptTesting(method)) {
-                    method.compilationInfo.canDeoptForTesting = true;
-                    assert SubstrateCompilationDirectives.singleton().isRegisteredDeoptTarget(method.getMultiMethod(DEOPT_TARGET_METHOD));
-                }
-            } else {
-                /*
-                 * Deoptimization target code for deoptimization testing: all methods that are not
-                 * blacklisted are possible deoptimization targets. The methods are also flagged so
-                 * that all possible deoptimization entry points are emitted.
-                 */
-                if (method.getWrapped().isImplementationInvoked() && DeoptimizationUtils.canDeoptForTesting(universe, method, deoptimizeAll)) {
-                    method.compilationInfo.canDeoptForTesting = true;
-                }
+            if (SubstrateCompilationDirectives.singleton().isRegisteredForDeoptTesting(method)) {
+                method.compilationInfo.canDeoptForTesting = true;
+                assert SubstrateCompilationDirectives.singleton().isRegisteredDeoptTarget(method.getMultiMethod(DEOPT_TARGET_METHOD));
             }
+
             for (MultiMethod multiMethod : method.getAllMultiMethods()) {
                 HostedMethod hMethod = (HostedMethod) multiMethod;
                 if (hMethod.isDeoptTarget() || SubstrateCompilationDirectives.isRuntimeCompiledMethod(hMethod)) {
@@ -672,27 +655,18 @@ public class CompileQueue {
     }
 
     private void parseDeoptimizationTargetMethods() {
-        if (parseOnce) {
-            /*
-             * Deoptimization target code for all methods that were manually marked as
-             * deoptimization targets.
-             */
-            universe.getMethods().stream().map(method -> method.getMultiMethod(DEOPT_TARGET_METHOD)).filter(deoptMethod -> {
-                if (deoptMethod != null) {
-                    return isRegisteredDeoptTarget(deoptMethod);
-                }
-                return false;
-            }).forEach(deoptMethod -> {
-                ensureParsed(deoptMethod, null, new EntryPointReason());
-            });
-        } else {
-            /*
-             * Deoptimization target code for all methods that were manually marked as
-             * deoptimization targets.
-             */
-            universe.getMethods().stream().filter(method -> isRegisteredDeoptTarget(method) || method.compilationInfo.canDeoptForTesting).forEach(
-                            method -> ensureParsed(method.getOrCreateMultiMethod(DEOPT_TARGET_METHOD), null, new EntryPointReason()));
-        }
+        /*
+         * Deoptimization target code for all methods that were manually marked as deoptimization
+         * targets.
+         */
+        universe.getMethods().stream().map(method -> method.getMultiMethod(DEOPT_TARGET_METHOD)).filter(deoptMethod -> {
+            if (deoptMethod != null) {
+                return isRegisteredDeoptTarget(deoptMethod);
+            }
+            return false;
+        }).forEach(deoptMethod -> {
+            ensureParsed(deoptMethod, null, new EntryPointReason());
+        });
     }
 
     private static boolean checkTrivial(HostedMethod method, StructuredGraph graph) {
@@ -940,18 +914,11 @@ public class CompileQueue {
         for (HostedMethod method : universe.getMethods()) {
             HostedMethod deoptTarget = method.getMultiMethod(DEOPT_TARGET_METHOD);
             if (deoptTarget != null) {
-                boolean isDeoptTarget;
-                if (parseOnce) {
-                    /*
-                     * Not all methods will be deopt targets since the optimization of runtime
-                     * compiled methods may eliminate FrameStates.
-                     */
-                    isDeoptTarget = isRegisteredDeoptTarget(deoptTarget);
-                } else {
-                    isDeoptTarget = isRegisteredDeoptTarget(method) || method.compilationInfo.canDeoptForTesting;
-                    assert isDeoptTarget : "unexpected Deopt Target " + deoptTarget;
-                }
-                if (isDeoptTarget) {
+                /*
+                 * Not all methods will be deopt targets since the optimization of runtime compiled
+                 * methods may eliminate FrameStates.
+                 */
+                if (isRegisteredDeoptTarget(deoptTarget)) {
                     ensureCompiled(deoptTarget, new EntryPointReason());
                 }
             }
@@ -984,8 +951,6 @@ public class CompileQueue {
         }
     }
 
-    private final boolean parseOnce = SubstrateOptions.parseOnce();
-
     @SuppressWarnings("try")
     private void defaultParseFunction(DebugContext debug, HostedMethod method, CompileReason reason, RuntimeConfiguration config, ParseHooks hooks) {
         if (method.getAnnotation(NodeIntrinsic.class) != null) {
@@ -995,50 +960,17 @@ public class CompileQueue {
         }
 
         HostedProviders providers = (HostedProviders) config.lookupBackend(method).getProviders();
-        boolean needParsing = false;
 
-        StructuredGraph graph;
-        if (parseOnce) {
-            graph = graphTransplanter.transplantGraph(debug, method, reason);
-        } else {
-            graph = method.buildGraph(debug, method, providers, Purpose.AOT_COMPILATION);
-            if (graph == null) {
-                InvocationPlugin plugin = providers.getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method, debug.getOptions());
-                if (plugin != null && !plugin.inlineOnly()) {
-                    Bytecode code = new ResolvedJavaMethodBytecode(method);
-                    graph = new SubstrateIntrinsicGraphBuilder(getCustomizedOptions(method, debug), debug, providers,
-                                    code).buildGraph(plugin);
-                }
-            }
-            if (graph == null && method.isNative() &&
-                            NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
-                graph = DeletedMethod.buildGraph(debug, method, providers, DeletedMethod.NATIVE_MESSAGE, Purpose.AOT_COMPILATION);
-            }
-            if (graph == null) {
-                needParsing = true;
-                graph = new StructuredGraph.Builder(getCustomizedOptions(method, debug), debug)
-                                .method(method)
-                                .recordInlinedMethods(false)
-                                .build();
-            }
-        }
+        StructuredGraph graph = graphTransplanter.transplantGraph(debug, method, reason);
         try (DebugContext.Scope s = debug.scope("Parsing", graph, method, this)) {
 
             try {
-                if (needParsing) {
-                    GraphBuilderConfiguration gbConf = createHostedGraphBuilderConfiguration(providers, method);
-                    new HostedGraphBuilderPhase(providers, gbConf, getOptimisticOpts(), null, providers.getWordTypes()).apply(graph);
-                } else {
-                    graph.getGraphState().configureExplicitExceptionsNoDeoptIfNecessary();
-                }
+                graph.getGraphState().configureExplicitExceptionsNoDeoptIfNecessary();
 
                 PhaseSuite<HighTierContext> afterParseSuite = hooks.getAfterParseSuite();
                 afterParseSuite.apply(graph, new HighTierContext(providers, afterParseSuite, getOptimisticOpts()));
 
                 method.compilationInfo.numNodesAfterParsing = graph.getNodeCount();
-                if (!parseOnce) {
-                    UninterruptibleAnnotationChecker.checkAfterParsing(method, graph);
-                }
 
                 for (Invoke invoke : graph.getInvokes()) {
                     if (!canBeUsedForInlining(invoke)) {
