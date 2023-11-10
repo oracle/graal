@@ -1150,6 +1150,20 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public void emitProtectionKeyRegisterWrite(Value value) {
+        RegisterValue rax = AMD64.rax.asValue(value.getValueKind());
+        emitMove(rax, value);
+        append(new AMD64WriteDataToUserPageKeyRegister(rax));
+    }
+
+    @Override
+    public Value emitProtectionKeyRegisterRead() {
+        AMD64ReadDataFromUserPageKeyRegister rdpkru = new AMD64ReadDataFromUserPageKeyRegister();
+        append(rdpkru);
+        return emitReadRegister(AMD64.rax, rdpkru.retVal.getValueKind());
+    }
+
+    @Override
     public void emitZeroMemory(Value address, Value length, boolean isAligned) {
         RegisterValue lengthReg = AMD64.rcx.asValue(length.getValueKind());
         emitMove(lengthReg, length);
