@@ -105,14 +105,11 @@
   builds: std.flattenArrays([
       [
         linux_amd64  + jdk + sigtest + guard,
-        # JDK latest only works on MacOS Ventura (GR-49652)
-        # darwin_amd64 + jdk + truffle_weekly + gate_lite + guard,
+        darwin_amd64 + jdk + truffle_weekly + gate_lite + guard,
         darwin_aarch64 + jdk + truffle_weekly + gate_lite + guard,
       ] for jdk in [common.oraclejdk21, common.oraclejdkLatest]
     ]) +
   [
-    # JDK latest only works on MacOS Ventura (GR-49652)
-    darwin_amd64 + common.oraclejdk21 + truffle_weekly + gate_lite + guard,
     # The simple_language_maven_project_gate uses native-image, so we must run on labsjdk rather than oraclejdk
     linux_amd64  + common.labsjdk21 + simple_language_maven_project_gate,
     linux_amd64  + common.labsjdkLatest + simple_language_maven_project_gate,
