@@ -26,8 +26,7 @@ package com.oracle.svm.core.jfr;
 
 import java.util.List;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.NumUtil;
+import com.oracle.svm.core.log.Log;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -41,11 +40,14 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jfr.logging.JfrLogging;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.sampler.SamplerBufferPool;
+import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.internal.event.Event;
 import jdk.jfr.Configuration;
 import jdk.jfr.internal.JVM;
@@ -721,6 +723,10 @@ public class SubstrateJVM {
             SubstrateJVM.get().recording = false;
             JfrExecutionSampler.singleton().update();
 
+            if (SubstrateSigprofHandler.Options.JfrBasedExecutionSamplerStatistics.getValue()) {
+                printSamplerStatistics();
+            }
+
             /* No further JFR events are emitted, so free some JFR-related buffers. */
             for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
                 JfrThreadLocal.stopRecording(isolateThread, false);
@@ -734,6 +740,20 @@ public class SubstrateJVM {
             SubstrateJVM.getSamplerBufferPool().teardown();
             SubstrateJVM.getGlobalMemory().clear();
         }
+    }
+
+    private static void printSamplerStatistics() {
+        long missedSamples = 0;
+        long unparseableStacks = 0;
+        for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
+            missedSamples += JfrThreadLocal.getMissedSamples(isolateThread);
+            unparseableStacks += JfrThreadLocal.getUnparseableStacks(isolateThread);
+        }
+
+        Log log = Log.log();
+        log.string("JFR sampler statistics").indent(true);
+        log.string("Missed samples: ").unsigned(missedSamples).newline();
+        log.string("Unparseable stacks: ").unsigned(unparseableStacks).indent(false);
     }
 
     private class JfrTeardownOperation extends JavaVMOperation {
