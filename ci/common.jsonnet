@@ -204,7 +204,7 @@ local common_json = import "../common.json";
         "*.log",
       ],
 
-      packages+: if self.os == "linux" && std.objectHas(self, "os_distro") && self.os_distro == "ol" then
+      packages+: if self.os == "linux" && std.objectHasAll(self, "os_distro") && self.os_distro == "ol" then
         (if self.arch == "aarch64" then {
           "00:devtoolset": "==10",
         } else {
