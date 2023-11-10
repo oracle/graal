@@ -43,21 +43,18 @@ package com.oracle.truffle.regex.charset;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.string.Encodings;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
 
 import java.util.Locale;
 
 public class UnicodeProperties {
-    private final static CodePointSet PUNCT = JavaGc.CONNECTOR_PUNCTUATION
-            .union(JavaGc.DASH_PUNCTUATION)
-            .union(JavaGc.START_PUNCTUATION)
-            .union(JavaGc.END_PUNCTUATION)
-            .union(JavaGc.OTHER_PUNCTUATION)
-            .union(JavaGc.INITIAL_QUOTE_PUNCTUATION)
-            .union(JavaGc.FINAL_QUOTE_PUNCTUATION);
-    private static final CodePointSet WHITE_SPACE = CodePointSet.createNoDedup(0x9, 0xd, 0x85, 0x85)
-            .union(JavaGc.SPACE_SEPARATOR)
-            .union(JavaGc.LINE_SEPARATOR)
-            .union(JavaGc.PARAGRAPH_SEPARATOR);
+    private static final CodePointSet PUNCT = JavaGc.CONNECTOR_PUNCTUATION.union(JavaGc.DASH_PUNCTUATION).union(JavaGc.START_PUNCTUATION).union(JavaGc.END_PUNCTUATION).union(
+                    JavaGc.OTHER_PUNCTUATION).union(JavaGc.INITIAL_QUOTE_PUNCTUATION).union(JavaGc.FINAL_QUOTE_PUNCTUATION);
+    private static final CodePointSet WHITE_SPACE = CodePointSet.createNoDedup(0x9, 0xd, 0x85, 0x85).union(JavaGc.SPACE_SEPARATOR).union(JavaGc.LINE_SEPARATOR).union(JavaGc.PARAGRAPH_SEPARATOR);
+
+    private static final EconomicMap<String, String> javaScriptAliases = normalizeKeys(UnicodePropertyData.SCRIPT_ALIASES);
+    private static final EconomicMap<String, String> javaBlockAliases = normalizeKeys(UnicodePropertyData.BLOCK_ALIASES);
     public static final CodePointSet GRAPH = JavaGc.SPACE_SEPARATOR
             .union(JavaGc.LINE_SEPARATOR)
             .union(JavaGc.PARAGRAPH_SEPARATOR)
@@ -65,6 +62,15 @@ public class UnicodeProperties {
             .union(JavaGc.SURROGATE)
             .union(JavaGc.UNASSIGNED).createInverse(Encodings.UTF_16);
     public static final CodePointSet BLANK = JavaGc.SPACE_SEPARATOR.union(CodePointSet.create(0x9));
+
+    private static EconomicMap<String, String> normalizeKeys(EconomicMap<String, String> original) {
+        EconomicMap<String, String> res = EconomicMap.create(original.size());
+        MapCursor<String, String> cur = original.getEntries();
+        while (cur.advance()) {
+            res.put(cur.getKey().toLowerCase(), cur.getValue());
+        }
+        return res;
+    }
 
     public static CodePointSet getProperty(String propertySpec) {
         return getProperty(propertySpec, false);
@@ -87,18 +93,10 @@ public class UnicodeProperties {
             return null;
         }
 
-        StringBuilder lookUpNameBuilder = new StringBuilder();
-
-        for (int i = 0; i < normalizedName.length(); i++) {
-            char c = normalizedName.charAt(i);
-            if (i == 0 || normalizedName.charAt(i-1) == '_') {
-                lookUpNameBuilder.append(Character.toUpperCase(c));
-            } else {
-                lookUpNameBuilder.append(c);
-            }
+        String alias = javaBlockAliases.get(normalizedName);
+        if (alias == null) {
+            return null;
         }
-
-        String alias = UnicodePropertyData.BLOCK_ALIASES.get(lookUpNameBuilder.toString());
 
         return UnicodePropertyData.retrieveProperty("blk=" + alias);
     }
@@ -112,18 +110,10 @@ public class UnicodeProperties {
             return null;
         }
 
-        StringBuilder lookUpNameBuilder = new StringBuilder();
-
-        for (int i = 0; i < normalizedName.length(); i++) {
-            char c = normalizedName.charAt(i);
-            if (i == 0 || normalizedName.charAt(i-1) == '_') {
-                lookUpNameBuilder.append(Character.toUpperCase(c));
-            } else {
-                lookUpNameBuilder.append(c);
-            }
+        String alias = javaScriptAliases.get(normalizedName);
+        if (alias == null) {
+            return null;
         }
-
-        String alias = UnicodePropertyData.SCRIPT_ALIASES.get(lookUpNameBuilder.toString());
 
         return UnicodePropertyData.retrieveProperty("sc=" + alias);
     }
@@ -275,8 +265,9 @@ public class UnicodeProperties {
     public static CodePointSet forUnicodePropertyJava(String propName, boolean caseIns) {
         propName = propName.toUpperCase(Locale.ROOT);
         CodePointSet p = getUnicodePredicateJava(propName, caseIns);
-        if (p != null)
+        if (p != null) {
             return p;
+        }
         return getPosixPredicateJava(propName, caseIns);
     }
 

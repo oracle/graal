@@ -186,6 +186,16 @@ public class Token implements JsonConvertible {
         return new Quantifier(min, max, greedy, possessive);
     }
 
+    public static Quantifier createQuantifier(int min, int max, boolean greedy, String raw) {
+        return new Quantifier(min, max, greedy, raw);
+    }
+
+    public static Quantifier createQuantifier(int min, int max, boolean greedy, boolean possessive, String raw) {
+        return new Quantifier(min, max, greedy, possessive, raw);
+    }
+
+    
+
     public static LiteralCharacter createLiteralCharacter(int codePoint) {
         return new LiteralCharacter(codePoint);
     }
@@ -268,19 +278,29 @@ public class Token implements JsonConvertible {
         private final int max;
         private final boolean greedy;
         private final boolean possessive;
+        private final String raw;
         @CompilationFinal private int index = -1;
         @CompilationFinal private int zeroWidthIndex = -1;
 
-        public Quantifier(int min, int max, boolean greedy, boolean possessive) {
+        public Quantifier(int min, int max, boolean greedy, boolean possessive, String raw) {
             super(Kind.quantifier);
             this.min = min;
             this.max = max;
-            this.greedy = greedy;
+            this.greedy = greedy; 
             this.possessive = possessive;
+            this.raw = raw;
         }
 
         public Quantifier(int min, int max, boolean greedy) {
-            this(min, max, greedy, false);
+            this(min, max, greedy, false, null);
+        }
+
+        public Quantifier(int min, int max, boolean greedy, boolean possessive) {
+            this(min, max, greedy, possessive, null);
+        }
+
+        public Quantifier(int min, int max, boolean greedy, String raw) {
+            this(min, max, greedy, false, raw);
         }
 
         public boolean isInfiniteLoop() {
@@ -299,6 +319,10 @@ public class Token implements JsonConvertible {
 
         public int getMax() {
             return max;
+        }
+
+        public String getRaw() {
+            return raw;
         }
 
         public boolean isGreedy() {

@@ -1011,6 +1011,7 @@ public abstract class RegexLexer {
     }
 
     private Token parseQuantifier(char c) throws RegexSyntaxException {
+        int startPos = position - 1;
         final long min;
         final long max;
         if (c == '{') {
@@ -1074,8 +1075,13 @@ public abstract class RegexLexer {
         } else if (featureEnabledPossessiveQuantifiers() && consumingLookahead('+')) {
             possessive = true;
         }
-        return Token.createQuantifier((int) min, (int) max, greedy, possessive);
+
+        checkDanglingQuantifiers();
+
+        return Token.createQuantifier((int) min, (int) max, greedy, possessive, pattern.substring(startPos, position));
     }
+
+    protected void checkDanglingQuantifiers() {}
 
     private boolean isQuantifierOutOfOrder(long parsedMin, long parsedMax, int startMin, int lengthMin, int lengthMax) {
         if (Long.compareUnsigned(parsedMin, parsedMax) > 0) {

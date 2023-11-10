@@ -1,3 +1,44 @@
+/*
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * The Universal Permissive License (UPL), Version 1.0
+ *
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
+ *
+ * (a) the Software, and
+ *
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 package com.oracle.truffle.regex.tregex.parser.flavors.java;
 
 import java.util.ArrayDeque;
@@ -10,9 +51,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
-import com.oracle.truffle.regex.chardata.CharacterSet;
 import com.oracle.truffle.regex.charset.ClassSetContents;
-import com.oracle.truffle.regex.charset.ClassSetContentsAccumulator;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
@@ -61,6 +100,7 @@ public class JavaLexer extends RegexLexer {
                     0x0020, 0x0020,
                     0x00a0, 0x00a0,
                     0x1680, 0x1680,
+                    0x180e, 0x180e,
                     0x2000, 0x200a,
                     0x202f, 0x202f,
                     0x205f, 0x205f,
@@ -70,9 +110,10 @@ public class JavaLexer extends RegexLexer {
                     0x0000, 0x0008,
                     0x000a, 0x001f,
                     0x0021, 0x009f,
-                    0x00a1, 0x180d,
+                    0x00a1, 0x167f,
+                    0x1681, 0x180d,
                     0x180f, 0x1fff,
-                    0x202b, 0x202e,
+                    0x200b, 0x202e,
                     0x2030, 0x205e,
                     0x2060, 0x2fff,
                     0x3001, 0x10ffff);
@@ -93,6 +134,17 @@ public class JavaLexer extends RegexLexer {
                     0x000e, 0x0084,
                     0x0086, 0x2027,
                     0x202a, 0x10ffff);
+    @Override
+    protected Token literalChar(int codePoint) {
+        if (featureEnabledIgnoreCase()) {
+            curCharClass.clear();
+            curCharClass.addCodePoint(codePoint);
+            caseFoldUnfold(curCharClass);
+            return Token.createCharClass(curCharClass.toCodePointSet());
+        } else {
+            return Token.createCharClass(CodePointSet.create(codePoint));
+        }
+    }
     private static final TBitSet WHITESPACE = TBitSet.valueOf('\t', '\n', '\f', '\r', ' ');
     private static final TBitSet PREDEFINED_CHAR_CLASSES = TBitSet.valueOf('D', 'H', 'S', 'V', 'W', 'd', 'h', 's', 'v', 'w');
     public static final Map<Character, CodePointSet> UNICODE_CHAR_CLASS_SETS;
@@ -120,11 +172,16 @@ public class JavaLexer extends RegexLexer {
     private JavaFlags currentFlags;
     private JavaFlags stagedFlags;
     private final JavaFlags globalFlags;
+    private final CodePointSetAccumulator curCharClass = new CodePointSetAccumulator();
 
     public JavaLexer(RegexSource source, JavaFlags flags, CompilationBuffer compilationBuffer) {
         super(source, compilationBuffer);
-        if (flags.isCanonEq())
+        if (flags.isCanonEq()) {
             throw new UnsupportedRegexException("Canonical equivalence is not supported");
+        }
+        if (flags.isLiteral()) {
+            throw new UnsupportedRegexException("Literal parsing is not supported");
+        }
         this.globalFlags = flags;
         this.currentFlags = flags;
         this.stagedFlags = flags;
@@ -270,7 +327,7 @@ public class JavaLexer extends RegexLexer {
         // TODO: this is just a copy of JS, check the Java casefolding behavior
         // Have a look at Java's behavior together with Jirka Marsik, we may be able to re-use the
         // implementation from Python or Ruby
-        CaseFoldData.CaseFoldUnfoldAlgorithm caseFolding = getLocalFlags().isUnicodeCase() ? CaseFoldData.CaseFoldUnfoldAlgorithm.PythonUnicode
+        CaseFoldData.CaseFoldUnfoldAlgorithm caseFolding = (getLocalFlags().isUnicodeCase() || getLocalFlags().isUnicodeCharacterClass()) ? CaseFoldData.CaseFoldUnfoldAlgorithm.PythonUnicode
                         : CaseFoldData.CaseFoldUnfoldAlgorithm.PythonAscii;
         CaseFoldData.applyCaseFoldUnfold(charClass, compilationBuffer.getCodePointSetAccumulator1(), caseFolding);
     }
@@ -295,7 +352,7 @@ public class JavaLexer extends RegexLexer {
 
     @Override
     protected CodePointSet getDotCodePointSet() {
-        return getLocalFlags().isDotAll() ? Constants.DOT_ALL : Constants.JAVA_DOT;
+        return getLocalFlags().isDotAll() ? Constants.DOT_ALL : getLocalFlags().isUnixLines() ? Constants.JAVA_DOT_UNIX : Constants.JAVA_DOT;
     }
 
     @Override
@@ -407,11 +464,13 @@ public class JavaLexer extends RegexLexer {
             int ch = 0;
             while (consumingLookahead(RegexLexer::isHexDigit, 1)) {
                 ch = (ch << 4) + Integer.parseInt(pattern, position - 1, position, 16);
-                if (ch > Character.MAX_CODE_POINT)
+                if (ch > Character.MAX_CODE_POINT) {
                     throw syntaxError(JavaErrorMessages.HEX_TOO_BIG);
+                }
             }
-            if (!consumingLookahead('}'))
+            if (!consumingLookahead('}')) {
                 throw syntaxError(JavaErrorMessages.UNCLOSED_HEX);
+            }
             return ch;
         }
 
@@ -421,11 +480,11 @@ public class JavaLexer extends RegexLexer {
     @Override
     protected Token handleInvalidBackReference(int reference) {
         int clamped = reference;
-        while (clamped >= 10 && clamped > getNumberOfParsedGroups()) {
+        while (clamped >= 10 && clamped >= getNumberOfParsedGroups()) {
             clamped /= 10;
             position--;
         }
-        if (clamped > getNumberOfParsedGroups()) {
+        if (clamped >= getNumberOfParsedGroups()) {
             return Token.createCharClass(CodePointSet.getEmpty());
         }
         return Token.createBackReference(clamped, false);
@@ -563,8 +622,9 @@ public class JavaLexer extends RegexLexer {
                 default:
                     break;
             }
-            if (p == null)
+            if (p == null) {
                 throw syntaxError(JavaErrorMessages.unknownUnicodeProperty(name, value));
+            }
 
         } else {
             if (name.startsWith("In")) {
@@ -575,8 +635,9 @@ public class JavaLexer extends RegexLexer {
                 // \p{IsGeneralCategory} and \p{IsScriptName}
                 String shortName = name.substring(2);
                 p = UnicodeProperties.forUnicodePropertyJava(shortName, getLocalFlags().isCaseInsensitive());
-                if (p == null)
+                if (p == null) {
                     p = UnicodeProperties.getPropertyJava(shortName, getLocalFlags().isCaseInsensitive());
+                }
                 if (p == null) {
                     p = UnicodeProperties.getScriptJava(shortName);
                 }
@@ -588,8 +649,9 @@ public class JavaLexer extends RegexLexer {
                     p = UnicodeProperties.getPropertyJava(name, getLocalFlags().isCaseInsensitive());
                 }
             }
-            if (p == null)
+            if (p == null) {
                 throw syntaxError(JavaErrorMessages.unknownUnicodeCharacterProperty(name));
+            }
         }
 
         if (invert) {
@@ -611,35 +673,60 @@ public class JavaLexer extends RegexLexer {
         CodePointSet curr = null;
         CodePointSet prev = null;
 
+        // we have to emulate the java.util.regex mechanism for compliance
+        CodePointSet bits = CodePointSet.getEmpty();
+        boolean hasBits = false;
+
         while(!atEnd()) {
             if (consumingLookahead('[')) {
                 curr = parseCharClassInternal(true);
-                if (prev == null)
+                if (prev == null) {
                     prev = curr;
-                else
+                } else {
                     prev = prev.union(curr);
+                }
                 continue;
             } else if (consumingLookahead('&')) {
                 if (consumingLookahead('&')) {
                     CodePointSet right = null;
                     if (!atEnd()) {
                         while (curChar() != ']' && curChar() != '&') {
-                            CodePointSet parse = parseCharClassInternal(consumingLookahead('['));
-                            if (right == null) {
-                                right = parse;
+                            if (consumingLookahead('[')) {
+                                if (right == null) {
+                                    right = parseCharClassInternal(true);
+                                } else {
+                                    right = right.union(parseCharClassInternal(true));
+                                }
                             } else {
-                                right = right.union(parse);
+                                if (right == null) {
+                                    right = parseCharClassInternal(false);
+                                } else {
+                                    right = right.union(parseCharClassInternal(false));
+                                }
                             }
                         }
 
-                        if (right != null)
+                        if (hasBits) {
+                            if (prev == null) {
+                                prev = curr = bits;
+                            } else {
+                                prev = prev.union(bits);
+                            }
+                            hasBits = false;
+                        }
+                        if (right != null) {
                             curr = right;
+                        }
                         if (prev == null) {
-                            if (right == null)
+                            if (right == null) {
                                 throw syntaxError(JavaErrorMessages.BAD_CLASS_SYNTAX);
-                            else
+                            } else {
                                 prev = right;
+                            }
                         } else {
+                            if (curr == null) {
+                                throw syntaxError(JavaErrorMessages.BAD_INTERSECTION_SYNTAX);
+                            }
                             prev = prev.createIntersection(curr, compilationBuffer);
                         }
                     }
@@ -649,11 +736,26 @@ public class JavaLexer extends RegexLexer {
                     retreat();
                 }
             } else if (curChar() == ']') {
-                if (prev != null) {
-                    if (consume)
+                if (prev != null || hasBits) {
+                    if (consume) {
                         advance();
-                    if (invert)
+                    }
+                    if (prev == null) {
+                        prev = bits;
+                    } else if (hasBits) {
+                        prev = prev.union(bits);
+                    }
+
+                    curCharClass.clear();
+                    curCharClass.addSet(prev);
+                    if (featureEnabledIgnoreCase()) {
+                        caseFoldUnfold(curCharClass);
+                    }
+                    prev = curCharClass.toCodePointSet();
+
+                    if (invert) {
                         return prev.createInverse(Encodings.UTF_16);
+                    }
                     return prev;
                 }
 
@@ -662,27 +764,44 @@ public class JavaLexer extends RegexLexer {
             ClassSetContents predef = parseCharClassAtomPredefCharClass(ch);
             if (predef != null) {
                 curr = predef.getCodePointSet();
-                if (prev == null)
+                if (prev == null) {
                     prev = curr;
-                else
+                } else {
                     prev = prev.union(curr);
+                }
                 continue;
             }
 
-            ClassSetContents range = parseRange(ch);
-            if (range != null) {
-                curr = range.getCodePointSet();
-                if (prev == null)
+            CodePointSet range = parseRange(ch);
+            curr = range;
+            if (range.size() == 1 && range.getRanges()[0] == range.getRanges()[1]) {
+                int c = range.getRanges()[0];
+                if (c < 256 &&
+                        !(getLocalFlags().isCaseInsensitive() && getLocalFlags().isUnicodeCase() &&
+                                (c == 0xff || c == 0xb5 ||
+                                        c == 0x49 || c == 0x69 ||    //I and i
+                                        c == 0x53 || c == 0x73 ||    //S and s
+                                        c == 0x4b || c == 0x6b ||    //K and k
+                                        c == 0xc5 || c == 0xe5))) {  //A+ring
+                    hasBits = true;
+                    curr = null;
+                    bits = bits.union(range);
+                }
+            }
+
+            if (curr != null) {
+                if (prev == null) {
                     prev = curr;
-                else
+                } else {
                     prev = prev.union(curr);
+                }
             }
         }
 
         throw syntaxError(JavaErrorMessages.UNCLOSED_CHARACTER_CLASS);
     }
 
-    private ClassSetContents parseRange(char c) {
+    private CodePointSet parseRange(char c) {
         int ch = parseCharClassAtomCodePoint(c);
 
         if (consumingLookahead('-')) {
@@ -694,7 +813,7 @@ public class JavaLexer extends RegexLexer {
 
                 // unmatched '-' is treated as literal
                 retreat();
-                return ClassSetContents.createCharacter(ch);
+                return CodePointSet.create(ch);
             }
 
             int upper = parseCharClassAtomCodePoint(consumeChar());
@@ -702,9 +821,9 @@ public class JavaLexer extends RegexLexer {
                 throw syntaxError(JavaErrorMessages.ILLEGAL_CHARACTER_RANGE);
             }
 
-            return ClassSetContents.createRange(ch, upper);
+            return CodePointSet.create(ch, upper);
         } else {
-            return ClassSetContents.createCharacter(ch);
+            return CodePointSet.create(ch);
         }
 
     }
@@ -767,10 +886,18 @@ public class JavaLexer extends RegexLexer {
                 }
                 throw syntaxError(JavaErrorMessages.ILLEGAL_OCT_ESCAPE);
             case 'u':
-                if (consumingLookahead(RegexLexer::isHexDigit, 4)) {
-                    return Integer.parseInt(pattern, position - 4, position, 16);
+                int n = parseUnicodeHexEscape();
+                if (Character.isHighSurrogate((char) n)) {
+                    int cur = position;
+                    if (consumingLookahead("\\u")) {
+                        int n2 = parseUnicodeHexEscape();
+                        if (Character.isLowSurrogate((char) n2)) {
+                            return Character.toCodePoint((char) n, (char) n2);
+                        }
+                    }
+                    position = cur;
                 }
-                throw syntaxError(JavaErrorMessages.ILLEGAL_UNICODE_ESC_SEQ);
+                return n;
             case 'c':
                 if (atEnd()) {
                     throw syntaxError(JavaErrorMessages.ILLEGAL_CTRL_SEQ);
@@ -795,16 +922,25 @@ public class JavaLexer extends RegexLexer {
                 return 0x7;
             case 'e':
                 return 0x1b;
+            case 'Q':
+                throw new UnsupportedRegexException("Literal escape not supported in this context");
             default:
                 return -1;
         }
+    }
+
+    private int parseUnicodeHexEscape() {
+        if (consumingLookahead(RegexLexer::isHexDigit, 4)) {
+            return Integer.parseInt(pattern, position - 4, position, 16);
+        }
+        throw syntaxError(JavaErrorMessages.ILLEGAL_UNICODE_ESC_SEQ);
     }
 
     @Override
     protected int parseCustomEscapeCharFallback(int c, boolean inCharClass) {
         // any non-alphabetic character can be used after an escape
         // digits are not accepted here since they should have been parsed as octal sequence or backreference earlier
-        if (Character.isAlphabetic(c) || Character.isDigit(c)) {
+        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
             throw syntaxError(JavaErrorMessages.ILLEGAL_ESCAPE_SEQUENCE);
         }
         return c;

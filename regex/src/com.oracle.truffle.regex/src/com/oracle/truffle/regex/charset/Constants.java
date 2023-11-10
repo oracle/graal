@@ -248,6 +248,12 @@ public final class Constants {
                     0x0086, 0x2027,
                     0x202a, 0x10ffff);
 
+    // all characters except \n
+    public static final CodePointSet JAVA_DOT_UNIX = CodePointSet.createNoDedup(
+            0x0000, 0x0009,
+            0x000b, 0x10ffff
+    );
+
     public static final CodePointSet NO_NEWLINE = CodePointSet.createNoDedup(
                     0x0000, 0x0009,
                     0x000b, 0x10ffff);

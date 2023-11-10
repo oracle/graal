@@ -49,6 +49,7 @@ import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Constants;
+import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.JavaErrorMessages;
 import com.oracle.truffle.regex.errors.JsErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
@@ -57,6 +58,8 @@ import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
+import com.oracle.truffle.regex.tregex.parser.flavors.PythonMethod;
+import com.oracle.truffle.regex.tregex.string.Encodings;
 
 /**
  * Implements the parsing and translating of java.util.Pattern regular expressions to ECMAScript
@@ -89,28 +92,31 @@ public final class JavaRegexParser implements RegexParser {
     }
 
     public static RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
-        return new JavaRegexParser(source, new RegexASTBuilder(language, source, makeTRegexFlags(source.getOptions().isJavaMatch()), true, compilationBuffer), compilationBuffer);
+        return new JavaRegexParser(source, new RegexASTBuilder(language, source, makeTRegexFlags(source.getOptions().getPythonMethod() != PythonMethod.search), true, compilationBuffer), compilationBuffer);
     }
 
     public RegexAST parse() {
         astBuilder.pushRootGroup();
-        Token token;
+
+        if (lexer.source.getOptions().getPythonMethod() == PythonMethod.fullmatch) {
+            astBuilder.pushGroup();
+        }
+
+        Token token = null;
+        Token last;
         while (lexer.hasNext()) {
+            last = token;
             token = lexer.next();
             switch (token.kind) {
                 case A:
                     addCaret();
                     break;
                 case Z:
-                    // (?:$|(?=[\r\n]$))
                     pushGroup(); // (?:
-                    addDollar(); // $
-                    nextSequence(); // |
-                    pushLookAheadAssertion(); // (?=
-                    addCharClass(CodePointSet.create('\n', '\n', '\r', '\r')); // [\r\n]
-                    addDollar(); // $
+                    lineTerminators();
                     popGroup(); // )
-                    popGroup(); // )
+                    addQuantifier(Token.createQuantifier(0, 1, true));
+                    addDollar();
                     break;
                 case z:
                     addDollar();
@@ -136,19 +142,22 @@ public final class JavaRegexParser implements RegexParser {
                     }
                     break;
                 case backReference:
-                    astBuilder.addBackReference((Token.BackReference) token);
+                    astBuilder.addBackReference((Token.BackReference) token, getFlags().isCaseInsensitive(), getFlags().isUnicodeCase() || getFlags().isUnicodeCharacterClass());
                     break;
                 case quantifier:
-                    if (astBuilder.getCurTerm() == null) {
-                        throw syntaxErrorHere(JsErrorMessages.QUANTIFIER_WITHOUT_TARGET);
+                    Token.Quantifier quantifier = (Token.Quantifier) token;
+                    // quantifiers of type *, + or ? cannot directly follow another quantifier
+                    if (last instanceof Token.Quantifier && isDanglingMetaCharacterCandidate(quantifier)) {
+                        throw syntaxErrorHere(JavaErrorMessages.danglingMetaCharacter(quantifier.getRaw().charAt(0)));
                     }
-                    if (lexer.getLocalFlags().isUnicodeCase() && astBuilder.getCurTerm().isLookAheadAssertion()) {
-                        throw syntaxErrorHere(JsErrorMessages.QUANTIFIER_ON_LOOKAHEAD_ASSERTION);
+
+                    if (astBuilder.getCurTerm() != null) {
+                        addQuantifier((Token.Quantifier) token);
+                    } else {
+                        if (isDanglingMetaCharacterCandidate(quantifier)) {
+                            throw syntaxErrorHere(JavaErrorMessages.danglingMetaCharacter(quantifier.getRaw().charAt(0)));
+                        }
                     }
-                    if (astBuilder.getCurTerm().isLookBehindAssertion()) {
-                        throw syntaxErrorHere(JsErrorMessages.QUANTIFIER_ON_LOOKBEHIND_ASSERTION);
-                    }
-                    addQuantifier((Token.Quantifier) token);
                     break;
                 case alternation:
                     astBuilder.nextSequence();
@@ -189,7 +198,7 @@ public final class JavaRegexParser implements RegexParser {
                     astBuilder.addCharClass((Token.CharacterClass) token);
                     break;
                 case classSet:
-                    astBuilder.addClassSet((Token.ClassSet) token, getFlags().isCaseInsensitive() ? JavaFlavor.getCaseFoldingAlgorithm(getFlags().isUnicodeCase()) : null);
+                    astBuilder.addClassSet((Token.ClassSet) token, getFlags().isCaseInsensitive() ? JavaFlavor.getCaseFoldingAlgorithm(getFlags().isUnicodeCase() || getFlags().isUnicodeCharacterClass()) : null);
                     break;
                 case linebreak:
                     pushGroup(); // (?:
@@ -202,6 +211,10 @@ public final class JavaRegexParser implements RegexParser {
                     popGroup(); // )
                     break;
             }
+        }
+        if (lexer.source.getOptions().getPythonMethod() == PythonMethod.fullmatch) {
+            astBuilder.popGroup();
+            astBuilder.addDollar();
         }
         if (!astBuilder.curGroupIsRoot()) {
             throw syntaxErrorHere(JavaErrorMessages.UNCLOSED_GROUP);
@@ -235,30 +248,47 @@ public final class JavaRegexParser implements RegexParser {
     // character is dependent on whether the Java regular expression is set to use the ASCII range
     // only.
     private void buildWordBoundaryAssertion(CodePointSet wordChars, CodePointSet nonWordChars) {
-        // (?:(?:^|(?<=\W))(?=\w)|(?<=\w)(?:(?=\W)|$))
-        pushGroup(); // (?:
-        pushGroup(); // (?:
-        addCaret(); // ^
-        nextSequence(); // |
-        pushLookBehindAssertion(); // (?<=
-        addCharClass(nonWordChars); // \W
-        popGroup(); // )
-        popGroup(); // )
-        pushLookAheadAssertion(); // (?=
-        addCharClass(wordChars); // \w
-        popGroup(); // )
-        nextSequence(); // |
-        pushLookBehindAssertion(); // (?<=
-        addCharClass(wordChars); // \w
-        popGroup(); // )
-        pushGroup(); // (?:
-        pushLookAheadAssertion(); // (?=
-        addCharClass(nonWordChars); // \W
-        popGroup(); // )
-        nextSequence(); // |
-        addDollar(); // $
-        popGroup(); // )
-        popGroup(); // )
+        CodePointSet nsm = UnicodeProperties.getPropertyJava("Mn", false);
+        CodePointSet notWordNorNsm = wordChars.union(nsm).createInverse(Encodings.UTF_16);
+        pushGroup();
+
+        // Case 1: not word -> word
+        // before ((start or any character that's not an accent nor a word) followed by any number of accents)
+        pushLookBehindAssertion();
+        pushGroup();
+        addCaret();
+        nextSequence();
+        addCharClass(notWordNorNsm);
+        popGroup();
+        addCharClass(nsm);
+        addQuantifier(Token.createQuantifier(0, Token.Quantifier.INFINITY, true));
+        popGroup();
+
+        // after (any word character)
+        pushLookAheadAssertion();
+        addCharClass(wordChars);
+        popGroup();
+
+        nextSequence();
+
+        // Case 2: word -> not word
+        // before (word character followed by any number of accents)
+        pushLookBehindAssertion();
+        addCharClass(wordChars);
+        addCharClass(nsm);
+        addQuantifier(Token.createQuantifier(0, Token.Quantifier.INFINITY, true));
+        popGroup();
+
+        // after (any character that's not an accent nor a word character, or EOI)
+        pushGroup();
+        pushLookAheadAssertion();
+        addCharClass(notWordNorNsm);
+        popGroup();
+        nextSequence();
+        addDollar();
+        popGroup();
+
+        popGroup();
     }
 
     private void buildWordNonBoundaryAssertion(CodePointSet wordChars, CodePointSet nonWordChars) {
@@ -289,57 +319,97 @@ public final class JavaRegexParser implements RegexParser {
     }
 
     private void dollar() {
-        // (?:$|(?=[\n])) only, when multiline flag is set, otherwise just dollar
         if (lexer.getLocalFlags().isMultiline()) {
-            pushGroup(); // (?:
-            addDollar(); // $
+            pushGroup();
+            addDollar();
+
             nextSequence(); // |
-            pushLookAheadAssertion(); // (?=
-            addCharClass(CodePointSet.create('\n')); // [\n]
-            popGroup(); // )
-            popGroup(); // )
+
+            pushLookAheadAssertion();
+            lineTerminators();
+            popGroup();
+
+            popGroup();
         } else {
-            /*
-             * From doc of Dollar extends Node in java.util.Pattern Node to anchor at the end of a
-             * line or the end of input based on the multiline mode.
-             *
-             * When not in multiline mode, the $ can only match at the very end of the input, unless
-             * the input ends in a line terminator in which it matches right before the last line
-             * terminator.
-             *
-             * Note that \r\n is considered an atomic line terminator.
-             *
-             * Like ^ the $ operator matches at a position, it does not match the line terminators
-             * themselves.
-             */
-            // (?:$|(?=(?:\r?\n$)))
-            pushGroup();    // (?:
-            addDollar();    // $
+            pushGroup();
+            addDollar();
+
             nextSequence(); // |
-            pushLookAheadAssertion();  // (?=
-            pushGroup(); // (?:
-            addCharClass(CodePointSet.create('\r')); // [\r]
-            nextSequence(); // |
-            popGroup(); // )
-            addCharClass(CodePointSet.create('\n')); // [\n]
-            addDollar(); // $
-            popGroup(); // )
-            popGroup(); // )
+
+            pushLookAheadAssertion();
+
+            pushGroup();
+            lineTerminators();
+            popGroup();
+
+            addDollar();
+            popGroup();
+
+            popGroup();
         }
     }
 
     private void caret() {
-        // (?:^|(?<=[\n])) only, when multiline flag is set, otherwise just caret
         if (lexer.getLocalFlags().isMultiline()) {
-            pushGroup(); // (?:
-            addCaret(); // ^
+            // easy case: only caret
+            pushGroup();
+            addCaret();
+
             nextSequence(); // |
-            pushLookBehindAssertion(); // (?<=
-            addCharClass(CodePointSet.create('\n')); // [\n]
-            popGroup(); // )
-            popGroup(); // )
+
+            if (getFlags().isUnixLines()) {
+                pushLookBehindAssertion();
+                addCharClass(CodePointSet.create('\n'));
+                popGroup();
+            } else {
+                // \r\n
+                pushLookBehindAssertion();
+                addCharClass(CodePointSet.create('\r'));
+                addCharClass(CodePointSet.create('\n'));
+                popGroup();
+
+                nextSequence(); // |
+
+                // single character terminator (not \r)
+                pushLookBehindAssertion();
+                addCharClass(CodePointSet.createNoDedup('\n', '\n', 0x0085, 0x0085, 0x2028, 0x2029));
+                popGroup();
+
+                nextSequence(); // |
+
+                // \r, we have to make sure it's not followed by \n because \r\n is handled as it was a single character here
+                pushLookBehindAssertion();
+                addCharClass(CodePointSet.create('\r'));
+                popGroup();
+                pushLookAheadAssertion();
+                addCharClass(CodePointSet.createInverse(CodePointSet.create('\n'), Encodings.UTF_8));
+                popGroup();
+            }
+
+            popGroup();
+
+            // ^ should not match at the end of input (we also don't want to use (?!$) as it results in backtracking)
+            pushLookAheadAssertion();
+            addCharClass(Constants.DOT_ALL);
+            popGroup();
         } else {
             addCaret();
+        }
+    }
+
+    private void lineTerminators() {
+        if (getFlags().isUnixLines()) {
+            addCharClass(CodePointSet.create('\n'));
+        } else {
+            addCharClass(CodePointSet.create('\r'));
+            addCharClass(CodePointSet.create('\n'));
+            addQuantifier(Token.createQuantifier(0, 1, true));
+
+            nextSequence(); // |
+
+            addCharClass(CodePointSet.createNoDedup(
+                    '\n', '\n', 0x0085, 0x0085, 0x2028, 0x2029
+            ));
         }
     }
 
@@ -379,6 +449,13 @@ public final class JavaRegexParser implements RegexParser {
 
     private void addQuantifier(Token.Quantifier quantifier) {
         astBuilder.addQuantifier(quantifier);
+    }
+
+    private boolean isDanglingMetaCharacterCandidate(Token.Quantifier quantifier) {
+        return switch (quantifier.getRaw().charAt(0)) {
+            case '*', '+', '?' -> true;
+            default -> false;
+        };
     }
 
 }

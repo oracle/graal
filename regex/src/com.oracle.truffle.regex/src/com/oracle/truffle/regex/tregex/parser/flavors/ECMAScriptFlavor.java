@@ -50,8 +50,6 @@ import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 
-import java.util.function.BiPredicate;
-
 public final class ECMAScriptFlavor extends RegexFlavor {
 
     public static final ECMAScriptFlavor INSTANCE = new ECMAScriptFlavor();
@@ -71,11 +69,11 @@ public final class ECMAScriptFlavor extends RegexFlavor {
     }
 
     @Override
-    public BiPredicate<Integer, Integer> getEqualsIgnoreCasePredicate(RegexAST ast) {
+    public EqualsIgnoreCasePredicate getEqualsIgnoreCasePredicate(RegexAST ast) {
         if (ast.getFlags().isEitherUnicode()) {
-            return CaseFoldData.CaseFoldUnfoldAlgorithm.ECMAScriptUnicode.getEqualsPredicate();
+            return (a, b, altMode) -> CaseFoldData.CaseFoldUnfoldAlgorithm.ECMAScriptUnicode.getEqualsPredicate().test(a, b);
         } else {
-            return CaseFoldData.CaseFoldUnfoldAlgorithm.ECMAScriptNonUnicode.getEqualsPredicate();
+            return (a, b, altMode) -> CaseFoldData.CaseFoldUnfoldAlgorithm.ECMAScriptNonUnicode.getEqualsPredicate().test(a, b);
         }
     }
 }

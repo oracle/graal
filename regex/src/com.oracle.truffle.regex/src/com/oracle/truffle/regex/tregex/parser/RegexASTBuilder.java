@@ -583,13 +583,17 @@ public final class RegexASTBuilder {
         addBackReference(token, false);
     }
 
+    public void addBackReference(Token.BackReference token, boolean ignoreCase) {
+        addBackReference(token, ignoreCase, false);
+    }
+
     /**
      * Adds a new {@link BackReference} to the current {@link Sequence}.
      * 
      * @param token aside from the source sections, this contains the number of the group being
      *            referenced
      */
-    public void addBackReference(Token.BackReference token, boolean ignoreCase) {
+    public void addBackReference(Token.BackReference token, boolean ignoreCase, boolean ignoreCaseAltMode) {
         assert token.kind == Token.Kind.backReference;
         BackReference backReference = ast.createBackReference(token.getGroupNumbers());
         ast.addSourceSection(backReference, token);
@@ -621,6 +625,9 @@ public final class RegexASTBuilder {
         }
         if (ignoreCase) {
             backReference.setIgnoreCaseReference();
+        }
+        if (ignoreCaseAltMode) {
+            backReference.setIgnoreCaseReferenceAltMode();
         }
     }
 

@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors.java;
 
-import java.util.function.BiPredicate;
-
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
@@ -69,13 +67,12 @@ public final class JavaFlavor extends RegexFlavor {
 
     @Override
     public RegexValidator createValidator(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
-        throw new UnsupportedOperationException();
+        return JavaRegexValidator.createValidator(source, compilationBuffer);
     }
 
     @Override
-    public BiPredicate<Integer, Integer> getEqualsIgnoreCasePredicate(RegexAST ast) {
-        // TODO: In Java, the ignore-case predicate can change inside the regexp due to inline flags, more specifically the UNICODE_IGNORE_CASE flag. This needs to be handled in TRegexBacktrackingNFAExecutorNode.
-        return getCaseFoldingAlgorithm(false).getEqualsPredicate();
+    public EqualsIgnoreCasePredicate getEqualsIgnoreCasePredicate(RegexAST ast) {
+        return (a, b, altMode) -> getCaseFoldingAlgorithm(altMode).getEqualsPredicate().test(a, b);
     }
 
     public static CaseFoldData.CaseFoldUnfoldAlgorithm getCaseFoldingAlgorithm(boolean isUnicodeCase) {

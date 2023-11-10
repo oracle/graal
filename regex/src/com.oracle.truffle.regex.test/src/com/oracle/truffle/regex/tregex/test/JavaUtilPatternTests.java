@@ -40,29 +40,30 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
-import java.util.Iterator;
+import com.oracle.truffle.regex.tregex.parser.flavors.java.JavaFlags;
+import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.util.EmptyArrays;
+import org.graalvm.polyglot.PolyglotException;
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
+
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import java.util.stream.Stream;
 
-import org.graalvm.polyglot.PolyglotException;
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
-
-import com.oracle.truffle.regex.tregex.parser.flavors.java.JavaFlags;
-import com.oracle.truffle.regex.tregex.string.Encodings;
-import com.oracle.truffle.regex.util.EmptyArrays;
-
-import static org.graalvm.shadowed.com.ibm.icu.text.PluralRules.Operand.c;
-
 public class JavaUtilPatternTests extends RegexTestBase {
 
     @Override
     String getEngineOptions() {
-        return "Flavor=JavaUtilPattern";
+        return "Flavor=JavaUtilPattern,PythonMethod=search";
+    }
+
+    @Test
+    public void lookbehindReluctantQuantifier() {
+        test("(?<=b{1,4}?)foo", 0, "%bbbbfoo");
     }
 
     @Override
@@ -139,7 +140,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("\\p{javaLowerCase}", 0, "\u03ac");
         test("\\p{javaUpperCase}", 0, "\u03dc");
         test("\\p{javaWhitespace}", 0, " ");
-        test("\\p{javaMirrored}", 0, "∊");
+        test("\\p{javaMirrored}", 0, "\u220a");
 
         // Classes for Unicode scripts, blocks, categories and binary properties
         test("\\p{IsLatin}", 0, "b");
@@ -270,7 +271,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("[\\p{javaLowerCase}]", 0, "\u03ac");
         test("[\\p{javaUpperCase}]", 0, "\u03dc");
         test("[\\p{javaWhitespace}]", 0, " ");
-        test("[\\p{javaMirrored}]", 0, "∊");
+        test("[\\p{javaMirrored}]", 0, "\u220a");
 
         // Classes for Unicode scripts, blocks, categories and binary properties
         test("[\\p{IsLatin}]", 0, "b");
@@ -362,7 +363,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
     @Test
     public void quoting() {
         test("\\Q^$a.[b\\E", 0, "^$a.[b");
-        test("\\Q^$a.[b\\E.*", 0, "^$a.[b7jàt");
+        test("\\Q^$a.[b\\E.*", 0, "^$a.[b7j\u00e0t");
         test("\\Q^$a.[b\\Eabc", 0, "^$a.[babc");
         test("\\Q^$a.[b\\...\\Q.*", 0, "^$a.[bxxx.*");
         test("\\Q^$a.[b\\E", 0, "^$a.[");
@@ -392,7 +393,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
     public void unicodeWordBoundary() {
         int[] flagsCombinations = new int[]{0, Pattern.UNICODE_CHARACTER_CLASS, Pattern.UNICODE_CHARACTER_CLASS | Pattern.UNICODE_CASE | Pattern.CASE_INSENSITIVE};
         String[] patterns = new String[]{"\\w", "\\W", "\\b", "\\B"};
-        char[] words = new char[]{'a', 'α', '-', '\u212a', '\u017f'};
+        char[] words = new char[]{'a', '\u03b1', '-', '\u212a', '\u017f'};
 
         for (int flags: flagsCombinations) {
             for (String pat: patterns) {
@@ -517,6 +518,13 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("\\~", 0, "~");
         test("\\j", 0, "");
         test("\\\udbea\udfcd", 0, "\\udbea\\udfcd");
+    }
+
+    @Test
+    public void jckHexNotation() {
+        test("A\\ud800\\udc00B", 0, "A\uD800\uDC00B");
+        test("A\\ud800\\udc00", 0, "A\uD800\uDC00");
+        test("A\\ud800", 0, "A\uD800");
     }
 
     @Test
@@ -881,8 +889,11 @@ public class JavaUtilPatternTests extends RegexTestBase {
     }
 
     private Stream<String> generateCases(List<Character> chars, int length) {
-        if (length == 0) return Stream.of("");
-        else return chars.stream().flatMap(pre -> generateCases(chars, length - 1).map(su -> pre + su));
+        if (length == 0) {
+            return Stream.of("");
+        } else {
+            return chars.stream().flatMap(pre -> generateCases(chars, length - 1).map(su -> pre + su));
+        }
     }
 
     @Test
@@ -924,27 +935,48 @@ public class JavaUtilPatternTests extends RegexTestBase {
 
     @Test
     public void unicodeCase() {
-        test("aà", Pattern.CASE_INSENSITIVE, "aà");
+        test("a\u00e0", Pattern.CASE_INSENSITIVE, "a\u00e0");
         test("aa", Pattern.CASE_INSENSITIVE, "aA");
-        test("aa", Pattern.CASE_INSENSITIVE, "aÀ"); // should not match because Pattern.UNICODE_CASE is not set
-        test("aà", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE, "aÀ");
+        test("aa", Pattern.CASE_INSENSITIVE, "a\u00c0"); // should not match because
+                                                         // Pattern.UNICODE_CASE
+        // is not set
+        test("a\u00e0", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE, "a\u00c0");
 
         // unicode case should match 'K' with "kelvin K" (0x212A)
-        test("k", 0, "K");
-        test("k", Pattern.CASE_INSENSITIVE, "K");
-        test("k", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE, "K");
-        test("K", 0, "K");
-        test("K", Pattern.CASE_INSENSITIVE, "K");
-        test("K", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE, "K");
-        test("[a-z]", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE, "K");
+        test("k", 0, "\u212a");
+        test("k", Pattern.CASE_INSENSITIVE, "\u212a");
+        test("k", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE, "\u212a");
+        test("K", 0, "\u212a");
+        test("K", Pattern.CASE_INSENSITIVE, "\u212a");
+        test("K", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE, "\u212a");
+        test("[a-z]", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE, "\u212a");
 
-        // unicode case should match 'I' with 'İ'
-        test("i", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE, "İ");
+        // unicode case should match 'I' with '\u0130'
+        test("i", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE, "\u0130");
 
-        // unicode case should not match 'A' with 'À'
-        test("a", 0, "À");
-        test("a", Pattern.CASE_INSENSITIVE, "À");
-        test("a", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE, "À");
+        // unicode case should not match 'A' with '\u00c0'
+        test("a", 0, "\u00c0");
+        test("a", Pattern.CASE_INSENSITIVE, "\u00c0");
+        test("a", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE, "\u00c0");
+    }
+
+    @Test
+    public void quantifiersCombinations() {
+        test("(?=aa)*", 0, "");
+        test("(a|*)", 0, "");
+        test("(a|{1,2}|{1,2})", 0, "");
+        test("(a|{1,2}|{1,2})", 0, "a");
+        test("*", 0, "");
+        test("**", 0, "");
+        test("a**", 0, "");
+        test("a*?", 0, "");
+        test("a**?", 0, "");
+        test("a+?", 0, "");
+        test("a??", 0, "");
+        test("a{0,0}*", 0, "");
+        test("a{0,0}{0,0}*", 0, "");
+        test("a{1,2}{3,9}", 0, "");
+        test("a{1,5}*{1,2}", 0, "");
     }
 
     @Test
@@ -988,13 +1020,13 @@ public class JavaUtilPatternTests extends RegexTestBase {
     @Test
     public void unicodeCharacterPropertyBlock() {
         // epsilon
-        test("\\p{InGreek}", 0, "ε");
-        test("\\p{blk=Greek}", 0, "ε");
-        test("\\p{block=Greek}", 0, "ε");
+        test("\\p{InGreek}", 0, "\u03b5");
+        test("\\p{blk=Greek}", 0, "\u03b5");
+        test("\\p{block=Greek}", 0, "\u03b5");
 
-        test("\\p{SomeUnknownBlock}", 0, "ε");
-        test("\\p{IsSomeUnknownBlock}", 0, "ε");
-        test("\\p{gc=SomeUnknownBlock}", 0, "ε");
+        test("\\p{SomeUnknownBlock}", 0, "\u03b5");
+        test("\\p{IsSomeUnknownBlock}", 0, "\u03b5");
+        test("\\p{gc=SomeUnknownBlock}", 0, "\u03b5");
     }
 
     @Test
@@ -1175,13 +1207,13 @@ public class JavaUtilPatternTests extends RegexTestBase {
         Assert.assertTrue(compileRegex("\\X", "").isNull());
         Assert.assertTrue(compileRegex("\\G", "").isNull());
         Assert.assertTrue(compileRegex("\\b{g}", "").isNull());
-        Assert.assertTrue(compileRegex("abc", "C").isNull());
+        Assert.assertTrue(compileRegex("abc", "c").isNull());
     }
 
     @Test
     public void badIntersectionSyntax() {
         // this produces a specific error for some weird reason
-        // test("[\\u0100a&&]", 0, "");
+        test("[\\u0100a&&]", 0, "");
     }
 
     void test(String pattern, int flags, String input) {
@@ -1207,7 +1239,8 @@ public class JavaUtilPatternTests extends RegexTestBase {
         } catch (PatternSyntaxException javaPatternException) {
             try {
                 compileRegex(pattern, flags, "");
-            } catch (PolyglotException tRegexException) { // TODO why do we need PolyglotException instead of RegexSyntaxException?
+            } catch (PolyglotException tRegexException) { // TODO why do we need PolyglotException
+                // instead of RegexSyntaxException?
                 Assert.assertTrue(tRegexException.getMessage().contains(javaPatternException.getDescription()));
                 return;
             }

@@ -66,6 +66,7 @@ public final class JavaFlags extends AbstractConstantKeysObject {
     private static final String PROP_DOTALL = "DOTALL";
     private static final String PROP_UNICODE_CASE = "UNICODE_CASE";
     private static final String PROP_COMMENTS = "COMMENTS";
+    private static final String PROP_LITERAL = "LITERAL";
     private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(
                     PROP_CANON_EQ,
                     PROP_UNICODE_CHARACTER_CLASS,
@@ -74,8 +75,9 @@ public final class JavaFlags extends AbstractConstantKeysObject {
                     PROP_MULTILINE,
                     PROP_DOTALL,
                     PROP_UNICODE_CASE,
-                    PROP_COMMENTS);
-    private static final TBitSet FLAGS = TBitSet.valueOf('U', 'c', 'd', 'i', 'm', 's', 'u', 'x');
+                    PROP_COMMENTS,
+                    PROP_LITERAL);
+    private static final TBitSet FLAGS = TBitSet.valueOf('U', 'c', 'd', 'i', 'l', 'm', 's', 'u', 'x');
     private final int value;
 
     public JavaFlags(int bits) {
@@ -111,6 +113,8 @@ public final class JavaFlags extends AbstractConstantKeysObject {
                 case 'x':
                     flags |= Pattern.COMMENTS;
                     break;
+                case 'l':
+                    flags |= Pattern.LITERAL;
             }
         }
         return new JavaFlags(flags);
@@ -134,6 +138,8 @@ public final class JavaFlags extends AbstractConstantKeysObject {
                 return Pattern.UNICODE_CASE;
             case 'x':
                 return Pattern.COMMENTS;
+            case 'l':
+                return Pattern.LITERAL;
             default:
                 throw new IllegalStateException("should not reach here");
         }
@@ -166,6 +172,9 @@ public final class JavaFlags extends AbstractConstantKeysObject {
         }
         if (isSet(Pattern.COMMENTS)) {
             sb.append('x');
+        }
+        if (isSet(Pattern.LITERAL)) {
+            sb.append('l');
         }
         return sb.toString();
     }
@@ -200,6 +209,10 @@ public final class JavaFlags extends AbstractConstantKeysObject {
 
     public boolean isUnicodeCase() {
         return isSet(Pattern.UNICODE_CASE);
+    }
+
+    public boolean isLiteral() {
+        return isSet(Pattern.LITERAL);
     }
 
     private boolean isSet(int flag) {
@@ -251,6 +264,7 @@ public final class JavaFlags extends AbstractConstantKeysObject {
             case PROP_DOTALL:
             case PROP_UNICODE_CASE:
             case PROP_COMMENTS:
+            case PROP_LITERAL:
                 return true;
             default:
                 return false;
@@ -276,6 +290,8 @@ public final class JavaFlags extends AbstractConstantKeysObject {
                 return isUnicodeCase();
             case PROP_COMMENTS:
                 return isComments();
+            case PROP_LITERAL:
+                return isLiteral();
             default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw UnknownIdentifierException.create(symbol);

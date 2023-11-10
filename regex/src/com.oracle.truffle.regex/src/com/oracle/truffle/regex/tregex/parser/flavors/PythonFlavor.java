@@ -79,16 +79,16 @@ public final class PythonFlavor extends RegexFlavor {
     }
 
     @Override
-    public BiPredicate<Integer, Integer> getEqualsIgnoreCasePredicate(RegexAST ast) {
+    public EqualsIgnoreCasePredicate getEqualsIgnoreCasePredicate(RegexAST ast) {
         if (ast.getOptions().getEncoding() == Encodings.UTF_32) {
             return PythonFlavor::equalsIgnoreCaseUnicode;
         } else {
             assert ast.getOptions().getEncoding() == Encodings.LATIN_1;
-            return CaseFoldData.CaseFoldUnfoldAlgorithm.PythonAscii.getEqualsPredicate();
+            return (a, b, altMode) -> CaseFoldData.CaseFoldUnfoldAlgorithm.PythonAscii.getEqualsPredicate().test(a, b);
         }
     }
 
-    private static boolean equalsIgnoreCaseUnicode(int codePointA, int codePointB) {
+    private static boolean equalsIgnoreCaseUnicode(int codePointA, int codePointB, boolean altMode) {
         return UCharacter.toLowerCase(codePointA) == UCharacter.toLowerCase(codePointB);
     }
 }

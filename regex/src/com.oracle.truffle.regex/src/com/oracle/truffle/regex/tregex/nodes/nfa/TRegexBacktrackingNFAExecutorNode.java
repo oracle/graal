@@ -45,7 +45,6 @@ import static com.oracle.truffle.api.CompilerDirectives.LIKELY_PROBABILITY;
 import static com.oracle.truffle.api.CompilerDirectives.injectBranchProbability;
 
 import java.util.List;
-import java.util.function.BiPredicate;
 
 import org.graalvm.collections.Pair;
 
@@ -77,6 +76,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.QuantifiableTerm;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
+import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 
 /**
  * This regex executor uses a backtracking algorithm on the NFA. It is used for all expressions that
@@ -108,7 +108,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     @CompilationFinal(dimensions = 1) private final CharMatcher[] matchers;
     private final int[] zeroWidthTermEnclosedCGLow;
     private final int[] zeroWidthQuantifierCGOffsets;
-    private final BiPredicate<Integer, Integer> equalsIgnoreCase;
+    private final RegexFlavor.EqualsIgnoreCasePredicate equalsIgnoreCase;
 
     @Child TruffleString.RegionEqualByteIndexNode regionMatchesNode;
     @Child TruffleString.ByteIndexOfStringNode indexOfNode;
@@ -1120,7 +1120,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
             iBR = locals.getNextIndex();
             int codePointI = inputReadAndDecode(locals, i, codeRange);
             i = locals.getNextIndex();
-            if (injectBranchProbability(EXIT_PROBABILITY, !(backReference.isIgnoreCaseReference() ? equalsIgnoreCase(codePointBR, codePointI) : codePointBR == codePointI))) {
+            if (injectBranchProbability(EXIT_PROBABILITY, !(backReference.isIgnoreCaseReference() ? equalsIgnoreCase(codePointBR, codePointI, backReference.isIgnoreCaseReferenceAlternativeMode()) : codePointBR == codePointI))) {
                 locals.setNextIndex(saveNextIndex);
                 return -1;
             }
@@ -1154,8 +1154,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     }
 
     @TruffleBoundary
-    private boolean equalsIgnoreCase(int a, int b) {
-        return equalsIgnoreCase.test(a, b);
+    private boolean equalsIgnoreCase(int a, int b, boolean alternativeMode) {
+        return equalsIgnoreCase.test(a, b, alternativeMode);
     }
 
     private static int setFlag(int flags, int flag, boolean value) {
