@@ -69,7 +69,8 @@ public final class RuntimeReflection {
      * @since 19.0
      */
     public static void register(Class<?>... classes) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.alwaysTrue(), classes);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.alwaysTrue(), "Feature: " + callerClassName, classes);
     }
 
     /**
@@ -80,7 +81,8 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerClassLookup(String className) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(ConfigurationCondition.alwaysTrue(), className);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(ConfigurationCondition.alwaysTrue(), "Feature: " + callerClassName, className);
     }
 
     /**
@@ -91,7 +93,8 @@ public final class RuntimeReflection {
      * @since 19.0
      */
     public static void register(Executable... methods) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.alwaysTrue(), false, methods);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.alwaysTrue(), false, "Feature: " + callerClassName, methods);
     }
 
     /**
@@ -103,7 +106,8 @@ public final class RuntimeReflection {
      * @since 21.3
      */
     public static void registerAsQueried(Executable... methods) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.alwaysTrue(), true, methods);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.alwaysTrue(), true, "Feature: " + callerClassName, methods);
     }
 
     /**
@@ -116,7 +120,8 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerMethodLookup(Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(ConfigurationCondition.alwaysTrue(), declaringClass, methodName, parameterTypes);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(ConfigurationCondition.alwaysTrue(), declaringClass, methodName, "Feature: " + callerClassName, parameterTypes);
     }
 
     /**
@@ -130,7 +135,8 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerConstructorLookup(Class<?> declaringClass, Class<?>... parameterTypes) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerConstructorLookup(ConfigurationCondition.alwaysTrue(), declaringClass, parameterTypes);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerConstructorLookup(ConfigurationCondition.alwaysTrue(), declaringClass, "Feature: " + callerClassName, parameterTypes);
     }
 
     /**
@@ -141,7 +147,8 @@ public final class RuntimeReflection {
      * @since 19.0
      */
     public static void register(Field... fields) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.alwaysTrue(), false, fields);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.alwaysTrue(), false, "Feature: " + callerClassName, fields);
     }
 
     /**
@@ -153,7 +160,8 @@ public final class RuntimeReflection {
      * @since 19.0
      */
     public static void registerFieldLookup(Class<?> declaringClass, String fieldName) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerFieldLookup(ConfigurationCondition.alwaysTrue(), declaringClass, fieldName);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerFieldLookup(ConfigurationCondition.alwaysTrue(), declaringClass, "Feature: " + callerClassName, fieldName);
     }
 
     /**
@@ -162,7 +170,8 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllClasses(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllClassesQuery(ConfigurationCondition.alwaysTrue(), declaringClass);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllClassesQuery(ConfigurationCondition.alwaysTrue(), declaringClass, "Feature: " + callerClassName);
     }
 
     /**
@@ -171,7 +180,8 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllDeclaredClasses(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredClassesQuery(ConfigurationCondition.alwaysTrue(), declaringClass);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredClassesQuery(ConfigurationCondition.alwaysTrue(), declaringClass, "Feature: " + callerClassName);
     }
 
     /**
@@ -181,7 +191,8 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllMethods(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllMethodsQuery(ConfigurationCondition.alwaysTrue(), true, declaringClass);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllMethodsQuery(ConfigurationCondition.alwaysTrue(), true, declaringClass, "Feature: " + callerClassName);
     }
 
     /**
@@ -191,7 +202,8 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllDeclaredMethods(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredMethodsQuery(ConfigurationCondition.alwaysTrue(), true, declaringClass);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredMethodsQuery(ConfigurationCondition.alwaysTrue(), true, declaringClass, "Feature: " + callerClassName);
     }
 
     /**
@@ -201,7 +213,8 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllConstructors(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllConstructorsQuery(ConfigurationCondition.alwaysTrue(), true, declaringClass);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllConstructorsQuery(ConfigurationCondition.alwaysTrue(), true, declaringClass, "Feature: " + callerClassName);
     }
 
     /**
@@ -211,7 +224,8 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllDeclaredConstructors(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredConstructorsQuery(ConfigurationCondition.alwaysTrue(), true, declaringClass);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredConstructorsQuery(ConfigurationCondition.alwaysTrue(), true, declaringClass, "Feature: " + callerClassName);
     }
 
     /**
@@ -221,7 +235,8 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllFields(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllFieldsQuery(ConfigurationCondition.alwaysTrue(), declaringClass);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllFieldsQuery(ConfigurationCondition.alwaysTrue(), declaringClass, "Feature: " + callerClassName);
     }
 
     /**
@@ -231,7 +246,8 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllDeclaredFields(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredFieldsQuery(ConfigurationCondition.alwaysTrue(), declaringClass);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredFieldsQuery(ConfigurationCondition.alwaysTrue(), declaringClass, "Feature: " + callerClassName);
     }
 
     /**
@@ -240,7 +256,8 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllNestMembers(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllNestMembersQuery(ConfigurationCondition.alwaysTrue(), declaringClass);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllNestMembersQuery(ConfigurationCondition.alwaysTrue(), declaringClass, "Feature: " + callerClassName);
     }
 
     /**
@@ -249,7 +266,8 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllPermittedSubclasses(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllPermittedSubclassesQuery(ConfigurationCondition.alwaysTrue(), declaringClass);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllPermittedSubclassesQuery(ConfigurationCondition.alwaysTrue(), declaringClass, "Feature: " + callerClassName);
     }
 
     /**
@@ -258,7 +276,8 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllRecordComponents(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllRecordComponentsQuery(ConfigurationCondition.alwaysTrue(), declaringClass);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllRecordComponentsQuery(ConfigurationCondition.alwaysTrue(), declaringClass, "Feature: " + callerClassName);
     }
 
     /**
@@ -267,7 +286,8 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllSigners(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllSignersQuery(ConfigurationCondition.alwaysTrue(), declaringClass);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllSignersQuery(ConfigurationCondition.alwaysTrue(), declaringClass, "Feature: " + callerClassName);
     }
 
     /**
@@ -312,7 +332,8 @@ public final class RuntimeReflection {
                 throw new IllegalArgumentException("Class " + clazz.getTypeName() + " cannot be instantiated reflectively . It does not have a nullary constructor.");
             }
 
-            register(nullaryConstructor);
+            String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+            ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.alwaysTrue(), false, "Feature: " + callerClassName, nullaryConstructor);
         }
     }
 

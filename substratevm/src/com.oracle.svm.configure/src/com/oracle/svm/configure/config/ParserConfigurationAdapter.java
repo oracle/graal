@@ -44,7 +44,7 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     }
 
     @Override
-    public TypeResult<ConfigurationType> resolveType(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives) {
+    public TypeResult<ConfigurationType> resolveType(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives, String reason) {
         ConfigurationType type = configuration.get(condition, typeDescriptor);
         /*
          * The type is not immediately set with all elements included. These are added afterwards
@@ -55,26 +55,26 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     }
 
     @Override
-    public void registerType(UnresolvedConfigurationCondition condition, ConfigurationType type) {
+    public void registerType(UnresolvedConfigurationCondition condition, ConfigurationType type, String reason) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is already a part of the type");
         configuration.add(type);
     }
 
     @Override
-    public void registerField(UnresolvedConfigurationCondition condition, ConfigurationType type, String fieldName, boolean finalButWritable) {
+    public void registerField(UnresolvedConfigurationCondition condition, ConfigurationType type, String fieldName, boolean finalButWritable, String reason) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is already a part of the type");
         type.addField(fieldName, ConfigurationMemberDeclaration.PRESENT, finalButWritable);
     }
 
     @Override
-    public boolean registerAllMethodsWithName(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type, String methodName) {
+    public boolean registerAllMethodsWithName(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type, String methodName, String reason) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is already a part of the type");
         type.addMethodsWithName(methodName, ConfigurationMemberDeclaration.PRESENT, queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
         return true;
     }
 
     @Override
-    public boolean registerAllConstructors(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type) {
+    public boolean registerAllConstructors(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type, String reason) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is already a part of the type");
         type.addMethodsWithName(ConfigurationMethod.CONSTRUCTOR_NAME, ConfigurationMemberDeclaration.PRESENT,
                         queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
@@ -82,93 +82,93 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     }
 
     @Override
-    public void registerUnsafeAllocated(UnresolvedConfigurationCondition condition, ConfigurationType type) {
+    public void registerUnsafeAllocated(UnresolvedConfigurationCondition condition, ConfigurationType type, String reason) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is here part of the type");
         type.setUnsafeAllocated();
     }
 
     @Override
-    public void registerMethod(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type, String methodName, List<ConfigurationType> methodParameterTypes) {
+    public void registerMethod(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type, String methodName, List<ConfigurationType> methodParameterTypes, String reason) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is already a part of the type");
         type.addMethod(methodName, ConfigurationMethod.toInternalParamsSignature(methodParameterTypes), ConfigurationMemberDeclaration.PRESENT,
                         queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
     }
 
     @Override
-    public void registerConstructor(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type, List<ConfigurationType> methodParameterTypes) {
+    public void registerConstructor(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type, List<ConfigurationType> methodParameterTypes, String reason) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is already a part of the type");
         type.addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, ConfigurationMethod.toInternalParamsSignature(methodParameterTypes), ConfigurationMemberDeclaration.PRESENT,
                         queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
     }
 
     @Override
-    public void registerPublicClasses(UnresolvedConfigurationCondition condition, ConfigurationType type) {
+    public void registerPublicClasses(UnresolvedConfigurationCondition condition, ConfigurationType type, String reason) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is already a part of the type");
         type.setAllPublicClasses();
     }
 
     @Override
-    public void registerDeclaredClasses(UnresolvedConfigurationCondition condition, ConfigurationType type) {
+    public void registerDeclaredClasses(UnresolvedConfigurationCondition condition, ConfigurationType type, String reason) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is already a part of the type");
         type.setAllDeclaredClasses();
     }
 
     @Override
-    public void registerRecordComponents(UnresolvedConfigurationCondition condition, ConfigurationType type) {
+    public void registerRecordComponents(UnresolvedConfigurationCondition condition, ConfigurationType type, String reason) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is already a part of the type");
         type.setAllRecordComponents();
     }
 
     @Override
-    public void registerPermittedSubclasses(UnresolvedConfigurationCondition condition, ConfigurationType type) {
+    public void registerPermittedSubclasses(UnresolvedConfigurationCondition condition, ConfigurationType type, String reason) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is already a part of the type");
         type.setAllPermittedSubclasses();
     }
 
     @Override
-    public void registerNestMembers(UnresolvedConfigurationCondition condition, ConfigurationType type) {
+    public void registerNestMembers(UnresolvedConfigurationCondition condition, ConfigurationType type, String reason) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is already a part of the type");
         type.setAllNestMembers();
     }
 
     @Override
-    public void registerSigners(UnresolvedConfigurationCondition condition, ConfigurationType type) {
+    public void registerSigners(UnresolvedConfigurationCondition condition, ConfigurationType type, String reason) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is already a part of the type");
         type.setAllSigners();
     }
 
     @Override
-    public void registerPublicFields(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type) {
+    public void registerPublicFields(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type, String reason) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is already a part of the type");
         type.setAllPublicFields(queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
     }
 
     @Override
-    public void registerDeclaredFields(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type) {
+    public void registerDeclaredFields(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type, String reason) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is already a part of the type");
         type.setAllDeclaredFields(queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
     }
 
     @Override
-    public void registerPublicMethods(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type) {
+    public void registerPublicMethods(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type, String reason) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is already a part of the type");
         type.setAllPublicMethods(queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
     }
 
     @Override
-    public void registerDeclaredMethods(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type) {
+    public void registerDeclaredMethods(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type, String reason) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is already a part of the type");
         type.setAllDeclaredMethods(queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
     }
 
     @Override
-    public void registerPublicConstructors(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type) {
+    public void registerPublicConstructors(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type, String reason) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is already a part of the type");
         type.setAllPublicConstructors(queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
     }
 
     @Override
-    public void registerDeclaredConstructors(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type) {
+    public void registerDeclaredConstructors(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type, String reason) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is already a part of the type");
         type.setAllDeclaredConstructors(queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
     }

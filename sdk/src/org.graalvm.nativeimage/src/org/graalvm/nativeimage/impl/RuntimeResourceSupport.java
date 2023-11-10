@@ -52,29 +52,29 @@ public interface RuntimeResourceSupport<C> {
         return ImageSingletons.lookup(RuntimeResourceSupport.class);
     }
 
-    void addResources(C condition, String pattern);
+    void addResources(C condition, String pattern, String reason);
 
-    void addGlob(C condition, String module, String glob);
+    void addGlob(C condition, String module, String glob, String reason);
 
-    void ignoreResources(C condition, String pattern);
+    void ignoreResources(C condition, String pattern, String reason);
 
-    void addResourceBundles(C condition, String name);
+    void addResourceBundles(C condition, String name, String reason);
 
-    void addResourceBundles(C condition, String basename, Collection<Locale> locales);
+    void addResourceBundles(C condition, String basename, Collection<Locale> locales, String reason);
 
     /* Following functions are used only from features */
     void addCondition(ConfigurationCondition configurationCondition, Module module, String resourcePath);
 
-    void addResourceEntry(Module module, String resourcePath);
+    void addResourceEntry(Module module, String resourcePath, String reason);
 
-    default void addResource(Module module, String resourcePath) {
-        addResource(ConfigurationCondition.alwaysTrue(), module, resourcePath);
+    default void addResource(Module module, String resourcePath, String reason) {
+        addResource(ConfigurationCondition.alwaysTrue(), module, resourcePath, reason);
     }
 
-    default void addResource(ConfigurationCondition condition, Module module, String resourcePath) {
-        addResourceEntry(module, resourcePath);
+    default void addResource(ConfigurationCondition condition, Module module, String resourcePath, String reason) {
+        addResourceEntry(module, resourcePath, reason);
         addCondition(condition, module, resourcePath);
     }
 
-    void injectResource(Module module, String resourcePath, byte[] resourceContent);
+    void injectResource(Module module, String resourcePath, byte[] resourceContent, String reason);
 }

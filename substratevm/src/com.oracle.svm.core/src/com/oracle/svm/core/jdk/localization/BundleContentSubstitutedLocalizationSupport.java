@@ -174,8 +174,8 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     }
 
     @Override
-    public void prepareBundle(String bundleName, ResourceBundle bundle, Function<String, Optional<Module>> findModule, Locale locale, boolean jdkLocale) {
-        super.prepareBundle(bundleName, bundle, findModule, locale, jdkLocale);
+    public void prepareBundle(String bundleName, ResourceBundle bundle, Function<String, Optional<Module>> findModule, Locale locale, boolean jdkLocale, String reason) {
+        super.prepareBundle(bundleName, bundle, findModule, locale, jdkLocale, reason);
         /* Initialize ResourceBundle.keySet eagerly */
         bundle.keySet();
         if (!jdkLocale) {
@@ -184,8 +184,8 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     }
 
     @Override
-    public void prepareClassResourceBundle(String basename, Class<?> bundleClass) {
-        super.prepareClassResourceBundle(basename, bundleClass);
+    public void prepareClassResourceBundle(String basename, Class<?> bundleClass, String reason) {
+        super.prepareClassResourceBundle(basename, bundleClass, reason);
         this.existingBundles.add(bundleClass.getName());
     }
 }

@@ -130,12 +130,12 @@ public class LocalizationSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void prepareBundle(String bundleName, ResourceBundle bundle, Function<String, Optional<Module>> findModule, Locale locale, boolean jdkBundle) {
+    public void prepareBundle(String bundleName, ResourceBundle bundle, Function<String, Optional<Module>> findModule, Locale locale, boolean jdkBundle, String reason) {
         /*
          * Class-based bundle lookup happens on every query, but we don't need to register the
          * constructor for a property resource bundle since the class lookup will fail.
          */
-        registerRequiredReflectionAndResourcesForBundle(bundleName, Set.of(locale), jdkBundle);
+        registerRequiredReflectionAndResourcesForBundle(bundleName, Set.of(locale), jdkBundle, reason);
         if (!(bundle instanceof PropertyResourceBundle)) {
             registerNullaryConstructor(bundle.getClass());
         }
@@ -151,18 +151,18 @@ public class LocalizationSupport {
                 Set<Module> modules = packageToModules.getOrDefault(packageName(bundleName), Collections.emptySet());
 
                 for (Module m : modules) {
-                    ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, resourceName);
+                    ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, resourceName, reason);
                 }
 
                 if (modules.isEmpty()) {
-                    ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(null, resourceName);
+                    ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(null, resourceName, reason);
                 }
             } else {
                 if (findModule != null) {
                     resourceName = toSlashSeparated(control.toBundleName(bundleNameWithModule[1], locale)).concat(".properties");
                     Optional<Module> module = findModule.apply(bundleNameWithModule[0]);
                     String finalResourceName = resourceName;
-                    module.ifPresent(m -> ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, finalResourceName));
+                    module.ifPresent(m -> ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, finalResourceName, reason));
                 }
             }
         }
@@ -193,13 +193,13 @@ public class LocalizationSupport {
         }
     }
 
-    public void registerRequiredReflectionAndResourcesForBundle(String baseName, Collection<Locale> wantedLocales, boolean jdkBundle) {
+    public void registerRequiredReflectionAndResourcesForBundle(String baseName, Collection<Locale> wantedLocales, boolean jdkBundle, String reason) {
         if (!jdkBundle) {
             int i = baseName.lastIndexOf('.');
             if (i > 0) {
                 String name = baseName.substring(i + 1) + "Provider";
                 String providerName = baseName.substring(0, i) + ".spi." + name;
-                ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(ConfigurationCondition.alwaysTrue(), providerName);
+                ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(ConfigurationCondition.alwaysTrue(), providerName, reason);
             }
         }
 
@@ -299,7 +299,7 @@ public class LocalizationSupport {
         }
     }
 
-    public void prepareClassResourceBundle(@SuppressWarnings("unused") String basename, Class<?> bundleClass) {
+    public void prepareClassResourceBundle(@SuppressWarnings("unused") String basename, Class<?> bundleClass, String reason) {
         registerNullaryConstructor(bundleClass);
         onClassBundlePrepared(bundleClass);
     }

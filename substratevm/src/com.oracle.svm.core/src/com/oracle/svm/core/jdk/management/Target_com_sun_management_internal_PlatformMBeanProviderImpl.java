@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.configure;
+package com.oracle.svm.core.jdk.management;
 
-import java.net.URI;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.sun.management.internal.HotSpotDiagnostic;
 
-final class ResourceMetadataParser<C> extends ResourceConfigurationParser<C> {
-    ResourceMetadataParser(ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, boolean strictConfiguration) {
-        super(conditionResolver, registry, strictConfiguration);
-    }
-
-    @Override
-    public void parseAndRegister(Object json, URI origin) {
-        Object resourcesJson = getFromGlobalFile(json, RESOURCES_KEY);
-        if (resourcesJson != null) {
-            parseGlobsObject(resourcesJson, "JSON: " + origin.getPath());
-        }
-        Object bundlesJson = getFromGlobalFile(json, BUNDLES_KEY);
-        if (bundlesJson != null) {
-            parseBundlesObject(bundlesJson, "JSON: " + origin.getPath());
-        }
-    }
+@TargetClass(className = "com.sun.management.internal.PlatformMBeanProviderImpl")
+final class Target_com_sun_management_internal_PlatformMBeanProviderImpl {
+    @Alias
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    private static HotSpotDiagnostic hsDiagMBean = null;
 }

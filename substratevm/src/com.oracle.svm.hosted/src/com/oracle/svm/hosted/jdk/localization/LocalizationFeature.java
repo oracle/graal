@@ -522,7 +522,7 @@ public class LocalizationFeature implements InternalFeature {
                                         /* Make sure the `bundle` content is complete. */
                                         localeData.setSupplementary((ParallelListResourceBundle) bundle);
                                     }
-                                    prepareJDKBundle(bundle, locale);
+                                    prepareJDKBundle(bundle, locale, "localization");
                                 }
                             }
                         });
@@ -532,27 +532,27 @@ public class LocalizationFeature implements InternalFeature {
              * No eager loading of bundle content, so we need to include the
              * `sun.text.resources.FormatData` bundle supplement as well.
              */
-            prepareBundle(ConfigurationCondition.alwaysTrue(), "sun.text.resources.JavaTimeSupplementary");
+            prepareBundle(ConfigurationCondition.alwaysTrue(), "sun.text.resources.JavaTimeSupplementary", "localization");
         }
 
         final String[] alwaysRegisteredResourceBundles = new String[]{
                         "sun.util.logging.resources.logging"
         };
         for (String bundleName : alwaysRegisteredResourceBundles) {
-            prepareBundle(ConfigurationCondition.alwaysTrue(), bundleName);
+            prepareBundle(ConfigurationCondition.alwaysTrue(), bundleName, "localization");
         }
 
         for (String bundleName : Options.IncludeResourceBundles.getValue().values()) {
-            processRequestedBundle(bundleName);
+            processRequestedBundle(bundleName, "IncludeResourceBundles");
         }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private void processRequestedBundle(String input) {
+    private void processRequestedBundle(String input, String reason) {
         int splitIndex = input.indexOf('_');
         boolean specificLocaleRequested = splitIndex != -1;
         if (!specificLocaleRequested) {
-            prepareBundle(ConfigurationCondition.alwaysTrue(), input, allLocales);
+            prepareBundle(ConfigurationCondition.alwaysTrue(), input, allLocales, reason);
             return;
         }
         Locale locale = splitIndex + 1 < input.length() ? LocalizationSupport.parseLocaleFromTag(input.substring(splitIndex + 1)) : Locale.ROOT;
@@ -562,21 +562,21 @@ public class LocalizationFeature implements InternalFeature {
         }
         /*- Get rid of locale specific suffix. */
         String baseName = input.substring(0, splitIndex);
-        prepareBundle(ConfigurationCondition.alwaysTrue(), baseName, Collections.singletonList(locale));
+        prepareBundle(ConfigurationCondition.alwaysTrue(), baseName, Collections.singletonList(locale), reason);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void prepareClassResourceBundle(String basename, String className) {
+    public void prepareClassResourceBundle(String basename, String className, String reason) {
         Class<?> bundleClass = findClassByName.apply(className);
         UserError.guarantee(ResourceBundle.class.isAssignableFrom(bundleClass), "%s is not a subclass of ResourceBundle", bundleClass.getName());
         trace("Adding class based resource bundle: " + className + " " + bundleClass);
-        support.registerRequiredReflectionAndResourcesForBundle(basename, Set.of(), false);
-        support.prepareClassResourceBundle(basename, bundleClass);
+        support.registerRequiredReflectionAndResourcesForBundle(basename, Set.of(), false, reason);
+        support.prepareClassResourceBundle(basename, bundleClass, reason);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void prepareBundle(ConfigurationCondition condition, String baseName) {
-        prepareBundle(condition, baseName, allLocales);
+    public void prepareBundle(ConfigurationCondition condition, String baseName, String reason) {
+        prepareBundle(condition, baseName, allLocales, reason);
     }
 
     private static final String[] RESOURCE_EXTENSION_PREFIXES = new String[]{
@@ -587,8 +587,8 @@ public class LocalizationFeature implements InternalFeature {
     };
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void prepareBundle(ConfigurationCondition condition, String baseName, Collection<Locale> wantedLocales) {
-        prepareBundleInternal(condition, baseName, wantedLocales);
+    public void prepareBundle(ConfigurationCondition condition, String baseName, Collection<Locale> wantedLocales, String reason) {
+        prepareBundleInternal(condition, baseName, wantedLocales, reason);
 
         String alternativeBundleName = null;
         for (String resourceExtensionPrefix : RESOURCE_EXTENSION_PREFIXES) {
@@ -598,11 +598,11 @@ public class LocalizationFeature implements InternalFeature {
             }
         }
         if (alternativeBundleName != null) {
-            prepareBundleInternal(condition, alternativeBundleName, wantedLocales);
+            prepareBundleInternal(condition, alternativeBundleName, wantedLocales, reason);
         }
     }
 
-    private void prepareBundleInternal(ConfigurationCondition condition, String baseName, Collection<Locale> wantedLocales) {
+    private void prepareBundleInternal(ConfigurationCondition condition, String baseName, Collection<Locale> wantedLocales, String reason) {
         boolean somethingFound = false;
         for (Locale locale : wantedLocales) {
             support.registerBundleLookup(condition, baseName);
@@ -617,7 +617,7 @@ public class LocalizationFeature implements InternalFeature {
             }
             somethingFound |= !resourceBundle.isEmpty();
             for (ResourceBundle bundle : resourceBundle) {
-                prepareBundle(condition, baseName, bundle, locale, false);
+                prepareBundle(condition, baseName, bundle, locale, false, reason);
             }
         }
 
@@ -665,13 +665,13 @@ public class LocalizationFeature implements InternalFeature {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected void prepareJDKBundle(ResourceBundle bundle, Locale locale) {
+    protected void prepareJDKBundle(ResourceBundle bundle, Locale locale, String reason) {
         String baseName = bundle.getBaseBundleName();
-        prepareBundle(ConfigurationCondition.alwaysTrue(), baseName, bundle, locale, true);
+        prepareBundle(ConfigurationCondition.alwaysTrue(), baseName, bundle, locale, true, reason);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private void prepareBundle(ConfigurationCondition condition, String bundleName, ResourceBundle bundle, Locale locale, boolean jdkBundle) {
+    private void prepareBundle(ConfigurationCondition condition, String bundleName, ResourceBundle bundle, Locale locale, boolean jdkBundle, String reason) {
         trace("Adding bundle " + bundleName + ", locale " + locale + " with condition " + condition);
         /*
          * Ensure that the bundle contents are loaded. We need to walk the whole bundle parent chain
@@ -679,14 +679,14 @@ public class LocalizationFeature implements InternalFeature {
          */
         for (ResourceBundle cur = bundle; cur != null; cur = SharedSecrets.getJavaUtilResourceBundleAccess().getParent(cur)) {
             /* Register all bundles with their corresponding locales */
-            support.prepareBundle(bundleName, cur, this.imageClassLoader::findModule, cur.getLocale(), jdkBundle);
+            support.prepareBundle(bundleName, cur, this.imageClassLoader::findModule, cur.getLocale(), jdkBundle, reason);
         }
 
         /*
          * Finally, register the requested bundle with requested locale (Requested might be more
          * specific than the actual bundle locale
          */
-        support.prepareBundle(bundleName, bundle, this.imageClassLoader::findModule, locale, jdkBundle);
+        support.prepareBundle(bundleName, bundle, this.imageClassLoader::findModule, locale, jdkBundle, reason);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

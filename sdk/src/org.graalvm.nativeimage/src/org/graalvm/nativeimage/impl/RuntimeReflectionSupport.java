@@ -42,29 +42,29 @@ package org.graalvm.nativeimage.impl;
 
 public interface RuntimeReflectionSupport extends ReflectionRegistry {
     // needed as reflection-specific ImageSingletons key
-    void registerAllMethodsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz);
+    void registerAllMethodsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz, String reason);
 
-    void registerAllDeclaredMethodsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz);
+    void registerAllDeclaredMethodsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz, String reason);
 
-    void registerAllFieldsQuery(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllFieldsQuery(ConfigurationCondition condition, Class<?> clazz, String reason);
 
-    void registerAllDeclaredFieldsQuery(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllDeclaredFieldsQuery(ConfigurationCondition condition, Class<?> clazz, String reason);
 
-    void registerAllConstructorsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz);
+    void registerAllConstructorsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz, String reason);
 
-    void registerAllDeclaredConstructorsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz);
+    void registerAllDeclaredConstructorsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz, String reason);
 
-    void registerAllClassesQuery(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllClassesQuery(ConfigurationCondition condition, Class<?> clazz, String reason);
 
-    void registerAllDeclaredClassesQuery(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllDeclaredClassesQuery(ConfigurationCondition condition, Class<?> clazz, String reason);
 
-    void registerAllRecordComponentsQuery(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllRecordComponentsQuery(ConfigurationCondition condition, Class<?> clazz, String reason);
 
-    void registerAllPermittedSubclassesQuery(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllPermittedSubclassesQuery(ConfigurationCondition condition, Class<?> clazz, String reason);
 
-    void registerAllNestMembersQuery(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllNestMembersQuery(ConfigurationCondition condition, Class<?> clazz, String reason);
 
-    void registerAllSignersQuery(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllSignersQuery(ConfigurationCondition condition, Class<?> clazz, String reason);
 
-    void registerClassLookupException(ConfigurationCondition condition, String typeName, Throwable t);
+    void registerClassLookupException(ConfigurationCondition condition, String typeName, Throwable t, String reason);
 }

@@ -112,14 +112,14 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         NativeImageClassLoaderSupport.allLayers(classLoaderSupport.moduleLayerForImageBuild).stream()
                         .flatMap(ClassLoaderSupportImpl::extractModuleLookupData)
                         .parallel()
-                        .forEach(lookup -> collectResourceFromModule(resourceCollector, lookup));
+                        .forEach(lookup -> collectResourceFromModule(resourceCollector, lookup, "Modulepath: " + lookup.module));
 
         /* Collect remaining resources from classpath */
         classLoaderSupport.classpath().stream().parallel().forEach(classpathFile -> {
             boolean includeCurrent = classLoaderSupport.getJavaPathsToInclude().contains(classpathFile) || classLoaderSupport.includeAllFromClassPath();
             try {
                 if (Files.isDirectory(classpathFile)) {
-                    scanDirectory(classpathFile, resourceCollector, includeCurrent);
+                    scanDirectory(classpathFile, resourceCollector, includeCurrent, "Classpath: " + classpathFile);
                 } else if (ClasspathUtils.isJar(classpathFile)) {
                     scanJar(classpathFile, resourceCollector, includeCurrent);
                 }
@@ -129,7 +129,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         });
     }
 
-    private void collectResourceFromModule(ResourceCollector resourceCollector, ResourceLookupInfo info) {
+    private void collectResourceFromModule(ResourceCollector resourceCollector, ResourceLookupInfo info, String reason) {
         ModuleReference moduleReference = info.resolvedModule.reference();
         try (ModuleReader moduleReader = moduleReference.open()) {
             boolean includeCurrent = classLoaderSupport.getJavaModuleNamesToInclude().contains(info.resolvedModule().name());
@@ -145,7 +145,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                 ConfigurationCondition condition = entry.condition();
                 String resName = entry.resourceName();
                 if (resName.endsWith("/")) {
-                    includeResource(resourceCollector, info.module, resName, condition);
+                    includeResource(resourceCollector, info.module, resName, condition, reason);
                     continue;
                 }
 
@@ -156,7 +156,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                     continue;
                 }
 
-                includeResource(resourceCollector, info.module, resName, condition);
+                includeResource(resourceCollector, info.module, resName, condition, reason);
             }
 
         } catch (IOException e) {
@@ -164,7 +164,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
     }
 
-    private static void scanDirectory(Path root, ResourceCollector collector, boolean includeCurrent) {
+    private static void scanDirectory(Path root, ResourceCollector collector, boolean includeCurrent, String reason) {
         ArrayDeque<Path> queue = new ArrayDeque<>();
         queue.push(root);
         while (!queue.isEmpty()) {
@@ -180,7 +180,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
             List<ConfigurationCondition> conditions = shouldIncludeEntry(null, collector, relativeFilePath, Path.of(relativeFilePath).toUri(), includeCurrent);
             for (ConfigurationCondition condition : conditions) {
-                includeResource(collector, null, relativeFilePath, condition);
+                includeResource(collector, null, relativeFilePath, condition, reason);
             }
 
             if (Files.isDirectory(entry)) {
@@ -213,14 +213,14 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
                 List<ConfigurationCondition> conditions = shouldIncludeEntry(null, collector, entryName, jarPath.toUri(), includeCurrent);
                 for (ConfigurationCondition condition : conditions) {
-                    includeResource(collector, null, entryName, condition);
+                    includeResource(collector, null, entryName, condition, "JAR: " + jarPath);
                 }
             }
         }
     }
 
-    private static void includeResource(ResourceCollector collector, Module module, String name, ConfigurationCondition condition) {
-        collector.addResourceConditionally(module, name, condition);
+    private static void includeResource(ResourceCollector collector, Module module, String name, ConfigurationCondition condition, String reason) {
+        collector.addResourceConditionally(module, name, condition, reason);
     }
 
     private static List<ConfigurationCondition> shouldIncludeEntry(Module module, ResourceCollector collector, String fileName, URI uri, boolean includeCurrent) {

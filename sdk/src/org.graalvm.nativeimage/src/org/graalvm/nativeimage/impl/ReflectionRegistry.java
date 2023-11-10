@@ -45,21 +45,21 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 
 public interface ReflectionRegistry {
-    default void register(ConfigurationCondition condition, Class<?>... classes) {
-        Arrays.stream(classes).forEach(clazz -> register(condition, false, clazz));
+    default void register(ConfigurationCondition condition, String reason, Class<?>... classes) {
+        Arrays.stream(classes).forEach(clazz -> register(condition, false, clazz, reason));
     }
 
-    void register(ConfigurationCondition condition, boolean unsafeAllocated, Class<?> clazz);
+    void register(ConfigurationCondition condition, boolean unsafeAllocated, Class<?> clazz, String reason);
 
-    void register(ConfigurationCondition condition, boolean queriedOnly, Executable... methods);
+    void register(ConfigurationCondition condition, boolean queriedOnly, String reason, Executable... methods);
 
-    void register(ConfigurationCondition condition, boolean finalIsWritable, Field... fields);
+    void register(ConfigurationCondition condition, boolean finalIsWritable, String reason, Field... fields);
 
-    void registerClassLookup(ConfigurationCondition condition, String typeName);
+    void registerClassLookup(ConfigurationCondition condition, String typeName, String reason);
 
-    void registerFieldLookup(ConfigurationCondition condition, Class<?> declaringClass, String fieldName);
+    void registerFieldLookup(ConfigurationCondition condition, Class<?> declaringClass, String fieldName, String reason);
 
-    void registerMethodLookup(ConfigurationCondition condition, Class<?> declaringClass, String methodName, Class<?>... parameterTypes);
+    void registerMethodLookup(ConfigurationCondition condition, Class<?> declaringClass, String methodName, String reason, Class<?>... parameterTypes);
 
-    void registerConstructorLookup(ConfigurationCondition condition, Class<?> declaringClass, Class<?>... parameterTypes);
+    void registerConstructorLookup(ConfigurationCondition condition, Class<?> declaringClass, String reason, Class<?>... parameterTypes);
 }

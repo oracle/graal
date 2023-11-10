@@ -66,13 +66,13 @@ public abstract class ReflectionConfigurationParser<C, T> extends ConfigurationP
         }
     }
 
-    protected void parseClassArray(List<Object> classes) {
+    protected void parseClassArray(List<Object> classes, String reason) {
         for (Object clazz : classes) {
-            parseClass(asMap(clazz, "second level of document must be class descriptor objects"));
+            parseClass(asMap(clazz, "second level of document must be class descriptor objects"), reason);
         }
     }
 
-    protected abstract void parseClass(EconomicMap<String, Object> data);
+    protected abstract void parseClass(EconomicMap<String, Object> data, String reason);
 
     protected void registerIfNotDefault(EconomicMap<String, Object> data, boolean defaultValue, T clazz, String propertyName, Runnable register) {
         if (data.containsKey(propertyName) ? asBoolean(data.get(propertyName), propertyName) : defaultValue) {
@@ -84,19 +84,19 @@ public abstract class ReflectionConfigurationParser<C, T> extends ConfigurationP
         }
     }
 
-    protected void parseFields(C condition, List<Object> fields, T clazz) {
+    protected void parseFields(C condition, List<Object> fields, T clazz, String reason) {
         for (Object field : fields) {
-            parseField(condition, asMap(field, "Elements of 'fields' array must be field descriptor objects"), clazz);
+            parseField(condition, asMap(field, "Elements of 'fields' array must be field descriptor objects"), clazz, reason);
         }
     }
 
-    private void parseField(C condition, EconomicMap<String, Object> data, T clazz) {
+    private void parseField(C condition, EconomicMap<String, Object> data, T clazz, String reason) {
         checkAttributes(data, "reflection field descriptor object", Collections.singleton("name"), Arrays.asList("allowWrite", "allowUnsafeAccess"));
         String fieldName = asString(data.get("name"), "name");
         boolean allowWrite = data.containsKey("allowWrite") && asBoolean(data.get("allowWrite"), "allowWrite");
 
         try {
-            delegate.registerField(condition, clazz, fieldName, allowWrite);
+            delegate.registerField(condition, clazz, fieldName, allowWrite, reason);
         } catch (NoSuchFieldException e) {
             handleMissingElement("Field " + formatField(clazz, fieldName) + " not found.");
         } catch (LinkageError e) {
@@ -104,19 +104,19 @@ public abstract class ReflectionConfigurationParser<C, T> extends ConfigurationP
         }
     }
 
-    protected void parseMethods(C condition, boolean queriedOnly, List<Object> methods, T clazz) {
+    protected void parseMethods(C condition, boolean queriedOnly, List<Object> methods, T clazz, String reason) {
         for (Object method : methods) {
-            parseMethod(condition, queriedOnly, asMap(method, "Elements of 'methods' array must be method descriptor objects"), clazz);
+            parseMethod(condition, queriedOnly, asMap(method, "Elements of 'methods' array must be method descriptor objects"), clazz, reason);
         }
     }
 
-    private void parseMethod(C condition, boolean queriedOnly, EconomicMap<String, Object> data, T clazz) {
+    private void parseMethod(C condition, boolean queriedOnly, EconomicMap<String, Object> data, T clazz, String reason) {
         checkAttributes(data, "reflection method descriptor object", Collections.singleton("name"), Collections.singleton("parameterTypes"));
         String methodName = asString(data.get("name"), "name");
         List<T> methodParameterTypes = null;
         Object parameterTypes = data.get("parameterTypes");
         if (parameterTypes != null) {
-            methodParameterTypes = parseMethodParameters(clazz, methodName, asList(parameterTypes, "Attribute 'parameterTypes' must be a list of type names"));
+            methodParameterTypes = parseMethodParameters(clazz, methodName, asList(parameterTypes, "Attribute 'parameterTypes' must be a list of type names"), reason);
             if (methodParameterTypes == null) {
                 return;
             }
@@ -126,9 +126,9 @@ public abstract class ReflectionConfigurationParser<C, T> extends ConfigurationP
         if (methodParameterTypes != null) {
             try {
                 if (isConstructor) {
-                    delegate.registerConstructor(condition, queriedOnly, clazz, methodParameterTypes);
+                    delegate.registerConstructor(condition, queriedOnly, clazz, methodParameterTypes, reason);
                 } else {
-                    delegate.registerMethod(condition, queriedOnly, clazz, methodName, methodParameterTypes);
+                    delegate.registerMethod(condition, queriedOnly, clazz, methodName, methodParameterTypes, reason);
                 }
             } catch (NoSuchMethodException e) {
                 handleMissingElement("Method " + formatMethod(clazz, methodName, methodParameterTypes) + " not found.");
@@ -139,9 +139,9 @@ public abstract class ReflectionConfigurationParser<C, T> extends ConfigurationP
             try {
                 boolean found;
                 if (isConstructor) {
-                    found = delegate.registerAllConstructors(condition, queriedOnly, clazz);
+                    found = delegate.registerAllConstructors(condition, queriedOnly, clazz, reason);
                 } else {
-                    found = delegate.registerAllMethodsWithName(condition, queriedOnly, clazz, methodName);
+                    found = delegate.registerAllMethodsWithName(condition, queriedOnly, clazz, methodName, reason);
                 }
                 if (!found) {
                     throw new JsonParserException("Method " + formatMethod(clazz, methodName) + " not found");
@@ -152,11 +152,11 @@ public abstract class ReflectionConfigurationParser<C, T> extends ConfigurationP
         }
     }
 
-    private List<T> parseMethodParameters(T clazz, String methodName, List<Object> types) {
+    private List<T> parseMethodParameters(T clazz, String methodName, List<Object> types, String reason) {
         List<T> result = new ArrayList<>();
         for (Object type : types) {
             String typeName = asString(type, "types");
-            TypeResult<T> typeResult = delegate.resolveType(conditionResolver.alwaysTrue(), new NamedConfigurationTypeDescriptor(typeName), true);
+            TypeResult<T> typeResult = delegate.resolveType(conditionResolver.alwaysTrue(), new NamedConfigurationTypeDescriptor(typeName), true, reason);
             if (!typeResult.isPresent()) {
                 handleMissingElement("Could not register method " + formatMethod(clazz, methodName) + " for reflection.", typeResult.getException());
                 return null;
