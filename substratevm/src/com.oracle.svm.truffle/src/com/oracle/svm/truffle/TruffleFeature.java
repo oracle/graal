@@ -28,9 +28,6 @@ package com.oracle.svm.truffle;
 import static com.oracle.svm.graal.hosted.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.INLINE;
 import static com.oracle.svm.graal.hosted.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.INLINING_DISALLOWED;
 import static com.oracle.svm.graal.hosted.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.NO_DECISION;
-import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsingMaxDepth;
-import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
-import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -104,27 +101,6 @@ import java.util.function.ToLongFunction;
 import java.util.function.UnaryOperator;
 
 import org.graalvm.collections.Pair;
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.core.phases.HighTier;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.FrameState;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import jdk.graal.compiler.nodes.spi.Replacements;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.common.CanonicalizerPhase;
-import jdk.graal.compiler.phases.tiers.Suites;
-import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.truffle.KnownTruffleTypes;
-import jdk.graal.compiler.truffle.PartialEvaluator;
-import jdk.graal.compiler.truffle.host.HostInliningPhase;
-import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
-import jdk.graal.compiler.truffle.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -132,7 +108,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -157,7 +132,6 @@ import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
-import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshake;
 import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshakeSnippets;
@@ -176,6 +150,26 @@ import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.runtime.TruffleCallBoundary;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.phases.HighTier;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.spi.Replacements;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.tiers.Suites;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.truffle.KnownTruffleTypes;
+import jdk.graal.compiler.truffle.PartialEvaluator;
+import jdk.graal.compiler.truffle.host.HostInliningPhase;
+import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
+import jdk.graal.compiler.truffle.nodes.asserts.NeverPartOfCompilationNode;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -213,8 +207,8 @@ public class TruffleFeature implements InternalFeature {
         @Option(help = "Fail if a method known as not suitable for partial evaluation is reachable for runtime compilation")//
         public static final HostedOptionKey<Boolean> TruffleCheckBlockListMethods = new HostedOptionKey<>(true);
 
-        @Option(help = "Inline trivial methods in Truffle graphs during native image generation")//
-        public static final HostedOptionKey<Boolean> TruffleInlineDuringParsing = new HostedOptionKey<>(true);
+        @Option(help = "No longer has any effect", deprecated = true)//
+        static final HostedOptionKey<Boolean> TruffleInlineDuringParsing = new HostedOptionKey<>(true);
 
     }
 
@@ -371,9 +365,6 @@ public class TruffleFeature implements InternalFeature {
         TruffleAllowInliningPredicate allowInliningPredicate = new TruffleAllowInliningPredicate(runtimeCompilationFeature.getHostedProviders().getReplacements(),
                         graphBuilderConfig.getPlugins().getInvocationPlugins(),
                         partialEvaluator, this::allowRuntimeCompilation);
-        if (Options.TruffleInlineDuringParsing.getValue() && !SubstrateOptions.parseOnce()) {
-            graphBuilderConfig.getPlugins().appendInlineInvokePlugin(new TruffleParsingInlineInvokePlugin(config.getHostVM(), allowInliningPredicate));
-        }
         runtimeCompilationFeature.registerAllowInliningPredicate(allowInliningPredicate::allowInlining);
 
         registerNeverPartOfCompilation(graphBuilderConfig.getPlugins().getInvocationPlugins());
@@ -501,39 +492,6 @@ public class TruffleFeature implements InternalFeature {
             }
 
             return NO_DECISION;
-        }
-    }
-
-    static class TruffleParsingInlineInvokePlugin implements InlineInvokePlugin {
-
-        private final SVMHost hostVM;
-        TruffleAllowInliningPredicate inlineCriteria;
-
-        TruffleParsingInlineInvokePlugin(SVMHost hostVM, TruffleAllowInliningPredicate inlineCriteria) {
-            this.hostVM = hostVM;
-            this.inlineCriteria = inlineCriteria;
-        }
-
-        @Override
-        public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
-            assert !SubstrateOptions.parseOnce() : "inlining during parsing is not enabled with parse once";
-
-            var result = inlineCriteria.allowInlining(builder, original);
-            switch (result) {
-                case NO_DECISION -> {
-                    return null;
-                }
-                case INLINING_DISALLOWED -> {
-                    return DO_NOT_INLINE_WITH_EXCEPTION;
-                }
-            }
-            assert result == INLINE;
-            if (hostVM.isAnalysisTrivialMethod((AnalysisMethod) original) &&
-                            builder.getDepth() < InlineDuringParsingMaxDepth.getValue(HostedOptionValues.singleton())) {
-                return createStandardInlineInfo(original);
-            }
-
-            return null;
         }
     }
 

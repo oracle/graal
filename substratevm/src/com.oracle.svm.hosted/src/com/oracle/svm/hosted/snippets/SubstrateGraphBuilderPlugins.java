@@ -91,7 +91,6 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.identityhashcode.SubstrateIdentityHashCodeNode;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.meta.SharedField;
-import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
@@ -195,7 +194,7 @@ public class SubstrateGraphBuilderPlugins {
         registerImageInfoPlugins(plugins);
         registerProxyPlugins(snippetReflection, annotationSubstitutions, plugins, parsingReason);
         registerSerializationPlugins(loader, snippetReflection, plugins, parsingReason);
-        registerAtomicUpdaterPlugins(snippetReflection, plugins, parsingReason);
+        registerAtomicUpdaterPlugins(snippetReflection, plugins);
         registerObjectPlugins(plugins);
         registerUnsafePlugins(plugins, snippetReflection, parsingReason);
         registerKnownIntrinsicsPlugins(plugins);
@@ -419,11 +418,9 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerProxyPlugins(SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, InvocationPlugins plugins, ParsingReason reason) {
-        if (SubstrateOptions.parseOnce() || reason.duringAnalysis()) {
-            Registration proxyRegistration = new Registration(plugins, Proxy.class);
-            registerProxyPlugin(proxyRegistration, snippetReflection, annotationSubstitutions, reason, "getProxyClass", ClassLoader.class, Class[].class);
-            registerProxyPlugin(proxyRegistration, snippetReflection, annotationSubstitutions, reason, "newProxyInstance", ClassLoader.class, Class[].class, InvocationHandler.class);
-        }
+        Registration proxyRegistration = new Registration(plugins, Proxy.class);
+        registerProxyPlugin(proxyRegistration, snippetReflection, annotationSubstitutions, reason, "getProxyClass", ClassLoader.class, Class[].class);
+        registerProxyPlugin(proxyRegistration, snippetReflection, annotationSubstitutions, reason, "newProxyInstance", ClassLoader.class, Class[].class, InvocationHandler.class);
     }
 
     private static void registerProxyPlugin(Registration proxyRegistration, SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, ParsingReason reason,
@@ -669,12 +666,12 @@ public class SubstrateGraphBuilderPlugins {
         }
     }
 
-    private static void registerAtomicUpdaterPlugins(SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, ParsingReason reason) {
+    private static void registerAtomicUpdaterPlugins(SnippetReflectionProvider snippetReflection, InvocationPlugins plugins) {
         Registration referenceUpdaterRegistration = new Registration(plugins, AtomicReferenceFieldUpdater.class);
         referenceUpdaterRegistration.register(new RequiredInvocationPlugin("newUpdater", Class.class, Class.class, String.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode tclassNode, ValueNode vclassNode, ValueNode fieldNameNode) {
-                interceptUpdaterInvoke(b, snippetReflection, reason, tclassNode, fieldNameNode);
+                interceptUpdaterInvoke(b, snippetReflection, tclassNode, fieldNameNode);
                 /* Always return false; the call is not replaced. */
                 return false;
             }
@@ -684,7 +681,7 @@ public class SubstrateGraphBuilderPlugins {
         integerUpdaterRegistration.register(new RequiredInvocationPlugin("newUpdater", Class.class, String.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode tclassNode, ValueNode fieldNameNode) {
-                interceptUpdaterInvoke(b, snippetReflection, reason, tclassNode, fieldNameNode);
+                interceptUpdaterInvoke(b, snippetReflection, tclassNode, fieldNameNode);
                 /* Always return false; the call is not replaced. */
                 return false;
             }
@@ -694,7 +691,7 @@ public class SubstrateGraphBuilderPlugins {
         longUpdaterRegistration.register(new RequiredInvocationPlugin("newUpdater", Class.class, String.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode tclassNode, ValueNode fieldNameNode) {
-                interceptUpdaterInvoke(b, snippetReflection, reason, tclassNode, fieldNameNode);
+                interceptUpdaterInvoke(b, snippetReflection, tclassNode, fieldNameNode);
                 /* Always return false; the call is not replaced. */
                 return false;
             }
@@ -705,29 +702,26 @@ public class SubstrateGraphBuilderPlugins {
      * Intercept the invoke to newUpdater. If the holder class and field name are constant register
      * them for reflection/unsafe access.
      */
-    private static void interceptUpdaterInvoke(GraphBuilderContext b, SnippetReflectionProvider snippetReflection, ParsingReason reason, ValueNode tclassNode,
-                    ValueNode fieldNameNode) {
-        if (SubstrateOptions.parseOnce() || reason.duringAnalysis()) {
-            if (tclassNode.isConstant() && fieldNameNode.isConstant()) {
-                Class<?> tclass = snippetReflection.asObject(Class.class, tclassNode.asJavaConstant());
-                String fieldName = snippetReflection.asObject(String.class, fieldNameNode.asJavaConstant());
-                try {
-                    Field field = tclass.getDeclaredField(fieldName);
-                    // register the holder class and the field for reflection
-                    RuntimeReflection.register(tclass);
-                    RuntimeReflection.register(field);
+    private static void interceptUpdaterInvoke(GraphBuilderContext b, SnippetReflectionProvider snippetReflection, ValueNode tclassNode, ValueNode fieldNameNode) {
+        if (tclassNode.isConstant() && fieldNameNode.isConstant()) {
+            Class<?> tclass = snippetReflection.asObject(Class.class, tclassNode.asJavaConstant());
+            String fieldName = snippetReflection.asObject(String.class, fieldNameNode.asJavaConstant());
+            try {
+                Field field = tclass.getDeclaredField(fieldName);
+                // register the holder class and the field for reflection
+                RuntimeReflection.register(tclass);
+                RuntimeReflection.register(field);
 
-                    // register the field for unsafe access
-                    registerAsUnsafeAccessed(b, field);
-                } catch (NoSuchFieldException e) {
-                    /*
-                     * Ignore the exception. : If the field does not exist, there will be an error
-                     * at run time. That is then the same behavior as on HotSpot. The allocation of
-                     * the AtomicReferenceFieldUpdater could be in a never-executed path, in which
-                     * case, if we threw the exception during image building, we would wrongly
-                     * prohibit image generation.
-                     */
-                }
+                // register the field for unsafe access
+                registerAsUnsafeAccessed(b, field);
+            } catch (NoSuchFieldException e) {
+                /*
+                 * Ignore the exception. If the field does not exist, there will be an error at run
+                 * time. That is then the same behavior as on HotSpot. The allocation of the
+                 * AtomicReferenceFieldUpdater could be in a never-executed path, in which case, if
+                 * we threw the exception during image building, we would wrongly prohibit image
+                 * generation.
+                 */
             }
         }
     }
@@ -915,23 +909,21 @@ public class SubstrateGraphBuilderPlugins {
         r.register(new RequiredInvocationPlugin("newInstance", Class.class, int[].class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazzNode, ValueNode dimensionsNode) {
-                if (SubstrateOptions.parseOnce() || reason.duringAnalysis()) {
-                    /*
-                     * There is no Graal node for dynamic multi array allocation, and it is also not
-                     * necessary for performance reasons. But when the arguments are constant, we
-                     * can register the array types as instantiated so that the allocation succeeds
-                     * at run time without manual registration.
-                     */
-                    ValueNode dimensionCountNode = GraphUtil.arrayLength(dimensionsNode, ArrayLengthProvider.FindLengthMode.SEARCH_ONLY, b.getConstantReflection());
-                    if (clazzNode.isConstant() && !clazzNode.isNullConstant() && dimensionCountNode != null && dimensionCountNode.isConstant()) {
-                        Class<?> clazz = snippetReflection.asObject(Class.class, clazzNode.asJavaConstant());
-                        int dimensionCount = dimensionCountNode.asJavaConstant().asInt();
+                /*
+                 * There is no Graal node for dynamic multi array allocation, and it is also not
+                 * necessary for performance reasons. But when the arguments are constant, we can
+                 * register the array types as instantiated so that the allocation succeeds at run
+                 * time without manual registration.
+                 */
+                ValueNode dimensionCountNode = GraphUtil.arrayLength(dimensionsNode, ArrayLengthProvider.FindLengthMode.SEARCH_ONLY, b.getConstantReflection());
+                if (clazzNode.isConstant() && !clazzNode.isNullConstant() && dimensionCountNode != null && dimensionCountNode.isConstant()) {
+                    Class<?> clazz = snippetReflection.asObject(Class.class, clazzNode.asJavaConstant());
+                    int dimensionCount = dimensionCountNode.asJavaConstant().asInt();
 
-                        AnalysisType type = (AnalysisType) b.getMetaAccess().lookupJavaType(clazz);
-                        for (int i = 0; i < dimensionCount; i++) {
-                            type = type.getArrayClass();
-                            type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(clazzNode));
-                        }
+                    AnalysisType type = (AnalysisType) b.getMetaAccess().lookupJavaType(clazz);
+                    for (int i = 0; i < dimensionCount; i++) {
+                        type = type.getArrayClass();
+                        type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(clazzNode));
                     }
                 }
                 return false;
@@ -1011,19 +1003,7 @@ public class SubstrateGraphBuilderPlugins {
         r.register(new RequiredInvocationPlugin("isDeoptimizationTarget") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-
-                ResolvedJavaMethod method = b.getGraph().method();
-                if (SubstrateOptions.parseOnce()) {
-                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(MultiMethod.isDeoptTarget(method)));
-                } else {
-                    if (method instanceof SharedMethod) {
-                        b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(MultiMethod.isDeoptTarget(method)));
-                    } else {
-                        // In analysis the value is always true.
-                        b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
-                    }
-                }
-
+                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(MultiMethod.isDeoptTarget(b.getGraph().method())));
                 return true;
             }
         });

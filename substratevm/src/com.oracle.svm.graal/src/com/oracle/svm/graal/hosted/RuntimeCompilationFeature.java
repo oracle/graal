@@ -512,15 +512,11 @@ public abstract class RuntimeCompilationFeature {
         initialized = true;
 
         hostedProviders = newHostedProviders;
-        graphBuilderConfig = newGraphBuilderConfig;
+        graphBuilderConfig = newGraphBuilderConfig.withNodeSourcePosition(true);
         assert !runtimeCompilationCandidatePredicateUpdated : "Updated compilation predicate multiple times";
         runtimeCompilationCandidatePredicate = newRuntimeCompilationCandidatePredicate;
         runtimeCompilationCandidatePredicateUpdated = true;
         deoptimizeOnExceptionPredicate = newDeoptimizeOnExceptionPredicate;
-
-        if (SubstrateOptions.IncludeNodeSourcePositions.getValue() || SubstrateOptions.parseOnce()) {
-            graphBuilderConfig = graphBuilderConfig.withNodeSourcePosition(true);
-        }
     }
 
     public SubstrateMethod requireFrameInformationForMethod(ResolvedJavaMethod method, BeforeAnalysisAccessImpl config, boolean registerAsRoot) {

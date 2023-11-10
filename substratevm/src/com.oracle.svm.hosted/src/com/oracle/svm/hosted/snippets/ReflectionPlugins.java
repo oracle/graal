@@ -56,7 +56,6 @@ import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
@@ -632,8 +631,6 @@ public final class ReflectionPlugins {
         }
         return null;
     }
-
-    private final boolean parseOnce = SubstrateOptions.parseOnce();
 
     /**
      * This method checks if the element should be intrinsified and returns the cached intrinsic
