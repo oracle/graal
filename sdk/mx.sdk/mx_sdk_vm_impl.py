@@ -4011,6 +4011,18 @@ def graalvm_home(stage1=False, fatalIfMissing=False):
     return _graalvm_home
 
 
+def graalvm_home_from_env(extra_mx_args, env, stage1=False):
+    args = ['--quiet'] + extra_mx_args + ['graalvm-home'] + (['--stage1'] if stage1 else [])
+    out = mx.OutputCapture()
+    err = mx.OutputCapture()
+    exit_status = mx.run_mx(args, out=out, err=err, env=env, nonZeroIsFatal=False)
+    if exit_status:
+        args = ' '.join(map(pipes.quote, args))
+        mx.warn(f"'mx {args}' returned {exit_status}. Stdout:\n{out.data.strip()}\nStderr: {err.data.strip()}")
+        mx.abort(exit_status)
+    return out.data.strip()
+
+
 def standalone_home(comp_dir_name, is_jvm):
     """
     :type comp_dir_name: str
