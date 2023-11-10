@@ -713,7 +713,9 @@ final class TStringOps {
         int offset = a.offset();
         int length = a.length();
         int hashCode = hashCodeWithStrideIntl(arrayA, offset, length, stride);
-        TStringConstants.truffleSafePointPollNow(location, length);
+        if (length >= 0x10000) {
+            TStringConstants.truffleSafePointPollNow(location, length);
+        }
         return hashCode;
     }
 
