@@ -122,8 +122,7 @@ public class GuidelinesExamples {
     }
 
     abstract static class MyNodeV2 extends Node {
-        @Child
-        MyNodeHandleOther otherHandler;
+        @Child MyNodeHandleOther otherHandler;
 
         MyNodeV2(MyNodeHandleOther otherHandler) {
             this.otherHandler = otherHandler;
@@ -169,7 +168,7 @@ public class GuidelinesExamples {
 
         @Specialization
         int doInts(int o,
-                   @Cached MyCommonNode node) {
+                        @Cached MyCommonNode node) {
             return node.execute(this, o);
         }
 
@@ -263,7 +262,7 @@ public class GuidelinesExamples {
 
         @Specialization(guards = "guardNode.execute(this, o)", limit = "1")
         int doObj(Object o,
-                  @SuppressWarnings("unused") @Cached GuardNode guardNode) {
+                        @SuppressWarnings("unused") @Cached GuardNode guardNode) {
             return helper(o);
         }
 
