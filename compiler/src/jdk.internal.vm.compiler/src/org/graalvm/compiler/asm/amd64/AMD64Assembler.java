@@ -5097,6 +5097,18 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitOperandHelper(7, adr, 0);
     }
 
+    public void wrpkru() {
+        emitByte(0x0F);
+        emitByte(0x01);
+        emitByte(0xEF);
+    }
+
+    public void rdpkru() {
+        emitByte(0x0F);
+        emitByte(0x01);
+        emitByte(0xEE);
+    }
+
     public final void vpaddd(Register dst, Register nds, Register src, AVXSize size) {
         VexRVMOp.VPADDD.emit(this, size, dst, nds, src);
     }
