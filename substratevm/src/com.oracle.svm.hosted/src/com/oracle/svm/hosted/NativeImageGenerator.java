@@ -600,7 +600,7 @@ public class NativeImageGenerator {
                                 classInitializationSupport, GraalAccess.getOriginalProviders().getLoopsDataProvider(), platformConfig).build();
 
                 registerGraphBuilderPlugins(featureHandler, runtimeConfiguration, (HostedProviders) runtimeConfiguration.getProviders(), bb.getMetaAccess(), aUniverse,
-                                hMetaAccess, hUniverse,
+                                hUniverse,
                                 nativeLibraries, loader, ParsingReason.AOTCompilation, bb.getAnnotationSubstitutionProcessor(),
                                 new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM()),
                                 ConfigurationValues.getTarget(), this.isStubBasedPluginsSupported());
@@ -1134,7 +1134,7 @@ public class NativeImageGenerator {
              */
             bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity.class).registerAsReachable("root class");
 
-            NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, null, aProviders, aMetaAccess, aUniverse, null, null, nativeLibraries, loader, ParsingReason.PointsToAnalysis,
+            NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, null, aProviders, aMetaAccess, aUniverse, null, nativeLibraries, loader, ParsingReason.PointsToAnalysis,
                             bb.getAnnotationSubstitutionProcessor(), classInitializationPlugin, ConfigurationValues.getTarget(), supportsStubBasedPlugins);
             registerReplacements(debug, featureHandler, null, aProviders, true, initForeignCalls);
 
@@ -1339,7 +1339,7 @@ public class NativeImageGenerator {
     }
 
     public static void registerGraphBuilderPlugins(FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, HostedProviders providers, AnalysisMetaAccess aMetaAccess,
-                    AnalysisUniverse aUniverse, HostedMetaAccess hMetaAccess, HostedUniverse hUniverse, NativeLibraries nativeLibs, ImageClassLoader loader, ParsingReason reason,
+                    AnalysisUniverse aUniverse, HostedUniverse hUniverse, NativeLibraries nativeLibs, ImageClassLoader loader, ParsingReason reason,
                     AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ClassInitializationPlugin classInitializationPlugin,
                     TargetDescription target, boolean supportsStubBasedPlugins) {
         GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new SubstitutionInvocationPlugins(annotationSubstitutionProcessor));
@@ -1418,22 +1418,8 @@ public class NativeImageGenerator {
         ImageSingletons.lookup(TargetGraphBuilderPlugins.class).register(plugins, replacements, architecture,
                         /* registerForeignCallMath */ false, options);
 
-        /*
-         * When the context is hosted, i.e., ahead-of-time compilation, and after the analysis we
-         * need the hosted meta access.
-         */
-        MetaAccessProvider pluginsMetaAccess;
-        if (reason == ParsingReason.PointsToAnalysis || reason == ParsingReason.JITCompilation) {
-            pluginsMetaAccess = aMetaAccess;
-        } else {
-            VMError.guarantee(reason == ParsingReason.AOTCompilation);
-            pluginsMetaAccess = hMetaAccess;
-        }
-
-        assert pluginsMetaAccess != null;
         SubstrateGraphBuilderPlugins.registerInvocationPlugins(annotationSubstitutionProcessor,
                         loader,
-                        pluginsMetaAccess,
                         hostedSnippetReflection,
                         plugins.getInvocationPlugins(),
                         replacements,
