@@ -27,7 +27,7 @@
         ]
     },
     {
-        "name": "maven-ce-resource-bundle",
+        "name": "maven-bundle-ce",
         "core": true,
         "jdk": "jdk_21",
         "override_name":"maven-resource-bundle",
