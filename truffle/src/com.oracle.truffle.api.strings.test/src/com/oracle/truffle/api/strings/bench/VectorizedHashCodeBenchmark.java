@@ -43,9 +43,11 @@ package com.oracle.truffle.api.strings.bench;
 import java.io.ByteArrayOutputStream;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.nio.charset.StandardCharsets;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.Assert;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
@@ -80,23 +82,35 @@ public class VectorizedHashCodeBenchmark extends TStringBenchmarkBase {
         TruffleString s16;
         TruffleString s32;
 
+        int h8;
+        int h16;
+        int h32;
+
+        int[] i16;
+        int[] i32;
+
         public BenchState() {
         }
 
         @Setup
         public void setUp() {
-            b8 = random().ints(length, 0, 0xff).collect(ByteArrayOutputStream::new,
+            b8 = random().ints(length, 0, 0xff + 1).collect(ByteArrayOutputStream::new,
                             (bytes, i) -> bytes.write((byte) i),
                             (bytes, next) -> bytes.write(next.toByteArray(), 0, next.size())).toByteArray();
 
-            b16 = TruffleString.fromIntArrayUTF32Uncached(random().ints(length, 0, 0xffff).toArray()).switchEncodingUncached(TruffleString.Encoding.UTF_16).copyToByteArrayUncached(
-                            TruffleString.Encoding.UTF_16);
+            i16 = random().ints(length, 0, 0xffff + 1).toArray();
+            b16 = TruffleString.fromIntArrayUTF32Uncached(i16).switchEncodingUncached(TruffleString.Encoding.UTF_16).copyToByteArrayUncached(TruffleString.Encoding.UTF_16);
 
-            b32 = TruffleString.fromIntArrayUTF32Uncached(random().ints(length, 0, 0x10_ffff).toArray()).copyToByteArrayUncached(TruffleString.Encoding.UTF_32);
+            i32 = random().ints(length, 0, 0x10_ffff + 1).toArray();
+            b32 = TruffleString.fromIntArrayUTF32Uncached(i32).copyToByteArrayUncached(TruffleString.Encoding.UTF_32);
 
             s8 = TruffleString.fromByteArrayUncached(b8, TruffleString.Encoding.ISO_8859_1, false);
             s16 = TruffleString.fromByteArrayUncached(b16, TruffleString.Encoding.UTF_16, false);
             s32 = TruffleString.fromByteArrayUncached(b32, TruffleString.Encoding.UTF_32, false);
+
+            h8 = new String(b8, StandardCharsets.ISO_8859_1).hashCode();
+            h16 = hashCodeFromArray(i16);
+            h32 = hashCodeFromArray(i32);
         }
     }
 
@@ -125,7 +139,9 @@ public class VectorizedHashCodeBenchmark extends TStringBenchmarkBase {
         TruffleString.Encoding encoding = TruffleString.Encoding.ISO_8859_1;
         TruffleString string = state.s8;
         resetHashCode(string);
-        return string.hashCodeUncached(encoding);
+        int hashCode = string.hashCodeUncached(encoding);
+        checkResult(state.h8, hashCode);
+        return hashCode;
     }
 
     @Benchmark
@@ -133,7 +149,9 @@ public class VectorizedHashCodeBenchmark extends TStringBenchmarkBase {
         TruffleString.Encoding encoding = TruffleString.Encoding.UTF_16;
         TruffleString string = state.s16;
         resetHashCode(string);
-        return string.hashCodeUncached(encoding);
+        int hashCode = string.hashCodeUncached(encoding);
+        checkResult(state.h16, hashCode);
+        return hashCode;
     }
 
     @Benchmark
@@ -141,6 +159,25 @@ public class VectorizedHashCodeBenchmark extends TStringBenchmarkBase {
         TruffleString.Encoding encoding = TruffleString.Encoding.UTF_32;
         TruffleString string = state.s32;
         resetHashCode(string);
-        return string.hashCodeUncached(encoding);
+        int hashCode = string.hashCodeUncached(encoding);
+        checkResult(state.h32, hashCode);
+        return hashCode;
+    }
+
+    private static void checkResult(int expectedHashCode, int hashCode) {
+        Assert.assertEquals(expectedHashCode, hashCode);
+    }
+
+    private static int hashCodeFromArray(int[] a) {
+        return hashCode(0, a, 0, a.length);
+    }
+
+    private static int hashCode(int initialValue, int[] a, int fromIndex, int length) {
+        int end = fromIndex + length;
+        int result = initialValue;
+        for (int i = fromIndex; i < end; i++) {
+            result = 31 * result + a[i];
+        }
+        return result;
     }
 }
