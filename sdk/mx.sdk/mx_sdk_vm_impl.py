@@ -4116,6 +4116,18 @@ def _infer_env(graalvm_dist):
 
     return sorted(list(dynamicImports)), sorted(components), sorted(excludeComponents), sorted(nativeImages), sorted(disableInstallables), sorted(non_rebuildable_images), _debuginfo_dists(), _no_licenses()
 
+
+def graalvm_clean_env(out_env=None):
+    """
+    Returns an env var that does not define variables that configure the GraalVM
+    """
+    env = out_env or os.environ.copy()
+    for env_var in ['DYNAMIC_IMPORTS', 'COMPONENTS', 'NATIVE_IMAGES', 'EXCLUDE_COMPONENTS', 'DISABLE_INSTALLABLES', 'NON_REBUILDABLE_IMAGES']:
+        if env_var in env:
+            env.pop(env)
+    return env
+
+
 def graalvm_env(out_env=None):
     """
     Gets an environment that captures variables configuring the GraalVM configured in the current mx environment.
