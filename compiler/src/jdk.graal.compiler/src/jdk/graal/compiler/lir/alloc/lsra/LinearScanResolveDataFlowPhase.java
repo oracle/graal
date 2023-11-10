@@ -118,7 +118,7 @@ public class LinearScanResolveDataFlowPhase extends LinearScanAllocationPhase {
                 }
             }
 
-            moveResolver.setInsertPosition(allocator.getLIR().getLIRforBlock(toBlock), 1);
+            moveResolver.setInsertPosition(allocator.getLIR().getLIRforBlock(toBlock), allocator.getLIRGenerationResult().getFirstInsertPosition(toBlock));
         }
     }
 
@@ -170,7 +170,7 @@ public class LinearScanResolveDataFlowPhase extends LinearScanAllocationPhase {
                          */
                         resolveCollectMappings(pred, sux, block, moveResolver);
                         if (moveResolver.hasMappings()) {
-                            moveResolver.setInsertPosition(instructions, 1);
+                            moveResolver.setInsertPosition(instructions, allocator.getLIRGenerationResult().getFirstInsertPosition(block));
                             moveResolver.resolveAndAppendMoves();
                         }
                     }

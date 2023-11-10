@@ -37,7 +37,6 @@ import jdk.graal.compiler.lir.StandardOp.LabelOp;
 import jdk.graal.compiler.lir.gen.DiagnosticLIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.PostAllocationOptimizationPhase;
-
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -48,19 +47,19 @@ public class MethodProfilingPhase extends PostAllocationOptimizationPhase {
 
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PostAllocationOptimizationContext context) {
-        new Analyzer(target, lirGenRes.getCompilationUnitName(), lirGenRes.getLIR(), context.diagnosticLirGenTool).run();
+        new Analyzer(target, lirGenRes, context.diagnosticLirGenTool).run();
     }
 
     private static class Analyzer {
         private final LIR lir;
         private final DiagnosticLIRGeneratorTool diagnosticLirGenTool;
         private final LIRInsertionBuffer buffer;
-        private final String compilationUnitName;
         private final ConstantValue increment;
+        private final LIRGenerationResult lirGenRes;
 
-        Analyzer(TargetDescription target, String compilationUnitName, LIR lir, DiagnosticLIRGeneratorTool diagnosticLirGenTool) {
-            this.lir = lir;
-            this.compilationUnitName = compilationUnitName;
+        Analyzer(TargetDescription target, LIRGenerationResult lirGenRes, DiagnosticLIRGeneratorTool diagnosticLirGenTool) {
+            this.lir = lirGenRes.getLIR();
+            this.lirGenRes = lirGenRes;
             this.diagnosticLirGenTool = diagnosticLirGenTool;
             this.buffer = new LIRInsertionBuffer();
             this.increment = new ConstantValue(LIRKind.fromJavaKind(target.arch, JavaKind.Int), JavaConstant.INT_1);
@@ -85,9 +84,10 @@ public class MethodProfilingPhase extends PostAllocationOptimizationPhase {
             assert instructions.get(0) instanceof LabelOp : "Not a LabelOp: " + instructions.get(0);
             assert !(instructions.get(1) instanceof LabelOp) : "Is a LabelOp: " + instructions.get(1);
 
-            LIRInstruction op = diagnosticLirGenTool.createBenchmarkCounter(compilationUnitName, group, increment);
+            LIRInstruction op = diagnosticLirGenTool.createBenchmarkCounter(lirGenRes.getCompilationUnitName(), group, increment);
             buffer.init(instructions);
-            buffer.append(1, op);
+            int insertionIndex = lirGenRes.getFirstInsertPosition(block);
+            buffer.append(insertionIndex, op);
             buffer.finish();
         }
     }

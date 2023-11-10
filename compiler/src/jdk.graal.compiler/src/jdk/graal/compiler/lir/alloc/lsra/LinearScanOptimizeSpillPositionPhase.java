@@ -170,10 +170,9 @@ public final class LinearScanOptimizeSpillPositionPhase extends LinearScanAlloca
             move.setComment(res, "LSRAOptimizeSpillPos: optimize spill pos");
             debug.log(DebugContext.VERBOSE_LEVEL, "Insert spill move %s", move);
             move.setId(LinearScan.DOMINATOR_SPILL_MOVE_ID);
-            /*
-             * We can use the insertion buffer directly because we always insert at position 1.
-             */
-            insertionBuffer.append(1, move);
+
+            int insertionIndex = res.getFirstInsertPosition(spillBlock);
+            insertionBuffer.append(insertionIndex, move);
 
             betterSpillPosWithLowerProbability.increment(debug);
             interval.setSpillDefinitionPos(spillOpId);
