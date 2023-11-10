@@ -59,6 +59,7 @@ public class IterationDirectiveTest extends GraalCompilerTest {
         Assert.assertEquals("LoopBeginNode count", 1, loopBeginNodes.count());
 
         LoopBeginNode loopBeginNode = loopBeginNodes.first();
-        Assert.assertEquals("loop frequency of " + loopBeginNode, 128, ControlFlowGraph.compute(graph, false, false, false, false).localLoopFrequency(loopBeginNode), 0);
+        ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).computeFrequency(true).build();
+        Assert.assertEquals("loop frequency of " + loopBeginNode, 128, cfg.localLoopFrequency(loopBeginNode), 0);
     }
 }

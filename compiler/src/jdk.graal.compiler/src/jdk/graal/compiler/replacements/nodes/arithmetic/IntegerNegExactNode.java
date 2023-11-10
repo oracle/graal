@@ -29,6 +29,7 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.IterableNodeType;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.InputType;
@@ -40,7 +41,6 @@ import jdk.graal.compiler.nodes.calc.NegateNode;
 import jdk.graal.compiler.nodes.extended.GuardedNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -93,7 +93,7 @@ public final class IntegerNegExactNode extends NegateNode implements GuardedNode
                 if (cst.getJavaKind() == JavaKind.Int) {
                     return ConstantNode.forInt(Math.negateExact(cst.asInt()));
                 } else {
-                    assert cst.getJavaKind() == JavaKind.Long;
+                    assert cst.getJavaKind() == JavaKind.Long : Assertions.errorMessage(cst);
                     return ConstantNode.forLong(Math.negateExact(cst.asLong()));
                 }
             } catch (ArithmeticException ex) {

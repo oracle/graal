@@ -49,7 +49,7 @@ public class AArch64BitSwapOp extends AArch64LIRInstruction {
     public AArch64BitSwapOp(AllocatableValue result, AllocatableValue input) {
         super(TYPE);
         AArch64Kind kind = (AArch64Kind) input.getPlatformKind();
-        assert kind == AArch64Kind.DWORD || kind == AArch64Kind.QWORD;
+        assert kind == AArch64Kind.DWORD || kind == AArch64Kind.QWORD : kind;
 
         this.result = result;
         this.input = input;

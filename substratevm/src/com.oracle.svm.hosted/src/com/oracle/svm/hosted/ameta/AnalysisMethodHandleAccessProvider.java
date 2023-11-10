@@ -70,7 +70,8 @@ final class AnalysisMethodHandleAccessProvider implements MethodHandleAccessProv
         if (originalMethodHandle == null) {
             return null;
         }
-        ResolvedJavaMethod originalTarget = originalMethodHandleAccess.resolveInvokeBasicTarget(originalMethodHandle, forceBytecodeGeneration);
+        // In Native Image, bytecode generation is permissible.
+        ResolvedJavaMethod originalTarget = originalMethodHandleAccess.resolveInvokeBasicTarget(originalMethodHandle, true);
         return analysisUniverse.lookup(originalTarget);
     }
 

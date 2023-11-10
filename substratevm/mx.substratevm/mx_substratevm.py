@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -268,7 +268,7 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
             raise mx.abort('The built GraalVM for config ' + str(config) + ' does not contain a native-image command')
 
     def _native_image(args, **kwargs):
-        mx.run([native_image_cmd] + _maybe_convert_to_args_file(args), **kwargs)
+        return mx.run([native_image_cmd] + _maybe_convert_to_args_file(args), **kwargs)
 
     def is_launcher(launcher_path):
         with open(launcher_path, 'rb') as fp:
@@ -282,12 +282,20 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
         verbose_image_build_option = ['--verbose'] if mx.get_opts().verbose else []
         _native_image(verbose_image_build_option + ['--macro:native-image-launcher'])
 
-    def query_native_image(all_args, option):
-
+    def query_native_image(all_args):
         stdoutdata = []
         def stdout_collector(x):
             stdoutdata.append(x.rstrip())
-        _native_image(['--dry-run', '--verbose'] + all_args, out=stdout_collector)
+        stderrdata = []
+        def stderr_collector(x):
+            stderrdata.append(x.rstrip())
+        exit_code = _native_image(['--dry-run', '--verbose'] + all_args, nonZeroIsFatal=False, out=stdout_collector, err=stderr_collector)
+        if exit_code != 0:
+            for line in stdoutdata:
+                print(line)
+            for line in stderrdata:
+                print(line)
+            mx.abort('Failed to query native-image.')
 
         def remove_quotes(val):
             if len(val) >= 2 and val.startswith("'") and val.endswith("'"):
@@ -295,19 +303,24 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
             else:
                 return val
 
-        result = None
+        path_regex = re.compile(r'^-H:Path(@[^=]*)?=')
+        name_regex = re.compile(r'^-H:Name(@[^=]*)?=')
+        path = name = None
         for line in stdoutdata:
             arg = remove_quotes(line.rstrip('\\').strip())
-            m = re.match(option, arg)
-            if m:
-                result = arg[m.end():]
+            path_matcher = path_regex.match(arg)
+            if path_matcher:
+                path = arg[path_matcher.end():]
+            name_matcher = name_regex.match(arg)
+            if name_matcher:
+                name = arg[name_matcher.end():]
 
-        return result
+        assert path is not None and name is not None
+        return path, name
 
     def native_image_func(args, **kwargs):
         all_args = base_args + common_args + args
-        path = query_native_image(all_args, r'^-H:Path(@[^=]*)?=')
-        name = query_native_image(all_args, r'^-H:Name(@[^=]*)?=')
+        path, name = query_native_image(all_args)
         image = join(path, name)
         _native_image(all_args, **kwargs)
         return image
@@ -315,7 +328,7 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
     yield native_image_func
 
 native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
-_native_unittest_features = '--features=com.oracle.svm.test.ImageInfoTest$TestFeature,com.oracle.svm.test.ServiceLoaderTest$TestFeature,com.oracle.svm.test.SecurityServiceTest$TestFeature'
+_native_unittest_features = '--features=com.oracle.svm.test.ImageInfoTest$TestFeature,com.oracle.svm.test.ServiceLoaderTest$TestFeature,com.oracle.svm.test.SecurityServiceTest$TestFeature,com.oracle.svm.test.ReflectionRegistrationTest$TestFeature'
 
 IMAGE_ASSERTION_FLAGS = svm_experimental_options(['-H:+VerifyGraalGraphs', '-H:+VerifyPhases'])
 
@@ -1234,28 +1247,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     support_distributions=[
         "substratevm:POLYGLOT_NATIVE_API_HEADERS",
     ],
-    polyglot_lib_build_args=[
-        "--macro:truffle",
-        "--features=org.graalvm.polyglot.nativeapi.PolyglotNativeAPIFeature",
-        "-Dorg.graalvm.polyglot.nativeapi.libraryPath=${java.home}/lib/polyglot/",
-        # Temporary solution for polyglot-native-api.jar on classpath, will be fixed by modularization, GR-45104.
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.c.function=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.handles=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.headers=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.jvmstat=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.thread=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.threadlocal=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.util=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.hosted=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.hosted.c=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.hosted.c.util=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage/org.graalvm.nativeimage.impl=ALL-UNNAMED",
-    ] + svm_experimental_options([
-        "-H:CStandard=C11",
-        "-H:+SpawnIsolates",
-    ]),
     polyglot_lib_jar_dependencies=[
         "substratevm:POLYGLOT_NATIVE_API",
     ],

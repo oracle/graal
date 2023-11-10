@@ -24,7 +24,10 @@
  */
 package jdk.graal.compiler.replacements.nodes;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.Stride;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
@@ -34,8 +37,6 @@ import jdk.graal.compiler.nodes.ComputeObjectAddressNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -84,7 +85,7 @@ public final class ArrayIndexOfMacroNode extends MacroNode {
             if (variant == LIRGeneratorTool.ArrayIndexOfVariant.Table) {
                 ValueNode array = searchValues[0];
                 ConstantNode offset = ConstantNode.forLong(tool.getMetaAccess().getArrayBaseOffset(JavaKind.Byte));
-                assert offset.getStackKind() == tool.getReplacements().getWordKind();
+                assert offset.getStackKind() == tool.getReplacements().getWordKind() : Assertions.errorMessageContext("offset", offset);
                 searchValues[0] = graph().add(new ComputeObjectAddressNode(array, graph().addOrUnique(offset)));
             }
             ArrayIndexOfNode replacement = graph().addOrUnique(new ArrayIndexOfNode(stride, variant, null, locationIdentity,

@@ -29,6 +29,7 @@ import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
@@ -43,7 +44,6 @@ import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
@@ -259,7 +259,7 @@ public final class IntegerEqualsNode extends CompareNode implements Canonicaliza
                                 if (shift.getX().getStackKind() == JavaKind.Int) {
                                     return new IntegerTestNode(shift.getX(), ConstantNode.forInt(-1 >>> amount));
                                 } else {
-                                    assert shift.getX().getStackKind() == JavaKind.Long;
+                                    assert shift.getX().getStackKind() == JavaKind.Long : Assertions.errorMessage(shift, shift.getX(), shift.getY());
                                     return new IntegerTestNode(shift.getX(), ConstantNode.forLong(-1L >>> amount));
                                 }
                             }
@@ -271,7 +271,7 @@ public final class IntegerEqualsNode extends CompareNode implements Canonicaliza
                                 if (shift.getX().getStackKind() == JavaKind.Int) {
                                     return new IntegerTestNode(shift.getX(), ConstantNode.forInt(-1 << amount));
                                 } else {
-                                    assert shift.getX().getStackKind() == JavaKind.Long;
+                                    assert shift.getX().getStackKind() == JavaKind.Long : Assertions.errorMessage(shift, shift.getX(), shift.getY());
                                     return new IntegerTestNode(shift.getX(), ConstantNode.forLong(-1L << amount));
                                 }
                             }
@@ -283,7 +283,7 @@ public final class IntegerEqualsNode extends CompareNode implements Canonicaliza
                                 if (shift.getX().getStackKind() == JavaKind.Int) {
                                     return new IntegerTestNode(shift.getX(), ConstantNode.forInt(-1 << amount));
                                 } else {
-                                    assert shift.getX().getStackKind() == JavaKind.Long;
+                                    assert shift.getX().getStackKind() == JavaKind.Long : Assertions.errorMessage(shift, shift.getX(), shift.getY());
                                     return new IntegerTestNode(shift.getX(), ConstantNode.forLong(-1L << amount));
                                 }
                             }

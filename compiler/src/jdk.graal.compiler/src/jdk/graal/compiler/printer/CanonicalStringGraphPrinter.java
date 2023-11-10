@@ -161,7 +161,7 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
 
     protected static ControlFlowGraph getControlFlowGraph(StructuredGraph graph) {
         try {
-            return ControlFlowGraph.compute(graph, true, true, false, false);
+            return ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeFrequency(true).build();
         } catch (Throwable e) {
             // Ignore a non-well formed graph
             return null;

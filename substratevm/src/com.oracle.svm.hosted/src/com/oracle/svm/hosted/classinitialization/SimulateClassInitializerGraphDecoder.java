@@ -52,6 +52,24 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.heap.ImageHeapArray;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.heap.ImageHeapInstance;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
+import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerPolicy.SimulateClassInitializerInlineScope;
+import com.oracle.svm.hosted.fieldfolding.IsStaticFinalFieldInitializedNode;
+import com.oracle.svm.hosted.fieldfolding.MarkStaticFinalFieldInitializedNode;
+
 import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
@@ -78,24 +96,6 @@ import jdk.graal.compiler.nodes.virtual.VirtualInstanceNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.replacements.arraycopy.ArrayCopyNode;
 import jdk.graal.compiler.replacements.nodes.ObjectClone;
-import org.graalvm.nativeimage.ImageSingletons;
-
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.ObjectScanner;
-import com.oracle.graal.pointsto.heap.ImageHeapArray;
-import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.graal.pointsto.heap.ImageHeapInstance;
-import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
-import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
-import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerPolicy.SimulateClassInitializerInlineScope;
-import com.oracle.svm.hosted.fieldfolding.IsStaticFinalFieldInitializedNode;
-import com.oracle.svm.hosted.fieldfolding.MarkStaticFinalFieldInitializedNode;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -306,7 +306,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
         int idx = asIntegerOrMinusOne(node.index());
 
         if (array != null && value != null && idx >= 0 && idx < array.getLength()) {
-            var componentType = (AnalysisType) array.getType(metaAccess).getComponentType();
+            var componentType = array.getType(metaAccess).getComponentType();
             if (node.elementKind().isPrimitive() || value.isNull() || componentType.isAssignableFrom(((TypedConstant) value).getType(metaAccess))) {
                 array.setElement(idx, adaptForImageHeap(value, componentType.getStorageKind()));
                 return null;
@@ -341,8 +341,8 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
             return false;
         }
 
-        var sourceComponentType = (AnalysisType) source.getType(metaAccess).getComponentType();
-        var destComponentType = (AnalysisType) dest.getType(metaAccess).getComponentType();
+        var sourceComponentType = source.getType(metaAccess).getComponentType();
+        var destComponentType = dest.getType(metaAccess).getComponentType();
         if (sourceComponentType.getJavaKind() != destComponentType.getJavaKind()) {
             return false;
         }
@@ -534,7 +534,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
     private ValueNode handleObjectClone(SimulateClassInitializerInlineScope countersScope, ObjectClone node) {
         var originalImageHeapConstant = asActiveImageHeapConstant(node.getObject());
         if (originalImageHeapConstant != null) {
-            var type = (AnalysisType) originalImageHeapConstant.getType(metaAccess);
+            var type = originalImageHeapConstant.getType(metaAccess);
             if ((originalImageHeapConstant instanceof ImageHeapArray originalArray && accumulateNewArraySize(countersScope, type, originalArray.getLength(), node.asNode())) ||
                             (type.isCloneableWithAllocation() && accumulateNewInstanceSize(countersScope, type, node.asNode()))) {
                 var cloned = originalImageHeapConstant.forObjectClone();

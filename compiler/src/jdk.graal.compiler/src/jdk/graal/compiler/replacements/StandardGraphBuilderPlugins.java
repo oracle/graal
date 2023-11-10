@@ -63,6 +63,7 @@ import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Edges;
 import jdk.graal.compiler.graph.Node;
@@ -226,9 +227,6 @@ import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
-/**
- * Provides non-runtime specific {@link InvocationPlugin}s.
- */
 public class StandardGraphBuilderPlugins {
 
     public static void registerInvocationPlugins(SnippetReflectionProvider snippetReflection,
@@ -1072,6 +1070,7 @@ public class StandardGraphBuilderPlugins {
             }
         }
         r.register(new InvocationPlugin("multiplyHigh", long.class, long.class) {
+
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
                 b.push(JavaKind.Long, b.append(new IntegerMulHighNode(x, y)));
@@ -1494,7 +1493,7 @@ public class StandardGraphBuilderPlugins {
                         b.setStateAfter((StateSplit) node);
                         if (returnKind != JavaKind.Void) {
                             ValueNode popped = b.pop(returnKind);
-                            assert popped == node;
+                            assert popped == node : Assertions.errorMessage(popped, node, value);
                         }
                     }
                     merge.addForwardEnd(endNode);
@@ -2088,7 +2087,7 @@ public class StandardGraphBuilderPlugins {
 
         CheckIndexPlugin(Type type) {
             super("checkIndex", type, type, BiFunction.class);
-            assert type == int.class || type == long.class;
+            assert type == int.class || type == long.class : Assertions.errorMessage(type);
             this.kind = type == int.class ? JavaKind.Int : JavaKind.Long;
         }
 

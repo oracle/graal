@@ -35,13 +35,19 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 
 @SuppressWarnings("unused")
 @TargetClass(value = java.lang.Module.class)
 public final class Target_java_lang_Module {
     @Alias
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     public native void ensureNativeAccess(Class<?> owner, String methodName);
+
+    @Alias
+    @TargetElement(onlyWith = JDK22OrLater.class)
+    public native void ensureNativeAccess(Class<?> owner, String methodName, Class<?> currentClass);
 
     @SuppressWarnings("static-method")
     @Substitute

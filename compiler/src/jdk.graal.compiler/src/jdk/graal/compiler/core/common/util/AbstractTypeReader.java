@@ -49,7 +49,7 @@ public abstract class AbstractTypeReader implements TypeReader {
     }
 
     private long readPacked(int b0) {
-        assert b0 >= UnsafeArrayTypeWriter.NUM_LOW_CODES;
+        assert b0 >= UnsafeArrayTypeWriter.NUM_LOW_CODES : b0;
         long sum = b0;
         long shift = UnsafeArrayTypeWriter.HIGH_WORD_SHIFT;
         for (int i = 2;; i++) {

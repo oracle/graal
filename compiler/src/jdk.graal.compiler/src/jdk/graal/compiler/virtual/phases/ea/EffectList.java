@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.function.Consumer;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
@@ -163,7 +164,7 @@ public class EffectList implements Iterable<EffectList.Effect> {
     }
 
     public void insertAll(EffectList list, int position) {
-        assert position >= 0 && position <= size;
+        assert position >= 0 && position <= size : Assertions.errorMessageContext("position", position, "size", size);
         enlarge(list.size);
         System.arraycopy(effects, position, effects, position + list.size, size - position);
         System.arraycopy(list.effects, 0, effects, position, list.size);

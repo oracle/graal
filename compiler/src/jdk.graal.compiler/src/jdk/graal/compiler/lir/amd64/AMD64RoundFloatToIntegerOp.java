@@ -133,7 +133,7 @@ public class AMD64RoundFloatToIntegerOp extends AMD64LIRInstruction {
             masm.movl(rtmp, Integer.MAX_VALUE);
             masm.cmovl(ConditionFlag.Positive, dst, rtmp);
         } else {
-            assert input.getPlatformKind() == AMD64Kind.DOUBLE;
+            assert input.getPlatformKind() == AMD64Kind.DOUBLE : input;
             masm.movq(rtmp, DOUBLE_EXP_BIT_MASK);
             masm.movdq(dst, src);
             masm.andq(dst, rtmp);

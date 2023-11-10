@@ -43,6 +43,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.Pair;
+
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
@@ -51,6 +52,7 @@ import jdk.graal.compiler.core.common.cfg.CFGVerifier;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
@@ -134,7 +136,6 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
-
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodeFrame;
@@ -901,7 +902,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         try {
             /* Check that the control flow graph can be computed, to catch problems early. */
-            assert CFGVerifier.verify(ControlFlowGraph.compute(graph, true, true, true, true));
+            assert CFGVerifier.verify(
+                            ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeDominators(true).computePostdominators(true).computeFrequency(true).build());
         } catch (Throwable ex) {
             throw GraalError.shouldNotReachHere(ex, "Control flow graph not valid after partial evaluation"); // ExcludeFromJacocoGeneratedReport
         }
@@ -1307,7 +1309,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             if (fixedNode instanceof ReturnNode) {
                 returnNodeCount++;
             } else if (fixedNode.isAlive()) {
-                assert fixedNode instanceof UnwindNode;
+                assert fixedNode instanceof UnwindNode : Assertions.errorMessage(fixedNode, returnAndUnwindNodes);
                 unwindNodeCount++;
             }
         }
@@ -1392,7 +1394,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             FixedNode next = nodeAfterInvoke(methodScope, loopScope, invokeData, null);
             Pair<ValueNode, FixedNode> returnAnchorPair = InliningUtil.replaceInvokeAtUsages(invokeNode, returnValue, merge);
             returnValue = returnAnchorPair.getLeft();
-            assert returnAnchorPair.getRight() == merge;
+            assert returnAnchorPair.getRight() == merge : Assertions.errorMessage(returnAnchorPair.getRight(), merge, is);
             merge.setNext(next);
         }
 
@@ -1409,7 +1411,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
         deleteInvoke(invoke);
 
-        assert exceptionValue == null || exceptionValue instanceof FixedAnchorNode && exceptionValue.predecessor() != null;
+        assert exceptionValue == null || exceptionValue instanceof FixedAnchorNode && exceptionValue.predecessor() != null : Assertions.errorMessageContext("exceptionValue", exceptionValue);
 
         for (InlineInvokePlugin plugin : inlineInvokePlugins) {
             plugin.notifyAfterInline(inlineMethod);
@@ -1429,7 +1431,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     @SuppressWarnings("unchecked")
     private static <T> T getSingleMatchingNode(List<ControlSinkNode> returnAndUnwindNodes, boolean hasNonMatchingEntries, Class<T> clazz) {
         if (!hasNonMatchingEntries) {
-            assert returnAndUnwindNodes.size() == 1;
+            assert returnAndUnwindNodes.size() == 1 : Assertions.errorMessage(returnAndUnwindNodes, hasNonMatchingEntries, clazz);
             return (T) returnAndUnwindNodes.get(0);
         }
 
@@ -1455,7 +1457,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 result.add((T) node);
             }
         }
-        assert result.size() == resultCount;
+        assert result.size() == resultCount : Assertions.errorMessage(returnAndUnwindNodes, hasNonMatchingEntries, clazz, resultCount, result);
         return result;
     }
 

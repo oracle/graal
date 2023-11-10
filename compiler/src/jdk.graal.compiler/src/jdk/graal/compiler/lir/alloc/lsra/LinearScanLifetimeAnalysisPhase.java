@@ -825,8 +825,8 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                     final int blockFrom = allocator.getFirstLirInstructionId(block);
                     int blockTo = allocator.getLastLirInstructionId(block);
 
-                    assert blockFrom == instructions.get(0).id();
-                    assert blockTo == instructions.get(instructions.size() - 1).id();
+                    assert blockFrom == instructions.get(0).id() : Assertions.errorMessage(blockFrom, instructions.get(0).id());
+                    assert blockTo == instructions.get(instructions.size() - 1).id() : Assertions.errorMessage(blockTo, instructions.get(instructions.size() - 1).id());
 
                     // Update intervals for operands live at the end of this block;
                     BitSet live = allocator.getBlockData(block).liveOut;

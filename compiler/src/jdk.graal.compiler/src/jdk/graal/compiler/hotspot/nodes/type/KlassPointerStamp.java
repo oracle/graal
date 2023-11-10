@@ -31,7 +31,7 @@ import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.spi.LIRKindTool;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
-
+import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
 import jdk.vm.ci.hotspot.HotSpotMemoryAccessProvider;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
@@ -112,8 +112,8 @@ public final class KlassPointerStamp extends MetaspacePointerStamp {
             }
         }
 
-        assert c instanceof HotSpotMetaspaceConstant;
-        assert ((HotSpotMetaspaceConstant) c).isCompressed() == isCompressed();
+        assert c instanceof HotSpotMetaspaceConstant : Assertions.errorMessage(c);
+        assert ((HotSpotMetaspaceConstant) c).isCompressed() == isCompressed() : Assertions.errorMessage(c, isCompressed());
         if (nonNull()) {
             return this;
         }

@@ -40,13 +40,13 @@
  */
 package com.oracle.truffle.nfi.backend.panama;
 
+import java.lang.foreign.MemorySegment;
+
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
-
-import java.lang.foreign.MemorySegment;
 
 abstract class ClosureArgumentNode extends Node {
 
@@ -117,9 +117,8 @@ abstract class ClosureArgumentNode extends Node {
         }
 
         @Fallback
-        @SuppressWarnings("preview")
         Object doString(Object arg) {
-            return ((MemorySegment) arg).getUtf8String(0);
+            return ((MemorySegment) arg).getString(0);
         }
     }
 }

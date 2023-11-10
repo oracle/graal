@@ -815,6 +815,13 @@ public final class LLVMContext {
                 return symbolFinalStorage[id][index];
             } catch (ArrayIndexOutOfBoundsException | NullPointerException e) {
                 exception.enter();
+                if (LibraryLocator.loggingEnabled()) {
+                    loaderLogger.log(Level.FINEST, Arrays.toString(e.getStackTrace()));
+                    loaderLogger.log(Level.FINEST, "symbol is: " + symbol.getName());
+                    loaderLogger.log(Level.FINEST, "id is: " + id);
+                    loaderLogger.log(Level.FINEST, "id name is: " + bitcodeID.getName());
+                    loaderLogger.log(Level.FINEST, "index is: " + index);
+                }
                 throw new LLVMIllegalSymbolIndexException("cannot find symbol");
             }
         } else {
@@ -822,6 +829,13 @@ public final class LLVMContext {
                 return symbolDynamicStorage[id][index];
             } catch (ArrayIndexOutOfBoundsException | NullPointerException e) {
                 exception.enter();
+                if (LibraryLocator.loggingEnabled()) {
+                    loaderLogger.log(Level.FINEST, Arrays.toString(e.getStackTrace()));
+                    loaderLogger.log(Level.FINEST, "symbol is: " + symbol.getName());
+                    loaderLogger.log(Level.FINEST, "id is: " + id);
+                    loaderLogger.log(Level.FINEST, "id name is: " + bitcodeID.getName());
+                    loaderLogger.log(Level.FINEST, "index is: " + index);
+                }
                 throw new LLVMIllegalSymbolIndexException("cannot find symbol");
             }
         }

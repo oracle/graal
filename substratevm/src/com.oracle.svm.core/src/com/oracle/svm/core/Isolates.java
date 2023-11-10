@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -41,6 +40,8 @@ import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.word.Word;
 
 public class Isolates {
     public static final String IMAGE_HEAP_BEGIN_SYMBOL_NAME = "__svm_heap_begin";
@@ -71,6 +72,7 @@ public class Isolates {
      * they have a single native state that does not distinguish between isolates).
      */
     public static boolean isCurrentFirst() {
+        VMError.guarantee(isCurrentFirst != null);
         return isCurrentFirst;
     }
 

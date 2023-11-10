@@ -26,10 +26,12 @@ package jdk.graal.compiler.phases.common;
 
 import java.util.Optional;
 
-import jdk.graal.compiler.phases.BasePhase;
 import org.graalvm.collections.Pair;
+
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Graph.NodeEventScope;
@@ -56,8 +58,8 @@ import jdk.graal.compiler.nodes.calc.SignedRemNode;
 import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.util.EconomicSetNodeEventListener;
-
 import jdk.vm.ci.code.CodeUtil;
 
 /**
@@ -126,7 +128,7 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
     }
 
     protected final void optimizeRem(Canonicalizable.Binary<ValueNode> rem) {
-        assert rem instanceof IntegerDivRemNode || rem instanceof SignedFloatingIntegerRemNode;
+        assert rem instanceof IntegerDivRemNode || rem instanceof SignedFloatingIntegerRemNode : Assertions.errorMessageContext("rem", rem);
         // Java spec 15.17.3.: (a/b)*b+(a%b) == a
         // so a%b == a-(a/b)*b
         StructuredGraph graph = ((ValueNode) rem).graph();
@@ -177,14 +179,14 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
     protected static void optimizeSignedDiv(Canonicalizable.Binary<ValueNode> div) {
         ValueNode forX = div.getX();
         long c = div.getY().asJavaConstant().asLong();
-        assert c != 1 && c != -1 && c != 0;
+        assert c != 1 && c != -1 && c != 0 : Assertions.errorMessageContext("div", div, "c", c);
 
         IntegerStamp dividendStamp = (IntegerStamp) forX.stamp(NodeView.DEFAULT);
         int bitSize = dividendStamp.getBits();
         Pair<Long, Integer> nums = magicDivideConstants(c, bitSize);
         long magicNum = nums.getLeft().longValue();
         int shiftNum = nums.getRight().intValue();
-        assert shiftNum >= 0;
+        assert NumUtil.assertNonNegativeInt(shiftNum);
         ConstantNode m = ConstantNode.forLong(magicNum);
 
         ValueNode value;
@@ -206,7 +208,7 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
                 value = new NarrowNode(value, Integer.SIZE);
             }
         } else {
-            assert bitSize == 64;
+            assert bitSize == 64 : bitSize;
             value = new IntegerMulHighNode(forX, m);
             if (c > 0 && magicNum < 0) {
                 value = BinaryArithmeticNode.add(value, forX, NodeView.DEFAULT);

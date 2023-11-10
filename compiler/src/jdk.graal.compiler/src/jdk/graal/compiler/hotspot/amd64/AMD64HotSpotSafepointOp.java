@@ -24,18 +24,20 @@
  */
 package jdk.graal.compiler.hotspot.amd64;
 
+import static jdk.graal.compiler.hotspot.HotSpotHostBackend.POLLING_PAGE_RETURN_HANDLER;
 import static jdk.vm.ci.amd64.AMD64.r15;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rip;
 import static jdk.vm.ci.amd64.AMD64.rsp;
-import static jdk.graal.compiler.hotspot.HotSpotHostBackend.POLLING_PAGE_RETURN_HANDLER;
 
 import java.util.function.IntConsumer;
+
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotMarkId;
 import jdk.graal.compiler.lir.LIRFrameState;
@@ -45,7 +47,6 @@ import jdk.graal.compiler.lir.amd64.AMD64Call;
 import jdk.graal.compiler.lir.amd64.AMD64LIRInstruction;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.site.InfopointReason;
@@ -80,7 +81,7 @@ public final class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
     public static void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler asm, GraalHotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register thread, Register scratch) {
         assert !atReturn || state == null : "state is unneeded at return";
 
-        assert config.threadPollingPageOffset >= 0;
+        assert NumUtil.assertNonNegativeInt(config.threadPollingPageOffset);
         if (config.threadPollingWordOffset != -1 && atReturn && config.pollingPageReturnHandler != 0) {
             // HotSpot uses this strategy even if the selected GC doesn't require any concurrent
             // stack cleaning.

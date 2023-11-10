@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,26 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes.interop;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+package com.oracle.svm.core.jfr;
 
-public class ProxyKlass {
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-    private final ObjectKlass proxyKlass;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 
-    ProxyKlass(ObjectKlass proxyKlass) {
-        this.proxyKlass = proxyKlass;
+/**
+ * Returns {@code true} if the Native Image is built with JFR execution sampler support.
+ */
+@Platforms(Platform.HOSTED_ONLY.class)
+public class JfrExecutionSamplerSupported {
+
+    public static boolean isSupported() {
+        if (ImageSingletons.contains(JfrExecutionSamplerSupported.class)) {
+            return !RuntimeCompilation.isEnabled() && ImageSingletons.lookup(JfrExecutionSamplerSupported.class).isSupported0();
+        } else {
+            return false;
+        }
     }
 
-    public ObjectKlass getProxyKlass() {
-        return proxyKlass;
-    }
-
-    public StaticObject createProxyInstance(Object foreignObject, EspressoLanguage language, InteropLibrary interop) {
-        return StaticObject.createForeign(language, proxyKlass, foreignObject, interop);
+    protected boolean isSupported0() {
+        return HasJfrSupport.get();
     }
 }

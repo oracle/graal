@@ -108,7 +108,7 @@ public final class AgnosticInliningPhase extends BasePhase<TruffleTierContext> {
         }
 
         graph.maybeCompress();
-        assert GraphOrder.assertSchedulableGraph(graph) : "PE result must be schedulable in order to apply subsequent phases";
+        assert GraphOrder.assertSchedulableGraph(graph);
     }
 
     @Override

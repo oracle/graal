@@ -24,23 +24,23 @@
  */
 package jdk.graal.compiler.lir.amd64.vector;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PD;
 import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PS;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRRIOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.asm.amd64.AVXKind;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
 
@@ -85,7 +85,7 @@ public class AMD64VectorBinary {
 
         public AVXBinaryConstOp(VexRRIOp opcode, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue x, int y) {
             super(TYPE, size);
-            assert (y & 0xFF) == y;
+            assert (y & 0xFF) == y : y;
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -110,7 +110,7 @@ public class AMD64VectorBinary {
 
         public AVXBinaryConstFloatOp(VexRVMOp opcode, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue x, ConstantValue y) {
             super(TYPE, size);
-            assert y.getPlatformKind() == AMD64Kind.SINGLE || y.getPlatformKind() == AMD64Kind.DOUBLE;
+            assert y.getPlatformKind() == AMD64Kind.SINGLE || y.getPlatformKind() == AMD64Kind.DOUBLE : Assertions.errorMessage(y);
             this.opcode = opcode;
             this.result = result;
             this.x = x;
@@ -122,7 +122,7 @@ public class AMD64VectorBinary {
             if (y.getPlatformKind() == AMD64Kind.SINGLE) {
                 opcode.emit(masm, size, asRegister(result), asRegister(x), (AMD64Address) crb.asFloatConstRef(y.getJavaConstant(), opcode.isPacked() ? PS.getBytes() : 4));
             } else {
-                assert y.getPlatformKind() == AMD64Kind.DOUBLE;
+                assert y.getPlatformKind() == AMD64Kind.DOUBLE : Assertions.errorMessage(y);
                 opcode.emit(masm, size, asRegister(result), asRegister(x), (AMD64Address) crb.asDoubleConstRef(y.getJavaConstant(), opcode.isPacked() ? PD.getBytes() : 8));
             }
         }

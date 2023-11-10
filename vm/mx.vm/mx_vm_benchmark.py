@@ -172,58 +172,59 @@ class NativeImageVM(GraalVm):
             self.latest_profile_path = self.profile_path_no_extension + '-latest' + self.profile_file_extension
             self.config_dir = os.path.join(self.output_dir, 'config')
             self.log_dir = self.output_dir
-            self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')]
-            self.base_image_build_args += ['--no-fallback', '-g']
-            self.base_image_build_args += svm_experimental_options(['-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '--diagnostics-mode']) if vm.is_gate else []
-            self.base_image_build_args += ['-H:+ReportExceptionStackTraces']
-            self.base_image_build_args += bm_suite.build_assertions(self.benchmark_name, vm.is_gate)
+            base_image_build_args = ['--no-fallback', '-g']
+            base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '--diagnostics-mode'] if vm.is_gate else []
+            base_image_build_args += ['-H:+ReportExceptionStackTraces']
+            base_image_build_args += bm_suite.build_assertions(self.benchmark_name, vm.is_gate)
 
-            self.base_image_build_args += self.system_properties
+            base_image_build_args += self.system_properties
             self.bundle_path = self.get_bundle_path_if_present()
             self.bundle_create_path = self.get_bundle_create_path_if_present()
             if not self.bundle_path:
-                self.base_image_build_args += self.classpath_arguments
-                self.base_image_build_args += self.modulepath_arguments
-                self.base_image_build_args += self.executable
-                self.base_image_build_args += svm_experimental_options(['-H:Path=' + self.output_dir])
-            self.base_image_build_args += svm_experimental_options([
+                base_image_build_args += self.classpath_arguments
+                base_image_build_args += self.modulepath_arguments
+                base_image_build_args += self.executable
+                base_image_build_args += ['-H:Path=' + self.output_dir]
+            base_image_build_args += [
                 '-H:ConfigurationFileDirectories=' + self.config_dir,
                 '-H:+PrintAnalysisStatistics',
                 '-H:+PrintCallEdges',
                 '-H:+CollectImageBuildStatistics',
-            ])
+            ]
             self.image_build_reports_directory = os.path.join(self.output_dir, 'reports')
             if self.bundle_create_path is not None:
                 self.image_build_reports_directory = os.path.join(self.output_dir, self.bundle_create_path)
             self.image_build_stats_file = os.path.join(self.image_build_reports_directory, 'image_build_statistics.json')
 
             if vm.is_quickbuild:
-                self.base_image_build_args += ['-Ob']
+                base_image_build_args += ['-Ob']
             if vm.use_string_inlining:
-                self.base_image_build_args += svm_experimental_options(['-H:+UseStringInlining'])
+                base_image_build_args += ['-H:+UseStringInlining']
             if vm.is_llvm:
-                self.base_image_build_args += ['--features=org.graalvm.home.HomeFinderFeature'] + svm_experimental_options(['-H:CompilerBackend=llvm', '-H:DeadlockWatchdogInterval=0'])
+                base_image_build_args += ['--features=org.graalvm.home.HomeFinderFeature'] + ['-H:CompilerBackend=llvm', '-H:DeadlockWatchdogInterval=0']
             if vm.gc:
-                self.base_image_build_args += ['--gc=' + vm.gc] + svm_experimental_options(['-H:+SpawnIsolates'])
+                base_image_build_args += ['--gc=' + vm.gc] + ['-H:+SpawnIsolates']
             if vm.native_architecture:
-                self.base_image_build_args += ['-march=native']
+                base_image_build_args += ['-march=native']
             if vm.analysis_context_sensitivity:
-                self.base_image_build_args += svm_experimental_options(['-H:AnalysisContextSensitivity=' + vm.analysis_context_sensitivity, '-H:-RemoveSaturatedTypeFlows', '-H:+AliasArrayTypeFlows'])
+                base_image_build_args += ['-H:AnalysisContextSensitivity=' + vm.analysis_context_sensitivity, '-H:-RemoveSaturatedTypeFlows', '-H:+AliasArrayTypeFlows']
             if vm.no_inlining_before_analysis:
-                self.base_image_build_args += svm_experimental_options(['-H:-InlineBeforeAnalysis'])
+                base_image_build_args += ['-H:-InlineBeforeAnalysis']
             if vm.optimization_level:
-                self.base_image_build_args += ['-' + vm.optimization_level]
+                base_image_build_args += ['-' + vm.optimization_level]
             if vm.async_sampler:
-                self.base_image_build_args += ['-R:+FlightRecorder',
+                base_image_build_args += ['-R:+FlightRecorder',
                                                '-R:StartFlightRecording=filename=default.jfr',
                                                '--enable-monitoring=jfr']
                 for stage in ('instrument-image', 'instrument-run'):
                     if stage in self.stages:
                         self.stages.remove(stage)
             if self.image_vm_args is not None:
-                self.base_image_build_args += self.image_vm_args
+                base_image_build_args += self.image_vm_args
             self.is_runnable = self.check_runnable()
-            self.base_image_build_args += self.extra_image_build_arguments
+            base_image_build_args += self.extra_image_build_arguments
+            # benchmarks are allowed to use experimental options
+            self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')] + svm_experimental_options(base_image_build_args)
 
         def check_runnable(self):
             # TODO remove once there is load available for the specified benchmarks

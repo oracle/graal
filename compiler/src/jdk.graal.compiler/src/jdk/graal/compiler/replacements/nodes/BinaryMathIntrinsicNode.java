@@ -32,6 +32,7 @@ import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
@@ -47,7 +48,6 @@ import jdk.graal.compiler.nodes.spi.ArithmeticLIRLowerable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
@@ -94,8 +94,10 @@ public final class BinaryMathIntrinsicNode extends BinaryNode implements Arithme
 
     protected BinaryMathIntrinsicNode(ValueNode forX, ValueNode forY, BinaryOperation op) {
         super(TYPE, StampFactory.forKind(JavaKind.Double), forX, forY);
-        assert forX.stamp(NodeView.DEFAULT) instanceof FloatStamp && PrimitiveStamp.getBits(forX.stamp(NodeView.DEFAULT)) == 64;
-        assert forY.stamp(NodeView.DEFAULT) instanceof FloatStamp && PrimitiveStamp.getBits(forY.stamp(NodeView.DEFAULT)) == 64;
+        assert forX.stamp(NodeView.DEFAULT) instanceof FloatStamp : Assertions.errorMessageContext("forX", forX);
+        assert PrimitiveStamp.getBits(forX.stamp(NodeView.DEFAULT)) == 64 : Assertions.errorMessageContext("forX", forX);
+        assert forY.stamp(NodeView.DEFAULT) instanceof FloatStamp : Assertions.errorMessageContext("forY", forY);
+        assert PrimitiveStamp.getBits(forY.stamp(NodeView.DEFAULT)) == 64 : Assertions.errorMessageContext("forY", forY);
         this.operation = op;
     }
 

@@ -26,7 +26,6 @@ package com.oracle.svm.truffle;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-import static jdk.graal.compiler.options.OptionType.User;
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
@@ -60,23 +59,6 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.Pair;
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionStability;
-import jdk.graal.compiler.phases.tiers.Suites;
-import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.truffle.host.InjectImmutableFrameFieldsPhase;
-import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
-import jdk.graal.compiler.truffle.substitutions.TruffleInvocationPlugins;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.home.impl.DefaultHomeFinder;
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -95,6 +77,7 @@ import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
@@ -150,6 +133,22 @@ import com.oracle.truffle.api.profiles.Profile;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticShape;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.phases.tiers.Suites;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.truffle.host.InjectImmutableFrameFieldsPhase;
+import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
+import jdk.graal.compiler.truffle.substitutions.TruffleInvocationPlugins;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -182,11 +181,6 @@ public final class TruffleBaseFeature implements InternalFeature {
     }
 
     public static class Options {
-
-        @Option(help = "Automatically copy the necessary language resources to the resources/languages directory next to the produced image." +
-                        "Language resources for each language are specified in the native-image-resources.filelist file located in the language home directory." +
-                        "If there is no native-image-resources.filelist file in the language home directory or the file is empty, then no resources are copied.", type = User, stability = OptionStability.STABLE)//
-        public static final HostedOptionKey<Boolean> CopyLanguageResources = new HostedOptionKey<>(true);
 
         @Option(help = "Check that context pre-initialization does not introduce absolute TruffleFiles into the image heap.")//
         public static final HostedOptionKey<Boolean> TruffleCheckPreinitializedFiles = new HostedOptionKey<>(true);
@@ -402,7 +396,7 @@ public final class TruffleBaseFeature implements InternalFeature {
         StaticObjectSupport.duringSetup(access);
 
         HomeFinder hf = HomeFinder.getInstance();
-        if (Options.CopyLanguageResources.getValue()) {
+        if (SubstrateOptions.TruffleStableOptions.CopyLanguageResources.getValue()) {
             if (!(hf instanceof DefaultHomeFinder)) {
                 VMError.shouldNotReachHere(String.format("HomeFinder %s cannot be used if CopyLanguageResources option of TruffleBaseFeature is enabled", hf.getClass().getName()));
             }
@@ -1070,7 +1064,7 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     @Override
     public void afterImageWrite(AfterImageWriteAccess access) {
-        if (Options.CopyLanguageResources.getValue()) {
+        if (SubstrateOptions.TruffleStableOptions.CopyLanguageResources.getValue()) {
             Path buildDir = access.getImagePath();
             if (buildDir != null) {
                 Path parent = buildDir.getParent();
@@ -1415,7 +1409,7 @@ final class Target_com_oracle_truffle_polyglot_InternalResourceCache {
 
         @Override
         public Object transform(Object receiver, Object originalValue) {
-            return TruffleBaseFeature.Options.CopyLanguageResources.getValue();
+            return SubstrateOptions.TruffleStableOptions.CopyLanguageResources.getValue();
         }
     }
 }

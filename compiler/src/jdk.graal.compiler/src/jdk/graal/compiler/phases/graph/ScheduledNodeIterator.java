@@ -26,6 +26,7 @@ package jdk.graal.compiler.phases.graph;
 
 import java.util.ListIterator;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
@@ -66,7 +67,7 @@ public abstract class ScheduledNodeIterator {
             processNode(node, block, schedule, iterator);
         }
         if (reconnect != null) {
-            assert block.getSuccessorCount() == 1;
+            assert block.getSuccessorCount() == 1 : Assertions.errorMessage(block);
             reconnect.setNext(block.getFirstSuccessor().getBeginNode());
         }
     }

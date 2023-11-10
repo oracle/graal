@@ -74,8 +74,8 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
     @SuppressWarnings("this-escape")
     public AMD64HotSpotNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, AMD64NodeMatchRules nodeMatchRules) {
         super(graph, gen, nodeMatchRules);
-        assert gen instanceof AMD64HotSpotLIRGenerator;
-        assert getDebugInfoBuilder() instanceof HotSpotDebugInfoBuilder;
+        assert gen instanceof AMD64HotSpotLIRGenerator : gen;
+        assert getDebugInfoBuilder() instanceof HotSpotDebugInfoBuilder : getDebugInfoBuilder();
         ((AMD64HotSpotLIRGenerator) gen).setDebugInfoBuilder(((HotSpotDebugInfoBuilder) getDebugInfoBuilder()));
     }
 
@@ -151,7 +151,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
         AllocatableValue handler = gen.asAllocatable(operand(handlerInCallerPc));
         ForeignCallLinkage linkage = gen.getForeignCalls().lookupForeignCall(EXCEPTION_HANDLER_IN_CALLER);
         CallingConvention outgoingCc = linkage.getOutgoingCallingConvention();
-        assert outgoingCc.getArgumentCount() == 2;
+        assert outgoingCc.getArgumentCount() == 2 : outgoingCc;
         RegisterValue exceptionFixed = (RegisterValue) outgoingCc.getArgument(0);
         RegisterValue exceptionPcFixed = (RegisterValue) outgoingCc.getArgument(1);
         gen.emitMove(exceptionFixed, operand(exception));

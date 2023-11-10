@@ -27,7 +27,6 @@ package com.oracle.graal.pointsto.heap;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class ImageHeapArray extends ImageHeapConstant {
 
@@ -36,9 +35,9 @@ public abstract class ImageHeapArray extends ImageHeapConstant {
         return type.getComponentType().getStorageKind().isPrimitive() ? new ImageHeapPrimitiveArray(type, length) : new ImageHeapObjectArray(type, length);
     }
 
-    protected ImageHeapArray(ResolvedJavaType type, JavaConstant object, int identityHashCode, boolean compressed) {
-        super(type, object, identityHashCode, compressed);
-        assert type.isArray() : type;
+    protected ImageHeapArray(ConstantData constantData, boolean compressed) {
+        super(constantData, compressed);
+        assert constantData.type.isArray() : constantData.type;
     }
 
     public abstract Object getElement(int idx);

@@ -691,6 +691,8 @@ suite = {
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
             "jacoco" : "include",
+            # disable SpotBugs as long JDK 22 is unsupported [GR-49566]
+            "spotbugs" : "false",
         },
 
         "com.oracle.svm.hosted.foreign": {
@@ -719,6 +721,8 @@ suite = {
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
             "jacoco" : "include",
+            # disable SpotBugs as long JDK 22 is unsupported [GR-49566]
+            "spotbugs" : "false",
         },
 
         # Native libraries below explicitly set _FORTIFY_SOURCE to 0. This constant controls how glibc handles some
@@ -1998,7 +2002,16 @@ suite = {
                 "sdk:POLYGLOT",
                 "SVM",
             ],
-            "maven": False
+            "moduleInfo" : {
+                "name" : "org.graalvm.polyglot.nativeapi",
+                "requires" : [
+                    "org.graalvm.polyglot",
+                    "org.graalvm.nativeimage",
+                    "org.graalvm.nativeimage.builder",
+                ],
+            },
+            "useModulePath": True,
+            "maven": False,
         },
 
         "POLYGLOT_NATIVE_API_HEADERS" : {

@@ -104,14 +104,83 @@ def test():
     checker = Checker("ptype 'hello.Hello$DefaultGreeter'", rexp)
     checker.check(exec_string)
 
+    # run to main so the program image is loaded
+    exec_string = execute("break main")
+    print(exec_string)
+    exec_string = execute("run")
+    print(exec_string)
+    exec_string = execute("delete breakpoints")
+    print(exec_string)
+
+    # First thing to check is the arguments passed to the CEntryPoint
+    # routine that enters Java
+    # Find a method whose name starts with JavaMainWrapper_run_
+    # It should belong to class IsolateEnterStub
+    exec_string = execute("info func JavaMainWrapper_run_")
+    rexp = r"%s:%sint com.oracle.svm.core.code.IsolateEnterStub::(JavaMainWrapper_run_%s)\(%s\);"%(digits_pattern, spaces_pattern, wildcard_pattern, wildcard_pattern)
+    checker = Checker('info func JavaMainWrapper_run_', rexp)
+    matches = checker.check(exec_string)
+    # n.b can ony get here with one match
+    match = matches[0]
+    method_name = match.group(1)
+    print("method_name = %s"%(method_name))
+
+    ## Now find the method start addess and break it
+    command = "x/i 'com.oracle.svm.core.code.IsolateEnterStub'::%s"%(method_name)
+    exec_string = execute(command)
+    rexp = r"%s0x(%s)%scom.oracle.svm.core.code.IsolateEnterStub::JavaMainWrapper_run_%s"%(wildcard_pattern, hex_digits_pattern, wildcard_pattern, wildcard_pattern)
+    checker = Checker('x/i IsolateEnterStub::%s'%(method_name), rexp)
+    matches = checker.check(exec_string)
+    # n.b can ony get here with one match
+    match = matches[0]
+    
+    bp_address = int(match.group(1), 16)
+    print("bp = %s %x"%(match.group(1), bp_address))
+    exec_string = execute("x/i 0x%x"%bp_address)
+    print(exec_string)
+
+    # exec_string = execute("break hello.Hello::noInlineManyArgs")
+    exec_string = execute("break *0x%x"%bp_address)
+    rexp = r"Breakpoint %s at %s: file com/oracle/svm/core/code/IsolateEnterStub.java, line 1\."%(digits_pattern, address_pattern)
+    checker = Checker(r"break *0x%x"%bp_address, rexp)
+    checker.check(exec_string)
+
+    # run to breakpoint then delete it
+    execute("run")
+    execute("delete breakpoints")
+
+    # check incoming parameters are bound to sensible values
+    exec_string = execute("info args")
+    rexp = [r"__0 = %s"%(digits_pattern),
+            r"__1 = 0x%s"%(hex_digits_pattern)]
+    checker = Checker("info args : %s"%(method_name), rexp)
+    checker.check(exec_string)
+
+    exec_string = execute("p __0")
+    rexp = [r"\$%s = 1"%(digits_pattern)]
+    checker = Checker("p __0", rexp)
+    checker.check(exec_string)
+
+    
+    exec_string = execute("p __1")
+    rexp = [r"\$%s = \(org\.graalvm\.nativeimage\.c\.type\.CCharPointerPointer\) 0x%s"%(digits_pattern, hex_digits_pattern)]
+    checker = Checker("p __1", rexp)
+    checker.check(exec_string)
+
+    exec_string = execute("p __1[0]")
+    rexp = [r'\$%s = \(org\.graalvm\.nativeimage\.c\.type\.CCharPointer\) 0x%s "%s/hello_image"'%(digits_pattern, hex_digits_pattern, wildcard_pattern)]
+    checker = Checker("p __1[0]", rexp)
+    checker.check(exec_string)
+
+    
     # set a break point at hello.Hello::main
-    # expect "Breakpoint 1 at 0x[0-9a-f]+: file hello.Hello.java, line %d."
+    # expect "Breakpoint <n> at 0x[0-9a-f]+: file hello.Hello.java, line %d."
     exec_string = execute("break hello.Hello::main")
-    rexp = r"Breakpoint 1 at %s: file hello/Hello\.java, line %d\."%(address_pattern, main_start)
+    rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line %d\."%(digits_pattern, address_pattern, main_start)
     checker = Checker('break main', rexp)
     checker.check(exec_string)
 
-    # run the program till the breakpoint
+    # continue the program until the breakpoint
     execute("run")
     execute("delete breakpoints")
 
@@ -403,7 +472,7 @@ def test():
         sys.exit(1)
 
     # set breakpoint at substituted method hello.Hello$DefaultGreeter::greet
-    # expect "Breakpoint 2 at 0x[0-9a-f]+: file hello/Target_Hello_DefaultGreeter.java, line [0-9]+."
+    # expect "Breakpoint <n> at 0x[0-9a-f]+: file hello/Target_Hello_DefaultGreeter.java, line [0-9]+."
     exec_string = execute("break hello.Hello$DefaultGreeter::greet")
     rexp = r"Breakpoint %s at %s: file hello/Target_hello_Hello_DefaultGreeter\.java, line %s\."%(digits_pattern, address_pattern, digits_pattern)
     checker = Checker("break on substituted method", rexp)
@@ -429,7 +498,7 @@ def test():
     # however in Java 17 and GraalVM >21.3.0 this method ends up getting inlined and we can't (yet?!) set a breakpoint
     # only to a specific override of a method by specifying the parameter types when that method gets inlined.
     # As a result the breakpoint will be set at all println overrides.
-    # expect "Breakpoint 1 at 0x[0-9a-f]+: java.io.PrintStream::println. ([0-9]+ locations)""
+    # expect "Breakpoint <n> at 0x[0-9a-f]+: java.io.PrintStream::println. ([0-9]+ locations)""
     exec_string = execute("break java.io.PrintStream::println")
     # we cannot be sure how much inlining will happen so we
     # specify a pattern for the number of locations
@@ -564,8 +633,8 @@ def test():
     checker = Checker('break inlineFrom', rexp)
     checker.check(exec_string, skip_fails=False)
 
-    exec_string = execute("info break 6")
-    rexp = [r"6%sbreakpoint%skeep%sy%s%s in hello\.Hello::inlineFrom\(\) at hello/Hello\.java:119"%(spaces_pattern, spaces_pattern, spaces_pattern, spaces_pattern, address_pattern)]
+    exec_string = execute("info break")
+    rexp = [r"%s%sbreakpoint%skeep%sy%s%s in hello\.Hello::inlineFrom\(\) at hello/Hello\.java:119"%(digits_pattern, spaces_pattern, spaces_pattern, spaces_pattern, spaces_pattern, address_pattern)]
     checker = Checker('info break inlineFrom', rexp)
     checker.check(exec_string)
 
@@ -938,6 +1007,70 @@ def test():
                 r'  a_char = "0123456789AB"']
         checker = Checker('print Weird', rexp)
         checker.check(exec_string)
+
+    exec_string = execute("delete breakpoints")
+
+    # place a break point at the first instruction of method
+    # CStructTests::testMixedArguments
+    exec_string = execute("x/i 'com.oracle.svm.test.debug.CStructTests'::testMixedArguments")
+    rexp = r"%s0x(%s)%scom.oracle.svm.test.debug.CStructTests::testMixedArguments%s"%(spaces_pattern, hex_digits_pattern, wildcard_pattern, wildcard_pattern)
+    checker = Checker('x/i CStructTests::testMixedArguments', rexp)
+    matches = checker.check(exec_string)
+    # n.b can ony get here with one match
+    match = matches[0]
+    bp_address = int(match.group(1), 16)
+    print("bp = %s %x"%(match.group(1), bp_address))
+
+    exec_string = execute("break *0x%x"%bp_address)
+    rexp = r"Breakpoint %s at %s: file com/oracle/svm/test/debug/CStructTests\.java, line %s\."%(digits_pattern, address_pattern, digits_pattern)
+    checker = Checker(r"break *0x%x"%bp_address, rexp)
+    checker.check(exec_string)
+
+    # continue the program to the breakpoint
+    execute("continue")
+
+    exec_string = execute("info args")
+    rexp = [r"this = 0x%s"%(hex_digits_pattern),
+            r"m1 = 0x%s"%(hex_digits_pattern), 
+            r"s = 1",
+            r"ss1 = 0x%s"%(hex_digits_pattern),
+            r"l = 123456789",
+            r"m2 = 0x%s"%(hex_digits_pattern),
+            r"ss2 = 0x%s"%(hex_digits_pattern),
+            r"m3 = 0x%s"%(hex_digits_pattern)]
+    checker = Checker('info args CStructTests::testMixedArguments', rexp)
+    checker.check(exec_string)
+
+    exec_string = execute("p m1->value->data")
+    rexp = [r'\$%s = 0x%s "a message in a bottle"'%(digits_pattern, hex_digits_pattern)]
+    checker = Checker('p *m1->value->data', rexp)
+    checker.check(exec_string)
+
+    exec_string = execute("p m2->value->data")
+    rexp = [r'\$%s = 0x%s "a ship in a bottle"'%(digits_pattern, hex_digits_pattern)]
+    checker = Checker('p *m1->value->data', rexp)
+    checker.check(exec_string)
+
+    exec_string = execute("p m3->value->data")
+    rexp = [r'\$%s = 0x%s "courage in a bottle"'%(digits_pattern, hex_digits_pattern)]
+    checker = Checker('p *m1->value->data', rexp)
+    checker.check(exec_string)
+
+    exec_string = execute("p *ss1")
+    rexp = [r"\$%s = {"%(digits_pattern),
+            r"%sfirst = 1,"%(spaces_pattern),
+            r"%ssecond = 2"%(spaces_pattern),
+            r"}"]
+    checker = Checker('p *ss1', rexp)
+    checker.check(exec_string)
+
+    exec_string = execute("p *ss2")
+    rexp = [r"\$%s = {"%(digits_pattern),
+            r"%salpha = 99 'c',"%(spaces_pattern),
+            r"%sbeta = 100"%(spaces_pattern),
+            r"}"]
+    checker = Checker('p *ss1', rexp)
+    checker.check(exec_string)
 
     print(execute("quit 0"))
 

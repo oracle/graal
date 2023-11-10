@@ -335,7 +335,7 @@ public class Bytecodes {
                 if ((field.getModifiers() & flagsFilter) == flagsFilter && !field.isSynthetic()) {
                     assert field.getType() == int.class : "Field is not int : " + field;
                     final int flag = field.getInt(null);
-                    assert flag != 0;
+                    assert flag != 0 : flag;
                     assert (flag & allFlags) == 0 : field.getName() + " has a value conflicting with another flag";
                     allFlags |= flag;
                 }

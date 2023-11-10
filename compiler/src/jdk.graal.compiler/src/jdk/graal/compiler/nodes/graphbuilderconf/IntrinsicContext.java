@@ -24,22 +24,22 @@
  */
 package jdk.graal.compiler.nodes.graphbuilderconf;
 
+import static jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 import static jdk.vm.ci.code.BytecodeFrame.AFTER_BCI;
 import static jdk.vm.ci.code.BytecodeFrame.AFTER_EXCEPTION_BCI;
 import static jdk.vm.ci.code.BytecodeFrame.BEFORE_BCI;
 import static jdk.vm.ci.code.BytecodeFrame.INVALID_FRAMESTATE_BCI;
-import static jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
 import jdk.graal.compiler.bytecode.BytecodeProvider;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeSourcePosition;
-import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.LoopExitNode;
 import jdk.graal.compiler.nodes.StateSplit;
 import jdk.graal.compiler.nodes.StructuredGraph;
-
+import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -173,7 +173,7 @@ public class IntrinsicContext {
     }
 
     public FrameState createFrameState(StructuredGraph graph, SideEffectsState sideEffects, StateSplit forStateSplit, NodeSourcePosition sourcePosition) {
-        assert forStateSplit != graph.start();
+        assert forStateSplit != graph.start() : Assertions.errorMessageContext("forStateSplit", forStateSplit, "graph.start", graph.start());
         if (forStateSplit.hasSideEffect()) {
             if (sideEffects.isAfterSideEffect()) {
                 // Only the last side effect on any execution path in a replacement

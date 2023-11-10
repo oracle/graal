@@ -26,10 +26,11 @@ package jdk.graal.compiler.nodes.calc;
 
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.IntegerConvertOp;
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ArithmeticOperation;
@@ -40,7 +41,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.ArithmeticLIRLowerable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.StampInverter;
-
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 
@@ -58,7 +58,8 @@ public abstract class IntegerConvertNode<OP> extends UnaryNode implements Arithm
         super(c, opForStampComputation.foldStamp(inputBits, resultBits, input.stamp(NodeView.DEFAULT)), input);
         this.inputBits = inputBits;
         this.resultBits = resultBits;
-        assert PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT)) == 0 || PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT)) == inputBits;
+        assert PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT)) == 0 || PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT)) == inputBits : Assertions.errorMessageContext("input", input,
+                        "inutBits", inputBits);
     }
 
     public int getInputBits() {
@@ -183,7 +184,7 @@ public abstract class IntegerConvertNode<OP> extends UnaryNode implements Arithm
         }
 
         IntegerStamp resultStamp = (IntegerStamp) result.stamp(view);
-        assert toStamp.getBits() == resultStamp.getBits();
+        assert toStamp.getBits() == resultStamp.getBits() : Assertions.errorMessageContext("input", input, "toStamp", toStamp, "resultStamp", resultStamp, "result", result);
         return result;
     }
 

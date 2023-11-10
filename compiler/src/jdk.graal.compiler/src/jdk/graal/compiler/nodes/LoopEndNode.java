@@ -34,6 +34,7 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
 import java.util.Collections;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
@@ -96,7 +97,7 @@ public final class LoopEndNode extends AbstractEndNode {
     public LoopEndNode(LoopBeginNode begin) {
         super(TYPE);
         int idx = begin.nextEndIndex();
-        assert idx >= 0;
+        assert NumUtil.assertNonNegativeInt(idx);
         this.endIndex = idx;
         this.loopBegin = begin;
         this.canSafepoint = begin.canEndsSafepoint;

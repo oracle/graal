@@ -28,6 +28,7 @@ package jdk.graal.compiler.lir.aarch64;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 
@@ -49,7 +50,7 @@ public class AArch64ReinterpretOp extends AArch64LIRInstruction {
         super(TYPE);
         AArch64Kind from = (AArch64Kind) inputValue.getPlatformKind();
         AArch64Kind to = (AArch64Kind) resultValue.getPlatformKind();
-        assert from.getSizeInBytes() == to.getSizeInBytes() && from.isInteger() ^ to.isInteger();
+        assert from.getSizeInBytes() == to.getSizeInBytes() && from.isInteger() ^ to.isInteger() : Assertions.errorMessage(from, to);
         this.resultValue = resultValue;
         this.inputValue = inputValue;
     }

@@ -24,13 +24,13 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMIOp.VPERMQ;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.VPBROADCASTD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPACKUSWB;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPOR;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.XMM;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.YMM;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import java.util.EnumSet;
 
@@ -46,7 +46,7 @@ import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool.CharsetName;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
@@ -100,7 +100,7 @@ public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
         this.tempValue5 = tool.newVariable(LIRKind.value(AMD64Kind.DWORD));
 
         this.charset = charset;
-        assert charset == LIRGeneratorTool.CharsetName.ASCII || charset == LIRGeneratorTool.CharsetName.ISO_8859_1;
+        assert charset == CharsetName.ASCII || charset == CharsetName.ISO_8859_1 : charset;
     }
 
     @Override

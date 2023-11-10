@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -266,7 +266,7 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
 
         /* Reconstruct the native memory according to darwin-aarch64 ABI. */
         final int vaLength = realArguments.length - numberOfExplicitArguments;
-        assert vaLength > 0;
+        assert vaLength >= 0 : vaLength;
 
         long offset = 0;
         for (int i = numberOfExplicitArguments; i < realArguments.length; i++) {

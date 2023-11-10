@@ -57,6 +57,7 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.VMOperationControl;
+import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
@@ -112,7 +113,11 @@ public class SubstrateOptions {
 
     @APIOption(name = "static")//
     @Option(help = "Build statically linked executable (requires static libc and zlib)")//
-    public static final HostedOptionKey<Boolean> StaticExecutable = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> StaticExecutable = new HostedOptionKey<>(false, key -> {
+        if (!Platform.includedIn(Platform.LINUX.class)) {
+            throw new InterruptImageBuilding("Building static executable images is currently only supported on Linux. Remove the '--static' option or build on a Linux machine.");
+        }
+    });
 
     @APIOption(name = "libc")//
     @Option(help = "Selects the libc implementation to use. Available implementations: glibc, musl, bionic")//
@@ -335,7 +340,7 @@ public class SubstrateOptions {
     @Option(help = "Path passed to the linker as the -rpath (list of comma-separated directories)")//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LinkerRPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
-    @Option(help = "Directory of the image file to be generated", type = OptionType.User)//
+    @Option(help = {"Directory of the image file to be generated", "Use the '-o' option instead."}, type = OptionType.User)//
     public static final HostedOptionKey<String> Path = new HostedOptionKey<>(null);
 
     public static final class GCGroup implements APIOptionGroup {
@@ -528,6 +533,11 @@ public class SubstrateOptions {
                     "docs/reference-manual/native-image/assets/build-output-schema-v0.9.2.json", type = OptionType.User)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Paths> BuildOutputJSONFile = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.build());
 
+    public static final String NATIVE_IMAGE_OPTIONS_ENV_VAR = "NATIVE_IMAGE_OPTIONS";
+
+    @Option(help = "Internal option to forward the value of " + NATIVE_IMAGE_OPTIONS_ENV_VAR)//
+    public static final HostedOptionKey<String> BuildOutputNativeImageOptionsEnvVarValue = new HostedOptionKey<>(null);
+
     /*
      * Object and array allocation options.
      */
@@ -553,6 +563,16 @@ public class SubstrateOptions {
 
     @Option(help = "How many bytes to pad fields and classes marked @Contended with.") //
     public static final HostedOptionKey<Integer> ContendedPaddingWidth = new HostedOptionKey<>(128);
+
+    @Option(help = "Add additional header bytes to each object, for diagnostic purposes.", type = OptionType.Debug) //
+    public static final HostedOptionKey<Integer> AdditionalHeaderBytes = new HostedOptionKey<>(0, SubstrateOptions::validateAdditionalHeaderBytes);
+
+    private static void validateAdditionalHeaderBytes(HostedOptionKey<Integer> optionKey) {
+        int value = optionKey.getValue();
+        if (value < 0 || value % 4 != 0) {
+            throw UserError.abort("The option '%s' must be 0 or a multiple of 4.", optionKey.getName());
+        }
+    }
 
     /*
      * Isolate tear down options.
@@ -1022,4 +1042,12 @@ public class SubstrateOptions {
 
     @Option(help = "Include all classes, methods, fields, and resources from given paths", type = OptionType.Debug) //
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeAllFromPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+
+    public static class TruffleStableOptions {
+
+        @Option(help = "Automatically copy the necessary language resources to the resources/languages directory next to the produced image." +
+                        "Language resources for each language are specified in the native-image-resources.filelist file located in the language home directory." +
+                        "If there is no native-image-resources.filelist file in the language home directory or the file is empty, then no resources are copied.", type = User, stability = OptionStability.STABLE)//
+        public static final HostedOptionKey<Boolean> CopyLanguageResources = new HostedOptionKey<>(true);
+    }
 }

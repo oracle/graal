@@ -32,6 +32,7 @@ import java.util.List;
 import jdk.graal.compiler.bytecode.Bytecodes;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.gen.DebugInfoBuilder;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.GraalGraphError;
 import jdk.graal.compiler.graph.NodeSourcePosition;
@@ -89,7 +90,7 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
         ValueNode lock = state.lockAt(lockIndex);
         JavaValue object = toJavaValue(lock);
         boolean eliminated = object instanceof VirtualObject || state.monitorIdAt(lockIndex).isEliminated();
-        assert state.monitorIdAt(lockIndex).getLockDepth() == lockDepth;
+        assert state.monitorIdAt(lockIndex).getLockDepth() == lockDepth : Assertions.errorMessage(state, lockIndex, state.monitorIdAt(lockIndex), lockDepth);
         return new StackLockValue(object, slot, eliminated);
     }
 

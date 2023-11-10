@@ -38,6 +38,7 @@ import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
@@ -50,7 +51,6 @@ import jdk.graal.compiler.lir.amd64.AMD64FrameMap;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorMove;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.phases.util.Providers;
-
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
@@ -89,7 +89,7 @@ public class AMD64HotSpotZBarrierSetLIRGenerator extends AMD64BarrierSetLIRGener
      */
     public static void emitBarrier(CompilationResultBuilder crb, AMD64MacroAssembler masm, Label success, Register resultReg, GraalHotSpotVMConfig config, ForeignCallLinkage callTarget,
                     AMD64Address address, LIRInstruction op, AMD64HotSpotBackend.HotSpotFrameContext frameContext) {
-        assert !resultReg.equals(address.getBase()) && !resultReg.equals(address.getIndex());
+        assert !resultReg.equals(address.getBase()) && !resultReg.equals(address.getIndex()) : Assertions.errorMessage(resultReg, address);
 
         final Label entryPoint = new Label();
         final Label continuation = new Label();
@@ -142,7 +142,7 @@ public class AMD64HotSpotZBarrierSetLIRGenerator extends AMD64BarrierSetLIRGener
         }
         if (kind.getPlatformKind().getVectorLength() > 1) {
             // Emit a vector barrier
-            assert barrierType == BarrierType.READ;
+            assert barrierType == BarrierType.READ : Assertions.errorMessage(barrierType);
             ForeignCallLinkage callTarget = getForeignCalls().lookupForeignCall(HotSpotHostForeignCallsProvider.Z_ARRAY_BARRIER);
             AMD64AddressValue loadAddress = getAMD64LIRGen().asAddressValue(address);
             Variable result = getLIRGen().newVariable(getLIRGen().toRegisterKind(kind));
@@ -180,7 +180,7 @@ public class AMD64HotSpotZBarrierSetLIRGenerator extends AMD64BarrierSetLIRGener
     @Override
     public void emitCompareAndSwapOp(LIRKind accessKind, AMD64Kind memKind, RegisterValue raxValue, AMD64AddressValue address, AllocatableValue newValue, BarrierType barrierType) {
         ForeignCallLinkage callTarget = getBarrierStub(barrierType);
-        assert memKind == accessKind.getPlatformKind();
+        assert memKind == accessKind.getPlatformKind() : Assertions.errorMessage(memKind, accessKind, raxValue, address, newValue);
         AllocatableValue temp = getLIRGen().newVariable(getLIRGen().toRegisterKind(accessKind));
         getLIRGen().getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
         getLIRGen().append(new AMD64HotSpotZCompareAndSwapOp(memKind, raxValue, address, raxValue, getLIRGen().asAllocatable(newValue), temp, config, callTarget));

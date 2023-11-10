@@ -57,7 +57,7 @@ public abstract class AbstractInlineInfo implements InlineInfo {
 
     @SuppressWarnings("try")
     protected static EconomicSet<Node> inline(Invoke invoke, ResolvedJavaMethod concrete, Inlineable inlineable, boolean receiverNullCheck, String reason) {
-        assert inlineable instanceof InlineableGraph;
+        assert inlineable instanceof InlineableGraph : inlineable;
         StructuredGraph calleeGraph = ((InlineableGraph) inlineable).getGraph();
         return InliningUtil.inlineForCanonicalization(invoke, calleeGraph, receiverNullCheck, concrete, reason, "InliningPhase");
     }

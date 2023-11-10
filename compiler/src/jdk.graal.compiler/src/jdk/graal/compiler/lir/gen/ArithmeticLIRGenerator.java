@@ -50,6 +50,11 @@ public abstract class ArithmeticLIRGenerator implements ArithmeticLIRGeneratorTo
 
     protected abstract boolean isNumericInteger(PlatformKind kind);
 
+    public boolean assertIsNumericInteger(PlatformKind kind) {
+        assert isNumericInteger(kind);
+        return true;
+    }
+
     protected abstract Variable emitAdd(LIRKind resultKind, Value a, Value b, boolean setFlags);
 
     protected abstract Variable emitSub(LIRKind resultKind, Value a, Value b, boolean setFlags);

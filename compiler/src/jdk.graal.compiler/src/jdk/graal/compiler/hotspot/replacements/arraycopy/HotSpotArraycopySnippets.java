@@ -39,43 +39,33 @@ import jdk.graal.compiler.replacements.arraycopy.ArrayCopyCallNode;
 import jdk.graal.compiler.replacements.arraycopy.ArrayCopySnippets;
 import jdk.graal.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.meta.JavaKind;
 
 public class HotSpotArraycopySnippets extends ArrayCopySnippets {
 
-    public Pointer loadHub(Object nonNullSrc) {
-        return HotSpotReplacementsUtil.loadHub(nonNullSrc).asWord();
-    }
-
     @Override
     public boolean hubsEqual(Object nonNullSrc, Object nonNullDest) {
-        Pointer srcHub = loadHub(nonNullSrc);
-        Pointer destHub = loadHub(nonNullDest);
-        return srcHub == destHub;
+        KlassPointer srcHub = HotSpotReplacementsUtil.loadHub(nonNullSrc);
+        KlassPointer destHub = HotSpotReplacementsUtil.loadHub(nonNullDest);
+        return srcHub.equal(destHub);
     }
 
-    public Word getSuperCheckOffset(Pointer destElemKlass) {
+    Word getSuperCheckOffset(KlassPointer destElemKlass) {
         return WordFactory.signed(destElemKlass.readInt(HotSpotReplacementsUtil.superCheckOffsetOffset(INJECTED_VMCONFIG), HotSpotReplacementsUtil.KLASS_SUPER_CHECK_OFFSET_LOCATION));
-    }
-
-    public int getReadLayoutHelper(Pointer srcHub) {
-        return HotSpotReplacementsUtil.readLayoutHelper(KlassPointer.fromWord(srcHub));
     }
 
     @Override
     public boolean layoutHelpersEqual(Object nonNullSrc, Object nonNullDest) {
-        Pointer srcHub = loadHub(nonNullSrc);
-        Pointer destHub = loadHub(nonNullDest);
-        return getReadLayoutHelper(srcHub) == getReadLayoutHelper(destHub);
+        KlassPointer srcHub = HotSpotReplacementsUtil.loadHub(nonNullSrc);
+        KlassPointer destHub = HotSpotReplacementsUtil.loadHub(nonNullDest);
+        return HotSpotReplacementsUtil.readLayoutHelper(srcHub) == HotSpotReplacementsUtil.readLayoutHelper(destHub);
     }
 
-    public Pointer getDestElemClass(Pointer destKlassPointer) {
-        KlassPointer destKlass = (KlassPointer.fromWord(destKlassPointer));
+    KlassPointer getDestElemClass(KlassPointer destKlass) {
         return destKlass.readKlassPointer(HotSpotReplacementsUtil.arrayClassElementOffset(INJECTED_VMCONFIG),
-                        HotSpotReplacementsUtil.OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION).asWord();
+                        HotSpotReplacementsUtil.OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION);
     }
 
     @Override
@@ -89,15 +79,15 @@ public class HotSpotArraycopySnippets extends ArrayCopySnippets {
         if (probability(FREQUENT_PROBABILITY, length > 0)) {
             Object nonNullSrc = PiNode.piCastNonNull(src, SnippetAnchorNode.anchor());
             Object nonNullDest = PiNode.piCastNonNull(dest, SnippetAnchorNode.anchor());
-            Pointer srcKlass = loadHub(nonNullSrc);
-            Pointer destKlass = loadHub(nonNullDest);
-            if (probability(LIKELY_PROBABILITY, srcKlass == destKlass) || probability(LIKELY_PROBABILITY, nonNullDest.getClass() == Object[].class)) {
+            KlassPointer srcKlass = HotSpotReplacementsUtil.loadHub(nonNullSrc);
+            KlassPointer destKlass = HotSpotReplacementsUtil.loadHub(nonNullDest);
+            if (probability(LIKELY_PROBABILITY, srcKlass.equal(destKlass)) || probability(LIKELY_PROBABILITY, nonNullDest.getClass() == Object[].class)) {
                 // no storecheck required.
                 counters.objectCheckcastSameTypeCounter.inc();
                 counters.objectCheckcastSameTypeCopiedCounter.add(length);
                 ArrayCopyCallNode.arraycopyObjectKillsAny(nonNullSrc, srcPos, nonNullDest, destPos, length, heapWordSize());
             } else {
-                Pointer destElemKlass = getDestElemClass(destKlass);
+                KlassPointer destElemKlass = getDestElemClass(destKlass);
                 Word superCheckOffset = getSuperCheckOffset(destElemKlass);
 
                 counters.objectCheckcastDifferentTypeCounter.inc();

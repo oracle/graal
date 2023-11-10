@@ -65,7 +65,8 @@ public final class AMD64HotSpotZCompareAndSwapOp extends AMD64HotSpotZBarrieredO
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         GraalError.guarantee(accessKind == AMD64Kind.QWORD, "ZGC only supports uncomppressed oops");
-        assert asRegister(cmpValue).equals(AMD64.rax) && asRegister(result).equals(AMD64.rax);
+        assert asRegister(cmpValue).equals(AMD64.rax) : cmpValue;
+        assert asRegister(result).equals(AMD64.rax) : result;
         assert LIRValueUtil.differentRegisters(cmpValue, newValue, temp, loadAddress);
 
         Label success = new Label();

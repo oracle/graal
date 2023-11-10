@@ -27,6 +27,7 @@ package jdk.graal.compiler.truffle.nodes;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_1;
 
 import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.IterableNodeType;
 import jdk.graal.compiler.graph.NodeClass;
@@ -37,7 +38,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.calc.SignExtendNode;
 import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
-
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -57,7 +57,8 @@ public final class AnyExtendNode extends FloatingNode implements IterableNodeTyp
 
     public AnyExtendNode(ValueNode value) {
         super(TYPE, StampFactory.forKind(JavaKind.Long));
-        assert value.stamp(NodeView.DEFAULT) instanceof IntegerStamp;
+        Stamp stamp2 = value.stamp(NodeView.DEFAULT);
+        assert stamp2 instanceof IntegerStamp : stamp2;
         this.value = value;
     }
 

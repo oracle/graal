@@ -24,9 +24,6 @@
  */
 package jdk.graal.compiler.lir.amd64.vector;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVDQU32;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVQ;
@@ -35,6 +32,9 @@ import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVSS;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVUPD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVUPS;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VXORPD;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMoveOp;
@@ -42,6 +42,7 @@ import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.asm.amd64.AVXKind;
 import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
 import jdk.graal.compiler.core.common.type.DataPointerConstant;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstructionClass;
@@ -53,7 +54,6 @@ import jdk.graal.compiler.lir.amd64.AMD64Move;
 import jdk.graal.compiler.lir.amd64.AMD64RestoreRegistersOp;
 import jdk.graal.compiler.lir.amd64.AMD64SaveRegistersOp;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
@@ -404,7 +404,8 @@ public class AMD64VectorMove {
                 op.emit(masm, size, (AMD64Address) crb.asAddress(result), asRegister(input));
             }
         } else {
-            assert isStackSlot(input) && isRegister(result);
+            assert isStackSlot(input) : Assertions.errorMessageContext("input", input);
+            assert isRegister(result) : Assertions.errorMessageContext("result", result);
             op.emit(masm, size, asRegister(result), (AMD64Address) crb.asAddress(input));
         }
     }

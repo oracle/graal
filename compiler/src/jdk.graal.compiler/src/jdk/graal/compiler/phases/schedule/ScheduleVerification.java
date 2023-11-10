@@ -27,11 +27,13 @@ package jdk.graal.compiler.phases.schedule;
 import java.util.ArrayDeque;
 import java.util.List;
 
-import jdk.graal.compiler.phases.graph.ReentrantBlockIterator;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeBitMap;
@@ -57,7 +59,7 @@ import jdk.graal.compiler.nodes.memory.MemoryKill;
 import jdk.graal.compiler.nodes.memory.MemoryPhiNode;
 import jdk.graal.compiler.nodes.memory.MultiMemoryKill;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
-import org.graalvm.word.LocationIdentity;
+import jdk.graal.compiler.phases.graph.ReentrantBlockIterator;
 
 /**
  * Verifies that the schedule of the graph is correct. Checks that floating reads are not killed
@@ -134,7 +136,7 @@ public final class ScheduleVerification extends ReentrantBlockIterator.BlockIter
                     }
                 }
             }
-            assert nodeMap.get(n) == block;
+            assert nodeMap.get(n) == block : Assertions.errorMessageContext("n", n, "block", block);
             if (graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL) && block.getLoop() != null && !(n instanceof VirtualState)) {
                 for (Node usage : n.usages()) {
                     Node usageNode = usage;

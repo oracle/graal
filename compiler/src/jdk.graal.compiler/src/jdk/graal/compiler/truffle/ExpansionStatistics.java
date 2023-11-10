@@ -40,6 +40,9 @@ import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.compiler.TruffleCompilable;
+
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.graph.SourceLanguagePosition;
@@ -52,9 +55,6 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.spi.VirtualizableAllocation;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
-
-import com.oracle.truffle.compiler.TruffleCompilable;
-
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -846,7 +846,7 @@ final class ExpansionStatistics {
                 if (newGroup == null) {
                     newGroup = new TreeNode(this, tree.position, this.label);
                 } else {
-                    assert newGroup.parent == this;
+                    assert newGroup.parent == this : Assertions.errorMessage(newGroup, newGroup.parent, this);
                 }
                 this.children.put(method, tree.newGroup(newGroup, groupCriteria));
             }

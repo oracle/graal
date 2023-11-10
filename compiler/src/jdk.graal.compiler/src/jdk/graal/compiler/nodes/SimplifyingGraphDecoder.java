@@ -40,6 +40,7 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.extended.AnchoringNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
@@ -52,9 +53,7 @@ import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.CoreProvidersDelegate;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.Assumptions;
 
@@ -359,7 +358,7 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
                         successor.safeDelete();
                     }
                 } else {
-                    assert !(canonical instanceof FixedNode);
+                    assert !(canonical instanceof FixedNode) : Assertions.errorMessageContext("canonical", canonical);
                 }
             }
             if (!node.isDeleted()) {
@@ -370,7 +369,7 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
                 }
                 node.replaceAtUsagesAndDelete(canonical);
             }
-            assert lookupNode(loopScope, nodeOrderId) == node;
+            assert lookupNode(loopScope, nodeOrderId) == node : Assertions.errorMessage(node, loopScope, nodeOrderId);
             registerNode(loopScope, nodeOrderId, canonical, true, false);
         }
     }

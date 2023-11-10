@@ -29,6 +29,13 @@ import static jdk.graal.compiler.debug.Assertions.assertionsEnabled;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+
+import jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph;
+import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hightiercodegen.irwalk.StackifierIRWalker;
 import jdk.graal.compiler.hightiercodegen.reconstruction.StackifierData;
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.CatchScopeContainer;
@@ -37,15 +44,10 @@ import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.LoopS
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.Scope;
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.ScopeContainer;
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.SwitchScopeContainer;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
-import jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph;
-import jdk.graal.compiler.core.common.cfg.Loop;
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
-import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
+import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
 
 /**
@@ -130,7 +132,7 @@ public class LabeledBlockGeneration {
         }
         ScopeContainer scopeContainer = stackifierData.getScopeEntry(block.getEndNode());
         if (block.isLoopEnd()) {
-            assert block.getSuccessorCount() == 1;
+            assert block.getSuccessorCount() == 1 : Assertions.errorMessage(block);
             // loopEndNodes have back edges and therefore do not need a forward jump
             return false;
         }
@@ -154,7 +156,7 @@ public class LabeledBlockGeneration {
             if (invokeWithExc.getPrimarySuccessor() == successor.getBeginNode()) {
                 return !isJumpingOverCatchBlock(block, successor, stackifierData);
             } else {
-                assert invokeWithExc.exceptionEdge() == successor.getBeginNode();
+                assert invokeWithExc.exceptionEdge() == successor.getBeginNode() : Assertions.errorMessage(invokeWithExc, successor);
                 if (((CatchScopeContainer) scopeContainer).getCatchScope() != null) {
                     return false;
                 }
@@ -267,8 +269,8 @@ public class LabeledBlockGeneration {
      * @param successor primary successor of the {@link InvokeWithExceptionNode}
      */
     private static boolean isJumpingOverCatchBlock(HIRBlock block, HIRBlock successor, StackifierData stackifierData) {
-        assert block.getEndNode() instanceof InvokeWithExceptionNode;
-        assert block.getFirstSuccessor() == successor;
+        assert block.getEndNode() instanceof InvokeWithExceptionNode : Assertions.errorMessage(block, block.getEndNode());
+        assert block.getFirstSuccessor() == successor : Assertions.errorMessage(block, successor);
         CatchScopeContainer catchScopeContainer = (CatchScopeContainer) stackifierData.getScopeEntry(block.getEndNode());
         Scope catchScope = catchScopeContainer.getCatchScope();
 

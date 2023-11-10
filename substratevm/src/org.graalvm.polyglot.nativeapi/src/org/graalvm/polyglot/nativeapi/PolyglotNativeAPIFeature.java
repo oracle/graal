@@ -28,13 +28,18 @@ import static com.oracle.svm.hosted.NativeImageOptions.CStandards.C11;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Stream;
 
+import com.oracle.svm.core.BuildArtifacts;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
@@ -43,16 +48,30 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.util.FileUtils;
 import com.oracle.svm.util.LogUtils;
 
 public class PolyglotNativeAPIFeature implements Feature {
 
+    private Path tmpHeadersDir;
+
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         if (!NativeImageOptions.getCStandard().compatibleWith(C11)) {
             throw UserError.abort("Polyglot native API supports only the C11 standard. Pass -H:CStandard=C11 on the command line to make the build work.");
+        }
+        try {
+            Path tmpDir = Files.createTempDirectory("polyglot_types");
+            Path destination = tmpDir.resolve("polyglot_types.h");
+            try (InputStream in = getClass().getResourceAsStream("/polyglot_types.h"); OutputStream out = Files.newOutputStream(destination)) {
+                out.write(in.readAllBytes());
+            }
+            tmpHeadersDir = tmpDir;
+            System.setProperty("org.graalvm.polyglot.nativeapi.libraryPath", tmpDir.toString());
+        } catch (IOException e) {
+            throw VMError.shouldNotReachHere("Cannot copy header files into a temporary directory.", e);
         }
         ImageSingletons.add(LogHandler.class, new PolyglotNativeAPI.PolyglotNativeLogHandler());
         RuntimeSupport.getRuntimeSupport().addStartupHook(PolyglotNativeAPI.startupHook);
@@ -68,9 +87,23 @@ public class PolyglotNativeAPIFeature implements Feature {
             try {
                 Files.copy(source, destination, REPLACE_EXISTING);
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw VMError.shouldNotReachHere(String.format("Copying of header file %s failed.", headerFile), e);
             }
+            BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.C_HEADER, destination);
         });
+        if (tmpHeadersDir != null && Files.exists(tmpHeadersDir)) {
+            try (Stream<Path> filesToDelete = Files.walk(tmpHeadersDir)) {
+                filesToDelete.sorted(Comparator.reverseOrder()).forEach(f -> {
+                    try {
+                        Files.deleteIfExists(f);
+                    } catch (IOException e) {
+                        throw VMError.shouldNotReachHere("Deletion the temporary headers directory failed.", e);
+                    }
+                });
+            } catch (IOException e) {
+                throw VMError.shouldNotReachHere("Deletion the temporary headers directory failed.", e);
+            }
+        }
         if (Platform.includedIn(Platform.DARWIN.class)) {
             // on Darwin, change the `id` install name
             String id = System.getProperty("org.graalvm.polyglot.install_name_id");

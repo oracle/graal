@@ -64,7 +64,7 @@ public class LoopsData {
         DebugContext debug = graph.getDebug();
         if (preComputedCFG == null) {
             try (DebugContext.Scope s = debug.scope("ControlFlowGraph")) {
-                this.cfg = ControlFlowGraph.compute(graph, true, true, true, true);
+                this.cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeDominators(true).computePostdominators(true).computeFrequency(true).build();
             } catch (Throwable e) {
                 throw debug.handle(e);
             }

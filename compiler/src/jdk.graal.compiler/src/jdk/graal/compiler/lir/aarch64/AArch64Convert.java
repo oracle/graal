@@ -30,6 +30,7 @@ import jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize;
 import jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.core.common.calc.FloatConvert;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.LIRInstructionClass;
@@ -228,19 +229,19 @@ public class AArch64Convert {
             switch (op) {
                 case F2I:
                 case I2F:
-                    assert srcESize == ElementSize.Word && dstESize == ElementSize.Word;
+                    assert srcESize == ElementSize.Word && dstESize == ElementSize.Word : Assertions.errorMessage(srcESize, dstESize);
                     break;
                 case F2D:
                 case I2D:
-                    assert srcESize == ElementSize.Word && dstESize == ElementSize.DoubleWord;
+                    assert srcESize == ElementSize.Word && dstESize == ElementSize.DoubleWord : Assertions.errorMessage(srcESize, dstESize);
                     break;
                 case D2F:
                 case D2I:
-                    assert srcESize == ElementSize.DoubleWord && dstESize == ElementSize.Word;
+                    assert srcESize == ElementSize.DoubleWord && dstESize == ElementSize.Word : Assertions.errorMessage(srcESize, dstESize);
                     break;
                 case D2L:
                 case L2D:
-                    assert srcESize == ElementSize.DoubleWord && dstESize == ElementSize.DoubleWord;
+                    assert srcESize == ElementSize.DoubleWord && dstESize == ElementSize.DoubleWord : Assertions.errorMessage(srcESize, dstESize);
                     break;
             }
             return true;

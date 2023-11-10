@@ -39,7 +39,6 @@ import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.aarch64.AArch64Call;
 import jdk.graal.compiler.lir.aarch64.AArch64LIRInstruction;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.site.InfopointReason;
@@ -73,7 +72,7 @@ public class AArch64HotSpotSafepointOp extends AArch64LIRInstruction {
     }
 
     public static void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm, GraalHotSpotVMConfig config, boolean atReturn, Register thread, Register scratch, LIRFrameState state) {
-        assert config.threadPollingPageOffset >= 0;
+        assert config.threadPollingPageOffset >= 0 : config.threadPollingPageOffset;
         if (config.threadPollingWordOffset != -1 && atReturn && config.pollingPageReturnHandler != 0) {
             // HotSpot uses this strategy even if the selected GC doesn't require any concurrent
             // stack cleaning.

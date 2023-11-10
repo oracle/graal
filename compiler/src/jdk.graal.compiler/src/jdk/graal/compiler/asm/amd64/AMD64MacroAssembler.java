@@ -32,9 +32,9 @@ import java.util.function.Supplier;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.Stride;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.code.Register;
@@ -238,7 +238,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public final void movflt(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM) && src.getRegisterCategory().equals(AMD64.XMM);
+        assert dst.getRegisterCategory().equals(AMD64.XMM) && src.getRegisterCategory().equals(AMD64.XMM) : dst + " " + src;
         if (isAVX512Register(dst) || isAVX512Register(src)) {
             VexMoveOp.VMOVAPS.emit(this, AVXKind.AVXSize.XMM, dst, src);
         } else {
@@ -265,7 +265,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public final void movdbl(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM) && src.getRegisterCategory().equals(AMD64.XMM);
+        assert dst.getRegisterCategory().equals(AMD64.XMM) && src.getRegisterCategory().equals(AMD64.XMM) : dst + " " + src;
         if (isAVX512Register(dst) || isAVX512Register(src)) {
             VexMoveOp.VMOVAPD.emit(this, AVXKind.AVXSize.XMM, dst, src);
         } else {
@@ -434,7 +434,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
         int beforeCall = position();
         call(callReg);
-        assert beforeCall + indirectCallSize == position();
+        assert beforeCall + indirectCallSize == position() : Assertions.errorMessage(beforeCall, indirectCallSize, position());
         if (mitigateDecodingAsDirectCall) {
             int directCallPos = position() - DIRECT_CALL_INSTRUCTION_SIZE;
             GraalError.guarantee(directCallPos >= 0 && getByte(directCallPos) != DIRECT_CALL_INSTRUCTION_CODE,
@@ -449,7 +449,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         int beforeCall = position();
         movq(scratch, address);
         call(scratch);
-        assert beforeCall + bytesToEmit == position();
+        assert beforeCall + bytesToEmit == position() : Assertions.errorMessage(beforeCall, bytesToEmit, position());
         return beforeCall;
     }
 
@@ -459,7 +459,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         int beforeJmp = position();
         movq(scratch, address);
         jmpWithoutAlignment(scratch);
-        assert beforeJmp + bytesToEmit == position();
+        assert beforeJmp + bytesToEmit == position() : Assertions.errorMessage(beforeJmp, bytesToEmit, position());
         return beforeJmp;
     }
 
@@ -497,7 +497,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
             applyBeforeFusedPair.accept(beforeFusedPair);
         }
         op.emit(this, size, src, imm32, annotateImm);
-        assert beforeFusedPair + bytesToEmit == position();
+        assert beforeFusedPair + bytesToEmit == position() : Assertions.errorMessage(beforeFusedPair, bytesToEmit, position());
         jcc(cc, branchTarget, isShortJmp);
         assert ensureWithinBoundary(beforeFusedPair);
     }
@@ -511,7 +511,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
             applyBeforeFusedPair.accept(beforeFusedPair);
         }
         op.emit(this, size, src, imm32, annotateImm);
-        assert beforeFusedPair + bytesToEmit == position();
+        assert beforeFusedPair + bytesToEmit == position() : Assertions.errorMessage(beforeFusedPair, bytesToEmit, position());
         jcc(cc, branchTarget, isShortJmp);
         assert ensureWithinBoundary(beforeFusedPair);
     }
@@ -522,7 +522,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         final int beforeFusedPair = position();
         op.emit(this, size, src1, src2);
         final int beforeJcc = position();
-        assert beforeFusedPair + bytesToEmit == beforeJcc;
+        assert beforeFusedPair + bytesToEmit == beforeJcc : Assertions.errorMessage(beforeFusedPair, bytesToEmit, beforeJcc);
         jcc(cc, branchTarget, isShortJmp);
         assert ensureWithinBoundary(beforeFusedPair);
         return beforeJcc;
@@ -537,7 +537,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         }
         op.emit(this, size, src1, src2);
         final int beforeJcc = position();
-        assert beforeFusedPair + bytesToEmit == beforeJcc;
+        assert beforeFusedPair + bytesToEmit == beforeJcc : Assertions.errorMessage(beforeFusedPair, bytesToEmit, beforeJcc);
         jcc(cc, branchTarget, isShortJmp);
         assert ensureWithinBoundary(beforeFusedPair);
         return beforeJcc;
@@ -548,7 +548,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         alignFusedPair(branchTarget, isShortJmp, bytesToEmit);
         final int beforeFusedPair = position();
         op.emit(this, size, dst);
-        assert beforeFusedPair + bytesToEmit == position();
+        assert beforeFusedPair + bytesToEmit == position() : Assertions.errorMessage(beforeFusedPair, bytesToEmit, position());
         jcc(cc, branchTarget, isShortJmp);
         assert ensureWithinBoundary(beforeFusedPair);
     }
@@ -661,7 +661,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         final int beforeFusedPair = position();
         AMD64Address src2AsAddress = src2.get();
         op.emit(this, size, src1, src2AsAddress);
-        assert beforeFusedPair + bytesToEmit == position();
+        assert beforeFusedPair + bytesToEmit == position() : Assertions.errorMessage(beforeFusedPair, bytesToEmit, position());
         jcc(cc, branchTarget, false);
         assert ensureWithinBoundary(beforeFusedPair);
     }
@@ -1048,10 +1048,10 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     private static int scaleDisplacement(Stride strideDst, Stride strideSrc, int displacement) {
         if (strideSrc.value < strideDst.value) {
-            assert (displacement & ((1 << (strideDst.log2 - strideSrc.log2)) - 1)) == 0;
+            assert (displacement & ((1 << (strideDst.log2 - strideSrc.log2)) - 1)) == 0 : Assertions.errorMessage(displacement, strideDst, strideSrc);
             return displacement >> (strideDst.log2 - strideSrc.log2);
         }
-        assert strideSrc.value == strideDst.value;
+        assert strideSrc.value == strideDst.value : Assertions.errorMessage(strideSrc, strideDst);
         return displacement;
     }
 

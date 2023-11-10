@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.replacements;
 
+import jdk.graal.compiler.core.common.NumUtil;
+
 /**
  * A histogram that can (only) be {@linkplain #inc(long) incremented} from within a snippet for
  * gathering snippet specific metrics.
@@ -58,7 +60,7 @@ public final class SnippetIntegerHistogram {
     private final int counter9UpperBound;
 
     public SnippetIntegerHistogram(SnippetCounter.Group group, int log2StepLength, String name, String description) {
-        assert log2StepLength > 0;
+        assert NumUtil.assertPositiveInt(log2StepLength);
 
         this.group = group;
         this.name = name;

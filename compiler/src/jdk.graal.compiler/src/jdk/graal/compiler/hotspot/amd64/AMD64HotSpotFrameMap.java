@@ -28,9 +28,9 @@ import static jdk.vm.ci.amd64.AMD64.MASK;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 
 import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.lir.amd64.AMD64FrameMap;
-
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.Register;
@@ -112,7 +112,7 @@ public class AMD64HotSpotFrameMap extends AMD64FrameMap {
     public int offsetForStackSlot(StackSlot slot) {
         int offset = super.offsetForStackSlot(slot);
         // rbp is always saved in the standard location if it is saved
-        assert !slot.equals(rbpSpillSlot) || offset - totalFrameSize() == -16;
+        assert !slot.equals(rbpSpillSlot) || offset - totalFrameSize() == -16 : Assertions.errorMessage(slot, offset);
         return offset;
     }
 

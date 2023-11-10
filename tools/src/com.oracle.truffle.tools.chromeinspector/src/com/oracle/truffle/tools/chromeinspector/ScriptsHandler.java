@@ -185,7 +185,7 @@ public final class ScriptsHandler implements LoadSourceListener {
             } else {
                 try {
                     return env.getTruffleFile(truffleContext, path).getAbsoluteFile().toUri().toString();
-                } catch (SecurityException ex) {
+                } catch (UnsupportedOperationException | IllegalArgumentException | SecurityException ex) {
                     if (File.separatorChar == '/') {
                         return path;
                     } else {

@@ -25,15 +25,16 @@
 
 package jdk.graal.compiler.hotspot.amd64;
 
-import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.collections.EconomicMap;
+
 import jdk.graal.compiler.asm.amd64.AMD64Address;
-import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.amd64.AMD64AddressNode;
 import jdk.graal.compiler.core.amd64.AMD64CompressAddressLowering;
 import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.nodes.CompressionNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NodeView;
@@ -52,7 +53,6 @@ import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
-
 import jdk.vm.ci.code.Register;
 
 public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {

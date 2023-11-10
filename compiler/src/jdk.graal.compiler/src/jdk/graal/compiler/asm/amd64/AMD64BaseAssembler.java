@@ -24,12 +24,6 @@
  */
 package jdk.graal.compiler.asm.amd64;
 
-import static jdk.vm.ci.amd64.AMD64.MASK;
-import static jdk.vm.ci.amd64.AMD64.XMM;
-import static jdk.vm.ci.amd64.AMD64.r12;
-import static jdk.vm.ci.amd64.AMD64.r13;
-import static jdk.vm.ci.amd64.AMD64.rbp;
-import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig.B0;
 import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig.B1;
 import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig.Z0;
@@ -49,12 +43,18 @@ import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.W0
 import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.W1;
 import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.WIG;
 import static jdk.graal.compiler.core.common.NumUtil.isByte;
+import static jdk.vm.ci.amd64.AMD64.MASK;
+import static jdk.vm.ci.amd64.AMD64.XMM;
+import static jdk.vm.ci.amd64.AMD64.r12;
+import static jdk.vm.ci.amd64.AMD64.r13;
+import static jdk.vm.ci.amd64.AMD64.rbp;
+import static jdk.vm.ci.amd64.AMD64.rsp;
 
 import org.graalvm.collections.EconomicSet;
+
 import jdk.graal.compiler.asm.Assembler;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.debug.GraalError;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -100,7 +100,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
         BYTE(1, AMD64Kind.BYTE) {
             @Override
             protected void emitImmediate(AMD64BaseAssembler asm, int imm) {
-                assert imm == (byte) imm;
+                assert imm == (byte) imm : imm;
                 asm.emitByte(imm);
             }
 
@@ -113,7 +113,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
         WORD(2, AMD64Kind.WORD, 0x66) {
             @Override
             protected void emitImmediate(AMD64BaseAssembler asm, int imm) {
-                assert imm == (short) imm;
+                assert imm == (short) imm : imm;
                 asm.emitShort(imm);
             }
 
@@ -383,7 +383,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
     }
 
     protected final void prefix(Register dst, boolean dstIsByte, Register src, boolean srcIsByte) {
-        assert !isInvalidEncoding(dst) && !isInvalidEncoding(src);
+        assert !isInvalidEncoding(dst) && !isInvalidEncoding(src) : dst + " " + src;
         int dstEnc = dst.encoding;
         int srcEnc = src.encoding;
         if (dstEnc < 8) {
@@ -406,7 +406,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
      * in the prefix.
      */
     protected final void prefixq(Register reg, Register rm) {
-        assert !isInvalidEncoding(reg) && !isInvalidEncoding(rm);
+        assert !isInvalidEncoding(reg) && !isInvalidEncoding(rm) : reg + " " + rm;
         int regEnc = reg.encoding;
         int rmEnc = rm.encoding;
         if (regEnc < 8) {
@@ -543,7 +543,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
      * field. The X bit must be 0.
      */
     protected static int getRXB(Register reg, Register rm) {
-        assert !isInvalidEncoding(rm) && !isInvalidEncoding(reg);
+        assert !isInvalidEncoding(rm) && !isInvalidEncoding(reg) : rm + " " + reg;
         int rxb = (reg == null ? 0 : reg.encoding & 0x08) >> 1;
         rxb |= (rm == null ? 0 : rm.encoding & 0x08) >> 3;
         return rxb;
@@ -574,7 +574,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
      * Format: [ 11 reg r/m ]
      */
     protected final void emitModRM(int reg, Register rm) {
-        assert (reg & 0x07) == reg;
+        assert (reg & 0x07) == reg : reg + " " + rm;
         assert !isInvalidEncoding(rm);
         emitByte(0xC0 | (reg << 3) | (rm.encoding & 0x07));
     }
@@ -628,7 +628,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
      *            instruction uses one-byte-displacement form.
      */
     private void emitOperandHelper(int reg, AMD64Address addr, boolean force4Byte, int additionalInstructionSize, int evexDisp8Scale) {
-        assert (reg & 0x07) == reg;
+        assert (reg & 0x07) == reg : reg;
         int regenc = reg << 3;
 
         Register base = addr.getBase();
@@ -665,7 +665,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
                             int newDisp = disp / evexDisp8Scale;
                             if (isByte(newDisp)) {
                                 disp = newDisp;
-                                assert isByte(disp) && !overriddenForce4Byte;
+                                assert isByte(disp) && !overriddenForce4Byte : disp;
                             }
                         } else {
                             overriddenForce4Byte = true;
@@ -701,7 +701,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
                             int newDisp = disp / evexDisp8Scale;
                             if (isByte(newDisp)) {
                                 disp = newDisp;
-                                assert isByte(disp) && !overriddenForce4Byte;
+                                assert isByte(disp) && !overriddenForce4Byte : disp;
                             }
                         } else {
                             overriddenForce4Byte = true;
@@ -735,7 +735,7 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
                             int newDisp = disp / evexDisp8Scale;
                             if (isByte(newDisp)) {
                                 disp = newDisp;
-                                assert isByte(disp) && !overriddenForce4Byte;
+                                assert isByte(disp) && !overriddenForce4Byte : disp;
                             }
                         } else {
                             overriddenForce4Byte = true;

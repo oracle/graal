@@ -41,7 +41,8 @@ public final class ObjectLocationIdentity extends LocationIdentity implements Ja
     private final JavaConstant object;
 
     public static LocationIdentity create(JavaConstant object) {
-        assert object.getJavaKind() == JavaKind.Object && object.isNonNull();
+        assert object.getJavaKind() == JavaKind.Object : object;
+        assert object.isNonNull();
         return new ObjectLocationIdentity(object);
     }
 

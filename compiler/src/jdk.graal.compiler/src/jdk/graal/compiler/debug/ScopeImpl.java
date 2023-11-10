@@ -27,9 +27,10 @@ package jdk.graal.compiler.debug;
 import java.io.PrintStream;
 import java.util.Iterator;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.DebugContext.DisabledScope;
+import jdk.graal.compiler.debug.DebugContext.Scope;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-
 import jdk.vm.ci.meta.JavaMethod;
 
 public final class ScopeImpl implements DebugContext.Scope {
@@ -183,7 +184,7 @@ public final class ScopeImpl implements DebugContext.Scope {
     }
 
     boolean isDumpEnabled(int dumpLevel) {
-        assert dumpLevel >= 0;
+        assert NumUtil.assertNonNegativeInt(dumpLevel);
         return currentDumpLevel >= dumpLevel;
     }
 
@@ -192,7 +193,7 @@ public final class ScopeImpl implements DebugContext.Scope {
     }
 
     boolean isLogEnabled(int logLevel) {
-        assert logLevel > 0;
+        assert NumUtil.assertPositiveInt(logLevel);
         return currentLogLevel >= logLevel;
     }
 
@@ -274,8 +275,9 @@ public final class ScopeImpl implements DebugContext.Scope {
 
     public RuntimeException handle(Throwable e) {
         try {
-            if (owner.lastClosedScope instanceof ScopeImpl) {
-                ScopeImpl lastClosed = (ScopeImpl) owner.lastClosedScope;
+            Scope ownerLastClosedScope = owner.lastClosedScope;
+            if (ownerLastClosedScope instanceof ScopeImpl) {
+                ScopeImpl lastClosed = (ScopeImpl) ownerLastClosedScope;
                 assert lastClosed.parent == this : "DebugContext.handle() used without closing a scope opened by DebugContext.scope(...) or DebugContext.sandbox(...) " +
                                 "or an exception occurred while opening a scope";
                 if (e != owner.lastExceptionThrown) {
@@ -290,8 +292,8 @@ public final class ScopeImpl implements DebugContext.Scope {
                     }
 
                     // Checks that the action really is undone
-                    assert owner.currentScope == this;
-                    assert lastClosed == owner.lastClosedScope;
+                    assert owner.currentScope == this : Assertions.errorMessageContext("owner", owner, "owner.currentScope", owner.currentScope, "this", this);
+                    assert lastClosed == ownerLastClosedScope : Assertions.errorMessageContext("lastClosed", lastClosed, "owener.lastClosedScope", ownerLastClosedScope);
 
                     if (newException == null) {
                         owner.lastExceptionThrown = e;
@@ -300,11 +302,11 @@ public final class ScopeImpl implements DebugContext.Scope {
                         throw newException;
                     }
                 }
-            } else if (owner.lastClosedScope == null) {
+            } else if (ownerLastClosedScope == null) {
                 throw new AssertionError("DebugContext.handle() used without closing a scope opened by DebugContext.scope(...) or DebugContext.sandbox(...) " +
                                 "or an exception occurred while opening a scope");
             } else {
-                assert owner.lastClosedScope instanceof DisabledScope : owner.lastClosedScope;
+                assert ownerLastClosedScope instanceof DisabledScope : ownerLastClosedScope;
             }
         } catch (Throwable t) {
             if (t != e && t.getCause() == null) {

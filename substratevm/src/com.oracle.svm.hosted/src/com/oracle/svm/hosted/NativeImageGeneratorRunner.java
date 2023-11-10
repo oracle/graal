@@ -78,11 +78,11 @@ import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
-import jdk.graal.compiler.core.riscv64.ShadowedRISCV64;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.riscv64.RISCV64;
 import jdk.vm.ci.runtime.JVMCI;
 
 public class NativeImageGeneratorRunner {
@@ -352,7 +352,7 @@ public class NativeImageGeneratorRunner {
 
     private static boolean isValidArchitecture() {
         final Architecture originalTargetArch = GraalAccess.getOriginalTarget().arch;
-        return originalTargetArch instanceof AMD64 || originalTargetArch instanceof AArch64 || ShadowedRISCV64.instanceOf(originalTargetArch);
+        return originalTargetArch instanceof AMD64 || originalTargetArch instanceof AArch64 || originalTargetArch instanceof RISCV64;
     }
 
     private static boolean isValidOperatingSystem() {

@@ -24,12 +24,12 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.CONST;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.graal.compiler.lir.LIRValueUtil.asJavaConstant;
 import static jdk.graal.compiler.lir.LIRValueUtil.isJavaConstant;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize;
 import jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
@@ -37,12 +37,12 @@ import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.calc.Condition;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGenerator;
-
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
@@ -324,7 +324,7 @@ public class AArch64Compare {
             assert x.getPlatformKind() == y.getPlatformKind() : x.getPlatformKind() + " " + y.getPlatformKind();
             /* Confirming test cast is NE. */
             Condition testCondition = getASIMDFloatCompareCondition(condition, unorderedIsTrue);
-            assert testCondition == Condition.NE;
+            assert testCondition == Condition.NE : Assertions.errorMessage(testCondition, condition, unorderedIsTrue);
             this.condition = condition;
             this.result = result;
             this.x = x;

@@ -235,7 +235,7 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
     }
 
     private static boolean doubleEquals(double a, double b) {
-        assert !Double.isNaN(a) && !Double.isNaN(b) && !Double.isInfinite(a) && !Double.isInfinite(b);
+        assert !Double.isNaN(a) && !Double.isNaN(b) && !Double.isInfinite(a) && !Double.isInfinite(b) : a + " " + b;
         return a - EPSILON < b && a + EPSILON > b;
     }
 

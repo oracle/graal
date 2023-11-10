@@ -34,6 +34,7 @@ import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node.NodeIntrinsicFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -147,7 +148,7 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable {
         } else {
             ObjectStamp meetStamp = (ObjectStamp) checkedStamp.meet(inputStamp);
             if (Objects.equals(checkedStamp.type(), meetStamp.type()) && checkedStamp.isExactType() == meetStamp.isExactType() && checkedStamp.alwaysNull() == meetStamp.alwaysNull()) {
-                assert checkedStamp.nonNull() != inputStamp.nonNull();
+                assert checkedStamp.nonNull() != inputStamp.nonNull() : Assertions.errorMessage(checkedStamp, inputStamp, object);
                 // The only difference between the two stamps is their null-ness => simplify the
                 // check.
                 if (checkedStamp.nonNull()) {

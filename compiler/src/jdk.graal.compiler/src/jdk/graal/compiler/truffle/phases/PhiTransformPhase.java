@@ -26,7 +26,9 @@
 package jdk.graal.compiler.truffle.phases;
 
 import org.graalvm.collections.EconomicSet;
+
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Graph.NodeEvent;
 import jdk.graal.compiler.graph.Graph.NodeEventScope;
@@ -52,7 +54,6 @@ import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.util.EconomicSetNodeEventListener;
 import jdk.graal.compiler.truffle.nodes.AnyExtendNode;
-
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -200,7 +201,7 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
                 return true;
             }
         } else {
-            assert transformation instanceof ReinterpretNode;
+            assert transformation instanceof ReinterpretNode : Assertions.errorMessage(transformation);
             return value instanceof ReinterpretNode;
         }
         return false;
@@ -218,7 +219,7 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
                 }
                 newValue = graph.unique(new NarrowNode(value, narrow.getInputBits(), narrow.getResultBits()));
             } else {
-                assert transformation instanceof ReinterpretNode;
+                assert transformation instanceof ReinterpretNode : Assertions.errorMessage(transformation);
                 newValue = graph.addOrUnique(ReinterpretNode.create(transformation.stamp(NodeView.DEFAULT), value, NodeView.DEFAULT));
             }
             // make sure the new value will be processed by the canonicalizer
@@ -265,7 +266,7 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
                     return false;
                 }
             }
-            assert transformation instanceof NarrowNode || transformation instanceof ReinterpretNode;
+            assert transformation instanceof NarrowNode || transformation instanceof ReinterpretNode : transformation;
 
             // collect all nodes in this cluster and ensure that all their usages are valid
             EconomicSet<ValueNode> nodes = EconomicSet.create();

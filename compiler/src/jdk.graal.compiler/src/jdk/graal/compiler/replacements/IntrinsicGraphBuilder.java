@@ -31,6 +31,7 @@ import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
@@ -66,7 +67,6 @@ import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.CoreProvidersDelegate;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -155,7 +155,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
             if (kind == JavaKind.Object && type instanceof ResolvedJavaType) {
                 stamp = StampFactory.object(TypeReference.createWithoutAssumptions((ResolvedJavaType) type));
             } else if (kind.getStackKind() != kind) {
-                assert kind.getStackKind() == JavaKind.Int;
+                assert kind.getStackKind() == JavaKind.Int : Assertions.errorMessage(kind, type);
                 stamp = StampFactory.forKind(JavaKind.Int);
             } else {
                 stamp = StampFactory.forKind(kind);

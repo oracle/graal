@@ -30,14 +30,15 @@ import java.util.SortedSet;
 
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeMap;
 import jdk.graal.compiler.hightiercodegen.CodeGenTool;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.StackifierScopeComputation;
 import jdk.graal.compiler.hightiercodegen.reconstruction.ReconstructionData;
 import jdk.graal.compiler.hightiercodegen.reconstruction.StackifierData;
+import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.StackifierScopeComputation;
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlock;
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlockGeneration;
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.CatchScopeContainer;
@@ -67,7 +68,6 @@ import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.java.TypeSwitchNode;
 import jdk.graal.compiler.replacements.nodes.BasicArrayCopyNode;
-
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -295,7 +295,7 @@ public class StackifierIRWalker extends IRWalker {
                      * from lowerLoop and as such the node can be ignored since lowerLoop already
                      * emitted the loop header.
                      */
-                    assert currentBlock == blocks[0];
+                    assert currentBlock == blocks[0] : Assertions.errorMessage(currentBlock, blocks[0]);
                 } else if (!(node instanceof LoopExitNode)) {
                     lowerNode(node);
                 }

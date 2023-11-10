@@ -196,7 +196,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
         if (strideDst.value < strideSrc.value) {
             switch (strideSrc) {
                 case S2:
-                    assert strideDst == Stride.S1;
+                    assert strideDst == Stride.S1 : strideDst;
                     return Op.compressCharToByte;
                 case S4:
                     switch (strideDst) {
@@ -222,7 +222,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
                         throw new UnsupportedOperationException();
                 }
             case S2:
-                assert strideDst == Stride.S4;
+                assert strideDst == Stride.S4 : strideDst;
                 return Op.inflateCharToInt;
             default:
                 throw new UnsupportedOperationException();
@@ -521,7 +521,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
 
             // xmm half vector size
             if (op != Op.inflateByteToInt) {
-                assert scaleDelta == 1;
+                assert scaleDelta == 1 : scaleDelta;
                 asm.cmplAndJcc(len, 4 >> strideSrc.log2, ConditionFlag.Less, labelSkipXMMHalf, true);
 
                 asm.movdl(vec, new AMD64Address(src));

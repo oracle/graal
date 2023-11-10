@@ -24,10 +24,10 @@
  */
 package jdk.graal.compiler.core.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.graal.compiler.lir.LIRValueUtil.asJavaConstant;
 import static jdk.graal.compiler.lir.LIRValueUtil.asVariable;
 import static jdk.graal.compiler.lir.LIRValueUtil.isIntConstant;
+import static jdk.vm.ci.aarch64.AArch64.sp;
 
 import java.util.EnumSet;
 import java.util.function.Function;
@@ -40,6 +40,7 @@ import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.LIRKindTool;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstruction;
@@ -103,7 +104,6 @@ import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.gen.LIRGenerator;
 import jdk.graal.compiler.lir.gen.MoveFactory;
 import jdk.graal.compiler.phases.util.Providers;
-
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
@@ -168,7 +168,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     public AArch64AddressValue asAddressValue(Value address, int bitTransferSize) {
-        assert address.getPlatformKind() == AArch64Kind.QWORD;
+        assert address.getPlatformKind() == AArch64Kind.QWORD : address;
 
         if (address instanceof AArch64AddressValue) {
             return (AArch64AddressValue) address;
@@ -197,7 +197,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
                     BarrierType barrierType) {
         emitCompareAndSwap(true, accessKind, address, expectedValue, newValue, memoryOrder, barrierType);
         assert trueValue.getValueKind().equals(falseValue.getValueKind());
-        assert isIntConstant(trueValue, 1) && isIntConstant(falseValue, 0);
+        assert isIntConstant(trueValue, 1) && isIntConstant(falseValue, 0) : trueValue + " " + falseValue;
         Variable result = newVariable(LIRKind.combine(trueValue, falseValue));
         append(new CondSetOp(result, ConditionFlag.EQ));
         return result;
@@ -298,7 +298,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
      */
     @Override
     public void emitIntegerTestBranch(Value left, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability) {
-        assert ((AArch64Kind) left.getPlatformKind()).isInteger() && left.getPlatformKind() == right.getPlatformKind();
+        assert ((AArch64Kind) left.getPlatformKind()).isInteger() && left.getPlatformKind() == right.getPlatformKind() : right + " " + left;
         ((AArch64ArithmeticLIRGenerator) getArithmetic()).emitBinary(AArch64.zr.asValue(LIRKind.combine(left, right)), AArch64ArithmeticOp.TST, true, left, right);
         append(new AArch64ControlFlow.BranchOp(ConditionFlag.EQ, trueDestination, falseDestination, trueSuccessorProbability));
     }
@@ -457,7 +457,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
          * This minimum comparison size is defined in
          * AArch64LoweringProviderMixin::smallestCompareWidth.
          */
-        assert aVal.getPlatformKind() == bVal.getPlatformKind();
+        assert aVal.getPlatformKind() == bVal.getPlatformKind() : aVal + " " + bVal;
         int cmpBitSize = cmpKind.getSizeInBytes() * Byte.SIZE;
         GraalError.guarantee(cmpBitSize >= 32 && cmpKind == aVal.getPlatformKind(), "Unexpected comparison parameters.");
 
@@ -515,8 +515,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
      */
     @Override
     public Variable emitIntegerTestMove(Value left, Value right, Value trueValue, Value falseValue) {
-        assert left.getPlatformKind() == right.getPlatformKind() && ((AArch64Kind) left.getPlatformKind()).isInteger();
-        assert trueValue.getPlatformKind() == falseValue.getPlatformKind();
+        assert left.getPlatformKind() == right.getPlatformKind() && ((AArch64Kind) left.getPlatformKind()).isInteger() : left + " " + right;
+        assert trueValue.getPlatformKind() == falseValue.getPlatformKind() : Assertions.errorMessage(trueValue, falseValue);
         ((AArch64ArithmeticLIRGenerator) getArithmetic()).emitBinary(AArch64.zr.asValue(LIRKind.combine(left, right)), AArch64ArithmeticOp.TST, true, left, right);
         Variable result = newVariable(LIRKind.mergeReferenceInformation(trueValue, falseValue));
 

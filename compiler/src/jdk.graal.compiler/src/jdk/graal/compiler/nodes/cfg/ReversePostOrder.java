@@ -27,6 +27,7 @@ package jdk.graal.compiler.nodes.cfg;
 import java.util.List;
 
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.LinkedStack;
 import jdk.graal.compiler.graph.Node;
@@ -73,7 +74,7 @@ public class ReversePostOrder {
      * to ensure a loop is fully processed before any dominated code is visited.
      */
     private static void compute(ControlFlowGraph cfg, FixedNode start, HIRBlock[] rpoBlocks, int startIndex) {
-        assert startIndex < rpoBlocks.length;
+        assert startIndex < rpoBlocks.length : Assertions.errorMessageContext("startIndex", startIndex, "blockLength", rpoBlocks.length);
         LinkedStack<Node> toProcess = new LinkedStack<>();
         toProcess.push(start);
         NodeBitMap visitedNodes = cfg.graph.createNodeBitMap();

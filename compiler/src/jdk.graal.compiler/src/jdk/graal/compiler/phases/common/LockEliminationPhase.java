@@ -26,6 +26,7 @@ package jdk.graal.compiler.phases.common;
 
 import java.util.Optional;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.GraphState;
@@ -35,8 +36,8 @@ import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ProxyNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
+import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.AnchoringNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.extended.OSRMonitorEnterNode;
@@ -58,13 +59,13 @@ public class LockEliminationPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, false);
+        ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeDominators(true).computeFrequency(true).build();
         for (MonitorExitNode monitorExitNode : graph.getNodes(MonitorExitNode.TYPE)) {
             FixedNode next = monitorExitNode.next();
             if ((next instanceof MonitorEnterNode)) {
                 // should never happen, osr monitor enters are always direct successors of the graph
                 // start
-                assert !(next instanceof OSRMonitorEnterNode);
+                assert !(next instanceof OSRMonitorEnterNode) : Assertions.errorMessageContext("next", next);
                 AccessMonitorNode monitorEnterNode = (AccessMonitorNode) next;
                 if (isCompatibleLock(monitorEnterNode, monitorExitNode, true, cfg)) {
                     /*

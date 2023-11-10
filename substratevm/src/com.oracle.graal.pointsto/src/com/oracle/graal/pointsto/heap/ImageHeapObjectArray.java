@@ -27,41 +27,91 @@ package com.oracle.graal.pointsto.heap;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class ImageHeapObjectArray extends ImageHeapArray {
 
     private static final VarHandle arrayHandle = MethodHandles.arrayElementVarHandle(Object[].class);
+    private static final VarHandle elementsHandle = ReflectionUtil.unreflectField(ArrayData.class, "arrayElementValues", MethodHandles.lookup());
+
+    public static class ArrayData extends ConstantData {
+
+        /**
+         * Stores the array element values, indexed by array index. For normal constants it is set
+         * via {@link #setElementValues(Object[])} only when the constant is actually used and the
+         * hosted values of its elements may be read. For simulated constants it is set on creation.
+         * <p>
+         * Each value is either an {@link AnalysisFuture} of {@link JavaConstant} or its result, a
+         * {@link JavaConstant}. Evaluating the {@link AnalysisFuture} runs
+         * {@link ImageHeapScanner#createImageHeapConstant(JavaConstant, ObjectScanner.ScanReason)}
+         * which adds the result to the image heap.
+         */
+        private Object[] arrayElementValues;
+
+        final int length;
+
+        public ArrayData(AnalysisType type, JavaConstant object, int identityHashCode, int length) {
+            super(type, object, identityHashCode);
+            this.length = length;
+        }
+
+        public ArrayData(AnalysisType type, JavaConstant object, int identityHashCode, Object[] arrayElementValues, int length) {
+            super(type, object, identityHashCode);
+            this.arrayElementValues = arrayElementValues;
+            this.length = length;
+        }
+    }
+
+    ImageHeapObjectArray(AnalysisType type, JavaConstant object, int length) {
+        super(new ArrayData(type, object, createIdentityHashCode(object), length), false);
+    }
+
+    ImageHeapObjectArray(AnalysisType type, int length) {
+        this(type, null, new Object[length], length);
+    }
+
+    ImageHeapObjectArray(AnalysisType type, JavaConstant object, Object[] arrayElementValues, int length) {
+        this(type, object, createIdentityHashCode(object), arrayElementValues, length, false);
+    }
+
+    private ImageHeapObjectArray(AnalysisType type, JavaConstant object, int identityHashCode, Object[] arrayElementValues, int length, boolean compressed) {
+        super(new ArrayData(type, object, identityHashCode, arrayElementValues, length), compressed);
+    }
+
+    ImageHeapObjectArray(ConstantData data, boolean compressed) {
+        super(data, compressed);
+    }
+
+    @Override
+    public ArrayData getConstantData() {
+        return (ArrayData) super.getConstantData();
+    }
+
+    void setElementValues(Object[] elementValues) {
+        boolean success = elementsHandle.compareAndSet(constantData, null, elementValues);
+        AnalysisError.guarantee(success, "Unexpected field values reference for constant %s", this);
+    }
 
     /**
-     * Stores either an {@link AnalysisFuture} of {@link JavaConstant} or its result, a
-     * {@link JavaConstant}, indexed by array index.
+     * {@link ArrayData#arrayElementValues} are only set once, in
+     * {@link #setElementValues(Object[])} and shouldn't be accessed before set, i.e., read access
+     * is guarded by {@link #isReaderInstalled()} which ensures that the future setting the field
+     * values was executed, therefore we can read the field directly.
      */
-    private final Object[] arrayElementValues;
-
-    ImageHeapObjectArray(ResolvedJavaType type, int length) {
-        this(type, null, new Object[length]);
-    }
-
-    ImageHeapObjectArray(ResolvedJavaType type, JavaConstant object, int length) {
-        this(type, object, new Object[length]);
-    }
-
-    ImageHeapObjectArray(ResolvedJavaType type, JavaConstant object, Object[] arrayElementValues) {
-        this(type, object, arrayElementValues, createIdentityHashCode(object), false);
-    }
-
-    private ImageHeapObjectArray(ResolvedJavaType type, JavaConstant object, Object[] arrayElementValues, int identityHashCode, boolean compressed) {
-        super(type, object, identityHashCode, compressed);
-        assert type.isArray() : type;
-        this.arrayElementValues = arrayElementValues;
+    private Object[] getElementValues() {
+        AnalysisError.guarantee(isReaderInstalled());
+        Object[] arrayElements = getConstantData().arrayElementValues;
+        AnalysisError.guarantee(arrayElements != null);
+        return arrayElements;
     }
 
     /**
@@ -70,7 +120,7 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
      */
     @Override
     public Object getElement(int idx) {
-        return arrayHandle.getVolatile(this.arrayElementValues, idx);
+        return arrayHandle.getVolatile(getElementValues(), idx);
     }
 
     /**
@@ -86,53 +136,39 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
 
     @Override
     public void setElement(int idx, JavaConstant value) {
-        arrayHandle.setVolatile(this.arrayElementValues, idx, value);
+        arrayHandle.setVolatile(getElementValues(), idx, value);
     }
 
-    public void setElementTask(int idx, AnalysisFuture<JavaConstant> task) {
-        arrayHandle.setVolatile(this.arrayElementValues, idx, task);
+    void setElementTask(int idx, AnalysisFuture<JavaConstant> task) {
+        arrayHandle.setVolatile(getElementValues(), idx, task);
     }
 
     @Override
     public int getLength() {
-        return arrayElementValues.length;
+        return getConstantData().length;
     }
 
     @Override
     public JavaConstant compress() {
         assert !compressed : this;
-        return new ImageHeapObjectArray(type, hostedObject, arrayElementValues, identityHashCode, true);
+        return new ImageHeapObjectArray(constantData, true);
     }
 
     @Override
     public JavaConstant uncompress() {
         assert compressed : this;
-        return new ImageHeapObjectArray(type, hostedObject, arrayElementValues, identityHashCode, false);
+        return new ImageHeapObjectArray(constantData, false);
     }
 
     @Override
     public ImageHeapConstant forObjectClone() {
-        assert type.isCloneableWithAllocation() : "all arrays implement Cloneable";
+        assert constantData.type.isCloneableWithAllocation() : "all arrays implement Cloneable";
 
-        Object[] newArrayElementValues = Arrays.copyOf(arrayElementValues, arrayElementValues.length);
+        Object[] arrayElements = getElementValues();
+        Objects.requireNonNull(arrayElements, "Cannot clone an array before the element values are set.");
+        Object[] newArrayElementValues = Arrays.copyOf(arrayElements, arrayElements.length);
         /* The new constant is never backed by a hosted object, regardless of the input object. */
         JavaConstant newObject = null;
-        return new ImageHeapObjectArray(type, newObject, newArrayElementValues, createIdentityHashCode(newObject), compressed);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (o instanceof ImageHeapObjectArray) {
-            return super.equals(o) && this.arrayElementValues == ((ImageHeapObjectArray) o).arrayElementValues;
-        }
-        return false;
-    }
-
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = super.hashCode();
-        result = prime * result + System.identityHashCode(arrayElementValues);
-        return result;
+        return new ImageHeapObjectArray(constantData.type, newObject, createIdentityHashCode(newObject), newArrayElementValues, arrayElements.length, compressed);
     }
 }

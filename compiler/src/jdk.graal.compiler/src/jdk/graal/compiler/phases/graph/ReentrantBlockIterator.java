@@ -32,9 +32,11 @@ import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.common.cfg.Loop;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.nodes.AbstractEndNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.FixedNode;
@@ -113,7 +115,7 @@ public final class ReentrantBlockIterator {
             info.endStates.add(closure.cloneState(endState));
         }
         for (HIRBlock loopExit : loop.getLoopExits()) {
-            assert loopExit.getPredecessorCount() == 1;
+            assert loopExit.getPredecessorCount() == 1 : Assertions.errorMessage(loop, loopExit);
             assert blockEndStates.containsKey(loopExit.getBeginNode()) : loopExit.getBeginNode() + " " + blockEndStates;
             StateT exitState = blockEndStates.get(loopExit.getBeginNode());
             // make sure all exit states are unique objects
@@ -192,7 +194,7 @@ public final class ReentrantBlockIterator {
                 return states;
             } else {
                 current = blockQueue.removeFirst();
-                assert current.getPredecessorCount() == 1;
+                assert current.getPredecessorCount() == 1 : Assertions.errorMessage(current);
                 assert states.containsKey(current.getBeginNode());
                 state = states.removeKey(current.getBeginNode());
             }
@@ -210,7 +212,7 @@ public final class ReentrantBlockIterator {
 
     private static <StateT> HIRBlock processMultipleSuccessors(BlockIteratorClosure<StateT> closure, Deque<HIRBlock> blockQueue, EconomicMap<FixedNode, StateT> states, StateT state,
                     HIRBlock current) {
-        assert current.getSuccessorCount() > 1;
+        assert current.getSuccessorCount() > 1 : Assertions.errorMessageContext("current", current);
         for (int i = 1; i < current.getSuccessorCount(); i++) {
             HIRBlock successor = current.getSuccessorAt(i);
             blockQueue.addFirst(successor);
@@ -234,12 +236,12 @@ public final class ReentrantBlockIterator {
         // recurse into the loop
         Loop<HIRBlock> loop = successor.getLoop();
         LoopBeginNode loopBegin = (LoopBeginNode) loop.getHeader().getBeginNode();
-        assert successor.getBeginNode() == loopBegin;
+        assert successor.getBeginNode() == loopBegin : Assertions.errorMessage(successor, successor.getBeginNode(), loopBegin);
 
         List<StateT> exitStates = closure.processLoop(loop, state);
 
         int i = 0;
-        assert loop.getLoopExits().size() == exitStates.size();
+        assert loop.getLoopExits().size() == exitStates.size() : Assertions.errorMessage(loop, loop.getLoopExits(), exitStates);
         for (HIRBlock exit : loop.getLoopExits()) {
             states.put(exit.getBeginNode(), exitStates.get(i++));
             blockQueue.addFirst(exit);

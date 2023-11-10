@@ -29,6 +29,7 @@ import static jdk.graal.compiler.nodes.calc.CompareNode.createCompareNode;
 import java.util.List;
 
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ConditionAnchorNode;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -79,7 +80,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
     protected abstract Arguments makeArguments(InstanceOfUsageReplacer replacer, LoweringTool tool);
 
     public void lower(FloatingNode instanceOf, LoweringTool tool) {
-        assert instanceOf instanceof LogicNode;
+        assert instanceOf instanceof LogicNode : instanceOf;
         List<Node> usages = instanceOf.usages().snapshot();
 
         Instantiation instantiation = new Instantiation();
@@ -246,8 +247,8 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
 
         @Override
         public void replace(ValueNode oldNode, ValueNode newNode) {
-            assert newNode instanceof PhiNode;
-            assert oldNode == instanceOf;
+            assert newNode instanceof PhiNode : Assertions.errorMessage(oldNode, newNode, instanceOf);
+            assert oldNode == instanceOf : Assertions.errorMessage(oldNode, newNode, instanceOf);
             newNode.inferStamp();
             instantiation.initialize(newNode, trueValue, falseValue);
             usage.replaceFirstInput(oldNode, instantiation.asCondition(trueValue));
@@ -277,8 +278,8 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
 
         @Override
         public void replace(ValueNode oldNode, ValueNode newNode) {
-            assert newNode instanceof PhiNode;
-            assert oldNode == instanceOf;
+            assert newNode instanceof PhiNode : Assertions.errorMessage(oldNode, newNode, instanceOf);
+            assert oldNode == instanceOf : Assertions.errorMessage(oldNode, newNode, instanceOf);
             newNode.inferStamp();
             instantiation.initialize(newNode, trueValue, falseValue);
             usage.replaceAtUsages(newNode);

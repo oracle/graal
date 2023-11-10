@@ -33,7 +33,12 @@ import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+
 import jdk.graal.compiler.core.common.PermanentBailoutException;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
@@ -50,12 +55,7 @@ import jdk.graal.compiler.phases.common.inlining.InliningUtil.InlineeReturnActio
 import jdk.graal.compiler.phases.contract.NodeCostUtil;
 import jdk.graal.compiler.truffle.PerformanceInformationHandler;
 import jdk.graal.compiler.truffle.TruffleCompilerOptions.PerformanceWarningKind;
-
-import com.oracle.truffle.compiler.TruffleCompilable;
-import com.oracle.truffle.compiler.TruffleCompilationTask;
-
 import jdk.graal.compiler.truffle.TruffleTierContext;
-
 import jdk.vm.ci.meta.JavaConstant;
 
 @NodeInfo(nameTemplate = "{p#directCallTarget}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
@@ -261,7 +261,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         assert getParent() != null;
         state = State.Expanded;
         getCallTree().expanded++;
-        assert state == State.Expanded;
+        assert state == State.Expanded : Assertions.errorMessage(state);
         assert ir == null;
         GraphManager.Entry entry;
         GraphManager manager = getCallTree().getGraphManager();
@@ -313,7 +313,8 @@ public final class CallNode extends Node implements Comparable<CallNode> {
 
     public void inline(InlineeReturnAction returnAction) {
         assert state == State.Expanded : "Cannot inline node that is not expanded: " + state;
-        assert ir != null && getParent() != null;
+        assert ir != null : ir;
+        assert getParent() != null;
         if (!invoke.isAlive()) {
             remove();
             return;

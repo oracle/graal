@@ -28,6 +28,7 @@ import static jdk.graal.compiler.hotspot.HotSpotGraalServices.isIntrinsicAvailab
 import static jdk.graal.compiler.hotspot.HotSpotGraalServices.isIntrinsicSupportedByC2;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -62,7 +63,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * Checks the intrinsics implemented by Graal against the set of intrinsics declared by HotSpot. The
  * purpose of this test is to detect when new intrinsics are added to HotSpot and process them
  * appropriately in Graal. This will be achieved by working through
- * {@link UnimplementedGraalIntrinsics#toBeInvestigated} and * either implementing the intrinsic or
+ * {@link UnimplementedGraalIntrinsics#toBeInvestigated} and either implementing the intrinsic or
  * moving it to {@link UnimplementedGraalIntrinsics#ignore}.
  */
 public class CheckGraalIntrinsics extends GraalTest {
@@ -145,7 +146,7 @@ public class CheckGraalIntrinsics extends GraalTest {
 
     @Test
     @SuppressWarnings("try")
-    public void test() throws ClassNotFoundException {
+    public void test() throws ClassNotFoundException, NoSuchFieldException {
         HotSpotProviders providers = rt.getHostBackend().getProviders();
         Plugins graphBuilderPlugins = providers.getGraphBuilderPlugins();
         InvocationPlugins invocationPlugins = graphBuilderPlugins.getInvocationPlugins();
@@ -162,6 +163,7 @@ public class CheckGraalIntrinsics extends GraalTest {
         List<String> mischaracterizedAsIgnored = new ArrayList<>();
         List<String> notAvailableYetIntrinsified = new ArrayList<>();
 
+        Field toBeInvestigated = UnimplementedGraalIntrinsics.class.getDeclaredField("toBeInvestigated");
         for (VMIntrinsicMethod intrinsic : intrinsics) {
             ResolvedJavaMethod method = resolveIntrinsic(providers.getMetaAccess(), intrinsic);
             if (method == null) {
@@ -196,6 +198,8 @@ public class CheckGraalIntrinsics extends GraalTest {
             Collections.sort(missing);
             String missingString = missing.stream().map(s -> '"' + s + '"').collect(Collectors.joining(String.format(",%n    ")));
             errorMsgBuf.format("missing Graal intrinsics for:%n    %s%n", missingString);
+            errorMsgBuf.format("To fix, modify the %s constructor to add them to %s.%n",
+                            UnimplementedGraalIntrinsics.class.getSimpleName(), toBeInvestigated);
         }
         if (!mischaracterizedAsToBeInvestigated.isEmpty()) {
             Collections.sort(mischaracterizedAsToBeInvestigated);

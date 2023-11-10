@@ -41,6 +41,7 @@ import jdk.graal.compiler.code.CompilationResult.CodeAnnotation;
 import jdk.graal.compiler.code.CompilationResult.CodeComment;
 import jdk.graal.compiler.code.CompilationResult.JumpTable;
 import jdk.graal.compiler.code.CompilationResult.JumpTable.EntryFormat;
+import jdk.graal.compiler.debug.Assertions;
 
 /**
  * A HexCodeFile is a textual format for representing a chunk of machine code along with extra
@@ -318,7 +319,7 @@ public class HexCodeFile {
         }
 
         String errorMessage(int offset, String message) {
-            assert offset < input.length();
+            assert offset < input.length() : Assertions.errorMessage(offset, input);
             InputPos inputPos = filePos(offset);
             int lineEnd = input.indexOf(HexCodeFile.NEW_LINE, offset);
             int lineStart = offset - inputPos.col;

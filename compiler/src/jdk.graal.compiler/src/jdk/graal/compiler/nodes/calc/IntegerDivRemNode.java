@@ -124,7 +124,8 @@ public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lower
     }
 
     public void setImplicitDeoptimization(JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation) {
-        assert deoptReasonAndAction != null && deoptSpeculation != null;
+        assert deoptReasonAndAction != null;
+        assert deoptSpeculation != null;
         this.deoptReasonAndAction = deoptReasonAndAction;
         this.deoptSpeculation = deoptSpeculation;
     }

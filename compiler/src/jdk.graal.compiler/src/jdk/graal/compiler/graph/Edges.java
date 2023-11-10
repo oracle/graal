@@ -151,8 +151,8 @@ public abstract class Edges extends Fields {
      * @param toNode the node to which the edges should be copied.
      */
     public void copy(Node fromNode, Node toNode) {
-        assert fromNode != toNode;
-        assert fromNode.getNodeClass().getClazz() == toNode.getNodeClass().getClazz();
+        assert fromNode != toNode : fromNode;
+        assert fromNode.getNodeClass().getClazz() == toNode.getNodeClass().getClazz() : "fromNode " + fromNode + " toNode " + toNode;
         int index = 0;
         final long[] curOffsets = this.offsets;
         final Type curType = this.type;
@@ -220,7 +220,7 @@ public abstract class Edges extends Fields {
      * @param value the node to be written to the edge
      */
     public void setNode(Node node, int index, Node value) {
-        assert index < directCount;
+        assert index < directCount : index;
         Node old = getNodeUnsafe(node, offsets[index]);
         initializeNode(node, index, value);
         update(node, old, value);

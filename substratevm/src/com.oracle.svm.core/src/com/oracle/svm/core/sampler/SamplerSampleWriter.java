@@ -189,7 +189,6 @@ public final class SamplerSampleWriter {
         /* Put in the stack with other unprocessed buffers and send a signal to the JFR recorder. */
         SamplerBuffer oldBuffer = data.getSamplerBuffer();
         SubstrateJVM.getSamplerBufferPool().pushFullBuffer(oldBuffer);
-        SubstrateJVM.getRecorderThread().signal();
 
         /* Reinitialize data structure. */
         data.setSamplerBuffer(newBuffer);

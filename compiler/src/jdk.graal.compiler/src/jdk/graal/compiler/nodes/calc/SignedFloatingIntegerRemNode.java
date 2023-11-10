@@ -33,6 +33,7 @@ import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Rem;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
@@ -96,8 +97,7 @@ public class SignedFloatingIntegerRemNode extends FloatingIntegerDivRemNode<Bina
 
     @Override
     public void generate(NodeLIRBuilderTool builder, ArithmeticLIRGeneratorTool gen) {
-        assert x.stamp(NodeView.DEFAULT) instanceof IntegerStamp;
-        assert y.stamp(NodeView.DEFAULT) instanceof IntegerStamp;
+        assert x.stamp(NodeView.DEFAULT) instanceof IntegerStamp && y.stamp(NodeView.DEFAULT) instanceof IntegerStamp : Assertions.errorMessageContext("this", this, "x", x, "y", y);
         builder.setResult(this, builder.getLIRGeneratorTool().getArithmetic().emitRem(
                         builder.operand(getX()), builder.operand(getY()), null/* no state needed */));
     }

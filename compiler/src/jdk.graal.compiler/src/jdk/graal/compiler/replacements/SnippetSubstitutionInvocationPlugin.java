@@ -60,7 +60,7 @@ public abstract class SnippetSubstitutionInvocationPlugin<T extends SnippetTempl
         if (receiver != null) {
             // Perform the required null check
             ValueNode r = receiver.get();
-            assert args[0] == r;
+            assert args[0] == r : args;
         }
 
         T templates = b.getReplacements().getSnippetTemplateCache(templateClass);

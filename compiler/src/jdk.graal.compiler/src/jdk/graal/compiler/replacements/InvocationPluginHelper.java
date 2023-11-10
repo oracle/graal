@@ -33,6 +33,7 @@ import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
@@ -76,7 +77,6 @@ import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.word.Word;
-
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -478,7 +478,7 @@ public class InvocationPluginHelper implements DebugCloseable {
         }
         // Multiple paths lead to the fallback, so upgrade it to a MergeNode
         if (!(fallbackEntry instanceof MergeNode)) {
-            assert fallbackEntry instanceof BeginNode;
+            assert fallbackEntry instanceof BeginNode : Assertions.errorMessage(fallbackEntry);
             BeginNode begin = (BeginNode) fallbackEntry;
             FixedNode next = begin.next();
             EndNode end = b.getGraph().add(new EndNode());

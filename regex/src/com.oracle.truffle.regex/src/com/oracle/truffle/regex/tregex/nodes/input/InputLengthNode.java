@@ -40,23 +40,27 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.input;
 
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 
 @GenerateUncached
+@GenerateInline
 public abstract class InputLengthNode extends Node {
 
-    public static InputLengthNode create() {
-        return InputLengthNodeGen.create();
-    }
-
-    public abstract int execute(TruffleString input, Encodings.Encoding encoding);
+    public abstract int execute(Node node, TruffleString input, Encodings.Encoding encoding);
 
     @Specialization
     static int doTString(TruffleString input, Encodings.Encoding encoding) {
         return input.byteLength(encoding.getTStringEncoding()) >> encoding.getStride();
+    }
+
+    @NeverDefault
+    public static InputLengthNode create() {
+        return InputLengthNodeGen.create();
     }
 }

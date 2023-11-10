@@ -33,6 +33,7 @@ import java.util.RandomAccess;
 import java.util.stream.Stream;
 
 import jdk.graal.compiler.core.common.PermanentBailoutException;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
 
@@ -227,7 +228,8 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
 
     public void initialize(int index, Node node) {
         incModCount();
-        assert index < size();
+        int size2 = size();
+        assert index < size2 : index + ">=" + size2;
         nodes[index] = node;
     }
 
@@ -482,14 +484,14 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
 
         @Override
         public boolean hasNext() {
-            assert expectedModCount == list.modCount;
+            assert expectedModCount == list.modCount : Assertions.errorMessageContext("expectedModCount", expectedModCount, "list.modCount", list.modCount);
             return index < list.size;
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public R next() {
-            assert expectedModCount == list.modCount;
+            assert expectedModCount == list.modCount : Assertions.errorMessageContext("expectedModCount", expectedModCount, "list.modCount", list.modCount);
             return (R) list.nodes[index++];
         }
 

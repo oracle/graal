@@ -32,6 +32,7 @@ import java.util.Optional;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.cfg.Loop;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeSourcePosition;
@@ -73,7 +74,6 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.graal.compiler.phases.common.LazyValue;
 import jdk.graal.compiler.phases.common.PostRunCanonicalizationPhase;
-
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.TriState;
 
@@ -263,7 +263,8 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
                     }
                     return;
                 } else if (current.predecessor() == null || current.predecessor() instanceof ControlSplitNode) {
-                    assert current.predecessor() != null || (current instanceof StartNode && current == ((AbstractBeginNode) current).graph().start());
+                    assert current.predecessor() != null || (current instanceof StartNode && current == ((AbstractBeginNode) current).graph().start()) : Assertions.errorMessageContext("current",
+                                    current, "pred", current.predecessor());
                     moveAsDeoptAfter((AbstractBeginNode) current, deopt);
                     return;
                 }
