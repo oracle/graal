@@ -106,39 +106,14 @@ suite = {
       "digest" : "sha512:8a96e7ca560ba221169872006f61c4662464e13c2bd50f3a86d307b65de6a984dd72f2f7e316d188a2758121902be8a54e52b8e54d7d04f3ea46eefb6898b94a",
     },
 
-    "RENAISSANCE_0.9.0" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.9.0.jar"],
-      "digest" : "sha512:9525a11b71b7bd560e9b881c6530ef56f36fd1007ebc96e6801c3ea8278b11adc76849c4bf898c2dd8085db9ce869d1ab8fefb8875e1c2c5e1d02a331887e63f",
-    },
-
-    "RENAISSANCE_0.10.0" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.10.0.jar"],
-      "digest" : "sha512:21e24d7dc1149e5637ff335cf17e5c5f5d19464dbec0129ae6b3b6029f7f73f63b90cf526e9b3354465d99a37dee09104f714a67a609759c74c3601f48969023",
-    },
-
-    "RENAISSANCE_0.11.0" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.11.0.jar"],
-      "digest" : "sha512:4beba0aaf036c94f909fc18b40ea54c94175e33241ddfd92690c4aa8695eed68af838629dd66b913b7d3802f4c2ac6836ad0cf71458ed2e1dc1e30020bf57d57",
-    },
-
-    "RENAISSANCE_0.12.0" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.12.0.jar"],
-      "digest" : "sha512:9de3cf57616a8178b0d12681a8fdcaa828d295270947cc0c30649849ca433ee673331d95ccbb898955c6f74f1a5d7ff5e8301dc693bc1b8e5861b331560417a9",
-    },
-
-    "RENAISSANCE_0.13.0" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.13.0.jar"],
-      "digest" : "sha512:305ba9768fc39ed6f96436b6732edc22e11ee9903a6b3fb6d435a97c3a237528a508e4e3c4dbbfb49354c16b5648a2d0209bd0dfae9532068474a370f150657b",
-    },
-
-    "RENAISSANCE_0.14.0" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.14.0.jar"],
-      "digest" : "sha512:d56f7c7cb67a89ff7465408a766e7ead7ff939b99fb2820774e9c9f2758d32b6093ea1944742aaf567caaa6e19488e31a12c1668e615a2178fddd2799c664fcd",
-    },
-
     "RENAISSANCE_0.14.1" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.14.1.jar"],
       "digest" : "sha512:75dcb0e7891eca287c4ee575ee02e14a97e281bc680499ac313928a13f95ee3638f17d591c3c67b89f12b49b4fe5efb6a64d3fa0bb1670bf5d982c7e7081894f",
+    },
+
+    "RENAISSANCE_0.15.0" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.15.0.jar"],
+      "digest" : "sha512:2682ac2dd133efb143352fc571671859980044565470188ea26a95926132f43477686fe321f012f7af9ba5f4022b797e4b7591f63bb12450a80f820456a54ac2",
     },
 
     "UBENCH_AGENT_DIST" : {

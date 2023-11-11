@@ -10,7 +10,6 @@
   groups:: {
     open_suites:: unique_suites([$.awfy, $.dacapo, $.scala_dacapo, $.renaissance]),
     spec_suites:: unique_suites([$.specjvm2008, $.specjbb2015]),
-    legacy_and_secondary_suites:: unique_suites([$.renaissance_0_11, $.renaissance_legacy]),
     jmh_micros_suites:: unique_suites([$.micros_graal_dist, $.micros_misc_graal_dist , $.micros_shootout_graal_dist]),
     graal_internals_suites:: unique_suites([$.micros_graal_whitebox]),
     special_suites:: unique_suites([$.dacapo_size_variants, $.scala_dacapo_size_variants, $.specjbb2015_full_machine]),
@@ -135,30 +134,6 @@
   renaissance: self.renaissance_template() + {
     # [JDK-8303076] [GR-44499] requires extra stack size for C1
     extra_vm_args+:: if self.platform == "c1" then ["-Xss1090K"] else []
-  },
-
-  renaissance_0_11: self.renaissance_template(suite_version="0.11.0", suite_name="renaissance-0-11", max_jdk_version=11) + {
-    environment+: {
-      "SPARK_LOCAL_IP": "127.0.0.1"
-    }
-  },
-
-  renaissance_legacy: cc.compiler_benchmark + c.heap.default + {
-    suite:: "renaissance-legacy",
-    downloads+: {
-      "RENAISSANCE_LEGACY": { name: "renaissance", version: "0.1" }
-    },
-    environment+: {
-      "SPARK_LOCAL_IP": "127.0.0.1"
-    },
-    run+: [
-      self.benchmark_cmd + ["renaissance-legacy:*", "--"] + self.extra_vm_args
-    ],
-    timelimit: "2:45:00",
-    forks_batches:: 4,
-    forks_timelimit:: "06:30:00",
-    min_jdk_version:: 8,
-    max_jdk_version:: 11
   },
 
   specjbb2015: cc.compiler_benchmark + c.heap.large_with_large_young_gen + {
