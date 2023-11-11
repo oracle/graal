@@ -28,14 +28,15 @@ import static com.oracle.svm.core.thread.VirtualThreadHelper.asTarget;
 import static com.oracle.svm.core.thread.VirtualThreadHelper.asThread;
 
 import java.util.Locale;
-
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ScheduledExecutorService;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -45,6 +46,8 @@ import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
 @TargetClass(className = "java.lang.VirtualThread")
 public final class Target_java_lang_VirtualThread {
@@ -63,7 +66,63 @@ public final class Target_java_lang_VirtualThread {
     @TargetElement(onlyWith = JDK22OrLater.class) @Alias static int TIMED_PARKED;
     @TargetElement(onlyWith = JDK22OrLater.class) @Alias static int TIMED_PINNED;
     @Alias static Target_jdk_internal_vm_ContinuationScope VTHREAD_SCOPE;
+
+    @Alias //
+    @InjectAccessors(DefaultSchedulerAccessor.class) //
+    private static ForkJoinPool DEFAULT_SCHEDULER;
+
+    @Alias //
+    @InjectAccessors(UnparkerAccessor.class) //
+    private static ScheduledExecutorService UNPARKER;
     // Checkstyle: resume
+
+    @Alias
+    private static native ForkJoinPool createDefaultScheduler();
+
+    @Alias
+    private static native ScheduledExecutorService createDelayedTaskScheduler();
+
+    private static final class DefaultSchedulerAccessor {
+        private static volatile ForkJoinPool defaultScheduler;
+
+        public static ForkJoinPool get() {
+            ForkJoinPool result = defaultScheduler;
+            if (result == null) {
+                result = initializeDefaultScheduler();
+            }
+            return result;
+        }
+
+        private static synchronized ForkJoinPool initializeDefaultScheduler() {
+            ForkJoinPool result = defaultScheduler;
+            if (result == null) {
+                result = createDefaultScheduler();
+                defaultScheduler = result;
+            }
+            return result;
+        }
+    }
+
+    private static final class UnparkerAccessor {
+        private static volatile ScheduledExecutorService delayedTaskScheduler;
+
+        public static ScheduledExecutorService get() {
+            ScheduledExecutorService result = delayedTaskScheduler;
+            if (result == null) {
+                result = initializeDelayedTaskScheduler();
+            }
+            return result;
+        }
+
+        private static synchronized ScheduledExecutorService initializeDelayedTaskScheduler() {
+            ScheduledExecutorService result = delayedTaskScheduler;
+            if (result == null) {
+                result = createDelayedTaskScheduler();
+                delayedTaskScheduler = result;
+            }
+            return result;
+        }
+    }
 
     @Substitute
     private static void registerNatives() {
