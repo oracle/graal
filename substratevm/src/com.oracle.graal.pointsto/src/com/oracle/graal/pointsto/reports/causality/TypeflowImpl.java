@@ -212,12 +212,7 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
             }
             return CausalityEvents.InlinedMethodCode.create(pos);
         } else {
-            AnalysisMethod m = f.method();
-            if (m != null) {
-                return CausalityEvents.InlinedMethodCode.create(m);
-            } else {
-                return null;
-            }
+            return null;
         }
     }
 

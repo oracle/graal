@@ -71,7 +71,9 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
 import com.oracle.graal.pointsto.reports.causality.events.EventKinds;
+import com.oracle.graal.pointsto.typestate.MultiTypeState;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.typestate.TypeStateUtils;
 import com.oracle.svm.util.ClassUtil;
 
 class Graph {
@@ -447,7 +449,121 @@ class Graph {
         return adjReverse;
     }
 
-    @SuppressWarnings("unchecked")
+    private static class FastSubsetChecker {
+        private final int nTypes;
+
+        public FastSubsetChecker(PointsToAnalysis bb) {
+            nTypes = bb.getAllInstantiatedTypeFlow().getState().typesCount();
+        }
+
+        public boolean isSubset(TypeState t1, TypeState t2) {
+            if (t1.typesCount() == 0 || t2.typesCount() == nTypes)
+                return true;
+
+            if (t1.typesCount() == 1)
+                return t2.containsType(t1.exactType());
+
+            if (t2.typesCount() <= 1)
+                return false;
+
+            var t1m = (MultiTypeState) t1;
+            var t2m = (MultiTypeState) t2;
+            return TypeStateUtils.isSuperset(t2m.typesBitSet(), t1m.typesBitSet());
+        }
+    }
+
+    private static void removeUnneededInnerTypeflows(PointsToAnalysis bb, Map<FlowNode, Pair<Set<FlowNode>, Set<FlowNode>>> adj) {
+        FastSubsetChecker subsetChecker = new FastSubsetChecker(bb);
+
+        int initialNodeCount = adj.size();
+        boolean changed;
+        int removed = 0;
+        int iterations = 0;
+
+        long t1 = System.currentTimeMillis();
+
+        do {
+            changed = false;
+            iterations++;
+            var nodes = adj.keySet().stream().filter(f -> f != null && !f.makesContainingReachable()).toArray(FlowNode[]::new);
+            for (FlowNode f : nodes) {
+                var forwardAndBackward = adj.get(f);
+                var forward = forwardAndBackward.getLeft();
+                var backward = forwardAndBackward.getRight();
+
+                if (forward.size() > 1 && backward.size() > 1) {
+                    continue;
+                }
+
+                if (!(f.containing == null || forward.stream().allMatch(ff -> ff.containing == f.containing) || backward.stream().allMatch(ff -> ff != null && ff.containing == f.containing))) {
+                    continue;
+                }
+
+                if (!forward.stream().allMatch(ff -> subsetChecker.isSubset(ff.filter, f.filter)))
+                    continue;
+
+                adj.remove(f);
+                for (FlowNode next : forward) {
+                    if (next == f) {
+                        continue;
+                    }
+
+                    var nextBackward = adj.get(next).getRight();
+                    nextBackward.addAll(backward);
+                    nextBackward.remove(f);
+                }
+                for (FlowNode prev : backward) {
+                    if (prev == f) {
+                        continue;
+                    }
+
+                    var prevForward = adj.get(prev).getLeft();
+                    prevForward.addAll(forward);
+                    prevForward.remove(f);
+                }
+                removed++;
+                changed = true;
+            }
+        } while (changed && iterations < 10);
+
+        long t2 = System.currentTimeMillis();
+        System.err.println("Removed " + removed + " out of " + initialNodeCount + " typeflows in " + iterations + " iterations. Duration: " + (t2 - t1) + " ms");
+    }
+
+    private static Map<FlowNode, Pair<Set<FlowNode>, Set<FlowNode>>> edgeListToAdjacency(HashSet<FlowEdge> interflows) {
+        Map<FlowNode, Pair<Set<FlowNode>, Set<FlowNode>>> adj = new HashMap<>();
+        for (FlowEdge e : interflows) {
+            if (e.from == e.to)
+                continue;
+            adj.computeIfAbsent(e.from, f -> Pair.create(new HashSet<>(), new HashSet<>())).getLeft().add(e.to);
+            adj.computeIfAbsent(e.to, f -> Pair.create(new HashSet<>(), new HashSet<>())).getRight().add(e.from);
+        }
+        return adj;
+    }
+
+    private static HashSet<FlowEdge> adjacencyToEdgeList(Map<FlowNode, Pair<Set<FlowNode>, Set<FlowNode>>> adj) {
+        HashSet<FlowEdge> interflows = new HashSet<>();
+        for (var pair : adj.entrySet()) {
+            var from = pair.getKey();
+            for (var to : pair.getValue().getLeft()) {
+                interflows.add(new FlowEdge(from, to));
+            }
+        }
+        return interflows;
+    }
+
+    private void contractTypeflows(PointsToAnalysis bb) {
+        long t1 = System.currentTimeMillis();
+        var adj = edgeListToAdjacency(interflows);
+        long t2 = System.currentTimeMillis();
+        System.err.println("Converted " + interflows.size() + " typeflow edges to adjacency list. Duration: " + (t2 - t1) + " ms");
+        removeUnneededInnerTypeflows(bb, adj);
+        t1 = System.currentTimeMillis();
+        interflows = adjacencyToEdgeList(adj);
+        t2 = System.currentTimeMillis();
+        System.err.println("Converted " + interflows.size() + " typeflows edges back to edge list. Duration: " + (t2 - t1) + " ms");
+    }
+
     private static <T> Stream<T> filterType(Class<T> type, Stream<?> s) {
         return (Stream<T>) s.filter(o -> type.isAssignableFrom(o.getClass()));
     }
@@ -462,9 +578,11 @@ class Graph {
                         .sorted(Comparator.comparing(Pair::getLeft))
                         .map(Pair::getRight)
                         .toArray(CausalityEvent[]::new);
-        FlowNode[] flowsSorted = filterType(FlowNode.class, neededAbstractNodes.stream())
-                        .sorted()
-                        .toArray(FlowNode[]::new);
+        var neededFlows = filterType(FlowNode.class, neededAbstractNodes.stream()).collect(Collectors.toSet());
+                        neededFlows.add(null); // Always needed
+        interflows.removeIf(e -> !neededFlows.contains(e.from) || !neededFlows.contains(e.to));
+        contractTypeflows(bb);
+                        var flowsSorted = collectFlowNodes().stream().sorted().toArray(FlowNode[]::new);
 
         HashMap<CausalityEvent, Integer> methodIdMap = inverse(methodsSorted, 1);
         HashMap<FlowNode, Integer> flowIdMap = inverse(flowsSorted, 1);
@@ -589,10 +707,6 @@ class Graph {
         for (FlowEdge e : interflows) {
             Integer fromId = e.from == null ? Integer.valueOf(0) : flowIdMap.get(e.from);
             Integer toId = flowIdMap.get(e.to);
-
-            if (fromId == null || toId == null) {
-                continue;
-            }
 
             b.putInt(fromId);
             b.putInt(toId);
