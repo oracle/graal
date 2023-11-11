@@ -69,20 +69,20 @@ public class LambdaStableNameTest {
         assertEquals("Both stable lambda names are the same as they reference the same method", name, acName);
 
         String myName = Type.getInternalName(getClass());
-        assertEquals("The name known in 19.3 version is computed", "L" + myName + "$$Lambda$0a7a1b7da3e20b4eff3f548c6ba3e47a0c3be612;", name);
+        assertEquals("The name known in 24.0 version is computed", "L" + myName + "$$Lambda.0x0a7a1b7da3e20b4eff3f548c6ba3e47a0c3be612;", name);
     }
 
     private static void assertLambdaName(String name) {
         String expectedPrefix = "L" + LambdaStableNameTest.class.getCanonicalName().replace('.', '/') +
-                        "$$Lambda$";
+                        LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING;
         if (!name.startsWith(expectedPrefix)) {
             fail("Expecting " + expectedPrefix + " as prefix in lambda class name: " + name);
         }
         assertTrue("semicolon at the end", name.endsWith(";"));
 
-        int last = name.lastIndexOf('$');
+        int index = name.indexOf(LambdaUtils.ADDRESS_PREFIX);
 
-        String hash = name.substring(last + 1, name.length() - 1);
+        String hash = name.substring(index + LambdaUtils.ADDRESS_PREFIX.length(), name.length() - 1);
 
         BigInteger aValue = new BigInteger(hash, 16);
         assertNotNull("Hash can be parsed as a hex number: " + hash, aValue);
