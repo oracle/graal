@@ -62,7 +62,6 @@ import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -276,7 +275,7 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public boolean isRelocatedPointer(UniverseMetaAccess metaAccess, JavaConstant constant) {
+    public boolean isRelocatedPointer(JavaConstant constant) {
         return constant instanceof RelocatableConstant;
     }
 

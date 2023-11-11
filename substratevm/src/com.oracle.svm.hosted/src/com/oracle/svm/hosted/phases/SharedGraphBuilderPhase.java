@@ -35,7 +35,7 @@ import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
@@ -371,7 +371,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         public static <T extends Throwable> void replaceWithThrowingAtRuntime(SharedBytecodeParser b, T throwable) {
             Throwable cause = throwable.getCause();
             if (cause != null) {
-                var metaAccess = (UniverseMetaAccess) b.getMetaAccess();
+                var metaAccess = (AnalysisMetaAccess) b.getMetaAccess();
                 /* Invoke method that creates a cause-instance with cause-message */
                 var causeCtor = ReflectionUtil.lookupConstructor(cause.getClass(), String.class);
                 ResolvedJavaMethod causeCtorMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(causeCtor), false);
@@ -411,7 +411,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
              * we can access the ParsingReason in here we will be able to get rid of throwException.
              */
             var errorCtor = ReflectionUtil.lookupConstructor(throwableClass, String.class);
-            var metaAccess = (UniverseMetaAccess) b.getMetaAccess();
+            var metaAccess = (AnalysisMetaAccess) b.getMetaAccess();
             ResolvedJavaMethod throwingMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);
             ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(throwableMessage), b.getMetaAccess(), b.getGraph());
             boolean verifyStates = b.getFrameStateBuilder().disableStateVerification();

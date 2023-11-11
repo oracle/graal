@@ -24,17 +24,15 @@
  */
 package com.oracle.graal.pointsto.infrastructure;
 
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.StructuredGraph;
-
 import com.oracle.graal.pointsto.meta.HostedProviders;
 
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public interface GraphProvider {
     enum Purpose {
         ANALYSIS,
-        AOT_COMPILATION,
         PREPARE_RUNTIME_COMPILATION,
     }
 

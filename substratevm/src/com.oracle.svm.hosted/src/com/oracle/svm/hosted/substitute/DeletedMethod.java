@@ -27,14 +27,6 @@ package com.oracle.svm.hosted.substitute;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.java.FrameStateBuilder;
-import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
-import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.UnwindNode;
-import jdk.graal.compiler.nodes.ValueNode;
-
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -45,6 +37,13 @@ import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.java.FrameStateBuilder;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.UnwindNode;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class DeletedMethod extends CustomSubstitutionMethod {
@@ -84,7 +83,7 @@ public class DeletedMethod extends CustomSubstitutionMethod {
     }
 
     public static StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, String message, Purpose purpose) {
-        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
         StructuredGraph graph = kit.getGraph();
         FrameStateBuilder state = new FrameStateBuilder(null, method, graph);
         state.initializeForMethodStart(null, true, providers.getGraphBuilderPlugins());

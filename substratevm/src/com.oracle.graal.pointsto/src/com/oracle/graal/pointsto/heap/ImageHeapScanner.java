@@ -407,7 +407,7 @@ public abstract class ImageHeapScanner {
 
     private boolean doNotifyAnalysis(AnalysisField field, JavaConstant receiver, JavaConstant fieldValue, ScanReason reason) {
         boolean analysisModified = false;
-        if (fieldValue.getJavaKind() == JavaKind.Object && hostVM.isRelocatedPointer(metaAccess, fieldValue)) {
+        if (fieldValue.getJavaKind() == JavaKind.Object && hostVM.isRelocatedPointer(fieldValue)) {
             /* Ensure the relocatable pointer type is analysed. */
             ((AnalysisType) ((TypedConstant) fieldValue).getType(metaAccess)).registerAsReachable(reason);
             analysisModified = scanningObserver.forRelocatedPointerFieldValue(receiver, field, fieldValue, reason);
@@ -450,7 +450,7 @@ public abstract class ImageHeapScanner {
     }
 
     private boolean isNonNullObjectConstant(JavaConstant constant) {
-        return constant.getJavaKind() == JavaKind.Object && constant.isNonNull() && !universe.hostVM().isRelocatedPointer(metaAccess, constant);
+        return constant.getJavaKind() == JavaKind.Object && constant.isNonNull() && !universe.hostVM().isRelocatedPointer(constant);
     }
 
     private boolean notifyAnalysis(JavaConstant array, AnalysisType arrayType, JavaConstant elementValue, int elementIndex, ScanReason reason) {
@@ -458,7 +458,7 @@ public abstract class ImageHeapScanner {
         if (elementValue.isNull()) {
             analysisModified = scanningObserver.forNullArrayElement(array, arrayType, elementIndex, reason);
         } else {
-            if (universe.hostVM().isRelocatedPointer(metaAccess, elementValue)) {
+            if (universe.hostVM().isRelocatedPointer(elementValue)) {
                 return false;
             }
             AnalysisType elementType = metaAccess.lookupJavaType(elementValue);
