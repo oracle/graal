@@ -42,7 +42,7 @@
          "--kill-with-sigquit",
          "gate",
          "--strict-mode",
-         "--extra-vm-argument=-Djdk.graal.DumpOnError=true -Djdk.graal.PrintGraphFile=true -Djdk.graal.PrintBackendCFG=true" +
+         "--extra-vm-argument=-Djdk.graal.DumpOnError=true -Djdk.graal.PrintGraphFile=true -Djdk.graal.PrintBackendCFG=true -DGCUtils.saveHeapDumpTo=." +
            (if extra_vm_args == "" then "" else " " + extra_vm_args)
       ] + (if extra_unittest_args != "" then [
         "--extra-unittest-argument=" + extra_unittest_args,
@@ -55,6 +55,9 @@
     environment+: if jvm_config_suffix != null then {
       JVM_CONFIG: jvm_config + jvm_config_suffix
     } else {},
+    logs+: [
+        "*/gcutils_heapdump_*.hprof",
+    ],
     targets: ["gate"],
     python_version: "3"
   },
