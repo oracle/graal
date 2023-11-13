@@ -36,12 +36,6 @@ import com.oracle.svm.core.jfr.BufferNode;
 import com.oracle.svm.core.jfr.JfrChunkWriter;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.jfr.JfrThreadLocal;
-import com.oracle.svm.core.jfr.SubstrateJVM;
-import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.thread.VMThreads;
-
 public final class SamplerBuffersAccess {
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -150,7 +144,6 @@ public final class SamplerBuffersAccess {
         } finally {
             SubstrateJVM.getStackTraceRepo().unlock();
         }
-//        SamplerBufferAccess.reinitialize(rawStackTraceBuffer);
     }
 
     @Uninterruptible(reason = "Wraps the call to the possibly interruptible serializer.", calleeMustBe = false)

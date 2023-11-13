@@ -47,7 +47,6 @@ import com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.sampler.SamplerBuffersAccess;
 import com.oracle.svm.core.thread.JavaVMOperation;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
@@ -577,7 +576,7 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
             BufferNode next = node.getNext();
             boolean lockAcquired = BufferNodeAccess.tryLock(node);
             if (lockAcquired) {
-                JfrBuffer buffer = BufferNodeAccess.getBuffer(node);
+                JfrBuffer buffer = BufferNodeAccess.getJfrBuffer(node);
                 if (buffer.isNull()) {
                     list.removeNode(node, prev);
                     BufferNodeAccess.free(node);
@@ -620,7 +619,7 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
             boolean lockAcquired = BufferNodeAccess.tryLock(node);
             if (lockAcquired) {
                 try {
-                    JfrBuffer buffer = BufferNodeAccess.getBuffer(node);
+                    JfrBuffer buffer = BufferNodeAccess.getJfrBuffer(node);
                     write(buffer);
                     JfrBufferAccess.reinitialize(buffer);
                 } finally {
