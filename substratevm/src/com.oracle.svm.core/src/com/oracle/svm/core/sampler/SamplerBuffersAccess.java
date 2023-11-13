@@ -34,6 +34,13 @@ import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.BufferNodeAccess;
 import com.oracle.svm.core.jfr.BufferNode;
 import com.oracle.svm.core.jfr.JfrChunkWriter;
+import org.graalvm.word.Pointer;
+
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.jfr.JfrThreadLocal;
+import com.oracle.svm.core.jfr.SubstrateJVM;
+import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.thread.VMThreads;
 
 public final class SamplerBuffersAccess {
 
@@ -64,7 +71,7 @@ public final class SamplerBuffersAccess {
             }
             assert SamplerBufferAccess.verify(buffer);
             // serialize active buffers
-            SubstrateJVM.getStackTraceRepo().serializeStackTraces(buffer);
+            serializeStackTraces(buffer);
 
             prev = node;
             node = next;
@@ -89,10 +96,67 @@ public final class SamplerBuffersAccess {
                 break;
             }
 
-            SubstrateJVM.getStackTraceRepo().serializeStackTraces(buffer);
+            serializeStackTraces(buffer);
             SubstrateJVM.getSamplerBufferPool().releaseBuffer(buffer);
         }
 
         SubstrateJVM.getSamplerBufferPool().adjustBufferCount();
+    }
+
+    @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
+    private static void serializeStackTraces(SamplerBuffer rawStackTraceBuffer) {
+        assert rawStackTraceBuffer.isNonNull();
+
+        SubstrateJVM.getStackTraceRepo().lock();
+        try {
+            Pointer end = rawStackTraceBuffer.getPos();
+            Pointer current = SamplerBufferAccess.getDataStart(rawStackTraceBuffer);
+            while (current.belowThan(end)) {
+                Pointer entryStart = current;
+                assert entryStart.unsignedRemainder(Long.BYTES).equal(0);
+
+                /* Sample hash. */
+                int sampleHash = current.readInt(0);
+                current = current.add(Integer.BYTES);
+
+                /* Is truncated. */
+                boolean isTruncated = current.readInt(0) == 1;
+                current = current.add(Integer.BYTES);
+
+                /* Sample size, excluding the header and the end marker. */
+                int sampleSize = current.readInt(0);
+                current = current.add(Integer.BYTES);
+
+                /* Padding. */
+                current = current.add(Integer.BYTES);
+
+                /* Tick. */
+                long sampleTick = current.readLong(0);
+                current = current.add(Long.BYTES);
+
+                /* Event thread. */
+                long threadId = current.readLong(0);
+                current = current.add(Long.BYTES);
+
+                /* Thread state. */
+                long threadState = current.readLong(0);
+                current = current.add(Long.BYTES);
+
+                assert current.subtract(entryStart).equal(SamplerSampleWriter.getHeaderSize());
+
+                current = serializeStackTrace(current, end, sampleSize, sampleHash, isTruncated, sampleTick, threadId, threadState);
+            }
+            rawStackTraceBuffer.setSerializedPos(end);
+        } finally {
+            SubstrateJVM.getStackTraceRepo().unlock();
+        }
+//        SamplerBufferAccess.reinitialize(rawStackTraceBuffer);
+    }
+
+    @Uninterruptible(reason = "Wraps the call to the possibly interruptible serializer.", calleeMustBe = false)
+    private static Pointer serializeStackTrace(Pointer rawStackTrace, Pointer bufferEnd, int sampleSize, int sampleHash,
+                    boolean isTruncated, long sampleTick, long threadId, long threadState) {
+        return SamplerStackTraceSerializer.singleton().serializeStackTrace(rawStackTrace, bufferEnd, sampleSize,
+                        sampleHash, isTruncated, sampleTick, threadId, threadState);
     }
 }

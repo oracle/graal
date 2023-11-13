@@ -31,12 +31,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.core.common.CompressEncoding;
-import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -48,9 +42,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccessExtensionProvider;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.graal.pointsto.results.AbstractAnalysisResultsBuilder;
-import com.oracle.graal.pointsto.results.DefaultResultsBuilder;
-import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
+import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
@@ -76,6 +68,12 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.internal.ValueBased;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -138,13 +136,13 @@ public class HostedConfiguration {
     public static ObjectLayout createObjectLayout(JavaKind referenceKind, boolean disableOptionalIdentityHash) {
         SubstrateTargetDescription target = ConfigurationValues.getTarget();
         int referenceSize = target.arch.getPlatformKind(referenceKind).getSizeInBytes();
-        int headerSize = referenceSize;
         int intSize = target.arch.getPlatformKind(JavaKind.Int).getSizeInBytes();
         int objectAlignment = 8;
 
-        int headerOffset = 0;
+        int hubOffset = 0;
+        int headerSize = hubOffset + referenceSize;
+
         int identityHashCodeOffset;
-        int firstFieldOffset;
         if (!disableOptionalIdentityHash && SubstrateOptions.SpawnIsolates.getValue() && headerSize + referenceSize <= objectAlignment) {
             /*
              * References are relative to the heap base, so we should be able to use fewer bits in
@@ -156,15 +154,18 @@ public class HostedConfiguration {
              * individual object was assigned an identity hash code after allocation.
              */
             identityHashCodeOffset = -1;
-            firstFieldOffset = headerOffset + headerSize;
         } else { // need all object header bits except for lowest-order bits freed up by alignment
-            identityHashCodeOffset = headerOffset + referenceSize;
-            firstFieldOffset = identityHashCodeOffset + intSize;
+            identityHashCodeOffset = headerSize;
+            headerSize += intSize;
         }
-        int arrayLengthOffset = firstFieldOffset;
+
+        headerSize += SubstrateOptions.AdditionalHeaderBytes.getValue();
+
+        int firstFieldOffset = headerSize;
+        int arrayLengthOffset = headerSize;
         int arrayBaseOffset = arrayLengthOffset + intSize;
 
-        return new ObjectLayout(target, referenceSize, objectAlignment, headerOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset, identityHashCodeOffset);
+        return new ObjectLayout(target, referenceSize, objectAlignment, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset, identityHashCodeOffset);
     }
 
     public SVMHost createHostVM(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
@@ -217,17 +218,8 @@ public class HostedConfiguration {
         }
     }
 
-    public AbstractAnalysisResultsBuilder createStaticAnalysisResultsBuilder(Inflation bb, HostedUniverse universe) {
-        if (bb instanceof PointsToAnalysis) {
-            PointsToAnalysis pta = (PointsToAnalysis) bb;
-            if (SubstrateOptions.parseOnce()) {
-                return new SubstrateStrengthenGraphs(pta, universe);
-            } else {
-                return new StaticAnalysisResultsBuilder(pta, universe);
-            }
-        } else {
-            return new DefaultResultsBuilder(bb, universe);
-        }
+    public StrengthenGraphs createStrengthenGraphs(Inflation bb, HostedUniverse universe) {
+        return new SubstrateStrengthenGraphs(bb, universe);
     }
 
     public void collectMonitorFieldInfo(BigBang bb, HostedUniverse hUniverse, Set<AnalysisType> immutableTypes) {

@@ -22,11 +22,11 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.vm.VM;
 
 public class InteropUtils {
 
@@ -66,11 +66,26 @@ public class InteropUtils {
         if (meta.isBoxed(object.getKlass())) {
             return meta.unboxGuest(object);
         }
-        return object.isForeignObject() ? object.rawForeignObject(language) : object;
+        if (object.isForeignObject()) {
+            return object.rawForeignObject(language);
+        }
+        // We need to unwrap foreign exceptions which are stored in guest throwable backtrace.
+        // They only exist if polyglot is in use though.
+        if (meta.polyglot == null || StaticObject.isNull(object)) {
+            return object;
+        }
+        if (meta.java_lang_Throwable.isAssignableFrom(object.getKlass())) {
+            return unwrapForeignException(object, meta);
+        }
+        return object;
     }
 
-    public static Object unwrap(StaticObject object, Meta meta, Node languageLookupNode) {
-        return unwrap(EspressoLanguage.get(languageLookupNode), object, meta);
+    private static Object unwrapForeignException(StaticObject object, Meta meta) {
+        assert meta.java_lang_Throwable.isAssignableFrom(object.getKlass());
+        if (meta.HIDDEN_FRAMES.getHiddenObject(object) == VM.StackTrace.FOREIGN_MARKER_STACK_TRACE) {
+            return meta.java_lang_Throwable_backtrace.getObject(object).rawForeignObject(meta.getLanguage());
+        }
+        return object;
     }
 
     public static Object unwrap(EspressoLanguage language, Object object, Meta meta) {
@@ -78,5 +93,19 @@ public class InteropUtils {
             return unwrap(language, (StaticObject) object, meta);
         }
         return object;
+    }
+
+    public static boolean isForeignException(EspressoException e) {
+        assert e != null;
+        StaticObject guestException = e.getGuestException();
+        Meta meta = guestException.getKlass().getMeta();
+        if (meta.polyglot == null) {
+            return false;
+        }
+        if (guestException.getKlass() == meta.polyglot.ForeignException) {
+            return true;
+        }
+        Object stack = meta.HIDDEN_FRAMES.getHiddenObject(guestException);
+        return stack == VM.StackTrace.FOREIGN_MARKER_STACK_TRACE;
     }
 }

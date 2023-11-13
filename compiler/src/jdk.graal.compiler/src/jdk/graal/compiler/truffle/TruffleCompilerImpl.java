@@ -208,7 +208,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
 
     /**
      * General options configured for the compiler. E.g. default values set with
-     * -Dgraal.OptionKey=value.
+     * -Djdk.graal.OptionKey=value.
      */
     protected abstract OptionValues getGraalOptions();
 

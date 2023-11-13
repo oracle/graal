@@ -198,7 +198,6 @@ public final class SamplerSampleWriter {
         // recorder.
         assert SamplerBufferAccess.verify(oldBuffer);
         SubstrateJVM.getSamplerBufferPool().pushFullBuffer(oldBuffer);
-        SubstrateJVM.getRecorderThread().signal();
 
         // Reinitialize data structure.
         data.setSamplerBuffer(newBuffer);

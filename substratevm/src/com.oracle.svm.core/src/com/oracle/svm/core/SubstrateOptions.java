@@ -564,6 +564,16 @@ public class SubstrateOptions {
     @Option(help = "How many bytes to pad fields and classes marked @Contended with.") //
     public static final HostedOptionKey<Integer> ContendedPaddingWidth = new HostedOptionKey<>(128);
 
+    @Option(help = "Add additional header bytes to each object, for diagnostic purposes.", type = OptionType.Debug) //
+    public static final HostedOptionKey<Integer> AdditionalHeaderBytes = new HostedOptionKey<>(0, SubstrateOptions::validateAdditionalHeaderBytes);
+
+    private static void validateAdditionalHeaderBytes(HostedOptionKey<Integer> optionKey) {
+        int value = optionKey.getValue();
+        if (value < 0 || value % 4 != 0) {
+            throw UserError.abort("The option '%s' must be 0 or a multiple of 4.", optionKey.getName());
+        }
+    }
+
     /*
      * Isolate tear down options.
      */
@@ -1017,9 +1027,6 @@ public class SubstrateOptions {
 
     @Option(help = "Allows the addresses of pinned objects to be passed to other code.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> PinnedObjectAddressing = new HostedOptionKey<>(true);
-
-    @Option(help = "Emit indirect branch target marker instructions.", type = OptionType.Expert) //
-    public static final HostedOptionKey<Boolean> IndirectBranchTargetMarker = new HostedOptionKey<>(false);
 
     @Option(help = "Enable and disable normal processing of flags relating to experimental options.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL) //
     public static final HostedOptionKey<Boolean> UnlockExperimentalVMOptions = new HostedOptionKey<>(false);

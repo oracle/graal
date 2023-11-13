@@ -58,21 +58,10 @@ import com.oracle.svm.core.sampler.SamplerStackWalkVisitor;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 
-import com.oracle.svm.core.code.CodeInfo;
-import com.oracle.svm.core.code.CodeInfoAccess;
-import com.oracle.svm.core.code.CodeInfoDecoder.FrameInfoCursor;
-import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.code.FrameInfoQueryResult;
-import com.oracle.svm.core.code.UntetheredCodeInfo;
-import com.oracle.svm.core.jfr.events.ExecutionSampleEvent;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.sampler.SamplerBuffer;
-
 /**
  * Repository that collects all metadata about stacktraces.
  */
 public class JfrStackTraceRepository implements JfrRepository {
-    /** This value is used by multiple threads but only by a single thread at a time. */
     private static final int DEFAULT_STACK_DEPTH = 64;
     private static final int MIN_STACK_DEPTH = 1;
     private static final int MAX_STACK_DEPTH = 2048;
@@ -80,7 +69,6 @@ public class JfrStackTraceRepository implements JfrRepository {
     private final VMMutex mutex;
     private final JfrStackTraceEpochData epochData0;
     private final JfrStackTraceEpochData epochData1;
-    private final FrameInfoCursor frameInfoCursor = new FrameInfoCursor();
 
     private int stackTraceDepth;
 
@@ -99,6 +87,16 @@ public class JfrStackTraceRepository implements JfrRepository {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getStackTraceDepth() {
         return stackTraceDepth;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void lock() {
+        mutex.lockNoTransition();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void unlock() {
+        mutex.unlock();
     }
 
     public void teardown() {
@@ -259,7 +257,7 @@ public class JfrStackTraceRepository implements JfrRepository {
 
     /** Returns null if the buffer allocation failed. */
     @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
-    private JfrBuffer getCurrentBuffer() {
+    public JfrBuffer getCurrentBuffer() {
         JfrStackTraceEpochData epochData = getEpochData(false);
         if (epochData.buffer.isNull()) {
             epochData.buffer = JfrBufferAccess.allocate(JfrBufferType.C_HEAP);
@@ -268,7 +266,7 @@ public class JfrStackTraceRepository implements JfrRepository {
     }
 
     @Uninterruptible(reason = "Prevent epoch change.", callerMustBe = true)
-    private void setCurrentBuffer(JfrBuffer value) {
+    public void setCurrentBuffer(JfrBuffer value) {
         getEpochData(false).buffer = value;
     }
 
@@ -373,175 +371,5 @@ public class JfrStackTraceRepository implements JfrRepository {
             JfrBufferAccess.free(buffer);
             buffer = WordFactory.nullPointer();
         }
-    }
-
-    @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
-    public void serializeStackTraces(SamplerBuffer rawStackTraceBuffer) {
-
-        mutex.lockNoTransition();
-        try {
-            assert rawStackTraceBuffer.isNonNull();
-
-            Pointer end = rawStackTraceBuffer.getPos();
-            Pointer current = rawStackTraceBuffer.getSerializedPos();
-            assert current.belowOrEqual(end);
-
-            while (current.belowThan(end)) {
-                Pointer entryStart = current;
-                assert entryStart.unsignedRemainder(Long.BYTES).equal(0);
-
-                /* Sample hash. */
-                int sampleHash = current.readInt(0);
-                current = current.add(Integer.BYTES);
-
-                /* Is truncated. */
-                boolean isTruncated = current.readInt(0) == 1;
-                current = current.add(Integer.BYTES);
-
-                /* Sample size, excluding the header and the end marker. */
-                int sampleSize = current.readInt(0);
-                current = current.add(Integer.BYTES);
-
-                /* Padding. */
-                current = current.add(Integer.BYTES);
-
-                /* Tick. */
-                long sampleTick = current.readLong(0);
-                current = current.add(Long.BYTES);
-
-                /* Event thread. */
-                long threadId = current.readLong(0);
-                current = current.add(Long.BYTES);
-
-                /* Thread state. */
-                long threadState = current.readLong(0);
-                current = current.add(Long.BYTES);
-
-                assert current.subtract(entryStart).equal(SamplerSampleWriter.getHeaderSize());
-
-                CIntPointer statusPtr = StackValue.get(CIntPointer.class);
-                JfrStackTraceTableEntry entry = getOrPutStackTrace0(current, WordFactory.unsigned(sampleSize), sampleHash, statusPtr);
-                long stackTraceId = entry.isNull() ? 0 : entry.getId();
-
-                int status = statusPtr.read();
-                if (status == JfrStackTraceTableEntryStatus.INSERTED || status == JfrStackTraceTableEntryStatus.EXISTING_RAW) {
-                    /* Walk the IPs and serialize the stacktrace. */
-                    assert current.add(sampleSize).belowThan(end);
-                    boolean serialized = serializeStackTrace(current, sampleSize, isTruncated, stackTraceId);
-                    if (serialized) {
-                        commitSerializedStackTrace(entry);
-                    }
-                } else {
-                    /* Processing is not needed: skip the rest of the data. */
-                    assert status == JfrStackTraceTableEntryStatus.EXISTING_SERIALIZED || status == JfrStackTraceTableEntryStatus.INSERT_FAILED;
-                }
-                current = current.add(sampleSize);
-
-                /*
-                 * Emit an event depending on the end marker of the raw stack trace. This needs to
-                 * be done here because the sampler can't emit the event directly.
-                 */
-                long endMarker = current.readLong(0);
-                if (endMarker == SamplerSampleWriter.EXECUTION_SAMPLE_END) {
-                    if (stackTraceId != 0) {
-                        ExecutionSampleEvent.writeExecutionSample(sampleTick, threadId, stackTraceId, threadState);
-                    } else {
-                        JfrThreadLocal.increaseMissedSamples();
-                    }
-                } else {
-                    assert endMarker == SamplerSampleWriter.JFR_STACK_TRACE_END;
-                }
-                current = current.add(SamplerSampleWriter.END_MARKER_SIZE);
-            }
-            rawStackTraceBuffer.setSerializedPos(end);
-        } finally {
-            mutex.unlock();
-        }
-    }
-
-    @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
-    private boolean serializeStackTrace(Pointer rawStackTrace, int sampleSize, boolean isTruncated, long stackTraceId) {
-        assert sampleSize % Long.BYTES == 0;
-
-        JfrBuffer targetBuffer = getCurrentBuffer();
-        if (targetBuffer.isNull()) {
-            return false;
-        }
-
-        /*
-         * One IP may correspond to multiple Java-level stack frames. We need to precompute the
-         * number of stack trace elements because the count can't be patched later on
-         * (JfrNativeEventWriter.putInt() would not necessarily reserve enough bytes).
-         */
-        int numStackTraceElements = visitRawStackTrace(rawStackTrace, sampleSize, WordFactory.nullPointer());
-        if (numStackTraceElements == 0) {
-            return false;
-        }
-
-        JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
-        JfrNativeEventWriterDataAccess.initialize(data, targetBuffer);
-        JfrNativeEventWriter.putLong(data, stackTraceId);
-        JfrNativeEventWriter.putBoolean(data, isTruncated);
-        JfrNativeEventWriter.putInt(data, numStackTraceElements);
-        visitRawStackTrace(rawStackTrace, sampleSize, data);
-        boolean success = JfrNativeEventWriter.commit(data);
-
-        /* Buffer can get replaced with a larger one. */
-        setCurrentBuffer(data.getJfrBuffer());
-        return success;
-    }
-
-    @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
-    private int visitRawStackTrace(Pointer rawStackTrace, int sampleSize, JfrNativeEventWriterData data) {
-        int numStackTraceElements = 0;
-        Pointer rawStackTraceEnd = rawStackTrace.add(sampleSize);
-        Pointer ipPtr = rawStackTrace;
-        while (ipPtr.belowThan(rawStackTraceEnd)) {
-            long ip = ipPtr.readLong(0);
-            numStackTraceElements += visitFrame(data, ip);
-            ipPtr = ipPtr.add(Long.BYTES);
-        }
-        return numStackTraceElements;
-    }
-
-    @Uninterruptible(reason = "Prevent JFR recording, epoch change, and that the GC frees the CodeInfo.")
-    private int visitFrame(JfrNativeEventWriterData data, long address) {
-        CodePointer ip = WordFactory.pointer(address);
-        UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
-        if (untetheredInfo.isNull()) {
-            /* Unknown frame. Must not happen for AOT-compiled code. */
-            VMError.shouldNotReachHere("Stack walk must walk only frames of known code.");
-        }
-
-        Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
-        try {
-            CodeInfo tetheredCodeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
-            return visitFrame(data, tetheredCodeInfo, ip);
-        } finally {
-            CodeInfoAccess.releaseTether(untetheredInfo, tether);
-        }
-    }
-
-    @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
-    private int visitFrame(JfrNativeEventWriterData data, CodeInfo codeInfo, CodePointer ip) {
-        int numStackTraceElements = 0;
-        frameInfoCursor.initialize(codeInfo, ip, false);
-        while (frameInfoCursor.advance()) {
-            if (data.isNonNull()) {
-                FrameInfoQueryResult frame = frameInfoCursor.get();
-                serializeStackTraceElement(data, frame);
-            }
-            numStackTraceElements++;
-        }
-        return numStackTraceElements;
-    }
-
-    @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
-    private static void serializeStackTraceElement(JfrNativeEventWriterData data, FrameInfoQueryResult stackTraceElement) {
-        long methodId = SubstrateJVM.getMethodRepo().getMethodId(stackTraceElement.getSourceClass(), stackTraceElement.getSourceMethodName(), stackTraceElement.getMethodId());
-        JfrNativeEventWriter.putLong(data, methodId);
-        JfrNativeEventWriter.putInt(data, stackTraceElement.getSourceLineNumber());
-        JfrNativeEventWriter.putInt(data, stackTraceElement.getBci());
-        JfrNativeEventWriter.putLong(data, JfrFrameType.FRAME_AOT_COMPILED.getId());
     }
 }

@@ -30,7 +30,7 @@ Whenever a PE boundary is detected, the host inlining phase no longer makes any 
 The source code for this phase can be found in [HostInliningPhase](../../compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/truffle/host/HostInliningPhase.java).
 
 Truffle host inlining is applied when compiling a method annotated with `@HostCompilerDirectives.BytecodeInterpreterSwitch`.
-The maximum node cost for such methods can be configured using `-H:TruffleHostInliningByteCodeInterpreterBudget=100000` for native images and `-Dgraal.TruffleHostInliningByteCodeInterpreterBudget=100000` on HotSpot. 
+The maximum node cost for such methods can be configured using `-H:TruffleHostInliningByteCodeInterpreterBudget=100000` for native images and `-Djdk.graal.TruffleHostInliningByteCodeInterpreterBudget=100000` on HotSpot. 
 If a method that is annotated with  `@BytecodeInterpreterSwitch` calls a method with the same annotation then the method is directly inlined as long as the cost of both methods do not exceed the budget.
 In other words, any such method will be treated by the inlining phase just as if they would be part of the root bytecode switch method.
 This allows bytecode interpreter switches to be composed of multiple methods if needed.
@@ -52,8 +52,8 @@ If a method exceeds the limit, it is likely that the same code also has a high c
 
 ## Debugging Host Inlining
 
-The inlining decisions performed by this phase is best debugged with `-H:Log=HostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase` for native images or  `-Dgraal.Log=HostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase` on HotSpot.
-You can redirect the output to a file with `-Dgraal.LogFile=FILE` (works for both).
+The inlining decisions performed by this phase is best debugged with `-H:Log=HostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase` for native images or  `-Djdk.graal.Log=HostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase` on HotSpot.
+You can redirect the output to a file with `-Djdk.graal.LogFile=FILE` (works for both).
 
 Consider the following example, which shows previously described common patterns of partial evaluatable code in Truffle interpreters:
 
@@ -159,7 +159,7 @@ class BytecodeNode extends Node {
 We can run this as a unittest in the Graal repository (see class `HostInliningBytecodeInterpreterExampleTest`) by running the following command line in `graal/compiler`:
 
 ```
-mx unittest  -Dgraal.Log=HostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase -Dgraal.Dump=:3  HostInliningBytecodeInterpreterExampleTest
+mx unittest  -Djdk.graal.Log=HostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase -Djdk.graal.Dump=:3  HostInliningBytecodeInterpreterExampleTest
 ```
 
 This prints:
@@ -187,10 +187,10 @@ This prints:
           CUTOFF com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere()                                                               [inlined   -1, monomorphic false, deopt false, inInterpreter false, propDeopt  true, subTreeInvokes    0, subTreeCost   98, incomplete false,  reason propagates transferToInterpreter]
 ```
 
-Note that we have also used the `-Dgraal.Dump=:3 ` option, which sends the graphs to any running `IdealGraphVisualizer` instance for further inspection.
+Note that we have also used the `-Djdk.graal.Dump=:3 ` option, which sends the graphs to any running `IdealGraphVisualizer` instance for further inspection.
 On Native Image, use `-H:Dump=:2 -H:MethodFilter=...` to dump host compilation graphs of a given method.
 
-To debug CUTOFF decisions for incomplete exploration (entries with `incomplete  true`) use the `-Dgraal.TruffleHostInliningPrintExplored=true` option to see all incomplete subtrees in the log.
+To debug CUTOFF decisions for incomplete exploration (entries with `incomplete  true`) use the `-Djdk.graal.TruffleHostInliningPrintExplored=true` option to see all incomplete subtrees in the log.
 
 ## Tuning Host Inlining
 
@@ -217,7 +217,7 @@ CUTOFF com.oracle.truffle.espresso.nodes.BytecodeNode.putPoolConstant(VirtualFra
 ```
 
 This indicates that there are too many fast-path invokes (by default 10) in the subtree, it also stops exploring after that number.
-The `-Dgraal.TruffleHostInliningPrintExplored=true` flag may be provided to see the entire subtree for the decision.
+The `-Djdk.graal.TruffleHostInliningPrintExplored=true` flag may be provided to see the entire subtree for the decision.
 The following calls are considered fast-path invokes:
 
 * Invokes where the target method is annotated by `@TruffleBoundary`.

@@ -124,6 +124,11 @@ public abstract class RegexLexer {
     protected abstract boolean featureEnabledBoundedQuantifierEmptyMin();
 
     /**
+     * Returns {@code true} if possessive quantifiers ({@code +} suffix) are allowed.
+     */
+    protected abstract boolean featureEnabledPossessiveQuantifiers();
+
+    /**
      * Returns {@code true} if the first character in a character class must be interpreted as part
      * of the character set, even if it is the closing bracket {@code ']'}.
      */
@@ -1012,7 +1017,14 @@ public abstract class RegexLexer {
             min = c == '+' ? 1 : 0;
             max = c == '?' ? 1 : -1;
         }
-        return Token.createQuantifier((int) min, (int) max, !consumingLookahead("?"));
+        boolean greedy = true;
+        boolean possessive = false;
+        if (consumingLookahead('?')) {
+            greedy = false;
+        } else if (featureEnabledPossessiveQuantifiers() && consumingLookahead('+')) {
+            possessive = true;
+        }
+        return Token.createQuantifier((int) min, (int) max, greedy, possessive);
     }
 
     private boolean isQuantifierOutOfOrder(long parsedMin, long parsedMax, int startMin, int lengthMin, int lengthMax) {

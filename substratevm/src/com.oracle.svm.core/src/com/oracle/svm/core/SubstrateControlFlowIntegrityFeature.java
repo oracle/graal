@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,26 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes.interop;
+package com.oracle.svm.core;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import org.graalvm.nativeimage.ImageSingletons;
 
-public class ProxyKlass {
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 
-    private final ObjectKlass proxyKlass;
-
-    ProxyKlass(ObjectKlass proxyKlass) {
-        this.proxyKlass = proxyKlass;
-    }
-
-    public ObjectKlass getProxyKlass() {
-        return proxyKlass;
-    }
-
-    public StaticObject createProxyInstance(Object foreignObject, EspressoLanguage language, InteropLibrary interop) {
-        return StaticObject.createForeign(language, proxyKlass, foreignObject, interop);
+@AutomaticallyRegisteredFeature
+public class SubstrateControlFlowIntegrityFeature implements InternalFeature {
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(SubstrateControlFlowIntegrity.class, new SubstrateControlFlowIntegrity());
     }
 }

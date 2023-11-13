@@ -54,6 +54,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.interop.LookupInternalTypeConverterNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupTypeConverterNode;
 import com.oracle.truffle.espresso.nodes.interop.MethodArgsUtils;
 import com.oracle.truffle.espresso.nodes.interop.PolyglotTypeMappings;
@@ -62,7 +63,6 @@ import com.oracle.truffle.espresso.nodes.interop.ToReference;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.runtime.dispatch.staticobject.ForeignExceptionInterop;
 import com.oracle.truffle.espresso.vm.VM;
 
 @EspressoSubstitutions
@@ -108,14 +108,12 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
         /*
          * This method is used to unwrap an espresso object to temporarily use the original interop
-         * value.
+         * value. Foreign exception and converted foreign to guest objects are not unwrapped by this
+         * method.
          */
         static Object unwrapForeign(EspressoLanguage language, StaticObject object) {
             if (object.isForeignObject()) {
                 return object.rawForeignObject(language);
-            }
-            if (object.getKlass() != null && object.getKlass() == object.getKlass().getMeta().polyglot.ForeignException) {
-                return ForeignExceptionInterop.getRawForeignObject(object);
             }
             return object;
         }
@@ -1078,6 +1076,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
+                        @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
                         @Cached BranchProfile exceptionProfile,
                         @Cached ConditionProfile isForeignProfile) {
             try {
@@ -1092,7 +1091,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);
             } catch (AbstractTruffleException ex) {
-                throw handleAbstractTruffleException(exceptionInterop, getContext(), lookupTypeConverterNode, exceptionProfile, ex);
+                throw handleAbstractTruffleException(exceptionInterop, getContext(), lookupTypeConverterNode, lookupInternalTypeConverterNode, exceptionProfile, ex);
             }
         }
     }
@@ -1975,6 +1974,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached ToHostArguments toHostArguments,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
+                        @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
                         @Cached BranchProfile exceptionProfile) {
             assert InteropLibrary.getUncached().isString(member);
 
@@ -1990,7 +1990,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 // make sure we don't try to convert espresso exceptions
                 throw e;
             } catch (AbstractTruffleException ex) {
-                throw handleAbstractTruffleException(exceptionInterop, getContext(), lookupTypeConverterNode, exceptionProfile, ex);
+                throw handleAbstractTruffleException(exceptionInterop, getContext(), lookupTypeConverterNode, lookupInternalTypeConverterNode, exceptionProfile, ex);
             }
         }
     }
@@ -2025,6 +2025,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached ToHostArguments toHostArguments,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
+                        @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
                         @Cached BranchProfile exceptionProfile) {
             assert InteropLibrary.getUncached().isString(member);
             String hostMember = getMeta().toHostString(member);
@@ -2043,7 +2044,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 // make sure we don't try to convert espresso exceptions
                 throw e;
             } catch (AbstractTruffleException ex) {
-                throw handleAbstractTruffleException(exceptionInterop, getContext(), lookupTypeConverterNode, exceptionProfile, ex);
+                throw handleAbstractTruffleException(exceptionInterop, getContext(), lookupTypeConverterNode, lookupInternalTypeConverterNode, exceptionProfile, ex);
             }
         }
     }
@@ -2247,6 +2248,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
+                        @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
                         @Cached ToHostArguments toHostArguments,
                         @Cached BranchProfile exceptionProfile) {
             try {
@@ -2257,7 +2259,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);
             } catch (AbstractTruffleException ex) {
-                throw handleAbstractTruffleException(exceptionInterop, getContext(), lookupTypeConverterNode, exceptionProfile, ex);
+                throw handleAbstractTruffleException(exceptionInterop, getContext(), lookupTypeConverterNode, lookupInternalTypeConverterNode, exceptionProfile, ex);
             }
         }
     }
@@ -3358,6 +3360,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary valueInterop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
+                        @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
@@ -3367,7 +3370,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);
             } catch (AbstractTruffleException ex) {
-                throw handleAbstractTruffleException(exceptionInterop, getContext(), lookupTypeConverterNode, exceptionProfile, ex);
+                throw handleAbstractTruffleException(exceptionInterop, getContext(), lookupTypeConverterNode, lookupInternalTypeConverterNode, exceptionProfile, ex);
             }
         }
     }
@@ -3415,7 +3418,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * <p>
      * Throws UnsupportedMessageException if and only if {@link HasHashEntries} returns
      * {@code false}.
-     * 
+     *
      * @since 21.1
      */
     @Substitution
@@ -3481,7 +3484,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * <p>
      * Throws UnknownKeyException if mapping for the specified key is not {@link IsHashEntryReadable
      * readable}, e.g. when the hash does not contain specified key.
-     * 
+     *
      * @see IsHashEntryReadable
      * @see ReadHashValueOrDefault
      * @since 21.1
@@ -3530,7 +3533,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * Throws UnsupportedMessageException if the receiver does not support reading at all. An empty
      * receiver with no readable hash entries supports the read operation (even though there is
      * nothing to read), therefore it returns the {@code defaultValue} for all arguments instead.
-     * 
+     *
      * @see IsHashEntryReadable
      * @see ReadHashValue
      * @since 21.1
@@ -3680,7 +3683,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * <p>
      * Throws UnsupportedTypeException if the provided key type or value type is not allowed to be
      * written.
-     * 
+     *
      * @since 21.1
      */
     @Substitution
@@ -3703,6 +3706,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
+                        @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
                         @Cached BranchProfile exceptionProfile,
                         @Cached ConditionProfile isForeignProfile) {
             try {
@@ -3717,7 +3721,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);
             } catch (AbstractTruffleException ex) {
-                throw handleAbstractTruffleException(exceptionInterop, getContext(), lookupTypeConverterNode, exceptionProfile, ex);
+                throw handleAbstractTruffleException(exceptionInterop, getContext(), lookupTypeConverterNode, lookupInternalTypeConverterNode, exceptionProfile, ex);
             }
         }
     }
@@ -3763,7 +3767,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * <p>
      * Throws UnknownKeyException if the given mapping is not {@link IsHashEntryRemovable
      * removable}, e.g. the receiver does not have a mapping for given key.
-     * 
+     *
      * @see IsHashEntryRemovable
      * @since 21.1
      */
@@ -3784,6 +3788,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
+                        @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile,
                         @Cached ConditionProfile isForeignProfile) {
@@ -3799,7 +3804,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);
             } catch (AbstractTruffleException ex) {
-                throw handleAbstractTruffleException(exceptionInterop, getContext(), lookupTypeConverterNode, exceptionProfile, ex);
+                throw handleAbstractTruffleException(exceptionInterop, getContext(), lookupTypeConverterNode, lookupInternalTypeConverterNode, exceptionProfile, ex);
             }
         }
     }
@@ -3880,7 +3885,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * <p>
      * Throws UnsupportedMessageException if and only if {@link HasHashEntries} returns
      * {@code false} for the same receiver.
-     * 
+     *
      * @since 21.1
      */
     @Substitution
@@ -3916,7 +3921,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * <p>
      * Throws UnsupportedMessageException if and only if {@link HasHashEntries} returns
      * {@code false} for the same receiver.
-     * 
+     *
      * @since 21.1
      */
     @Substitution
@@ -4196,13 +4201,19 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     }
 
     private static EspressoException handleAbstractTruffleException(InteropLibrary exceptionInterop, EspressoContext context, LookupTypeConverterNode lookupTypeConverterNode,
-                    BranchProfile exceptionProfile, AbstractTruffleException ex) {
+                    LookupInternalTypeConverterNode internalTypeConverterNode, BranchProfile exceptionProfile, AbstractTruffleException ex) {
         exceptionProfile.enter();
         Meta meta = context.getMeta();
         StaticObject foreignException = context.getAllocator().createForeignException(context, ex, exceptionInterop);
         try {
             Object metaObject = exceptionInterop.getMetaObject(ex);
-            PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(ToEspressoNode.getMetaName(metaObject, exceptionInterop));
+            String metaName = ToEspressoNode.getMetaName(metaObject, exceptionInterop);
+            PolyglotTypeMappings.InternalTypeConverter internalTypeConverter = internalTypeConverterNode.execute(metaName);
+            if (internalTypeConverter != null) {
+                StaticObject convertedGuestException = internalTypeConverter.convertInternal(exceptionInterop, foreignException, meta, null);
+                return EspressoException.wrap(convertedGuestException, meta);
+            }
+            PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(metaName);
             if (converter != null) {
                 StaticObject converted = (StaticObject) converter.convert(foreignException);
                 /*
@@ -4219,7 +4230,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
                 throw EspressoException.wrap(converted, meta);
             }
-        } catch (UnsupportedMessageException e) {
+        } catch (UnsupportedMessageException | UnsupportedTypeException e) {
             // throw the original exception then
             throw ex;
         }

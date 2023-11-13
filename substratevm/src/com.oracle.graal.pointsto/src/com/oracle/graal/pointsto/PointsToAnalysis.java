@@ -102,16 +102,11 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     public final Timer typeFlowTimer;
 
-    private final boolean strengthenGraalGraphs;
-
     @SuppressWarnings("this-escape")
     public PointsToAnalysis(OptionValues options, AnalysisUniverse universe, HostVM hostVM, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
-                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, UnsupportedFeatures unsupportedFeatures, DebugContext debugContext, TimerCollection timerCollection,
-                    boolean strengthenGraalGraphs) {
+                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, UnsupportedFeatures unsupportedFeatures, DebugContext debugContext, TimerCollection timerCollection) {
         super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, unsupportedFeatures, debugContext, timerCollection);
         this.typeFlowTimer = timerCollection.createTimer("(typeflow)");
-
-        this.strengthenGraalGraphs = strengthenGraalGraphs;
 
         this.objectType = metaAccess.lookupJavaType(Object.class);
         /*
@@ -147,11 +142,6 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         StatisticsPrinter.print(out, "total_analysis_time_ms", analysisTimer.getTotalTime());
 
         StatisticsPrinter.printLast(out, "total_memory_bytes", analysisTimer.getTotalMemory());
-    }
-
-    @Override
-    public boolean strengthenGraalGraphs() {
-        return strengthenGraalGraphs;
     }
 
     public boolean trackTypeFlowInputs() {

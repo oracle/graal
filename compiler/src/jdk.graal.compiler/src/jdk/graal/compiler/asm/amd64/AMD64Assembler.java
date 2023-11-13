@@ -2931,7 +2931,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitModRM(4, entry);
     }
 
-    public final void jmp(Register entry) {
+    public void jmp(Register entry) {
         int bytesToEmit = needsRex(entry) ? 3 : 2;
         mitigateJCCErratum(bytesToEmit);
         int beforeJmp = position();
@@ -2939,7 +2939,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         assert beforeJmp + bytesToEmit == position() : beforeJmp + " " + bytesToEmit + " " + position();
     }
 
-    public final void jmp(AMD64Address adr) {
+    public void jmp(AMD64Address adr) {
         int bytesToEmit = getPrefixInBytes(OperandSize.DWORD, adr) + OPCODE_IN_BYTES + addressInBytes(adr);
         mitigateJCCErratum(bytesToEmit);
         int beforeJmp = position();
@@ -4128,7 +4128,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitModRM(dst, src);
     }
 
-    public final void ret(int imm16) {
+    public void ret(int imm16) {
         if (imm16 == 0) {
             mitigateJCCErratum(1);
             emitByte(0xC3);
@@ -4908,7 +4908,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      * all calls need patching anyway. Therefore, 0 is emitted as the call target, and the user is
      * responsible to add the call address to the appropriate patching tables.
      */
-    public final void call() {
+    protected final void call() {
         annotatePatchingImmediate(1, 4);
         emitByte(0xE8);
         emitInt(0);

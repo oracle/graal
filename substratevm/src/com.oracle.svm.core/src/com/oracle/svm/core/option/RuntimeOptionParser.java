@@ -63,7 +63,12 @@ public final class RuntimeOptionParser {
     /**
      * The prefix for Graal style options available in an application based on Substrate VM.
      */
-    private static final String GRAAL_OPTION_PREFIX = "-Dgraal.";
+    private static final String GRAAL_OPTION_PREFIX = "-Djdk.graal.";
+
+    /**
+     * The legacy prefix for Graal style options available in an application based on Substrate VM.
+     */
+    private static final String LEGACY_GRAAL_OPTION_PREFIX = "-Dgraal.";
 
     /**
      * The prefix for XOptions available in an application based on Substrate VM.
@@ -78,7 +83,7 @@ public final class RuntimeOptionParser {
     public static String[] parseAndConsumeAllOptions(String[] initialArgs, boolean ignoreUnrecognized) {
         String[] args = initialArgs;
         if (SubstrateOptions.ParseRuntimeOptions.getValue()) {
-            args = RuntimeOptionParser.singleton().parse(args, NORMAL_OPTION_PREFIX, GRAAL_OPTION_PREFIX, X_OPTION_PREFIX, ignoreUnrecognized);
+            args = RuntimeOptionParser.singleton().parse(args, NORMAL_OPTION_PREFIX, GRAAL_OPTION_PREFIX, LEGACY_GRAAL_OPTION_PREFIX, X_OPTION_PREFIX, ignoreUnrecognized);
             args = RuntimePropertyParser.parse(args);
         }
         return args;
@@ -117,7 +122,7 @@ public final class RuntimeOptionParser {
      * @throws IllegalArgumentException if an element in {@code args} is invalid. The parse error is
      *             described by {@link Throwable#getMessage()}.
      */
-    public String[] parse(String[] args, String normalOptionPrefix, String graalOptionPrefix, String xOptionPrefix, boolean ignoreUnrecognized) {
+    public String[] parse(String[] args, String normalOptionPrefix, String graalOptionPrefix, String legacyGraalOptionPrefix, String xOptionPrefix, boolean ignoreUnrecognized) {
         int newIdx = 0;
         EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
         for (int oldIdx = 0; oldIdx < args.length; oldIdx++) {
@@ -126,6 +131,8 @@ public final class RuntimeOptionParser {
                 parseOptionAtRuntime(arg, normalOptionPrefix, BooleanOptionFormat.PLUS_MINUS, values, ignoreUnrecognized);
             } else if (graalOptionPrefix != null && arg.startsWith(graalOptionPrefix)) {
                 parseOptionAtRuntime(arg, graalOptionPrefix, BooleanOptionFormat.NAME_VALUE, values, ignoreUnrecognized);
+            } else if (legacyGraalOptionPrefix != null && arg.startsWith(legacyGraalOptionPrefix)) {
+                parseOptionAtRuntime(arg, legacyGraalOptionPrefix, BooleanOptionFormat.NAME_VALUE, values, ignoreUnrecognized);
             } else if (xOptionPrefix != null && arg.startsWith(xOptionPrefix) && XOptions.parse(arg.substring(xOptionPrefix.length()), values)) {
                 // option value was already parsed and added to the map
             } else {

@@ -144,6 +144,9 @@ public abstract class PartialEvaluator {
         // Graphs with assumptions cannot be cached across compilations, so the persistent cache is
         // disabled if assumptions are allowed.
         this.persistentEncodedGraphCache = TruffleCompilerOptions.EncodedGraphCache.getValue(options) && !TruffleCompilerOptions.ParsePEGraphsWithAssumptions.getValue(options);
+
+        firstTierDecodingPlugins.maybePrintIntrinsics(options);
+        lastTierDecodingPlugins.maybePrintIntrinsics(options);
     }
 
     public abstract PartialEvaluationMethodInfo getMethodInfo(ResolvedJavaMethod method);

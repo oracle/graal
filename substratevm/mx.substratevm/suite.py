@@ -2002,7 +2002,16 @@ suite = {
                 "sdk:POLYGLOT",
                 "SVM",
             ],
-            "maven": False
+            "moduleInfo" : {
+                "name" : "org.graalvm.polyglot.nativeapi",
+                "requires" : [
+                    "org.graalvm.polyglot",
+                    "org.graalvm.nativeimage",
+                    "org.graalvm.nativeimage.builder",
+                ],
+            },
+            "useModulePath": True,
+            "maven": False,
         },
 
         "POLYGLOT_NATIVE_API_HEADERS" : {

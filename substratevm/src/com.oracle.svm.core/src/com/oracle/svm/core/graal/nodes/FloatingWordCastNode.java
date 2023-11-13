@@ -27,17 +27,16 @@ package com.oracle.svm.core.graal.nodes;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.nodes.spi.Canonicalizable;
-import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
+import jdk.graal.compiler.nodes.spi.Canonicalizable;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
@@ -56,6 +55,10 @@ public final class FloatingWordCastNode extends FloatingNode implements LIRLower
     public FloatingWordCastNode(Stamp stamp, ValueNode input) {
         super(TYPE, stamp);
         this.input = input;
+    }
+
+    public ValueNode getInput() {
+        return input;
     }
 
     @Override

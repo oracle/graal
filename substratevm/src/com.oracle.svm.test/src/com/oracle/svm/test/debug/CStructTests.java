@@ -217,6 +217,27 @@ public class CStructTests {
         free(cs);
     }
 
+    public void mixedArguments() {
+        SimpleStruct ss1 = UnmanagedMemory.malloc(SizeOf.get(SimpleStruct.class));
+        SimpleStruct2 ss2 = UnmanagedMemory.malloc(SizeOf.get(SimpleStruct2.class));
+        String m1 = "a message in a bottle";
+        String m2 = "a ship in a bottle";
+        String m3 = "courage in a bottle";
+        ss1.setFirst(1);
+        ss1.setSecond(2);
+        ss2.setAlpha((byte) 99);
+        ss2.setBeta(100L);
+        testMixedArguments(m1, (short) 1, ss1, 123456789L, m2, ss2, m3);
+        free(ss1);
+        free(ss2);
+    }
+
+    public void testMixedArguments(String m1, short s, SimpleStruct ss1, long l, String m2, SimpleStruct2 ss2, String m3) {
+        System.out.println("You find " + m1);
+        System.out.println("You find " + m2);
+        System.out.println("You find " + m3);
+    }
+
     public static void main(String[] args) {
         CStructTests tests = new CStructTests();
         tests.composite();

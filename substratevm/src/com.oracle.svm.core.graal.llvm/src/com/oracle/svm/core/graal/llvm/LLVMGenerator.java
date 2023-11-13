@@ -45,43 +45,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 
-import jdk.graal.compiler.code.CompilationResult;
-import jdk.graal.compiler.code.DataSection;
-import jdk.graal.compiler.core.common.CompressEncoding;
-import jdk.graal.compiler.core.common.LIRKind;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.core.common.calc.Condition;
-import jdk.graal.compiler.core.common.calc.FloatConvert;
-import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.core.common.memory.BarrierType;
-import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
-import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
-import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
-import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
-import jdk.graal.compiler.core.common.spi.LIRKindTool;
-import jdk.graal.compiler.core.common.type.CompressibleConstant;
-import jdk.graal.compiler.core.common.type.IllegalStamp;
-import jdk.graal.compiler.core.common.type.RawPointerStamp;
-import jdk.graal.compiler.core.common.type.Stamp;
-import jdk.graal.compiler.core.common.type.StampFactory;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.lir.LIRFrameState;
-import jdk.graal.compiler.lir.LIRInstruction;
-import jdk.graal.compiler.lir.LabelRef;
-import jdk.graal.compiler.lir.Variable;
-import jdk.graal.compiler.lir.VirtualStackSlot;
-import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
-import jdk.graal.compiler.lir.gen.BarrierSetLIRGeneratorTool;
-import jdk.graal.compiler.lir.gen.LIRGenerationResult;
-import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-import jdk.graal.compiler.lir.gen.MoveFactory;
-import jdk.graal.compiler.nodes.AbstractBeginNode;
-import jdk.graal.compiler.nodes.ParameterNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.cfg.HIRBlock;
-import jdk.graal.compiler.nodes.type.NarrowOopStamp;
-import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -129,6 +92,43 @@ import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
 
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.code.DataSection;
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.calc.Condition;
+import jdk.graal.compiler.core.common.calc.FloatConvert;
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.core.common.memory.BarrierType;
+import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.core.common.spi.LIRKindTool;
+import jdk.graal.compiler.core.common.type.CompressibleConstant;
+import jdk.graal.compiler.core.common.type.IllegalStamp;
+import jdk.graal.compiler.core.common.type.RawPointerStamp;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.lir.LIRFrameState;
+import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.graal.compiler.lir.LabelRef;
+import jdk.graal.compiler.lir.Variable;
+import jdk.graal.compiler.lir.VirtualStackSlot;
+import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
+import jdk.graal.compiler.lir.gen.BarrierSetLIRGeneratorTool;
+import jdk.graal.compiler.lir.gen.LIRGenerationResult;
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
+import jdk.graal.compiler.lir.gen.MoveFactory;
+import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.cfg.HIRBlock;
+import jdk.graal.compiler.nodes.type.NarrowOopStamp;
+import jdk.graal.compiler.phases.util.Providers;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -1353,15 +1353,21 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             // https://docs.oracle.com/javase/specs/jls/se7/html/jls-15.html#jls-15.19
 
             LLVMTypeRef typeA = typeOf(a);
-            int bitWidthA = LLVMIRBuilder.integerTypeWidth(typeA);
+            final int bitWidthA = LLVMIRBuilder.integerTypeWidth(typeA);
+            int promotedBitWidthA = bitWidthA;
 
+            /*
+             * GR-48976: After unary numeric promotion is fixed in the LLVM backend, this manual
+             * promotion can be removed. At the moment, values that should be promoted by
+             * LIRGeneratorTool.toRegisterKind are not promoted on the LLVM backend.
+             */
             if (bitWidthA == 8 || bitWidthA == 16) {
-                bitWidthA = 32;
+                promotedBitWidthA = 32;
             }
 
-            assert bitWidthA == 32 || bitWidthA == 64;
+            assert promotedBitWidthA == 32 || promotedBitWidthA == 64;
 
-            LLVMValueRef shiftDistanceBitMask = builder.constantInteger(bitWidthA - 1, bitWidthA);
+            LLVMValueRef shiftDistanceBitMask = builder.constantInteger(promotedBitWidthA - 1, bitWidthA);
             LLVMValueRef valB = emitIntegerConvert(b, typeA);
             return builder.buildAnd(valB, shiftDistanceBitMask);
         }

@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #
 # Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -40,6 +41,17 @@
 
 import re
 import sys
+
+
+print("    @Test")
+print("    public void testCasefixEquivalences() {")
+print("        // Generated using re._casefix._EXTRA_CASES from CPython %d.%d.%d" % (sys.version_info.major, sys.version_info.minor, sys.version_info.micro))
+from re._casefix import _EXTRA_CASES
+for (cp, eq_cps) in _EXTRA_CASES.items():
+    for eq_cp in eq_cps:
+        print('        test("\\u%04x", "i", "\\u%04x", 0, true, 0, 1);' % (cp, eq_cp))
+print("    }")
+print()
 
 patterns = [
     r'()\2',
