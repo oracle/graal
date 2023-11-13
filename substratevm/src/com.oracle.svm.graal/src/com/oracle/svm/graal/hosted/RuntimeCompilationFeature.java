@@ -49,6 +49,7 @@ import org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -99,10 +100,9 @@ import jdk.graal.compiler.api.runtime.GraalRuntime;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.phases.LIRSuites;
-import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.GraphDecoder;
 import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
@@ -114,10 +114,12 @@ import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.truffle.nodes.ObjectLocationIdentity;
 import jdk.graal.compiler.word.WordTypes;
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -392,7 +394,8 @@ public abstract class RuntimeCompilationFeature {
                         config.getImageClassLoader(), ParsingReason.JITCompilation, ((Inflation) config.getBigBang()).getAnnotationSubstitutionProcessor(),
                         new SubstrateClassInitializationPlugin(config.getHostVM()), ConfigurationValues.getTarget(), supportsStubBasedPlugins);
 
-        NativeImageGenerator.registerReplacements(DebugContext.forCurrentThread(), featureHandler, runtimeConfig, runtimeConfig.getProviders(), false, true);
+        NativeImageGenerator.registerReplacements(DebugContext.forCurrentThread(), featureHandler, runtimeConfig, runtimeConfig.getProviders(), false, true,
+                        new RuntimeCompilationGraphEncoder(ConfigurationValues.getTarget().arch, config.getUniverse().getHeapScanner()));
 
         featureHandler.forEachGraalFeature(feature -> feature.registerCodeObserver(runtimeConfig));
         Suites suites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, runtimeConfig.getSnippetReflection(), false);
@@ -401,6 +404,73 @@ public abstract class RuntimeCompilationFeature {
         LIRSuites firstTierLirSuites = NativeImageGenerator.createFirstTierLIRSuites(featureHandler, runtimeConfig.getProviders(), false);
 
         TruffleRuntimeCompilationSupport.setRuntimeConfig(runtimeConfig, suites, lirSuites, firstTierSuites, firstTierLirSuites);
+    }
+
+    /**
+     * A graph encoder that unwraps the {@link ImageHeapConstant} objects. This is used both after
+     * analysis and after compilation. The corresponding graph decoder used during AOT compilation,
+     * {@link RuntimeCompilationGraphDecoder}, looks-up the constant in the shadow heap and re-wraps
+     * it.
+     * <p>
+     * The reason why we need to unwrap the {@link ImageHeapConstant}s after analysis, and not only
+     * when we finally encode the graphs for run time compilation, is because the values in
+     * {@link GraphEncoder#objectsArray} are captured in GraalSupport#graphObjects and
+     * SubstrateReplacements#snippetObjects which are then scanned.
+     */
+    public static class RuntimeCompilationGraphEncoder extends GraphEncoder {
+
+        private final ImageHeapScanner heapScanner;
+
+        public RuntimeCompilationGraphEncoder(Architecture architecture, ImageHeapScanner heapScanner) {
+            super(architecture);
+            this.heapScanner = heapScanner;
+        }
+
+        @Override
+        protected void addObject(Object object) {
+            super.addObject(unwrap(object));
+        }
+
+        @Override
+        protected void writeObjectId(Object object) {
+            super.writeObjectId(unwrap(object));
+        }
+
+        @Override
+        protected GraphDecoder graphDecoderForVerification(StructuredGraph decodedGraph) {
+            return new RuntimeCompilationGraphDecoder(architecture, decodedGraph, heapScanner);
+        }
+
+        private static Object unwrap(Object object) {
+            if (object instanceof ImageHeapConstant ihc) {
+                VMError.guarantee(ihc.getHostedObject() != null);
+                return ihc.getHostedObject();
+            } else if (object instanceof ObjectLocationIdentity oli && oli.getObject() instanceof ImageHeapConstant ihc) {
+                return ObjectLocationIdentity.create(ihc.getHostedObject());
+            }
+            return object;
+        }
+    }
+
+    static class RuntimeCompilationGraphDecoder extends GraphDecoder {
+
+        private final ImageHeapScanner heapScanner;
+
+        RuntimeCompilationGraphDecoder(Architecture architecture, StructuredGraph graph, ImageHeapScanner heapScanner) {
+            super(architecture, graph);
+            this.heapScanner = heapScanner;
+        }
+
+        @Override
+        protected Object readObject(MethodScope methodScope) {
+            Object object = super.readObject(methodScope);
+            if (object instanceof JavaConstant constant) {
+                return heapScanner.getImageHeapConstant(constant);
+            } else if (object instanceof ObjectLocationIdentity oli) {
+                return ObjectLocationIdentity.create(heapScanner.getImageHeapConstant(oli.getObject()));
+            }
+            return object;
+        }
     }
 
     protected final void beforeAnalysisHelper(BeforeAnalysisAccess c) {
@@ -418,7 +488,7 @@ public abstract class RuntimeCompilationFeature {
         graphBuilderConfig = GraphBuilderConfiguration.getDefault(hostedProviders.getGraphBuilderPlugins()).withBytecodeExceptionMode(BytecodeExceptionMode.ExplicitOnly);
         runtimeCompilationCandidatePredicate = RuntimeCompilationFeature::defaultAllowRuntimeCompilation;
         optimisticOpts = OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.UseLoopLimitChecks);
-        graphEncoder = new GraphEncoder(ConfigurationValues.getTarget().arch);
+        graphEncoder = new RuntimeCompilationGraphEncoder(ConfigurationValues.getTarget().arch, config.getUniverse().getHeapScanner());
 
         /*
          * Ensure all snippet types are registered as used.
@@ -614,21 +684,6 @@ public abstract class RuntimeCompilationFeature {
         HostedMetaAccess hMetaAccess = config.getMetaAccess();
         HostedUniverse hUniverse = hMetaAccess.getUniverse();
         objectReplacer.updateSubstrateDataAfterHeapLayout(hUniverse);
-    }
-
-    /**
-     * Unwrap the hosted constant from an {@link ImageHeapConstant} before encoding the graph for
-     * run time compilation. {@link ImageHeapConstant} is a hosted only constant representation.
-     */
-    public static void unwrapImageHeapConstants(StructuredGraph graph, MetaAccessProvider metaAccess) {
-        for (Node n : graph.getNodes()) {
-            if (n instanceof ConstantNode constantNode) {
-                if (constantNode.getValue() instanceof ImageHeapConstant heapConstant) {
-                    VMError.guarantee(heapConstant.isBackedByHostedObject(), "Expected to find a heap object backed by a hosted object, found %s", heapConstant);
-                    constantNode.replace(graph, ConstantNode.forConstant(heapConstant.getHostedObject(), metaAccess, graph));
-                }
-            }
-        }
     }
 }
 

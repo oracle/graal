@@ -56,6 +56,7 @@ import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -113,7 +114,6 @@ import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
-import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.nodes.StateSplit;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -329,6 +329,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
     private Map<RuntimeCompilationCandidate, CallTreeNode> runtimeCandidateCallTree = null;
     private Map<AnalysisMethod, CallTreeNode> runtimeCompiledMethodCallTree = null;
     private HostedProviders analysisProviders = null;
+    private ImageHeapScanner heapScanner;
     private HostedProviders runtimeCompilationProviders = null;
     private AllowInliningPredicate allowInliningPredicate = (builder, target) -> AllowInliningPredicate.InlineDecision.INLINING_DISALLOWED;
     private boolean allowInliningPredicateUpdated = false;
@@ -371,6 +372,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         constantFieldProviderWrapper = generator;
         customHostedProviders.setGraphBuilderPlugins(hostedProviders.getGraphBuilderPlugins());
         analysisProviders = customHostedProviders;
+        heapScanner = bb.getUniverse().getHeapScanner();
     }
 
     boolean newRuntimeMethodsSeen = false;
@@ -577,7 +579,8 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         assert method.getMultiMethodKey() == RUNTIME_COMPILED_METHOD;
 
         AnalysisMethod aMethod = method.getWrapped();
-        StructuredGraph graph = aMethod.decodeAnalyzedGraph(debug, null, false);
+        StructuredGraph graph = aMethod.decodeAnalyzedGraph(debug, null, false,
+                        (arch, analyzedGraph) -> new RuntimeCompilationGraphDecoder(arch, analyzedGraph, heapScanner));
         if (graph == null) {
             throw VMError.shouldNotReachHere("Method not parsed during static analysis: " + aMethod.format("%r %H.%n(%p)"));
         }
@@ -619,7 +622,6 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
                             VMError.guarantee(deoptMethod != null, "New deopt target method seen: %s", deoptEntryMethod);
                             return deoptMethod;
                         }));
-        unwrapImageHeapConstants(graph, hostedProviders.getMetaAccess());
 
         assert RuntimeCompilationFeature.verifyNodes(graph);
         var previous = runtimeGraphs.put(method, graph);
@@ -672,7 +674,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
          * Start fresh with a new GraphEncoder, since we are going to optimize all graphs now that
          * the static analysis results are available.
          */
-        graphEncoder = new GraphEncoder(ConfigurationValues.getTarget().arch);
+        graphEncoder = new RuntimeCompilationGraphEncoder(ConfigurationValues.getTarget().arch, bb.getUniverse().getHeapScanner());
         assert runtimeCompilationProviders == null;
         runtimeCompilationProviders = hostedProviders
                         .copyWith(constantFieldProviderWrapper.apply(new RuntimeCompilationFieldProvider(hostedProviders.getMetaAccess(), hUniverse)))
@@ -912,7 +914,6 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
                     assert MultiMethod.isDeoptTarget(method);
                     ((PointsToAnalysisMethod) method).getTypeFlow().updateFlowsGraph(bb, MethodFlowsGraph.GraphKind.FULL, null, true);
                 }
-                unwrapImageHeapConstants(graph, hostedProviders.getMetaAccess());
 
                 // Note that this will be made thread-safe in the future
                 synchronized (this) {

@@ -178,6 +178,13 @@ public abstract class ImageHeapScanner {
         universe.getBigbang().registerTypeAsInHeap(type, reason);
     }
 
+    public JavaConstant getImageHeapConstant(JavaConstant constant) {
+        if (isNonNullObjectConstant(constant)) {
+            return (ImageHeapConstant) imageHeap.getSnapshot(constant);
+        }
+        return constant;
+    }
+
     public JavaConstant createImageHeapConstant(JavaConstant constant, ScanReason reason) {
         if (isNonNullObjectConstant(constant)) {
             return getOrCreateImageHeapConstant(constant, reason);
