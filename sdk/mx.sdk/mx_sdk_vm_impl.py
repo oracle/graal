@@ -51,6 +51,7 @@ import inspect
 import json
 import os
 from os.path import relpath, join, dirname, basename, exists, isfile, normpath, abspath, isdir
+import pipes
 import pprint
 import re
 import shlex
