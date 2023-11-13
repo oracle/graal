@@ -433,8 +433,9 @@ public class InliningUtil extends ValueMergeUtil {
 
             @Override
             public Node replacement(Node node) {
-                if (node instanceof ParameterNode) {
-                    return parameters.get(((ParameterNode) node).index());
+                if (node instanceof ParameterNode parameterNode) {
+                    ValueNode argument = parameters.get(parameterNode.index());
+                    return graph.addOrUnique(PiNode.create(argument, parameterNode.stamp(NodeView.DEFAULT)));
                 } else if (node == entryPointNode) {
                     return prevBegin;
                 }
