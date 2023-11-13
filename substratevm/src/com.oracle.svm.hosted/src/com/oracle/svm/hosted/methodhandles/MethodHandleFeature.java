@@ -37,7 +37,6 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -53,6 +52,7 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import sun.invoke.util.ValueConversions;
 import sun.invoke.util.Wrapper;
 
@@ -417,6 +417,6 @@ public class MethodHandleFeature implements InternalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        assert substitutionProcessor.checkAllTypeNames();
+        assert substitutionProcessor == null || substitutionProcessor.checkAllTypeNames();
     }
 }

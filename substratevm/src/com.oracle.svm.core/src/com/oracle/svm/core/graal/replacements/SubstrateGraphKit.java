@@ -27,6 +27,19 @@ package com.oracle.svm.core.graal.replacements;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.word.WordBase;
+
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
+import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
+import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
+import com.oracle.svm.core.nodes.CFunctionCaptureNode;
+import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
+import com.oracle.svm.core.nodes.CFunctionPrologueNode;
+import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.core.util.VMError;
+
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -72,19 +85,6 @@ import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.GraphKit;
 import jdk.graal.compiler.word.WordTypes;
-import org.graalvm.word.WordBase;
-
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
-import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
-import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
-import com.oracle.svm.core.nodes.CFunctionCaptureNode;
-import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
-import com.oracle.svm.core.nodes.CFunctionPrologueNode;
-import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
-import com.oracle.svm.core.thread.VMThreads.StatusSupport;
-import com.oracle.svm.core.util.VMError;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.Constant;
@@ -122,8 +122,8 @@ public class SubstrateGraphKit extends GraphKit {
     }
 
     @Override
-    protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, int bci) {
-        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, null, null, null);
+    public MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, int bci) {
+        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp);
     }
 
     public SubstrateLoweringProvider getLoweringProvider() {

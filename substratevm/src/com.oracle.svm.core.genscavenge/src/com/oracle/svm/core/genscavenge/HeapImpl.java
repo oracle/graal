@@ -691,7 +691,7 @@ public final class HeapImpl extends Heap {
     @Override
     @Uninterruptible(reason = "Ensure that no GC can occur between modification of the object and this call.", callerMustBe = true)
     public void dirtyAllReferencesOf(Object obj) {
-        if (obj != null) {
+        if (SubstrateOptions.useRememberedSet() && obj != null) {
             ForcedSerialPostWriteBarrier.force(OffsetAddressNode.address(obj, 0), false);
         }
     }

@@ -37,8 +37,6 @@
       machine_name:: error "machine_name must be set!",
       local _machine_name = self.machine_name,
       capabilities+: [_machine_name],
-      local GR26994_ActiveProcessorCount = "-Dnative-image.benchmark.extra-run-arg=-XX:ActiveProcessorCount="+std.toString(self.threads_per_node), # remove once GR-26994 is fixed
-      environment+: { "MACHINE_NAME": _machine_name, "GR26994": GR26994_ActiveProcessorCount },
       numa_nodes:: [],
       is_numa:: std.length(self.numa_nodes) > 0,
       num_threads:: error "num_threads must bet set!",
@@ -47,14 +45,21 @@
 
     x52:: common.linux_amd64 + self._bench_machine + {
       machine_name:: "x52",
-      capabilities+: ["no_frequency_scaling", "tmpfs25g"],
+      capabilities+: ["tmpfs25g"],
       numa_nodes:: [0, 1],
       default_numa_node:: 0,
       num_threads:: 72
     },
+    e4_8_64:: common.linux_amd64 + self._bench_machine + {
+      machine_name:: "e4_8_64",
+      capabilities+: ["tmpfs25g"],
+      numa_nodes:: [0],
+      default_numa_node:: 0,
+      num_threads:: 16
+    },
     x82:: common.linux_amd64 + self._bench_machine + {
       machine_name:: "x82",
-      capabilities+: ["no_frequency_scaling", "tmpfs25g"],
+      capabilities+: ["tmpfs25g"],
       numa_nodes:: [0, 1],
       default_numa_node:: 0,
       num_threads:: 96
@@ -66,7 +71,7 @@
     },
     a12c:: common.linux_aarch64 + self._bench_machine + {
       machine_name:: "a12c",
-      capabilities+: ["no_frequency_scaling", "tmpfs25g"],
+      capabilities+: ["tmpfs25g"],
       numa_nodes:: [0, 1],
       default_numa_node:: 0,
       num_threads:: 160

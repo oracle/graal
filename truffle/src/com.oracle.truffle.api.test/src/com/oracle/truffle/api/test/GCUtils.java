@@ -48,6 +48,8 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.FileAttribute;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -84,6 +86,14 @@ import javax.management.MBeanServer;
 public final class GCUtils {
 
     private static final boolean PRESERVE_HEAP_DUMP_ON_FAILURE = Boolean.parseBoolean(System.getProperty(GCUtils.class.getSimpleName() + ".preserveHeapDumpOnFailure", "true"));
+
+    /**
+     * When set, and if the {@link #PRESERVE_HEAP_DUMP_ON_FAILURE} system property is set to
+     * {@code true}, {@code GCUtils} relocates the heap dump to the designated folder. The target
+     * heap dump file has the pattern {@code gcutils_heapdump_.+\.hprof} as produced by
+     * {@link Files#createTempFile(Path, String, String, FileAttribute[])}.
+     */
+    private static final String SAVE_HEAP_DUMP_TO = System.getProperty(GCUtils.class.getSimpleName() + ".saveHeapDumpTo");
 
     private static final ReachabilityAnalyser<?> analyser = selectAnalyser();
 
@@ -440,9 +450,21 @@ public final class GCUtils {
                     JavaClass trackableReferenceClass = heap.getJavaClassByName(HeapDumpAnalyser.class.getName());
                     ObjectArrayInstance todoArray = (ObjectArrayInstance) trackableReferenceClass.getValueOfStaticField("todo");
                     List<Instance> instances = todoArray.getValues();
-                    result = testCollected.apply(new State(collectGCRootPath, preserveHeapDumpIfNonCollectable ? heapDumpFile : null, heap, instances, todoIndexes));
+                    Path targetFile = null;
+                    if (preserveHeapDumpIfNonCollectable) {
+                        if (SAVE_HEAP_DUMP_TO != null) {
+                            Path targetFolder = Path.of(SAVE_HEAP_DUMP_TO);
+                            targetFile = Files.createTempFile(targetFolder, "gcutils_heapdump_", ".hprof");
+                        } else {
+                            targetFile = heapDumpFile;
+                        }
+                    }
+                    result = testCollected.apply(new State(collectGCRootPath, targetFile, heap, instances, todoIndexes));
+                    if (targetFile != null && !targetFile.equals(heapDumpFile)) {
+                        Files.move(heapDumpFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
+                    }
                 } finally {
-                    if (result == null || result.isCollected() || !preserveHeapDumpIfNonCollectable) {
+                    if (result == null || result.isCollected() || !preserveHeapDumpIfNonCollectable || SAVE_HEAP_DUMP_TO != null) {
                         delete(tmpDirectory);
                     }
                 }

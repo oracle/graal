@@ -285,6 +285,6 @@ public abstract class WasmCase {
     }
 
     public boolean isSkipped() {
-        return options().getProperty("skip-on-windows", "false").equals("true") && System.getProperty("os.arch", "").contains("Windows");
+        return options().getProperty("skip-on-windows", "false").equals("true") && System.getProperty("os.name", "").contains("Windows");
     }
 }

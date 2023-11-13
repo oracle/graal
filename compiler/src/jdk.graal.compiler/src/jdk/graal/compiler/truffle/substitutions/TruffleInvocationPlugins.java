@@ -63,7 +63,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Provides {@link InvocationPlugin}s for Truffle classes. This plugins are applied for host and
+ * Provides {@link InvocationPlugin}s for Truffle classes. These plugins are applied for host and
  * guest compilation.
  */
 public class TruffleInvocationPlugins {

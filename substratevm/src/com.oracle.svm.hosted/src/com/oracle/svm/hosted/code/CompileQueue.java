@@ -39,6 +39,47 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.graal.pointsto.api.PointstoOptions;
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.graal.pointsto.infrastructure.GraphProvider.Purpose;
+import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.phases.SubstrateIntrinsicGraphBuilder;
+import com.oracle.graal.pointsto.util.CompletionExecutor;
+import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
+import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.deopt.DeoptTest;
+import com.oracle.svm.core.deopt.Specialize;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
+import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
+import com.oracle.svm.core.graal.phases.OptimizeExceptionPathsPhase;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
+import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
+import com.oracle.svm.core.util.InterruptImageBuilding;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureHandler;
+import com.oracle.svm.hosted.NativeImageGenerator;
+import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.ProgressReporter;
+import com.oracle.svm.hosted.diagnostic.HostedHeapDumpFeature;
+import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.hosted.phases.HostedGraphBuilderPhase;
+import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
+import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
+import com.oracle.svm.hosted.substitute.DeletedMethod;
+import com.oracle.svm.util.ImageBuildStatistics;
+
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.asm.Assembler;
@@ -97,49 +138,6 @@ import jdk.graal.compiler.phases.util.GraphOrder;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.PEGraphDecoder;
 import jdk.graal.compiler.replacements.nodes.MacroInvokable;
-import org.graalvm.nativeimage.ImageSingletons;
-
-import com.oracle.graal.pointsto.api.PointstoOptions;
-import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
-import com.oracle.graal.pointsto.infrastructure.GraphProvider.Purpose;
-import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.phases.SubstrateIntrinsicGraphBuilder;
-import com.oracle.graal.pointsto.util.CompletionExecutor;
-import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
-import com.oracle.svm.common.meta.MultiMethod;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.deopt.DeoptTest;
-import com.oracle.svm.core.deopt.Specialize;
-import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
-import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
-import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
-import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
-import com.oracle.svm.core.graal.phases.OptimizeExceptionPathsPhase;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
-import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
-import com.oracle.svm.core.util.InterruptImageBuilding;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.FeatureHandler;
-import com.oracle.svm.hosted.NativeImageGenerator;
-import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.hosted.ProgressReporter;
-import com.oracle.svm.hosted.diagnostic.HostedHeapDumpFeature;
-import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.HostedUniverse;
-import com.oracle.svm.hosted.phases.DevirtualizeCallsPhase;
-import com.oracle.svm.hosted.phases.HostedGraphBuilderPhase;
-import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
-import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
-import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
-import com.oracle.svm.hosted.substitute.DeletedMethod;
-import com.oracle.svm.util.ImageBuildStatistics;
-
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.ConstantReference;
@@ -497,11 +495,7 @@ public class CompileQueue {
         PhaseSuite<HighTierContext> phaseSuite = new PhaseSuite<>();
         phaseSuite.appendPhase(new ImplicitAssertionsPhase());
         phaseSuite.appendPhase(new DeadStoreRemovalPhase());
-        phaseSuite.appendPhase(new DevirtualizeCallsPhase());
         phaseSuite.appendPhase(CanonicalizerPhase.create());
-        if (!PointstoOptions.UseExperimentalReachabilityAnalysis.getValue(universe.hostVM().options())) {
-            phaseSuite.appendPhase(new StrengthenStampsPhase());
-        }
         phaseSuite.appendPhase(CanonicalizerPhase.create());
         phaseSuite.appendPhase(new OptimizeExceptionPathsPhase());
         if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(universe.hostVM().options())) {
@@ -1303,7 +1297,7 @@ public class CompileQueue {
                 CompilationResult result = backend.newCompilationResult(compilationIdentifier, method.getQualifiedName());
 
                 try (Indent indent = debug.logAndIndent("compile %s", method)) {
-                    GraalCompiler.compileGraph(graph, method, backend.getProviders(), backend, null, getOptimisticOpts(), method.getProfilingInfo(), suites, lirSuites, result,
+                    GraalCompiler.compileGraph(graph, method, backend.getProviders(), backend, null, getOptimisticOpts(), null, suites, lirSuites, result,
                                     new HostedCompilationResultBuilderFactory(), false);
                 }
                 graph.getOptimizationLog().emit((m) -> m.format(StableMethodNameFormatter.METHOD_FORMAT));

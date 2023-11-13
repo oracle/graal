@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.results;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.infrastructure.Universe;
-import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import jdk.vm.ci.meta.JavaTypeProfile;
-import jdk.vm.ci.meta.TriState;
+package com.oracle.svm.core.jfr;
+
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.graal.RuntimeCompilation;
 
 /**
- * Implementation of the ResultsBuilder providing no feedback for optimizations. Used in
- * Reachability Analysis.
+ * Returns {@code true} if the Native Image is built with JFR execution sampler support.
  */
-public class DefaultResultsBuilder extends AbstractAnalysisResultsBuilder {
-    public DefaultResultsBuilder(BigBang bb, Universe converter) {
-        super(bb, converter);
+@Platforms(Platform.HOSTED_ONLY.class)
+public class JfrExecutionSamplerSupported {
+
+    public static boolean isSupported() {
+        if (ImageSingletons.contains(JfrExecutionSamplerSupported.class)) {
+            return !RuntimeCompilation.isEnabled() && ImageSingletons.lookup(JfrExecutionSamplerSupported.class).isSupported0();
+        } else {
+            return false;
+        }
     }
 
-    @Override
-    public StaticAnalysisResults makeOrApplyResults(AnalysisMethod method) {
-        return StaticAnalysisResults.NO_RESULTS;
-    }
-
-    @Override
-    public JavaTypeProfile makeTypeProfile(AnalysisField field) {
-        return new JavaTypeProfile(TriState.UNKNOWN, 1, new JavaTypeProfile.ProfiledType[0]);
+    protected boolean isSupported0() {
+        return HasJfrSupport.get();
     }
 }

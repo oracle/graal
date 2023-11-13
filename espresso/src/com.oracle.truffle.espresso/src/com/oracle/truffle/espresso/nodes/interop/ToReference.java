@@ -364,7 +364,7 @@ public abstract class ToReference extends ToEspressoNode {
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             try {
                 Object metaObject = getMetaObjectOrThrow(value, interop);
-                ProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), targetType);
+                WrappedProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), targetType);
                 if (proxyKlass != null) {
                     targetType.safeInitialize();
                     return proxyKlass.createProxyInstance(value, getLanguage(), interop);
@@ -482,7 +482,7 @@ public abstract class ToReference extends ToEspressoNode {
                         @Cached LookupProxyKlassNode lookupProxyKlassNode,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             Object metaObject = getMetaObjectOrThrow(value, interop);
-            ProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), context.getMeta().java_util_List);
+            WrappedProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), context.getMeta().java_util_List);
             if (proxyKlass == null) {
                 throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_util_List.getTypeAsString());
             }
@@ -511,7 +511,7 @@ public abstract class ToReference extends ToEspressoNode {
                         @Cached LookupProxyKlassNode lookupProxyKlassNode,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             Object metaObject = getMetaObjectOrThrow(value, interop);
-            ProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), meta.java_util_Collection);
+            WrappedProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), meta.java_util_Collection);
             if (proxyKlass == null) {
                 throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_util_Collection.getTypeAsString());
             }
@@ -540,7 +540,7 @@ public abstract class ToReference extends ToEspressoNode {
                         @Cached LookupProxyKlassNode lookupProxyKlassNode,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             Object metaObject = getMetaObjectOrThrow(value, interop);
-            ProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), meta.java_lang_Iterable);
+            WrappedProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), meta.java_lang_Iterable);
             if (proxyKlass == null) {
                 throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_lang_Iterable.getTypeAsString());
             }
@@ -569,7 +569,7 @@ public abstract class ToReference extends ToEspressoNode {
                         @Cached LookupProxyKlassNode lookupProxyKlassNode,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             Object metaObject = getMetaObjectOrThrow(value, interop);
-            ProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), meta.java_util_Iterator);
+            WrappedProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), meta.java_util_Iterator);
             if (proxyKlass == null) {
                 throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_util_Iterator.getTypeAsString());
             }
@@ -598,7 +598,7 @@ public abstract class ToReference extends ToEspressoNode {
                         @Cached LookupProxyKlassNode lookupProxyKlassNode,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             Object metaObject = getMetaObjectOrThrow(value, interop);
-            ProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), meta.java_util_Map);
+            WrappedProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), meta.java_util_Map);
             if (proxyKlass == null) {
                 throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_util_Map.getTypeAsString());
             }
@@ -626,7 +626,7 @@ public abstract class ToReference extends ToEspressoNode {
                         @Cached LookupProxyKlassNode lookupProxyKlassNode,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             Object metaObject = getMetaObjectOrThrow(value, interop);
-            ProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), meta.java_util_Set);
+            WrappedProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), meta.java_util_Set);
             if (proxyKlass == null) {
                 throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_util_Set.getTypeAsString());
             }
@@ -1105,7 +1105,7 @@ public abstract class ToReference extends ToEspressoNode {
                         return StaticObject.createForeignException(getContext(), value, interop);
                     }
                     // see if a generated proxy can be used for interface mapped types
-                    ProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, metaName, meta.java_lang_Object);
+                    WrappedProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, metaName, meta.java_lang_Object);
                     if (proxyKlass != null) {
                         return proxyKlass.createProxyInstance(value, getLanguage(), interop);
                     }
@@ -1267,7 +1267,7 @@ public abstract class ToReference extends ToEspressoNode {
                         @Cached BranchProfile errorProfile) throws UnsupportedTypeException {
             try {
                 Object metaObject = getMetaObjectOrThrow(value, interop);
-                ProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), targetType);
+                WrappedProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), targetType);
                 if (proxyKlass != null) {
                     initCheck.execute(targetType);
                     return proxyKlass.createProxyInstance(value, getLanguage(), interop);

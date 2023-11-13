@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jfr;
 
-import java.lang.reflect.Field;
 import java.util.List;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -94,7 +93,7 @@ public class SubstrateJVM {
     private String dumpPath;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateJVM(List<Configuration> configurations) {
+    public SubstrateJVM(List<Configuration> configurations, boolean writeFile) {
         this.knownConfigurations = configurations;
 
         options = new JfrOptionSet();
@@ -114,7 +113,7 @@ public class SubstrateJVM {
         threadLocal = new JfrThreadLocal();
         globalMemory = new JfrGlobalMemory();
         samplerBufferPool = new SamplerBufferPool();
-        unlockedChunkWriter = new JfrChunkWriter(globalMemory, stackTraceRepo, methodRepo, typeRepo, symbolRepo, threadRepo);
+        unlockedChunkWriter = writeFile ? new JfrChunkFileWriter(globalMemory, stackTraceRepo, methodRepo, typeRepo, symbolRepo, threadRepo) : new JfrChunkNoWriter();
         recorderThread = new JfrRecorderThread(globalMemory, unlockedChunkWriter);
 
         jfrLogging = new JfrLogging();
@@ -207,6 +206,7 @@ public class SubstrateJVM {
             throw new InternalError("Could not access event handler");
         }
     }
+
 
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
     public boolean isRecording() {

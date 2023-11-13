@@ -39,11 +39,6 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 
 import org.graalvm.collections.Pair;
-import jdk.graal.compiler.api.replacements.Snippet;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.JavaMethodContext;
-import jdk.graal.compiler.java.StableMethodNameFormatter;
-import jdk.graal.compiler.nodes.StructuredGraph;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -54,7 +49,6 @@ import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.results.StaticAnalysisResults;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateUtil;
@@ -76,6 +70,11 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CompilationInfo;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 
+import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.JavaMethodContext;
+import jdk.graal.compiler.java.StableMethodNameFormatter;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
@@ -85,6 +84,7 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.Local;
 import jdk.vm.ci.meta.LocalVariableTable;
+import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
@@ -100,7 +100,6 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     private final Signature signature;
     private final ConstantPool constantPool;
     private final ExceptionHandler[] handlers;
-    StaticAnalysisResults staticAnalysisResults;
     int vtableIndex = -1;
 
     /**
@@ -256,7 +255,6 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
      */
     public void clear() {
         compilationInfo.clear();
-        staticAnalysisResults = null;
     }
 
     @Override
@@ -456,13 +454,8 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     @Override
-    public StaticAnalysisResults getProfilingInfo() {
-        return staticAnalysisResults;
-    }
-
-    @Override
-    public StaticAnalysisResults getProfilingInfo(boolean includeNormal, boolean includeOSR) {
-        return staticAnalysisResults;
+    public ProfilingInfo getProfilingInfo(boolean includeNormal, boolean includeOSR) {
+        return null;
     }
 
     @Override
@@ -576,7 +569,6 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
         return (HostedMethod) multiMethodMap.computeIfAbsent(key, (k) -> {
             HostedMethod newMultiMethod = create0(wrapped, holder, signature, constantPool, handlers, k, multiMethodMap, localVariableTable);
-            newMultiMethod.staticAnalysisResults = staticAnalysisResults;
             newMultiMethod.implementations = implementations;
             newMultiMethod.vtableIndex = vtableIndex;
             return newMultiMethod;

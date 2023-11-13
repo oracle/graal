@@ -26,8 +26,6 @@ package com.oracle.svm.core.thread;
 
 import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -60,6 +58,9 @@ import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Only one thread at a time can execute {@linkplain VMOperation}s. The execution order of VM
@@ -437,7 +438,7 @@ public final class VMOperationControl {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean isRunning() {
-            return isolateThread.isNonNull() && !stopped;
+            return PlatformThreads.isAlive(thread);
         }
     }
 

@@ -641,6 +641,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         LabelRef exceptionEdge = null;
         if (x instanceof InvokeWithExceptionNode) {
             exceptionEdge = getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge());
+            exceptionEdge.getTargetBlock().setIndirectBranchTarget();
         }
         LIRFrameState callState = stateWithExceptionEdge(x, exceptionEdge);
 
@@ -673,6 +674,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         LabelRef exceptionEdge = null;
         if (x instanceof WithExceptionNode) {
             exceptionEdge = getLIRBlock(((WithExceptionNode) x).exceptionEdge());
+            exceptionEdge.getTargetBlock().setIndirectBranchTarget();
         }
         LIRFrameState callState = stateWithExceptionEdge(x, exceptionEdge);
 

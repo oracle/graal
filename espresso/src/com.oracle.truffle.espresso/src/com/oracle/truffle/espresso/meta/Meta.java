@@ -130,6 +130,7 @@ public final class Meta extends ContextAccessImpl {
         java_lang_Class_forName_String_boolean_ClassLoader = java_lang_Class.requireDeclaredMethod(Name.forName, Signature.Class_String_boolean_ClassLoader);
 
         java_lang_String = knownKlass(Type.java_lang_String);
+        java_lang_String_array = java_lang_String.array();
         java_lang_CharSequence = knownKlass(Type.java_lang_CharSequence);
 
         // Primitives.
@@ -286,6 +287,8 @@ public final class Meta extends ContextAccessImpl {
         java_lang_NoSuchFieldException = knownKlass(Type.java_lang_NoSuchFieldException);
         java_lang_NoSuchMethodException = knownKlass(Type.java_lang_NoSuchMethodException);
         java_lang_UnsupportedOperationException = knownKlass(Type.java_lang_UnsupportedOperationException);
+        java_util_NoSuchElementException = knownKlass(Type.java_util_NoSuchElementException);
+        java_lang_NumberFormatException = knownKlass(Type.java_lang_NumberFormatException);
 
         java_lang_StackOverflowError = knownKlass(Type.java_lang_StackOverflowError);
         java_lang_OutOfMemoryError = knownKlass(Type.java_lang_OutOfMemoryError);
@@ -885,8 +888,6 @@ public final class Meta extends ContextAccessImpl {
         java_math_MathContext = knownKlass(Type.java_math_MathContext);
         java_math_MathContext_init = java_math_MathContext.requireDeclaredMethod(Name._init_, Signature._void_int);
 
-        java_util_NoSuchElementException = knownKlass(Type.java_util_NoSuchElementException);
-
         jdk_internal_misc_UnsafeConstants = diff() //
                         .klass(higher(13), Type.jdk_internal_misc_UnsafeConstants) //
                         .notRequiredKlass();
@@ -1054,6 +1055,7 @@ public final class Meta extends ContextAccessImpl {
     public final ArrayKlass java_lang_Object_array;
 
     public final ObjectKlass java_lang_String;
+    public final ArrayKlass java_lang_String_array;
     public final ObjectKlass java_lang_Class;
     public final ObjectKlass java_lang_CharSequence;
     public final Field HIDDEN_MIRROR_KLASS;
@@ -1258,6 +1260,8 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass java_lang_NoSuchFieldException;
     public final ObjectKlass java_lang_NoSuchMethodException;
     public final ObjectKlass java_lang_UnsupportedOperationException;
+    public final ObjectKlass java_util_NoSuchElementException;
+    public final ObjectKlass java_lang_NumberFormatException;
 
     public final ObjectKlass java_lang_Throwable;
     public final Method java_lang_Throwable_getStackTrace;
@@ -1584,8 +1588,6 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass java_math_MathContext;
     public final Method java_math_MathContext_init;
 
-    public final ObjectKlass java_util_NoSuchElementException;
-
     public final ObjectKlass jdk_internal_misc_UnsafeConstants;
     public final Field jdk_internal_misc_UnsafeConstants_ADDRESS_SIZE0;
     public final Field jdk_internal_misc_UnsafeConstants_PAGE_SIZE;
@@ -1668,7 +1670,6 @@ public final class Meta extends ContextAccessImpl {
         public final Method VMHelper_getDynamicModuleDescriptor;
 
         public final ObjectKlass EspressoForeignList;
-        public final Field EspressoForeignList_foreignObject;
         public final ObjectKlass EspressoForeignCollection;
         public final ObjectKlass EspressoForeignIterable;
         public final ObjectKlass EspressoForeignIterator;
@@ -1737,7 +1738,6 @@ public final class Meta extends ContextAccessImpl {
             VMHelper_getDynamicModuleDescriptor = VMHelper.requireDeclaredMethod(Name.getDynamicModuleDescriptor, Signature.ModuleDescriptor_String_String);
 
             EspressoForeignList = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignList);
-            EspressoForeignList_foreignObject = EspressoForeignList.requireDeclaredField(Name.foreignObject, Type.java_lang_Object);
             EspressoForeignCollection = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignCollection);
             EspressoForeignIterable = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignIterable);
             EspressoForeignIterator = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignIterator);

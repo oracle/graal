@@ -42,13 +42,13 @@ import jdk.graal.compiler.truffle.TruffleTierContext;
  * The phase is enabled with the following flag:
  *
  * <pre>
- * -Dgraal.TruffleInstrumentBranches
+ * -Djdk.graal.TruffleInstrumentBranches
  * </pre>
  *
  * The flag:
  *
  * <pre>
- * -Dgraal.TruffleInstrumentBranchesPerInlineSite
+ * -Djdk.graal.TruffleInstrumentBranchesPerInlineSite
  * </pre>
  *
  * decides whether to treat different inlining sites separately when tracking the execution counts

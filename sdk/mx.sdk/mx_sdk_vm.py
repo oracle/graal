@@ -807,11 +807,11 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
             if is_gate or is_bench:
                 # For gate and benchmark jobs, we want to know about each compilation failure
                 # but only exit the VM on systemic compilation failure for gate jobs.
-                vm_options.append('-Dgraal.CompilationFailureAction=Diagnose')
-                mx.log('Adding -Dgraal.CompilationFailureAction=Diagnose VM option to image')
+                vm_options.append('-Djdk.graal.CompilationFailureAction=Diagnose')
+                mx.log('Adding -Djdk.graal.CompilationFailureAction=Diagnose VM option to image')
                 if is_gate:
-                    mx.log('Adding -Dgraal.SystemicCompilationFailureRate=-1 VM option to image')
-                    vm_options.append('-Dgraal.SystemicCompilationFailureRate=-1')
+                    mx.log('Adding -Djdk.graal.SystemicCompilationFailureRate=-1 VM option to image')
+                    vm_options.append('-Djdk.graal.SystemicCompilationFailureRate=-1')
 
         if use_upgrade_module_path or _jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy(jdk):
             vm_options.append('-XX:ThreadPriorityPolicy=1')

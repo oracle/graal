@@ -65,7 +65,7 @@ public class HsErrLogTest extends GraalCompilerTest {
 
     private static void testHelper(List<String> extraVmArgs, String... mainClassAndArgs) throws IOException, InterruptedException {
         List<String> vmArgs = withoutDebuggerArguments(getVMCommandLine());
-        vmArgs.removeIf(a -> a.startsWith("-Dgraal."));
+        vmArgs.removeIf(a -> a.startsWith("-Djdk.graal."));
         vmArgs.remove("-esa");
         vmArgs.remove("-ea");
         vmArgs.addAll(extraVmArgs);

@@ -240,6 +240,7 @@ public class Hello {
         CStructTests tests = new CStructTests();
         tests.composite();
         tests.weird();
+        tests.mixedArguments();
         System.exit(0);
     }
     /*

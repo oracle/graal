@@ -209,9 +209,9 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
                     asm.movq(new AMD64Address(rsp, frameMap.offsetForStackSlot(frameMap.getRBPSpillSlot())), rbp);
                 }
                 // This is always a near call
-                int beforeCall = asm.position();
-                asm.call();
-                crb.recordDirectCall(beforeCall, asm.position(), callTarget, null);
+                asm.call((before, after) -> {
+                    crb.recordDirectCall(before, after, callTarget, null);
+                }, callTarget);
 
                 // Return to inline code
                 asm.jmp(continuation);

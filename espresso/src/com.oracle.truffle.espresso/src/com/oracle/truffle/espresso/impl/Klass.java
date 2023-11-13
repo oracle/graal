@@ -183,7 +183,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         static Object doShared(Klass receiver, String member,
                         @CachedLibrary("receiver") InteropLibrary lib,
                         @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) throws UnknownIdentifierException {
-            return readMember(receiver, member, LookupFieldNodeGen.getUncached(), LookupDeclaredMethodNodeGen.getUncached(), BranchProfile.getUncached(), lib);
+            return readMember(receiver, member, LookupFieldNodeGen.getUncached(), LookupDeclaredMethodNodeGen.getUncached(), BranchProfile.getUncached(), lib, language);
         }
 
         @Specialization
@@ -191,14 +191,15 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                         @Shared("lookupField") @Cached LookupFieldNode lookupFieldNode,
                         @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
                         @Shared("error") @Cached BranchProfile error,
-                        @CachedLibrary("receiver") InteropLibrary lib) throws UnknownIdentifierException {
+                        @CachedLibrary("receiver") InteropLibrary lib,
+                        @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) throws UnknownIdentifierException {
             EspressoContext ctx = EspressoContext.get(lib);
             Meta meta = ctx.getMeta();
             Field field = lookupFieldNode.execute(receiver, member, true);
             if (field != null) {
                 Object result = field.get(receiver.tryInitializeAndGetStatics());
                 if (result instanceof StaticObject) {
-                    result = InteropUtils.unwrap((StaticObject) result, meta, lookupFieldNode);
+                    result = InteropUtils.unwrap(language, (StaticObject) result, meta);
                 }
                 return result;
             }
@@ -352,9 +353,10 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                 }
                 throw UnknownIdentifierException.create(member);
             } catch (EspressoException e) {
-                if (receiver.getMeta().polyglot != null && e.getGuestException().getKlass() == receiver.getMeta().polyglot.ForeignException) {
+                if (InteropUtils.isForeignException(e)) {
+                    Meta meta = e.getGuestException().getKlass().getMeta();
                     // rethrow the original foreign exception when leaving espresso interop
-                    throw (AbstractTruffleException) receiver.getMeta().java_lang_Throwable_backtrace.getObject(e.getGuestException()).rawForeignObject(receiver.getLanguage());
+                    throw (AbstractTruffleException) meta.java_lang_Throwable_backtrace.getObject(e.getGuestException()).rawForeignObject(receiver.getLanguage());
                 }
                 throw e;
             }

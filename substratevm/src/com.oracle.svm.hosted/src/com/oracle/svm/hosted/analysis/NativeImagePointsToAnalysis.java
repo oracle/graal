@@ -39,7 +39,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.util.TimerCollection;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.code.IncompatibleClassChangeFallbackMethod;
@@ -67,8 +66,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
                     ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes,
                     AnnotationSubstitutionProcessor annotationSubstitutionProcessor, UnsupportedFeatures unsupportedFeatures,
                     DebugContext debugContext, TimerCollection timerCollection) {
-        super(options, universe, universe.hostVM(), metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, unsupportedFeatures, debugContext, timerCollection,
-                        SubstrateOptions.parseOnce());
+        super(options, universe, universe.hostVM(), metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, unsupportedFeatures, debugContext, timerCollection);
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
 
         dynamicHubInitializer = new DynamicHubInitializer(this);

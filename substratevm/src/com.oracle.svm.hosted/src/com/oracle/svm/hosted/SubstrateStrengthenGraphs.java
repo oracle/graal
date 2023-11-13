@@ -26,17 +26,6 @@ package com.oracle.svm.hosted;
 
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.DeoptimizeNode;
-import jdk.graal.compiler.nodes.FixedNode;
-import jdk.graal.compiler.nodes.Invoke;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.extended.ForeignCallNode;
-import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.graal.compiler.nodes.spi.SimplifierTool;
-
-import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
@@ -48,9 +37,19 @@ import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.meta.HostedType;
 
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.DeoptimizeNode;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.extended.ForeignCallNode;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaMethodProfile;
@@ -58,7 +57,7 @@ import jdk.vm.ci.meta.JavaTypeProfile;
 
 public class SubstrateStrengthenGraphs extends StrengthenGraphs {
 
-    public SubstrateStrengthenGraphs(PointsToAnalysis bb, Universe converter) {
+    public SubstrateStrengthenGraphs(Inflation bb, Universe converter) {
         super(bb, converter);
     }
 

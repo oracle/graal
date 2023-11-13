@@ -29,18 +29,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.DebugContext.Builder;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
-import jdk.graal.compiler.debug.Indent;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.DeoptBciSupplier;
-import jdk.graal.compiler.nodes.StateSplit;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
-import jdk.graal.compiler.word.WordTypes;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.api.HostVM;
@@ -59,6 +47,18 @@ import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.common.meta.MultiMethod;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext.Builder;
+import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.Indent;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.DeoptBciSupplier;
+import jdk.graal.compiler.nodes.StateSplit;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;

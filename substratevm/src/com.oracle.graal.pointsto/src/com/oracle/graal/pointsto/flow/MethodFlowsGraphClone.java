@@ -89,7 +89,6 @@ public class MethodFlowsGraphClone extends MethodFlowsGraph {
         }
 
         nodeFlows = lookupClonesOf(bb, originalFlowsGraph.nodeFlows);
-        instanceOfFlows = lookupClonesOf(bb, originalFlowsGraph.instanceOfFlows);
         miscEntryFlows = lookupClonesOf(bb, originalFlowsGraph.miscEntryFlows);
         invokeFlows = lookupClonesOf(bb, originalFlowsGraph.invokeFlows);
 

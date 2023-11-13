@@ -49,7 +49,7 @@ public class StandalonePointsToAnalysis extends PointsToAnalysis {
 
     public StandalonePointsToAnalysis(OptionValues options, AnalysisUniverse universe, HostVM hostVM, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
                     ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, DebugContext debugContext, TimerCollection timerCollection) {
-        super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, new UnsupportedFeatures(), debugContext, timerCollection, true);
+        super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, new UnsupportedFeatures(), debugContext, timerCollection);
     }
 
     @Override
