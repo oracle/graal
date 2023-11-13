@@ -27,6 +27,7 @@ package jdk.graal.compiler.core.common.type;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.spi.LIRKindTool;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.Assertions;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.MemoryAccessProvider;
@@ -52,7 +53,8 @@ public class RawPointerStamp extends AbstractPointerStamp {
     @Override
     protected AbstractPointerStamp copyWith(boolean newNonNull, boolean newAlwaysNull) {
         // RawPointerStamp is a singleton
-        assert newNonNull == nonNull() && newAlwaysNull == alwaysNull();
+        assert newNonNull == nonNull() && newAlwaysNull == alwaysNull() : Assertions.errorMessageContext("nonNull", nonNull(), "alwaysNull", alwaysNull(), "newNonNull", newNonNull, "newAlwaysNull",
+                        newAlwaysNull);
         return this;
     }
 

@@ -27,6 +27,7 @@ package jdk.graal.compiler.nodes.loop;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.util.UnsignedLong;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NodeView;
@@ -93,7 +94,7 @@ public class BasicInductionVariable extends InductionVariable {
                 if (op instanceof AddNode) {
                     return dir;
                 } else {
-                    assert op instanceof SubNode;
+                    assert op instanceof SubNode : Assertions.errorMessage(op);
                     return dir.opposite();
                 }
             }

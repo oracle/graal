@@ -29,13 +29,14 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.BeginNode;
@@ -49,6 +50,7 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValueNodeInterface;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.calc.SignExtendNode;
+import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 
 /**
@@ -438,7 +440,7 @@ public interface SwitchFoldable extends ValueNodeInterface {
          * cannot be done without an additional overhead.
          */
         totalProbability[0] += cumulative[0];
-        assert totalProbability[0] > 0.0d;
+        assert totalProbability[0] > 0.0d : Assertions.errorMessage(this, totalProbability);
         double normalizationFactor = 1 / totalProbability[0];
 
         // Spawn the required data structures

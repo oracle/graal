@@ -48,12 +48,13 @@ public interface CPUType {
                 print("AArch64", CPUTypeAArch64.values());
                 CPUTypeAArch64.printFeatureModifiers();
             }
+            case "riscv64" -> print("RISCV64", CPUTypeRISCV64.values());
             default -> throw new UnsupportedOperationException("Unsupported platform: " + arch);
         }
     }
 
     private static void print(String name, CPUType[] values) {
-        Arrays.sort(values, Comparator.comparing(v -> v.getName()));
+        Arrays.sort(values, Comparator.comparing(CPUType::getName));
         System.out.printf("On %s, the following machine types are available:%n%n", name);
         for (CPUType m : values) {
             String specificFeatures = m.getSpecificFeaturesString();
@@ -79,6 +80,8 @@ public interface CPUType {
             return CPUTypeAMD64.getDefaultName(false);
         } else if (Platform.includedIn(Platform.AARCH64.class)) {
             return CPUTypeAArch64.getDefaultName();
+        } else if (Platform.includedIn(Platform.RISCV64.class)) {
+            return CPUTypeRISCV64.getDefaultName();
         } else {
             return "unknown";
         }

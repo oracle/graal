@@ -50,7 +50,7 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
 
     private MethodTypeFlow typeFlow;
     /** The parsing context in which given method was parsed, preserved after analysis. */
-    private final Object parsingReason;
+    private Object parsingReason;
 
     private Set<InvokeTypeFlow> invokedBy;
     private Set<InvokeTypeFlow> implementationInvokedBy;
@@ -71,13 +71,11 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
     public PointsToAnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped) {
         super(universe, wrapped, MultiMethod.ORIGINAL_METHOD, null);
         typeFlow = declaringClass.universe.analysisPolicy().createMethodTypeFlow(this);
-        parsingReason = typeFlow.getParsingReason();
     }
 
     private PointsToAnalysisMethod(AnalysisMethod original, MultiMethodKey multiMethodKey) {
         super(original, multiMethodKey);
         typeFlow = declaringClass.universe.analysisPolicy().createMethodTypeFlow(this);
-        parsingReason = typeFlow.getParsingReason();
     }
 
     @Override
@@ -149,6 +147,15 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
     @Override
     public Iterable<? extends InvokeInfo> getInvokes() {
         return getTypeFlow().getInvokes().getValues();
+    }
+
+    /**
+     * Set parsing reason when the {@link #typeFlow} is initialized. We cannot initialize it in the
+     * constructor because that may be too early, before the flows graph is actually initialized and
+     * a parsing reason is available.
+     */
+    public void setParsingReason(Object parsingReason) {
+        this.parsingReason = parsingReason;
     }
 
     @Override

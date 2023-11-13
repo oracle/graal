@@ -172,7 +172,7 @@ public final class ClassGetHubNode extends FloatingNode implements Lowerable, Ca
 
     @Override
     public boolean preservesOrder(CanonicalCondition op, Constant value, ConstantReflectionProvider constantReflection) {
-        assert op == CanonicalCondition.EQ;
+        assert op == CanonicalCondition.EQ : op;
         ResolvedJavaType exactType = constantReflection.asJavaType(value);
         return !exactType.isPrimitive();
     }

@@ -40,10 +40,11 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 
-import jdk.graal.compiler.phases.BasePhase;
-import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
@@ -99,9 +100,9 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.util.EconomicSetNodeEventListener;
-import org.graalvm.word.LocationIdentity;
-
+import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -786,7 +787,7 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
                         nextState = ST_LEAVE;
                     } else {
                         f = f.enter(n);
-                        assert f.block.getDominator() == f.parent.block;
+                        assert f.block.getDominator() == f.parent.block : Assertions.errorMessage(f.block, f.block.getDominator(), f.parent.block);
                         nextState = ST_PROCESS;
                     }
                 } else {

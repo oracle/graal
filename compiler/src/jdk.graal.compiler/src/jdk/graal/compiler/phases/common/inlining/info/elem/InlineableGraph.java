@@ -29,6 +29,7 @@ import java.util.List;
 
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeInputList;
@@ -47,7 +48,6 @@ import jdk.graal.compiler.phases.common.inlining.walker.CallsiteHolderExplorable
 import jdk.graal.compiler.phases.common.inlining.walker.InliningData;
 import jdk.graal.compiler.phases.graph.FixedNodeRelativeFrequencyCache;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -147,7 +147,7 @@ public class InlineableGraph implements Inlineable {
         NodeInputList<ValueNode> args = invoke.callTarget().arguments();
         ArrayList<Node> parameterUsages = null;
         List<ParameterNode> params = graph.getNodes(ParameterNode.TYPE).snapshot();
-        assert params.size() <= args.size();
+        assert params.size() <= args.size() : Assertions.errorMessageContext("params", params, "args", args);
         /*
          * param-nodes that aren't used (eg, as a result of canonicalization) don't occur in
          * `params`. Thus, in general, the sizes of `params` and `args` don't always match. Still,

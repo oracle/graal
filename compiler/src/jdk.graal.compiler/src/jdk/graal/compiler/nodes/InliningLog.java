@@ -29,18 +29,19 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 
-import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
-
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.graal.compiler.util.CollectionsUtil;
 
 /**
  * This class contains all inlining decisions performed on a graph during the compilation.
@@ -402,7 +403,7 @@ public class InliningLog {
      */
     void addDecision(Invokable invoke, boolean positive, String phase, EconomicMap<Node, Node> replacements, InliningLog calleeLog, ResolvedJavaMethod inlineeMethod, String reason, Object... args) {
         assert leaves.containsKey(invoke) : invoke;
-        assert !positive || Objects.isNull(replacements) == Objects.isNull(calleeLog);
+        assert !positive || Objects.isNull(replacements) == Objects.isNull(calleeLog) : Assertions.errorMessage(positive, replacements, calleeLog);
         Callsite callsite = leaves.get(invoke);
         callsite.addDecision(new Decision(positive, String.format(reason, args), phase, inlineeMethod));
         if (positive) {

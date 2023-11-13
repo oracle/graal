@@ -145,7 +145,7 @@ public class NestedLoopTest extends GraalCompilerTest {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         DebugContext debug = graph.getDebug();
         debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph");
-        ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
+        ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeDominators(true).computePostdominators(true).computeFrequency(true).build();
 
         Assert.assertEquals(3, cfg.getLoops().size());
         Loop<HIRBlock> rootLoop = cfg.getLoops().get(0);

@@ -24,13 +24,14 @@
  */
 package jdk.graal.compiler.lir.gen;
 
-import jdk.graal.compiler.lir.LIRInstruction;
-import jdk.graal.compiler.lir.VirtualStackSlot;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
-import jdk.graal.compiler.core.common.LIRKind;
-import jdk.graal.compiler.lir.framemap.FrameMapBuilder;
 
+import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.graal.compiler.lir.VirtualStackSlot;
+import jdk.graal.compiler.lir.framemap.FrameMapBuilder;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;
@@ -107,7 +108,8 @@ public abstract class MoveFactory {
             RegisterConfig registerConfig = frameMapBuilder.getRegisterConfig();
 
             RegisterArray availableRegister = registerConfig.filterAllocatableRegisters(kind, registerConfig.getAllocatableRegisters());
-            assert availableRegister != null && availableRegister.size() > 1;
+            assert availableRegister != null;
+            assert availableRegister.size() > 1 : Assertions.errorMessageContext("availableReg", availableRegister);
             Register scratchRegister = availableRegister.get(0);
 
             Architecture arch = frameMapBuilder.getCodeCache().getTarget().arch;

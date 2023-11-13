@@ -28,6 +28,7 @@ package jdk.graal.compiler.nodes.gc;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_64;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_64;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -47,7 +48,7 @@ public final class G1PreWriteBarrier extends ObjectWriteBarrier implements Deopt
 
     public G1PreWriteBarrier(AddressNode address, ValueNode expectedObject, boolean doLoad, boolean nullCheck) {
         super(TYPE, address, expectedObject, true);
-        assert doLoad == (expectedObject == null);
+        assert doLoad == (expectedObject == null) : Assertions.errorMessageContext("adr", address, "expectedO", expectedObject, "doLoad", doLoad, "nullCheck", nullCheck);
         this.doLoad = doLoad;
         this.nullCheck = nullCheck;
     }

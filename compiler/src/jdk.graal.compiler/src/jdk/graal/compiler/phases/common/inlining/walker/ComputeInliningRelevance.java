@@ -29,8 +29,10 @@ import java.util.function.ToDoubleFunction;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeWorkList;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
@@ -210,11 +212,11 @@ public class ComputeInliningRelevance {
          * exits. Processing stops at loop exits of the current loop.
          */
         public void process(NodeWorkList workList) {
-            assert !(start instanceof Invoke);
+            assert !(start instanceof Invoke) : start;
             workList.addAll(start.successors());
 
             for (Node current : workList) {
-                assert current.isAlive();
+                assert current.isAlive() : current;
 
                 if (current instanceof Invoke) {
                     // process the invoke and queue its successors
@@ -277,7 +279,7 @@ public class ComputeInliningRelevance {
                     current = getMaxProbabilitySux((ControlSplitNode) current, pathBeginNodes);
                     minPathProbability = getMinPathProbability((FixedNode) current, minPathProbability);
                 } else {
-                    assert current.successors().count() <= 1;
+                    assert current.successors().count() <= 1 : Assertions.errorMessage(current);
                     current = current.successors().first();
                 }
             } while (current != null);

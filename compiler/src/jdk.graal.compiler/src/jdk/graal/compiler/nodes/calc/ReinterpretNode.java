@@ -28,14 +28,17 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_1;
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.calc.ReinterpretUtils;
-import jdk.graal.compiler.core.common.type.ArithmeticOpTable.ReinterpretOp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
+import jdk.graal.compiler.core.common.type.ArithmeticOpTable.ReinterpretOp;
 import jdk.graal.compiler.core.common.type.ArithmeticStamp;
 import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ArithmeticOperation;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NodeView;
@@ -43,9 +46,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.ArithmeticLIRLowerable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
-import jdk.graal.compiler.nodeinfo.NodeInfo;
-
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.SerializableConstant;
@@ -66,7 +66,7 @@ public final class ReinterpretNode extends UnaryNode implements ArithmeticOperat
 
     protected ReinterpretNode(Stamp to, ValueNode value) {
         super(TYPE, getReinterpretStamp(to, value.stamp(NodeView.DEFAULT)), value);
-        assert to instanceof ArithmeticStamp;
+        assert to instanceof ArithmeticStamp : Assertions.errorMessageContext("to", to, "value", value);
     }
 
     public static ValueNode create(JavaKind to, ValueNode value, NodeView view) {

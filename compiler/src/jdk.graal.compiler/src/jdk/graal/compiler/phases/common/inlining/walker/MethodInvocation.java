@@ -26,13 +26,13 @@ package jdk.graal.compiler.phases.common.inlining.walker;
 
 import java.util.BitSet;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.phases.common.inlining.info.InlineInfo;
 import jdk.graal.compiler.phases.common.inlining.info.elem.Inlineable;
 import jdk.graal.compiler.phases.common.inlining.info.elem.InlineableGraph;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -86,11 +86,11 @@ public class MethodInvocation {
 
     public void incrementProcessedGraphs() {
         processedGraphs++;
-        assert processedGraphs <= callee.numberOfMethods();
+        assert processedGraphs <= callee.numberOfMethods() : Assertions.errorMessageContext("processedGraphs", processedGraphs, "callee", callee);
     }
 
     public int processedGraphs() {
-        assert processedGraphs <= callee.numberOfMethods();
+        assert processedGraphs <= callee.numberOfMethods() : Assertions.errorMessageContext("processedGraphs", processedGraphs, "callee", callee);
         return processedGraphs;
     }
 
@@ -116,7 +116,7 @@ public class MethodInvocation {
 
     public CallsiteHolder buildCallsiteHolderForElement(int index) {
         Inlineable elem = callee.inlineableElementAt(index);
-        assert elem instanceof InlineableGraph;
+        assert elem instanceof InlineableGraph : Assertions.errorMessage(elem);
         InlineableGraph ig = (InlineableGraph) elem;
         final double invokeProbability = probability * callee.probabilityAt(index);
         final double invokeRelevance = relevance * callee.relevanceAt(index);

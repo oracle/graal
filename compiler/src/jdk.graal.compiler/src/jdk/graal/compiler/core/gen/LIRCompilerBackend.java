@@ -59,6 +59,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.ScheduleResult;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.debug.Assertions;
 
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
@@ -140,7 +141,7 @@ public class LIRCompilerBackend {
             HIRBlock[] blocks = schedule.getCFG().getBlocks();
             HIRBlock startBlock = schedule.getCFG().getStartBlock();
             assert startBlock != null;
-            assert startBlock.getPredecessorCount() == 0;
+            assert startBlock.getPredecessorCount() == 0 : Assertions.errorMessage(startBlock);
 
             CodeEmissionOrder<?> blockOrder = backend.newBlockOrder(blocks.length, startBlock);
             int[] linearScanOrder = LinearScanOrder.computeLinearScanOrder(blocks.length, startBlock);

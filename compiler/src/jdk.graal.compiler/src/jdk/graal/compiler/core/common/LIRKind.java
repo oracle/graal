@@ -25,7 +25,7 @@
 package jdk.graal.compiler.core.common;
 
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
-
+import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaKind;
@@ -157,7 +157,7 @@ public class LIRKind extends ValueKind<LIRKind> {
      * @param base An {@link AllocatableValue} containing the base pointer of the derived reference.
      */
     public LIRKind makeDerivedReference(AllocatableValue base) {
-        assert !isUnknownReference() && derivedReferenceBase == null;
+        assert !isUnknownReference() && derivedReferenceBase == null : Assertions.errorMessageContext("base", base, "derivedReferenceBase", derivedReferenceBase);
         if (Value.ILLEGAL.equals(base)) {
             return makeUnknownReference();
         } else {
@@ -178,7 +178,7 @@ public class LIRKind extends ValueKind<LIRKind> {
      * modifies values (e.g. arithmetics).
      */
     public static LIRKind combine(Value... inputs) {
-        assert inputs.length > 0;
+        assert inputs.length > 0 : inputs;
         for (Value input : inputs) {
             LIRKind kind = input.getValueKind(LIRKind.class);
             if (kind.isUnknownReference()) {
@@ -241,7 +241,7 @@ public class LIRKind extends ValueKind<LIRKind> {
      * The correctness of the {@link PlatformKind} is not verified.
      */
     public static LIRKind mergeReferenceInformation(Value... inputs) {
-        assert inputs.length > 0;
+        assert inputs.length > 0 : inputs;
 
         LIRKind mergeKind = inputs[0].getValueKind(LIRKind.class);
         for (int i = 1; i < inputs.length; i++) {
@@ -328,7 +328,7 @@ public class LIRKind extends ValueKind<LIRKind> {
             int lengthMask = 0xFFFFFFFF >>> (32 - newLength);
             int newReferenceMask = referenceMask & lengthMask;
             int newReferenceCompressionMask = referenceCompressionMask & lengthMask;
-            assert newReferenceMask != UNKNOWN_REFERENCE;
+            assert newReferenceMask != UNKNOWN_REFERENCE : newReferenceMask;
             return new LIRKind(newPlatformKind, newReferenceMask, newReferenceCompressionMask, derivedReferenceBase);
         }
     }
@@ -347,7 +347,7 @@ public class LIRKind extends ValueKind<LIRKind> {
             // reference type
             int oldLength = getPlatformKind().getVectorLength();
             int newLength = newPlatformKind.getVectorLength();
-            assert oldLength <= newLength && newLength < 32 && (newLength % oldLength) == 0;
+            assert oldLength <= newLength && newLength < 32 && (newLength % oldLength) == 0 : Assertions.errorMessageContext("newLength", newLength, "oldLength", oldLength);
 
             // repeat reference mask to fill new kind
             int newReferenceMask = 0;
@@ -357,7 +357,7 @@ public class LIRKind extends ValueKind<LIRKind> {
                 newReferenceCompressionMask |= referenceCompressionMask << i;
             }
 
-            assert newReferenceMask != UNKNOWN_REFERENCE;
+            assert newReferenceMask != UNKNOWN_REFERENCE : newReferenceMask;
             return new LIRKind(newPlatformKind, newReferenceMask, newReferenceCompressionMask, derivedReferenceBase);
         }
     }

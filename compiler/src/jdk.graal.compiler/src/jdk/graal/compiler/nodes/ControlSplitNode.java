@@ -25,6 +25,7 @@
 package jdk.graal.compiler.nodes;
 
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -63,7 +64,7 @@ public abstract class ControlSplitNode extends FixedNode {
         for (Node succ : successors()) {
             probabilities[index++] = probability((AbstractBeginNode) succ);
         }
-        assert index == getSuccessorCount();
+        assert index == getSuccessorCount() : Assertions.errorMessage(index, getSuccessorCount());
         return probabilities;
     }
 

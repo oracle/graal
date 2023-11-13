@@ -26,12 +26,15 @@ package jdk.graal.compiler.hightiercodegen.irwalk;
 
 import java.util.List;
 
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.hightiercodegen.CodeGenTool;
 import jdk.graal.compiler.hightiercodegen.reconstruction.ReconstructionData;
 import jdk.graal.compiler.nodes.MergeNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.vm.ci.common.JVMCIError;
 
 public class IRWalkVerifier {
     /**
@@ -59,12 +62,12 @@ public class IRWalkVerifier {
 
     public IRWalkVerifier(List<Node> instructions) {
         this.instructions = instructions;
-        this.visits = new int[instructions.size()];
+        visits = new int[instructions.size()];
     }
 
     public void visitNode(Node n, CodeGenTool codeGenTool) {
         int index = instructions.indexOf(n);
-        assert index >= 0;
+        assert NumUtil.assertNonNegativeInt(index);
         visits[index]++;
         if (CheckDuringVisit) {
             if (BreakOnMultipleV) {
@@ -72,8 +75,8 @@ public class IRWalkVerifier {
                     if (n instanceof MergeNode || codeGenTool.nodeLowerer().isIgnored(n)) {
                         return;
                     }
-                    n.getDebug().forceDump(n.graph(), "IRWalkVerifier Error: Nodes visited multiple times");
-                    throw GraalError.shouldNotReachHere("Node " + n + " visited a second time [visit index:" + index + "]");
+                    n.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, n.graph(), "Graph visited multiple times");
+                    JVMCIError.shouldNotReachHere("Node " + n + " visited a second time [visit index:" + index + "]");
                 }
             }
         }
@@ -86,13 +89,14 @@ public class IRWalkVerifier {
             }
             if (visits[i] == 0) {
                 if (BreakOnNoV) {
-                    g.getDebug().forceDump(g, "IRWalkVerifier Error: Not all nodes visited");
+                    g.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, g, "Graph not visited");
                     reconstructionData.debugDump(g.getDebug());
+                    System.out.println(codeGenTool.getCodeBuffer());
                     throw GraalError.shouldNotReachHere("Node " + instructions.get(i) + " visited 0 times"); // ExcludeFromJacocoGeneratedReport
                 }
             } else if (visits[i] > 1) {
                 if (BreakOnMultipleV) {
-                    g.getDebug().forceDump(g, "IRWalkVerifier Error: Nodes visited multiple times");
+                    g.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, g, "Graph not visited");
                     reconstructionData.debugDump(g.getDebug());
                     throw GraalError.shouldNotReachHere("Node " + instructions.get(i) + " visited " + visits[i] + " times"); // ExcludeFromJacocoGeneratedReport
                 }

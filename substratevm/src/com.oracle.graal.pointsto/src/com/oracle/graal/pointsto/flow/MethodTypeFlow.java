@@ -31,11 +31,6 @@ import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.debug.Assertions;
-import jdk.graal.compiler.nodes.ParameterNode;
-import jdk.graal.compiler.nodes.ReturnNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.ValueNode;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -45,6 +40,12 @@ import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisError.ParsingError;
+
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.ReturnNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 
 public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
@@ -161,6 +162,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
                             !reason.getSource().getMethod().equals(method), "Parsing reason cannot be in the target method itself: %s", method);
 
             parsingReason = reason;
+            method.setParsingReason(PointsToAnalysisMethod.unwrapInvokeReason(reason));
             try {
                 MethodTypeFlowBuilder builder = bb.createMethodTypeFlowBuilder(bb, method, null, graphKind);
                 try {
@@ -256,10 +258,6 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         return returnedParameterIndex;
     }
 
-    public Object getParsingReason() {
-        return PointsToAnalysisMethod.unwrapInvokeReason(parsingReason);
-    }
-
     @Override
     public void update(PointsToAnalysis bb) {
         /*
@@ -316,6 +314,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         }
         if (newParsingReason != null) {
             parsingReason = newParsingReason;
+            method.setParsingReason(PointsToAnalysisMethod.unwrapInvokeReason(newParsingReason));
         }
 
         try {

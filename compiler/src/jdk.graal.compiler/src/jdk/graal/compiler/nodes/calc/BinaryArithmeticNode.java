@@ -31,9 +31,11 @@ import java.util.Set;
 
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
+import jdk.graal.compiler.core.common.type.ArithmeticStamp;
 import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
@@ -51,7 +53,6 @@ import jdk.graal.compiler.nodes.spi.ArithmeticLIRLowerable;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeValueMap;
-
 import jdk.vm.ci.meta.Constant;
 
 @NodeInfo(cycles = CYCLES_1, size = SIZE_1)
@@ -82,10 +83,6 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
     @Override
     public final BinaryOp<OP> getArithmeticOp() {
         return getOp(getX(), getY());
-    }
-
-    public boolean isAssociative() {
-        return getArithmeticOp().isAssociative();
     }
 
     @Override
@@ -131,7 +128,8 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
 
     @Override
     public Stamp foldStamp(Stamp stampX, Stamp stampY) {
-        assert stampX.isCompatible(x.stamp(NodeView.DEFAULT)) && stampY.isCompatible(y.stamp(NodeView.DEFAULT));
+        assert stampX.isCompatible(x.stamp(NodeView.DEFAULT)) : Assertions.errorMessageContext("this", this, "xStamp", x.stamp(NodeView.DEFAULT), "stampX", stampX);
+        assert stampY.isCompatible(y.stamp(NodeView.DEFAULT)) : Assertions.errorMessageContext("this", this, "xStamp", x.stamp(NodeView.DEFAULT), "stampX", stampX);
         return getArithmeticOp().foldStamp(stampX, stampY);
     }
 
@@ -372,7 +370,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             return branchlessMin(v2, v1, view);
         }
         int bits = ((IntegerStamp) v1.stamp(view)).getBits();
-        assert ((IntegerStamp) v2.stamp(view)).getBits() == bits;
+        assert ((IntegerStamp) v2.stamp(view)).getBits() == bits : bits + " and v2 " + v2;
         ValueNode t1 = sub(v1, v2, view);
         ValueNode t2 = RightShiftNode.create(t1, bits - 1, view);
         ValueNode t3 = AndNode.create(t1, t2, view);
@@ -384,7 +382,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             return branchlessMax(v2, v1, view);
         }
         int bits = ((IntegerStamp) v1.stamp(view)).getBits();
-        assert ((IntegerStamp) v2.stamp(view)).getBits() == bits;
+        assert ((IntegerStamp) v2.stamp(view)).getBits() == bits : bits + " and v2 " + v2;
         if (v2.isDefaultConstant()) {
             // prefer a & ~(a>>31) to a - (a & (a>>31))
             return AndNode.create(v1, NotNode.create(RightShiftNode.create(v1, bits - 1, view)), view);
@@ -448,7 +446,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
     }
 
     private static boolean isReassociative(BinaryArithmeticNode<?> parent, ValueNode child) {
-        if (!parent.isAssociative()) {
+        if (!parent.mayReassociate()) {
             return false;
         }
         if (isNonExactAddOrSub(parent)) {
@@ -458,17 +456,49 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
     }
 
     /**
+     * Determines whether this operation may be reassociated in the sense of
+     * {@link #reassociateUnmatchedValues} and {@link #reassociateMatchedValues}. These methods can
+     * perform transformations like {@code (a * 2) * b => (a * b) * 2}. In general, these
+     * transformations require the binary operation to be both {@linkplain BinaryOp#isAssociative()
+     * associative} to allow shifting of parentheses and {@linkplain BinaryOp#isCommutative()
+     * commutative} to allow changing the order of the operands.
+     * <p/>
+     * As a special case, subtraction on integers allows certain similar transformations, especially
+     * in expressions where it is mixed with addition. For example,
+     * {@link #reassociateUnmatchedValues} can transform {@code x + (C - y)  ->  (x - y) + C}, and
+     * {@link SubNode#canonical(CanonicalizerTool, ValueNode, ValueNode)} can transform
+     * {@code a - (a + b) -> -b}. Therefore this method returns {@code true} for integer
+     * subtraction. Users of this method must still check if the operation in question is
+     * subtraction and ensure that they only reassociate subtractions in sound ways. Floating-point
+     * subtraction does not permit such mathematically sound transformations due to rounding errors.
+     */
+    public boolean mayReassociate() {
+        return mayReassociate(getArithmeticOp(), stamp(NodeView.DEFAULT));
+    }
+
+    /**
+     * Determines whether the {@code op} may be reassociated in the sense of
+     * {@link #reassociateUnmatchedValues} and {@link #reassociateMatchedValues}.
+     *
+     * @see #mayReassociate()
+     */
+    public static boolean mayReassociate(BinaryOp<?> op, Stamp stamp) {
+        return (op.isAssociative() && op.isCommutative()) || (stamp.isIntegerStamp() && op.equals(((ArithmeticStamp) stamp).getOps().getSub()));
+    }
+
+    /**
      * Tries to push down values which satisfy the criterion. This is an assistant function for
      * {@linkplain BinaryArithmeticNode#reassociateMatchedValues} reassociateMatchedValues}. For
      * example with a constantness criterion: {@code (a * 2) * b => (a * b) * 2}
      *
-     * This method accepts only {@linkplain BinaryOp#isAssociative() associative} operations such as
-     * +, -, *, &, | and ^
+     * This method accepts only {@linkplain #mayReassociate() operations that allow reassociation}
+     * such as +, -, *, &, |, ^, min, and max.
      */
     public static ValueNode reassociateUnmatchedValues(BinaryArithmeticNode<?> node, NodePredicate criterion, NodeView view) {
         ValueNode forX = node.getX();
         ValueNode forY = node.getY();
-        assert node.getOp(forX, forY).isAssociative();
+        BinaryOp<?> op = node.getOp(forX, forY);
+        GraalError.guarantee(node.mayReassociate(), "%s: binary op %s does not satisfy precondition of reassociateUnmatchedValues", node, op);
 
         // No need to re-associate if one of the operands has matched the criterion.
         if (criterion.apply(forX) || criterion.apply(forY)) {
@@ -493,7 +523,8 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             return node;
         }
 
-        assert matchBinary != null && otherValue1 != null;
+        assert matchBinary != null;
+        assert otherValue1 != null;
         ValueNode matchValue = match.getValue(matchBinary);
         ValueNode otherValue2 = match.getOtherValue(matchBinary);
 
@@ -593,14 +624,15 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
      * Tries to re-associate values which satisfy the criterion. For example with a constantness
      * criterion: {@code (a + 2) + 1 => a + (1 + 2)}
      * <p>
-     * This method accepts only {@linkplain BinaryOp#isAssociative() associative} operations such as
-     * +, -, *, &amp;, |, ^, min, max
+     * This method accepts only {@linkplain #mayReassociate() operations that allow reassociation}
+     * such as +, -, *, &, |, ^, min, and max.
      *
      * @param forY
      * @param forX
      */
     public static ValueNode reassociateMatchedValues(BinaryArithmeticNode<?> node, NodePredicate criterion, ValueNode forX, ValueNode forY, NodeView view) {
-        assert node.getOp(forX, forY).isAssociative();
+        BinaryOp<?> op = node.getOp(forX, forY);
+        GraalError.guarantee(node.mayReassociate(), "%s: binary op %s does not satisfy precondition of reassociateMatchedValues", node, op);
         ReassociateMatch match1 = findReassociate(node, criterion);
         if (match1 == null) {
             return node;
@@ -648,7 +680,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             invertM1 = match1 == ReassociateMatch.y && match2 == ReassociateMatch.x;
             invertM2 = match1 == ReassociateMatch.x && match2 == ReassociateMatch.x;
         }
-        assert !(invertM1 && invertM2) && !(invertA && aSub);
+        assert !(invertM1 && invertM2) && !(invertA && aSub) : Assertions.errorMessageContext("node", node, "invertM1", invertM1, "invertM2", invertM2, "invertA", invertA, "aSub", aSub);
         ValueNode m1 = match1.getValue(node);
         ValueNode m2 = match2.getValue(other);
         ValueNode a = match2.getOtherValue(other);
@@ -680,12 +712,6 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             return MaxNode.create(a, MaxNode.create(m1, m2, view), view);
         } else if (node instanceof MinNode) {
             return MinNode.create(a, MinNode.create(m1, m2, view), view);
-        } else if (node instanceof SignedFloatingIntegerDivNode) {
-            return SignedFloatingIntegerDivNode.create(a, SignedFloatingIntegerDivNode.create(m1, m2, view, null, ((FloatingIntegerDivRemNode<?>) node).divisionOverflowIsJVMSCompliant()), view, null,
-                            ((FloatingIntegerDivRemNode<?>) node).divisionOverflowIsJVMSCompliant());
-        } else if (node instanceof SignedFloatingIntegerRemNode) {
-            return SignedFloatingIntegerRemNode.create(a, SignedFloatingIntegerRemNode.create(m1, m2, view, null, ((FloatingIntegerDivRemNode<?>) node).divisionOverflowIsJVMSCompliant()), view, null,
-                            ((FloatingIntegerDivRemNode<?>) node).divisionOverflowIsJVMSCompliant());
         } else {
             throw GraalError.shouldNotReachHere("unhandled node in reassociation with matched values: " + node); // ExcludeFromJacocoGeneratedReport
         }
@@ -739,7 +765,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
      */
     @SuppressWarnings("deprecation")
     public BinaryNode maybeCommuteInputs() {
-        assert this instanceof BinaryCommutative;
+        assert this instanceof BinaryCommutative : Assertions.errorMessageContext("this", this);
         if (!y.isConstant() && (x.isConstant() || x.getId() > y.getId())) {
             ValueNode tmp = x;
             x = y;

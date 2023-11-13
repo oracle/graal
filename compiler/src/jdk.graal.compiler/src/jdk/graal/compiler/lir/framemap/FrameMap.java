@@ -30,9 +30,8 @@ import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.PermanentBailoutException;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
-
-import jdk.graal.compiler.lir.StandardOp;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -298,14 +297,14 @@ public abstract class FrameMap {
                     mapIndex++;
                 }
             }
-            assert mapIndex == total;
+            assert mapIndex == total : Assertions.errorMessage(mapIndex, total, savedRegisters, slots);
         }
         return new RegisterSaveLayout(keys, values);
     }
 
     /**
-     * {@link StandardOp.SaveRegistersOp} might save more registers than {@link RegisterSaveLayout}
-     * should know about so permit subclasses to filter the contents.
+     * {@link jdk.graal.compiler.lir.StandardOp.SaveRegistersOp} might save more registers than
+     * {@link RegisterSaveLayout} should know about so permit subclasses to filter the contents.
      */
     protected Register[] filterSavedRegisters(Register[] savedRegisters) {
         return savedRegisters;
@@ -319,7 +318,7 @@ public abstract class FrameMap {
      * @return the index of the stack slot
      */
     private int indexForStackSlot(StackSlot slot) {
-        assert offsetForStackSlot(slot) % getTarget().wordSize == 0;
+        assert offsetForStackSlot(slot) % getTarget().wordSize == 0 : Assertions.errorMessage(offsetForStackSlot(slot), getTarget().wordSize, slot);
         return offsetForStackSlot(slot) / getTarget().wordSize;
     }
 }

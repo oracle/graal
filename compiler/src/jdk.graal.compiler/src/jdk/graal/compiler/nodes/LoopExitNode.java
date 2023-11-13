@@ -29,6 +29,7 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_4;
 
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.IterableNodeType;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
@@ -160,7 +161,7 @@ public final class LoopExitNode extends BeginStateSplitNode implements IterableN
         // Because the scheduler doesn't schedule ProxyNodes, the inputs to the ProxyNode can end up
         // in the wrong place in the earliest local schedule. Ensuring there's a BeginNode before
         // the LoopExitNode creates an earlier location where those nodes can be scheduled.
-        assert !(predecessor() instanceof InvokeWithExceptionNode);
+        assert !(predecessor() instanceof InvokeWithExceptionNode) : Assertions.errorMessageContext("pred", predecessor());
         return super.verify();
     }
 }

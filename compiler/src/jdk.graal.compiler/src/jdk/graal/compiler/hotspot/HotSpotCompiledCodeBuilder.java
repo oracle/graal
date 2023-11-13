@@ -46,6 +46,7 @@ import jdk.graal.compiler.code.CompilationResult.CodeMark;
 import jdk.graal.compiler.code.CompilationResult.JumpTable;
 import jdk.graal.compiler.code.DataSection;
 import jdk.graal.compiler.code.SourceMapping;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.options.Option;
@@ -163,7 +164,7 @@ public class HotSpotCompiledCodeBuilder {
                 if (infopoint.debugInfo != null) {
                     BytecodeFrame frame = infopoint.debugInfo.frame();
                     while (frame != null) {
-                        assert frame.getMethod() instanceof HotSpotResolvedJavaMethod;
+                        assert frame.getMethod() instanceof HotSpotResolvedJavaMethod : Assertions.errorMessage(frame);
                         frame = frame.caller();
                     }
                 }
@@ -282,14 +283,14 @@ public class HotSpotCompiledCodeBuilder {
                         }
                     }
                 }
-                assert !siteListIterator.hasNext() || (site != null && site.pcOffset >= source.getStartOffset());
+                assert !siteListIterator.hasNext() || (site != null && site.pcOffset >= source.getStartOffset()) : Assertions.errorMessage(siteListIterator, site, source);
                 if (site != null && source.getStartOffset() <= site.pcOffset && site.pcOffset <= source.getEndOffset()) {
                     // Conflicting source mapping, skip it.
                     continue;
                 } else {
                     // Since the sites are sorted there can not be any more sites in this interval.
                 }
-                assert !siteListIterator.hasNext() || (site != null && site.pcOffset > source.getEndOffset());
+                assert !siteListIterator.hasNext() || (site != null && site.pcOffset > source.getEndOffset()) : Assertions.errorMessage(siteListIterator, site, source);
                 // Good source mapping. Create an infopoint and add it to the list.
                 NodeSourcePosition sourcePosition = source.getSourcePosition();
                 assert sourcePosition.verify();
@@ -323,7 +324,7 @@ public class HotSpotCompiledCodeBuilder {
                         copy.add(info);
                     } else {
                         // Omit this colliding infopoint
-                        assert lastInfopoint.reason.compareTo(info.reason) <= 0;
+                        assert lastInfopoint.reason.compareTo(info.reason) <= 0 : Assertions.errorMessage(lastInfopoint, info, info.reason);
                     }
                 } else {
                     copy.add(site);

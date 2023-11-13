@@ -32,6 +32,7 @@ import java.util.EnumSet;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.Indent;
@@ -130,7 +131,7 @@ final class RegisterVerifier {
         DebugContext debug = allocator.getDebug();
         for (int i = 0; i < stateSize(); i++) {
             Register reg = allocator.getRegisters().get(i);
-            assert reg.number == i;
+            assert reg.number == i : Assertions.errorMessage(reg, i);
             if (inputState[i] != null) {
                 debug.log(" %6s %4d  --  %s", reg, inputState[i].operandNumber, inputState[i]);
             } else {

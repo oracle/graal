@@ -2531,15 +2531,31 @@ public final class VM extends NativeEnv {
 
     @VmImpl(isJni = true)
     public int JVM_GetArrayLength(@JavaType(Object.class) StaticObject array, @Inject EspressoLanguage language, @Inject SubstitutionProfiler profiler) {
-        try {
-            return Array.getLength(MetaUtil.unwrapArrayOrNull(language, array));
-        } catch (IllegalArgumentException e) {
-            profiler.profile(0);
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
-        } catch (NullPointerException e) {
-            profiler.profile(1);
-            throw getMeta().throwNullPointerException();
+        if (array.isForeignObject()) {
+            try {
+                Object foreignObject = array.rawForeignObject(language);
+                InteropLibrary library = InteropLibrary.getUncached(foreignObject);
+                long arrayLength = library.getArraySize(foreignObject);
+                if (arrayLength > Integer.MAX_VALUE) {
+                    return Integer.MAX_VALUE;
+                }
+                return (int) arrayLength;
+            } catch (UnsupportedMessageException e) {
+                profiler.profile(0);
+                Meta meta = getMeta();
+                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "can't get array length because foreign object is not an array");
+            }
+        } else {
+            try {
+                return Array.getLength(MetaUtil.unwrapArrayOrNull(language, array));
+            } catch (IllegalArgumentException e) {
+                profiler.profile(1);
+                Meta meta = getMeta();
+                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
+            } catch (NullPointerException e) {
+                profiler.profile(2);
+                throw getMeta().throwNullPointerException();
+            }
         }
     }
 

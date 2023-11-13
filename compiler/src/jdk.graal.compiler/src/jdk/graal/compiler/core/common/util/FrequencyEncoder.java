@@ -30,6 +30,8 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
+import jdk.graal.compiler.debug.Assertions;
+
 /**
  * Creates an array of T objects order by the occurrence frequency of each object. The most
  * frequently used object is the first one, the least frequently used the last one. If {@code null}
@@ -99,7 +101,7 @@ public class FrequencyEncoder<T> {
             return 0;
         }
         Entry<T> entry = map.get(object);
-        assert entry != null && entry.index >= 0;
+        assert entry != null && entry.index >= 0 : Assertions.errorMessageContext("entry", entry);
         return entry.index;
     }
 
@@ -115,7 +117,7 @@ public class FrequencyEncoder<T> {
      * correct length}.
      */
     public T[] encodeAll(T[] allObjects) {
-        assert allObjects.length == getLength();
+        assert allObjects.length == getLength() : Assertions.errorMessage(allObjects, getLength());
         List<Entry<T>> sortedEntries = new ArrayList<>(allObjects.length);
         for (Entry<T> value : map.getValues()) {
             sortedEntries.add(value);

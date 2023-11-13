@@ -33,6 +33,7 @@ import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.ShiftOp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -42,7 +43,6 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.ArithmeticLIRLowerable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
-
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -63,7 +63,7 @@ public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticOper
      */
     protected ShiftNode(NodeClass<? extends ShiftNode<OP>> c, ShiftOp<OP> opForStampComputation, ValueNode x, ValueNode s) {
         super(c, opForStampComputation.foldStamp(x.stamp(NodeView.DEFAULT), (IntegerStamp) s.stamp(NodeView.DEFAULT)), x, s);
-        assert ((IntegerStamp) s.stamp(NodeView.DEFAULT)).getBits() == 32;
+        assert ((IntegerStamp) s.stamp(NodeView.DEFAULT)).getBits() == 32 : Assertions.errorMessageContext("x", x, "s", s);
     }
 
     protected abstract ShiftOp<OP> getOp(ArithmeticOpTable table);
@@ -96,7 +96,7 @@ public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticOper
     public static <OP> ValueNode canonical(ShiftOp<OP> op, Stamp stamp, ValueNode forX, ValueNode forY, NodeView view) {
         if (forX.isConstant() && forY.isConstant()) {
             JavaConstant amount = forY.asJavaConstant();
-            assert amount.getJavaKind() == JavaKind.Int;
+            assert amount.getJavaKind() == JavaKind.Int : Assertions.errorMessage(op, stamp, forX, forY, amount);
             return ConstantNode.forPrimitive(stamp, op.foldConstant(forX.asConstant(), amount.asInt()));
         }
         return null;

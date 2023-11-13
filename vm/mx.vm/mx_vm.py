@@ -195,6 +195,9 @@ ce_components = ce_components_minimal + ['nr_lib_jvmcicompiler', 'bnative-image-
 ce_win_complete_components = ['antlr4', 'bnative-image-configure', 'bpolyglot', 'cmp', 'cov', 'dap', 'ejvm', 'gu', 'gvm', 'gwa', 'gwal', 'icu4j', 'xz', 'ins', 'insight', 'insightheap', 'java', 'js', 'jsl', 'jss', 'lg', 'libpoly', 'llp', 'llrc', 'llrl', 'llrlf', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'ni', 'nic', 'nil', 'njs', 'njsl', 'poly', 'polynative', 'pro', 'pyn', 'pynl', 'rgx', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'spolyglot', 'svm', 'svmt', 'svmnfi', 'svmsl', 'svmforeign', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json', 'vvm']
 ce_aarch64_complete_components = ce_win_complete_components + ['rby', 'rbyl', 'svml']
 ce_complete_components = ce_aarch64_complete_components + ['ellvm', 'R', 'bRMain', 'xz']
+ce_darwin_complete_components = list(ce_complete_components)
+ce_darwin_complete_components.remove('bRMain')  # GR-49842 / GR-49835
+ce_darwin_complete_components.remove('R')  # GR-49842 / GR-49835
 ce_darwin_aarch64_complete_components = list(ce_aarch64_complete_components)
 ce_darwin_aarch64_complete_components.remove('svml') # GR-34811 / GR-40147
 ce_ruby_components = ['antlr4', 'cmp', 'cov', 'dap', 'gvm', 'icu4j', 'ins', 'insight', 'insightheap', 'lg', 'llp', 'llrc', 'llrlf', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'pro', 'rby', 'rbyl', 'rgx', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json']
@@ -219,7 +222,7 @@ mx_sdk_vm.register_vm_config('ce', ce_win_complete_components, _suite, dist_name
 mx_sdk_vm.register_vm_config('ce', ce_aarch64_complete_components, _suite, dist_name='ce-aarch64-complete')
 mx_sdk_vm.register_vm_config('ce', ce_darwin_aarch64_complete_components, _suite, dist_name='ce-darwin-aarch64-complete')
 mx_sdk_vm.register_vm_config('ce', ce_complete_components, _suite, dist_name='ce-complete')
-mx_sdk_vm.register_vm_config('ce', ce_complete_components, _suite, dist_name='ce-complete', env_file='ce-darwin-complete')
+mx_sdk_vm.register_vm_config('ce', ce_darwin_complete_components, _suite, dist_name='ce-complete', env_file='ce-darwin-complete')
 mx_sdk_vm.register_vm_config('ce-python', ce_python_components, _suite)
 mx_sdk_vm.register_vm_config('ce-fastr', ce_fastr_components, _suite)
 mx_sdk_vm.register_vm_config('ce-no_native', ce_no_native_components, _suite)
@@ -465,15 +468,16 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         register_community_tools_distribution(_suite, register_distribution)
         register_community_languages_distribution(_suite, register_distribution)
 
-    maven_resource_bundle = mx.get_env('MAVEN_RESOURCE_BUNDLE')
-    if register_distribution and maven_resource_bundle is not None:
-        register_distribution(mx.LayoutTARDistribution(_suite, 'MAVEN_RESOURCE_BUNDLE', [], {
-            './': 'file:' + os.path.realpath(maven_resource_bundle)
+    maven_bundle_path = mx.get_env('MAVEN_BUNDLE_PATH')
+    maven_bundle_artifact_id = mx.get_env('MAVEN_BUNDLE_ARTIFACT_ID')
+    if bool(maven_bundle_path) != bool(maven_bundle_artifact_id):
+        mx.abort(f"Both $MAVEN_BUNDLE_PATH and $MAVEN_BUNDLE_ARTIFACT_ID must be either set or not set. Got:\n$MAVEN_BUNDLE_PATH={'' if maven_bundle_path is None else maven_bundle_path}\n$MAVEN_BUNDLE_ARTIFACT_ID={'' if maven_bundle_artifact_id is None else maven_bundle_artifact_id}")
+    if register_distribution and maven_bundle_path is not None:
+        register_distribution(mx.LayoutTARDistribution(_suite, 'MAVEN_BUNDLE', [], {
+            './': 'file:' + os.path.realpath(maven_bundle_path)
         }, None, True, None, maven={
             'groupId': 'org.graalvm.polyglot',
-            'artifactId': 'maven-{edition}-resource-bundle'.format(
-                edition='ee' if mx.suite('vm-enterprise', fatalIfMissing=False) else 'ce',
-            ),
+            'artifactId': maven_bundle_artifact_id,
             'version': mx_sdk_vm_impl.graalvm_version('graalvm'),
             'tag': 'resource-bundle',
         }))

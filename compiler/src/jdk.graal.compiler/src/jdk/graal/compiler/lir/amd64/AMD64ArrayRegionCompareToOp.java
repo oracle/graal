@@ -47,6 +47,7 @@ import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.StrideUtil;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
@@ -335,8 +336,8 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
     private void emitVectorizedTail(AMD64MacroAssembler masm, Stride strideA, Stride strideB,
                     Register result, Register arrayA, Register arrayB, Register length, Register tmp1, Register tmp2, Label returnLabel, Stride maxStride,
                     Register vector1, Register vector2, Register vector3, Register vector4, Label nextTail, AVXSize loadSize, AVXSize cmpSize) {
-        assert cmpSize.getBytes() == loadSize.getBytes() * 2;
-        assert cmpSize == YMM || cmpSize == XMM;
+        assert cmpSize.getBytes() == loadSize.getBytes() * 2 : Assertions.errorMessage(cmpSize, loadSize);
+        assert cmpSize == YMM || cmpSize == XMM : cmpSize;
         masm.cmplAndJcc(length, getElementsPerVector(loadSize, maxStride), ConditionFlag.Less, nextTail, false);
         if (loadSize == QWORD) {
             masm.pmovSZxQWORD(extendMode, vector1, maxStride, arrayA, strideA, Register.None, 0);

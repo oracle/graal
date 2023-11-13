@@ -567,14 +567,14 @@ local devkits = graal_common.devkits;
       ce_licenses,
 
     legacy_mx_args:: ['--disable-installables=true'],  # `['--force-bash-launcher=true', '--skip-libraries=true']` have been replaced by arguments from `vm.maven_deploy_base_functions.mx_args(os, arch)`
-    mx_args(os, arch):: self.legacy_mx_args + vm.maven_deploy_base_functions.mx_args(os, arch),
-    mx_cmd_base(os, arch):: ['mx'] + vm.maven_deploy_base_functions.dynamic_imports(os, arch) + self.mx_args(os, arch),
-    mx_cmd_base_only_native(os, arch):: ['mx', '--dynamicimports', '/substratevm'] + self.mx_args(os, arch) + ['--native-images=false'],  # `--native-images=false` takes precedence over `self.mx_args(os, arch)`
+    mx_args(os, arch, reduced):: self.legacy_mx_args + vm.maven_deploy_base_functions.mx_args(os, arch, reduced),
+    mx_cmd_base(os, arch, reduced):: ['mx'] + vm.maven_deploy_base_functions.dynamic_imports(os, arch) + self.mx_args(os, arch, reduced),
+    mx_cmd_base_only_native(os, arch, reduced):: ['mx', '--dynamicimports', '/substratevm'] + self.mx_args(os, arch, reduced) + ['--native-images=false'],  # `--native-images=false` takes precedence over `self.mx_args(os, arch)`
 
     only_native_dists:: 'TRUFFLE_NFI_NATIVE,SVM_HOSTED_NATIVE',
 
-    build(os, arch, mx_args=[], build_args=[]):: [
-      self.mx_cmd_base(os, arch) + mx_args + ['build'] + build_args,
+    build(os, arch, reduced, mx_args=[], build_args=[]):: [
+      self.mx_cmd_base(os, arch, reduced) + mx_args + ['build'] + build_args,
     ],
 
     pd_layouts_archive_name(platform):: 'pd-layouts-' + platform + '.tgz',
@@ -584,12 +584,10 @@ local devkits = graal_common.devkits;
     mvn_args: ['maven-deploy', '--tags=public', '--all-distribution-types', '--validate=full', '--version-suite=vm'],
     mvn_args_only_native: self.mvn_args + ['--all-suites', '--only', self.only_native_dists],
 
-    main_platform:: 'linux-amd64',
-    other_platforms:: ['linux-aarch64', 'darwin-amd64', 'darwin-aarch64', 'windows-amd64'],
-    is_main_platform(os, arch):: os + '-' + arch == self.main_platform,
+    compose_platform(os, arch):: os + '-' + arch,
 
-    deploy_ce(os, arch, dry_run, extra_args, extra_mx_args=[]):: [
-      self.mx_cmd_base(os, arch)
+    deploy_ce(os, arch, reduced, dry_run, extra_args, extra_mx_args=[]):: [
+      self.mx_cmd_base(os, arch, reduced)
       + $.maven_deploy_base_functions.ce_suites(os,arch)
       + extra_mx_args
       + self.mvn_args
@@ -598,8 +596,8 @@ local devkits = graal_common.devkits;
       + extra_args,
     ],
 
-    deploy_ee(os, arch, dry_run, extra_args, extra_mx_args=[]):: [
-      self.mx_cmd_base(os, arch)
+    deploy_ee(os, arch, reduced, dry_run, extra_args, extra_mx_args=[]):: [
+      self.mx_cmd_base(os, arch, reduced)
       + vm.maven_deploy_base_functions.ee_suites(os, arch)
       + extra_mx_args
       + self.mvn_args
@@ -608,8 +606,8 @@ local devkits = graal_common.devkits;
       + extra_args,
     ],
 
-    deploy_only_native(os, arch, dry_run, extra_args, extra_mx_args=[]):: [
-      self.mx_cmd_base_only_native(os, arch)
+    deploy_only_native(os, arch, reduced, dry_run, extra_args, extra_mx_args=[]):: [
+      self.mx_cmd_base_only_native(os, arch, reduced)
       + extra_mx_args
       + self.mvn_args_only_native
       + ['--licenses', $.maven_deploy_base_functions.ce_licenses()]
@@ -617,64 +615,122 @@ local devkits = graal_common.devkits;
       + extra_args,
     ],
 
-    run_block(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo)::
-      if (self.is_main_platform(os, arch)) then (
+    run_block(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo, main_platform, other_platforms, mvn_artifacts=true, mvn_bundle=true, mvn_reduced_bundle=true)::
+      local multiplatform_build(reduced) = self.build(os, arch, reduced, mx_args=['--multi-platform-layout-directories=' + std.join(',', [main_platform] + other_platforms)], build_args=['--targets={MAVEN_TAG_DISTRIBUTIONS:public}']);  # `self.only_native_dists` are in `{MAVEN_TAG_DISTRIBUTIONS:public}`
+
+      local mvn_artifacts_snippet =
+        # remotely deploy only the suites that are defined in the current repository, to avoid duplicated deployments
+        if (vm.maven_deploy_base_functions.edition == 'ce') then
+          self.deploy_ce(os, arch, false, dry_run, [remote_mvn_repo])
+        else
+          self.deploy_ee(os, arch, false, dry_run, ['--dummy-javadoc', remote_mvn_repo])
+          + self.deploy_ee(os, arch, false, dry_run, ['--dummy-javadoc', '--only', 'JS_ISOLATE,JS_ISOLATE_RESOURCES,TOOLS_COMMUNITY,LANGUAGES_COMMUNITY', remote_mvn_repo], extra_mx_args=['--suite', 'graal-js']);
+
+      local mvn_bundle_snippet =
         [
-          self.mx_cmd_base(os, arch) + ['restore-pd-layouts', self.pd_layouts_archive_name(platform)] for platform in self.other_platforms
-        ]
-        + self.build(os, arch, mx_args=['--multi-platform-layout-directories=' + std.join(',', [self.main_platform] + self.other_platforms)], build_args=['--targets={MAVEN_TAG_DISTRIBUTIONS:public}'])  # `self.only_native_dists` are in `{MAVEN_TAG_DISTRIBUTIONS:public}`
-        + (
-          # remotely deploy only the suites that are defined in the current repository, to avoid duplicated deployments
-          if (vm.maven_deploy_base_functions.edition == 'ce') then
-            self.deploy_ce(os, arch, dry_run, [remote_mvn_repo])
-          else
-            self.deploy_ee(os, arch, dry_run, ['--dummy-javadoc', remote_mvn_repo])
-            + self.deploy_ee(os, arch, dry_run, ['--dummy-javadoc', '--only', 'JS_ISOLATE,JS_ISOLATE_RESOURCES,TOOLS_COMMUNITY,LANGUAGES_COMMUNITY', remote_mvn_repo], extra_mx_args=['--suite', 'graal-js'])
-        )
-        + [
-          # resource bundle
-          ['set-export', 'VERSION_STRING', self.mx_cmd_base(os, arch) + ['--quiet', 'graalvm-version']],
-          ['set-export', 'LOCAL_MAVEN_REPO_REL_PATH', 'maven-resource-bundle-' + vm.maven_deploy_base_functions.edition + '-${VERSION_STRING}'],
+          # Set env vars
+          ['set-export', 'VERSION_STRING', self.mx_cmd_base(os, arch, reduced=false) + ['--quiet', 'graalvm-version']],
+          ['set-export', 'LOCAL_MAVEN_REPO_REL_PATH', 'maven-bundle-' + vm.maven_deploy_base_functions.edition + '-${VERSION_STRING}'],
           ['set-export', 'LOCAL_MAVEN_REPO_URL', ['mx', '--quiet', 'local-path-to-url', '${LOCAL_MAVEN_REPO_REL_PATH}']],
         ]
         + (
-          # locally deploy all relevant suites
+          # Locally deploy all relevant suites
           if (vm.maven_deploy_base_functions.edition == 'ce') then
-            self.deploy_ce(os, arch, dry_run, [local_repo, '${LOCAL_MAVEN_REPO_URL}'])
+            self.deploy_ce(os, arch, false, dry_run, [local_repo, '${LOCAL_MAVEN_REPO_URL}'])
           else
-            self.deploy_ce(os, arch, dry_run, ['--dummy-javadoc', '--skip', 'JS_ISOLATE,JS_ISOLATE_RESOURCES,TOOLS_COMMUNITY,LANGUAGES_COMMUNITY', local_repo, '${LOCAL_MAVEN_REPO_URL}'])
-            + self.deploy_ee(os, arch, dry_run, ['--dummy-javadoc', '--only', 'JS_ISOLATE,JS_ISOLATE_RESOURCES,TOOLS_COMMUNITY,LANGUAGES_COMMUNITY', local_repo, '${LOCAL_MAVEN_REPO_URL}'], extra_mx_args=['--suite', 'graal-js'])
-            + self.deploy_ee(os, arch, dry_run, ['--dummy-javadoc', local_repo, '${LOCAL_MAVEN_REPO_URL}'])
+            self.deploy_ce(os, arch, false, dry_run, ['--dummy-javadoc', '--skip', 'JS_ISOLATE,JS_ISOLATE_RESOURCES,TOOLS_COMMUNITY,LANGUAGES_COMMUNITY', local_repo, '${LOCAL_MAVEN_REPO_URL}'])
+            + self.deploy_ee(os, arch, false, dry_run, ['--dummy-javadoc', '--only', 'JS_ISOLATE,JS_ISOLATE_RESOURCES,TOOLS_COMMUNITY,LANGUAGES_COMMUNITY', local_repo, '${LOCAL_MAVEN_REPO_URL}'], extra_mx_args=['--suite', 'graal-js'])
+            + self.deploy_ee(os, arch, false, dry_run, ['--dummy-javadoc', local_repo, '${LOCAL_MAVEN_REPO_URL}'])
         )
         + (
+          # Archive and deploy
           if (dry_run) then
-            [['echo', 'Skipping the archiving and the final maven deployment']]
+            [['echo', 'Skipping the archiving and the final deployment of the Maven bundle']]
           else [
-            ['set-export', 'MAVEN_RESOURCE_BUNDLE', '${LOCAL_MAVEN_REPO_REL_PATH}'],
-            ['mx', 'build', '--targets', 'MAVEN_RESOURCE_BUNDLE'],
+            ['set-export', 'MAVEN_BUNDLE_PATH', '${LOCAL_MAVEN_REPO_REL_PATH}'],
+            ['set-export', 'MAVEN_BUNDLE_ARTIFACT_ID', 'maven-bundle-' + vm.maven_deploy_base_functions.edition],
+            ['mx', 'build', '--targets', 'MAVEN_BUNDLE'],
             ['mx', '--suite', 'vm', 'maven-deploy', '--tags=resource-bundle', '--all-distribution-types', '--validate=none', '--with-suite-revisions-metadata', remote_non_mvn_repo],
           ]
+        );
+
+      local mvn_reduced_bundle_snippet =
+        if (vm.maven_deploy_base_functions.edition == 'ce') then
+          [['echo', 'Skipping the archiving and the final deployment of the reduced Maven bundle']]
+        else (
+          [
+            # Set env vars
+            ['set-export', 'VERSION_STRING', self.mx_cmd_base(os, arch, reduced=true) + ['--quiet', 'graalvm-version']],
+            ['set-export', 'LOCAL_MAVEN_REDUCED_REPO_REL_PATH', 'maven-reduced-bundle-' + vm.maven_deploy_base_functions.edition + '-${VERSION_STRING}'],
+            ['set-export', 'LOCAL_MAVEN_REDUCED_REPO_URL', ['mx', '--quiet', 'local-path-to-url', '${LOCAL_MAVEN_REDUCED_REPO_REL_PATH}']],
+          ]
+          + (
+            multiplatform_build(reduced=true)
+          )
+          + (
+            # Locally deploy all relevant suites
+            self.deploy_ce(os, arch, true, dry_run, ['--dummy-javadoc', '--only', vm.maven_deploy_base_functions.reduced_ce_dists, local_repo, '${LOCAL_MAVEN_REDUCED_REPO_URL}'])
+            + self.deploy_ee(os, arch, true, dry_run, ['--dummy-javadoc', '--only', vm.maven_deploy_base_functions.reduced_ee_dists, local_repo, '${LOCAL_MAVEN_REDUCED_REPO_URL}'], extra_mx_args=['--suite', 'graal-js'])
+          )
+          + (
+            # Archive and deploy
+            if (dry_run) then
+              [['echo', 'Skipping the archiving and the final deployment of the reduced Maven bundle']]
+            else [
+              ['set-export', 'MAVEN_BUNDLE_PATH', '${LOCAL_MAVEN_REDUCED_REPO_REL_PATH}'],
+              ['set-export', 'MAVEN_BUNDLE_ARTIFACT_ID', 'maven-reduced-bundle-' + vm.maven_deploy_base_functions.edition + (if (std.length(other_platforms) == 0) then '-' + main_platform else '')],
+              ['mx', 'build', '--targets', 'MAVEN_BUNDLE'],
+              ['mx', '--suite', 'vm', 'maven-deploy', '--tags=resource-bundle', '--all-distribution-types', '--validate=none', '--with-suite-revisions-metadata', remote_non_mvn_repo],
+            ]
+          )
+        );
+
+      if (self.compose_platform(os, arch) == main_platform) then (
+        [self.mx_cmd_base(os, arch, reduced=false) + ['restore-pd-layouts', self.pd_layouts_archive_name(platform)] for platform in other_platforms]
+        + (
+          if (mvn_artifacts || mvn_bundle) then
+            multiplatform_build(reduced=false)
+          else
+            [['echo', 'Skipping the full build']]
+        )
+        + (
+          if (mvn_artifacts) then
+            mvn_artifacts_snippet
+          else
+            [['echo', 'Skipping Maven artifacts']]
+        )
+        + (
+          if (mvn_bundle) then
+            mvn_bundle_snippet
+          else
+            [['echo', 'Skipping Maven bundle']]
+        )
+        + (
+          if (mvn_reduced_bundle) then
+            mvn_reduced_bundle_snippet
+          else
+          [['echo', 'Skipping reduced Maven bundle']]
         )
       ) else (
-        self.build(os, arch, build_args=['--targets=' + self.only_native_dists + ',{PLATFORM_DEPENDENT_LAYOUT_DIR_DISTRIBUTIONS}'])
+        self.build(os, arch, reduced=false, build_args=['--targets=' + self.only_native_dists + ',{PLATFORM_DEPENDENT_LAYOUT_DIR_DISTRIBUTIONS}'])
         + (
           if (vm.maven_deploy_base_functions.edition == 'ce') then
-            self.deploy_only_native(os, arch, dry_run, [remote_mvn_repo])
+            self.deploy_only_native(os, arch, reduced=false, dry_run=dry_run, extra_args=[remote_mvn_repo])
           else
             [['echo', 'Skipping the deployment of ' + self.only_native_dists + ': It is already deployed by the ce job']]
         )
-        + [self.mx_cmd_base(os, arch) + ['archive-pd-layouts', self.pd_layouts_archive_name(os + '-' + arch)]]
+        + [self.mx_cmd_base(os, arch, reduced=false) + ['archive-pd-layouts', self.pd_layouts_archive_name(os + '-' + arch)]]
       ),
 
-    base_object(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo):: {
-      run: $.maven_deploy_base_functions.run_block(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo),
-    } + if (self.is_main_platform(os, arch)) then {
+    base_object(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo, main_platform='linux-amd64', other_platforms=['linux-aarch64', 'darwin-amd64', 'darwin-aarch64', 'windows-amd64'],):: {
+      run: $.maven_deploy_base_functions.run_block(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo, main_platform, other_platforms),
+    } + if (self.compose_platform(os, arch) == main_platform) then {
        requireArtifacts+: [
          {
            name: $.maven_deploy_base_functions.pd_layouts_artifact_name(platform, dry_run),
            dir: vm.vm_dir,
            autoExtract: true,
-         } for platform in $.maven_deploy_base_functions.other_platforms
+         } for platform in other_platforms
        ],
      }
     else {

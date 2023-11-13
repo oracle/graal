@@ -246,13 +246,16 @@ import java.util.function.ToIntFunction;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.BytecodeLookupSwitch;
 import jdk.graal.compiler.bytecode.BytecodeStream;
 import jdk.graal.compiler.bytecode.BytecodeSwitch;
 import jdk.graal.compiler.bytecode.BytecodeTableSwitch;
 import jdk.graal.compiler.bytecode.Bytecodes;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.PermanentBailoutException;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Scope;
 import jdk.graal.compiler.debug.GraalError;
@@ -261,7 +264,6 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.JavaMethod;
@@ -836,7 +838,8 @@ public class BciBlockMapping implements JavaMethodContext {
 
     protected boolean verify() {
         for (BciBlock block : blocks) {
-            assert blocks[block.getId()] == block;
+            BciBlock idBlock = blocks[block.getId()];
+            assert idBlock == block : "Id block must match block " + Assertions.errorMessageContext("idBlock", idBlock, "block", block);
             for (int i = 0; i < block.getSuccessorCount(); i++) {
                 BciBlock sux = block.getSuccessor(i);
                 if (sux instanceof ExceptionDispatchBlock) {
@@ -940,7 +943,7 @@ public class BciBlockMapping implements JavaMethodContext {
              */
             if (splitRanges) {
                 int startBci = findConcreteBci(h.getStartBCI());
-                assert startBci < bciExceptionHandlerIDs.length;
+                assert startBci < bciExceptionHandlerIDs.length : Assertions.errorMessageContext("startBCI", startBci, "bciExcpHandlers", bciExceptionHandlerIDs);
                 requestedBlockStarts.add(startNewBlock(startBci));
                 int endBci = findConcreteBci(h.getEndBCI());
                 if (endBci < bciExceptionHandlerIDs.length) {
@@ -1372,7 +1375,8 @@ public class BciBlockMapping implements JavaMethodContext {
         if (block.endsWithRet()) {
             block.setRetSuccessor(blockMap[scope.nextReturnAddress()]);
             block.addSuccessor(block.getRetSuccessor());
-            assert block.getRetSuccessor() != block.getJsrSuccessor();
+            assert block.getRetSuccessor() != block.getJsrSuccessor() : Assertions.errorMessageContext("block", block, "block.retSucc", block.getRetSuccessor(), "lock.jsrSucc",
+                            block.getJsrSuccessor());
         }
         debug.log("JSR alternatives block %s  sux %s  jsrSux %s  retSux %s  jsrScope %s", block, block.getSuccessors(), block.getJsrSuccessor(), block.getRetSuccessor(), block.getJsrScope());
 
@@ -1496,7 +1500,7 @@ public class BciBlockMapping implements JavaMethodContext {
                 }
             }
         }
-        assert next == newBlocks.length - 1;
+        assert next == newBlocks.length - 1 : Assertions.errorMessageContext("nextId", next, "newBlocks.length", newBlocks.length);
 
         // Add unwind block.
         ExceptionDispatchBlock unwindBlock = new ExceptionDispatchBlock(BytecodeFrame.AFTER_EXCEPTION_BCI);
@@ -1602,7 +1606,7 @@ public class BciBlockMapping implements JavaMethodContext {
      * Returns the smallest power of 2, strictly greater than value.
      */
     private static int nextPowerOfTwo(int value) {
-        assert value >= 0;
+        assert NumUtil.assertNonNegativeInt(value);
         return 1 << (32 - Integer.numberOfLeadingZeros(value));
     }
 
@@ -1730,7 +1734,7 @@ public class BciBlockMapping implements JavaMethodContext {
                             }
                         }
                         if (outermostInactiveLoopId != -1) {
-                            assert !(step instanceof DuplicationTraversalStep);
+                            assert !(step instanceof DuplicationTraversalStep) : step;
                             // we need to duplicate until we can merge with this loop's header
                             successor.predecessorCount--;
                             BciBlock duplicate = successor.duplicate();
@@ -1778,10 +1782,11 @@ public class BciBlockMapping implements JavaMethodContext {
                     BciBlock[] newBlocks = new BciBlock[blocks.length + newDuplicateBlocks];
                     for (int i = 0; i < blocks.length; i++) {
                         newBlocks[i + newDuplicateBlocks] = blocks[i];
-                        assert blocks[i].id == UNASSIGNED_ID;
+                        int id = blocks[i].id;
+                        assert id == UNASSIGNED_ID : id;
                     }
                     blocksNotYetAssignedId += newDuplicateBlocks;
-                    assert blocksNotYetAssignedId >= 0;
+                    assert NumUtil.assertNonNegativeInt(blocksNotYetAssignedId);
                     newDuplicateBlocks = 0;
                     blocks = newBlocks;
                 }

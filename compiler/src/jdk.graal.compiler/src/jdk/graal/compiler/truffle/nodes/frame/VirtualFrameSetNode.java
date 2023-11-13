@@ -30,6 +30,7 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -41,7 +42,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import jdk.graal.compiler.nodes.spi.Virtualizable;
 import jdk.graal.compiler.nodes.spi.VirtualizerTool;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
-
 import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
@@ -68,7 +68,7 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
         if (type == VirtualFrameAccessType.Auxiliary) {
             ValueNode dataAlias = tool.getAlias(frame.getObjectArray(type));
 
-            assert valueKind == JavaKind.Object;
+            assert valueKind == JavaKind.Object : Assertions.errorMessage(valueKind);
             // no tags array
             if (dataAlias instanceof VirtualObjectNode) {
                 VirtualObjectNode dataVirtual = (VirtualObjectNode) dataAlias;
@@ -148,7 +148,7 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
             tmpValue = new ZeroExtendNode(tmpValue, JavaKind.Long.getBitCount());
             tool.addNode(tmpValue);
         }
-        assert tmpValue.stamp(NodeView.DEFAULT).getStackKind() == JavaKind.Long;
+        assert tmpValue.stamp(NodeView.DEFAULT).getStackKind() == JavaKind.Long : Assertions.errorMessage(tmpValue, entry, tool);
         return tmpValue;
     }
 

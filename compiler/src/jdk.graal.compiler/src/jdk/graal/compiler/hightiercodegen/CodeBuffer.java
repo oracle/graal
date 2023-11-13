@@ -94,7 +94,7 @@ public abstract class CodeBuffer {
     }
 
     public void setCodeBytes(byte[] code) {
-        assert scopeIndent == 0;
+        assert scopeIndent == 0 : scopeIndent;
         assert !shouldEmitIndent;
         codeBytes.reset();
         emitCode(code);

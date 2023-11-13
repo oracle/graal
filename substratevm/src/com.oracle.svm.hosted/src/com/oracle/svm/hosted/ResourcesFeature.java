@@ -138,7 +138,8 @@ public final class ResourcesFeature implements InternalFeature {
     static final String MODULE_NAME_ALL_UNNAMED = "ALL-UNNAMED";
 
     public static class Options {
-        @Option(help = "Regexp to match names of resources to be included in the image.", type = OptionType.User)//
+        @Option(help = {"Regexp to match names of resources to be included in the image.",
+                        "Use a resource-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead."}, type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
         @Option(help = "Regexp to match names of resources to be excluded from the image.", type = OptionType.User)//

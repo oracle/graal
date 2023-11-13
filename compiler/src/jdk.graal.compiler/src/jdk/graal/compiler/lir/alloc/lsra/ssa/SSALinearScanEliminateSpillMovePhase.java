@@ -24,10 +24,11 @@
  */
 package jdk.graal.compiler.lir.alloc.lsra.ssa;
 
-import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.graal.compiler.lir.LIRValueUtil.isStackSlotValue;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.Indent;
 import jdk.graal.compiler.lir.LIRInstruction;
@@ -54,7 +55,7 @@ public class SSALinearScanEliminateSpillMovePhase extends LinearScanEliminateSpi
         if (super.canEliminateSpillMove(block, move)) {
             // SSA Linear Scan might introduce moves to stack slots
             Interval curInterval = allocator.intervalFor(move.getResult());
-            assert !isRegister(curInterval.location()) && curInterval.alwaysInMemory();
+            assert !isRegister(curInterval.location()) && curInterval.alwaysInMemory() : Assertions.errorMessage(curInterval);
             if (!isPhiResolutionMove(block, move, curInterval)) {
                 assert isStackSlotValue(curInterval.location()) : "Not a stack slot: " + curInterval.location();
                 return true;

@@ -30,11 +30,14 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.core.common.cfg.Loop;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.Indent;
@@ -68,7 +71,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.graph.ReentrantBlockIterator;
 import jdk.graal.compiler.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import jdk.graal.compiler.phases.graph.ReentrantBlockIterator.LoopInfo;
-import org.graalvm.word.LocationIdentity;
 
 public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> extends EffectsPhase.Closure<BlockT> {
 
@@ -457,7 +459,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                             blockEffects.get(loop.getHeader()).insertAll(mergeProcessor.mergeEffects, 0);
                             loopMergeEffects.put(loop, mergeProcessor.afterMergeEffects);
 
-                            assert info.exitStates.size() == loop.getLoopExits().size();
+                            assert info.exitStates.size() == loop.getLoopExits().size() : Assertions.errorMessage(info, info.exitStates, loop, loop.getLoopExits());
                             loopEntryStates.put((LoopBeginNode) loop.getHeader().getBeginNode(), loopEntryState);
                             assert assertExitStatesNonEmpty(loop, info);
 
@@ -500,10 +502,10 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                  * process the loop in a mode where we immediately materialize every virtualizable
                  * node in order to avoid any repetitive loop processing.
                  */
-                assert aliases != aliasesCopy;
+                assert aliases != aliasesCopy : aliasesCopy;
                 aliases = aliasesCopy;
                 hasScalarReplacedInputs = hasScalarReplacedInputsCopy;
-                assert blockEffects != blockEffectsCopy;
+                assert blockEffects != blockEffectsCopy : "Mus";
                 blockEffects = blockEffectsCopy;
                 loopMergeEffects = loopMergeEffectsCopy;
                 loopEntryStates = loopEntryStatesCopy;
@@ -659,7 +661,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     }
 
     public void addScalarAlias(ValueNode node, ValueNode alias) {
-        assert !(alias instanceof VirtualObjectNode);
+        assert !(alias instanceof VirtualObjectNode) : "Must not be a virtual object node " + alias;
         aliases.set(node, alias);
         for (Node usage : node.usages()) {
             if (!hasScalarReplacedInputs.isNew(usage)) {
@@ -673,7 +675,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     }
 
     public ValueNode getScalarAlias(ValueNode node) {
-        assert !(node instanceof VirtualObjectNode);
+        assert !(node instanceof VirtualObjectNode) : node;
         if (node == null || !node.isAlive() || aliases.isNew(node)) {
             return node;
         }

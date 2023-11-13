@@ -296,7 +296,7 @@ public final class LIR extends LIRGenerator.VariableProvider implements EventCou
                 assert opWithExceptionEdge == null : "multiple ops with an exception edge not allowed";
                 opWithExceptionEdge = op;
                 int distanceFromEnd = lastIndex - index;
-                assert distanceFromEnd <= MAX_EXCEPTION_EDGE_OP_DISTANCE_FROM_END;
+                assert distanceFromEnd <= MAX_EXCEPTION_EDGE_OP_DISTANCE_FROM_END : distanceFromEnd;
             }
             index++;
         }

@@ -33,6 +33,7 @@ import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Div;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
@@ -96,8 +97,7 @@ public class SignedFloatingIntegerDivNode extends FloatingIntegerDivRemNode<Bina
         if (floatingGuard == null && canDivideByZero()) {
             GraalError.shouldNotReachHere("Can overflow though we have no guard"); // ExcludeFromJacocoGeneratedReport
         }
-        assert x.stamp(NodeView.DEFAULT) instanceof IntegerStamp;
-        assert y.stamp(NodeView.DEFAULT) instanceof IntegerStamp;
+        assert x.stamp(NodeView.DEFAULT) instanceof IntegerStamp && y.stamp(NodeView.DEFAULT) instanceof IntegerStamp : Assertions.errorMessageContext("this", this, "x", x, "y", y);
         builder.setResult(this, builder.getLIRGeneratorTool().getArithmetic().emitDiv(
                         builder.operand(getX()), builder.operand(getY()), null/* no state needed */));
     }

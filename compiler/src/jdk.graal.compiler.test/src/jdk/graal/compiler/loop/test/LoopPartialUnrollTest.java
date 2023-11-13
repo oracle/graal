@@ -29,6 +29,9 @@ import static jdk.graal.compiler.api.directives.GraalDirectives.injectIterationC
 
 import java.util.ListIterator;
 
+import org.junit.Ignore;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.GraalOptions;
@@ -58,10 +61,8 @@ import jdk.graal.compiler.phases.common.MidTierLoweringPhase;
 import jdk.graal.compiler.phases.common.RemoveValueProxyPhase;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
-import org.junit.Ignore;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.SpeculationLog;
 
 public class LoopPartialUnrollTest extends GraalCompilerTest {
 
@@ -412,4 +413,44 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
         return res;
     }
 
+    static int rr = 0;
+
+    static int countedAfterSnippet(int i, int limit) {
+        int res = 0;
+        for (int j = i; GraalDirectives.injectIterationCount(1000, j <= limit); j += Integer.MAX_VALUE) {
+            rr += 42;
+            res += j;
+        }
+        return res;
+    }
+
+    SpeculationLog speculationLog;
+    boolean useSpeculationLog;
+
+    @Override
+    protected SpeculationLog getSpeculationLog() {
+        if (!useSpeculationLog) {
+            speculationLog = null;
+            return null;
+        }
+        if (speculationLog == null) {
+            speculationLog = getCodeCache().createSpeculationLog();
+        }
+        speculationLog.collectFailedSpeculations();
+        return speculationLog;
+    }
+
+    @Test
+    public void strideOverflow() {
+        check = false;
+        useSpeculationLog = true;
+        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
+        for (int i = -1000; i < 1000; i++) {
+            for (int j = 0; j < 100; j++) {
+                test(opt, "countedAfterSnippet", i, j);
+            }
+        }
+        check = true;
+        useSpeculationLog = false;
+    }
 }

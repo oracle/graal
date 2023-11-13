@@ -25,16 +25,16 @@
 
 package jdk.graal.compiler.asm.aarch64;
 
+import static jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED;
+import static jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED;
+import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.LDP;
+import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.STP;
 import static jdk.vm.ci.aarch64.AArch64.CPU;
 import static jdk.vm.ci.aarch64.AArch64.SIMD;
 import static jdk.vm.ci.aarch64.AArch64.rscratch1;
 import static jdk.vm.ci.aarch64.AArch64.rscratch2;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.zr;
-import static jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED;
-import static jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED;
-import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.LDP;
-import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.STP;
 
 import jdk.graal.compiler.asm.BranchTargetOutOfBoundsException;
 import jdk.graal.compiler.asm.Label;
@@ -42,8 +42,8 @@ import jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize;
 import jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler.MovSequenceAnnotation.MovAction;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
-
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
@@ -159,7 +159,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     private AArch64Address tryMakeAddress(int bitMemoryTransferSize, Register base, long displacement, Register scratchReg) {
         assert !base.equals(scratchReg);
-        assert bitMemoryTransferSize == 8 || bitMemoryTransferSize == 16 || bitMemoryTransferSize == 32 || bitMemoryTransferSize == 64 || bitMemoryTransferSize == 128;
+        assert bitMemoryTransferSize == 8 || bitMemoryTransferSize == 16 || bitMemoryTransferSize == 32 || bitMemoryTransferSize == 64 || bitMemoryTransferSize == 128 : bitMemoryTransferSize;
         if (displacement == 0) {
             return AArch64Address.createBaseRegisterOnlyAddress(bitMemoryTransferSize, base);
         } else {
@@ -257,7 +257,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         int size = address.getBitMemoryTransferSize();
         switch (address.getAddressingMode()) {
             case IMMEDIATE_UNSIGNED_SCALED:
-                assert size != AArch64Address.ANY_SIZE;
+                assert size != AArch64Address.ANY_SIZE : size;
                 int scaledImmediate = address.getImmediateRaw() << getLog2TransferSize(size);
                 add(64, dst, address.getBase(), scaledImmediate);
                 break;
@@ -266,11 +266,11 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                 add(64, dst, address.getBase(), immediate);
                 break;
             case REGISTER_OFFSET:
-                assert !(address.isRegisterOffsetScaled() && size == AArch64Address.ANY_SIZE);
+                assert !(address.isRegisterOffsetScaled() && size == AArch64Address.ANY_SIZE) : Assertions.errorMessageContext("size", size, "addr", address);
                 add(64, dst, address.getBase(), address.getOffset(), ShiftType.LSL, address.isRegisterOffsetScaled() ? getLog2TransferSize(size) : 0);
                 break;
             case EXTENDED_REGISTER_OFFSET:
-                assert !(address.isRegisterOffsetScaled() && size == AArch64Address.ANY_SIZE);
+                assert !(address.isRegisterOffsetScaled() && size == AArch64Address.ANY_SIZE) : Assertions.errorMessageContext("size", size, "addr", address);
                 add(64, dst, address.getBase(), address.getOffset(), address.getExtendType(), address.isRegisterOffsetScaled() ? getLog2TransferSize(size) : 0);
                 break;
             case BASE_REGISTER_ONLY:
@@ -582,7 +582,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                     numMovks++;
                 }
             }
-            assert numMovks == 2;
+            assert numMovks == 2 : numMovks;
         } else if (negCount == 1) {
             // Generate one MOVN and two MOVKs.
             int i;
@@ -601,7 +601,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                     numMovks++;
                 }
             }
-            assert numMovks == 2;
+            assert numMovks == 2 : numMovks;
         } else {
             // Generate one MOVZ and three MOVKs
             movz(64, dst, chunks[0], 0);
@@ -699,7 +699,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param needsImmAnnotation Flag to signal of the immediate value should be annotated.
      */
     public void movNativeAddress(Register dst, long imm, boolean needsImmAnnotation) {
-        assert (imm & 0xFFFF_0000_0000_0000L) == 0;
+        assert (imm & 0xFFFF_0000_0000_0000L) == 0 : imm;
         // We have to move all non zero parts of the immediate in 16-bit chunks
         boolean firstMove = true;
         int pos = position();
@@ -716,7 +716,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             MovAction[] includeSet = {MovAction.USED, MovAction.USED, MovAction.USED};
             annotateImmediateMovSequence(pos, includeSet);
         }
-        assert !firstMove;
+        assert !firstMove : firstMove;
     }
 
     /**
@@ -727,7 +727,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param imm
      */
     public void movNarrowAddress(Register dst, long imm) {
-        assert (imm & 0xFFFF_FFFF_0000_0000L) == 0;
+        assert (imm & 0xFFFF_FFFF_0000_0000L) == 0 : imm;
         movz(64, dst, (int) (imm >>> 16), 16);
         movk(64, dst, (int) (imm & 0xffff), 0);
     }
@@ -743,8 +743,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void ldrs(int targetSize, int srcSize, Register rt, AArch64Address address) {
-        assert targetSize == 32 || targetSize == 64;
-        assert srcSize <= targetSize;
+        assert targetSize == 32 || targetSize == 64 : targetSize;
+        assert srcSize <= targetSize : srcSize + " " + targetSize;
         if (targetSize == srcSize) {
             ldr(srcSize, rt, address);
         } else {
@@ -928,7 +928,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     private static ExtendType getLSLExtendType(int size) {
-        assert size == 32 || size == 64;
+        assert size == 32 || size == 64 : size;
         return size == 32 ? ExtendType.UXTW : ExtendType.UXTX;
     }
 
@@ -943,7 +943,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param src2 general purpose register. May not be null or stackpointer.
      */
     public void add(int size, Register dst, Register src1, Register src2) {
-        assert !(dst.equals(sp) && src1.equals(zr)) && !(dst.equals(zr) && src1.equals(sp));
+        assert !(dst.equals(sp) && src1.equals(zr)) && !(dst.equals(zr) && src1.equals(sp)) : dst + " " + src1;
         if (dst.equals(sp) || src1.equals(sp)) {
             super.add(size, dst, src1, src2, getLSLExtendType(size), 0);
         } else {
@@ -978,7 +978,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param src2 general purpose register. May not be null or stackpointer.
      */
     public void sub(int size, Register dst, Register src1, Register src2) {
-        assert !(dst.equals(sp) && src1.equals(zr)) && !(dst.equals(zr) && src1.equals(sp));
+        assert !(dst.equals(sp) && src1.equals(zr)) && !(dst.equals(zr) && src1.equals(sp)) : dst + " " + src1;
         if (dst.equals(sp) || src1.equals(sp)) {
             super.sub(size, dst, src1, src2, getLSLExtendType(size), 0);
         } else {
@@ -1080,7 +1080,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param scratch general purpose register to hold immediate value (if necessary).
      */
     public void add(int size, Register dst, Register src, int immediate, Register scratch) {
-        assert (!dst.equals(zr) && !src.equals(zr));
+        assert (!dst.equals(zr) && !src.equals(zr)) : dst + " " + src;
         if (immediate < 0) {
             sub(size, dst, src, -immediate, scratch);
         } else if (NumUtil.isUnsignedNbit(24, immediate) || !dst.equals(src)) {
@@ -1105,7 +1105,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void add(int size, Register dst, Register src, int immediate) {
-        assert (!dst.equals(zr) && !src.equals(zr));
+        assert (!dst.equals(zr) && !src.equals(zr)) : dst + " " + src;
         if (immediate < 0) {
             sub(size, dst, src, -immediate);
         } else if (isAddSubtractImmediate(immediate, false)) {
@@ -1134,9 +1134,9 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         if (NumUtil.isInt(immediate)) {
             add(size, dst, src, (int) immediate);
         } else {
-            assert (!dst.equals(zr) && !src.equals(zr));
+            assert (!dst.equals(zr) && !src.equals(zr)) : dst + " " + src;
             assert !dst.equals(src);
-            assert size == 64;
+            assert size == 64 : size;
             mov(dst, immediate);
             add(size, dst, src, dst);
         }
@@ -1152,7 +1152,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void adds(int size, Register dst, Register src, int immediate) {
-        assert (!dst.equals(sp) && !src.equals(zr));
+        assert (!dst.equals(sp) && !src.equals(zr)) : dst + " " + src;
         if (immediate < 0) {
             subs(size, dst, src, -immediate);
         } else {
@@ -1172,7 +1172,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param scratch general purpose register to hold immediate value (if necessary).
      */
     public void sub(int size, Register dst, Register src, int immediate, Register scratch) {
-        assert (!dst.equals(zr) && !src.equals(zr));
+        assert (!dst.equals(zr) && !src.equals(zr)) : dst + " " + src;
         if (immediate < 0) {
             add(size, dst, src, -immediate, scratch);
         }
@@ -1198,7 +1198,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void sub(int size, Register dst, Register src, int immediate) {
-        assert (!dst.equals(zr) && !src.equals(zr));
+        assert (!dst.equals(zr) && !src.equals(zr)) : dst + " " + src;
         if (immediate < 0) {
             add(size, dst, src, -immediate);
         } else if (isAddSubtractImmediate(immediate, false)) {
@@ -1225,7 +1225,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void subs(int size, Register dst, Register src, int immediate) {
-        assert (!dst.equals(sp) && !src.equals(zr));
+        assert (!dst.equals(sp) && !src.equals(zr)) : dst + " " + src;
         if (immediate < 0) {
             adds(size, dst, src, -immediate);
         } else {
@@ -1266,8 +1266,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param src2 general purpose register. May not be null or the stackpointer.
      */
     public void umulh(int size, Register dst, Register src1, Register src2) {
-        assert (!dst.equals(sp) && !src1.equals(sp) && !src2.equals(sp));
-        assert size == 32 || size == 64;
+        assert (!dst.equals(sp) && !src1.equals(sp) && !src2.equals(sp)) : dst + " " + src1 + " " + src2;
+        assert size == 32 || size == 64 : size;
         if (size == 64) {
             super.umulh(dst, src1, src2);
         } else {
@@ -1287,8 +1287,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param src2 general purpose register. May not be null or the stackpointer.
      */
     public void smulh(int size, Register dst, Register src1, Register src2) {
-        assert (!dst.equals(sp) && !src1.equals(sp) && !src2.equals(sp));
-        assert size == 32 || size == 64;
+        assert (!dst.equals(sp) && !src1.equals(sp) && !src2.equals(sp)) : dst + " " + src1 + " " + src2;
+        assert size == 32 || size == 64 : size;
         if (size == 64) {
             super.smulh(dst, src1, src2);
         } else {
@@ -1423,7 +1423,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      *         JLS.
      */
     public static int clampShiftAmt(int size, long shiftAmt) {
-        assert size == 32 || size == 64;
+        assert size == 32 || size == 64 : size;
         return (int) (shiftAmt & (size - 1));
     }
 
@@ -1544,7 +1544,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param src general purpose register. May not be null, stackpointer or zero-register.
      */
     public void sxt(int destSize, int srcSize, Register dst, Register src) {
-        assert (srcSize < destSize && srcSize > 0);
+        assert (srcSize < destSize && srcSize > 0) : srcSize + " " + destSize;
         super.sbfm(destSize, dst, src, 0, srcSize - 1);
     }
 
@@ -1554,7 +1554,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @return True if the immediate can be directly encoded within a logical immediate.
      */
     public static boolean isLogicalImmediate(int size, long imm) {
-        assert size == 32 || size == 64;
+        assert size == 32 || size == 64 : size;
         boolean is64bit = size == 64;
         long maskedImm = size == 64 ? imm : imm & NumUtil.getNbitNumberLong(32);
         return LogicalBitmaskImmediateEncoding.canEncode(is64bit, maskedImm);
@@ -1573,7 +1573,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      *            not be stackpointer. Cannot be null in any case.
      */
     public void fmov(int size, Register dst, Register src) {
-        assert size == 32 || size == 64;
+        assert size == 32 || size == 64 : size;
         assert !(dst.getRegisterCategory().equals(CPU) && src.getRegisterCategory().equals(CPU)) : "src and dst cannot both be integer registers.";
         if (dst.getRegisterCategory().equals(CPU)) {
             fmovFpu2Cpu(size, dst, src);
@@ -1595,7 +1595,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void fmov(int size, Register dst, double imm) {
-        assert size == 32 || size == 64;
+        assert size == 32 || size == 64 : size;
         if (imm == 0.0) {
             assert Double.doubleToRawLongBits(imm) == 0L : "-0.0 is not a valid immediate.";
             neon.moviVI(ASIMDSize.HalfReg, dst, 0);
@@ -1632,7 +1632,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param y general purpose register. May not be null or stackpointer.
      */
     public void cmp(int size, Register x, Register y) {
-        assert size == 32 || size == 64;
+        assert size == 32 || size == 64 : size;
         subs(size, zr, x, y);
     }
 
@@ -1644,7 +1644,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param y comparison immediate, {@link #isComparisonImmediate(long)} has to be true for it.
      */
     public void compare(int size, Register x, int y) {
-        assert size == 32 || size == 64;
+        assert size == 32 || size == 64 : size;
         assert isComparisonImmediate(y);
         /*
          * AArch64 has two compare instructions supporting an immediate operand: compare (cmp) and
@@ -1673,7 +1673,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param shiftAmt must be in range 0 to 4.
      */
     public void cmp(int size, Register x, Register y, ExtendType extendType, int shiftAmt) {
-        assert size == 32 || size == 64;
+        assert size == 32 || size == 64 : size;
         subs(size, zr, x, y, extendType, shiftAmt);
     }
 
@@ -1768,7 +1768,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param label Can only handle 21-bit word-aligned offsets for now. May be unbound. Non null.
      */
     public void cbnz(int size, Register cmp, Label label) {
-        assert size == 32 || size == 64;
+        assert size == 32 || size == 64 : size;
         if (label.isBound()) {
             super.cbnz(size, cmp, getPCRelativeOffset(label));
         } else {
@@ -1788,7 +1788,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param label Can only handle 21-bit word-aligned offsets for now. May be unbound. Non null.
      */
     public void cbz(int size, Register cmp, Label label) {
-        assert size == 32 || size == 64;
+        assert size == 32 || size == 64 : size;
         if (label.isBound()) {
             super.cbz(size, cmp, getPCRelativeOffset(label));
         } else {

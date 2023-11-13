@@ -30,6 +30,19 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Queue;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
+
+import jdk.graal.compiler.core.common.calc.Condition;
+import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
+import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Graph;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeBitMap;
+import jdk.graal.compiler.graph.iterators.NodePredicate;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractEndNode;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -60,23 +73,11 @@ import jdk.graal.compiler.nodes.calc.SubNode;
 import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
-import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
-import jdk.graal.compiler.nodes.util.GraphUtil;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.Equivalence;
-import jdk.graal.compiler.core.common.calc.Condition;
-import jdk.graal.compiler.core.common.cfg.Loop;
-import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
-import jdk.graal.compiler.core.common.type.IntegerStamp;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.graph.Graph;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.NodeBitMap;
-import jdk.graal.compiler.graph.iterators.NodePredicate;
 import jdk.graal.compiler.nodes.debug.ControlFlowAnchored;
 import jdk.graal.compiler.nodes.debug.NeverStripMineNode;
 import jdk.graal.compiler.nodes.debug.NeverWriteSinkNode;
+import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
+import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 
 public class LoopEx {
@@ -232,7 +233,7 @@ public class LoopEx {
         InvariantPredicate invariant = new InvariantPredicate();
         NodeBitMap newLoopNodes = graph.createNodeBitMap();
         for (BinaryArithmeticNode<?> binary : whole().nodes().filter(BinaryArithmeticNode.class)) {
-            if (!binary.isAssociative()) {
+            if (!binary.mayReassociate()) {
                 continue;
             }
             ValueNode result = BinaryArithmeticNode.reassociateMatchedValues(binary, invariant, binary.getX(), binary.getY(), NodeView.DEFAULT);

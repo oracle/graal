@@ -86,7 +86,7 @@ public abstract class RegexExecNode extends RegexBodyNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             lengthNode = insert(InputLengthNode.create());
         }
-        return lengthNode.execute(input, getEncoding());
+        return lengthNode.execute(this, input, getEncoding());
     }
 
     public final int inputRead(TruffleString input, int i) {
@@ -94,7 +94,7 @@ public abstract class RegexExecNode extends RegexBodyNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             charAtNode = insert(InputReadNode.create());
         }
-        return charAtNode.execute(input, i, getEncoding());
+        return charAtNode.execute(this, input, i, getEncoding());
     }
 
     private RegexResult adjustIndexAndRun(VirtualFrame frame, TruffleString input, int fromIndex) {

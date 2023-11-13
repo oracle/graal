@@ -21,8 +21,8 @@
     }
   },
 
-  local tools_gate = gate_guard + tools_common + common.deps.eclipse + common.deps.jdt + {
-    name: 'gate-tools-oraclejdk' + self.jdk_version + '-' + self.os + '-' + self.arch,
+  local tools_gate = gate_guard + tools_common + common.deps.eclipse + common.deps.jdt + common.deps.spotbugs + {
+    name: 'gate-tools-oracle' + self.jdk_name + '-' + self.os + '-' + self.arch,
     run: [["mx", "--strict-compliance", "gate", "--strict-mode"]],
     targets: ["gate"],
     guard+: {
@@ -31,7 +31,7 @@
   },
 
   local tools_weekly = tools_common + {
-    name: 'weekly-tools-oraclejdk' + self.jdk_version + '-' + self.os + '-' + self.arch,
+    name: 'weekly-tools-oracle' + self.jdk_name + '-' + self.os + '-' + self.arch,
     run: [
       ["mx", "build"],
       ["mx", "unittest", "--verbose"],
@@ -81,18 +81,18 @@
   },
 
   builds: [
+    common.linux_amd64   + common.oraclejdkLatest + tools_gate,
     common.linux_amd64   + common.oraclejdk21 + tools_gate,
-    common.linux_amd64   + common.oraclejdk17 + tools_gate,
 
     common.linux_amd64   + common.oraclejdk21 + tools_javadoc,
-    common.linux_amd64   + common.oraclejdk17 + tools_coverage_weekly,
+    common.linux_amd64   + common.oraclejdk21 + tools_coverage_weekly,
+    common.linux_aarch64 + common.labsjdkLatest   + tools_weekly,
     common.linux_aarch64 + common.labsjdk21   + tools_weekly,
-    common.linux_aarch64 + common.labsjdk17   + tools_weekly,
 
+    common.windows_amd64 + common.oraclejdkLatest + tools_weekly + devkits["windows-jdkLatest"],
     common.windows_amd64 + common.oraclejdk21 + tools_weekly + devkits["windows-jdk21"],
-    common.windows_amd64 + common.oraclejdk17 + tools_weekly + devkits["windows-jdk17"],
 
+    common.darwin_amd64  + common.oraclejdkLatest + tools_weekly,
     common.darwin_amd64  + common.oraclejdk21 + tools_weekly,
-    common.darwin_amd64  + common.oraclejdk17 + tools_weekly,
   ],
 }

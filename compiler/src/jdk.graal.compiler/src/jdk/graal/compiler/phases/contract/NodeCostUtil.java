@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugContext;
@@ -35,11 +36,10 @@ import jdk.graal.compiler.graph.GraalGraphError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
+import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class NodeCostUtil {
@@ -52,7 +52,7 @@ public class NodeCostUtil {
         for (Node n : nodes) {
             size += n.estimatedNodeSize().value;
         }
-        assert size >= 0;
+        assert NumUtil.assertNonNegativeInt(size);
         return size;
     }
 
@@ -63,7 +63,7 @@ public class NodeCostUtil {
         for (Node n : graph.getNodes()) {
             size += n.estimatedNodeSize().value;
         }
-        assert size >= 0;
+        assert NumUtil.assertNonNegativeInt(size);
         return size;
     }
 
@@ -76,7 +76,7 @@ public class NodeCostUtil {
             cfg = graph.getLastSchedule().getCFG();
             blockToNodes = b -> graph.getLastSchedule().getBlockToNodesMap().get(b);
         } else {
-            cfg = ControlFlowGraph.compute(graph, true, true, false, false);
+            cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeFrequency(true).build();
             BlockMap<List<FixedNode>> nodes = new BlockMap<>(cfg);
             for (HIRBlock b : cfg.getBlocks()) {
                 ArrayList<FixedNode> curNodes = new ArrayList<>();
@@ -102,7 +102,7 @@ public class NodeCostUtil {
                 }
             }
         }
-        assert weightedCycles >= 0D;
+        assert NumUtil.assertNonNegativeDouble(weightedCycles);
         assert Double.isFinite(weightedCycles);
         return weightedCycles;
     }

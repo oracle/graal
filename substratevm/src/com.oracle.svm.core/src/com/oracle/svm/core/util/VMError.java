@@ -210,10 +210,6 @@ public final class VMError {
         throw new HostedError("UNSUPPORTED FEATURE: " + msg);
     }
 
-    public static boolean hostedError(Throwable t) {
-        return t instanceof HostedError;
-    }
-
     /**
      * Processes {@code args} to convert selected values to strings.
      * <ul>

@@ -208,7 +208,7 @@ public final class PerformanceInformationHandler implements Closeable {
             }
         }
         if (isWarningEnabled(TruffleCompilerOptions.PerformanceWarningKind.MISSING_LOOP_FREQUENCY_INFO)) {
-            ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, false);
+            ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeDominators(true).computeFrequency(true).build();
             for (Loop<HIRBlock> loop : cfg.getLoops()) {
                 // check if all loop exit contain trusted profiles
                 List<HIRBlock> loopBlocks = loop.getBlocks();

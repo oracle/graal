@@ -29,6 +29,7 @@ import java.util.Deque;
 import java.util.Iterator;
 import java.util.LinkedList;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeBitMap;
 import jdk.graal.compiler.nodes.AbstractEndNode;
@@ -95,7 +96,7 @@ public class InliningIterator {
             }
         }
 
-        assert invokes.size() == count(start.graph().getInvokes());
+        assert invokes.size() == count(start.graph().getInvokes()) : Assertions.errorMessage(invokes, start.graph().getInvokes());
         return invokes;
     }
 

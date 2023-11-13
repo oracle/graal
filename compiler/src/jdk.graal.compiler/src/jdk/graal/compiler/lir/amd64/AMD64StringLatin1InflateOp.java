@@ -39,11 +39,11 @@ import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.Stride;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -132,9 +132,9 @@ public final class AMD64StringLatin1InflateOp extends AMD64ComplexVectorOp {
         Label labelAVX3Threshold = new Label();
 
         // assert different registers
-        assert src.number != dst.number && src.number != len.number && src.number != tmp2.number;
-        assert dst.number != len.number && dst.number != tmp2.number;
-        assert len.number != tmp2.number;
+        assert src.number != dst.number && src.number != len.number && src.number != tmp2.number : Assertions.errorMessageContext("src", src, "dst", dst, "len", len, "tmp1", tmp1, "tmp2", tmp2);
+        assert dst.number != len.number && dst.number != tmp2.number : Assertions.errorMessageContext("src", src, "dst", dst, "len", len, "tmp1", tmp1, "tmp2", tmp2);
+        assert len.number != tmp2.number : Assertions.errorMessageContext("src", src, "dst", dst, "len", len, "tmp1", tmp1, "tmp2", tmp2);
 
         masm.movl(tmp2, len);
         if (canUseAVX512Variant()) {

@@ -52,7 +52,7 @@ public final class MethodCountersPointerStamp extends MetaspacePointerStamp {
     @Override
     protected AbstractPointerStamp copyWith(boolean newNonNull, boolean newAlwaysNull) {
         if (newNonNull) {
-            assert !newAlwaysNull;
+            assert !newAlwaysNull : "New must not be always null";
             return METHOD_COUNTERS_NON_NULL;
         } else if (newAlwaysNull) {
             return METHOD_COUNTERS_ALWAYS_NULL;
@@ -74,7 +74,7 @@ public final class MethodCountersPointerStamp extends MetaspacePointerStamp {
         if (JavaConstant.NULL_POINTER.equals(c)) {
             return METHOD_COUNTERS_ALWAYS_NULL;
         } else {
-            assert c instanceof HotSpotMetaspaceConstant;
+            assert c instanceof HotSpotMetaspaceConstant : c;
             return METHOD_COUNTERS_NON_NULL;
         }
     }

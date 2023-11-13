@@ -26,6 +26,8 @@ package jdk.graal.compiler.core.common.cfg;
 
 import java.util.Comparator;
 
+import jdk.graal.compiler.debug.Assertions;
+
 /**
  * Abstract representation of a basic block in the Graal IR. A basic block is the longest sequence
  * of instructions without a jump in between. A sequential ordering of blocks is maintained by
@@ -131,7 +133,7 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
     }
 
     public void setId(int id) {
-        assert id <= AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX;
+        assert id <= AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX : id;
         this.id = id;
     }
 
@@ -183,8 +185,8 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
 
         if (isLoopHeader()) {
             // We are moving out of current loop => just return dominator.
-            assert d.getLoopDepth() == getLoopDepth() - 1;
-            assert d.getLoop() != getLoop();
+            assert d.getLoopDepth() == getLoopDepth() - 1 : Assertions.errorMessageContext("d", d, "d.getloop", d.getLoop(), "this", this, "this.getLoop", getLoop());
+            assert d.getLoop() != getLoop() : Assertions.errorMessageContext("d", d, "d.getloop", d.getLoop(), "this", this, "this.getLoop", getLoop());
             return d;
         }
 
@@ -194,7 +196,7 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
             d = d.getDominator();
         }
 
-        assert d.getLoopDepth() <= getLoopDepth();
+        assert d.getLoopDepth() <= getLoopDepth() : Assertions.errorMessageContext("d", d, "d.getloop", d.getLoop(), "d.loopDepth", d.getLoopDepth(), "this.loopDepth", this.getLoopDepth());
 
         return d;
     }

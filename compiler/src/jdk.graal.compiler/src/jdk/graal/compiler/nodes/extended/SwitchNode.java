@@ -38,6 +38,7 @@ import java.util.Arrays;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
@@ -53,7 +54,6 @@ import jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData;
 import jdk.graal.compiler.nodes.ProfileData.SwitchProbabilityData;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
-
 import jdk.vm.ci.meta.Constant;
 
 /**
@@ -88,7 +88,7 @@ public abstract class SwitchNode extends ControlSplitNode {
         super(c, StampFactory.forVoid());
         assert value.stamp(NodeView.DEFAULT).getStackKind().isNumericInteger() || value.stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp : value.stamp(NodeView.DEFAULT) +
                         " key not supported by SwitchNode";
-        assert keySuccessors.length == profileData.getKeyProbabilities().length;
+        assert keySuccessors.length == profileData.getKeyProbabilities().length : Assertions.errorMessageContext("keySucc", keySuccessors, "profiles", profileData.getKeyProbabilities());
         this.successors = new NodeSuccessorList<>(this, successors);
         this.value = value;
         this.keySuccessors = keySuccessors;

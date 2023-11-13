@@ -69,7 +69,7 @@ public class AMD64TruffleCallBoundaryInstrumentationFactory extends TruffleCallB
                     // First instruction must be at least 5 bytes long to be safe for
                     // patching
                     masm.movl(spillRegister, address, true);
-                    assert masm.position() - pos >= AMD64HotSpotBackend.PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
+                    assert masm.position() - pos >= AMD64HotSpotBackend.PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE : masm.position() + "-" + pos;
                     CompressEncoding encoding = config.getOopEncoding();
                     Register heapBaseRegister = AMD64Move.UncompressPointerOp.hasBase(encoding) ? registers.getHeapBaseRegister() : Register.None;
                     AMD64Move.UncompressPointerOp.emitUncompressCode(masm, spillRegister, encoding.getShift(), heapBaseRegister, true);
@@ -77,7 +77,7 @@ public class AMD64TruffleCallBoundaryInstrumentationFactory extends TruffleCallB
                     // First instruction must be at least 5 bytes long to be safe for
                     // patching
                     masm.movq(spillRegister, address, true);
-                    assert masm.position() - pos >= AMD64HotSpotBackend.PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
+                    assert masm.position() - pos >= AMD64HotSpotBackend.PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE : masm.position() + "-" + pos;
                     if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
                         ForeignCallLinkage callTarget = crb.providers.getForeignCalls().lookupForeignCall(Z_FIELD_BARRIER);
                         AMD64HotSpotZBarrierSetLIRGenerator.emitBarrier(crb, masm, null, spillRegister, config, callTarget, address, null,

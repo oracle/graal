@@ -27,6 +27,7 @@ package jdk.graal.compiler.nodes;
 import java.util.Iterator;
 
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeBitMap;
@@ -38,10 +39,9 @@ import jdk.graal.compiler.graph.spi.NodeWithIdentity;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.Verbosity;
-import jdk.graal.compiler.nodes.spi.NodeValueMap;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.memory.MemoryAccess;
-
+import jdk.graal.compiler.nodes.spi.NodeValueMap;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -216,7 +216,7 @@ public abstract class ValueNode extends Node implements ValueNodeInterface {
 
     @Override
     protected boolean checkReplaceAtUsagesInvariants(Node other) {
-        assert other == null || other instanceof ValueNode;
+        assert other == null || other instanceof ValueNode : Assertions.errorMessage(this, other);
         if (this.hasUsages() && !this.stamp(NodeView.DEFAULT).isEmpty() && !(other instanceof PhiNode) && other != null) {
             Stamp thisStamp = stamp(NodeView.DEFAULT);
             Stamp otherStamp = ((ValueNode) other).stamp(NodeView.DEFAULT);
@@ -230,9 +230,10 @@ public abstract class ValueNode extends Node implements ValueNodeInterface {
 
     /**
      * Determines whether this node is recursively equal to the other node while ignoring
-     * differences in {@linkplain Node.Successor control-flow} edges and inputs of the given
-     * {@code ignoredInputType}. Recursive equality is only applied to {@link FloatingNode}s
-     * reachable via inputs; {@link FixedNode}s are only considered equal if they are the same node.
+     * differences in {@linkplain jdk.graal.compiler.graph.Node.Successor control-flow} edges and
+     * inputs of the given {@code ignoredInputType}. Recursive equality is only applied to
+     * {@link FloatingNode}s reachable via inputs; {@link FixedNode}s are only considered equal if
+     * they are the same node.
      *
      * WARNING: This method is useful only in very particular contexts, and only for limited
      * purposes. For example, it might be used to check if two values are equal up to memory or
@@ -277,7 +278,8 @@ public abstract class ValueNode extends Node implements ValueNodeInterface {
                 if (thisPos.getIndex() != thatPos.getIndex() || thisPos.getSubIndex() != thatPos.getSubIndex()) {
                     return false;
                 }
-                assert thisPos.getInputType() == thatPos.getInputType();
+                assert thisPos.getInputType() == thatPos.getInputType() : thisPos.getInputType() + "!=" + thatPos.getInputType() +
+                                Assertions.errorMessageContext(" thisNode", thisNode, "thatNode", thatNode);
                 if (thisPos.getInputType() == ignoredInputType) {
                     continue;
                 }

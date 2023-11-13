@@ -25,27 +25,28 @@
  */
 package jdk.graal.compiler.nodes.gc;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.nodes.extended.ArrayRangeWrite;
-import jdk.graal.compiler.nodes.extended.RawStoreNode;
-import jdk.graal.compiler.nodes.java.AbstractCompareAndSwapNode;
-import jdk.graal.compiler.nodes.java.LoweredAtomicReadAndWriteNode;
-import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.ArrayRangeWrite;
+import jdk.graal.compiler.nodes.extended.RawStoreNode;
+import jdk.graal.compiler.nodes.java.AbstractCompareAndSwapNode;
+import jdk.graal.compiler.nodes.java.LoweredAtomicReadAndWriteNode;
 import jdk.graal.compiler.nodes.memory.FixedAccessNode;
 import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.WriteNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
+import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -194,7 +195,7 @@ public class CardTableBarrierSet implements BarrierSet {
     }
 
     public boolean needsWriteBarrier(FixedAccessNode node, ValueNode writtenValue) {
-        assert !(node instanceof ArrayRangeWrite);
+        assert !(node instanceof ArrayRangeWrite) : Assertions.errorMessageContext("node", node, "val", writtenValue);
         BarrierType barrierType = node.getBarrierType();
         switch (barrierType) {
             case NONE:

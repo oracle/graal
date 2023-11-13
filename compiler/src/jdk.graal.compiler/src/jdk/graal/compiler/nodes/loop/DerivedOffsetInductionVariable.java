@@ -25,6 +25,7 @@
 package jdk.graal.compiler.nodes.loop;
 
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -135,7 +136,7 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
             if (base.valueNode() == value.getX()) {
                 return b - o;
             } else {
-                assert base.valueNode() == value.getY();
+                assert base.valueNode() == value.getY() : Assertions.errorMessage(base, base.valueNode(), value, value.getY());
                 return o - b;
             }
         }
@@ -154,7 +155,7 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
             if (base.valueNode() == value.getX()) {
                 return MathUtil.sub(graph(), b, o, gvn);
             } else {
-                assert base.valueNode() == value.getY();
+                assert base.valueNode() == value.getY() : Assertions.errorMessage(base, base.valueNode(), value, value.getY());
                 return MathUtil.sub(graph(), o, b, gvn);
             }
         }

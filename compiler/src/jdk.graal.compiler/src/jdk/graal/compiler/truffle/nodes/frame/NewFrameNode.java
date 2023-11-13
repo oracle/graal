@@ -339,7 +339,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
             tool.createVirtualObject((VirtualObjectNode) virtualFrameArrays.get(AUXILIARY_SLOTS_ARRAY), auxiliarySlotArrayEntryState, Collections.<MonitorIdNode> emptyList(), sourcePosition, false);
         }
 
-        assert types.FrameWithoutBoxing_instanceFields.length == 6;
+        assert types.FrameWithoutBoxing_instanceFields.length == 6 : "Must have 6 known fields but found " + types.FrameWithoutBoxing_instanceFields;
         ValueNode[] frameEntryState = new ValueNode[types.FrameWithoutBoxing_instanceFields.length];
         List<ResolvedJavaField> frameFieldList = Arrays.asList(types.FrameWithoutBoxing_instanceFields);
         frameEntryState[frameFieldList.indexOf(types.FrameWithoutBoxing_descriptor)] = getDescriptor();

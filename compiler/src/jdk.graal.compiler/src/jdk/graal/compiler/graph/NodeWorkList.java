@@ -116,7 +116,7 @@ public abstract class NodeWorkList implements Iterable<Node> {
         public IterativeNodeWorkList(Graph graph, boolean fill, int iterationLimitPerNode) {
             super(graph, fill);
             debug = graph.getDebug();
-            assert iterationLimitPerNode > 0;
+            assert iterationLimitPerNode > 0 : iterationLimitPerNode;
             long limit = (long) iterationLimitPerNode * graph.getNodeCount();
             iterationLimit = (int) Long.min(Integer.MAX_VALUE, limit);
         }

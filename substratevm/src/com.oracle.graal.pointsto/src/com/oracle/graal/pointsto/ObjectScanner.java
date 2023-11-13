@@ -342,11 +342,12 @@ public class ObjectScanner {
         objectBacktrace.append(header);
         objectBacktrace.append(System.lineSeparator()).append(indent).append(cur.toString(bb));
         ScanReason rootReason = cur;
-        cur = cur.previous;
+        cur = cur.getPrevious();
         while (cur != null) {
             objectBacktrace.append(System.lineSeparator()).append(indent).append(cur.toString(bb));
-            rootReason = cur.previous;
-            cur = cur.previous;
+            ScanReason previous = cur.getPrevious();
+            rootReason = previous;
+            cur = previous;
         }
         if (rootReason instanceof EmbeddedRootScan) {
             /* The root constant was found during scanning of 'method'. */
@@ -487,6 +488,18 @@ public class ObjectScanner {
         }
 
         public ScanReason getPrevious() {
+            /*
+             * Not all created heap constants can become reachable, hence some of them start with an
+             * unknown reachability reason. The reason becomes available only when the constant is
+             * linked in the object graph, i.e., it becomes reachable. If the ScanReason object was
+             * created before the constant was marked as reachable then its previous field is set to
+             * UNKNOWN. If that's the case fallback to the constant reachability reason.
+             */
+            if (previous == OtherReason.UNKNOWN) {
+                if (constant instanceof ImageHeapConstant heapConstant && heapConstant.getReachableReason() instanceof ScanReason parentReason) {
+                    return parentReason;
+                }
+            }
             return previous;
         }
 

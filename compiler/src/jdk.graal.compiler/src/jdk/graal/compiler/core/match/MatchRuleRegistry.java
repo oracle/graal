@@ -41,6 +41,7 @@ import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.Position;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.debug.Assertions;
 
 public class MatchRuleRegistry {
 
@@ -84,7 +85,7 @@ public class MatchRuleRegistry {
         if (result == null) {
             EconomicMap<Class<? extends Node>, List<MatchStatement>> rules = createRules(theClass);
             registry.put(theClass, rules);
-            assert registry.get(theClass) == rules;
+            assert registry.get(theClass) == rules : Assertions.errorMessage(registry.get(theClass), rules);
             result = rules;
 
             if (LogVerbose.getValue(options)) {

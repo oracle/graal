@@ -1,4 +1,6 @@
 One or several (comma-separated) paths to JSON files that specify which program elements should be made available via reflection.
+Use a reflect-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead.
+
 The JSON object schema is described at:
 
    https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reflect-config-schema-v1.0.0.json

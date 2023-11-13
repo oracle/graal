@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.lir.alloc.lsra;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.Indent;
 import jdk.graal.compiler.lir.alloc.lsra.Interval.RegisterBinding;
@@ -155,7 +156,7 @@ public class IntervalWalker {
                     }
                     cur.state = newState;
                     if (prev == cur) {
-                        assert state == newState;
+                        assert state == newState : Assertions.errorMessage(state, newState);
                         prevprev = prev;
                         prev = cur.next;
                     }

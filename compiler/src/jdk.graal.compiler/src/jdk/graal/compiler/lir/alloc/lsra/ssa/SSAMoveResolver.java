@@ -169,7 +169,7 @@ public final class SSAMoveResolver extends MoveResolver {
             super.breakCycle(spillCandidate);
             return;
         }
-        assert mappingFromSize() > 1;
+        assert mappingFromSize() > 1 : mappingFromSize();
         // Arbitrarily select the first entry for spilling.
         int stackSpillCandidate = 0;
         Interval fromInterval = getMappingFrom(stackSpillCandidate);

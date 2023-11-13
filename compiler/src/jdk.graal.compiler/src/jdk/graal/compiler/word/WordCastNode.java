@@ -33,6 +33,7 @@ import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.ConstantValue;
@@ -46,7 +47,6 @@ import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.nodes.type.NarrowOopStamp;
-
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -68,12 +68,12 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
     private final boolean trackedPointer;
 
     public static WordCastNode wordToObject(ValueNode input, JavaKind wordKind) {
-        assert input.getStackKind() == wordKind;
+        assert input.getStackKind() == wordKind : Assertions.errorMessageContext("input", input, "inputKind", input.getStackKind());
         return new WordCastNode(objectStampFor(input), input);
     }
 
     public static WordCastNode wordToObjectNonNull(ValueNode input, JavaKind wordKind) {
-        assert input.getStackKind() == wordKind;
+        assert input.getStackKind() == wordKind : Assertions.errorMessageContext("input", input, "inputKind", input.getStackKind());
         return new WordCastNode(StampFactory.objectNonNull(), input);
     }
 
@@ -86,22 +86,26 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
     }
 
     public static WordCastNode addressToWord(ValueNode input, JavaKind wordKind) {
-        assert input.stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp;
+        Stamp stamp = input.stamp(NodeView.DEFAULT);
+        assert stamp instanceof AbstractPointerStamp : stamp;
         return new WordCastNode(StampFactory.forKind(wordKind), input);
     }
 
     public static WordCastNode objectToTrackedPointer(ValueNode input, JavaKind wordKind) {
-        assert input.stamp(NodeView.DEFAULT) instanceof ObjectStamp;
+        Stamp stamp = input.stamp(NodeView.DEFAULT);
+        assert stamp instanceof ObjectStamp : stamp;
         return new WordCastNode(StampFactory.forKind(wordKind), input);
     }
 
     public static WordCastNode objectToUntrackedPointer(ValueNode input, JavaKind wordKind) {
-        assert input.stamp(NodeView.DEFAULT) instanceof ObjectStamp;
+        Stamp stamp = input.stamp(NodeView.DEFAULT);
+        assert stamp instanceof ObjectStamp : stamp;
         return new WordCastNode(StampFactory.forKind(wordKind), input, false);
     }
 
     public static WordCastNode narrowOopToUntrackedWord(ValueNode input, JavaKind wordKind) {
-        assert input.stamp(NodeView.DEFAULT) instanceof NarrowOopStamp;
+        Stamp stamp = input.stamp(NodeView.DEFAULT);
+        assert stamp instanceof NarrowOopStamp : stamp;
         return new WordCastNode(StampFactory.forKind(wordKind), input, false);
     }
 
@@ -190,7 +194,7 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
     public void generate(NodeLIRBuilderTool generator) {
         Value value = generator.operand(input);
         ValueKind<?> resultKind = generator.getLIRGeneratorTool().getLIRKind(stamp(NodeView.DEFAULT));
-        assert resultKind.getPlatformKind().getSizeInBytes() == value.getPlatformKind().getSizeInBytes();
+        assert resultKind.getPlatformKind().getSizeInBytes() == value.getPlatformKind().getSizeInBytes() : Assertions.errorMessageContext("resultKind", resultKind, "valueKind", value);
 
         if (trackedPointer && LIRKind.isValue(resultKind) && !LIRKind.isValue(value)) {
             // just change the PlatformKind, but don't drop reference information

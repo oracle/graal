@@ -56,7 +56,7 @@ public class AArch64MoveFactory extends MoveFactory {
         } else if (src instanceof AArch64AddressValue) {
             return new LoadAddressOp(dst, (AArch64AddressValue) src);
         } else {
-            assert src instanceof AllocatableValue;
+            assert src instanceof AllocatableValue : src;
             if (srcIsSlot && dstIsSlot) {
                 throw GraalError.shouldNotReachHere(src.getClass() + " " + dst.getClass()); // ExcludeFromJacocoGeneratedReport
             } else {

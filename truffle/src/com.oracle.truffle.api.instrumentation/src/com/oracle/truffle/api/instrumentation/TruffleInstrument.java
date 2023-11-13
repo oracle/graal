@@ -855,6 +855,10 @@ public abstract class TruffleInstrument {
          *            context.
          * @param path the absolute or relative path to create {@link TruffleFile} for
          * @return {@link TruffleFile}
+         * @throws UnsupportedOperationException when the {@link FileSystem} supports only
+         *             {@link URI}
+         * @throws IllegalArgumentException if the {@code path} string cannot be converted to a
+         *             {@link Path}
          * @since 23.0
          */
         public TruffleFile getTruffleFile(TruffleContext context, String path) {
@@ -872,6 +876,10 @@ public abstract class TruffleInstrument {
          *            context.
          * @param uri the {@link URI} to create {@link TruffleFile} for
          * @return {@link TruffleFile}
+         * @throws UnsupportedOperationException when {@link URI} scheme is not supported
+         * @throws IllegalArgumentException if preconditions on the {@code uri} do not hold.
+         * @throws FileSystemNotFoundException is the file system, identified by the {@code uri},
+         *             does not exist and cannot be created automatically
          * @since 23.0
          */
         public TruffleFile getTruffleFile(TruffleContext context, URI uri) {

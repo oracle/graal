@@ -24,12 +24,12 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
-import static jdk.vm.ci.amd64.AMD64.rcx;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.TZCNT;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Less;
 import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.XMM;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.YMM;
+import static jdk.vm.ci.amd64.AMD64.rcx;
 
 import java.nio.ByteOrder;
 import java.util.Arrays;
@@ -43,12 +43,12 @@ import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
 import jdk.graal.compiler.code.DataSection;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.Stride;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.asm.ArrayDataPointerConstant;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -73,7 +73,8 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
         this.targetDescription = tool.target();
         this.runtimeCheckedCPUFeatures = runtimeCheckedCPUFeatures;
         AVXSize maxSupportedVectorSize = (AVXSize) tool.getMaxVectorSize(runtimeCheckedCPUFeatures);
-        assert isXMMOrGreater(maxUsedVectorSize) && isXMMOrGreater(maxSupportedVectorSize);
+        assert isXMMOrGreater(maxUsedVectorSize) : Assertions.errorMessageContext("maxUsedVectorSize", maxSupportedVectorSize);
+        assert isXMMOrGreater(maxSupportedVectorSize) : Assertions.errorMessageContext("maxSupportedVectorSize", maxSupportedVectorSize);
 
         if (maxUsedVectorSize.fitsWithin(maxSupportedVectorSize)) {
             this.vectorSize = maxUsedVectorSize;

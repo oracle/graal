@@ -43,22 +43,21 @@ package com.oracle.truffle.regex.tregex.nodes.input;
 import static com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 
+@GenerateInline
 public abstract class InputStartsWithNode extends Node {
 
-    public static InputStartsWithNode create() {
-        return InputStartsWithNodeGen.create();
-    }
-
-    public abstract boolean execute(TruffleString input, TruffleString prefix, TruffleString.WithMask mask, Encoding encoding);
+    public abstract boolean execute(Node node, TruffleString input, TruffleString prefix, TruffleString.WithMask mask, Encoding encoding);
 
     @Specialization(guards = "mask == null")
     public boolean doTString(TruffleString input, TruffleString prefix, @SuppressWarnings("unused") TruffleString.WithMask mask, Encoding encoding,
-                    @Cached TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
+                    @Cached(inline = false) @Shared TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
         int len1 = input.byteLength(encoding.getTStringEncoding());
         int len2 = prefix.byteLength(encoding.getTStringEncoding());
         return len1 >= len2 && regionEqualsNode.execute(input, 0, prefix, 0, len2, encoding.getTStringEncoding());
@@ -66,7 +65,7 @@ public abstract class InputStartsWithNode extends Node {
 
     @Fallback
     public boolean doTStringMask(TruffleString input, TruffleString prefix, TruffleString.WithMask mask, Encoding encoding,
-                    @Cached TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
+                    @Cached(inline = false) @Shared TruffleString.RegionEqualByteIndexNode regionEqualsNode) {
         int len1 = input.byteLength(encoding.getTStringEncoding());
         int len2 = prefix.byteLength(encoding.getTStringEncoding());
         return len1 >= len2 && regionEqualsNode.execute(input, 0, mask, 0, len2, encoding.getTStringEncoding());
