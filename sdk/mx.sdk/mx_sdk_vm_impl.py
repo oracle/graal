@@ -51,7 +51,6 @@ import inspect
 import json
 import os
 from os.path import relpath, join, dirname, basename, exists, isfile, normpath, abspath, isdir
-import pipes
 import pprint
 import re
 import shlex
@@ -4018,8 +4017,7 @@ def graalvm_home_from_env(extra_mx_args, env, stage1=False):
     err = mx.OutputCapture()
     exit_status = mx.run_mx(args, out=out, err=err, env=env, nonZeroIsFatal=False)
     if exit_status:
-        args = ' '.join(map(pipes.quote, args))
-        mx.warn(f"'mx {args}' returned {exit_status}. Stdout:\n{out.data.strip()}\nStderr: {err.data.strip()}")
+        mx.warn(f"'mx {mx.list_to_cmd_line(args)}' returned {exit_status}. Stdout:\n{out.data.strip()}\nStderr: {err.data.strip()}")
         mx.abort(exit_status)
     return out.data.strip()
 
