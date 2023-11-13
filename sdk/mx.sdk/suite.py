@@ -85,8 +85,8 @@ suite = {
       "license": "Apache-2.0-wrk-a211dd5",
     },
     "WRK2_MULTIARCH": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk2-multiarch-2.0.tar.gz"],
-      "digest": "sha512:94629a69ebf2d683c6ea6c61dc86729d121e70c30a25ec6daf8fd70b74f6ebb694a5973a3d3e2f9c624efa418b51a550868d6951de9d7277d2028e0c8078e4b4",
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk2-multiarch-2.1.tar.gz"],
+      "digest": "sha512:ed237a2d899782198adbc6cad70e971590379526a01465917fc6fbcbbac6a7f2cf015a5b441fcc617d72526aaf9be8db478e201bb390f7090c32b03a9e5f8614",
       "packedResource": True,
       "license": "Apache-2.0",
     },

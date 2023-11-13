@@ -250,11 +250,8 @@ class BaseSpringBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBundle
 
 
 class BasePetClinicBenchmarkSuite(BaseSpringBenchmarkSuite):
-    def availableSuiteVersions(self):
-        return ["3.0.0"]
-
-    def defaultSuiteVersion(self):
-        return "3.0.0"
+    def version(self):
+        return "3.0.1"
 
     def applicationDist(self):
         return mx.library("PETCLINIC_" + self.version(), True).get_path(True)
@@ -295,11 +292,8 @@ mx_benchmark.add_bm_suite(PetClinicWrkBenchmarkSuite())
 
 
 class BaseSpringHelloWorldBenchmarkSuite(BaseSpringBenchmarkSuite):
-    def availableSuiteVersions(self):
-        return ["3.0.5"]
-
-    def defaultSuiteVersion(self):
-        return "3.0.5"
+    def version(self):
+        return "3.0.6"
 
     def applicationDist(self):
         return mx.library("SPRING_HW_" + self.version(), True).get_path(True)
@@ -378,7 +372,7 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
 
 class BaseTikaBenchmarkSuite(BaseQuarkusBenchmarkSuite):
     def version(self):
-        return "1.0.8"
+        return "1.0.10"
 
     def applicationDist(self):
         return mx.library("TIKA_" + self.version(), True).get_path(True)
@@ -418,7 +412,7 @@ mx_benchmark.add_bm_suite(TikaWrkBenchmarkSuite())
 
 class BaseQuarkusHelloWorldBenchmarkSuite(BaseQuarkusBenchmarkSuite):
     def version(self):
-        return "1.0.3"
+        return "1.0.5"
 
     def applicationDist(self):
         return mx.library("QUARKUS_HW_" + self.version(), True).get_path(True)
@@ -593,7 +587,7 @@ mx_benchmark.add_bm_suite(BaseMicronautMuShopBenchmark())
 
 class BaseShopCartBenchmarkSuite(BaseMicronautBenchmarkSuite):
     def version(self):
-        return "0.3.8"
+        return "0.3.9"
 
     def applicationDist(self):
         return mx.library("SHOPCART_" + self.version(), True).get_path(True)
@@ -641,7 +635,7 @@ mx_benchmark.add_bm_suite(ShopCartWrkBenchmarkSuite())
 
 class BaseMicronautHelloWorldBenchmarkSuite(BaseMicronautBenchmarkSuite):
     def version(self):
-        return "1.0.5"
+        return "1.0.6"
 
     def applicationDist(self):
         return mx.library("MICRONAUT_HW_" + self.version(), True).get_path(True)
