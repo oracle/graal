@@ -332,7 +332,6 @@ _DACAPO_EXTRA_IMAGE_BUILD_ARGS = {
     #    We can simply remove the jar containing that provider as it is not required for the benchmark to run.
     'fop':      ['--allow-incomplete-classpath',
                  '--report-unsupported-elements-at-runtime',
-                 '-esa', '-ea',
                  f"-Djava.util.logging.config.file={_empty_file()}",
                  '--initialize-at-run-time=org.apache.fop.render.rtf.rtflib.rtfdoc.RtfList'],
     'batik':    ['--allow-incomplete-classpath']
