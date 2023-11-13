@@ -356,7 +356,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
             // create move
             LIRInstruction move = lirGen.getSpillMoveFactory().createLoad(variable, constant);
             // insert instruction
-            int insertionIndex = lirGen.getResult().getFirstInsertPosition(block);
+            int insertionIndex = lirGen.getResult().getFirstInsertPosition();
             getInsertionBuffer(block).append(insertionIndex, move);
             debug.log("new move (%s) and inserted in block %s", move, block);
             // update usages

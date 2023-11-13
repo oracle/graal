@@ -29,6 +29,7 @@ import java.util.EnumSet;
 import java.util.function.Consumer;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
@@ -254,6 +255,19 @@ public abstract class Assembler<T extends Enum<T>> {
      * Emits a NOP instruction to advance the current PC.
      */
     public abstract void ensureUniquePC();
+
+    public void maybeEmitIndirectTargetMarker() {
+        // intentionally empty
+    }
+
+    /**
+     * Passes CompilationResultBuilder and Label so the underlying block's indirect branch target
+     * information can be queried.
+     */
+    @SuppressWarnings("unused")
+    public void maybeEmitIndirectTargetMarker(CompilationResultBuilder crb, Label label) {
+        // intentionally empty
+    }
 
     /**
      * Some platforms might require special post call code emission.

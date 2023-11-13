@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.lir.gen;
 
+import static jdk.graal.compiler.core.common.GraalOptions.LoopHeaderAlignment;
 import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isAllocatableValue;
@@ -31,7 +32,6 @@ import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isLegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
-import static jdk.graal.compiler.core.common.GraalOptions.LoopHeaderAlignment;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -65,7 +65,6 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.Register;

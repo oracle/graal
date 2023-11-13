@@ -277,7 +277,7 @@ class LinearScanWalker extends IntervalWalker {
             index++;
             assert 0 <= index && index < instructions.size() : "index out of bounds";
         }
-        assert allocator.getLIRGenerationResult().getFirstInsertPosition(opBlock) <= index && index < instructions.size() : "index out of bounds";
+        assert allocator.getLIRGenerationResult().getFirstInsertPosition() <= index && index < instructions.size() : "index out of bounds";
         assert instructions.get(index).id() == opId : "error in calculation";
 
         // insert new instruction before instruction at position index
