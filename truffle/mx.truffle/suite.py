@@ -112,7 +112,7 @@ suite = {
 
     "TruffleJSON" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20231013.jar"],
-      "sha1" : "4b654e0c344bbc1771ac42f5643650c775775cb5",
+      "sha1" : "90263049944b9827d62e2eef04327e38730b0b1a",
       "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20231013-src.jar"],
       "sourceSha1" : "d379795a9de8a205bcfd7a19305a15007eab43d0",
     },
