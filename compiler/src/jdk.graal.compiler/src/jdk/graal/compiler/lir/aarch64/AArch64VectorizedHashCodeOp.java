@@ -367,39 +367,34 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
 
         // for (; i < cnt1 ; i += 2) {
         masm.bind(labelShortUnrolledLoopBegin);
-        // result *= 31**2;
-        masm.mov(tmp3, 961);
-        masm.mul(32, result, result, tmp3);
+        try (var scratch1 = masm.getScratchRegister(); var scratch2 = masm.getScratchRegister()) {
+            var tmp961 = scratch1.getRegister();
+            var tmp31 = scratch2.getRegister();
+            // result *= 31**2;
+            // result += ary1[index-1] * 31 + ary1[index]
+            arraysHashcodeElload(masm, tmp2, postIndexAddr, arrayKind);
+            arraysHashcodeElload(masm, tmp3, postIndexAddr, arrayKind);
+            masm.mov(tmp31, 31);
+            masm.madd(32, tmp3, tmp2, tmp31, tmp3);
+            masm.mov(tmp961, 961);
+            masm.madd(32, result, result, tmp961, tmp3);
+            // i += 2
+            masm.add(32, index, index, 2);
 
-        // result += ary1[index-1] * 31
-        arraysHashcodeElload(masm, tmp2, postIndexAddr, arrayKind);
-        masm.mov(32, tmp3, tmp2);
-        masm.lsl(32, tmp3, tmp3, 5);
-        masm.sub(32, tmp3, tmp3, tmp2);
-        masm.add(32, result, result, tmp3);
+            masm.cmp(32, index, cnt1);
+            masm.branchConditionally(ConditionFlag.LT, labelShortUnrolledLoopBegin);
 
-        // result += ary1[index]
-        arraysHashcodeElload(masm, tmp3, postIndexAddr, arrayKind);
-        masm.add(32, result, result, tmp3);
-        // i += 2
-        masm.add(32, index, index, 2);
-
-        masm.cmp(32, index, cnt1);
-        masm.branchConditionally(ConditionFlag.LT, labelShortUnrolledLoopBegin);
-
-        // }
-        // if (i >= cnt1) {
-        masm.bind(labelShortUnrolledLoopExit);
-        // masm.cmp(32, index, cnt1); // already compared above
-        masm.branchConditionally(ConditionFlag.GT, labelEnd);
-        // result *= 31;
-        masm.mov(32, tmp2, result);
-        masm.lsl(32, result, result, 5);
-        masm.sub(32, result, result, tmp2);
-
-        // result += ary1[index - 1]
-        arraysHashcodeElload(masm, tmp3, postIndexAddr, arrayKind);
-        masm.add(32, result, result, tmp3);
+            // }
+            // if (i >= cnt1) {
+            masm.bind(labelShortUnrolledLoopExit);
+            // masm.cmp(32, index, cnt1); // already compared right above and before the jump here
+            masm.branchConditionally(ConditionFlag.GT, labelEnd);
+            // result *= 31;
+            // result += ary1[index - 1]
+            arraysHashcodeElload(masm, tmp3, postIndexAddr, arrayKind);
+            masm.mov(tmp31, 31);
+            masm.madd(32, result, result, tmp31, tmp3);
+        }
         // }
         masm.bind(labelEnd);
     }
