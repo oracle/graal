@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
 
+import com.oracle.graal.pointsto.ConstantReflectionProviderExtension;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
@@ -72,7 +73,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-public class AnalysisConstantReflectionProvider extends SharedConstantReflectionProvider {
+public class AnalysisConstantReflectionProvider extends SharedConstantReflectionProvider implements ConstantReflectionProviderExtension<AnalysisField> {
     private final AnalysisUniverse universe;
     protected final UniverseMetaAccess metaAccess;
     private HostedMetaAccess hMetaAccess;
@@ -266,7 +267,8 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         return ValueSupplier.lazyValue(() -> doReadValue(field, receiver), () -> ReadableJavaField.isValueAvailable(field));
     }
 
-    /** Returns the hosted filed value. The receiver is guaranteed to be a hosted constant. */
+    /** Returns the hosted field value. The receiver must be a hosted constant. */
+    @Override
     public JavaConstant readHostedFieldValue(UniverseMetaAccess access, AnalysisField field, JavaConstant receiver) {
         return interceptValue(access, field, doReadValue(field, universe.toHosted(receiver), access));
     }

@@ -190,8 +190,9 @@ public class ObjectScanner {
         }
     }
 
+    @SuppressWarnings("unchecked")
     protected JavaConstant readFieldValue(AnalysisField field, JavaConstant receiver) {
-        return bb.getConstantReflectionProvider().readFieldValue(field, receiver);
+        return ((ConstantReflectionProviderExtension<AnalysisField>) bb.getConstantReflectionProvider()).readHostedFieldValue(bb.getMetaAccess(), field, receiver);
     }
 
     /**
