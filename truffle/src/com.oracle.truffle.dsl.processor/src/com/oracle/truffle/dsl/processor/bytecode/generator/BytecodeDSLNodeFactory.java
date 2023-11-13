@@ -863,6 +863,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         init.end();
 
         CodeTreeBuilder b = method.createBuilder();
+
         b.declaration(operationBuilderType, "builder", init.build());
 
         b.startTryBlock();
@@ -1963,36 +1964,42 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startTryBlock();
 
-            b.lineComment("1. Serialize the root nodes and their constants.");
-            b.startStatement().startCall(castParser(method, "nodes.getParser()"), "parse").string("this").end(2);
+            if (model.serializedFields.size() == 0) {
+                // Simplify generated code: just one call
+                b.startStatement().startCall(castParser(method, "nodes.getParser()"), "parse").string("this").end(2);
+                serializationElements.writeShort(b, serializationElements.codeEndSerialize);
+            } else {
+                b.lineComment("1. Serialize the root nodes and their constants.");
+                b.startStatement().startCall(castParser(method, "nodes.getParser()"), "parse").string("this").end(2);
 
-            b.lineComment("2. Serialize the fields stored on each root node.");
-            b.statement("short[][] nodeFields = new short[builtNodes.size()][]");
-            b.startFor().string("int i = 0; i < nodeFields.length; i ++").end().startBlock();
-            b.declaration(bytecodeNodeGen.asType(), "node", "builtNodes.get(i)");
-            b.statement("short[] fields = nodeFields[i] = new short[" + model.serializedFields.size() + "]");
-            for (int i = 0; i < model.serializedFields.size(); i++) {
-                VariableElement var = model.serializedFields.get(i);
-                b.startStatement();
-                b.string("fields[").string(i).string("] = ");
-                b.startCall("serialization.serializeObject");
-                b.startGroup();
-                b.string("node.").string(var.getSimpleName().toString());
+                b.lineComment("2. Serialize the fields stored on each root node.");
+                b.statement("short[][] nodeFields = new short[builtNodes.size()][]");
+                b.startFor().string("int i = 0; i < nodeFields.length; i ++").end().startBlock();
+                b.declaration(bytecodeNodeGen.asType(), "node", "builtNodes.get(i)");
+                b.statement("short[] fields = nodeFields[i] = new short[" + model.serializedFields.size() + "]");
+                for (int i = 0; i < model.serializedFields.size(); i++) {
+                    VariableElement var = model.serializedFields.get(i);
+                    b.startStatement();
+                    b.string("fields[").string(i).string("] = ");
+                    b.startCall("serialization.serializeObject");
+                    b.startGroup();
+                    b.string("node.").string(var.getSimpleName().toString());
+                    b.end();
+                    b.end();
+                    b.end();
+                }
                 b.end();
-                b.end();
+                serializationElements.writeShort(b, serializationElements.codeEndSerialize);
+
+                b.lineComment("3. Encode the constant pool indices for each root node's fields.");
+                b.startFor().string("int i = 0; i < nodeFields.length; i++").end().startBlock();
+                b.statement("short[] fields = nodeFields[i]");
+
+                for (int i = 0; i < model.serializedFields.size(); i++) {
+                    serializationElements.writeShort(b, "fields[" + i + "]");
+                }
                 b.end();
             }
-            b.end();
-            serializationElements.writeShort(b, serializationElements.codeEndSerialize);
-
-            b.lineComment("3. Encode the constant pool indices for each root node's fields.");
-            b.startFor().string("int i = 0; i < nodeFields.length; i++").end().startBlock();
-            b.statement("short[] fields = nodeFields[i]");
-
-            for (int i = 0; i < model.serializedFields.size(); i++) {
-                serializationElements.writeShort(b, "fields[" + i + "]");
-            }
-            b.end();
 
             b.end().startFinallyBlock();
             b.statement("this.serialization = null");
@@ -2049,21 +2056,22 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startCase().staticReference(serializationElements.codeEndSerialize).end().startBlock();
 
-            b.startFor().string("int i = 0; i < builtNodes.size(); i++").end().startBlock();
-            b.declaration(bytecodeNodeGen.asType(), "node", "builtNodes.get(i)");
-
-            for (int i = 0; i < model.serializedFields.size(); i++) {
-                VariableElement var = model.serializedFields.get(i);
-                b.startStatement();
-                b.string("node.").string(var.getSimpleName().toString());
-                b.string(" = ");
-                if (ElementUtils.needsCastTo(type(Object.class), var.asType())) {
-                    b.cast(var.asType());
+            if (model.serializedFields.size() != 0) {
+                b.startFor().string("int i = 0; i < builtNodes.size(); i++").end().startBlock();
+                b.declaration(bytecodeNodeGen.asType(), "node", "builtNodes.get(i)");
+                for (int i = 0; i < model.serializedFields.size(); i++) {
+                    VariableElement var = model.serializedFields.get(i);
+                    b.startStatement();
+                    b.string("node.").string(var.getSimpleName().toString());
+                    b.string(" = ");
+                    if (ElementUtils.needsCastTo(type(Object.class), var.asType())) {
+                        b.cast(var.asType());
+                    }
+                    b.string("consts.get(buffer.readShort())");
+                    b.end();
                 }
-                b.string("consts.get(buffer.readShort())");
                 b.end();
             }
-            b.end();
 
             b.returnStatement();
             b.end();
@@ -2411,16 +2419,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
             }
 
+            if (operation.isSourceOnly()) {
+                b.startIf().string("!withSource").end().startBlock();
+                b.returnStatement();
+                b.end();
+            }
+
             if (model.enableSerialization) {
                 b.startIf().string("serialization != null").end().startBlock();
                 createSerializeBegin(operation, b);
                 b.statement("return");
-                b.end();
-            }
-
-            if (operation.isSourceOnly()) {
-                b.startIf().string("!withSource").end().startBlock();
-                b.returnStatement();
                 b.end();
             }
 
@@ -2527,6 +2535,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("numLocals = " + USER_LOCALS_START_IDX);
             b.statement("numLabels = 0");
             b.statement("numNodes = 0");
+            b.statement("numConditionalBranches = 0");
             b.statement("constantPool = new ConstantPool()");
 
             b.startIf().string("withSource").end().startBlock();

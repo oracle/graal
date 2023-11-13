@@ -68,7 +68,7 @@ final class ByteBufferDataInput implements DataInput {
 
     public void readFully(byte[] b, int off, int len) throws IOException {
         try {
-            buffer.get(b, 0, b.length);
+            buffer.get(b, 0, len);
         } catch (BufferUnderflowException ex) {
             throw wrap(ex);
         }
