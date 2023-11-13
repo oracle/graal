@@ -365,18 +365,19 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         masm.cmp(32, index, cnt1);
         masm.branchConditionally(ConditionFlag.GE, labelShortUnrolledLoopExit);
 
-        // for (; i < cnt1 ; i += 2) {
-        masm.bind(labelShortUnrolledLoopBegin);
         try (var scratch1 = masm.getScratchRegister(); var scratch2 = masm.getScratchRegister()) {
-            var tmp961 = scratch1.getRegister();
-            var tmp31 = scratch2.getRegister();
+            var tmp31 = scratch1.getRegister();
+            var tmp961 = scratch2.getRegister();
+            masm.mov(tmp31, 31);
+            masm.mov(tmp961, 961);
+
+            // for (; i < cnt1 ; i += 2) {
+            masm.bind(labelShortUnrolledLoopBegin);
             // result *= 31**2;
             // result += ary1[index-1] * 31 + ary1[index]
-            arraysHashcodeElload(masm, tmp2, postIndexAddr, arrayKind);
-            arraysHashcodeElload(masm, tmp3, postIndexAddr, arrayKind);
-            masm.mov(tmp31, 31);
+            arraysHashcodeElload(masm, tmp2, postIndexAddr, arrayKind); // index-1
+            arraysHashcodeElload(masm, tmp3, postIndexAddr, arrayKind); // index
             masm.madd(32, tmp3, tmp2, tmp31, tmp3);
-            masm.mov(tmp961, 961);
             masm.madd(32, result, result, tmp961, tmp3);
             // i += 2
             masm.add(32, index, index, 2);
@@ -391,8 +392,8 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
             masm.branchConditionally(ConditionFlag.GT, labelEnd);
             // result *= 31;
             // result += ary1[index - 1]
-            arraysHashcodeElload(masm, tmp3, postIndexAddr, arrayKind);
             masm.mov(tmp31, 31);
+            arraysHashcodeElload(masm, tmp3, postIndexAddr, arrayKind); // index-1
             masm.madd(32, result, result, tmp31, tmp3);
         }
         // }
