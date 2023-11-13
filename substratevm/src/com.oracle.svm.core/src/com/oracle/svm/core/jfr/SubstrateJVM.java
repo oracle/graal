@@ -197,17 +197,6 @@ public class SubstrateJVM {
         return get().jfrRandom;
     }
 
-    public static Object getHandler(Class<? extends jdk.internal.event.Event> eventClass) {
-        try {
-            Field f = eventClass.getDeclaredField("eventHandler");
-            f.setAccessible(true);
-            return f.get(null);
-        } catch (NoSuchFieldException | IllegalArgumentException | IllegalAccessException e) {
-            throw new InternalError("Could not access event handler");
-        }
-    }
-
-
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
     public boolean isRecording() {
         return recording;
