@@ -423,7 +423,7 @@ public class ObjectScanner {
                         scanField(field, entry.constant, entry.reason);
                     }
                 }
-            } else if (type.isArray() && bb.getWordTypes().asKind(type.getComponentType()) == JavaKind.Object) {
+            } else if (type.isArray() && type.getComponentType().getJavaKind() == JavaKind.Object) {
                 /* Scan the array elements. */
                 scanArray(entry.constant, entry.reason);
             }
