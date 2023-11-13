@@ -27,6 +27,7 @@ package jdk.graal.compiler.replacements.nodes;
 import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
 
 import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeInputList;
@@ -50,7 +51,6 @@ import jdk.graal.compiler.phases.common.LowTierLoweringPhase;
 import jdk.graal.compiler.phases.common.LoweringPhase;
 import jdk.graal.compiler.phases.common.MidTierLoweringPhase;
 import jdk.graal.compiler.phases.common.RemoveValueProxyPhase;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -105,7 +105,8 @@ public interface MacroInvokable extends Invokable, Lowerable, StateSplit, Single
 
     static boolean assertArgumentCount(MacroInvokable macro) {
         ResolvedJavaMethod method = macro.getTargetMethod();
-        assert method.getSignature().getParameterCount(!method.isStatic()) == macro.getArgumentCount();
+        assert method.getSignature().getParameterCount(!method.isStatic()) == macro.getArgumentCount() : "Method and macro must match:" +
+                        Assertions.errorMessageContext("method", method, "macro", macro);
         return true;
     }
 

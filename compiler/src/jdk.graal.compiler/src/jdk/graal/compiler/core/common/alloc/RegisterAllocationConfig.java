@@ -28,8 +28,9 @@ import java.util.Arrays;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
-import jdk.graal.compiler.core.common.GraalOptions;
 
+import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.Register.RegisterCategory;
 import jdk.vm.ci.code.RegisterArray;
@@ -66,8 +67,8 @@ public class RegisterAllocationConfig {
                     max = number;
                 }
             }
-            assert minRegisterNumber == min;
-            assert maxRegisterNumber == max;
+            assert minRegisterNumber == min : Assertions.errorMessage(minRegisterNumber, min);
+            assert maxRegisterNumber == max : Assertions.errorMessage(maxRegisterNumber, max);
             return true;
         }
     }

@@ -27,21 +27,22 @@ package jdk.graal.compiler.nodes.extended;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.nodes.java.LoadFieldNode;
-import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
-import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.ReinterpretNode;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.memory.MemoryKill;
 import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
@@ -51,8 +52,8 @@ import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.Virtualizable;
 import jdk.graal.compiler.nodes.spi.VirtualizerTool;
 import jdk.graal.compiler.nodes.type.StampTool;
-import org.graalvm.word.LocationIdentity;
-
+import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
+import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -195,7 +196,8 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
 
     @Override
     public ValueNode cloneAsFieldAccess(ResolvedJavaField field) {
-        assert field.getJavaKind() == accessKind() && !field.isInternal();
+        assert field.getJavaKind() == accessKind() : Assertions.errorMessageContext("field", field, "accessKind", accessKind);
+        assert !field.isInternal() : field;
         assert graph().isBeforeStage(GraphState.StageFlag.FLOATING_READS) : "cannot add more precise memory location after floating read phase";
         return LoadFieldNode.create(graph().getAssumptions(), field.isStatic() ? null : object(), field, getMemoryOrder());
     }

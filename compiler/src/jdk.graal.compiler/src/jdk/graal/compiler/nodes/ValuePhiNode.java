@@ -28,6 +28,7 @@ import java.util.Map;
 
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeFlood;
@@ -54,7 +55,7 @@ public class ValuePhiNode extends PhiNode {
     @SuppressWarnings("this-escape")
     protected ValuePhiNode(NodeClass<? extends ValuePhiNode> c, Stamp stamp, AbstractMergeNode merge) {
         super(c, stamp, merge);
-        assert stamp != StampFactory.forVoid();
+        assert stamp != StampFactory.forVoid() : Assertions.errorMessage(c, stamp, merge);
         values = new NodeInputList<>(this);
     }
 
@@ -65,7 +66,7 @@ public class ValuePhiNode extends PhiNode {
     @SuppressWarnings("this-escape")
     public ValuePhiNode(NodeClass<? extends ValuePhiNode> c, Stamp stamp, AbstractMergeNode merge, ValueNode... values) {
         super(c, stamp, merge);
-        assert stamp != StampFactory.forVoid();
+        assert stamp != StampFactory.forVoid() : Assertions.errorMessage(c, stamp, merge);
         this.values = new NodeInputList<>(this, values);
     }
 

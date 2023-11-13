@@ -58,8 +58,8 @@ public class AArch64PointerAddNode extends FloatingNode implements ArithmeticLIR
         this.base = base;
         this.offset = offset;
         assert base != null && (base.stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp ||
-                        IntegerStamp.getBits(base.stamp(NodeView.DEFAULT)) == 64);
-        assert offset != null && offset.getStackKind().isNumericInteger();
+                        IntegerStamp.getBits(base.stamp(NodeView.DEFAULT)) == 64) : base;
+        assert offset != null && offset.getStackKind().isNumericInteger() : offset;
     }
 
     public ValueNode getBase() {

@@ -24,8 +24,8 @@
  */
 package jdk.graal.compiler.lir.framemap;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.lir.VirtualStackSlot;
-
 import jdk.vm.ci.meta.ValueKind;
 
 /**
@@ -38,7 +38,7 @@ public class SimpleVirtualStackSlotAlias extends VirtualStackSlot {
 
     public SimpleVirtualStackSlotAlias(ValueKind<?> kind, SimpleVirtualStackSlot aliasedSlot) {
         super(aliasedSlot.getId(), kind);
-        assert kind.getPlatformKind().getSizeInBytes() <= aliasedSlot.getPlatformKind().getSizeInBytes();
+        assert kind.getPlatformKind().getSizeInBytes() <= aliasedSlot.getPlatformKind().getSizeInBytes() : Assertions.errorMessageContext("kind", kind, "aliasedSlot", aliasedSlot);
         this.aliasedSlot = aliasedSlot;
     }
 

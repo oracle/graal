@@ -33,8 +33,8 @@ import java.io.DataInputStream;
 import java.io.IOException;
 
 import jdk.graal.compiler.bytecode.Bytecodes;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -151,7 +151,7 @@ abstract class ClassfileConstant {
                         throw new NoSuchMethodError(cls.toJavaName() + "." + name + type);
                     }
                 } else {
-                    assert opcode == Bytecodes.INVOKESTATIC;
+                    assert opcode == Bytecodes.INVOKESTATIC : Assertions.errorMessage(opcode, cp);
                     method = resolveMethod(cp.context, cls, name, type, true);
                     if (method == null) {
                         throw new NoSuchMethodError(cls.toJavaName() + "." + name + type);

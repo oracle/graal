@@ -31,6 +31,7 @@ import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.Variable;
@@ -45,7 +46,6 @@ import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
-
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.meta.Value;
 
@@ -57,7 +57,7 @@ public final class AMD64X87MathIntrinsicNode extends UnaryNode implements LIRLow
 
     protected AMD64X87MathIntrinsicNode(ValueNode value, UnaryOperation op) {
         super(TYPE, op.computeStamp(value.stamp(NodeView.DEFAULT)), value);
-        assert value.stamp(NodeView.DEFAULT) instanceof FloatStamp && PrimitiveStamp.getBits(value.stamp(NodeView.DEFAULT)) == 64;
+        assert value.stamp(NodeView.DEFAULT) instanceof FloatStamp && PrimitiveStamp.getBits(value.stamp(NodeView.DEFAULT)) == 64 : Assertions.errorMessage(value);
         this.operation = op;
     }
 

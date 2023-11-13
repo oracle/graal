@@ -33,11 +33,13 @@ import java.util.function.IntUnaryOperator;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.RetryableBailoutException;
 import jdk.graal.compiler.core.common.cfg.Loop;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
@@ -80,7 +82,6 @@ import jdk.graal.compiler.nodes.virtual.EnsureVirtualizedNode;
 import jdk.graal.compiler.nodes.virtual.EscapeObjectState;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectState;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -582,7 +583,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             LoopBeginNode loopBegin = (LoopBeginNode) loop.getHeader().getBeginNode();
             AbstractEndNode end = loopBegin.forwardEnd();
             HIRBlock loopPredecessor = loop.getHeader().getFirstPredecessor();
-            assert loopPredecessor.getEndNode() == end;
+            assert loopPredecessor.getEndNode() == end : Assertions.errorMessageContext("loopPred", loopPredecessor, "loopPred.end", loopPredecessor.getEndNode(), "end", end);
             int length = initialState.getStateCount();
 
             boolean change;
@@ -754,7 +755,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 result = new ValuePhiNode[entryCount];
                 valuePhis.put(key, result);
             }
-            assert result.length == entryCount;
+            assert result.length == entryCount : Assertions.errorMessage(key, entryCount, result, result.length);
             return result;
         }
 
@@ -973,7 +974,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     resultInts[index++] = objectIndex;
                 }
             }
-            assert index == count;
+            assert index == count : Assertions.errorMessage(index, count, states, length);
             return resultInts;
         }
 
@@ -1102,8 +1103,11 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 // if there are two-slot values then make sure the incoming states can be merged
                 outer: for (int valueIndex = 0; valueIndex < entryCount; valueIndex++) {
                     if (twoSlotKinds[valueIndex] != null) {
-                        assert valueIndex < virtual.entryCount() - 1 && virtual.entryKind(tool.getMetaAccessExtensionProvider(), valueIndex) == JavaKind.Int &&
-                                        virtual.entryKind(tool.getMetaAccessExtensionProvider(), valueIndex + 1) == JavaKind.Int;
+                        assert valueIndex < virtual.entryCount() - 1 : Assertions.errorMessageContext("valueIndex", valueIndex, "virtual", virtual);
+                        JavaKind entryKind1 = virtual.entryKind(tool.getMetaAccessExtensionProvider(), valueIndex);
+                        assert entryKind1 == JavaKind.Int : entryKind1 + " must be int";
+                        JavaKind entryKind2 = virtual.entryKind(tool.getMetaAccessExtensionProvider(), valueIndex + 1);
+                        assert entryKind2 == JavaKind.Int : entryKind2 + " must be int";
                         for (int i = 0; i < states.length; i++) {
                             int object = getObject.applyAsInt(i);
                             ObjectState objectState = states[i].getObjectState(object);
@@ -1298,7 +1302,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                         virtualInputs++;
                     }
                 } else if (alias == phi) {
-                    assert i > 0;
+                    assert i > 0 : i;
                     virtualInputs++;
                     selfReference = true;
                 }

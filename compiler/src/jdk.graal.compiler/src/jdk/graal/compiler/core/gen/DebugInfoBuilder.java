@@ -49,6 +49,7 @@ import jdk.graal.compiler.nodes.virtual.MaterializedObjectState;
 import jdk.graal.compiler.nodes.virtual.VirtualBoxingNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectState;
+import jdk.graal.compiler.debug.Assertions;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.RegisterValue;
@@ -85,9 +86,9 @@ public class DebugInfoBuilder {
     protected final Queue<VirtualObjectNode> pendingVirtualObjects = new ArrayDeque<>();
 
     public LIRFrameState build(NodeWithState node, FrameState topState, LabelRef exceptionEdge, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation) {
-        assert virtualObjects.size() == 0;
-        assert objectStates.size() == 0;
-        assert pendingVirtualObjects.size() == 0;
+        assert virtualObjects.size() == 0 : virtualObjects;
+        assert objectStates.size() == 0 : objectStates;
+        assert pendingVirtualObjects.size() == 0 : pendingVirtualObjects;
 
         boolean validForDeoptimization = true;
         // collect all VirtualObjectField instances:
@@ -144,7 +145,7 @@ public class DebugInfoBuilder {
                             slotKinds[pos] = toSlotKind(value);
                             pos++;
                         } else {
-                            assert value.getStackKind() == JavaKind.Illegal;
+                            assert value.getStackKind() == JavaKind.Illegal : Assertions.errorMessage(value);
                             ValueNode previousValue = currentField.values().get(i - 1);
                             assert (previousValue != null && (previousValue.getStackKind().needsTwoSlots()) || vobjNode.isVirtualByteArray(metaAccessExtensionProvider)) : vobjNode + " " + i +
                                             " " + previousValue + " " + currentField.values().snapshot();
@@ -197,9 +198,9 @@ public class DebugInfoBuilder {
     }
 
     private boolean checkValues(ResolvedJavaType type, JavaValue[] values, JavaKind[] slotKinds) {
-        assert (values == null) == (slotKinds == null);
+        assert (values == null) == (slotKinds == null) : Assertions.errorMessage(values, slotKinds);
         if (values != null) {
-            assert values.length == slotKinds.length;
+            assert values.length == slotKinds.length : Assertions.errorMessage(values, slotKinds);
             if (!type.isArray()) {
                 ResolvedJavaField[] fields = type.getInstanceFields(true);
                 int fieldIndex = 0;
@@ -258,13 +259,17 @@ public class DebugInfoBuilder {
 
     protected BytecodeFrame computeFrameForState(NodeWithState node, FrameState state) {
         try {
-            assert state.bci != BytecodeFrame.INVALID_FRAMESTATE_BCI;
-            assert state.bci != BytecodeFrame.UNKNOWN_BCI;
-            assert state.bci != BytecodeFrame.BEFORE_BCI || state.locksSize() == 0;
-            assert state.bci != BytecodeFrame.AFTER_BCI || state.locksSize() == 0;
-            assert state.bci != BytecodeFrame.AFTER_EXCEPTION_BCI || state.locksSize() == 0;
+            assert state.bci != BytecodeFrame.INVALID_FRAMESTATE_BCI : Assertions.errorMessageContext("node", node, "state", state);
+            assert state.bci != BytecodeFrame.UNKNOWN_BCI : Assertions.errorMessageContext("node", node, "state", state);
+
+            assert state.bci != BytecodeFrame.BEFORE_BCI || state.locksSize() == 0 : Assertions.errorMessageContext("node", node, "state", state);
+
+            assert state.bci != BytecodeFrame.AFTER_BCI || state.locksSize() == 0 : Assertions.errorMessageContext("node", node, "state", state);
+
+            assert state.bci != BytecodeFrame.AFTER_EXCEPTION_BCI || state.locksSize() == 0 : Assertions.errorMessageContext("node", node, "state", state);
+
             assert !(state.getMethod().isSynchronized() && state.bci != BytecodeFrame.BEFORE_BCI && state.bci != BytecodeFrame.AFTER_BCI && state.bci != BytecodeFrame.AFTER_EXCEPTION_BCI) ||
-                            state.locksSize() > 0;
+                            state.locksSize() > 0 : Assertions.errorMessageContext("state", state, "node", node, "bci", state.bci);
             assert state.verify();
 
             int numLocals = state.localsSize();
@@ -350,7 +355,7 @@ public class DebugInfoBuilder {
                 if (state instanceof MaterializedObjectState) {
                     return toJavaValue(((MaterializedObjectState) state).materializedValue());
                 } else {
-                    assert obj.entryCount() == 0 || state instanceof VirtualObjectState;
+                    assert obj.entryCount() == 0 || state instanceof VirtualObjectState : Assertions.errorMessage(obj, obj.entryCount(), state);
                     VirtualObject vobject = virtualObjects.get(obj);
                     if (vobject == null) {
                         boolean isAutoBox = obj instanceof VirtualBoxingNode;

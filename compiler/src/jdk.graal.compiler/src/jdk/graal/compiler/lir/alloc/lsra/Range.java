@@ -25,6 +25,7 @@
 package jdk.graal.compiler.lir.alloc.lsra;
 
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.lir.LIR;
 
 /**
@@ -68,7 +69,7 @@ public final class Range {
     }
 
     public boolean isEndMarker() {
-        assert from != Integer.MAX_VALUE || (to == Integer.MAX_VALUE && next == null);
+        assert from != Integer.MAX_VALUE || (to == Integer.MAX_VALUE && next == null) : Assertions.errorMessage(from, to, next);
         return from == Integer.MAX_VALUE;
     }
 

@@ -26,6 +26,7 @@ package jdk.graal.compiler.replacements.nodes;
 
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -38,7 +39,6 @@ import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.Lowerable;
-
 import jdk.vm.ci.meta.JavaConstant;
 
 @NodeInfo
@@ -72,7 +72,7 @@ public abstract class IdentityHashCodeNode extends AbstractStateSplit implements
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (object.isConstant()) {
-            assert object.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp;
+            assert object.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp : Assertions.errorMessage(object);
             JavaConstant c = (JavaConstant) object.asConstant();
 
             int identityHashCode;

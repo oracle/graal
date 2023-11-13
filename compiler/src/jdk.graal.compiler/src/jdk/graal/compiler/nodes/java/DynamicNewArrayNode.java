@@ -28,14 +28,14 @@ package jdk.graal.compiler.nodes.java;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.nodes.spi.Canonicalizable;
-import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.ValueNode;
-
+import jdk.graal.compiler.nodes.spi.Canonicalizable;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -84,7 +84,8 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode implements Canonic
         super(c, computeStamp(knownElementKind, metaAccess), length, fillContents, stateBefore);
         this.elementType = elementType;
         this.knownElementKind = knownElementKind;
-        assert knownElementKind != JavaKind.Void && knownElementKind != JavaKind.Illegal;
+        assert knownElementKind != JavaKind.Void && knownElementKind != JavaKind.Illegal : Assertions.errorMessageContext("c", c, "elementType", elementType, "length", length, "knownElementType",
+                        knownElementKind);
     }
 
     public ValueNode getElementType() {

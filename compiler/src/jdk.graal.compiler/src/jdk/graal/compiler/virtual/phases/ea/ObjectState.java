@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -37,7 +38,6 @@ import jdk.graal.compiler.nodes.virtual.LockState;
 import jdk.graal.compiler.nodes.virtual.MaterializedObjectState;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectState;
-
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
@@ -123,7 +123,7 @@ public class ObjectState {
         while (i > 0 && values[i].isIllegalConstant()) {
             i = valuePos - ++bytes;
         }
-        assert i >= 0 && values[i].getStackKind().isPrimitive();
+        assert i >= 0 && values[i].getStackKind().isPrimitive() : Assertions.errorMessage(i, values[i], values, valuePos);
         int j = valuePos + 1;
         ValueNode value = values[i];
         int totalBytes = value.getStackKind().getByteCount();
@@ -131,7 +131,7 @@ public class ObjectState {
         while (j < values.length && values[i].isIllegalConstant()) {
             j++;
         }
-        assert j - i <= totalBytes;
+        assert j - i <= totalBytes : Assertions.errorMessage(i, j, totalBytes, values, valuePos);
         return j - valuePos;
     }
 
@@ -162,7 +162,7 @@ public class ObjectState {
     }
 
     public boolean isVirtual() {
-        assert materializedValue == null ^ entries == null;
+        assert materializedValue == null ^ entries == null : Assertions.errorMessageContext("materializedValues", materializedValue, "entries", entries);
         return materializedValue == null;
     }
 

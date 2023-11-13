@@ -181,7 +181,8 @@ public class NodePropertiesTest extends GraalCompilerTest {
     private static void assertFrequency(StructuredGraph g, int iterations) {
         NodeIterable<LoopBeginNode> loopBeginNodes = g.getNodes(LoopBeginNode.TYPE);
         LoopBeginNode loopBeginNode = loopBeginNodes.first();
-        Assert.assertEquals("loop frequency of " + loopBeginNode, iterations, ControlFlowGraph.compute(g, false, false, false, false).localLoopFrequency(loopBeginNode), 0);
+        ControlFlowGraph cfg = ControlFlowGraph.newBuilder(g).computeFrequency(true).build();
+        Assert.assertEquals("loop frequency of " + loopBeginNode, iterations, cfg.localLoopFrequency(loopBeginNode), 0);
     }
 
     @Test

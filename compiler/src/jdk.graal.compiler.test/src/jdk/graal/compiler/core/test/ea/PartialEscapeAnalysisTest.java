@@ -379,7 +379,7 @@ public class PartialEscapeAnalysisTest extends EATestBase {
             Assert.assertTrue("partial escape analysis should have removed all NewInstanceNode allocations", graph.getNodes().filter(NewInstanceNode.class).isEmpty());
             Assert.assertTrue("partial escape analysis should have removed all NewArrayNode allocations", graph.getNodes().filter(NewArrayNode.class).isEmpty());
 
-            ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, false, false);
+            ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeFrequency(true).build();
             double frequencySum = 0;
             int materializeCount = 0;
             for (CommitAllocationNode materialize : graph.getNodes().filter(CommitAllocationNode.class)) {

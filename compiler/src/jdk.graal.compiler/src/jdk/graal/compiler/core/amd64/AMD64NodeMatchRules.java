@@ -49,18 +49,18 @@ import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64RMOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.SSEOp;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
-import jdk.graal.compiler.core.common.calc.CanonicalCondition;
-import jdk.graal.compiler.core.common.calc.Condition;
-import jdk.graal.compiler.core.common.calc.FloatConvert;
-import jdk.graal.compiler.core.gen.NodeLIRBuilder;
-import jdk.graal.compiler.core.gen.NodeMatchRules;
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.calc.CanonicalCondition;
+import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.core.gen.NodeLIRBuilder;
+import jdk.graal.compiler.core.gen.NodeMatchRules;
 import jdk.graal.compiler.core.match.ComplexMatchResult;
 import jdk.graal.compiler.core.match.MatchRule;
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.LabelRef;
@@ -91,7 +91,6 @@ import jdk.graal.compiler.nodes.memory.MemoryAccess;
 import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.WriteNode;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -244,7 +243,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     }
 
     private ComplexMatchResult emitSignExtendMemory(AddressableMemoryAccess access, int fromBits, int toBits, ValueKind<?> addressKind) {
-        assert fromBits <= toBits && toBits <= 64;
+        assert fromBits <= toBits && toBits <= 64 : fromBits + " " + toBits;
         AMD64Kind kind = null;
         AMD64RMOp op;
         OperandSize size;
@@ -400,7 +399,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(If (FloatEquals=compare value ValueCompareAndSwap=cas))")
     @MatchRule("(If (IntegerEquals=compare value ValueCompareAndSwap=cas))")
     public ComplexMatchResult ifCompareValueCas(IfNode root, CompareNode compare, ValueNode value, ValueCompareAndSwapNode cas) {
-        assert compare.condition() == CanonicalCondition.EQ;
+        assert compare.condition() == CanonicalCondition.EQ : Assertions.errorMessage(compare, value, cas);
         if (value == cas.getExpectedValue() && cas.hasExactlyOneUsage()) {
             return builder -> {
                 LIRKind kind = getLirKind(cas);
@@ -423,7 +422,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(If (IntegerEquals=compare value LogicCompareAndSwap=cas))")
     public ComplexMatchResult ifCompareLogicCas(IfNode root, CompareNode compare, ValueNode value, LogicCompareAndSwapNode cas) {
         JavaConstant constant = value.asJavaConstant();
-        assert compare.condition() == CanonicalCondition.EQ;
+        assert compare.condition() == CanonicalCondition.EQ : Assertions.errorMessage(root, compare, value, cas);
         if (constant != null && cas.hasExactlyOneUsage()) {
             long constantValue = constant.asLong();
             boolean successIsTrue;
@@ -463,7 +462,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
             return builder -> {
                 Value a = operand(lshift.getX());
                 OperandSize size = OperandSize.get(a.getPlatformKind());
-                assert size == OperandSize.DWORD || size == OperandSize.QWORD;
+                assert size == OperandSize.DWORD || size == OperandSize.QWORD : size;
                 return getArithmeticLIRGenerator().emitShiftConst(ROL, size, a, lshiftConst);
             };
         }
@@ -492,7 +491,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     }
 
     private ComplexMatchResult binaryRead(AMD64Assembler.VexRVMOp op, OperandSize size, ValueNode value, LIRLowerableAccess access) {
-        assert size == SS || size == SD;
+        assert size == SS || size == SD : size;
         return builder -> getArithmeticLIRGenerator().emitBinaryMemory(op, size, getLIRGeneratorTool().asAllocatable(operand(value)), (AMD64AddressValue) operand(access.getAddress()),
                         getState(access));
     }
@@ -679,25 +678,25 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(FloatConvert FloatingRead=access)")
     public ComplexMatchResult floatConvert(FloatConvertNode root, LIRLowerableAccess access) {
         switch (root.getFloatConvert()) {
-            case FloatConvert.D2F:
+            case D2F:
                 return emitConvertMemoryOp(AMD64Kind.SINGLE, SSEOp.CVTSD2SS, SD, access);
-            case FloatConvert.D2I:
+            case D2I:
                 return emitConvertMemoryOp(AMD64Kind.DWORD, SSEOp.CVTTSD2SI, DWORD, access);
-            case FloatConvert.D2L:
+            case D2L:
                 return emitConvertMemoryOp(AMD64Kind.QWORD, SSEOp.CVTTSD2SI, QWORD, access);
-            case FloatConvert.F2D:
+            case F2D:
                 return emitConvertMemoryOp(AMD64Kind.DOUBLE, SSEOp.CVTSS2SD, SS, access);
-            case FloatConvert.F2I:
+            case F2I:
                 return emitConvertMemoryOp(AMD64Kind.DWORD, SSEOp.CVTTSS2SI, DWORD, access);
-            case FloatConvert.F2L:
+            case F2L:
                 return emitConvertMemoryOp(AMD64Kind.QWORD, SSEOp.CVTTSS2SI, QWORD, access);
-            case FloatConvert.I2D:
+            case I2D:
                 return emitConvertMemoryOp(AMD64Kind.DOUBLE, SSEOp.CVTSI2SD, DWORD, access);
-            case FloatConvert.I2F:
+            case I2F:
                 return emitConvertMemoryOp(AMD64Kind.SINGLE, SSEOp.CVTSI2SS, DWORD, access);
-            case FloatConvert.L2D:
+            case L2D:
                 return emitConvertMemoryOp(AMD64Kind.DOUBLE, SSEOp.CVTSI2SD, QWORD, access);
-            case FloatConvert.L2F:
+            case L2F:
                 return emitConvertMemoryOp(AMD64Kind.SINGLE, SSEOp.CVTSI2SS, QWORD, access);
             default:
                 throw GraalError.shouldNotReachHereUnexpectedValue(root.getFloatConvert()); // ExcludeFromJacocoGeneratedReport

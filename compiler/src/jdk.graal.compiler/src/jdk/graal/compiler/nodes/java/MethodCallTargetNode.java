@@ -28,6 +28,7 @@ import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.IterableNodeType;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
@@ -48,7 +49,6 @@ import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.spi.UncheckedInterfaceProvider;
 import jdk.graal.compiler.nodes.type.StampTool;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
@@ -165,7 +165,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                  *   Base.findLeafConcreteSubtype() -> ConcreteImpl
                  *   then ConcreteImpl.findUniqueConcreteMethod(bar) -> AbstractBaseImpl::bar
                  *
-                 * By doing the lookup from a concrete leaf type, de-virtualization is more effective since we are 
+                 * By doing the lookup from a concrete leaf type, de-virtualization is more effective since we are
                  * looking up in the class hierarchy rather than down.
                  */
                 // @formatter:on
@@ -211,7 +211,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
 
         if (invokeKind.isInterface()) {
             MethodCallTargetNode result = tryDevirtualizeInterfaceCall(receiver(), targetMethod, typeProfile, graph().getAssumptions(), contextType, this, invoke().asFixedNode());
-            assert result == this;
+            assert result == this : Assertions.errorMessage(result, this);
         }
     }
 

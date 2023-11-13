@@ -109,10 +109,10 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     base_cmd:: ['mx', '--env', env],
     bench_cmd:: self.base_cmd + ['benchmark'] + (if (is_gate) then ['--fail-fast'] else []),
     interpreter_bench_cmd(vmConfig):: self.bench_cmd +
-        (if std.startsWith(vmConfig, 'jvm-') then
+        (if std.startsWith(vmConfig, 'jvm-') && self.jdk_version >= 22 then
             ['polybench:~r[(compiler/.*)|(warmup/.*)]']
         else
-            ['polybench:~r[(compiler/.*)|(warmup/.*)|(.*panama.*)]'] # panama NFI backend only supported in JVM mode
+            ['polybench:~r[(compiler/.*)|(warmup/.*)|(.*panama.*)]'] # panama NFI backend only supported in JVM mode and on JDK 22+ [GR-49655]
         ) + ['--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}', '--polybench-vm-config=' + vmConfig],
     compiler_bench_cmd(vmConfig):: self.bench_cmd + ['polybench:*[compiler/dispatch.js]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}', '--polybench-vm-config=' + vmConfig],
     warmup_bench_cmd(vmConfig):: self.bench_cmd + ['--fork-count-file', 'ci/ci_common/benchmark-forks.json',  'polybench:r[warmup/.*]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}', '--polybench-vm-config=' + vmConfig],
@@ -218,9 +218,14 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
 
   vm_bench_polybench_nfi: {
     base_cmd:: ['mx', '--env', 'polybench-nfi-${VM_ENV}'],
-    bench_cmd_jvm::    self.base_cmd + ['benchmark', 'polybench:r[nfi/.*]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}', '--polybench-vm-config=jvm-standard'],
-    # Panama is not supported on native-image, once supported we can run [nfi/.*] like on jvm above (GR-46740)
-    bench_cmd_native:: self.base_cmd + ['benchmark', 'polybench:r[nfi/(downcall|upcall)_(many|prim|simple|env|void).*]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}', '--polybench-vm-config=native-standard'],
+    local nfi_panama = 'polybench:r[nfi/.*]',
+    local nfi_no_panama = 'polybench:r[nfi/(downcall|upcall)_(many|prim|simple|env|void).*]',
+    # Panama is only supported on JDK 22+
+    local nfi_jvm = if self.jdk_version <= 22 then nfi_no_panama else nfi_panama,
+    # Panama is not supported on native-image, once supported we use nfi_jvm (GR-46740)
+    local nfi_ni = nfi_no_panama,
+    bench_cmd_jvm::    self.base_cmd + ['benchmark', nfi_jvm, '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}', '--polybench-vm-config=jvm-standard'],
+    bench_cmd_native:: self.base_cmd + ['benchmark', nfi_ni,  '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}', '--polybench-vm-config=native-standard'],
     setup+: [
       self.base_cmd + ['build'],
       self.base_cmd + ['build', '--dependencies=POLYBENCH_BENCHMARKS'],

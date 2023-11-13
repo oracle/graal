@@ -32,9 +32,9 @@ import java.util.Map;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Fold.InjectedParameter;
 import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -56,8 +56,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     GraalHotSpotVMConfig(HotSpotVMConfigStore store) {
         super(store);
 
-        assert narrowKlassShift <= logKlassAlignment;
-        assert narrowOopShift <= logMinObjAlignment();
+        assert narrowKlassShift <= logKlassAlignment : Assertions.errorMessageContext("narrowKlassShift", narrowKlassShift, "logKlassAlignment", logKlassAlignment);
+        int logMinObjAlignment = logMinObjAlignment();
+        assert narrowOopShift <= logMinObjAlignment : Assertions.errorMessageContext("narrowOopShift", narrowOopShift, "logMinObjAlignment", logMinObjAlignment);
         oopEncoding = new CompressEncoding(narrowOopBase, narrowOopShift);
         klassEncoding = new CompressEncoding(narrowKlassBase, narrowKlassShift);
 
@@ -524,9 +525,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
      */
     private boolean checkNullAllocationStubs() {
         if (newInstanceOrNullAddress == 0L) {
-            assert newArrayOrNullAddress == 0L;
-            assert newMultiArrayOrNullAddress == 0L;
-            assert dynamicNewInstanceOrNullAddress == 0L;
+            assert newArrayOrNullAddress == 0L : newArrayOrNullAddress;
+            assert newMultiArrayOrNullAddress == 0L : newMultiArrayOrNullAddress;
+            assert dynamicNewInstanceOrNullAddress == 0L : dynamicNewInstanceAddress;
         } else {
             assert newArrayOrNullAddress != 0L;
             assert newMultiArrayOrNullAddress != 0L;
@@ -668,7 +669,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
                 if (markId == HotSpotMarkId.ENTRY_BARRIER_PATCH) {
                     continue;
                 }
-                reportError("Unsupported Mark " + markId);
+                GraalHotSpotVMConfigAccess.reportError("Unsupported Mark " + markId);
             }
             markId.setValue(result.intValue());
         }

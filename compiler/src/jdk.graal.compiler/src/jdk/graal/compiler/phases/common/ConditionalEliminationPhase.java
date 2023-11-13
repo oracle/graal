@@ -31,12 +31,11 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Optional;
 
-import jdk.graal.compiler.phases.BasePhase;
-import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
+
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
@@ -46,6 +45,7 @@ import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
@@ -101,7 +101,8 @@ import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
-
+import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 import jdk.vm.ci.meta.TriState;
@@ -181,7 +182,8 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             NodeMap<HIRBlock> nodeToBlock = null;
             ControlFlowGraph cfg = null;
             if (fullSchedule) {
-                cfg = ControlFlowGraph.compute(graph, true, true, true, true, true, true);
+                cfg = ControlFlowGraph.newBuilder(graph).backendBlocks(true).connectBlocks(true).computeFrequency(true).computeLoops(true).computeDominators(true).computePostdominators(
+                                true).build();
                 if (moveGuards && Options.MoveGuardsUpwards.getValue(graph.getOptions())) {
                     cfg.visitDominatorTree(new MoveGuardsUpwards(), graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL));
                 }
@@ -194,7 +196,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                 blockToNodes = r.getBlockToNodesMap();
                 nodeToBlock = r.getNodeToBlockMap();
             } else {
-                cfg = ControlFlowGraph.compute(graph, true, true, true, true);
+                cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeDominators(true).computePostdominators(true).computeFrequency(true).build();
                 nodeToBlock = cfg.getNodeToBlock();
                 blockToNodes = getBlockToNodes(cfg);
             }
@@ -867,7 +869,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             if (guard instanceof DeoptimizingGuard) {
                 // For <PI proven always true> no need since both optimizable classes of logic nodes
                 // are handled under the unary and binary cases above
-                assert ((DeoptimizingGuard) guard).getCondition() == condition;
+                assert ((DeoptimizingGuard) guard).getCondition() == condition : Assertions.errorMessageContext("guard", guard, "condition", condition);
                 pendingTests.push((DeoptimizingGuard) guard);
             }
             registerCondition(condition, negated, guard);

@@ -28,10 +28,13 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_16;
 
 import java.util.EnumSet;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
@@ -49,8 +52,6 @@ import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.nodes.util.ConstantReflectionUtil;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
@@ -309,7 +310,9 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
             long arrayOffsetConstant = arrayBaseOffsetBytesConstant / stride.value;
 
             int arrayLengthConstant = arrayLength.asJavaConstant().asInt();
-            assert arrayLengthConstant * stride.value <= actualArrayLength * constantArrayKind.getByteCount();
+            assert arrayLengthConstant * stride.value <= actualArrayLength * constantArrayKind.getByteCount() : Assertions.errorMessageContext("arrayLengthConstant", arrayLengthConstant,
+                            "stride",
+                            stride.value, "actualLength", actualArrayLength);
 
             int fromIndexConstant = fromIndex.asJavaConstant().asInt();
             int[] valuesConstant = new int[searchValues.size()];

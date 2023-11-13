@@ -30,6 +30,7 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -46,7 +47,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import jdk.graal.compiler.nodes.spi.Virtualizable;
 import jdk.graal.compiler.nodes.spi.VirtualizerTool;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
-
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
@@ -129,12 +129,13 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
         if (!(valueStamp instanceof PrimitiveStamp)) {
             return value;
         }
-        assert valueStamp.getStackKind() == JavaKind.Long;
+        assert valueStamp.getStackKind() == JavaKind.Long : Assertions.errorMessage(value, tool);
         return narrowForOSRStaticAccess(tool, value);
     }
 
     private ValueNode narrowForOSRStaticAccess(VirtualizerTool tool, ValueNode value) {
-        assert value.getStackKind() == JavaKind.Long && accessKind.isPrimitive();
+        assert value.getStackKind() == JavaKind.Long : value;
+        assert accessKind.isPrimitive();
         if (accessKind == JavaKind.Boolean) {
             // Special handling for boolean slots.
             // Canonically equivalent to:
@@ -154,7 +155,7 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
         }
         int intBits = JavaKind.Int.getBitCount();
         if (targetBits < intBits) {
-            assert accessKind == JavaKind.Byte;
+            assert accessKind == JavaKind.Byte : Assertions.errorMessage(accessKind, value, tool);
             /*
              * Narrowed too much, need to make a stack value. Note that the narrow + sign-extends
              * provides the correct stamp for the value (i32[-128, 127]). A single narrow to int

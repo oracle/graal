@@ -29,15 +29,15 @@ import static jdk.graal.compiler.debug.DebugOptions.LogVerbose;
 import jdk.graal.compiler.core.gen.NodeLIRBuilder;
 import jdk.graal.compiler.core.match.MatchPattern.MatchResultCode;
 import jdk.graal.compiler.core.match.MatchPattern.Result;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.GraalGraphError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodeinfo.Verbosity;
-
-import jdk.vm.ci.meta.Value;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
+import jdk.vm.ci.meta.Value;
 
 /**
  * A named {@link MatchPattern} along with a {@link MatchGenerator} that can be evaluated to replace
@@ -87,7 +87,7 @@ public class MatchStatement {
      */
     public boolean generate(NodeLIRBuilder builder, int index, Node node, HIRBlock block, StructuredGraph.ScheduleResult schedule) {
         DebugContext debug = node.getDebug();
-        assert index == schedule.getBlockToNodesMap().get(block).indexOf(node);
+        assert index == schedule.getBlockToNodesMap().get(block).indexOf(node) : Assertions.errorMessage(index, block, node, schedule);
         // Check that the basic shape matches
         Result result = pattern.matchShape(node, this);
         if (result != Result.OK) {

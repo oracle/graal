@@ -29,6 +29,7 @@ import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -40,7 +41,6 @@ import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
 import jdk.vm.ci.code.CodeUtil;
 
 @NodeInfo(shortName = "/")
@@ -163,7 +163,7 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
         }
         IntegerStamp dividendStamp = (IntegerStamp) dividend.stamp(NodeView.DEFAULT);
         IntegerStamp divisorStamp = (IntegerStamp) divisor.stamp(NodeView.DEFAULT);
-        assert dividendStamp.getBits() == divisorStamp.getBits();
+        assert dividendStamp.getBits() == divisorStamp.getBits() : Assertions.errorMessage(dividend, divisor);
         long minValue = NumUtil.minValue(dividendStamp.getBits());
         return !(dividendStamp.contains(minValue) && divisorStamp.contains(-1));
     }

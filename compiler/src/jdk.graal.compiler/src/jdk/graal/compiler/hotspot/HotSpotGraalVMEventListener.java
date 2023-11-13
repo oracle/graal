@@ -31,7 +31,6 @@ import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
@@ -51,7 +50,7 @@ public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {
     }
 
     void setRuntime(HotSpotGraalRuntime runtime) {
-        assert this.runtime == null || this.runtime == runtime;
+        assert this.runtime == null || this.runtime == runtime : runtime;
         this.runtime = runtime;
     }
 

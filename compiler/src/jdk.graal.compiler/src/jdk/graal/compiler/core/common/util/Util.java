@@ -60,10 +60,10 @@ public class Util {
             while (list.size() < pos + 1) {
                 list.add(filler);
             }
-            assert list.size() == pos + 1;
+            assert list.size() == pos + 1 : "Size " + list.size() + " must be pos+1, pos=" + pos;
         }
 
-        assert list.size() >= pos + 1;
+        assert list.size() >= pos + 1 : "Size " + list.size() + " must be pos+1, pos=" + pos;
         list.set(pos, x);
     }
 

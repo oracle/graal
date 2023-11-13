@@ -25,19 +25,22 @@
 
 package jdk.graal.compiler.core.aarch64;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
+
+import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
+import jdk.graal.compiler.asm.aarch64.AArch64Assembler.ExtendType;
+import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.gen.NodeMatchRules;
 import jdk.graal.compiler.core.match.ComplexMatchResult;
 import jdk.graal.compiler.core.match.MatchRule;
 import jdk.graal.compiler.core.match.MatchableNode;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
-import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
-import jdk.graal.compiler.asm.aarch64.AArch64Assembler.ExtendType;
-import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LabelRef;
 import jdk.graal.compiler.lir.Variable;
@@ -71,7 +74,6 @@ import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
 import jdk.graal.compiler.nodes.calc.XorNode;
 import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.memory.MemoryAccess;
-
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CodeUtil;
@@ -154,7 +156,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     }
 
     private static boolean isSupportedExtendedAddSubShift(IntegerConvertNode<?> node, int clampedShiftAmt) {
-        assert clampedShiftAmt >= 0;
+        assert NumUtil.assertNonNegativeInt(clampedShiftAmt);
         if (clampedShiftAmt <= 4) {
             switch (node.getInputBits()) {
                 case Byte.SIZE:
@@ -208,7 +210,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
      */
     private static int getClampedShiftAmt(ShiftNode<?> op) {
         int clampMask = op.getShiftAmountMask();
-        assert clampMask == 63 || clampMask == 31;
+        assert clampMask == 63 || clampMask == 31 : clampMask;
         return op.getY().asJavaConstant().asInt() & clampMask;
     }
 
@@ -246,7 +248,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
      */
     private ComplexMatchResult emitBitFieldHelper(JavaKind kind, AArch64BitFieldOp.BitFieldOpCode op, ValueNode value, int lsb, int width) {
         assert isNumericInteger(value);
-        assert lsb + width <= kind.getBitCount();
+        assert lsb + width <= kind.getBitCount() : lsb + " " + kind;
 
         return builder -> {
             Value a = operand(value);
@@ -269,7 +271,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
      * @param width The number of bits to extract from value.
      */
     private ComplexMatchResult emitBitFieldInsert(JavaKind kind, AArch64BitFieldOp.BitFieldOpCode op, ValueNode value, int lsb, int width) {
-        assert op == BitFieldOpCode.SBFIZ || op == BitFieldOpCode.UBFIZ;
+        assert op == BitFieldOpCode.SBFIZ || op == BitFieldOpCode.UBFIZ : op;
         return emitBitFieldHelper(kind, op, value, lsb, width);
     }
 
@@ -284,12 +286,12 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
      * @param width The number of bits to extract from value.
      */
     private ComplexMatchResult emitBitFieldExtract(JavaKind kind, AArch64BitFieldOp.BitFieldOpCode op, ValueNode value, int lsb, int width) {
-        assert op == BitFieldOpCode.SBFX || op == BitFieldOpCode.UBFX;
+        assert op == BitFieldOpCode.SBFX || op == BitFieldOpCode.UBFX : op;
         return emitBitFieldHelper(kind, op, value, lsb, width);
     }
 
     private ComplexMatchResult emitExtendedAddSubShift(BinaryNode op, ValueNode x, ValueNode y, ExtendType extType, int shiftAmt) {
-        assert op instanceof AddNode || op instanceof SubNode;
+        assert op instanceof AddNode || op instanceof SubNode : op;
         return builder -> {
             AllocatableValue src1 = gen.asAllocatable(operand(x));
             AllocatableValue src2 = moveSp(gen.asAllocatable(operand(y)));
@@ -352,7 +354,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     public ComplexMatchResult mergePairShiftIntoAddSub(BinaryNode op, RightShiftNode signExt, ValueNode x, ValueNode y) {
         int signExtendAmt = getClampedShiftAmt(signExt);
         int opSize = op.getStackKind().getBitCount();
-        assert opSize == 32 || opSize == 64;
+        assert opSize == 32 || opSize == 64 : opSize;
 
         int remainingBits = opSize - signExtendAmt;
         if (remainingBits != 8 && remainingBits != 16 && remainingBits != 32) {
@@ -374,7 +376,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         }
         int signExtendAmt = getClampedShiftAmt(signExt);
         int opSize = op.getStackKind().getBitCount();
-        assert opSize == 32 || opSize == 64;
+        assert opSize == 32 || opSize == 64 : opSize;
 
         int remainingBits = opSize - signExtendAmt;
         if (remainingBits != 8 && remainingBits != 16 && remainingBits != 32) {
@@ -410,7 +412,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         if (toBits != 64) {
             return null;
         }
-        assert fromBits <= toBits;
+        assert fromBits <= toBits : fromBits + " " + toBits;
         ExtendType extendType = getZeroExtendType(fromBits);
 
         ValueNode base = addP.getBase();
@@ -451,7 +453,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
          */
         int width = Math.min(maskSize, shiftSize - shiftAmt);
         if (width == finalOpKind.getBitCount()) {
-            assert maskSize == finalOpKind.getBitCount() && shiftAmt == 0;
+            assert maskSize == finalOpKind.getBitCount() && shiftAmt == 0 : maskSize + " " + finalOpKind;
             // original value is unaffected
             return builder -> operand(value);
         } else if (shift instanceof UnsignedRightShiftNode) {
@@ -496,7 +498,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         int inputBits = extend.getInputBits();
         int resultBits = extend.getResultBits();
         JavaKind kind = shift.getStackKind();
-        assert kind.getBitCount() == resultBits;
+        assert kind.getBitCount() == resultBits : Assertions.errorMessage(shift, value, kind);
 
         int lsb = getClampedShiftAmt(shift);
         /*
@@ -505,7 +507,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
          * extension takes place.
          */
         int width = Math.min(inputBits, resultBits - lsb);
-        assert width >= 1 && width <= resultBits - lsb;
+        assert width >= 1 && width <= resultBits - lsb : width + " " + resultBits;
 
         return emitBitFieldInsert(kind, BitFieldOpCode.SBFIZ, value, lsb, width);
     }
@@ -531,7 +533,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
          * dependent on the maximum of the two shifts.
          */
         int width = opSize - Math.max(lshiftAmt, rshiftAmt);
-        assert width > 1 || width <= opSize;
+        assert width > 1 || width <= opSize : width + " " + opSize;
 
         if (width == opSize) {
             // this means that no shifting was performed: can directly return value
@@ -567,12 +569,12 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(Add=op (UnsignedRightShift=x src Constant) (LeftShift=y src Constant))")
     public ComplexMatchResult rotationConstant(ValueNode op, ValueNode x, ValueNode y, ValueNode src) {
         assert isNumericInteger(src);
-        assert src.getStackKind() == op.getStackKind() && op.getStackKind() == x.getStackKind();
+        assert src.getStackKind() == op.getStackKind() && op.getStackKind() == x.getStackKind() : src + " " + op + " " + x;
 
         int shiftAmt1 = getClampedShiftAmt((ShiftNode<?>) x);
         int shiftAmt2 = getClampedShiftAmt((ShiftNode<?>) y);
         if (shiftAmt1 + shiftAmt2 == 0 && op instanceof OrNode) {
-            assert shiftAmt1 == 0 && shiftAmt2 == 0;
+            assert shiftAmt1 == 0 && shiftAmt2 == 0 : shiftAmt1 + " " + shiftAmt2;
             /* No shift performed: for or operation, this is equivalent to original value */
             return builder -> operand(src);
         } else if (src.getStackKind().getBitCount() == shiftAmt1 + shiftAmt2) {
@@ -601,7 +603,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(Or (UnsignedRightShift=x src shiftAmount) (LeftShift src (Negate=y shiftAmount)))")
     public ComplexMatchResult rotationExpander(ValueNode src, ValueNode shiftAmount, ValueNode x, ValueNode y) {
         assert isNumericInteger(src);
-        assert shiftAmount.getStackKind().getBitCount() == 32;
+        assert shiftAmount.getStackKind().getBitCount() == 32 : Assertions.errorMessage(shiftAmount);
 
         if (y instanceof SubNode || y instanceof AddNode) {
             BinaryNode binary = (BinaryNode) y;
@@ -611,7 +613,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
              * delta within a shift) must be 0.
              */
             int opSize = src.getStackKind().getBitCount();
-            assert opSize == 32 || opSize == 64;
+            assert opSize == 32 || opSize == 64 : opSize;
             long clampedDelta = delta.asJavaConstant().asInt() & (opSize - 1);
             if (clampedDelta != 0) {
                 return null;
@@ -744,7 +746,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
      */
     private static boolean isI2LMultiply(MulNode mul, SignExtendNode x, SignExtendNode y) {
         if (mul.getStackKind() == JavaKind.Long) {
-            assert x.getResultBits() == Long.SIZE && y.getResultBits() == Long.SIZE;
+            assert x.getResultBits() == Long.SIZE && y.getResultBits() == Long.SIZE : x + " " + y;
             return x.getInputBits() == Integer.SIZE && y.getInputBits() == Integer.SIZE;
         }
         return false;

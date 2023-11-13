@@ -32,6 +32,7 @@ import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
@@ -51,7 +52,6 @@ import jdk.graal.compiler.nodes.spi.Virtualizable;
 import jdk.graal.compiler.nodes.spi.VirtualizerTool;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -248,7 +248,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
                 if (n instanceof PiNode && n != self) {
                     PiNode otherPi = (PiNode) n;
                     if (otherPi.guard != guard) {
-                        assert otherPi.object() == guard;
+                        assert otherPi.object() == guard : Assertions.errorMessageContext("object", object, "otherPi", otherPi, "guard", guard);
                         /*
                          * The otherPi is unrelated because it uses this.guard as object but not as
                          * guard.

@@ -133,7 +133,7 @@ public abstract class InductionVariable {
      * this = C * ref + n, returns C.
      */
     public long constantScale(InductionVariable ref) {
-        assert this == ref;
+        assert this == ref : this + "!=" + ref;
         return 1;
     }
 
@@ -177,7 +177,7 @@ public abstract class InductionVariable {
         if (this instanceof BasicInductionVariable) {
             return (BasicInductionVariable) this;
         }
-        assert this instanceof DerivedInductionVariable;
+        assert this instanceof DerivedInductionVariable : this;
         return ((DerivedInductionVariable) this).getBase().getRootIV();
     }
 

@@ -26,10 +26,10 @@ package jdk.graal.compiler.lir.gen;
 
 import java.util.EnumSet;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRValueUtil;
-import jdk.graal.compiler.lir.StandardOp;
-
+import jdk.graal.compiler.lir.StandardOp.LoadConstantOp;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.Value;
@@ -73,14 +73,14 @@ public final class VerifyingMoveFactory extends MoveFactory {
     @Override
     public LIRInstruction createLoad(AllocatableValue result, Constant input) {
         LIRInstruction inst = inner.createLoad(result, input);
-        assert StandardOp.LoadConstantOp.isLoadConstantOp(inst) && checkResult(inst, result, null);
+        assert LoadConstantOp.isLoadConstantOp(inst) && checkResult(inst, result, null) : Assertions.errorMessage(inst, result);
         return inst;
     }
 
     @Override
     public LIRInstruction createStackLoad(AllocatableValue result, Constant input) {
         LIRInstruction inst = inner.createStackLoad(result, input);
-        assert StandardOp.LoadConstantOp.isLoadConstantOp(inst) && checkResult(inst, result, null);
+        assert LoadConstantOp.isLoadConstantOp(inst) && checkResult(inst, result, null) : Assertions.errorMessage(inst, result);
         return inst;
     }
 

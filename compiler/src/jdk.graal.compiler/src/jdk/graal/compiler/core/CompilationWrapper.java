@@ -95,7 +95,7 @@ public abstract class CompilationWrapper<T> {
          * least verbose action.
          */
         ExceptionAction quieter() {
-            assert ExceptionAction.Silent.ordinal() == 0;
+            assert ExceptionAction.Silent.ordinal() == 0 : "Silent must be first";
             int index = Math.max(ordinal() - 1, 0);
             return VALUES[index];
         }

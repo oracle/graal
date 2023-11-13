@@ -30,13 +30,13 @@ import java.util.EnumSet;
 
 import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.FieldsScanner;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstruction.OperandFlag;
 import jdk.graal.compiler.lir.LIRInstruction.OperandMode;
 import jdk.graal.compiler.lir.StandardOp.LoadConstantOp;
 import jdk.graal.compiler.lir.StandardOp.MoveOp;
 import jdk.graal.compiler.lir.StandardOp.ValueMoveOp;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Value;
 
@@ -176,7 +176,7 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
 
             if (field.getAnnotation(Opcode.class) != null) {
                 assert opcodeConstant == null && opcodeField == null : "Can have only one Opcode definition: " + type;
-                assert data.get(data.size() - 1).offset == offset;
+                assert data.get(data.size() - 1).offset == offset : Assertions.errorMessage(data.get(data.size() - 1).offset, offset);
                 opcodeField = data.get(data.size() - 1);
             }
         }

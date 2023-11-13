@@ -404,7 +404,7 @@ public final class Interval {
         }
 
         public void add(int usePos, RegisterPriority registerPriority) {
-            assert list.size() == 0 || usePos(size() - 1) > usePos;
+            assert list.size() == 0 || usePos(size() - 1) > usePos : Assertions.errorMessage(list, usePos(size() - 1), usePos);
             list.add(usePos);
             list.add(registerPriority.ordinal());
         }
@@ -1117,10 +1117,10 @@ public final class Interval {
 
         if (Assertions.detailedAssertionsEnabled(allocator.getOptions())) {
             for (int i = 0; i < usePosList.size(); i++) {
-                assert usePosList.usePos(i) < splitPos;
+                assert usePosList.usePos(i) < splitPos : Assertions.errorMessageContext("usPosList", usePosList, "splitPos", splitPos);
             }
             for (int i = 0; i < result.usePosList.size(); i++) {
-                assert result.usePosList.usePos(i) >= splitPos;
+                assert result.usePosList.usePos(i) >= splitPos : Assertions.errorMessageContext("usePosList", usePosList, "splitPos", splitPos);
             }
         }
         return result;

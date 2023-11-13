@@ -24,13 +24,13 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.zr;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.graal.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.ADDSUBTRACT;
 import static jdk.graal.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.LOGICAL;
 import static jdk.graal.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.NONE;
 import static jdk.graal.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.SHIFT;
+import static jdk.vm.ci.aarch64.AArch64.zr;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize;
 import jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
@@ -38,11 +38,11 @@ import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
-
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
@@ -143,9 +143,9 @@ public enum AArch64ArithmeticOp {
         private static boolean checkParameters(AllocatableValue result, AllocatableValue input) {
             int dstSize = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             int srcSize = input.getPlatformKind().getSizeInBytes() * Byte.SIZE;
-            assert dstSize == 32 || dstSize == 64;
+            assert dstSize == 32 || dstSize == 64 : dstSize;
             // input must have at least as many meaningful bits as the dst
-            assert dstSize <= srcSize;
+            assert dstSize <= srcSize : Assertions.errorMessageContext("result", result, "src", input);
             return true;
         }
 
@@ -231,23 +231,24 @@ public enum AArch64ArithmeticOp {
                     assert AArch64MacroAssembler.isLogicalImmediate(dstSize, immediate);
                     break;
             }
-            assert dstSize == 32 || dstSize == 64;
+            assert dstSize == 32 || dstSize == 64 : dstSize;
             if (op == AND || op == ANDS) {
                 /*
                  * Either the input must have at least as many meaningful bits as the dst or the
                  * immediate is smaller than the src.
                  */
-                assert dstSize <= srcSize || (NumUtil.getNbitNumberLong(srcSize) & immediate) == immediate;
+                assert dstSize <= srcSize || (NumUtil.getNbitNumberLong(srcSize) & immediate) == immediate : Assertions.errorMessageContext("dstSize", dstSize, "srcSize", srcSize, "immediate",
+                                immediate);
             } else {
                 // input must have at least as many meaningful bits as the dst
-                assert dstSize <= srcSize;
+                assert dstSize <= srcSize : Assertions.errorMessageContext("dstSize", dstSize, "srcSize", srcSize);
             }
             return true;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            assert op.category != NONE;
+            assert op.category != NONE : op.category;
             Register dst = asRegister(result);
             Register src = asRegister(a);
             int size = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
@@ -333,7 +334,7 @@ public enum AArch64ArithmeticOp {
             switch (op) {
                 case SMNEGL:
                 case SMULL:
-                    assert dstSize == 64 && src1Size == 32 && src2Size == 32;
+                    assert dstSize == 64 && src1Size == 32 && src2Size == 32 : Assertions.errorMessageContext("a", a, "b", b, "dstSize", dstSize, "src2Size", src2Size);
                     break;
                 case FADD:
                 case FSUB:
@@ -341,23 +342,23 @@ public enum AArch64ArithmeticOp {
                 case FDIV:
                 case FMAX:
                 case FMIN:
-                    assert dstSize == 32 || dstSize == 64;
+                    assert dstSize == 32 || dstSize == 64 : Assertions.errorMessageContext("a", a, "b", b, "dstSize", dstSize);
                     // inputs must be same size as output
-                    assert dstSize == src1Size && dstSize == src2Size;
+                    assert dstSize == src1Size && dstSize == src2Size : Assertions.errorMessageContext("a", a, "b", b, "dstSize", dstSize, "src2Size", src2Size);
                     break;
                 case LSL:
                 case LSR:
                 case ASR:
                 case ROR:
-                    assert dstSize == 32 || dstSize == 64;
+                    assert dstSize == 32 || dstSize == 64 : Assertions.errorMessageContext("a", a, "b", b, "dstSize", dstSize);
                     // src1 must have at least as many meaningful bits as the dst
                     // src2's size doesn't matter, as it will be clamped
-                    assert dstSize <= src1Size;
+                    assert dstSize <= src1Size : Assertions.errorMessageContext("dstSize", dstSize, "src1Size", src1Size);
                     break;
                 default:
-                    assert dstSize == 32 || dstSize == 64;
+                    assert dstSize == 32 || dstSize == 64 : dstSize;
                     // inputs must have at least as many meaningful bits as the dst
-                    assert dstSize <= src1Size && dstSize <= src2Size;
+                    assert dstSize <= src1Size && dstSize <= src2Size : Assertions.errorMessageContext("dstSize", dstSize, "src2Size", src2Size);
                     break;
             }
             return true;
@@ -576,8 +577,8 @@ public enum AArch64ArithmeticOp {
             int dstSize = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             int src1Size = src1.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             int src2Size = src2.getPlatformKind().getSizeInBytes() * Byte.SIZE;
-            assert dstSize == 32 || dstSize == 64;
-            assert dstSize == src1Size && dstSize == src2Size;
+            assert dstSize == 32 || dstSize == 64 : Assertions.errorMessageContext("result", result, "src1", src1, "src2", src2, "src2Size", src2Size);
+            assert dstSize == src1Size && dstSize == src2Size : Assertions.errorMessageContext("result", result, "src1", src1, "src2", src2, "src2Size", src2Size);
             return true;
         }
 
@@ -645,27 +646,27 @@ public enum AArch64ArithmeticOp {
             int dstSize = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             int src1Size = src1.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             int src2Size = src2.getPlatformKind().getSizeInBytes() * Byte.SIZE;
-            assert op == ADD || op == SUB;
-            assert shiftAmt >= 0 && shiftAmt <= 4;
-            assert dstSize == 32 || dstSize == 64;
-            assert dstSize <= src1Size;
+            assert op == ADD || op == SUB : op;
+            assert shiftAmt >= 0 && shiftAmt <= 4 : Assertions.errorMessageContext("shiftAmt", shiftAmt);
+            assert dstSize == 32 || dstSize == 64 : Assertions.errorMessageContext("dstSize", dstSize);
+            assert dstSize <= src1Size : Assertions.errorMessageContext("dstSize", dstSize, "src1Size", src1Size);
             switch (extendType) {
                 case UXTB:
                 case SXTB:
-                    assert src2Size >= 8;
+                    assert src2Size >= 8 : Assertions.errorMessageContext("result", result, "src1", src1, "src2", src2, "src2Size", src2Size);
                     break;
                 case UXTH:
                 case SXTH:
-                    assert src2Size >= 16;
+                    assert src2Size >= 16 : Assertions.errorMessageContext("result", result, "src1", src1, "src2", src2, "src2Size", src2Size);
                     break;
                 case UXTW:
                 case SXTW:
-                    assert src2Size >= 32;
+                    assert src2Size >= 32 : Assertions.errorMessageContext("result", result, "src1", src1, "src2", src2, "src2Size", src2Size);
                     break;
                 case UXTX:
                 case SXTX:
-                    assert dstSize == 64;
-                    assert src2Size == 64;
+                    assert dstSize == 64 : Assertions.errorMessageContext("result", result, "src1", src1, "src2", src2, "src2Size", src2Size, "dstSize", dstSize);
+                    assert src2Size == 64 : Assertions.errorMessageContext("result", result, "src1", src1, "src2", src2, "src2Size", src2Size, "dstSize", dstSize);
                     break;
             }
             return true;
@@ -717,17 +718,21 @@ public enum AArch64ArithmeticOp {
             switch (op) {
                 case SMADDL:
                 case SMSUBL:
-                    assert dstSize == 64 && src3Size == 64;
-                    assert src1Size == 32 && src2Size == 32;
+                    assert dstSize == 64 && src3Size == 64 : Assertions.errorMessageContext("result", result, "src1", src1, "src2", src2, "src2Size", src2Size, "src3", src3, "src3Size",
+                                    src3Size);
+                    assert src1Size == 32 && src2Size == 32 : Assertions.errorMessageContext("result", result, "src1", src1, "src2", src2, "src2Size", src2Size, "src3", src3, "src3Size",
+                                    src3Size);
                     break;
                 case MADD:
                 case MSUB:
-                    assert dstSize == 64 || dstSize == 32;
-                    assert dstSize <= src1Size && dstSize <= src2Size && dstSize <= src3Size;
+                    assert dstSize == 64 || dstSize == 32 : Assertions.errorMessageContext("result", result, "src1", src1, "src2", src2, "src2Size", src2Size, "src3", src3, "src3Size", src3Size);
+                    assert dstSize <= src1Size && dstSize <= src2Size && dstSize <= src3Size : Assertions.errorMessageContext("result", result, "src1", src1, "src2", src2, "src2Size", src2Size,
+                                    "src3", src3, "src3Size", src3Size);
                     break;
                 case FMADD:
-                    assert dstSize == 64 || dstSize == 32;
-                    assert dstSize == src1Size && dstSize == src2Size && dstSize == src3Size;
+                    assert dstSize == 64 || dstSize == 32 : Assertions.errorMessageContext("result", result, "src1", src1, "src2", src2, "src2Size", src2Size, "src3", src3, "src3Size", src3Size);
+                    assert dstSize == src1Size && dstSize == src2Size && dstSize == src3Size : Assertions.errorMessageContext("result", result, "src1", src1, "src2", src2, "src2Size", src2Size,
+                                    "src3", src3, "src3Size", src3Size);
                     break;
                 default:
                     throw GraalError.shouldNotReachHereUnexpectedValue(op); // ExcludeFromJacocoGeneratedReport
@@ -737,7 +742,7 @@ public enum AArch64ArithmeticOp {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            assert src1.getPlatformKind() == src2.getPlatformKind();
+            assert src1.getPlatformKind() == src2.getPlatformKind() : Assertions.errorMessageContext("result", result, "src1", src1, "src2", src2);
             int dstSize = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             int src1Size = src1.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             int src2Size = src2.getPlatformKind().getSizeInBytes() * Byte.SIZE;
@@ -753,13 +758,17 @@ public enum AArch64ArithmeticOp {
                     masm.fmadd(dstSize, asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
                     break;
                 case SMADDL:
-                    assert dstSize == 64 && src3Size == 64;
-                    assert src1Size == 32 && src2Size == 32;
+                    assert dstSize == 64 && src3Size == 64 : Assertions.errorMessageContext("result", result, "src1", src1, "src2", src2, "src2Size", src2Size, "src3", src3, "src3Size",
+                                    src3Size);
+                    assert src1Size == 32 && src2Size == 32 : Assertions.errorMessageContext("result", result, "src1", src1, "src2", src2, "src2Size", src2Size, "src3", src3, "src3Size",
+                                    src3Size);
                     masm.smaddl(asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
                     break;
                 case SMSUBL:
-                    assert dstSize == 64 && src3Size == 64;
-                    assert src1Size == 32 && src2Size == 32;
+                    assert dstSize == 64 && src3Size == 64 : Assertions.errorMessageContext("result", result, "src1", src1, "src2", src2, "src2Size", src2Size, "src3", src3, "src3Size",
+                                    src3Size);
+                    assert src1Size == 32 && src2Size == 32 : Assertions.errorMessageContext("result", result, "src1", src1, "src2", src2, "src2Size", src2Size, "src3", src3, "src3Size",
+                                    src3Size);
                     masm.smsubl(asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
                     break;
                 default:

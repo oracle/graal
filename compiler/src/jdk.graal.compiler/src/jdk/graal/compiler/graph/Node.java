@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.graph;
 
+import static jdk.graal.compiler.graph.Graph.isNodeModificationCountsEnabled;
 import static jdk.graal.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 
 import java.lang.annotation.ElementType;
@@ -44,9 +45,12 @@ import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Edges.Type;
+import jdk.graal.compiler.graph.Graph.NodeEventListener;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.graph.iterators.NodePredicate;
 import jdk.graal.compiler.nodeinfo.InputType;
@@ -55,7 +59,6 @@ import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.services.Services;
 import sun.misc.Unsafe;
 
@@ -309,7 +312,7 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     final void init(NodeClass<? extends Node> c) {
-        assert c.getJavaClass() == this.getClass();
+        assert c.getJavaClass() == this.getClass() : Assertions.errorMessageContext("c", c, "this", this);
         this.nodeClass = c;
         id = INITIAL_ID;
         extraUsages = EMPTY_ARRAY;
@@ -515,7 +518,7 @@ public abstract class Node implements Cloneable, Formattable {
         } else if (destIndex == 1) {
             movUsageFromEndToIndexOne();
         } else {
-            assert destIndex == 0;
+            assert destIndex == 0 : destIndex;
             movUsageFromEndToIndexZero();
         }
     }
@@ -585,27 +588,27 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     public final int modCount() {
-        if (Graph.isNodeModificationCountsEnabled() && graph != null) {
+        if (isNodeModificationCountsEnabled() && graph != null) {
             return graph.getNodeModCount(this);
         }
         return 0;
     }
 
     final void incModCount() {
-        if (Graph.isNodeModificationCountsEnabled() && graph != null) {
+        if (isNodeModificationCountsEnabled() && graph != null) {
             graph.incNodeModCount(this);
         }
     }
 
     final int usageModCount() {
-        if (Graph.isNodeModificationCountsEnabled() && graph != null) {
+        if (isNodeModificationCountsEnabled() && graph != null) {
             return graph.nodeUsageModCount(this);
         }
         return 0;
     }
 
     final void incUsageModCount() {
-        if (Graph.isNodeModificationCountsEnabled() && graph != null) {
+        if (isNodeModificationCountsEnabled() && graph != null) {
             graph.incNodeUsageModCount(this);
         }
     }
@@ -1072,7 +1075,7 @@ public abstract class Node implements Cloneable, Formattable {
     private void maybeNotifyInputChanged(Node node) {
         if (graph != null) {
             assert !graph.isFrozen();
-            Graph.NodeEventListener listener = graph.nodeEventListener;
+            NodeEventListener listener = graph.nodeEventListener;
             if (listener != null) {
                 listener.event(Graph.NodeEvent.INPUT_CHANGED, node);
             }
@@ -1081,14 +1084,14 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Iterates over each {@link Graph.NodeEventListener} attached to {@code this.graph()} if
+     * Iterates over each {@link NodeEventListener} attached to {@code this.graph()} if
      * {@code node.isAlive()} and notifies the listener that {@code node} has had its last usage
      * removed.
      */
     public void maybeNotifyZeroUsages(Node node) {
         if (graph != null && node.isAlive()) {
             assert !graph.isFrozen();
-            Graph.NodeEventListener listener = graph.nodeEventListener;
+            NodeEventListener listener = graph.nodeEventListener;
             if (listener != null) {
                 listener.event(Graph.NodeEvent.ZERO_USAGES, node);
             }
@@ -1305,8 +1308,8 @@ public abstract class Node implements Cloneable, Formattable {
             newNode = (Node) UNSAFE.allocateInstance(getClass());
             newNode.nodeClass = nodeClassTmp;
             nodeClassTmp.getData().copy(this, newNode);
-            copyOrClearEdgesForClone(newNode, Edges.Type.Inputs, edgesToCopy);
-            copyOrClearEdgesForClone(newNode, Edges.Type.Successors, edgesToCopy);
+            copyOrClearEdgesForClone(newNode, Type.Inputs, edgesToCopy);
+            copyOrClearEdgesForClone(newNode, Type.Successors, edgesToCopy);
         } catch (Exception e) {
             throw new GraalGraphError(e).addContext(this);
         }

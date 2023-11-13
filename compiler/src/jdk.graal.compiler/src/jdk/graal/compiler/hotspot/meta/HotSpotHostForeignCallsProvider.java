@@ -105,6 +105,7 @@ import org.graalvm.collections.EconomicMap;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
@@ -325,17 +326,25 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
 
     private void registerStubCallFunctions(OptionValues options, HotSpotProviders providers, GraalHotSpotVMConfig config) {
         long invokeJavaMethodAddress = config.invokeJavaMethodAddress;
-        if (invokeJavaMethodAddress == 0 || IS_IN_NATIVE_IMAGE) {
+        if (invokeJavaMethodAddress == 0) {
             return;
         }
-        // These functions are only used for testing purposes but their registration also ensures
-        // that libgraal has support for InvokeJavaMethodStub built into the image, which is
-        // required for support of Truffle. Because of the lazy initialization of this support in
-        // Truffle we rely on this code to ensure the support is built into the image.
-        for (JavaKind kind : TestForeignCalls.KINDS) {
-            HotSpotForeignCallDescriptor desc = TestForeignCalls.createStubCallDescriptor(kind);
-            ResolvedJavaMethod method = findMethod(providers.getMetaAccess(), TestForeignCalls.class, desc.getName());
-            invokeJavaMethodStub(options, providers, desc, invokeJavaMethodAddress, method);
+        registerForeignCall(INVOKE_STATIC_METHOD_ONE_ARG, invokeJavaMethodAddress, NativeCall);
+
+        if (!IS_IN_NATIVE_IMAGE) {
+            /*
+             * These functions are only used for testing purposes but their registration also
+             * ensures that libgraal has support for InvokeJavaMethodStub built into the image,
+             * which is required for support of Truffle. Because of the lazy initialization of this
+             * support in Truffle we rely on this code to ensure the support is built into the
+             * image. In particular this results in InvokeJavaMethodStub being in the image but not
+             * TestForeignCalls itself.
+             */
+            for (JavaKind kind : TestForeignCalls.KINDS) {
+                HotSpotForeignCallDescriptor desc = TestForeignCalls.createStubCallDescriptor(kind);
+                ResolvedJavaMethod method = findMethod(providers.getMetaAccess(), TestForeignCalls.class, desc.getName());
+                invokeJavaMethodStub(options, providers, desc, invokeJavaMethodAddress, method);
+            }
         }
     }
 
@@ -356,7 +365,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
     }
 
     private ForeignCallDescriptor buildDescriptor(JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, LocationIdentity killedLocation, long routine) {
-        assert !uninit || kind == JavaKind.Object;
+        assert !uninit || kind == JavaKind.Object : Assertions.errorMessage(kind, aligned, disjoint, uninit, killedLocation, routine);
         boolean killAny = killedLocation.isAny();
         boolean killInit = killedLocation.isInit();
         String name = kind + (aligned ? "Aligned" : "") + (disjoint ? "Disjoint" : "") + (uninit ? "Uninit" : "") + "Arraycopy" + (killInit ? "KillInit" : killAny ? "KillAny" : "");
@@ -408,14 +417,14 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         registerArraycopyDescriptor(descMap, kind, true, true, uninit, arrayLocation, alignedDisjointRoutine);
 
         if (kind.isPrimitive()) {
-            assert !uninit;
+            assert !uninit : Assertions.errorMessage(kind, routine, alignedRoutine, disjointRoutine, alignedDisjointRoutine, uninit);
             EconomicMap<Long, ForeignCallDescriptor> killInitDescMap = EconomicMap.create();
             registerArraycopyDescriptor(killInitDescMap, kind, false, false, uninit, LocationIdentity.init(), routine);
             registerArraycopyDescriptor(killInitDescMap, kind, true, false, uninit, LocationIdentity.init(), alignedRoutine);
             registerArraycopyDescriptor(killInitDescMap, kind, false, true, uninit, LocationIdentity.init(), disjointRoutine);
             registerArraycopyDescriptor(killInitDescMap, kind, true, true, uninit, LocationIdentity.init(), alignedDisjointRoutine);
         } else {
-            assert kind.isObject();
+            assert kind.isObject() : Assertions.errorMessage(kind, routine, alignedRoutine, disjointRoutine, alignedDisjointRoutine, uninit);
             EconomicMap<Long, ForeignCallDescriptor> killAnyDescMap = EconomicMap.create();
             registerArraycopyDescriptor(killAnyDescMap, kind, false, false, uninit, LocationIdentity.any(), routine);
             registerArraycopyDescriptor(killAnyDescMap, kind, true, false, uninit, LocationIdentity.any(), alignedRoutine);

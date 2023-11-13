@@ -35,9 +35,11 @@ import java.util.function.Consumer;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.core.common.util.EventCounter;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
@@ -51,7 +53,6 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -150,7 +151,7 @@ public class Graph implements EventCounter {
                 return true;
             }
 
-            assert a.getClass() == b.getClass();
+            assert a.getClass() == b.getClass() : Assertions.errorMessageContext("a", a, "b", b);
             return ((Node) a).valueEquals((Node) b);
         }
 
@@ -347,7 +348,9 @@ public class Graph implements EventCounter {
             }
             nodeModCounts[id]++;
         } else {
-            assert false;
+            if (Assertions.assertionsEnabled()) {
+                throw new AssertionError("ID must be >= 0 but is " + id + " for node " + node);
+            }
         }
     }
 
@@ -367,7 +370,9 @@ public class Graph implements EventCounter {
             }
             nodeUsageModCounts[id]++;
         } else {
-            assert false;
+            if (Assertions.assertionsEnabled()) {
+                throw new AssertionError("ID must be >= 0 but is " + id + " for node " + node);
+            }
         }
     }
 
@@ -1110,9 +1115,9 @@ public class Graph implements EventCounter {
         for (int i = 0; nextId < liveNodeCount; i++) {
             Node n = nodes[i];
             if (n != null) {
-                assert n.id == i;
+                assert n.id == i : Assertions.errorMessage(n, i);
                 if (i != nextId) {
-                    assert n.id > nextId;
+                    assert n.id > nextId : n.id + " must be > " + nextId + " for " + n;
                     Object value = beforeNodeIdChange(n);
                     n.id = nextId;
                     afterNodeIdChange(n, value);
@@ -1246,7 +1251,7 @@ public class Graph implements EventCounter {
             // Only dead nodes after this one
             start.typeCacheNext = null;
             int nodeClassId = start.getNodeClass().iterableId();
-            assert nodeClassId != Node.NOT_ITERABLE;
+            assert nodeClassId != Node.NOT_ITERABLE : nodeClassId;
             iterableNodesLast.set(nodeClassId, start);
         } else {
             // Everything in between is dead
@@ -1277,7 +1282,7 @@ public class Graph implements EventCounter {
 
     void register(Node node) {
         assert !isFrozen();
-        assert node.id() == Node.INITIAL_ID;
+        assert node.id() == Node.INITIAL_ID : Assertions.errorMessage(node);
         if (nodes.length == nodesSize) {
             grow();
         }
@@ -1385,7 +1390,7 @@ public class Graph implements EventCounter {
                     if (root == null) {
                         root = pos.getRootMethod();
                     } else {
-                        assert pos.verifyRootMethod(root) : node;
+                        assert pos.verifyRootMethod(root);
                     }
                 }
 

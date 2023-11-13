@@ -78,7 +78,7 @@ public class ReinterpretUtils {
         if (bits == 64) {
             exponentMask = Double.doubleToRawLongBits(Double.POSITIVE_INFINITY);
         } else {
-            assert bits == 32;
+            assert bits == 32 : bits;
             exponentMask = Float.floatToRawIntBits(Float.POSITIVE_INFINITY);
         }
 
@@ -153,7 +153,7 @@ public class ReinterpretUtils {
             minPositive = Double.MIN_VALUE;
             maxPositive = Double.MAX_VALUE;
         } else {
-            assert bits == 32;
+            assert bits == 32 : bits;
             exponentMask = Float.floatToRawIntBits(Float.POSITIVE_INFINITY);
             minPositive = Float.MIN_VALUE;
             maxPositive = Float.MAX_VALUE;

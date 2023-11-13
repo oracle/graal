@@ -29,6 +29,7 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
@@ -37,9 +38,9 @@ import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.Verbosity;
+import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
-import jdk.graal.compiler.nodes.calc.FloatingNode;
 
 /**
  * {@code PhiNode}s represent the merging of edges at a control flow merges (
@@ -153,8 +154,10 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
     }
 
     public void addInput(ValueNode x) {
-        assert !(x instanceof ValuePhiNode) || ((ValuePhiNode) x).merge() instanceof LoopBeginNode || ((ValuePhiNode) x).merge() != this.merge();
-        assert !(this instanceof ValuePhiNode) || x.stamp(NodeView.DEFAULT).isCompatible(stamp(NodeView.DEFAULT));
+        assert !(x instanceof ValuePhiNode) || ((ValuePhiNode) x).merge() instanceof LoopBeginNode || ((ValuePhiNode) x).merge() != this.merge() : Assertions.errorMessageContext("this", this,
+                        "x",
+                        x);
+        assert !(this instanceof ValuePhiNode) || x.stamp(NodeView.DEFAULT).isCompatible(stamp(NodeView.DEFAULT)) : Assertions.errorMessageContext("this", this, "x", x);
         values().add(x);
     }
 
@@ -192,7 +195,7 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
      */
     public ValueNode singleBackValueOrThis() {
         int valueCount = valueCount();
-        assert merge() instanceof LoopBeginNode && valueCount >= 2;
+        assert merge() instanceof LoopBeginNode && valueCount >= 2 : Assertions.errorMessageContext("this", this, "merge", merge(), "valCount", valueCount);
         // Skip first value, assume second value as single value.
         ValueNode singleValue = valueAt(1);
         for (int i = 2; i < valueCount; ++i) {
@@ -208,7 +211,7 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
     public ValueNode canonical(CanonicalizerTool tool) {
         if (isLoopPhi()) {
             int valueCount = valueCount();
-            assert valueCount >= 2;
+            assert valueCount >= 2 : Assertions.errorMessageContext("valueCount", valueCount, "this", this);
             int i;
             for (i = 1; i < valueCount; ++i) {
                 ValueNode value = valueAt(i);

@@ -27,10 +27,12 @@ package jdk.graal.compiler.phases.common.inlining.info;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.graal.compiler.phases.common.inlining.info.elem.Inlineable;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
@@ -60,8 +62,8 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.StampProvider;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
+import jdk.graal.compiler.phases.common.inlining.info.elem.Inlineable;
 import jdk.graal.compiler.phases.util.Providers;
-
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -101,7 +103,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         this.inlineableElements = new Inlineable[concretes.size()];
         this.methodProbabilities = computeMethodProbabilities();
         this.maximumMethodProbability = maximumMethodProbability();
-        assert maximumMethodProbability > 0;
+        assert NumUtil.assertPositiveDouble(maximumMethodProbability);
         this.speculationFailed = speculationFailed;
         this.speculation = speculation;
         assert assertUniqueTypes(ptypes);
@@ -140,13 +142,13 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
 
     @Override
     public ResolvedJavaMethod methodAt(int index) {
-        assert index >= 0 && index < concretes.size();
+        assert index >= 0 && index < concretes.size() : Assertions.errorMessageContext("index", index, "concretes", concretes);
         return concretes.get(index);
     }
 
     @Override
     public Inlineable inlineableElementAt(int index) {
-        assert index >= 0 && index < concretes.size();
+        assert index >= 0 && index < concretes.size() : Assertions.errorMessageContext("index", index, "concretes", concretes);
         return inlineableElements[index];
     }
 
@@ -162,7 +164,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
 
     @Override
     public void setInlinableElement(int index, Inlineable inlineableElement) {
-        assert index >= 0 && index < concretes.size();
+        assert index >= 0 && index < concretes.size() : Assertions.errorMessageContext("index", index, "concretes", concretes);
         inlineableElements[index] = inlineableElement;
     }
 
@@ -218,7 +220,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             graph.addBeforeFixed(exceptionSux, exceptionMerge);
             exceptionObjectPhi = graph.addWithoutUnique(new ValuePhiNode(StampFactory.forKind(JavaKind.Object), exceptionMerge));
 
-            assert exceptionEdge.stateAfter().bci == invoke.bci();
+            assert exceptionEdge.stateAfter().bci == invoke.bci() : Assertions.errorMessage(exceptionEdge, exceptionEdge.stateAfter(), invoke, invoke.stateAfter());
             assert exceptionEdge.stateAfter().rethrowException();
             exceptionMerge.setStateAfter(exceptionEdge.stateAfter().duplicateModified(JavaKind.Object, JavaKind.Object, exceptionObjectPhi, null));
         }
@@ -252,7 +254,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         // replace the invoke with a switch on the type of the actual receiver
         boolean methodDispatch = createDispatchOnTypeBeforeInvoke(graph, successors, false, providers.getStampProvider(), providers.getConstantReflection());
 
-        assert invoke.next() == continuation;
+        assert invoke.next() == continuation : Assertions.errorMessage(invoke.next(), continuation);
         invoke.setNext(null);
         returnMerge.setNext(continuation);
         if (returnValuePhi != null) {
@@ -336,7 +338,11 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     private EconomicSet<Node> inlineSingleMethod(StructuredGraph graph, StampProvider stampProvider, ConstantReflectionProvider constantReflection, String reason) {
-        assert concretes.size() == 1 && inlineableElements.length == 1 && ptypes.size() > 1 && !shouldFallbackToInvoke() && notRecordedTypeProbability == 0;
+        assert concretes.size() == 1 : Assertions.errorMessageContext("concretes", concretes);
+        assert inlineableElements.length == 1 : Assertions.errorMessageContext("inlinableElements", inlineableElements);
+        assert ptypes.size() > 1 : Assertions.errorMessageContext("ptypes", ptypes);
+        assert !shouldFallbackToInvoke() : "Should not fall back to invoke " + this;
+        assert notRecordedTypeProbability == 0 : Assertions.errorMessageContext("notRecordedProb", notRecordedTypeProbability);
 
         dispatchToTarget(graph, stampProvider, constantReflection, methodAt(0), false);
         return inline(invoke, methodAt(0), inlineableElementAt(0), false, reason);
@@ -359,7 +365,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
 
     private boolean createDispatchOnTypeBeforeInvoke(StructuredGraph graph, AbstractBeginNode[] successors, boolean invokeIsOnlySuccessor, StampProvider stampProvider,
                     ConstantReflectionProvider constantReflection) {
-        assert ptypes.size() >= 1;
+        assert ptypes.size() >= 1 : ptypes;
         ValueNode nonNullReceiver = InliningUtil.nonNullReceiver(invoke);
         LoadHubNode hub = graph.unique(new LoadHubNode(stampProvider, nonNullReceiver));
 
@@ -425,7 +431,8 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         }
 
         if (invoke instanceof InvokeWithExceptionNode) {
-            assert exceptionMerge != null && exceptionObjectPhi != null;
+            assert exceptionMerge != null;
+            assert exceptionObjectPhi != null;
 
             InvokeWithExceptionNode invokeWithException = (InvokeWithExceptionNode) invoke;
             ExceptionObjectNode exceptionEdge = (ExceptionObjectNode) invokeWithException.exceptionEdge();

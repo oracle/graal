@@ -40,18 +40,15 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
-import jdk.graal.compiler.nodes.extended.SwitchNode;
-import jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
-import jdk.graal.compiler.nodes.spi.Canonicalizable;
-import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.common.util.TypeReader;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeReader;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
@@ -70,9 +67,13 @@ import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.GraphDecoder.MethodScope;
 import jdk.graal.compiler.nodes.GraphDecoder.ProxyPlaceholder;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
+import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
+import jdk.graal.compiler.nodes.extended.SwitchNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
+import jdk.graal.compiler.nodes.spi.Canonicalizable;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.nodes.MethodHandleWithExceptionNode;
-
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -124,7 +125,7 @@ public class GraphDecoder {
         /**
          * The start of explosion, and the merge point for when irreducible loops are detected. Only
          * used when {@link MethodScope#loopExplosion} is
-         * {@link LoopExplosionPlugin.LoopExplosionKind#MERGE_EXPLODE}.
+         * {@link jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind#MERGE_EXPLODE}.
          */
         public MergeNode loopExplosionHead;
 
@@ -246,24 +247,25 @@ public class GraphDecoder {
 
         /**
          * Loop scope created for the next iteration of a loop if unrolling is enabled in the loop
-         * explosion mode. See {@link LoopExplosionPlugin.LoopExplosionKind#unrollLoops()} for
-         * details. Loop unrolling will merge loop end nodes for each iteration of the original
+         * explosion mode. See
+         * {@link jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind#unrollLoops()}
+         * for details. Loop unrolling will merge loop end nodes for each iteration of the original
          * loop.
          */
         LOOP_BEGIN_UNROLLING,
 
         /**
          * Loop scope created for the next iteration of a loop along a particular loop end node if
-         * {@link LoopExplosionPlugin.LoopExplosionKind#duplicateLoopEnds()} is enabled and loops
-         * are exploded. This means for every loop end we duplicate the next loop iteration of the
-         * original loop.
+         * {@link jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind#duplicateLoopEnds()}
+         * is enabled and loops are exploded. This means for every loop end we duplicate the next
+         * loop iteration of the original loop.
          */
         LOOP_END_DUPLICATION,
 
         /**
          * Loop scope created for a loop exit node if
-         * {@link LoopExplosionPlugin.LoopExplosionKind#duplicateLoopExits()} is enabled, i.e., code
-         * after a loop exit is duplicated per loop exit node.
+         * {@link jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind#duplicateLoopExits()}
+         * is enabled, i.e., code after a loop exit is duplicated per loop exit node.
          *
          * Special case nested loops: For compilation units with nested loops where inner loops
          * continue loops at a level n -1 the partial evaluation algorithm will merge outer loops to
@@ -287,25 +289,28 @@ public class GraphDecoder {
         /**
          * Upcoming, not yet processed, loop iterations created in the context of code duplication
          * along loop exits. Only used when {@link MethodScope#loopExplosion} has
-         * {@link LoopExplosionPlugin.LoopExplosionKind#duplicateLoopExits()} enabled.
+         * {@link jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind#duplicateLoopExits()}
+         * enabled.
          */
         public Deque<LoopScope> nextIterationFromLoopExitDuplication;
         /**
          * Same as {@link #nextIterationFromLoopExitDuplication} except that upcoming iterations
          * have been created because the duplication of loop ends
-         * {@link LoopExplosionPlugin.LoopExplosionKind#duplicateLoopEnds()} is enabled.
+         * {@link jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind#duplicateLoopEnds()}
+         * is enabled.
          */
         public Deque<LoopScope> nextIterationFromLoopEndDuplication;
         /**
          * Same as {@link #nextIterationFromLoopExitDuplication} except that upcoming iterations
          * have been created because the unrolling of a loop with constant iteration count
-         * {@link LoopExplosionPlugin.LoopExplosionKind#unrollLoops()} is enabled.
+         * {@link jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind#unrollLoops()}
+         * is enabled.
          */
         public Deque<LoopScope> nextIterationsFromUnrolling;
         /**
          * Information about already processed loop iterations for state merging during loop
          * explosion. Only used when {@link MethodScope#loopExplosion} is
-         * {@link LoopExplosionPlugin.LoopExplosionKind#MERGE_EXPLODE}.
+         * {@link jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind#MERGE_EXPLODE}.
          */
         public final EconomicMap<LoopExplosionState, LoopExplosionState> iterationStates;
         public final int loopBeginOrderId;
@@ -320,7 +325,8 @@ public class GraphDecoder {
         /**
          * Nodes that have been created in outer loop scopes and existed before starting to process
          * this loop, indexed by the orderId. Only used when {@link MethodScope#loopExplosion} is
-         * not {@link LoopExplosionPlugin.LoopExplosionKind#NONE}.
+         * not
+         * {@link jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind#NONE}.
          */
         public final Node[] initialCreatedNodes;
 
@@ -428,7 +434,7 @@ public class GraphDecoder {
 
             FrameState otherState = ((LoopExplosionState) obj).state;
             FrameState thisState = state;
-            assert thisState.outerFrameState() == otherState.outerFrameState();
+            assert thisState.outerFrameState() == otherState.outerFrameState() : Assertions.errorMessage(thisState, thisState.outerFrameState(), otherState, otherState.outerFrameState());
 
             Iterator<ValueNode> thisIter = thisState.values().iterator();
             Iterator<ValueNode> otherIter = otherState.values().iterator();
@@ -497,9 +503,10 @@ public class GraphDecoder {
     }
 
     /**
-     * A node that is created during {@link LoopExplosionPlugin.LoopExplosionKind#MERGE_EXPLODE loop
-     * explosion} that can later be replaced by a ProxyNode if {@link LoopDetector loop detection}
-     * finds out that the value is defined in the loop, but used outside the loop.
+     * A node that is created during
+     * {@link jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind#MERGE_EXPLODE
+     * loop explosion} that can later be replaced by a ProxyNode if {@link LoopDetector loop
+     * detection} finds out that the value is defined in the loop, but used outside the loop.
      */
     @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     protected static final class ProxyPlaceholder extends FloatingNode implements Canonicalizable {
@@ -794,7 +801,7 @@ public class GraphDecoder {
 
             methodScope.reader.setByteIndex(methodScope.encodedGraph.nodeStartOffsets[nodeOrderId]);
             int typeId = methodScope.reader.getUVInt();
-            assert node.getNodeClass() == methodScope.encodedGraph.getNodeClasses()[typeId];
+            assert node.getNodeClass() == methodScope.encodedGraph.getNodeClasses()[typeId] : Assertions.errorMessage(node, methodScope.encodedGraph.getNodeClasses()[typeId]);
             makeFixedNodeInputs(methodScope, loopScope, node);
             readProperties(methodScope, node);
 
@@ -898,7 +905,8 @@ public class GraphDecoder {
                          * it with its forward end (since we do not need to create a loop begin node
                          * if we unroll the entire loop and it has a constant trip count).
                          */
-                        assert phiNodeScope == phiInputScope && phiNodeScope == loopScope;
+                        assert phiNodeScope == phiInputScope : phiInputScope + "!=" + phiInputScope;
+                        assert phiNodeScope == loopScope : phiNodeScope + "!=" + loopScope;
                         resultScope = new LoopScope(methodScope, loopScope, loopScope.loopDepth + 1, 0, mergeOrderId, LoopScopeTrigger.START,
                                         methodScope.loopExplosion.useExplosion() ? Arrays.copyOf(loopScope.createdNodes, loopScope.createdNodes.length) : null,
                                         methodScope.loopExplosion.useExplosion() ? Arrays.copyOf(loopScope.createdNodes, loopScope.createdNodes.length) : loopScope.createdNodes, //
@@ -1411,7 +1419,8 @@ public class GraphDecoder {
                  * the stale value because it will never be needed to be merged (we are exploding
                  * until we hit a return).
                  */
-                assert methodScope.loopExplosion.duplicateLoopExits() && phiNodeScope.loopIteration > 0;
+                assert methodScope.loopExplosion.duplicateLoopExits();
+                assert phiNodeScope.loopIteration > 0 : Assertions.errorMessageContext("phiNodeScope.loopIteration", phiNodeScope.loopIteration);
                 existing = null;
             }
 
@@ -1608,7 +1617,7 @@ public class GraphDecoder {
         /* Read the properties of the node. */
         readProperties(methodScope, node);
         /* There must not be any successors to read, since it is a non-fixed node. */
-        assert node.getNodeClass().getEdges(Edges.Type.Successors).getCount() == 0;
+        assert node.getNodeClass().getEdges(Edges.Type.Successors).getCount() == 0 : Assertions.errorMessage(node);
 
         methodScope.reader.setByteIndex(readerByteIndex);
         return node;
@@ -1747,7 +1756,7 @@ public class GraphDecoder {
                 assert edges.getCount() == (node instanceof WithExceptionNode ? 2 : 1) : "Base Invokable has one successor (next); WithExceptionNode has two successors (next, exceptionEdge)";
                 return true;
             } else {
-                assert edges.type() == Edges.Type.Inputs;
+                assert edges.type() == Edges.Type.Inputs : edges.type();
                 if (edges.getType(index) == CallTargetNode.class) {
                     return true;
                 } else if (edges.getType(index) == FrameState.class) {
@@ -1816,7 +1825,7 @@ public class GraphDecoder {
             }
             for (Node s : node.successors()) {
                 assert s.isAlive();
-                assert s.predecessor() == node;
+                assert s.predecessor() == node : Assertions.errorMessage(s.predecessor(), node);
             }
 
             for (Node usage : node.usages()) {
@@ -1889,7 +1898,7 @@ class LoopDetector implements Runnable {
 
         for (Loop loop : orderedLoops) {
             if (loop.ends.isEmpty()) {
-                assert loop == irreducibleLoopHandler;
+                assert loop == irreducibleLoopHandler : Assertions.errorMessage(loop, irreducibleLoopHandler);
                 continue;
             }
 
@@ -2100,7 +2109,7 @@ class LoopDetector implements Runnable {
                      * MergeNode, the current node mus be a AbstractEndNode with only that MergeNode
                      * as the successor.
                      */
-                    assert successor instanceof MergeNode;
+                    assert successor instanceof MergeNode : Assertions.errorMessage(successor);
                     assert !loop.exits.contains(current);
                     loop.exits.add((AbstractEndNode) current);
 
@@ -2158,7 +2167,7 @@ class LoopDetector implements Runnable {
 
         for (AbstractEndNode end : loop.exits) {
             AbstractMergeNode merge = end.merge();
-            assert merge instanceof MergeNode;
+            assert merge instanceof MergeNode : Assertions.errorMessage(merge);
             if (merges.contains((MergeNode) merge)) {
                 mergesToRemove.add((MergeNode) merge);
             } else {
@@ -2178,7 +2187,7 @@ class LoopDetector implements Runnable {
         }
         // we found a shared merge as outlined above
         if (mergesToRemove.size() > 0) {
-            assert merges.size() < loop.exits.size();
+            assert merges.size() < loop.exits.size() : Assertions.errorMessage(merges, loop, loop.exits);
             outer: for (MergeNode merge : mergesToRemove) {
                 FixedNode current = merge;
                 while (current != null) {
@@ -2363,14 +2372,15 @@ class LoopDetector implements Runnable {
      * </ul>
      */
     private void handleIrreducibleLoop(Loop loop) {
-        assert loop != irreducibleLoopHandler;
+        assert loop != irreducibleLoopHandler : Assertions.errorMessageContext("loop", loop, "irreducibleLoop", irreducibleLoopHandler);
 
         FrameState loopState = loop.header.stateAfter();
         FrameState explosionHeadState = irreducibleLoopHandler.header.stateAfter();
-        assert loopState.outerFrameState() == explosionHeadState.outerFrameState();
+        assert loopState.outerFrameState() == explosionHeadState.outerFrameState() : Assertions.errorMessage(loopState, loopState.outerFrameState(), explosionHeadState,
+                        explosionHeadState.outerFrameState());
         NodeInputList<ValueNode> loopValues = loopState.values();
         NodeInputList<ValueNode> explosionHeadValues = explosionHeadState.values();
-        assert loopValues.size() == explosionHeadValues.size();
+        assert loopValues.size() == explosionHeadValues.size() : Assertions.errorMessage(loopValues, explosionHeadValues);
 
         /*
          * Find the loop variable, and the value of the loop variable for our loop and the outermost
@@ -2456,8 +2466,9 @@ class LoopDetector implements Runnable {
              * we can extend it with one more branch.
              */
             assert irreducibleLoopHandler.header.isPhiAtMerge(explosionHeadValue);
-            assert irreducibleLoopHandler.header.phis().count() == 1 && irreducibleLoopHandler.header.phis().first() == explosionHeadValue;
-            assert irreducibleLoopSwitch.value() == explosionHeadValue;
+            assert irreducibleLoopHandler.header.phis().count() == 1 : Assertions.errorMessageContext("irrHeader.phis", irreducibleLoopHandler.header.phis());
+            assert irreducibleLoopHandler.header.phis().first() == explosionHeadValue : Assertions.errorMessageContext("irrHeader.phis", irreducibleLoopHandler.header.phis());
+            assert irreducibleLoopSwitch.value() == explosionHeadValue : Assertions.errorMessageContext("irrLoopSwitch", irreducibleLoopSwitch.value(), "explosionHead", explosionHeadValue);
 
             /* We can modify the phi function used by the old switch node. */
             loopVariablePhi = (ValuePhiNode) explosionHeadValue;
@@ -2473,7 +2484,7 @@ class LoopDetector implements Runnable {
             unreachableDefaultSuccessor = irreducibleLoopSwitch.defaultSuccessor();
 
             /* Unlink and delete the old switch node, we do not need it anymore. */
-            assert irreducibleLoopHandler.header.next() == irreducibleLoopSwitch;
+            assert irreducibleLoopHandler.header.next() == irreducibleLoopSwitch : Assertions.errorMessage(irreducibleLoopHandler.header.next(), irreducibleLoopSwitch);
             irreducibleLoopHandler.header.setNext(null);
             irreducibleLoopSwitch.clearSuccessors();
             irreducibleLoopSwitch.safeDelete();

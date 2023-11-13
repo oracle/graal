@@ -37,16 +37,16 @@ import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node.NodeIntrinsicFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeInputList;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.Verbosity;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.memory.AbstractMemoryCheckpoint;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -163,7 +163,7 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements Foreign
 
     @Override
     public void setBci(int bci) {
-        assert this.bci == BytecodeFrame.UNKNOWN_BCI || this.bci == bci;
+        assert this.bci == BytecodeFrame.UNKNOWN_BCI || this.bci == bci : Assertions.errorMessageContext("this", this, "bci", bci);
         this.bci = bci;
     }
 

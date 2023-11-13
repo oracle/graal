@@ -40,8 +40,6 @@ import java.util.Scanner;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.core.riscv64.RISCV64ReflectionUtil;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -56,9 +54,11 @@ import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 import com.oracle.svm.hosted.c.util.FileUtils;
 import com.oracle.svm.util.ClassUtil;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.riscv64.RISCV64;
 
 public abstract class CCompilerInvoker {
     public static final String VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION = "Visual Studio 2022 version 17.1.0";
@@ -444,7 +444,7 @@ public abstract class CCompilerInvoker {
             case "arm64": /* Darwin notation */
                 return AArch64.class;
             case "riscv64":
-                return (Class<? extends Architecture>) RISCV64ReflectionUtil.getArch(false);
+                return RISCV64.class;
             case "i686":
             case "80x86": /* Windows notation */
             case "x86":

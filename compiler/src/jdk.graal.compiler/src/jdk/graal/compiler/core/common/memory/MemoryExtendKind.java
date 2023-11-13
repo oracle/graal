@@ -27,6 +27,7 @@ package jdk.graal.compiler.core.common.memory;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 
 /**
@@ -81,7 +82,7 @@ public enum MemoryExtendKind {
         assert isExtended();
         int inputBits = original.getBits();
         int resultBits = getExtendedBitSize();
-        assert inputBits <= resultBits;
+        assert inputBits <= resultBits : Assertions.errorMessageContext("inputBits", inputBits, "resultBits", resultBits, "original", original);
         if (isZeroExtend()) {
             return ArithmeticOpTable.forStamp(original).getZeroExtend().foldStamp(inputBits, resultBits, original);
         } else {
@@ -113,5 +114,10 @@ public enum MemoryExtendKind {
             default:
                 throw GraalError.shouldNotReachHereUnexpectedValue(extendSize); // ExcludeFromJacocoGeneratedReport
         }
+    }
+
+    @Override
+    public String toString() {
+        return this.name() + " zero? " + zeroExtend + " sign? " + signExtend + " extendSize " + extendedSize;
     }
 }

@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.Objects;
 
 import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRValueUtil;
@@ -42,7 +43,6 @@ import jdk.graal.compiler.lir.framemap.FrameMap;
 import jdk.graal.compiler.lir.framemap.ReferenceMapBuilder;
 import jdk.graal.compiler.lir.util.IndexedValueMap;
 import jdk.graal.compiler.lir.util.ValueSet;
-
 import jdk.vm.ci.meta.Value;
 
 final class RegStackValueSet extends ValueSet<RegStackValueSet> {
@@ -82,7 +82,7 @@ final class RegStackValueSet extends ValueSet<RegStackValueSet> {
             registers.put(index, v);
         } else if (isStackSlot(v)) {
             int index = frameMap.offsetForStackSlot(asStackSlot(v));
-            assert index >= 0;
+            assert NumUtil.assertNonNegativeInt(index);
             if (index % 4 == 0) {
                 stack.put(index / 4, v);
             } else {
@@ -117,7 +117,7 @@ final class RegStackValueSet extends ValueSet<RegStackValueSet> {
             registers.put(index, null);
         } else if (isStackSlot(v)) {
             int index = frameMap.offsetForStackSlot(asStackSlot(v));
-            assert index >= 0;
+            assert NumUtil.assertNonNegativeInt(index);
             if (index % 4 == 0) {
                 guaranteeEquals(v, stack.get(index / 4));
                 stack.put(index / 4, null);

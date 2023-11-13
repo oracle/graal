@@ -158,7 +158,7 @@ public abstract class AArch64ASIMDAssembler {
             if (bit == 0) {
                 return 0;
             } else {
-                assert bit == 1;
+                assert bit == 1 : bit;
                 return (1L << repeatNum) - 1;
             }
         }
@@ -167,7 +167,7 @@ public abstract class AArch64ASIMDAssembler {
             if (bit == 0) {
                 return 1;
             } else {
-                assert bit == 1;
+                assert bit == 1 : bit;
                 return 0;
             }
         }
@@ -301,7 +301,7 @@ public abstract class AArch64ASIMDAssembler {
             }
 
             public ASIMDImmediateTable.ImmediateEncodings addEncoding(long imm64, byte imm8Val, int cmodeBits3to1, ASIMDImmediateTable.BitValues cmodeBit0, ASIMDImmediateTable.BitValues op) {
-                assert imm64 == this.imm;
+                assert imm64 == this.imm : imm64 + " " + this.imm;
                 for (int bit0 : cmodeBit0.values) {
                     for (int opBit : op.values) {
                         int cmodeOpEncoding = getCmodeOpEncoding(cmodeBits3to1, bit0, opBit);
@@ -441,10 +441,10 @@ public abstract class AArch64ASIMDAssembler {
         }
 
         public static ASIMDSize fromVectorKind(PlatformKind kind) {
-            assert kind instanceof AArch64Kind;
-            assert kind.getVectorLength() > 1;
+            assert kind instanceof AArch64Kind : kind;
+            assert kind.getVectorLength() > 1 : kind;
             int bitSize = kind.getSizeInBytes() * Byte.SIZE;
-            assert bitSize == 32 || bitSize == 64 || bitSize == 128;
+            assert bitSize == 32 || bitSize == 64 || bitSize == 128 : bitSize;
             return bitSize == 128 ? FullReg : HalfReg;
         }
     }
@@ -765,9 +765,9 @@ public abstract class AArch64ASIMDAssembler {
      */
     private static boolean assertConsecutiveSIMDRegisters(Register... regs) {
         int numRegs = AArch64.simdRegisters.size();
-        assert regs[0].getRegisterCategory().equals(SIMD);
+        assert regs[0].getRegisterCategory().equals(SIMD) : regs;
         for (int i = 1; i < regs.length; i++) {
-            assert regs[i].getRegisterCategory().equals(SIMD);
+            assert regs[i].getRegisterCategory().equals(SIMD) : regs + " " + i;
             assert (regs[i - 1].encoding + 1) % numRegs == regs[i].encoding : "registers must be consecutive";
         }
         return true;
@@ -787,12 +787,12 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     private static int elemSize1X(ElementSize eSize) {
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
         return (0b10 | (eSize == ElementSize.DoubleWord ? 1 : 0)) << ASIMDSizeOffset;
     }
 
     private static int elemSize0X(ElementSize eSize) {
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
         return (eSize == ElementSize.DoubleWord ? 1 : 0) << ASIMDSizeOffset;
     }
 
@@ -839,14 +839,14 @@ public abstract class AArch64ASIMDAssembler {
             case REGISTER_STRUCTURE_POST_INDEXED:
                 postIndexEncoding = 0b1 << 23;
                 offset = address.getOffset();
-                assert !offset.equals(zr);
+                assert !offset.equals(zr) : offset;
                 offsetEncoding = rs2(offset);
                 break;
             case IMMEDIATE_STRUCTURE_POST_INDEXED:
                 postIndexEncoding = 0b1 << 23;
                 offset = address.getOffset();
-                assert offset.equals(zr);
-                assert address.getImmediateRaw() == AArch64Address.determineStructureImmediateValue(instr, size, eSize);
+                assert offset.equals(zr) : offset;
+                assert address.getImmediateRaw() == AArch64Address.determineStructureImmediateValue(instr, size, eSize) : address + " " + instr + " " + size + " " + eSize;
                 offsetEncoding = rs2(offset);
                 break;
             default:
@@ -905,16 +905,16 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     private void scalarShiftByImmEncoding(ASIMDInstruction instr, int imm7, Register dst, Register src) {
-        assert (imm7 & 0b1111_111) == imm7;
-        assert (imm7 & 0b1111_111) != 0;
-        assert (imm7 & 0b0000_111) != imm7;
+        assert (imm7 & 0b1111_111) == imm7 : imm7;
+        assert (imm7 & 0b1111_111) != 0 : imm7;
+        assert (imm7 & 0b0000_111) != imm7 : imm7;
         int baseEncoding = 0b01_0_111110_0000_000_00000_1_00000_00000;
         emitInt(instr.encoding | baseEncoding | imm7 << 16 | rd(dst) | rs1(src));
     }
 
     private void tableLookupEncoding(ASIMDInstruction instr, ASIMDSize size, int numTableRegs, Register dst, Register src1, Register src2) {
         int baseEncoding = 0b0_0_001110_00_0_00000_0_000_00_00000_00000;
-        assert numTableRegs >= 1 && numTableRegs <= 4;
+        assert numTableRegs >= 1 && numTableRegs <= 4 : numTableRegs;
         int numTableRegsEncoding = (numTableRegs - 1) << 13;
         emitInt(instr.encoding | baseEncoding | qBit(size) | numTableRegsEncoding | rd(dst) | rs1(src1) | rs2(src2));
     }
@@ -929,7 +929,8 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     private void copyEncoding(ASIMDInstruction instr, int extraEncoding, boolean setQBit, ElementSize eSize, Register dst, Register src, int index) {
-        assert index >= 0 && index < ASIMDSize.FullReg.bytes() / eSize.bytes();
+        assert index >= 0 : index;
+        assert index < ASIMDSize.FullReg.bytes() / eSize.bytes() : "index=" + index + " " + eSize;
         int baseEncoding = 0b0_0_0_01110000_00000_0_0000_1_00000_00000;
         int imm5Encoding = (index * 2 * eSize.bytes() | eSize.bytes()) << 16;
         emitInt(instr.encoding | extraEncoding | baseEncoding | qBit(setQBit) | imm5Encoding | rd(dst) | rs1(src));
@@ -970,9 +971,9 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     private void shiftByImmEncoding(ASIMDInstruction instr, boolean setQBit, int imm7, Register dst, Register src) {
-        assert (imm7 & 0b1111_111) == imm7;
-        assert (imm7 & 0b1111_111) != 0;
-        assert (imm7 & 0b0000_111) != imm7;
+        assert (imm7 & 0b1111_111) == imm7 : imm7;
+        assert (imm7 & 0b1111_111) != 0 : imm7;
+        assert (imm7 & 0b0000_111) != imm7 : imm7;
         int baseEncoding = 0b0_0_0_011110_0000_000_00000_1_00000_00000;
         emitInt(instr.encoding | baseEncoding | qBit(setQBit) | imm7 << 16 | rd(dst) | rs1(src));
     }
@@ -988,10 +989,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void absVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
-        assert usesMultipleLanes(size, eSize);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
 
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
 
         twoRegMiscEncoding(ASIMDInstruction.ABS, size, elemSizeXX(eSize), dst, src);
     }
@@ -1009,11 +1010,11 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void addSSS(ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
-        assert eSize == ElementSize.DoubleWord; // only size supported
+        assert eSize == ElementSize.DoubleWord : eSize; // only size supported
 
         scalarThreeSameEncoding(ASIMDInstruction.ADD, elemSizeXX(eSize), dst, src1, src2);
     }
@@ -1030,9 +1031,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void addVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         threeSameEncoding(ASIMDInstruction.ADD, size, elemSizeXX(eSize), dst, src1, src2);
     }
@@ -1053,10 +1054,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void addpVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-        assert usesMultipleLanes(size, eSize);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
 
         threeSameEncoding(ASIMDInstruction.ADDP, size, elemSizeXX(eSize), dst, src1, src2);
     }
@@ -1085,8 +1086,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void aesd(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
 
         cryptographicAES(ASIMDInstruction.AESD, dst, src);
     }
@@ -1098,8 +1099,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void aese(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
 
         cryptographicAES(ASIMDInstruction.AESE, dst, src);
     }
@@ -1111,8 +1112,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void aesimc(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
 
         cryptographicAES(ASIMDInstruction.AESIMC, dst, src);
     }
@@ -1124,8 +1125,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void aesmc(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
 
         cryptographicAES(ASIMDInstruction.AESMC, dst, src);
     }
@@ -1141,9 +1142,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void andVVV(ASIMDSize size, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         threeSameEncoding(ASIMDInstruction.AND, size, elemSize00, dst, src1, src2);
     }
@@ -1162,10 +1163,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src3 SIMD register.
      */
     public void bcaxVVVV(Register dst, Register src1, Register src2, Register src3) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-        assert src3.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert src3.getRegisterCategory().equals(SIMD) : src3;
 
         cryptographicFour(ASIMDInstruction.BCAX, dst, src1, src2, src3);
     }
@@ -1198,9 +1199,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void bicVVV(ASIMDSize size, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         threeSameEncoding(ASIMDInstruction.BIC, size, elemSize01, dst, src1, src2);
     }
@@ -1219,9 +1220,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void bifVVV(ASIMDSize size, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         threeSameEncoding(ASIMDInstruction.BIF, size, elemSize11, dst, src1, src2);
     }
@@ -1240,9 +1241,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void bitVVV(ASIMDSize size, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         threeSameEncoding(ASIMDInstruction.BIT, size, elemSize10, dst, src1, src2);
     }
@@ -1261,9 +1262,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void bslVVV(ASIMDSize size, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         threeSameEncoding(ASIMDInstruction.BSL, size, elemSize01, dst, src1, src2);
     }
@@ -1284,7 +1285,7 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void cmeqVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
 
         threeSameEncoding(ASIMDInstruction.CMEQ, size, elemSizeXX(eSize), dst, src1, src2);
     }
@@ -1304,7 +1305,7 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void cmeqZeroVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
-        assert usesMultipleLanes(size, eSize);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
 
         twoRegMiscEncoding(ASIMDInstruction.CMEQ_ZERO, size, elemSizeXX(eSize), dst, src);
     }
@@ -1325,7 +1326,7 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void cmgeVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
 
         threeSameEncoding(ASIMDInstruction.CMGE, size, elemSizeXX(eSize), dst, src1, src2);
     }
@@ -1345,7 +1346,7 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void cmgeZeroVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
-        assert usesMultipleLanes(size, eSize);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
 
         twoRegMiscEncoding(ASIMDInstruction.CMGE_ZERO, size, elemSizeXX(eSize), dst, src);
     }
@@ -1366,7 +1367,7 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void cmgtVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
 
         threeSameEncoding(ASIMDInstruction.CMGT, size, elemSizeXX(eSize), dst, src1, src2);
     }
@@ -1386,7 +1387,7 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void cmgtZeroVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
-        assert usesMultipleLanes(size, eSize);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
 
         twoRegMiscEncoding(ASIMDInstruction.CMGT_ZERO, size, elemSizeXX(eSize), dst, src);
     }
@@ -1407,7 +1408,7 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void cmhiVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
 
         threeSameEncoding(ASIMDInstruction.CMHI, size, elemSizeXX(eSize), dst, src1, src2);
     }
@@ -1428,7 +1429,7 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void cmhsVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
 
         threeSameEncoding(ASIMDInstruction.CMHS, size, elemSizeXX(eSize), dst, src1, src2);
     }
@@ -1448,7 +1449,7 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void cmleZeroVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
-        assert usesMultipleLanes(size, eSize);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
 
         twoRegMiscEncoding(ASIMDInstruction.CMLE_ZERO, size, elemSizeXX(eSize), dst, src);
     }
@@ -1468,7 +1469,7 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void cmltZeroVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
-        assert usesMultipleLanes(size, eSize);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
 
         twoRegMiscEncoding(ASIMDInstruction.CMLT_ZERO, size, elemSizeXX(eSize), dst, src);
     }
@@ -1489,7 +1490,7 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void cmtstVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
 
         threeSameEncoding(ASIMDInstruction.CMTST, size, elemSizeXX(eSize), dst, src1, src2);
     }
@@ -1520,9 +1521,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param index offset of value to duplicate
      */
     public void dupSX(ElementSize eSize, Register dst, Register src, int index) {
-        assert src.getRegisterCategory().equals(SIMD);
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert index >= 0 && index < ASIMDSize.FullReg.bytes() / eSize.bytes();
+        assert src.getRegisterCategory().equals(SIMD) : src;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert index >= 0 && index < ASIMDSize.FullReg.bytes() / eSize.bytes() : index + " " + eSize;
 
         /*
          * Technically, this is instruction's encoding format is "advanced simd scalar copy"
@@ -1545,8 +1546,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param index offset of value to duplicate
      */
     public void dupVX(ASIMDSize dstSize, ElementSize eSize, Register dst, Register src, int index) {
-        assert src.getRegisterCategory().equals(SIMD);
-        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD) : src;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
 
         copyEncoding(ASIMDInstruction.DUPELEM, dstSize == ASIMDSize.FullReg, eSize, dst, src, index);
     }
@@ -1562,9 +1563,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src general-purpose register.
      */
     public void dupVG(ASIMDSize dstSize, ElementSize eSize, Register dst, Register src) {
-        assert usesMultipleLanes(dstSize, eSize);
-        assert src.getRegisterCategory().equals(CPU);
-        assert dst.getRegisterCategory().equals(SIMD);
+        assert usesMultipleLanes(dstSize, eSize) : dstSize + " " + eSize;
+        assert src.getRegisterCategory().equals(CPU) : src;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
 
         copyEncoding(ASIMDInstruction.DUPGEN, dstSize == ASIMDSize.FullReg, eSize, dst, src, 0);
     }
@@ -1580,9 +1581,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void eorVVV(ASIMDSize size, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         threeSameEncoding(ASIMDInstruction.EOR, size, elemSize00, dst, src1, src2);
     }
@@ -1601,10 +1602,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src3 SIMD register.
      */
     public void eor3VVVV(Register dst, Register src1, Register src2, Register src3) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-        assert src3.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert src3.getRegisterCategory().equals(SIMD) : src3;
 
         cryptographicFour(ASIMDInstruction.EOR3, dst, src1, src2, src3);
     }
@@ -1627,11 +1628,11 @@ public abstract class AArch64ASIMDAssembler {
      * @param src1LowIdx The lowest index of the first source registers to extract
      */
     public void extVVV(ASIMDSize size, Register dst, Register src1, Register src2, int src1LowIdx) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
         /* Must include at least one byte from src1 */
-        assert src1LowIdx >= 0 && src1LowIdx < size.bytes();
+        assert src1LowIdx >= 0 && src1LowIdx < size.bytes() : src1LowIdx + " " + size;
         /*
          * Technically, this instruction's encoding format is "advanced simd extract" (C4-356)
          */
@@ -1652,11 +1653,11 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void fabsVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
-        assert usesMultipleLanes(size, eSize);
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
 
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
 
         twoRegMiscEncoding(ASIMDInstruction.FABS, size, elemSize1X(eSize), dst, src);
     }
@@ -1678,8 +1679,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void facgeVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
 
         threeSameEncoding(ASIMDInstruction.FACGE, size, elemSize0X(eSize), dst, src1, src2);
     }
@@ -1701,8 +1702,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void facgtVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
 
         threeSameEncoding(ASIMDInstruction.FACGT, size, elemSize1X(eSize), dst, src1, src2);
     }
@@ -1721,7 +1722,7 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void facgtSSS(ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
 
         scalarThreeSameEncoding(ASIMDInstruction.FACGT, elemSize1X(eSize), dst, src1, src2);
     }
@@ -1740,8 +1741,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void faddVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
-        assert usesMultipleLanes(size, eSize);
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
 
         threeSameEncoding(ASIMDInstruction.FADD, size, elemSize0X(eSize), dst, src1, src2);
     }
@@ -1763,8 +1764,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void fcmeqVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
 
         threeSameEncoding(ASIMDInstruction.FCMEQ, size, elemSize0X(eSize), dst, src1, src2);
     }
@@ -1785,8 +1786,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void fcmeqZeroVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
-        assert usesMultipleLanes(size, eSize);
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
 
         twoRegMiscEncoding(ASIMDInstruction.FCMEQ_ZERO, size, elemSize1X(eSize), dst, src);
     }
@@ -1808,8 +1809,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void fcmgeVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
 
         threeSameEncoding(ASIMDInstruction.FCMGE, size, elemSize0X(eSize), dst, src1, src2);
     }
@@ -1830,8 +1831,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void fcmgeZeroVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
-        assert usesMultipleLanes(size, eSize);
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
 
         twoRegMiscEncoding(ASIMDInstruction.FCMGE_ZERO, size, elemSize1X(eSize), dst, src);
     }
@@ -1853,8 +1854,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void fcmgtVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
 
         threeSameEncoding(ASIMDInstruction.FCMGT, size, elemSize1X(eSize), dst, src1, src2);
     }
@@ -1875,8 +1876,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void fcmgtZeroVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
-        assert usesMultipleLanes(size, eSize);
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
 
         twoRegMiscEncoding(ASIMDInstruction.FCMGT_ZERO, size, elemSize1X(eSize), dst, src);
     }
@@ -1897,8 +1898,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void fcmleZeroVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
-        assert usesMultipleLanes(size, eSize);
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
 
         twoRegMiscEncoding(ASIMDInstruction.FCMLE_ZERO, size, elemSize1X(eSize), dst, src);
     }
@@ -1919,8 +1920,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void fcmltZeroVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
-        assert usesMultipleLanes(size, eSize);
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
 
         twoRegMiscEncoding(ASIMDInstruction.FCMLT_ZERO, size, elemSize1X(eSize), dst, src);
     }
@@ -1934,9 +1935,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void fcvtlVV(ElementSize srcESize, Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
-        assert srcESize == ElementSize.HalfWord || srcESize == ElementSize.Word;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
+        assert srcESize == ElementSize.HalfWord || srcESize == ElementSize.Word : srcESize;
 
         twoRegMiscEncoding(ASIMDInstruction.FCVTL, false, elemSize0X(srcESize), dst, src);
     }
@@ -1950,9 +1951,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void fcvtnVV(ElementSize srcESize, Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
-        assert srcESize == ElementSize.Word || srcESize == ElementSize.DoubleWord;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
+        assert srcESize == ElementSize.Word || srcESize == ElementSize.DoubleWord : srcESize;
 
         twoRegMiscEncoding(ASIMDInstruction.FCVTN, false, elemSize0X(srcESize), dst, src);
     }
@@ -1968,10 +1969,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void fcvtzsVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
-        assert usesMultipleLanes(size, eSize);
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
 
         twoRegMiscEncoding(ASIMDInstruction.FCVTZS, size, elemSize1X(eSize), dst, src);
     }
@@ -1990,12 +1991,12 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void fdivVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
-        assert usesMultipleLanes(size, eSize);
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
 
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         threeSameEncoding(ASIMDInstruction.FDIV, size, elemSize0X(eSize), dst, src1, src2);
     }
@@ -2015,12 +2016,12 @@ public abstract class AArch64ASIMDAssembler {
      */
 
     public void fmaxVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
 
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         threeSameEncoding(ASIMDInstruction.FMAX, size, elemSize0X(eSize), dst, src1, src2);
     }
@@ -2039,12 +2040,12 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void fminVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
 
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         threeSameEncoding(ASIMDInstruction.FMIN, size, elemSize1X(eSize), dst, src1, src2);
     }
@@ -2063,8 +2064,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void fmlaVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
 
         threeSameEncoding(ASIMDInstruction.FMLA, size, elemSize0X(eSize), dst, src1, src2);
     }
@@ -2083,8 +2084,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void fmlsVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
 
         threeSameEncoding(ASIMDInstruction.FMLS, size, elemSize1X(eSize), dst, src1, src2);
     }
@@ -2099,8 +2100,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param imm64 64-bit value to move. Is copied twice if register size is 128.
      */
     public void fmovVI(ASIMDSize size, ElementSize eSize, Register dst, long imm64) {
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
-        assert usesMultipleLanes(size, eSize);
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
 
         ImmediateOp op = eSize == ElementSize.DoubleWord ? ImmediateOp.FMOVDP : ImmediateOp.FMOVSP;
         modifiedImmEncoding(op, size, dst, imm64);
@@ -2120,12 +2121,12 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void fmulVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
-        assert usesMultipleLanes(size, eSize);
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
 
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         threeSameEncoding(ASIMDInstruction.FMUL, size, elemSize0X(eSize), dst, src1, src2);
     }
@@ -2143,10 +2144,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void fnegVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
-        assert usesMultipleLanes(size, eSize);
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
 
         twoRegMiscEncoding(ASIMDInstruction.FNEG, size, elemSize1X(eSize), dst, src);
     }
@@ -2164,11 +2165,11 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void fsqrtVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
-        assert usesMultipleLanes(size, eSize);
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
 
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
 
         twoRegMiscEncoding(ASIMDInstruction.FSQRT, size, elemSize1X(eSize), dst, src);
     }
@@ -2187,12 +2188,12 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void fsubVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
-        assert usesMultipleLanes(size, eSize);
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
 
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         threeSameEncoding(ASIMDInstruction.FSUB, size, elemSize1X(eSize), dst, src1, src2);
     }
@@ -2210,8 +2211,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param srcIdx offset of value to duplicate.
      */
     public void insXX(ElementSize eSize, Register dst, int dstIdx, Register src, int srcIdx) {
-        assert dstIdx >= 0 && dstIdx < ASIMDSize.FullReg.bytes() / eSize.bytes();
-        assert srcIdx >= 0 && srcIdx < ASIMDSize.FullReg.bytes() / eSize.bytes();
+        assert dstIdx >= 0 && dstIdx < ASIMDSize.FullReg.bytes() / eSize.bytes() : dstIdx + " " + eSize;
+        assert srcIdx >= 0 && srcIdx < ASIMDSize.FullReg.bytes() / eSize.bytes() : srcIdx + " " + eSize;
 
         int srcIdxEncoding = (srcIdx * eSize.bytes()) << 11;
         copyEncoding(ASIMDInstruction.INSELEM, srcIdxEncoding, true, eSize, dst, src, dstIdx);
@@ -2245,7 +2246,7 @@ public abstract class AArch64ASIMDAssembler {
      * @param addr address of first structure.
      */
     public void ld1MultipleV(ASIMDSize size, ElementSize eSize, Register dst, AArch64Address addr) {
-        assert dst.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
         loadStoreMultipleStructures(ASIMDInstruction.LD1_MULTIPLE_1R, size, eSize, dst, addr);
     }
 
@@ -2318,7 +2319,7 @@ public abstract class AArch64ASIMDAssembler {
      * @param addr address of structure.
      */
     public void ld1rV(ASIMDSize size, ElementSize eSize, Register dst, AArch64Address addr) {
-        assert dst.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
         loadStoreSingleStructure(ASIMDInstruction.LD1R, size, eSize, dst, addr);
     }
 
@@ -2343,7 +2344,7 @@ public abstract class AArch64ASIMDAssembler {
      */
     public void ld2MultipleVV(ASIMDSize size, ElementSize eSize, Register dst1, Register dst2, AArch64Address addr) {
         assert assertConsecutiveSIMDRegisters(dst1, dst2);
-        assert usesMultipleLanes(size, eSize);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
         loadStoreMultipleStructures(ASIMDInstruction.LD2_MULTIPLE_2R, size, eSize, dst1, addr);
     }
 
@@ -2372,7 +2373,7 @@ public abstract class AArch64ASIMDAssembler {
      */
     public void ld4MultipleVVVV(ASIMDSize size, ElementSize eSize, Register dst1, Register dst2, Register dst3, Register dst4, AArch64Address addr) {
         assert assertConsecutiveSIMDRegisters(dst1, dst2, dst3, dst4);
-        assert usesMultipleLanes(size, eSize);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
         loadStoreMultipleStructures(ASIMDInstruction.LD4_MULTIPLE_4R, size, eSize, dst1, addr);
     }
 
@@ -2407,10 +2408,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void mlaVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-        assert eSize != ElementSize.DoubleWord;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert eSize != ElementSize.DoubleWord : eSize;
 
         threeSameEncoding(ASIMDInstruction.MLA, size, elemSizeXX(eSize), dst, src1, src2);
     }
@@ -2427,10 +2428,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void mlsVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-        assert eSize != ElementSize.DoubleWord;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert eSize != ElementSize.DoubleWord : eSize;
 
         threeSameEncoding(ASIMDInstruction.MLS, size, elemSizeXX(eSize), dst, src1, src2);
     }
@@ -2445,7 +2446,7 @@ public abstract class AArch64ASIMDAssembler {
      * @param imm long value to move. If size is 128, then this value is copied twice
      */
     public void moviVI(ASIMDSize size, Register dst, long imm) {
-        assert dst.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
         modifiedImmEncoding(ImmediateOp.MOVI, size, dst, imm);
     }
 
@@ -2461,10 +2462,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void mulVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-        assert eSize != ElementSize.DoubleWord;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert eSize != ElementSize.DoubleWord : eSize;
 
         threeSameEncoding(ASIMDInstruction.MUL, size, elemSizeXX(eSize), dst, src1, src2);
     }
@@ -2494,9 +2495,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void negVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
-        assert usesMultipleLanes(size, eSize);
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
 
         twoRegMiscEncoding(ASIMDInstruction.NEG, size, elemSizeXX(eSize), dst, src);
     }
@@ -2511,8 +2512,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void notVV(ASIMDSize size, Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
 
         twoRegMiscEncoding(ASIMDInstruction.NOT, size, elemSize00, dst, src);
     }
@@ -2528,9 +2529,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void ornVVV(ASIMDSize size, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         threeSameEncoding(ASIMDInstruction.ORN, size, elemSize11, dst, src1, src2);
     }
@@ -2559,9 +2560,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void orrVVV(ASIMDSize size, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         threeSameEncoding(ASIMDInstruction.ORR, size, elemSize10, dst, src1, src2);
     }
@@ -2577,10 +2578,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void pmullVVV(ElementSize srcESize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-        assert srcESize == ElementSize.Byte || srcESize == ElementSize.DoubleWord;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert srcESize == ElementSize.Byte || srcESize == ElementSize.DoubleWord : srcESize;
 
         threeDifferentEncoding(ASIMDInstruction.PMULL, false, elemSizeXX(srcESize), dst, src1, src2);
     }
@@ -2596,10 +2597,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void pmull2VVV(ElementSize srcESize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-        assert srcESize == ElementSize.Byte || srcESize == ElementSize.DoubleWord;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert srcESize == ElementSize.Byte || srcESize == ElementSize.DoubleWord : srcESize;
 
         threeDifferentEncoding(ASIMDInstruction.PMULL, true, elemSizeXX(srcESize), dst, src1, src2);
     }
@@ -2617,9 +2618,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void rax1VVV(Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         cryptographicThreeSHA512(ASIMDInstruction.RAX1, dst, src1, src2);
     }
@@ -2633,8 +2634,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void rbitVV(ASIMDSize size, Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
 
         twoRegMiscEncoding(ASIMDInstruction.RBIT, size, elemSize01, dst, src);
     }
@@ -2648,8 +2649,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void rev16VV(ASIMDSize size, Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
 
         twoRegMiscEncoding(ASIMDInstruction.REV16, size, elemSize00, dst, src);
     }
@@ -2666,9 +2667,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void rev32VV(ASIMDSize size, ElementSize revGranularity, Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
-        assert revGranularity == ElementSize.Byte || revGranularity == ElementSize.HalfWord;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
+        assert revGranularity == ElementSize.Byte || revGranularity == ElementSize.HalfWord : revGranularity;
 
         twoRegMiscEncoding(ASIMDInstruction.REV32, size, elemSizeXX(revGranularity), dst, src);
     }
@@ -2684,9 +2685,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void rev64VV(ASIMDSize size, ElementSize revGranularity, Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
-        assert revGranularity != ElementSize.DoubleWord;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
+        assert revGranularity != ElementSize.DoubleWord : revGranularity;
 
         twoRegMiscEncoding(ASIMDInstruction.REV64, size, elemSizeXX(revGranularity), dst, src);
     }
@@ -2704,8 +2705,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register. Should not be null.
      */
     public void saddlvSV(ASIMDSize size, ElementSize elementSize, Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
         assert !(size == ASIMDSize.HalfReg && elementSize == ElementSize.Word) : "Invalid size and lane combination for saddlv";
         assert elementSize != ElementSize.DoubleWord : "Invalid lane width for saddlv";
 
@@ -2723,10 +2724,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void scvtfVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
-        assert usesMultipleLanes(size, eSize);
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
-        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord;
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
+        assert eSize == ElementSize.Word || eSize == ElementSize.DoubleWord : eSize;
 
         twoRegMiscEncoding(ASIMDInstruction.SCVTF, size, elemSize0X(eSize), dst, src);
     }
@@ -2739,9 +2740,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void sha1c(Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         cryptographicThreeSHA(ASIMDInstruction.SHA1C, dst, src1, src2);
     }
@@ -2753,8 +2754,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void sha1h(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
 
         cryptographicTwoSHA(ASIMDInstruction.SHA1H, dst, src);
     }
@@ -2767,9 +2768,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void sha1m(Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         cryptographicThreeSHA(ASIMDInstruction.SHA1M, dst, src1, src2);
     }
@@ -2782,9 +2783,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void sha1p(Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         cryptographicThreeSHA(ASIMDInstruction.SHA1P, dst, src1, src2);
     }
@@ -2797,9 +2798,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void sha1su0(Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         cryptographicThreeSHA(ASIMDInstruction.SHA1SU0, dst, src1, src2);
     }
@@ -2811,8 +2812,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void sha1su1(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
 
         cryptographicTwoSHA(ASIMDInstruction.SHA1SU1, dst, src);
     }
@@ -2825,9 +2826,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void sha256h2(Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         cryptographicThreeSHA(ASIMDInstruction.SHA256H2, dst, src1, src2);
     }
@@ -2840,9 +2841,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void sha256h(Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         cryptographicThreeSHA(ASIMDInstruction.SHA256H, dst, src1, src2);
     }
@@ -2854,8 +2855,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void sha256su0(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
 
         cryptographicTwoSHA(ASIMDInstruction.SHA256SU0, dst, src);
     }
@@ -2868,9 +2869,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void sha256su1(Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         cryptographicThreeSHA(ASIMDInstruction.SHA256SU1, dst, src1, src2);
     }
@@ -2883,9 +2884,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void sha512h(Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         cryptographicThreeSHA512(ASIMDInstruction.SHA512H, dst, src1, src2);
     }
@@ -2898,9 +2899,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void sha512h2(Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         cryptographicThreeSHA512(ASIMDInstruction.SHA512H2, dst, src1, src2);
     }
@@ -2912,8 +2913,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void sha512su0(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
 
         cryptographicTwoSHA512(ASIMDInstruction.SHA512SU0, dst, src);
     }
@@ -2926,9 +2927,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void sha512su1(Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         cryptographicThreeSHA512(ASIMDInstruction.SHA512SU1, dst, src1, src2);
     }
@@ -2946,12 +2947,12 @@ public abstract class AArch64ASIMDAssembler {
      * @param shiftAmt shift amount.
      */
     public void shlVVI(ASIMDSize size, ElementSize eSize, Register dst, Register src, int shiftAmt) {
-        assert usesMultipleLanes(size, eSize);
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
 
         /* Accepted shift range */
-        assert shiftAmt >= 0 && shiftAmt < eSize.nbits;
+        assert shiftAmt >= 0 && shiftAmt < eSize.nbits : shiftAmt + " " + eSize;
 
         /* shift = imm7 - eSize.nbits */
         int imm7 = eSize.nbits + shiftAmt;
@@ -2971,11 +2972,11 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void smaxVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
 
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
         assert eSize != ElementSize.DoubleWord : "Invalid lane width for smax";
 
         threeSameEncoding(ASIMDInstruction.SMAX, size, elemSizeXX(eSize), dst, src1, src2);
@@ -2993,11 +2994,11 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void sminVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
 
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
         assert eSize != ElementSize.DoubleWord : "Invalid lane width for smin";
 
         threeSameEncoding(ASIMDInstruction.SMIN, size, elemSizeXX(eSize), dst, src1, src2);
@@ -3018,11 +3019,11 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void sminpVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
 
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
         assert eSize != ElementSize.DoubleWord : "Invalid lane width for sminp";
 
         threeSameEncoding(ASIMDInstruction.SMINP, size, elemSizeXX(eSize), dst, src1, src2);
@@ -3040,10 +3041,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void smlalVVV(ElementSize srcESize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-        assert srcESize != ElementSize.DoubleWord;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert srcESize != ElementSize.DoubleWord : srcESize;
 
         threeDifferentEncoding(ASIMDInstruction.SMLAL, false, elemSizeXX(srcESize), dst, src1, src2);
     }
@@ -3060,10 +3061,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void smlslVVV(ElementSize srcESize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-        assert srcESize != ElementSize.DoubleWord;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert srcESize != ElementSize.DoubleWord : srcESize;
 
         threeDifferentEncoding(ASIMDInstruction.SMLSL, false, elemSizeXX(srcESize), dst, src1, src2);
     }
@@ -3082,12 +3083,12 @@ public abstract class AArch64ASIMDAssembler {
      * @param index offset of value to move.
      */
     public void smovGX(ElementSize dstESize, ElementSize srcESize, Register dst, Register src, int index) {
-        assert srcESize != ElementSize.DoubleWord;
-        assert dstESize == ElementSize.Word || dstESize == ElementSize.DoubleWord;
+        assert srcESize != ElementSize.DoubleWord : srcESize;
+        assert dstESize == ElementSize.Word || dstESize == ElementSize.DoubleWord : dstESize;
         assert srcESize.nbits < dstESize.nbits : "the target size must be larger than the source size";
 
-        assert dst.getRegisterCategory().equals(CPU);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(CPU) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
 
         copyEncoding(ASIMDInstruction.SMOV, dstESize == ElementSize.DoubleWord, srcESize, dst, src, index);
     }
@@ -3109,10 +3110,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void sshlVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         threeSameEncoding(ASIMDInstruction.SSHL, size, elemSizeXX(eSize), dst, src1, src2);
     }
@@ -3132,12 +3133,12 @@ public abstract class AArch64ASIMDAssembler {
      * @param shiftAmt shift left amount.
      */
     public void sshllVVI(ElementSize srcESize, Register dst, Register src, int shiftAmt) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
-        assert srcESize != ElementSize.DoubleWord;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
+        assert srcESize != ElementSize.DoubleWord : srcESize;
 
         /* Accepted shift range */
-        assert shiftAmt >= 0 && shiftAmt < srcESize.nbits;
+        assert shiftAmt >= 0 && shiftAmt < srcESize.nbits : shiftAmt + " " + srcESize;
 
         /* shift = imm7 - srcESize.nbits */
         int imm7 = srcESize.nbits + shiftAmt;
@@ -3158,12 +3159,12 @@ public abstract class AArch64ASIMDAssembler {
      * @param shiftAmt shift right amount.
      */
     public void sshrVVI(ASIMDSize size, ElementSize eSize, Register dst, Register src, int shiftAmt) {
-        assert usesMultipleLanes(size, eSize);
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
 
         /* Accepted shift range */
-        assert shiftAmt > 0 && shiftAmt <= eSize.nbits;
+        assert shiftAmt > 0 && shiftAmt <= eSize.nbits : shiftAmt + " " + eSize;
 
         /* shift = eSize.nbits * 2 - imm7 */
         int imm7 = eSize.nbits * 2 - shiftAmt;
@@ -3183,10 +3184,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void ssublVVV(ElementSize srcESize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-        assert srcESize != ElementSize.DoubleWord;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert srcESize != ElementSize.DoubleWord : srcESize;
 
         threeDifferentEncoding(ASIMDInstruction.SSUBL, false, elemSizeXX(srcESize), dst, src1, src2);
     }
@@ -3203,10 +3204,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void ssubl2VVV(ElementSize srcESize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-        assert srcESize != ElementSize.DoubleWord;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert srcESize != ElementSize.DoubleWord : srcESize;
 
         threeDifferentEncoding(ASIMDInstruction.SSUBL, true, elemSizeXX(srcESize), dst, src1, src2);
     }
@@ -3222,7 +3223,7 @@ public abstract class AArch64ASIMDAssembler {
      * @param addr address of first structure.
      */
     public void st1MultipleV(ASIMDSize size, ElementSize eSize, Register src, AArch64Address addr) {
-        assert src.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD) : src;
         loadStoreMultipleStructures(ASIMDInstruction.ST1_MULTIPLE_1R, size, eSize, src, addr);
     }
 
@@ -3299,7 +3300,7 @@ public abstract class AArch64ASIMDAssembler {
      */
     public void st2MultipleVV(ASIMDSize size, ElementSize eSize, Register src1, Register src2, AArch64Address addr) {
         assert assertConsecutiveSIMDRegisters(src1, src2);
-        assert usesMultipleLanes(size, eSize);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
         loadStoreMultipleStructures(ASIMDInstruction.ST2_MULTIPLE_2R, size, eSize, src1, addr);
     }
 
@@ -3326,7 +3327,7 @@ public abstract class AArch64ASIMDAssembler {
      */
     public void st4MultipleVVVV(ASIMDSize size, ElementSize eSize, Register src1, Register src2, Register src3, Register src4, AArch64Address addr) {
         assert assertConsecutiveSIMDRegisters(src1, src2, src3, src4);
-        assert usesMultipleLanes(size, eSize);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
         loadStoreMultipleStructures(ASIMDInstruction.ST4_MULTIPLE_4R, size, eSize, src1, addr);
     }
 
@@ -3343,11 +3344,11 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void subSSS(ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
-        assert eSize == ElementSize.DoubleWord; // only size supported
+        assert eSize == ElementSize.DoubleWord : eSize; // only size supported
 
         scalarThreeSameEncoding(ASIMDInstruction.SUB, elemSizeXX(eSize), dst, src1, src2);
     }
@@ -3364,9 +3365,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void subVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         threeSameEncoding(ASIMDInstruction.SUB, size, elemSizeXX(eSize), dst, src1, src2);
     }
@@ -3396,9 +3397,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param index SIMD register.
      */
     public void tblVVV(ASIMDSize size, Register dst, Register table, Register index) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert table.getRegisterCategory().equals(SIMD);
-        assert index.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert table.getRegisterCategory().equals(SIMD) : table;
+        assert index.getRegisterCategory().equals(SIMD) : index;
 
         tableLookupEncoding(ASIMDInstruction.TBL, size, 1, dst, table, index);
     }
@@ -3430,9 +3431,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param index SIMD register.
      */
     public void tblVVVV(ASIMDSize size, Register dst, Register table1, Register table2, Register index) {
-        assert dst.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
         assert assertConsecutiveSIMDRegisters(table1, table2);
-        assert index.getRegisterCategory().equals(SIMD);
+        assert index.getRegisterCategory().equals(SIMD) : index;
 
         tableLookupEncoding(ASIMDInstruction.TBL, size, 2, dst, table1, index);
     }
@@ -3460,9 +3461,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param index SIMD register.
      */
     public void tbxVVV(ASIMDSize size, Register dst, Register table, Register index) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert table.getRegisterCategory().equals(SIMD);
-        assert index.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert table.getRegisterCategory().equals(SIMD) : table;
+        assert index.getRegisterCategory().equals(SIMD) : index;
 
         tableLookupEncoding(ASIMDInstruction.TBX, size, 1, dst, table, index);
     }
@@ -3482,10 +3483,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void trn1VVV(ASIMDSize dstSize, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-        assert usesMultipleLanes(dstSize, eSize);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert usesMultipleLanes(dstSize, eSize) : dstSize + " " + eSize;
 
         permuteEncoding(ASIMDInstruction.TRN1, dstSize, eSize, dst, src1, src2);
     }
@@ -3505,10 +3506,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void trn2VVV(ASIMDSize dstSize, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-        assert usesMultipleLanes(dstSize, eSize);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert usesMultipleLanes(dstSize, eSize) : dstSize + " " + eSize;
 
         permuteEncoding(ASIMDInstruction.TRN2, dstSize, eSize, dst, src1, src2);
     }
@@ -3526,10 +3527,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register. Should not be null.
      */
     public void uaddlvSV(ASIMDSize size, ElementSize elementSize, Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
         assert !(size == ASIMDSize.HalfReg && elementSize == ElementSize.Word) : "Invalid size and lane combination for uaddlv";
-        assert elementSize != ElementSize.DoubleWord : "Invalid lane width for uaddlv";
+        assert elementSize != ElementSize.DoubleWord : "Invalid lane width for uaddlv " + elementSize;
 
         acrossLanesEncoding(ASIMDInstruction.UADDLV, size, elemSizeXX(elementSize), dst, src);
     }
@@ -3546,12 +3547,12 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void umaxVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
 
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-        assert eSize != ElementSize.DoubleWord : "Invalid lane width for umax";
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert eSize != ElementSize.DoubleWord : "Invalid lane width for umax " + eSize;
 
         threeSameEncoding(ASIMDInstruction.UMAX, size, elemSizeXX(eSize), dst, src1, src2);
     }
@@ -3567,8 +3568,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void umaxvSV(ASIMDSize size, ElementSize elementSize, Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
         assert !(size == ASIMDSize.HalfReg && elementSize == ElementSize.Word) : "Invalid size and lane combination for umaxv";
         assert elementSize != ElementSize.DoubleWord : "Invalid lane width for umaxv";
 
@@ -3587,11 +3588,11 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void uminVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
 
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
         assert eSize != ElementSize.DoubleWord : "Invalid lane width for umin";
 
         threeSameEncoding(ASIMDInstruction.UMIN, size, elemSizeXX(eSize), dst, src1, src2);
@@ -3608,8 +3609,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void uminvSV(ASIMDSize size, ElementSize elementSize, Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
         assert !(size == ASIMDSize.HalfReg && elementSize == ElementSize.Word) : "Invalid size and lane combination for uminv";
         assert elementSize != ElementSize.DoubleWord : "Invalid lane width for uminv";
 
@@ -3628,10 +3629,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void umlalVVV(ElementSize srcESize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-        assert srcESize != ElementSize.DoubleWord;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert srcESize != ElementSize.DoubleWord : srcESize;
 
         threeDifferentEncoding(ASIMDInstruction.UMLAL, false, elemSizeXX(srcESize), dst, src1, src2);
     }
@@ -3648,10 +3649,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void umlslVVV(ElementSize srcESize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-        assert srcESize != ElementSize.DoubleWord;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert srcESize != ElementSize.DoubleWord : srcESize;
 
         threeDifferentEncoding(ASIMDInstruction.UMLSL, false, elemSizeXX(srcESize), dst, src1, src2);
     }
@@ -3667,8 +3668,8 @@ public abstract class AArch64ASIMDAssembler {
      * @param index offset of value to move.
      */
     public void umovGX(ElementSize eSize, Register dst, Register src, int index) {
-        assert dst.getRegisterCategory().equals(CPU);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(CPU) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
 
         copyEncoding(ASIMDInstruction.UMOV, eSize == ElementSize.DoubleWord, eSize, dst, src, index);
     }
@@ -3690,10 +3691,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void ushlVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
 
         threeSameEncoding(ASIMDInstruction.USHL, size, elemSizeXX(eSize), dst, src1, src2);
     }
@@ -3712,12 +3713,12 @@ public abstract class AArch64ASIMDAssembler {
      * @param shiftAmt shift left amount.
      */
     public void ushllVVI(ElementSize srcESize, Register dst, Register src, int shiftAmt) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
-        assert srcESize != ElementSize.DoubleWord;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
+        assert srcESize != ElementSize.DoubleWord : srcESize;
 
         /* Accepted shift range */
-        assert shiftAmt >= 0 && shiftAmt < srcESize.nbits;
+        assert shiftAmt >= 0 && shiftAmt < srcESize.nbits : shiftAmt + " " + srcESize;
 
         /* shift = imm7 - srcESize.nbits */
         int imm7 = srcESize.nbits + shiftAmt;
@@ -3739,12 +3740,12 @@ public abstract class AArch64ASIMDAssembler {
      * @param shiftAmt shift left amount.
      */
     public void ushll2VVI(ElementSize srcESize, Register dst, Register src, int shiftAmt) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
-        assert srcESize != ElementSize.DoubleWord;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
+        assert srcESize != ElementSize.DoubleWord : srcESize;
 
         /* Accepted shift range */
-        assert shiftAmt >= 0 && shiftAmt < srcESize.nbits;
+        assert shiftAmt >= 0 && shiftAmt < srcESize.nbits : shiftAmt + " " + srcESize;
 
         /* shift = imm7 - srcESize.nbits */
         int imm7 = srcESize.nbits + shiftAmt;
@@ -3763,12 +3764,12 @@ public abstract class AArch64ASIMDAssembler {
      * @param shiftAmt shift right amount.
      */
     public void ushrSSI(ElementSize eSize, Register dst, Register src, int shiftAmt) {
-        assert eSize == ElementSize.DoubleWord;
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert eSize == ElementSize.DoubleWord : eSize;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
 
         /* Accepted shift range */
-        assert shiftAmt > 0 && shiftAmt <= eSize.nbits;
+        assert shiftAmt > 0 && shiftAmt <= eSize.nbits : shiftAmt + " " + eSize;
 
         /* shift = eSize.nbits * 2 - imm7 */
         int imm7 = eSize.nbits * 2 - shiftAmt;
@@ -3789,12 +3790,12 @@ public abstract class AArch64ASIMDAssembler {
      * @param shiftAmt shift right amount.
      */
     public void ushrVVI(ASIMDSize size, ElementSize eSize, Register dst, Register src, int shiftAmt) {
-        assert usesMultipleLanes(size, eSize);
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
 
         /* Accepted shift range */
-        assert shiftAmt > 0 && shiftAmt <= eSize.nbits;
+        assert shiftAmt > 0 && shiftAmt <= eSize.nbits : shiftAmt + " " + eSize;
 
         /* shift = eSize.nbits * 2 - imm7 */
         int imm7 = eSize.nbits * 2 - shiftAmt;
@@ -3815,12 +3816,12 @@ public abstract class AArch64ASIMDAssembler {
      * @param shiftAmt shift right amount.
      */
     public void usraVVI(ASIMDSize size, ElementSize eSize, Register dst, Register src, int shiftAmt) {
-        assert usesMultipleLanes(size, eSize);
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
+        assert usesMultipleLanes(size, eSize) : "Must use multiple lanes " + size + " " + eSize;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
 
         /* Accepted shift range */
-        assert shiftAmt > 0 && shiftAmt <= eSize.nbits;
+        assert shiftAmt > 0 && shiftAmt <= eSize.nbits : shiftAmt + " " + eSize;
 
         /* shift = eSize.nbits * 2 - imm7 */
         int imm7 = eSize.nbits * 2 - shiftAmt;
@@ -3840,10 +3841,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void usublVVV(ElementSize srcESize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-        assert srcESize != ElementSize.DoubleWord;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert srcESize != ElementSize.DoubleWord : srcESize;
 
         threeDifferentEncoding(ASIMDInstruction.USUBL, false, elemSizeXX(srcESize), dst, src1, src2);
     }
@@ -3860,10 +3861,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void usubl2VVV(ElementSize srcESize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-        assert srcESize != ElementSize.DoubleWord;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert srcESize != ElementSize.DoubleWord : srcESize;
 
         threeDifferentEncoding(ASIMDInstruction.USUBL, true, elemSizeXX(srcESize), dst, src1, src2);
     }
@@ -3884,10 +3885,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void uzp1VVV(ASIMDSize dstSize, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-        assert usesMultipleLanes(dstSize, eSize);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert usesMultipleLanes(dstSize, eSize) : dstSize + " " + eSize;
 
         permuteEncoding(ASIMDInstruction.UZP1, dstSize, eSize, dst, src1, src2);
     }
@@ -3908,10 +3909,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void uzp2VVV(ASIMDSize dstSize, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-        assert usesMultipleLanes(dstSize, eSize);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert usesMultipleLanes(dstSize, eSize) : dstSize + " " + eSize;
 
         permuteEncoding(ASIMDInstruction.UZP2, dstSize, eSize, dst, src1, src2);
     }
@@ -3930,10 +3931,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param imm6 6-bit immediate
      */
     public void xarVVVI(Register dst, Register src1, Register src2, int imm6) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-        assert NumUtil.isUnsignedNbit(6, imm6);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert NumUtil.isUnsignedNbit(6, imm6) : imm6;
 
         int baseEncoding = 0b110011101_00_00000_000000_00000_00000;
         emitInt(baseEncoding | rd(dst) | rs1(src1) | rs2(src2) | imm6 << 10);
@@ -3952,9 +3953,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void xtnVV(ElementSize dstESize, Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
-        assert dstESize != ElementSize.DoubleWord;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
+        assert dstESize != ElementSize.DoubleWord : dstESize;
 
         twoRegMiscEncoding(ASIMDInstruction.XTN, false, elemSizeXX(dstESize), dst, src);
     }
@@ -3972,9 +3973,9 @@ public abstract class AArch64ASIMDAssembler {
      * @param src SIMD register.
      */
     public void xtn2VV(ElementSize dstESize, Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src.getRegisterCategory().equals(SIMD);
-        assert dstESize != ElementSize.DoubleWord;
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
+        assert dstESize != ElementSize.DoubleWord : dstESize;
 
         twoRegMiscEncoding(ASIMDInstruction.XTN, true, elemSizeXX(dstESize), dst, src);
     }
@@ -3994,10 +3995,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void zip1VVV(ASIMDSize dstSize, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-        assert usesMultipleLanes(dstSize, eSize);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert usesMultipleLanes(dstSize, eSize) : dstSize + " " + eSize;
 
         permuteEncoding(ASIMDInstruction.ZIP1, dstSize, eSize, dst, src1, src2);
     }
@@ -4017,10 +4018,10 @@ public abstract class AArch64ASIMDAssembler {
      * @param src2 SIMD register.
      */
     public void zip2VVV(ASIMDSize dstSize, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-        assert usesMultipleLanes(dstSize, eSize);
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src1.getRegisterCategory().equals(SIMD) : src1;
+        assert src2.getRegisterCategory().equals(SIMD) : src2;
+        assert usesMultipleLanes(dstSize, eSize) : dstSize + " " + eSize;
 
         permuteEncoding(ASIMDInstruction.ZIP2, dstSize, eSize, dst, src1, src2);
     }

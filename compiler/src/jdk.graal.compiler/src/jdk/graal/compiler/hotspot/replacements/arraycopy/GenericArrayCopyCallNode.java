@@ -28,20 +28,16 @@ package jdk.graal.compiler.hotspot.replacements.arraycopy;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
-import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.nodes.GetObjectAddressNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.memory.AbstractMemoryCheckpoint;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.Lowerable;
-import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.replacements.arraycopy.ArrayCopyCallNode;
 import org.graalvm.word.LocationIdentity;
 
@@ -65,20 +61,14 @@ import jdk.vm.ci.meta.JavaKind;
 public final class GenericArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, SingleMemoryKill {
 
     public static final NodeClass<GenericArrayCopyCallNode> TYPE = NodeClass.create(GenericArrayCopyCallNode.class);
-    private final ForeignCallsProvider foreignCalls;
     @Input ValueNode src;
     @Input ValueNode srcPos;
     @Input ValueNode dest;
     @Input ValueNode destPos;
     @Input ValueNode length;
 
-    private ForeignCallsProvider getForeignCalls() {
-        return foreignCalls;
-    }
-
-    protected GenericArrayCopyCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length) {
+    protected GenericArrayCopyCallNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length) {
         super(TYPE, StampFactory.forKind(JavaKind.Int));
-        this.foreignCalls = foreignCalls;
         this.src = src;
         this.srcPos = srcPos;
         this.dest = dest;
@@ -90,30 +80,20 @@ public final class GenericArrayCopyCallNode extends AbstractMemoryCheckpoint imp
         return src;
     }
 
+    public ValueNode getSrcPos() {
+        return srcPos;
+    }
+
     public ValueNode getDestination() {
         return dest;
     }
 
+    public ValueNode getDestPos() {
+        return destPos;
+    }
+
     public ValueNode getLength() {
         return length;
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        if (graph().getGuardsStage().areFrameStatesAtDeopts()) {
-            StructuredGraph graph = graph();
-            ValueNode srcAddr = objectAddress(getSource());
-            ValueNode destAddr = objectAddress(getDestination());
-            ForeignCallNode call = graph.add(new ForeignCallNode(getForeignCalls(), HotSpotHostForeignCallsProvider.GENERIC_ARRAYCOPY, srcAddr, srcPos, destAddr, destPos, length));
-            call.setStateAfter(stateAfter());
-            graph.replaceFixedWithFixed(this, call);
-        }
-    }
-
-    private ValueNode objectAddress(ValueNode obj) {
-        GetObjectAddressNode result = graph().add(new GetObjectAddressNode(obj));
-        graph().addBeforeFixed(this, result);
-        return result;
     }
 
     @Override

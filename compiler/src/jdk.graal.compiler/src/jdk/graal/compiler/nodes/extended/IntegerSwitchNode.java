@@ -32,19 +32,18 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
+
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.nodes.spi.Simplifiable;
-import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
@@ -62,11 +61,13 @@ import jdk.graal.compiler.nodes.ProfileData.ProfileSource;
 import jdk.graal.compiler.nodes.ProfileData.SwitchProbabilityData;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
+import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.nodes.spi.Simplifiable;
+import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.spi.SwitchFoldable;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -90,18 +91,18 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
 
     public IntegerSwitchNode(ValueNode value, AbstractBeginNode[] successors, int[] keys, int[] keySuccessors, SwitchProbabilityData profileData) {
         super(TYPE, value, successors, keySuccessors, profileData);
-        assert keySuccessors.length == keys.length + 1;
-        assert keySuccessors.length == profileData.getKeyProbabilities().length;
+        assert keySuccessors.length == keys.length + 1 : "Must have etry key for default " + Assertions.errorMessageContext("keySucc", keySuccessors, "keys", keys);
+        assert keySuccessors.length == profileData.getKeyProbabilities().length : Assertions.errorMessageContext("keySucc", keySuccessors, "profiles", profileData.getKeyProbabilities());
         this.keys = keys;
         areKeysContiguous = keys.length > 0 && keys[keys.length - 1] - keys[0] + 1 == keys.length;
-        assert value.stamp(NodeView.DEFAULT) instanceof PrimitiveStamp && value.stamp(NodeView.DEFAULT).getStackKind().isNumericInteger();
+        assert value.stamp(NodeView.DEFAULT) instanceof PrimitiveStamp && value.stamp(NodeView.DEFAULT).getStackKind().isNumericInteger() : Assertions.errorMessageContext("value", value);
         assert assertSorted();
         assert assertNoUntargettedSuccessor();
     }
 
     private boolean assertSorted() {
         for (int i = 1; i < keys.length; i++) {
-            assert keys[i - 1] < keys[i];
+            assert keys[i - 1] < keys[i] : "Keys must be sorted " + Assertions.errorMessageContext("keys", keys);
         }
         return true;
     }
@@ -331,7 +332,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
                 }
             }
             if (!isDefault) {
-                assert i >= 0 && i < switchNode.keyCount();
+                assert i >= 0 && i < switchNode.keyCount() : Assertions.errorMessageContext("i", i, "switchNodeCount", switchNode.keyCount());
                 addKeyData(addNewSuccessor(begin, newSuccessors), i);
             }
         }
@@ -392,7 +393,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
                         for (int index : marker) {
                             /* Rewire to the same successor */
                             AbstractBeginNode successorBegin = switchNode.keySuccessor(index);
-                            assert successorBegin.next() instanceof EndNode;
+                            assert successorBegin.next() instanceof EndNode : Assertions.errorMessage(successorBegin, successorBegin.next());
                             addKeyData(successorIndex, index);
                         }
                     }
@@ -546,7 +547,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
              */
             return false;
         }
-        assert loadIndexed.usages().first() == this;
+        assert loadIndexed.usages().first() == this : Assertions.errorMessage(loadIndexed, loadIndexed.usages(), this);
 
         ValueNode newValue = loadIndexed.index();
         JavaConstant arrayConstant = loadIndexed.array().asJavaConstant();

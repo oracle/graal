@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import jdk.graal.compiler.word.WordTypes;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
 
@@ -37,6 +36,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 
+import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -54,11 +54,10 @@ public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionP
 
     @Override
     public JavaConstant forObject(Object object) {
-        /* RelocatedPointer values will be represented as a RelocatableConstant by GR-48681. */
         if (object instanceof RelocatedPointer pointer) {
+            /* Relocated pointers are subject to relocation, so we don't know their value yet. */
             return new RelocatableConstant(pointer);
         } else if (object instanceof WordBase word) {
-            /* Relocated pointers are subject to relocation, so we don't know their value yet. */
             return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), word.rawValue());
         }
         AnalysisConstantReflectionProvider.validateRawObjectConstant(object);

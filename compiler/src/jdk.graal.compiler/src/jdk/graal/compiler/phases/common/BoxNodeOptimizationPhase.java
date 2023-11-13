@@ -77,7 +77,7 @@ public class BoxNodeOptimizationPhase extends PostRunCanonicalizationPhase<CoreP
                         final BoxNode boxUsageOnBoxedVal = (BoxNode) usage;
                         if (boxUsageOnBoxedVal.getBoxingKind() == box.getBoxingKind()) {
                             if (cfg == null) {
-                                cfg = ControlFlowGraph.compute(graph, true, true, true, false);
+                                cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeDominators(true).computeFrequency(true).build();
                             }
                             if (graph.isNew(before, boxUsageOnBoxedVal) || graph.isNew(before, box)) {
                                 continue boxedValUsageLoop;

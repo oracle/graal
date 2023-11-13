@@ -40,6 +40,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.IntegerDivRemNode;
 import jdk.graal.compiler.nodes.calc.IntegerDivRemNode.Op;
+import jdk.graal.compiler.debug.Assertions;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -99,12 +100,12 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                             }
                             switch (divRem.getOp()) {
                                 case DIV:
-                                    assert otherDivRem.getOp() == Op.REM;
+                                    assert otherDivRem.getOp() == Op.REM : Assertions.errorMessage(valueNode, otherDivRem);
                                     setResult(divRem, results[0]);
                                     setResult(otherDivRem, results[1]);
                                     break;
                                 case REM:
-                                    assert otherDivRem.getOp() == Op.DIV;
+                                    assert otherDivRem.getOp() == Op.DIV : Assertions.errorMessage(valueNode, otherDivRem);
                                     setResult(divRem, results[1]);
                                     setResult(otherDivRem, results[0]);
                                     break;

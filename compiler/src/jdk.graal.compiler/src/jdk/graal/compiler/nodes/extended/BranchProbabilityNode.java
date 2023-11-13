@@ -30,6 +30,7 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
@@ -58,7 +59,6 @@ import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -163,7 +163,7 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
             }
             boolean usageFound = false;
             for (IntegerEqualsNode node : this.usages().filter(IntegerEqualsNode.class)) {
-                assert node.condition() == CanonicalCondition.EQ;
+                assert node.condition() == CanonicalCondition.EQ : Assertions.errorMessage(node, node.condition());
                 ValueNode other = node.getX();
                 if (node.getX() == this) {
                     other = node.getY();

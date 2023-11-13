@@ -29,8 +29,10 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import org.graalvm.collections.UnmodifiableEconomicMap;
+
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
@@ -117,7 +119,7 @@ public class ObjectSnippets implements Snippets {
                 for (Node originalNode : duplicates.getKeys()) {
                     if (originalNode instanceof InvokeNode) {
                         InvokeNode invoke = (InvokeNode) duplicates.get(originalNode);
-                        assert invoke.asNode().graph() == graph;
+                        assert invoke.asNode().graph() == graph : Assertions.errorMessage(invoke, invoke.asNode().graph(), graph);
                         // Here we need to fix the bci of the invoke
                         invoke.setBci(fn.getBci());
                         invoke.setStateDuring(null);

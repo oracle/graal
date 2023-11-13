@@ -42,22 +42,26 @@ package com.oracle.truffle.regex.tregex.nodes.input;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
+@GenerateInline
 public abstract class InputIndexOfNode extends Node {
 
-    public abstract int execute(TruffleString input, int fromIndex, int maxIndex, TruffleString.CodePointSet codePointSet, Encoding encoding);
+    public abstract int execute(Node node, TruffleString input, int fromIndex, int maxIndex, TruffleString.CodePointSet codePointSet, Encoding encoding);
 
     @Specialization
     public int doTString(TruffleString input, int fromIndex, int maxIndex, TruffleString.CodePointSet codePointSet, Encoding encoding,
-                    @Cached TruffleString.ByteIndexOfCodePointSetNode indexOfNode) {
+                    @Cached(inline = false) TruffleString.ByteIndexOfCodePointSetNode indexOfNode) {
         CompilerAsserts.partialEvaluationConstant(codePointSet);
         return indexOfNode.execute(input, fromIndex << encoding.getStride(), maxIndex << encoding.getStride(), codePointSet) >> encoding.getStride();
     }
 
+    @NeverDefault
     public static InputIndexOfNode create() {
         return InputIndexOfNodeGen.create();
     }

@@ -187,31 +187,37 @@ public class HeapSnapshotVerifier {
             if (field.isStatic()) {
                 TypeData typeData = field.getDeclaringClass().getOrComputeData();
                 JavaConstant fieldSnapshot = typeData.readFieldValue(field);
-                verifyStaticFieldValue(typeData, field, maybeUnwrapSnapshot(fieldSnapshot, fieldValue instanceof ImageHeapConstant), fieldValue, reason);
+                verifyStaticFieldValue(typeData, field, fieldSnapshot, fieldValue, reason);
             } else {
-                ImageHeapInstance receiverObject = (ImageHeapInstance) getReceiverObject(receiver, reason);
+                ImageHeapInstance receiverObject = (ImageHeapInstance) getSnapshot(receiver, reason);
                 JavaConstant fieldSnapshot = receiverObject.readFieldValue(field);
-                verifyInstanceFieldValue(field, receiver, receiverObject, maybeUnwrapSnapshot(fieldSnapshot, fieldValue instanceof ImageHeapConstant), fieldValue, reason);
+                verifyInstanceFieldValue(field, receiver, receiverObject, fieldSnapshot, fieldValue, reason);
             }
             return false;
         }
 
         private void verifyStaticFieldValue(TypeData typeData, AnalysisField field, JavaConstant fieldSnapshot, JavaConstant fieldValue, ScanReason reason) {
-            if (!Objects.equals(fieldSnapshot, fieldValue)) {
+            JavaConstant result = fieldSnapshot;
+            JavaConstant unwrappedSnapshot = maybeUnwrapSnapshot(fieldSnapshot, fieldValue instanceof ImageHeapConstant);
+            if (!Objects.equals(unwrappedSnapshot, fieldValue)) {
                 String format = "Value mismatch for static field %s %n snapshot:  %s %n new value: %s %n";
-                Consumer<ScanReason> onAnalysisModified = analysisModified(reason, format, field, fieldSnapshot, fieldValue);
-                scanner.patchStaticField(typeData, field, fieldValue, reason, onAnalysisModified).ensureDone();
+                Consumer<ScanReason> onAnalysisModified = analysisModified(reason, format, field, unwrappedSnapshot, fieldValue);
+                result = scanner.patchStaticField(typeData, field, fieldValue, reason, onAnalysisModified).ensureDone();
                 heapPatched = true;
             }
+            ImageHeapScanner.ensureReaderInstalled(result);
         }
 
         private void verifyInstanceFieldValue(AnalysisField field, JavaConstant receiver, ImageHeapInstance receiverObject, JavaConstant fieldSnapshot, JavaConstant fieldValue, ScanReason reason) {
-            if (!Objects.equals(fieldSnapshot, fieldValue)) {
+            JavaConstant result = fieldSnapshot;
+            JavaConstant unwrappedSnapshot = maybeUnwrapSnapshot(fieldSnapshot, fieldValue instanceof ImageHeapConstant);
+            if (!Objects.equals(unwrappedSnapshot, fieldValue)) {
                 String format = "Value mismatch for instance field %s of %s %n snapshot:  %s %n new value: %s %n";
-                Consumer<ScanReason> onAnalysisModified = analysisModified(reason, format, field, asString(receiver), fieldSnapshot, fieldValue);
-                scanner.patchInstanceField(receiverObject, field, fieldValue, reason, onAnalysisModified).ensureDone();
+                Consumer<ScanReason> onAnalysisModified = analysisModified(reason, format, field, asString(receiver), unwrappedSnapshot, fieldValue);
+                result = scanner.patchInstanceField(receiverObject, field, fieldValue, reason, onAnalysisModified).ensureDone();
                 heapPatched = true;
             }
+            ImageHeapScanner.ensureReaderInstalled(result);
         }
 
         private Consumer<ScanReason> analysisModified(ScanReason reason, String format, Object... args) {
@@ -249,40 +255,48 @@ public class HeapSnapshotVerifier {
              * fields that become available but may have not yet been consumed. We simply execute
              * the future, then compare the produced value.
              */
-            ImageHeapObjectArray arrayObject = (ImageHeapObjectArray) getReceiverObject(array, reason);
+            ImageHeapObjectArray arrayObject = (ImageHeapObjectArray) getSnapshot(array, reason);
             JavaConstant elementSnapshot = arrayObject.readElementValue(index);
             verifyArrayElementValue(elementValue, index, reason, array, arrayObject, elementSnapshot);
             return false;
         }
 
         private void verifyArrayElementValue(JavaConstant elementValue, int index, ScanReason reason, JavaConstant array, ImageHeapObjectArray arrayObject, JavaConstant elementSnapshot) {
+            JavaConstant result = elementSnapshot;
             if (!Objects.equals(maybeUnwrapSnapshot(elementSnapshot, elementValue instanceof ImageHeapConstant), elementValue)) {
                 String format = "Value mismatch for array element at index %s of %s %n snapshot:  %s %n new value: %s %n";
                 Consumer<ScanReason> onAnalysisModified = analysisModified(reason, format, index, asString(array), elementSnapshot, elementValue);
-                scanner.patchArrayElement(arrayObject, index, elementValue, reason, onAnalysisModified).ensureDone();
+                result = scanner.patchArrayElement(arrayObject, index, elementValue, reason, onAnalysisModified).ensureDone();
                 heapPatched = true;
             }
+            ImageHeapScanner.ensureReaderInstalled(result);
         }
 
         @SuppressWarnings({"unchecked", "rawtypes"})
-        private ImageHeapConstant getReceiverObject(JavaConstant constant, ScanReason reason) {
+        private ImageHeapConstant getSnapshot(JavaConstant constant, ScanReason reason) {
+            ImageHeapConstant result;
             if (constant instanceof ImageHeapConstant) {
                 /* This is a simulated constant. */
-                return (ImageHeapConstant) constant;
-            }
-            Object task = imageHeap.getSnapshot(constant);
-            if (task == null) {
-                throw error(reason, "Task is null for constant %s.", constant);
-            } else if (task instanceof ImageHeapConstant) {
-                return (ImageHeapConstant) task;
+                result = (ImageHeapConstant) constant;
             } else {
-                AnalysisFuture<ImageHeapConstant> future = ((AnalysisFuture<ImageHeapConstant>) task);
-                if (future.isDone()) {
-                    return future.guardedGet();
+                Object task = imageHeap.getSnapshot(constant);
+                if (task == null) {
+                    throw error(reason, "Task is null for constant %s.", constant);
+                } else if (task instanceof ImageHeapConstant) {
+                    result = (ImageHeapConstant) task;
                 } else {
-                    throw error(reason, "Task not yet executed for constant %s.", constant);
+                    AnalysisFuture<ImageHeapConstant> future = ((AnalysisFuture<ImageHeapConstant>) task);
+                    if (future.isDone()) {
+                        result = future.guardedGet();
+                    } else {
+                        throw error(reason, "Task not yet executed for constant %s.", constant);
+                    }
                 }
             }
+            if (!result.isReaderInstalled()) {
+                throw error(reason, "Reader not yet installed for constant %s.", constant);
+            }
+            return result;
         }
 
         @Override

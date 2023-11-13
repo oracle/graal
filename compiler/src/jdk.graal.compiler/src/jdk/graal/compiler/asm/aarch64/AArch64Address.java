@@ -29,8 +29,8 @@ import static jdk.vm.ci.aarch64.AArch64.zr;
 
 import jdk.graal.compiler.asm.AbstractAddress;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
-
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Register;
 
@@ -200,7 +200,7 @@ public final class AArch64Address extends AbstractAddress {
      * @param offset Value to be checked.
      */
     public static boolean isOffsetAligned(int bitMemoryTransferSize, long offset) {
-        assert bitMemoryTransferSize == 8 || bitMemoryTransferSize == 16 || bitMemoryTransferSize == 32 || bitMemoryTransferSize == 64 || bitMemoryTransferSize == 128;
+        assert bitMemoryTransferSize == 8 || bitMemoryTransferSize == 16 || bitMemoryTransferSize == 32 || bitMemoryTransferSize == 64 || bitMemoryTransferSize == 128 : bitMemoryTransferSize;
         int mask = (bitMemoryTransferSize / Byte.SIZE) - 1;
         return (offset & mask) == 0;
     }
@@ -406,7 +406,7 @@ public final class AArch64Address extends AbstractAddress {
 
         switch (addressingMode) {
             case IMMEDIATE_UNSIGNED_SCALED:
-                assert bitMemoryTransferSize != ANY_SIZE;
+                assert bitMemoryTransferSize != ANY_SIZE : bitMemoryTransferSize;
                 assert !base.equals(zr);
                 assert offset.equals(zr);
                 assert extendType == null;
@@ -424,42 +424,42 @@ public final class AArch64Address extends AbstractAddress {
                 assert !base.equals(zr);
                 assert offset.equals(zr);
                 assert extendType == null;
-                assert immediate == 0;
+                assert immediate == 0 : immediate;
                 break;
             case REGISTER_OFFSET:
-                assert !(registerOffsetScaled && bitMemoryTransferSize == ANY_SIZE);
+                assert !(registerOffsetScaled && bitMemoryTransferSize == ANY_SIZE) : registerOffsetScaled + " " + bitMemoryTransferSize;
                 assert !base.equals(zr);
                 assert !base.equals(offset);
                 assert extendType == null;
-                assert immediate == 0;
+                assert immediate == 0 : immediate;
                 break;
             case EXTENDED_REGISTER_OFFSET:
-                assert !(registerOffsetScaled && bitMemoryTransferSize == ANY_SIZE);
+                assert !(registerOffsetScaled && bitMemoryTransferSize == ANY_SIZE) : registerOffsetScaled + " " + bitMemoryTransferSize;
                 assert !base.equals(zr);
                 assert !base.equals(offset);
-                assert (extendType == AArch64Assembler.ExtendType.SXTW || extendType == AArch64Assembler.ExtendType.UXTW);
-                assert immediate == 0;
+                assert (extendType == AArch64Assembler.ExtendType.SXTW || extendType == AArch64Assembler.ExtendType.UXTW) : Assertions.errorMessage(extendType);
+                assert immediate == 0 : immediate;
                 break;
             case PC_LITERAL:
                 assert base.equals(zr);
                 assert offset.equals(zr);
                 assert extendType == null;
-                assert NumUtil.isSignedNbit(21, immediate);
-                assert ((immediate & 0x3) == 0);
+                assert NumUtil.isSignedNbit(21, immediate) : immediate;
+                assert ((immediate & 0x3) == 0) : immediate;
                 break;
             case IMMEDIATE_PAIR_SIGNED_SCALED:
             case IMMEDIATE_PAIR_POST_INDEXED:
             case IMMEDIATE_PAIR_PRE_INDEXED:
-                assert bitMemoryTransferSize != ANY_SIZE;
+                assert bitMemoryTransferSize != ANY_SIZE : bitMemoryTransferSize;
                 assert !base.equals(zr);
                 assert offset.equals(zr);
                 assert extendType == null;
-                assert NumUtil.isSignedNbit(7, immediate);
+                assert NumUtil.isSignedNbit(7, immediate) : immediate;
                 break;
             case REGISTER_STRUCTURE_POST_INDEXED:
                 assert !registerOffsetScaled;
                 assert !base.equals(zr);
-                assert !(offset.equals(sp) || offset.equals(zr));
+                assert !(offset.equals(sp) || offset.equals(zr)) : offset;
                 assert extendType == null;
                 break;
             case IMMEDIATE_STRUCTURE_POST_INDEXED:

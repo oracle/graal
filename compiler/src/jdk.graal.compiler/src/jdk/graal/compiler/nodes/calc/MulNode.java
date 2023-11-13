@@ -31,6 +31,7 @@ import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Mul;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -40,7 +41,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.PrimitiveConstant;
@@ -146,7 +146,8 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
                 if (bitCount == 2) {
                     // e.g., 0b1000_0010
                     long lowerBitValue = i - highestBitValue;
-                    assert highestBitValue > 0 && lowerBitValue > 0;
+                    assert highestBitValue > 0 && lowerBitValue > 0 : Assertions.errorMessageContext("stamp", stamp, "forX", forX, "i", i, "highestBitVal", highestBitValue, "lowerBitVal",
+                                    lowerBitValue);
                     ValueNode left = new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(highestBitValue)));
                     ValueNode right = lowerBitValue == 1 ? forX : new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(lowerBitValue)));
                     return AddNode.create(left, right, view);
@@ -155,7 +156,7 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
                     int shiftToRoundUpToPowerOf2 = CodeUtil.log2(highestBitValue) + 1;
                     long subValue = (1 << shiftToRoundUpToPowerOf2) - i;
                     if (CodeUtil.isPowerOf2(subValue) && shiftToRoundUpToPowerOf2 < ((IntegerStamp) stamp).getBits()) {
-                        assert CodeUtil.log2(subValue) >= 1;
+                        assert CodeUtil.log2(subValue) >= 1 : subValue;
                         ValueNode left = new LeftShiftNode(forX, ConstantNode.forInt(shiftToRoundUpToPowerOf2));
                         ValueNode right = new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(subValue)));
                         return SubNode.create(left, right, view);

@@ -25,6 +25,7 @@
 package jdk.graal.compiler.lir;
 
 import static jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph.INVALID_BLOCK_ID;
+import static jdk.graal.compiler.lir.LIR.verifyBlocks;
 
 import java.util.ArrayList;
 
@@ -33,7 +34,6 @@ import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.PostAllocationOptimizationPhase;
-
 import jdk.vm.ci.code.TargetDescription;
 
 /**
@@ -98,7 +98,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
         }
 
         private void deleteEmptyBlocks(int[] blocks) {
-            assert LIR.verifyBlocks(lir, blocks);
+            assert verifyBlocks(lir, blocks);
             for (int i = 0; i < blocks.length; i++) {
                 BasicBlock<?> block = lir.getBlockById(blocks[i]);
                 if (canDeleteBlock(block)) {
@@ -112,7 +112,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
                     blocks[i] = INVALID_BLOCK_ID;
                 }
             }
-            assert LIR.verifyBlocks(lir, blocks);
+            assert verifyBlocks(lir, blocks);
         }
     }
 }

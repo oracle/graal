@@ -30,13 +30,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeMap;
 import jdk.graal.compiler.nodeinfo.Verbosity;
-import jdk.graal.compiler.nodes.extended.SwitchNode;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractEndNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
@@ -53,10 +55,10 @@ import jdk.graal.compiler.nodes.ProfileData.ProfileSource;
 import jdk.graal.compiler.nodes.StartNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.WithExceptionNode;
+import jdk.graal.compiler.nodes.extended.SwitchNode;
 import jdk.graal.compiler.nodes.memory.MemoryKill;
 import jdk.graal.compiler.nodes.memory.MultiMemoryKill;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
-import org.graalvm.word.LocationIdentity;
 
 /**
  * {@link StructuredGraph} based implementation of {@link BasicBlock}. Instances of subclasses of
@@ -171,7 +173,7 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
             } else {
                 cur = null;
             }
-            assert !(cur instanceof AbstractBeginNode);
+            assert !(cur instanceof AbstractBeginNode) : Assertions.errorMessageContext("cur", cur);
             return result;
         }
 
@@ -218,6 +220,11 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
             sb.append(getEndNode());
             sb.append("}");
         } else if (verbosity != Verbosity.Id) {
+            sb.append("{");
+            sb.append(getBeginNode());
+            sb.append("->");
+            sb.append(getEndNode());
+            sb.append("}");
             if (isLoopHeader()) {
                 sb.append(" lh");
             }
@@ -394,7 +401,7 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
             LocationSet dominatorResult = new LocationSet();
             HIRBlock stopBlock = getDominator();
             if (this.isLoopHeader()) {
-                assert stopBlock.getLoopDepth() < this.getLoopDepth();
+                assert stopBlock.getLoopDepth() < this.getLoopDepth() : Assertions.errorMessage(stopBlock, this);
                 dominatorResult.addAll(((HIRLoop) this.getLoop()).getKillLocations());
             } else {
                 for (int i = 0; i < getPredecessorCount(); i++) {
@@ -511,10 +518,10 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
                     // degenerated graphs before the next canonicalization
                     b.setSuccessor(succ0);
                 } else if (splitSuccessorcount == 2) {
-                    assert succP.length == 2;
+                    assert succP.length == 2 : Assertions.errorMessage(succP);
                     b.setSuccessors(succ0, succ1, succP[0], succP[1]);
                 } else {
-                    assert succP.length > 2;
+                    assert succP.length > 2 : Assertions.errorMessageContext("b", b, "succP", succP);
                     b.setSuccessors(succ0, succ1, extraSucc, succP[0], succP[1], Arrays.copyOfRange(succP, 2, succP.length));
                 }
             } else if (blockEndNode instanceof LoopEndNode) {
@@ -660,13 +667,13 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
 
         @Override
         public HIRBlock getPredecessorAt(int predIndex) {
-            assert predIndex < getPredecessorCount();
+            assert predIndex < getPredecessorCount() : "Pred index " + predIndex + " must always be smaller than pred count " + getPredecessorCount();
             return getBlocks()[getAtIndex(firstPredecessor, extraPredecessors, predIndex)];
         }
 
         @Override
         public HIRBlock getSuccessorAt(int succIndex) {
-            assert succIndex < getSuccessorCount();
+            assert succIndex < getSuccessorCount() : "Succ index " + succIndex + " must always be smaller than succ count " + getSuccessorCount();
             return getBlocks()[getAtIndex(firstSuccessor, secondSuccessor, extraSuccessors, succIndex)];
         }
 

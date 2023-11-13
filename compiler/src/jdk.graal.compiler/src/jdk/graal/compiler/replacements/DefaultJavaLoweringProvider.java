@@ -24,20 +24,22 @@
  */
 package jdk.graal.compiler.replacements;
 
-import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
-import static jdk.vm.ci.meta.DeoptimizationReason.BoundsCheckException;
-import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
 import static jdk.graal.compiler.core.common.GraalOptions.EmitStringSubstitutions;
 import static jdk.graal.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTIndexMasking;
 import static jdk.graal.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCATION;
 import static jdk.graal.compiler.nodes.calc.BinaryArithmeticNode.branchlessMax;
 import static jdk.graal.compiler.nodes.calc.BinaryArithmeticNode.branchlessMin;
 import static jdk.graal.compiler.nodes.java.ArrayLengthNode.readArrayLength;
+import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
+import static jdk.vm.ci.meta.DeoptimizationReason.BoundsCheckException;
+import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
 
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
+
+import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
@@ -49,6 +51,7 @@ import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
@@ -162,8 +165,6 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.IdentityHashCodeNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -251,7 +252,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     @Override
     @SuppressWarnings("try")
     public void lower(Node n, LoweringTool tool) {
-        assert n instanceof Lowerable;
+        assert n instanceof Lowerable : n;
         try (DebugCloseable context = n.withNodeSourcePosition()) {
             if (n instanceof LoadFieldNode) {
                 lowerLoadFieldNode((LoadFieldNode) n, tool);
@@ -458,7 +459,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     protected void lowerLoadFieldNode(LoadFieldNode loadField, LoweringTool tool) {
-        assert loadField.getStackKind() != JavaKind.Illegal;
+        assert loadField.getStackKind() != JavaKind.Illegal : loadField;
         StructuredGraph graph = loadField.graph();
         ResolvedJavaField field = loadField.field();
         ValueNode object = loadField.isStatic() ? staticFieldBase(graph, field) : loadField.object();
@@ -853,7 +854,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     protected void lowerUnsafeMemoryStoreNode(UnsafeMemoryStoreNode store) {
         StructuredGraph graph = store.graph();
-        assert store.getValue().getStackKind() != JavaKind.Object;
+        assert store.getValue().getStackKind() != JavaKind.Object : Assertions.errorMessageContext("store", store);
         JavaKind valueKind = store.getKind();
         ValueNode value = implicitStoreConvert(graph, valueKind, store.getValue(), false);
         AddressNode address = graph.addOrUniqueWithInputs(OffsetAddressNode.create(store.getAddress()));
@@ -914,7 +915,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                     if (virtual instanceof VirtualInstanceNode) {
                         newObject = graph.add(new NewInstanceNode(virtual.type(), true));
                     } else {
-                        assert virtual instanceof VirtualArrayNode;
+                        assert virtual instanceof VirtualArrayNode : Assertions.errorMessageContext("virtual", virtual);
                         newObject = graph.add(new NewArrayNode(((VirtualArrayNode) virtual).componentType(), ConstantNode.forInt(entryCount, graph), true));
                     }
                     // The final STORE_STORE barrier will be emitted by finishAllocatedObjects
@@ -938,7 +939,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                             // Truffle requires some leniency in terms of what can be put where:
                             assert valueKind.getStackKind() == storageKind.getStackKind() ||
                                             (valueKind == JavaKind.Long || valueKind == JavaKind.Double || (valueKind == JavaKind.Int && virtual instanceof VirtualArrayNode) ||
-                                                            (valueKind == JavaKind.Float && virtual instanceof VirtualArrayNode));
+                                                            (valueKind == JavaKind.Float && virtual instanceof VirtualArrayNode)) : Assertions.errorMessageContext("valueKind", valueKind,
+                                                                            "virtual",
+                                                                            virtual);
                             AddressNode address = null;
                             BarrierType barrierType = null;
                             if (virtual instanceof VirtualInstanceNode) {
@@ -949,7 +952,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                                     barrierType = barrierSet.fieldWriteBarrierType(field, getStorageKind(field));
                                 }
                             } else {
-                                assert virtual instanceof VirtualArrayNode;
+                                assert virtual instanceof VirtualArrayNode : Assertions.errorMessageContext("virtual", virtual);
                                 address = createOffsetAddress(graph, newObject, metaAccess.getArrayBaseOffset(storageKind) + i * metaAccess.getArrayIndexScale(storageKind));
                                 barrierType = barrierSet.arrayWriteBarrierType(storageKind);
                             }
@@ -973,10 +976,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                     for (int i = 0; i < entryCount; i++) {
                         if (omittedValues.get(valuePos)) {
                             ValueNode value = commit.getValues().get(valuePos);
-                            assert value instanceof VirtualObjectNode;
+                            assert value instanceof VirtualObjectNode : Assertions.errorMessageContext("value", value);
                             ValueNode allocValue = allocations[commit.getVirtualObjects().indexOf(value)];
                             if (!(allocValue.isConstant() && allocValue.asConstant().isDefaultForKind())) {
-                                assert virtual.entryKind(metaAccessExtensionProvider, i) == JavaKind.Object && allocValue.getStackKind() == JavaKind.Object;
+                                JavaKind entryKind = virtual.entryKind(metaAccessExtensionProvider, i);
+                                assert entryKind == JavaKind.Object : Assertions.errorMessageContext("entryKind", entryKind);
+                                assert allocValue.getStackKind() == JavaKind.Object : Assertions.errorMessageContext("entryKind", entryKind);
                                 AddressNode address = null;
                                 BarrierType barrierType = null;
                                 if (virtual instanceof VirtualInstanceNode) {
@@ -987,9 +992,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                                         barrierType = barrierSet.fieldWriteBarrierType(field, getStorageKind(field));
                                     }
                                 } else {
-                                    assert virtual instanceof VirtualArrayNode;
-                                    address = createArrayAddress(graph, newObject, virtual.entryKind(metaAccessExtensionProvider, i), ConstantNode.forInt(i, graph));
-                                    barrierType = barrierSet.arrayWriteBarrierType(virtual.entryKind(metaAccessExtensionProvider, i));
+                                    assert virtual instanceof VirtualArrayNode : Assertions.errorMessage(commit, virtual);
+                                    address = createArrayAddress(graph, newObject, entryKind, ConstantNode.forInt(i, graph));
+                                    barrierType = barrierSet.arrayWriteBarrierType(entryKind);
                                 }
                                 if (address != null) {
                                     WriteNode write = new WriteNode(address, LocationIdentity.init(), implicitStoreConvert(graph, JavaKind.Object, allocValue), barrierType, MemoryOrderMode.PLAIN);
@@ -1043,7 +1048,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             }
             int lastDepth = -1;
             for (MonitorIdNode monitorId : locks) {
-                assert lastDepth < monitorId.getLockDepth();
+                assert lastDepth < monitorId.getLockDepth() : Assertions.errorMessage(lastDepth, monitorId, insertAfter, commit, allocations);
                 lastDepth = monitorId.getLockDepth();
                 MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[objIndex], monitorId));
                 graph.addAfterFixed(insertionPoint, enter);
@@ -1189,7 +1194,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             bytes++;
             entryIndex++;
         }
-        assert bytes <= value.getStackKind().getByteCount();
+        assert bytes <= value.getStackKind().getByteCount() : Assertions.errorMessageContext("bytes", bytes, "valueStackKind", value.getStackKind());
         ValueNode entry = value;
         if (value.getStackKind() == JavaKind.Float) {
             entry = graph.addOrUnique(ReinterpretNode.create(JavaKind.Int, entry, NodeView.DEFAULT));

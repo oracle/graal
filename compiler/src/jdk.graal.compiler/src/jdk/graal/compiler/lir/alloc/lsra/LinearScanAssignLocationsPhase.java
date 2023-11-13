@@ -38,12 +38,12 @@ import jdk.graal.compiler.lir.CastValue;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.InstructionValueProcedure;
 import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.graal.compiler.lir.LIRInstruction.OperandMode;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.AllocationPhase;
-
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -106,7 +106,7 @@ public class LinearScanAssignLocationsPhase extends LinearScanAllocationPhase {
         }
 
         if (isIllegal(interval.location()) && interval.canMaterialize()) {
-            assert mode != LIRInstruction.OperandMode.DEF;
+            assert mode != OperandMode.DEF : mode;
             return new ConstantValue(interval.kind(), interval.getMaterializedValue());
         }
         return interval.location();

@@ -48,7 +48,7 @@ public class UserError {
         static final long serialVersionUID = 75431290632980L;
         private final Iterable<String> messages;
 
-        protected UserException(String msg) {
+        public UserException(String msg) {
             this(Collections.singletonList(msg));
         }
 

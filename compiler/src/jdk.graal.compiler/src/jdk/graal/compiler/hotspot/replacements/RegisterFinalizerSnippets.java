@@ -29,6 +29,7 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.word.KlassPointer;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -71,7 +72,7 @@ public class RegisterFinalizerSnippets implements Snippets {
         }
 
         public void lower(RegisterFinalizerNode node, LoweringTool tool) {
-            assert !(node instanceof LoweredRegisterFinalizerNode);
+            assert !(node instanceof LoweredRegisterFinalizerNode) : Assertions.errorMessage(node);
             StructuredGraph graph = node.graph();
             Arguments args = new Arguments(registerFinalizerSnippet, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("thisObj", node.getValue());

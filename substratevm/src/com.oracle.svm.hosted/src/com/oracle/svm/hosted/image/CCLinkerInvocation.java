@@ -45,7 +45,6 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.macho.MachOSymtab;
 import com.oracle.svm.core.BuildDirectoryProvider;
 import com.oracle.svm.core.LinkerInvocation;
-import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.libc.BionicLibC;
 import com.oracle.svm.core.c.libc.LibCBase;
@@ -451,7 +450,8 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         protected void setOutputKind(List<String> cmd) {
             switch (imageKind) {
                 case STATIC_EXECUTABLE:
-                    throw UserError.abort("%s does not support building static executable images.", OS.getCurrent().name());
+                    // checked in the definition of --static
+                    throw VMError.shouldNotReachHereUnexpectedInput(imageKind);
                 case SHARED_LIBRARY:
                     cmd.add("-shared");
                     if (Platform.includedIn(Platform.DARWIN.class)) {
@@ -584,7 +584,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         }
 
         Path outputFile = outputDirectory.resolve(imageName + imageKind.getFilenameSuffix());
-        UserError.guarantee(!Files.isDirectory(outputFile), "Cannot write image to %s. Path exists as directory. (Use -H:Name=<image name>)", outputFile);
+        UserError.guarantee(!Files.isDirectory(outputFile), "Cannot write image to %s. Path exists as directory (use '-o /path/to/image').", outputFile);
         inv.setOutputFile(outputFile);
         inv.setTempDirectory(tempDirectory);
 

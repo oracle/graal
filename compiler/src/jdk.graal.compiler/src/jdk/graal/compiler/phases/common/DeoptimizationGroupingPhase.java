@@ -78,7 +78,7 @@ public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
             }
             // There is more than one deopt, create a merge
             if (cfg == null) {
-                cfg = ControlFlowGraph.compute(graph, true, true, false, false);
+                cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeFrequency(true).build();
             }
             try (DebugCloseable position = first.withNodeSourcePosition()) {
                 AbstractMergeNode merge = graph.add(new MergeNode());

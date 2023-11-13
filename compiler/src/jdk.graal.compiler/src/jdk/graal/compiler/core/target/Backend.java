@@ -36,6 +36,7 @@ import jdk.graal.compiler.core.common.cfg.CodeEmissionOrder;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.gen.LIRCompilerBackend;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.lir.asm.EntryPointDecorator;
@@ -45,7 +46,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.tiers.SuitesProvider;
 import jdk.graal.compiler.phases.tiers.TargetProvider;
 import jdk.graal.compiler.phases.util.Providers;
-
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompilationRequest;
@@ -203,7 +203,7 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
                 preCodeInstallationTasks(tasks, compilationResult);
                 CompiledCode compiledCode = createCompiledCode(method, compilationRequest, compilationResult, isDefault, debug.getOptions());
                 installedCode = getProviders().getCodeCache().installCode(method, compiledCode, predefinedInstalledCode, compilationResult.getSpeculationLog(), isDefault);
-                assert predefinedInstalledCode == null || installedCode == predefinedInstalledCode;
+                assert predefinedInstalledCode == null || installedCode == predefinedInstalledCode : Assertions.errorMessage(predefinedInstalledCode, installedCode);
             } catch (Throwable t) {
                 failCodeInstallationTasks(tasks, t);
                 throw t;

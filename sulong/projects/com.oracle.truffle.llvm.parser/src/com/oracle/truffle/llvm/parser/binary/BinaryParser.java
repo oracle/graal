@@ -29,21 +29,12 @@
  */
 package com.oracle.truffle.llvm.parser.binary;
 
-import java.nio.file.InvalidPathException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-
-import com.oracle.truffle.llvm.parser.coff.PEFile;
-import com.oracle.truffle.llvm.parser.coff.WindowsLibraryLocator;
-
-import org.graalvm.polyglot.io.ByteSequence;
-
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.coff.CoffFile;
-import com.oracle.truffle.llvm.parser.coff.PEExportSymbolsMapper;
 import com.oracle.truffle.llvm.parser.coff.CoffFile.ImageSectionHeader;
+import com.oracle.truffle.llvm.parser.coff.PEExportSymbolsMapper;
+import com.oracle.truffle.llvm.parser.coff.PEFile;
+import com.oracle.truffle.llvm.parser.coff.WindowsLibraryLocator;
 import com.oracle.truffle.llvm.parser.elf.ElfDynamicSection;
 import com.oracle.truffle.llvm.parser.elf.ElfFile;
 import com.oracle.truffle.llvm.parser.elf.ElfLibraryLocator;
@@ -54,9 +45,17 @@ import com.oracle.truffle.llvm.parser.macho.Xar;
 import com.oracle.truffle.llvm.parser.scanner.BitStream;
 import com.oracle.truffle.llvm.runtime.DefaultLibraryLocator;
 import com.oracle.truffle.llvm.runtime.ExportSymbolsMapper;
+import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LibraryLocator;
 import com.oracle.truffle.llvm.runtime.Magic;
+import org.graalvm.polyglot.io.ByteSequence;
+
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Parses a binary {@linkplain ByteSequence file} and returns the embedded {@linkplain ByteSequence
@@ -82,11 +81,11 @@ public final class BinaryParser {
         }
     }
 
-    public static BinaryParserResult parse(ByteSequence bytes, Source bcSource, LLVMContext context) {
-        return new BinaryParser().parseInternal(bytes, bcSource, context);
+    public static BinaryParserResult parse(ByteSequence bytes, Source bcSource, LLVMContext context, BitcodeID bitcodeID) {
+        return new BinaryParser().parseInternal(bytes, bcSource, context, bitcodeID);
     }
 
-    private BinaryParserResult parseInternal(ByteSequence bytes, Source bcSource, LLVMContext context) {
+    private BinaryParserResult parseInternal(ByteSequence bytes, Source bcSource, LLVMContext context, BitcodeID bitcodeID) {
         assert bytes != null;
 
         ByteSequence bitcode = parseBitcode(bytes, bcSource);
@@ -95,7 +94,7 @@ public final class BinaryParser {
             return null;
         }
         if (bcSource != null) {
-            LibraryLocator.traceParseBitcode(context, bcSource.getPath());
+            LibraryLocator.traceParseBitcode(context, bcSource.getPath(), bitcodeID, bcSource);
         }
         return new BinaryParserResult(libraries, paths, bitcode, locator, exportSymbolsMapper, bcSource, libraryName);
     }

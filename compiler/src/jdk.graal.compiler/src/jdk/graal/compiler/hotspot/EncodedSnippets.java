@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import static jdk.vm.ci.runtime.JVMCI.getRuntime;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static jdk.graal.compiler.hotspot.HotSpotReplacementsImpl.isGraalClass;
 import static jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
@@ -37,8 +36,6 @@ import java.util.function.Consumer;
 
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.api.runtime.GraalJVMCICompiler;
-import jdk.graal.compiler.api.runtime.GraalRuntime;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecode;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -444,8 +441,6 @@ public class EncodedSnippets {
                         error = e;
                     }
                 }
-            } else if (o instanceof GraalCapability) {
-                replacement = ((GraalCapability) o).resolve(((GraalJVMCICompiler) getRuntime().getCompiler()).getGraalRuntime());
             } else {
                 return o;
             }
@@ -463,34 +458,6 @@ public class EncodedSnippets {
                 return true;
             }
             return super.isCallToOriginal(callTarget);
-        }
-    }
-
-    /**
-     * Symbolic reference to an object which can be retrieved from
-     * {@link GraalRuntime#getCapability(Class)}.
-     */
-    static class GraalCapability {
-        final Class<?> capabilityClass;
-
-        GraalCapability(Class<?> capabilityClass) {
-            this.capabilityClass = capabilityClass;
-        }
-
-        public Object resolve(GraalRuntime runtime) {
-            Object capability = runtime.getCapability(this.capabilityClass);
-            if (capability != null) {
-                assert capability.getClass() == capabilityClass : capability.getClass() + " != " + capabilityClass;
-                return capability;
-            }
-            throw new InternalError(this.capabilityClass.getName());
-        }
-
-        @Override
-        public String toString() {
-            return "GraalCapability{" +
-                            "capabilityClass=" + capabilityClass +
-                            '}';
         }
     }
 

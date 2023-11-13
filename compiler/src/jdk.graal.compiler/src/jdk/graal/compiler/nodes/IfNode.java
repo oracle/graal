@@ -32,20 +32,9 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-import jdk.graal.compiler.nodes.cfg.HIRBlock;
-import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
-import jdk.graal.compiler.nodes.extended.UnboxNode;
-import jdk.graal.compiler.nodes.java.InstanceOfNode;
-import jdk.graal.compiler.nodes.java.LoadFieldNode;
-import jdk.graal.compiler.nodes.memory.MemoryAnchorNode;
-import jdk.graal.compiler.nodes.spi.Canonicalizable;
-import jdk.graal.compiler.nodes.spi.LIRLowerable;
-import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import jdk.graal.compiler.nodes.spi.Simplifiable;
-import jdk.graal.compiler.nodes.spi.SimplifierTool;
-import jdk.graal.compiler.nodes.spi.SwitchFoldable;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
@@ -53,6 +42,7 @@ import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
@@ -80,9 +70,20 @@ import jdk.graal.compiler.nodes.calc.IntegerNormalizeCompareNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.calc.ObjectEqualsNode;
 import jdk.graal.compiler.nodes.calc.SubNode;
+import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.debug.ControlFlowAnchored;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.extended.UnboxNode;
+import jdk.graal.compiler.nodes.java.InstanceOfNode;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.nodes.memory.MemoryAnchorNode;
+import jdk.graal.compiler.nodes.spi.Canonicalizable;
+import jdk.graal.compiler.nodes.spi.LIRLowerable;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.nodes.spi.Simplifiable;
+import jdk.graal.compiler.nodes.spi.SimplifierTool;
+import jdk.graal.compiler.nodes.spi.SwitchFoldable;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -277,7 +278,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                         // @formatter:off
                         // Reordering is allowed from (if1 => begin => if2) to (if2 => begin => if1).
                         // @formatter:on
-                        assert intermediateBegin.next() == nextIf;
+                        assert intermediateBegin.next() == nextIf : Assertions.errorMessage(intermediateBegin, intermediateBegin.next(), nextIf);
                         AbstractBeginNode bothFalseBegin = nextIf.falseSuccessor();
                         nextIf.setFalseSuccessor(null);
                         intermediateBegin.setNext(null);
@@ -513,7 +514,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             if (coloredNodes.get(n) == branch) {
                 n.replaceAllInputs(phi, newValue);
             } else if (coloredNodes.get(n) == NodeColor.PHI_MIXED) {
-                assert n instanceof PhiNode;
+                assert n instanceof PhiNode : Assertions.errorMessageContext("n", n, "phi", phi);
                 PhiNode phiNode = (PhiNode) n;
                 AbstractMergeNode merge = phiNode.merge();
                 for (int i = 0; i < merge.forwardEndCount(); ++i) {
@@ -582,7 +583,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                             // Each of the inputs to the phi are either coming unambigously from
                             // true or false branch.
                             color = NodeColor.PHI_MIXED;
-                            assert node instanceof PhiNode;
+                            assert node instanceof PhiNode : Assertions.errorMessage(node);
                         }
                     }
                 } else {
@@ -790,8 +791,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         IntegerStamp aStamp = (IntegerStamp) a.stamp(NodeView.DEFAULT);
         IntegerStamp bStamp = (IntegerStamp) b.stamp(NodeView.DEFAULT);
 
-        assert xStamp.getBits() == aStamp.getBits();
-        assert xStamp.getBits() == bStamp.getBits();
+        assert xStamp.getBits() == aStamp.getBits() : Assertions.errorMessageContext("c1", condition1, "c2", condition2, "xStamp", xStamp, "aStamp", aStamp, "bStamp", bStamp);
+        assert xStamp.getBits() == bStamp.getBits() : Assertions.errorMessageContext("c1", condition1, "c2", condition2, "xStamp", xStamp, "aStamp", aStamp, "bStamp", bStamp);
 
         long aRaw = aStamp.asConstant().asLong();
         long bRaw = bStamp.asConstant().asLong();
@@ -1068,19 +1069,19 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
     @Override
     public int intKeyAt(int i) {
-        assert i == 0;
+        assert i == 0 : i;
         return ((IntegerEqualsNode) condition()).getY().asJavaConstant().asInt();
     }
 
     @Override
     public double keyProbability(int i) {
-        assert i == 0;
+        assert i == 0 : i;
         return getTrueSuccessorProbability();
     }
 
     @Override
     public AbstractBeginNode keySuccessor(int i) {
-        assert i == 0;
+        assert i == 0 : i;
         return trueSuccessor();
     }
 
@@ -1143,7 +1144,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     private void pushNodesThroughIf(SimplifierTool tool) {
-        assert trueSuccessor().hasNoUsages() && falseSuccessor().hasNoUsages();
+        assert trueSuccessor().hasNoUsages() : Assertions.errorMessageContext("this", this, "trueSucc", trueSuccessor(), "trueSuccUsages", trueSuccessor().usages());
+        assert falseSuccessor().hasNoUsages() : Assertions.errorMessageContext("this", this, "falseSucc", falseSuccessor(), "falseSuccUsages", falseSuccessor().usages());
         // push similar nodes upwards through the if, thereby deduplicating them
         do {
             CompilationAlarm.checkProgress(graph());
@@ -1199,7 +1201,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      */
     @SuppressWarnings("try")
     private boolean checkForUnsignedCompare(SimplifierTool tool) {
-        assert trueSuccessor().hasNoUsages() && falseSuccessor().hasNoUsages();
+        assert trueSuccessor().hasNoUsages() && falseSuccessor().hasNoUsages() : Assertions.errorMessageContext("this", this, "trueSucc", trueSuccessor, "trueSucc.usages",
+                        trueSuccessor.usages(), "falseSucc", falseSuccessor, "falseSucc.usages", falseSuccessor.usages());
         if (condition() instanceof IntegerLessThanNode) {
             NodeView view = NodeView.from(tool);
             IntegerLessThanNode lessThan = (IntegerLessThanNode) condition();
@@ -1437,7 +1440,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * @return true if a transformation was made, false otherwise
      */
     private boolean removeOrMaterializeIf(SimplifierTool tool) {
-        assert trueSuccessor().hasNoUsages() && falseSuccessor().hasNoUsages();
+        assert trueSuccessor().hasNoUsages() && falseSuccessor().hasNoUsages() : Assertions.errorMessageContext("this", this, "trueSucc", trueSuccessor, "trueSucc.usages",
+                        trueSuccessor.usages(), "falseSucc", falseSuccessor, "falseSucc.usages", falseSuccessor.usages());
         MergeNode blockingMerge = null;
         if (trueSuccessor().next() instanceof ReturnNode && falseSuccessor().next() instanceof AbstractEndNode) {
             AbstractMergeNode am = ((AbstractEndNode) falseSuccessor.next()).merge();
@@ -1535,7 +1539,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             if (trueSuccessor() instanceof LoopExitNode) {
                 FrameState stateAfter = ((LoopExitNode) trueSuccessor()).stateAfter();
                 LoopBeginNode loopBegin = ((LoopExitNode) trueSuccessor()).loopBegin();
-                assert loopBegin == ((LoopExitNode) falseSuccessor()).loopBegin();
+                assert loopBegin == ((LoopExitNode) falseSuccessor()).loopBegin() : Assertions.errorMessageContext("this", this, "trueSucc", trueSuccessor, "trueSucc.usages",
+                                trueSuccessor.usages(), "falseSucc", falseSuccessor, "falseSucc.usages", falseSuccessor.usages(), "loopBegin", loopBegin);
                 LoopExitNode loopExitNode = graph().add(new LoopExitNode(loopBegin));
                 loopExitNode.setStateAfter(stateAfter);
                 graph().addBeforeFixed(this, loopExitNode);
@@ -1574,14 +1579,15 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         // @formatter:on
         if (this.graph().isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
             if (trueSuccessor instanceof LoopExitNode && falseSuccessor instanceof LoopExitNode) {
-                assert ((LoopExitNode) trueSuccessor).loopBegin() == ((LoopExitNode) falseSuccessor).loopBegin();
+                assert ((LoopExitNode) trueSuccessor).loopBegin() == ((LoopExitNode) falseSuccessor).loopBegin() : Assertions.errorMessageContext("this", this, "trueSucc", trueSuccessor,
+                                "falseSucc", falseSuccessor);
                 /*
                  * we can collapse all proxy nodes on one loop exit, the surviving one, which will
                  * be the true successor
                  */
                 if (falseSuccessor.anchored().isEmpty() && falseSuccessor.hasUsages()) {
                     for (Node n : falseSuccessor.usages().snapshot()) {
-                        assert n instanceof ProxyNode;
+                        assert n instanceof ProxyNode : Assertions.errorMessage(n);
                         ((ProxyNode) n).setProxyPoint((LoopExitNode) trueSuccessor);
                     }
                 }
@@ -1589,7 +1595,9 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                  * The true successor (surviving loop exit) can have usages, namely proxy nodes, the
                  * false successor however, must not have usages any more after the code above
                  */
-                assert trueSuccessor.anchored().isEmpty() && falseSuccessor.hasNoUsages();
+                assert trueSuccessor.anchored().isEmpty() &&
+                                falseSuccessor.hasNoUsages() : Assertions.errorMessageContext("this", this, "trueSucc", trueSuccessor, "trueSucc.usages",
+                                                trueSuccessor.usages(), "falseSucc", falseSuccessor, "falseSucc.usages", falseSuccessor.usages());
                 return this.graph().addOrUnique(new ValueProxyNode(replacement, (LoopExitNode) trueSuccessor));
             }
         }
@@ -1782,9 +1790,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                         return null;
                     }
                     boolean unsigned = cond1.isUnsigned() || cond2.isUnsigned();
-                    boolean floatingPoint = x.stamp(NodeView.from(tool)) instanceof FloatStamp;
-                    assert !floatingPoint || y.stamp(NodeView.from(tool)) instanceof FloatStamp;
-                    assert !(floatingPoint && unsigned);
+                    Stamp xStamp = x.stamp(NodeView.from(tool));
+                    boolean floatingPoint = xStamp instanceof FloatStamp;
+                    Stamp yStamp = y.stamp(NodeView.from(tool));
+                    assert !floatingPoint || yStamp instanceof FloatStamp : Assertions.errorMessageContext("this", this, "xStamp", xStamp, "yStamp", yStamp);
+                    assert !(floatingPoint && unsigned) : Assertions.errorMessageContext("this", this, "xStamp", xStamp, "yStamp", yStamp, "cond1", cond1, "cond2", cond2);
 
                     long expected1 = expectedConstantForNormalize(cond1);
                     long expected2 = expectedConstantForNormalize(cond2);
@@ -1829,7 +1839,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         } else if (condition == Condition.LT || condition == Condition.BT) {
             return -1;
         } else {
-            assert condition == Condition.GT || condition == Condition.AT;
+            assert condition == Condition.GT || condition == Condition.AT : condition;
             return 1;
         }
     }
@@ -1966,7 +1976,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
 
         List<EndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
-        assert phi.valueCount() == merge.forwardEndCount();
+        assert phi.valueCount() == merge.forwardEndCount() : Assertions.errorMessage(phi, phi.values, merge, merge.forwardEnds());
 
         Constant[] xs = constantValues(compare.getX(), merge, false);
         Constant[] ys = constantValues(compare.getY(), merge, false);
@@ -2010,7 +2020,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             }
         }
         assert !ends.hasNext();
-        assert falseEnds.size() + trueEnds.size() == xs.length;
+        assert falseEnds.size() + trueEnds.size() == xs.length : Assertions.errorMessage(falseEnds, trueEnds, xs);
 
         if (this.getTrueSuccessorProbability() == 0.0) {
             for (AbstractEndNode endNode : trueEnds) {
@@ -2367,7 +2377,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * is unknown.
      */
     public boolean successorWillBeEliminated(AbstractBeginNode successor) {
-        assert successor == trueSuccessor || successor == falseSuccessor;
+        assert successor == trueSuccessor || successor == falseSuccessor : Assertions.errorMessageContext("this", this, "succ", successor);
         if (condition instanceof LogicConstantNode) {
             LogicConstantNode c = (LogicConstantNode) condition;
             boolean trueSuccessorWillBeEliminated = !c.getValue();

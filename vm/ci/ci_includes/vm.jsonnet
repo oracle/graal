@@ -16,6 +16,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
 
   binaries_repository: 'lafo',
   maven_deploy_repository: 'lafo-maven',
+  edition:: 'ce',
   vm_dir:: 'vm',
   svm_suite:: '/substratevm',
   libgraal_env: 'libgraal',
@@ -32,9 +33,9 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
   check_graalvm_base_build(path, os, arch, java_version): [],
 
   vm_setup:: {
-    short_name:: 'ce',
+    short_name:: $.edition,
     setup+: [
-      ['set-export', 'VM_ENV', 'ce'],
+      ['set-export', 'VM_ENV', self.short_name],
       ['set-export', 'RELEASE_CATALOG', 'https://www.graalvm.org/component-catalog/v2/graal-updater-component-catalog-java${BASE_JDK_SHORT_VERSION}.properties|{ee=GraalVM Enterprise Edition}rest://gds.oracle.com/api/20220101/'],
       ['set-export', 'RELEASE_PRODUCT_ID', 'D53FAE8052773FFAE0530F15000AA6C6'],
       ['set-export', 'SNAPSHOT_CATALOG', ['mx', 'urlrewrite', 'http://www.graalvm.org/catalog/ce/java${BASE_JDK_SHORT_VERSION}']],
@@ -78,10 +79,9 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
   },
 
   maven_deploy_base_functions: {
-    edition:: 'ce',
+    edition:: vm.edition,
 
-    mx_args(os, arch)::
-      ['--native-images=false'],
+    mx_args(os, arch, reduced=false):: ['--native-images=false'],
 
     dynamic_imports(os, arch)::
       ['--dynamicimports', vm_common.maven_deploy_base_functions.dynamic_ce_imports(os, arch)],
@@ -91,6 +91,9 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
 
     ee_licenses()::
       error 'The vm suite does not define ee licenses',
+
+    reduced_ce_dists:: error 'The vm suite does not define reduced dists',
+    reduced_ee_dists:: error 'The vm suite does not define reduced dists',
   },
 
   local builds = [

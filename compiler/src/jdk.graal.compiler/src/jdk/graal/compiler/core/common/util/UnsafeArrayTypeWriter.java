@@ -35,7 +35,7 @@ import static jdk.graal.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 import java.nio.ByteBuffer;
 
 import jdk.graal.compiler.core.common.calc.UnsignedMath;
-
+import jdk.graal.compiler.debug.Assertions;
 import sun.misc.Unsafe;
 
 /**
@@ -101,24 +101,26 @@ public abstract class UnsafeArrayTypeWriter implements TypeWriter {
      * Copies the buffer into the provided byte[] array of length {@link #getBytesWritten()}.
      */
     public final byte[] toArray(byte[] result) {
-        assert result.length == totalSize;
+        assert result.length == totalSize : Assertions.errorMessage(result, result.length, totalSize);
         int resultIdx = 0;
         for (Chunk cur = firstChunk; cur != null; cur = cur.next) {
             System.arraycopy(cur.data, 0, result, resultIdx, cur.size);
             resultIdx += cur.size;
         }
-        assert resultIdx == totalSize;
+        assert resultIdx == totalSize : Assertions.errorMessage(result, resultIdx, totalSize);
         return result;
     }
 
     /** Copies the buffer into the provided ByteBuffer at its current position. */
     public final ByteBuffer toByteBuffer(ByteBuffer buffer) {
-        assert buffer.remaining() <= totalSize;
+        int r = buffer.remaining();
+        assert r <= totalSize : Assertions.errorMessage(buffer, r, totalSize);
         int initialPos = buffer.position();
         for (Chunk cur = firstChunk; cur != null; cur = cur.next) {
             buffer.put(cur.data, 0, cur.size);
         }
-        assert buffer.position() - initialPos == totalSize;
+        int p = buffer.position();
+        assert p - initialPos == totalSize : Assertions.errorMessage(buffer, p, initialPos, totalSize);
         return buffer;
     }
 
@@ -180,12 +182,12 @@ public abstract class UnsafeArrayTypeWriter implements TypeWriter {
             writeChunk = newChunk;
         }
 
-        assert Unsafe.ARRAY_BYTE_INDEX_SCALE == 1;
+        assert Unsafe.ARRAY_BYTE_INDEX_SCALE == 1 : "Unsafe byte array index scale must be 1 but was " + Unsafe.ARRAY_BYTE_INDEX_SCALE;
         long result = writeChunk.size + Unsafe.ARRAY_BYTE_BASE_OFFSET;
 
         totalSize += writeBytes;
         writeChunk.size += writeBytes;
-        assert writeChunk.size <= writeChunk.data.length;
+        assert writeChunk.size <= writeChunk.data.length : Assertions.errorMessage(writeBytes, writeChunk, writeChunk.size, writeChunk.data);
 
         return result;
     }

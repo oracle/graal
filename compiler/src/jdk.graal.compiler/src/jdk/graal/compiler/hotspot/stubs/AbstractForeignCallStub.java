@@ -123,7 +123,7 @@ public abstract class AbstractForeignCallStub extends Stub {
                         address,
                         HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS,
                         NativeCall,
-                        NativeCall);
+                        null);
     }
 
     protected abstract HotSpotForeignCallDescriptor getTargetSignature(HotSpotForeignCallDescriptor descriptor);

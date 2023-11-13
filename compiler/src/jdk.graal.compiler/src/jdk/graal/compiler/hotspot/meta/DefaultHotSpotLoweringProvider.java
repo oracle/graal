@@ -28,6 +28,7 @@ import static jdk.graal.compiler.core.common.GraalOptions.AlwaysInlineVTableStub
 import static jdk.graal.compiler.core.common.GraalOptions.InlineVTableStubs;
 import static jdk.graal.compiler.core.common.GraalOptions.OmitHotExceptionStacktrace;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.OSR_MIGRATION_END;
+import static jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.GENERIC_ARRAYCOPY;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.word.LocationIdentity.any;
 
@@ -51,9 +52,11 @@ import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
+import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugHandlersFactory;
 import jdk.graal.compiler.debug.GraalError;
@@ -94,6 +97,8 @@ import jdk.graal.compiler.hotspot.replacements.StringToBytesSnippets;
 import jdk.graal.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
 import jdk.graal.compiler.hotspot.replacements.UnsafeSnippets;
 import jdk.graal.compiler.hotspot.replacements.VirtualThreadUpdateJFRSnippets;
+import jdk.graal.compiler.hotspot.replacements.arraycopy.CheckcastArrayCopyCallNode;
+import jdk.graal.compiler.hotspot.replacements.arraycopy.GenericArrayCopyCallNode;
 import jdk.graal.compiler.hotspot.replacements.arraycopy.HotSpotArraycopySnippets;
 import jdk.graal.compiler.hotspot.stubs.ForeignCallSnippets;
 import jdk.graal.compiler.hotspot.word.KlassPointer;
@@ -104,7 +109,9 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DeadEndNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.GetObjectAddressNode;
 import jdk.graal.compiler.nodes.GraphState.GuardsStage;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.LogicConstantNode;
@@ -118,11 +125,14 @@ import jdk.graal.compiler.nodes.StartNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.UnwindNode;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.FloatingIntegerDivRemNode;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
+import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
 import jdk.graal.compiler.nodes.calc.IntegerDivRemNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
+import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.calc.RemNode;
 import jdk.graal.compiler.nodes.calc.SignedDivNode;
 import jdk.graal.compiler.nodes.calc.SignedFloatingIntegerDivNode;
@@ -169,6 +179,7 @@ import jdk.graal.compiler.nodes.memory.FloatingReadNode;
 import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.WriteNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
+import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
@@ -186,6 +197,7 @@ import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import jdk.graal.compiler.replacements.nodes.CStringConstant;
 import jdk.graal.compiler.replacements.nodes.LogNode;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
@@ -297,7 +309,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                     HotSpotAllocationSnippets.Templates allocationSnippetTemplates) {
         super.initialize(options, runtime, providers);
 
-        assert target == providers.getCodeCache().getTarget();
+        assert target == providers.getCodeCache().getTarget() : Assertions.errorMessage(target, providers.getCodeCache().getTarget());
         instanceofSnippets = new InstanceOfSnippets.Templates(options, runtime, providers);
         allocationSnippets = allocationSnippetTemplates;
         monitorSnippets = new MonitorSnippets.Templates(options, runtime, providers, config);
@@ -452,6 +464,10 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             }
         } else if (n instanceof ArrayCopyNode) {
             arraycopySnippets.lower((ArrayCopyNode) n, tool);
+        } else if (n instanceof GenericArrayCopyCallNode arraycopy) {
+            lowerGenericArrayCopyCallNode(arraycopy);
+        } else if (n instanceof CheckcastArrayCopyCallNode) {
+            lowerCheckcastArrayCopyCallNode((CheckcastArrayCopyCallNode) n, tool);
         } else if (n instanceof ArrayCopyWithDelayedLoweringNode) {
             arraycopySnippets.lower((ArrayCopyWithDelayedLoweringNode) n, tool);
         } else if (n instanceof G1PreWriteBarrier) {
@@ -520,6 +536,49 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             return false;
         }
         return true;
+    }
+
+    private void lowerGenericArrayCopyCallNode(GenericArrayCopyCallNode arraycopy) {
+        StructuredGraph graph = arraycopy.graph();
+        if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
+            GetObjectAddressNode srcAddr = graph.add(new GetObjectAddressNode(arraycopy.getSource()));
+            graph.addBeforeFixed(arraycopy, srcAddr);
+            GetObjectAddressNode destAddr = graph.add(new GetObjectAddressNode(arraycopy.getDestination()));
+            graph.addBeforeFixed(arraycopy, destAddr);
+            ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, GENERIC_ARRAYCOPY, srcAddr, arraycopy.getSrcPos(), destAddr, arraycopy.getDestPos(), arraycopy.getLength()));
+            call.setStateAfter(arraycopy.stateAfter());
+            graph.replaceFixedWithFixed(arraycopy, call);
+        }
+    }
+
+    private ValueNode computeBase(LoweringTool tool, CheckcastArrayCopyCallNode n, ValueNode base, ValueNode pos) {
+        FixedWithNextNode basePtr = base.graph().add(new GetObjectAddressNode(base));
+        base.graph().addBeforeFixed(n, basePtr);
+
+        int shift = CodeUtil.log2(tool.getMetaAccess().getArrayIndexScale(JavaKind.Object));
+        ValueNode extendedPos = IntegerConvertNode.convert(pos, StampFactory.forKind(target.wordJavaKind), base.graph(), NodeView.DEFAULT);
+        ValueNode scaledIndex = base.graph().unique(new LeftShiftNode(extendedPos, ConstantNode.forInt(shift, base.graph())));
+        ValueNode offset = base.graph().unique(
+                        new AddNode(scaledIndex,
+                                        ConstantNode.forIntegerBits(PrimitiveStamp.getBits(scaledIndex.stamp(NodeView.DEFAULT)), tool.getMetaAccess().getArrayBaseOffset(JavaKind.Object),
+                                                        base.graph())));
+        return base.graph().unique(new OffsetAddressNode(basePtr, offset));
+    }
+
+    protected void lowerCheckcastArrayCopyCallNode(CheckcastArrayCopyCallNode n, LoweringTool tool) {
+        StructuredGraph graph = n.graph();
+        if (n.graph().getGuardsStage().areFrameStatesAtDeopts()) {
+            ForeignCallDescriptor desc = ((HotSpotHostForeignCallsProvider) foreignCalls).lookupCheckcastArraycopyDescriptor(n.isUninit());
+            ValueNode srcAddr = computeBase(tool, n, n.getSource(), n.getSourcePosition());
+            ValueNode destAddr = computeBase(tool, n, n.getDestination(), n.getDestinationPosition());
+            ValueNode len = n.getLength();
+            if (len.stamp(NodeView.DEFAULT).getStackKind() != target.wordJavaKind) {
+                len = IntegerConvertNode.convert(len, StampFactory.forKind(target.wordJavaKind), graph, NodeView.DEFAULT);
+            }
+            ForeignCallNode call = graph.add(new ForeignCallNode(desc, srcAddr, destAddr, len, n.getSuperCheckOffset(), n.getDestElemKlass()));
+            call.setStateAfter(n.stateAfter());
+            graph.replaceFixedWithFixed(n, call);
+        }
     }
 
     /**
@@ -936,7 +995,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         List<ValueNode> arguments = node.getArguments();
 
         if (node.getExceptionKind() == BytecodeExceptionKind.CLASS_CAST) {
-            assert arguments.size() == 2;
+            assert arguments.size() == 2 : Assertions.errorMessage(node, arguments);
             /*
              * The foreign call expects the second argument to be the hub of the failing type check.
              * But when creating the BytecodeExceptionNode for dynamic type checks, it is difficult
@@ -951,7 +1010,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                             graph.addOrUniqueWithInputs(ClassGetHubNode.create(arguments.get(1), metaAccess, constantReflection)));
         }
 
-        assert descriptor.getArgumentTypes().length == arguments.size();
+        assert descriptor.getArgumentTypes().length == arguments.size() : Assertions.errorMessage(node, descriptor, arguments);
         ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(descriptor, node.stamp(NodeView.DEFAULT), arguments));
         /*
          * If a deoptimization is necessary then the stub itself will initiate the deoptimization
@@ -987,7 +1046,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     }
 
     private ReadNode createReadVirtualMethod(StructuredGraph graph, ValueNode hub, int vtableEntryOffset) {
-        assert vtableEntryOffset > 0;
+        assert vtableEntryOffset > 0 : Assertions.errorMessage(hub, vtableEntryOffset);
         // We use LocationNode.ANY_LOCATION for the reads that access the vtable
         // entry as HotSpot does not guarantee that this is a final value.
         Stamp methodStamp = MethodPointerStamp.methodNonNull();

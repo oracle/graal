@@ -30,6 +30,7 @@ import java.util.Comparator;
 import jdk.graal.compiler.asm.Assembler;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.core.common.calc.Condition;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.meta.Constant;
@@ -211,7 +212,7 @@ public abstract class SwitchStrategy {
     private EffortClosure effortClosure;
 
     public SwitchStrategy(double[] keyProbabilities) {
-        assert keyProbabilities.length >= 2;
+        assert keyProbabilities.length >= 2 : Assertions.errorMessage(keyProbabilities);
         this.keyProbabilities = keyProbabilities;
     }
 
@@ -261,7 +262,7 @@ public abstract class SwitchStrategy {
 
         public SequentialStrategy(final double[] keyProbabilities, Constant[] keyConstants) {
             super(keyProbabilities);
-            assert keyProbabilities.length == keyConstants.length;
+            assert keyProbabilities.length == keyConstants.length : Assertions.errorMessage(keyProbabilities, keyConstants);
 
             this.keyConstants = keyConstants;
             int keyCount = keyConstants.length;
@@ -302,7 +303,7 @@ public abstract class SwitchStrategy {
 
         protected PrimitiveStrategy(double[] keyProbabilities, JavaConstant[] keyConstants) {
             super(keyProbabilities);
-            assert keyProbabilities.length == keyConstants.length;
+            assert keyProbabilities.length == keyConstants.length : Assertions.errorMessage(keyProbabilities, keyConstants);
             this.keyConstants = keyConstants;
         }
 
@@ -441,13 +442,13 @@ public abstract class SwitchStrategy {
             }
             double probabilityStart = probabilitySums[left];
             double probabilityMiddle = (probabilityStart + probabilitySums[right + 1]) / 2;
-            assert probabilityMiddle >= probabilityStart;
+            assert probabilityMiddle >= probabilityStart : Assertions.errorMessage(probabilityMiddle, probabilityStart);
             int middle = left;
             while (getSliceEnd(closure, middle + 1) < right && probabilitySums[getSliceEnd(closure, middle + 1)] < probabilityMiddle) {
                 middle = getSliceEnd(closure, middle + 1);
             }
             middle = getSliceEnd(closure, middle);
-            assert middle < keyConstants.length - 1;
+            assert middle < keyConstants.length - 1 : Assertions.errorMessage(middle, keyConstants);
 
             if (getSliceEnd(closure, left) == middle) {
                 if (left == 0) {

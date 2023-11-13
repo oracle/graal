@@ -25,12 +25,12 @@
 package jdk.graal.compiler.nodes;
 
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
-
+import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.vm.ci.meta.TriState;
 
 @NodeInfo
@@ -64,7 +64,8 @@ public abstract class BinaryOpLogicNode extends LIRLowerableLogicNode implements
 
     public BinaryOpLogicNode(NodeClass<? extends BinaryOpLogicNode> c, ValueNode x, ValueNode y) {
         super(c);
-        assert x != null && y != null;
+        assert x != null;
+        assert y != null;
         this.x = x;
         this.y = y;
     }
@@ -83,7 +84,7 @@ public abstract class BinaryOpLogicNode extends LIRLowerableLogicNode implements
      */
     @SuppressWarnings("deprecation")
     public LogicNode maybeCommuteInputs() {
-        assert this instanceof BinaryCommutative;
+        assert this instanceof BinaryCommutative : Assertions.errorMessageContext("this", this);
         if (!y.isConstant() && (x.isConstant() || x.getId() > y.getId())) {
             ValueNode tmp = x;
             x = y;
