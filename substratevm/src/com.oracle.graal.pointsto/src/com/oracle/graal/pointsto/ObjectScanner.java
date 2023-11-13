@@ -125,6 +125,10 @@ public class ObjectScanner {
     }
 
     protected void scanEmbeddedRoot(JavaConstant root, BytecodePosition position) {
+        if (root instanceof ImageHeapConstant ihc && ihc.getHostedObject() == null) {
+            /* Skip embedded simulated constants. */
+            return;
+        }
         try {
             EmbeddedRootScan reason = new EmbeddedRootScan(position, root);
             scanningObserver.forEmbeddedRoot(root, reason);
@@ -160,6 +164,11 @@ public class ObjectScanner {
             assert isUnwrapped(receiver) : receiver;
 
             JavaConstant fieldValue = readFieldValue(field, receiver);
+            if (fieldValue instanceof ImageHeapConstant ihc && ihc.getHostedObject() == null) {
+                /* Skip reachable simulated constants. */
+                return;
+            }
+
             if (fieldValue == null) {
                 StringBuilder backtrace = new StringBuilder();
                 buildObjectBacktrace(bb, reason, backtrace);
