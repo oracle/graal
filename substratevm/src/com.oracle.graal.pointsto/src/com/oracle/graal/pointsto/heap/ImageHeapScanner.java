@@ -583,8 +583,8 @@ public abstract class ImageHeapScanner {
      * a wrong snapshot, we need to manually ensure that the readers are installed since the
      * verification will continue expanding them.
      */
-    static void ensureReaderInstalled(JavaConstant constant) {
-        if (constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
+    void ensureReaderInstalled(JavaConstant constant) {
+        if (isNonNullObjectConstant(constant)) {
             ((ImageHeapConstant) constant).ensureReaderInstalled();
         }
     }

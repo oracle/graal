@@ -144,15 +144,7 @@ public class HeapSnapshotVerifier {
 
         @Override
         public boolean forRelocatedPointerFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
-            boolean result = false;
-            ObjectScanningObserver scanningObserver = scanner.getScanningObserver();
-            if (scanningObserver != null) {
-                result = scanningObserver.forRelocatedPointerFieldValue(receiver, field, fieldValue, reason);
-                if (result) {
-                    analysisModified = true;
-                }
-            }
-            return result;
+            return verifyFieldValue(receiver, field, fieldValue, reason);
         }
 
         @Override
@@ -205,7 +197,7 @@ public class HeapSnapshotVerifier {
                 result = scanner.patchStaticField(typeData, field, fieldValue, reason, onAnalysisModified).ensureDone();
                 heapPatched = true;
             }
-            ImageHeapScanner.ensureReaderInstalled(result);
+            scanner.ensureReaderInstalled(result);
         }
 
         private void verifyInstanceFieldValue(AnalysisField field, JavaConstant receiver, ImageHeapInstance receiverObject, JavaConstant fieldSnapshot, JavaConstant fieldValue, ScanReason reason) {
@@ -217,7 +209,7 @@ public class HeapSnapshotVerifier {
                 result = scanner.patchInstanceField(receiverObject, field, fieldValue, reason, onAnalysisModified).ensureDone();
                 heapPatched = true;
             }
-            ImageHeapScanner.ensureReaderInstalled(result);
+            scanner.ensureReaderInstalled(result);
         }
 
         private Consumer<ScanReason> analysisModified(ScanReason reason, String format, Object... args) {
@@ -269,7 +261,7 @@ public class HeapSnapshotVerifier {
                 result = scanner.patchArrayElement(arrayObject, index, elementValue, reason, onAnalysisModified).ensureDone();
                 heapPatched = true;
             }
-            ImageHeapScanner.ensureReaderInstalled(result);
+            scanner.ensureReaderInstalled(result);
         }
 
         @SuppressWarnings({"unchecked", "rawtypes"})
