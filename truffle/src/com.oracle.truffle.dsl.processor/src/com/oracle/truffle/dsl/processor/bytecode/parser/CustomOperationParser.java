@@ -765,7 +765,11 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         }
 
         List<TypeMirror> argumentTypes = valueParams.stream().map(v -> v.asType()).toList();
-        return new Signature(specialization.getReturnType(), argumentTypes, hasVariadic, localSetterCount, localSetterRangeCount);
+        TypeMirror returnType = specialization.getReturnType();
+        if (ElementUtils.canThrowTypeExact(specialization.getThrownTypes(), types().UnexpectedResultException)) {
+            returnType = context.getDeclaredType(Object.class);
+        }
+        return new Signature(returnType, argumentTypes, hasVariadic, localSetterCount, localSetterRangeCount);
     }
 
     private static boolean isDSLParameter(VariableElement param) {
