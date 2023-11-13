@@ -886,7 +886,7 @@ def _vm_options_match(vm_options, vm_options_path):
 
 def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                   root_module_names=None,
-                  missing_export_target_action='None',
+                  missing_export_target_action='none',
                   with_source=lambda x: True,
                   vendor_info=None,
                   dedup_legal_notices=True,
