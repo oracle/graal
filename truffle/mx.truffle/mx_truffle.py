@@ -864,24 +864,26 @@ def create_sl_parser(args=None, out=None):
     """create the SimpleLanguage parser using antlr"""
     create_parser("com.oracle.truffle.sl", "com.oracle.truffle.sl.parser", "SimpleLanguage", None, args, out)
 
-def create_parser(grammar_project, grammar_package, grammar_name, copyright_template=None, args=None, out=None, postprocess=None, shaded=False):
+def create_parser(grammar_project, grammar_package, grammar_name, copyright_template=None, args=None, out=None, postprocess=None, shaded=False, combined=True):
     """create the DSL expression parser using antlr"""
     grammar_dir = os.path.join(mx.project(grammar_project).source_dirs()[0], *grammar_package.split(".")) + os.path.sep
-    g4_filename = grammar_dir + grammar_name + ".g4"
-    mx.run_java(mx.get_runtime_jvm_args(['ANTLR4_COMPLETE']) + ["org.antlr.v4.Tool", "-package", grammar_package, "-no-listener"] + args + [g4_filename], out=out)
+    for g4_filename in (
+            [grammar_dir + grammar_name + ".g4"] if combined else
+            [grammar_dir + grammar_name + "Lexer.g4", grammar_dir + grammar_name + "Parser.g4"]):
+        mx.run_java(mx.get_runtime_jvm_args(['ANTLR4_COMPLETE']) + ["org.antlr.v4.Tool", "-package", grammar_package, "-no-listener"] + args + [g4_filename], out=out)
 
-    if copyright_template is None:
-        # extract copyright header from .g4 file
-        copyright_header = ''
-        with open(g4_filename) as g:
-            for line in g:
-                copyright_header += line
-                if line == ' */\n':
-                    break
-        assert copyright_header.startswith('/*\n * Copyright (c)') and copyright_header.endswith(' */\n'), copyright_header
-        copyright_header += '// Checkstyle: stop\n'
-        copyright_header += '//@formatter:off\n'
-        copyright_template = copyright_header + '{0}\n'
+        if copyright_template is None:
+            # extract copyright header from .g4 file
+            copyright_header = ''
+            with open(g4_filename) as g:
+                for line in g:
+                    copyright_header += line
+                    if line == ' */\n':
+                        break
+            assert copyright_header.startswith('/*\n * Copyright (c)') and copyright_header.endswith(' */\n'), copyright_header
+            copyright_header += '// Checkstyle: stop\n'
+            copyright_header += '//@formatter:off\n'
+            copyright_template = copyright_header + '{0}\n'
 
     for filename in [grammar_dir + grammar_name + "Lexer.java", grammar_dir + grammar_name + "Parser.java"]:
         with open(filename, 'r') as content_file:
