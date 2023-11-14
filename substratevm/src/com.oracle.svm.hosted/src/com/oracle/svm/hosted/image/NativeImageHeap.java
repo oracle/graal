@@ -238,16 +238,7 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     private Object readObjectField(HostedField field, JavaConstant receiver) {
-        /*
-         * This method is only used to read the special fields of hybrid objects, which are
-         * currently not maintained as separate ImageHeapConstant and therefore cannot we read via
-         * the snapshot heap.
-         */
-        JavaConstant hostedConstant = receiver;
-        if (receiver instanceof ImageHeapConstant imageHeapConstant) {
-            hostedConstant = imageHeapConstant.getHostedObject();
-        }
-        return hUniverse.getSnippetReflection().asObject(Object.class, hConstantReflection.readFieldValue(field, hostedConstant));
+        return hUniverse.getSnippetReflection().asObject(Object.class, hConstantReflection.readFieldValue(field, receiver));
     }
 
     private JavaConstant readConstantField(HostedField field, JavaConstant receiver) {
