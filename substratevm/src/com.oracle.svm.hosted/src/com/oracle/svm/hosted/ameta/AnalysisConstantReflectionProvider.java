@@ -212,6 +212,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             }
         }
 
+        VMError.guarantee(receiver == null || receiver instanceof ImageHeapConstant, "Expected ImageHeapConstant, found: %s", receiver);
         JavaConstant value = null;
         if (returnSimulatedValues) {
             value = readSimulatedValue(field);
@@ -239,7 +240,8 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             value = heapObject.readFieldValue(field);
         }
         if (value == null) {
-            value = readHostedFieldValue(suppliedMetaAccess, field, receiver);
+            VMError.guarantee(!SimulateClassInitializerSupport.singleton().isEnabled());
+            value = universe.getHeapScanner().createImageHeapConstant(readHostedFieldValue(suppliedMetaAccess, field, receiver), ObjectScanner.OtherReason.UNKNOWN);
         }
         return value;
     }
