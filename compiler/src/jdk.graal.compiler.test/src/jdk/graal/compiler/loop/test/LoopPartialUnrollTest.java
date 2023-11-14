@@ -343,13 +343,13 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
             new FloatingReadPhase(canonicalizer).apply(graph, context);
             new RemoveValueProxyPhase(canonicalizer).apply(graph, context);
             new DeadCodeEliminationPhase().apply(graph);
-            new ConditionalEliminationPhase(true).apply(graph, context);
+            new ConditionalEliminationPhase(canonicalizer, true).apply(graph, context);
             new GuardLoweringPhase().apply(graph, context);
             new MidTierLoweringPhase(canonicalizer).apply(graph, context);
             new FrameStateAssignmentPhase().apply(graph);
             new DeoptimizationGroupingPhase().apply(graph, context);
             canonicalizer.apply(graph, context);
-            new ConditionalEliminationPhase(true).apply(graph, context);
+            new ConditionalEliminationPhase(canonicalizer, true).apply(graph, context);
             if (partialUnroll) {
                 LoopsData dataCounted = getDefaultMidTierContext().getLoopsDataProvider().getLoopsData(graph);
                 dataCounted.detectCountedLoops();

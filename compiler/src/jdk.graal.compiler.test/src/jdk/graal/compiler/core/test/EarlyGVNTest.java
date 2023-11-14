@@ -35,6 +35,10 @@ import java.lang.annotation.Target;
 import java.util.List;
 import java.util.ListIterator;
 
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.graph.Node;
@@ -59,9 +63,6 @@ import jdk.graal.compiler.phases.common.ConditionalEliminationPhase;
 import jdk.graal.compiler.phases.common.DominatorBasedGlobalValueNumberingPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
 
 public class EarlyGVNTest extends GraalCompilerTest {
 
@@ -626,11 +627,9 @@ public class EarlyGVNTest extends GraalCompilerTest {
 
         c.apply(g, getDefaultHighTierContext());
         new ConvertDeoptimizeToGuardPhase(c).apply(g, highTierContext);
-        new ConditionalEliminationPhase(false).apply(g, highTierContext);
-        c.apply(g, getDefaultHighTierContext());
+        new ConditionalEliminationPhase(c, false).apply(g, highTierContext);
         new DominatorBasedGlobalValueNumberingPhase(c).apply(g, highTierContext);
-        new ConditionalEliminationPhase(false).apply(g, highTierContext);
-        c.apply(g, getDefaultHighTierContext());
+        new ConditionalEliminationPhase(c, false).apply(g, highTierContext);
         new DominatorBasedGlobalValueNumberingPhase(c).apply(g, highTierContext);
 
         checkHighTierGraph(g, count(FixedGuardNode.TYPE, 4),
