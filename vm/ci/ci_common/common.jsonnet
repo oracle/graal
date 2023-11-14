@@ -147,6 +147,7 @@ local devkits = graal_common.devkits;
     packages+: {
       libffi: '>=3.2.1',
       bzip2: '>=1.0.6',
+      maven: ">=3.3.9",
     },
   },
 
