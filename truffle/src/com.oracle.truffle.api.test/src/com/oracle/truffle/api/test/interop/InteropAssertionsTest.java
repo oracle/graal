@@ -1923,4 +1923,169 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
             return getClass().getSimpleName();
         }
     }
+
+    @Test
+    public void testAllMemberSideEffects() throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
+        setupEnv(Context.create()); // we need no multi threaded context.
+        var obj = new IsMemberAllUnknown();
+        InteropLibrary memberLib = createLibrary(InteropLibrary.class, obj);
+        String memberName = IsMemberAllUnknown.MEMBER_NAME;
+
+        obj.isMember = false;
+        assertEquals("isMemberInvocable", false, memberLib.isMemberInvocable(obj, memberName));
+        assertEquals("isMemberReadable", false, memberLib.isMemberReadable(obj, memberName));
+        assertEquals("isMemberWritable", false, memberLib.isMemberWritable(obj, memberName));
+        assertEquals("isMemberRemovable", false, memberLib.isMemberRemovable(obj, memberName));
+
+        obj.readSideEffects = true;
+        assertEquals(42, memberLib.invokeMember(obj, memberName));
+        assertEquals(42, memberLib.readMember(obj, memberName));
+        memberLib.writeMember(obj, memberName, 42);
+        memberLib.removeMember(obj, memberName);
+
+        // Invariant contract violation
+        obj.readSideEffects = false;
+        assertFails(() -> memberLib.invokeMember(obj, memberName), AssertionError.class);
+        assertFails(() -> memberLib.readMember(obj, memberName), AssertionError.class);
+        assertFails(() -> {
+            memberLib.writeMember(obj, memberName, 42);
+            return null;
+        }, AssertionError.class);
+        assertFails(() -> {
+            memberLib.removeMember(obj, memberName);
+            return null;
+        }, AssertionError.class);
+
+        obj.isMember = true;
+        assertEquals("isMemberInvocable", true, memberLib.isMemberInvocable(obj, memberName));
+        assertEquals("isMemberReadable", true, memberLib.isMemberReadable(obj, memberName));
+        assertEquals("isMemberWritable", true, memberLib.isMemberWritable(obj, memberName));
+        assertEquals("isMemberRemovable", true, memberLib.isMemberRemovable(obj, memberName));
+
+        for (boolean hasSideEffects : new boolean[]{true, false}) {
+            obj.readSideEffects = hasSideEffects;
+            assertEquals(42, memberLib.invokeMember(obj, memberName));
+            assertEquals(42, memberLib.readMember(obj, memberName));
+            memberLib.writeMember(obj, memberName, 42);
+            memberLib.removeMember(obj, memberName);
+        }
+
+        obj.throwUnsupported = true;
+        assertFails(() -> memberLib.invokeMember(obj, memberName), UnsupportedMessageException.class);
+        assertFails(() -> memberLib.readMember(obj, memberName), UnsupportedMessageException.class);
+        assertFails(() -> {
+            memberLib.writeMember(obj, memberName, 42);
+            return null;
+        }, UnsupportedMessageException.class);
+        assertFails(() -> {
+            memberLib.removeMember(obj, memberName);
+            return null;
+        }, UnsupportedMessageException.class);
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportLibrary(InteropLibrary.class)
+    static class IsMemberAllUnknown implements TruffleObject {
+
+        static final String MEMBER_NAME = "member";
+        boolean isMember = false;
+        boolean readSideEffects = true;
+        boolean throwUnsupported = false;
+
+        @ExportMessage
+        final boolean hasMembers() {
+            return true;
+        }
+
+        @ExportMessage
+        final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+            return ProxyArray.fromArray(MEMBER_NAME);
+        }
+
+        @ExportMessage(name = "isMemberReadable")
+        @ExportMessage(name = "isMemberRemovable")
+        @ExportMessage(name = "isMemberModifiable")
+        @ExportMessage(name = "isMemberInvocable")
+        final boolean isMemberReadable(@SuppressWarnings("unused") String member) {
+            return isMember;
+        }
+
+        @ExportMessage
+        final boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
+            return false;
+        }
+
+        @ExportMessage(name = "hasMemberReadSideEffects")
+        @ExportMessage(name = "hasMemberWriteSideEffects")
+        final boolean hasMemberReadSideEffects(String member) {
+            return switch (member) {
+                case MEMBER_NAME -> readSideEffects;
+                default -> false;
+            };
+        }
+
+        @ExportMessage
+        final Object readMember(String member) throws UnknownIdentifierException, UnsupportedMessageException {
+            if (throwUnsupported) {
+                throw UnsupportedMessageException.create();
+            }
+            return switch (member) {
+                case MEMBER_NAME -> 42;
+                default -> throw UnknownIdentifierException.create(member);
+            };
+        }
+
+        @ExportMessage
+        final Object invokeMember(String member, @SuppressWarnings("unused") Object[] arguments) throws UnknownIdentifierException, UnsupportedMessageException {
+            if (throwUnsupported) {
+                throw UnsupportedMessageException.create();
+            }
+            return switch (member) {
+                case MEMBER_NAME -> 42;
+                default -> throw UnknownIdentifierException.create(member);
+            };
+        }
+
+        @ExportMessage
+        final void writeMember(String member, @SuppressWarnings("unused") Object value) throws UnknownIdentifierException, UnsupportedMessageException {
+            if (throwUnsupported) {
+                throw UnsupportedMessageException.create();
+            }
+            switch (member) {
+                case MEMBER_NAME -> {
+                }
+                default -> throw UnknownIdentifierException.create(member);
+            }
+        }
+
+        @ExportMessage
+        final void removeMember(String member) throws UnknownIdentifierException, UnsupportedMessageException {
+            if (throwUnsupported) {
+                throw UnsupportedMessageException.create();
+            }
+            switch (member) {
+                case MEMBER_NAME -> {
+                }
+                default -> throw UnknownIdentifierException.create(member);
+            }
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasLanguage() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        Class<? extends TruffleLanguage<?>> getLanguage() {
+            return ProxyLanguage.class;
+        }
+
+        @TruffleBoundary
+        @ExportMessage
+        final Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+            return getClass().getSimpleName();
+        }
+    }
 }
