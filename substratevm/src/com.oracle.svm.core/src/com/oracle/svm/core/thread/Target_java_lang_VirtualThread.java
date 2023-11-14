@@ -28,15 +28,20 @@ import static com.oracle.svm.core.thread.VirtualThreadHelper.asTarget;
 import static com.oracle.svm.core.thread.VirtualThreadHelper.asThread;
 
 import java.util.Locale;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ScheduledExecutorService;
+
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.InjectAccessors;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -46,6 +51,7 @@ import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
@@ -67,13 +73,34 @@ public final class Target_java_lang_VirtualThread {
     @TargetElement(onlyWith = JDK22OrLater.class) @Alias static int TIMED_PINNED;
     @Alias static Target_jdk_internal_vm_ContinuationScope VTHREAD_SCOPE;
 
+    /**
+     * (Re)initialize the default scheduler at runtime so that it does not reference any platform
+     * threads of the image builder and uses the respective number of CPUs and system properties.
+     */
     @Alias //
     @InjectAccessors(DefaultSchedulerAccessor.class) //
-    private static ForkJoinPool DEFAULT_SCHEDULER;
+    public static ForkJoinPool DEFAULT_SCHEDULER;
 
+    /**
+     * (Re)initialize the unparker at runtime so that it does not reference any platform threads of
+     * the image builder.
+     */
     @Alias //
     @InjectAccessors(UnparkerAccessor.class) //
     private static ScheduledExecutorService UNPARKER;
+
+    /** Go through {@link #nondefaultScheduler}. */
+    @Alias //
+    @InjectAccessors(SchedulerAccessor.class) //
+    public Executor scheduler;
+
+    /**
+     * {@code null} if using {@link #DEFAULT_SCHEDULER}, otherwise a specific {@link Executor}. This
+     * avoids references to the {@link #DEFAULT_SCHEDULER} of the image builder which can reference
+     * platform threads and fail the image build.
+     */
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = NondefaultSchedulerSupplier.class) //
+    private Executor nondefaultScheduler;
     // Checkstyle: resume
 
     @Alias
@@ -121,6 +148,33 @@ public final class Target_java_lang_VirtualThread {
                 delayedTaskScheduler = result;
             }
             return result;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    private static final class SchedulerAccessor {
+        static Executor get(Target_java_lang_VirtualThread self) {
+            Executor scheduler = self.nondefaultScheduler;
+            if (scheduler == null) {
+                scheduler = DefaultSchedulerAccessor.get();
+            }
+            return scheduler;
+        }
+
+        static void set(Target_java_lang_VirtualThread self, Executor executor) {
+            assert self.nondefaultScheduler == null;
+            if (executor != DefaultSchedulerAccessor.get()) {
+                self.nondefaultScheduler = executor;
+            }
+        }
+    }
+
+    private static final class NondefaultSchedulerSupplier implements FieldValueTransformer {
+        @Override
+        public Object transform(Object receiver, Object originalValue) {
+            Class<?> vthreadClass = ReflectionUtil.lookupClass(false, "java.lang.VirtualThread");
+            Object defaultScheduler = ReflectionUtil.readStaticField(vthreadClass, "DEFAULT_SCHEDULER");
+            return (originalValue == defaultScheduler) ? null : originalValue;
         }
     }
 
