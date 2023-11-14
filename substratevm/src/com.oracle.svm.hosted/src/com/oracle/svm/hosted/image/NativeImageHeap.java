@@ -292,10 +292,10 @@ public final class NativeImageHeap implements ImageHeap {
                     addToWorklist(aUniverse.replaceObject(element), includeObject, worklist, registeredObjects);
                 }
             } else {
-                JavaConstant constant = aUniverse.getSnippetReflection().forObject(cur);
+                JavaConstant constant = hUniverse.getSnippetReflection().forObject(cur);
                 for (HostedField field : hMetaAccess.lookupJavaType(constant).getInstanceFields(true)) {
                     if (field.isAccessed() && field.getStorageKind() == JavaKind.Object) {
-                        Object fieldValue = aUniverse.getSnippetReflection().asObject(Object.class, hConstantReflection.readFieldValue(field, constant));
+                        Object fieldValue = hUniverse.getSnippetReflection().asObject(Object.class, hConstantReflection.readFieldValue(field, constant));
                         addToWorklist(fieldValue, includeObject, worklist, registeredObjects);
                     }
                 }
