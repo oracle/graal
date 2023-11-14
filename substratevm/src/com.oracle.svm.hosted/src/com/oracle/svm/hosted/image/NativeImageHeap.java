@@ -41,11 +41,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.CompressEncoding;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.core.common.type.CompressibleConstant;
-import jdk.graal.compiler.core.common.type.TypedConstant;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.UnsignedWord;
@@ -86,6 +81,11 @@ import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
 import com.oracle.svm.hosted.meta.UniverseBuilder;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.type.CompressibleConstant;
+import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -340,7 +340,7 @@ public final class NativeImageHeap implements ImageHeap {
             }
         }
 
-        JavaConstant uncompressed = maybeUnwrap(uncompress(constant));
+        JavaConstant uncompressed = uncompress(constant);
 
         int identityHashCode = computeIdentityHashCode(uncompressed);
         VMError.guarantee(identityHashCode != 0, "0 is used as a marker value for 'hash code not yet computed'");
@@ -351,7 +351,7 @@ public final class NativeImageHeap implements ImageHeap {
             handleImageString(stringConstant);
         }
 
-        final ObjectInfo existing = objects.get(uncompressed);
+        final ObjectInfo existing = objects.get(maybeUnwrap(uncompressed));
         if (existing == null) {
             addObjectToImageHeap(uncompressed, immutableFromParent, identityHashCode, reason);
         } else if (objectReachabilityInfo != null) {
@@ -647,9 +647,10 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     private ObjectInfo addToImageHeap(JavaConstant add, HostedClass clazz, long size, int identityHashCode, Object reason) {
+        assert !isCompressed(add);
+        ObjectInfo info = new ObjectInfo(add, size, clazz, identityHashCode, reason);
         JavaConstant constant = maybeUnwrap(add);
-        ObjectInfo info = new ObjectInfo(constant, size, clazz, identityHashCode, reason);
-        assert !objects.containsKey(constant) && !isCompressed(constant);
+        assert !objects.containsKey(constant);
         objects.put(constant, info);
         return info;
     }
