@@ -29,22 +29,6 @@ import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import jdk.graal.compiler.core.common.type.StampFactory;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.graph.NodeSourcePosition;
-import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
-import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.FixedNode;
-import jdk.graal.compiler.nodes.FixedWithNextNode;
-import jdk.graal.compiler.nodes.FrameState;
-import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
-import jdk.graal.compiler.nodes.PiNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.UnreachableBeginNode;
-import jdk.graal.compiler.nodes.UnwindNode;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -64,6 +48,22 @@ import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.PiNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.UnreachableBeginNode;
+import jdk.graal.compiler.nodes.UnwindNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -120,7 +120,7 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
         DeoptInfoProvider deoptInfo = null;
         if (MultiMethod.isDeoptTarget(method)) {
             deoptInfo = new DeoptInfoProvider((MultiMethod) method);

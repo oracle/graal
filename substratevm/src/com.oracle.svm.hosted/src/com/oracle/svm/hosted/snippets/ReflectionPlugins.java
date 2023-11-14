@@ -48,18 +48,6 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
@@ -68,7 +56,6 @@ import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
@@ -85,6 +72,18 @@ import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import jdk.graal.compiler.options.Option;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -105,9 +104,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * JDK so that any code that would rely on object identity is error-prone on any JVM.
  */
 public final class ReflectionPlugins {
-    public static class ReflectionPluginRegistry extends IntrinsificationPluginRegistry {
-    }
-
     static class Options {
         @Option(help = "Enable trace logging for reflection plugins.")//
         static final HostedOptionKey<Boolean> ReflectionPluginTracing = new HostedOptionKey<>(false);
@@ -142,16 +138,6 @@ public final class ReflectionPlugins {
 
     public static void registerInvocationPlugins(ImageClassLoader imageClassLoader, SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions,
                     ClassInitializationPlugin classInitializationPlugin, InvocationPlugins plugins, AnalysisUniverse aUniverse, ParsingReason reason, FallbackFeature fallbackFeature) {
-        /*
-         * Initialize the registry if we are during analysis. If hosted is false, i.e., we are
-         * analyzing the static initializers, then we always intrinsify, so don't need a registry.
-         */
-        if (reason == ParsingReason.PointsToAnalysis) {
-            if (!ImageSingletons.contains(ReflectionPluginRegistry.class)) {
-                ImageSingletons.add(ReflectionPluginRegistry.class, new ReflectionPluginRegistry());
-            }
-        }
-
         ReflectionPlugins rp = new ReflectionPlugins(imageClassLoader, snippetReflection, annotationSubstitutions, classInitializationPlugin, aUniverse, reason, fallbackFeature);
         rp.registerMethodHandlesPlugins(plugins);
         rp.registerClassPlugins(plugins);
@@ -646,8 +632,6 @@ public final class ReflectionPlugins {
         return null;
     }
 
-    private final boolean parseOnce = SubstrateOptions.parseOnce();
-
     /**
      * This method checks if the element should be intrinsified and returns the cached intrinsic
      * element if found. Caching intrinsic elements during analysis and reusing the same element
@@ -664,32 +648,15 @@ public final class ReflectionPlugins {
             /* We are analyzing the static initializers and should always intrinsify. */
             return element;
         }
-        /* We don't intrinsify if bci is not unique. */
-        if (context.bciCanBeDuplicated()) {
+        if (isDeleted(element, context.getMetaAccess())) {
+            /*
+             * Should not intrinsify. Will fail during the reflective lookup at runtime. @Delete-ed
+             * elements are ignored by the reflection plugins regardless of the value of
+             * ReportUnsupportedElementsAtRuntime.
+             */
             return null;
         }
-        if (parseOnce || reason.duringAnalysis()) {
-            if (isDeleted(element, context.getMetaAccess())) {
-                /*
-                 * Should not intrinsify. Will fail during the reflective lookup at
-                 * runtime. @Delete-ed elements are ignored by the reflection plugins regardless of
-                 * the value of ReportUnsupportedElementsAtRuntime.
-                 */
-                return null;
-            }
-
-            Object replaced = aUniverse.replaceObject(element);
-
-            if (parseOnce) {
-                /* No separate parsing for compilation, so no need to cache the result. */
-                return (T) replaced;
-            }
-
-            /* During parsing for analysis we intrinsify and cache the result for compilation. */
-            ImageSingletons.lookup(ReflectionPluginRegistry.class).add(context.getMethod(), context.bci(), replaced);
-        }
-        /* During parsing for compilation we only intrinsify if intrinsified during analysis. */
-        return ImageSingletons.lookup(ReflectionPluginRegistry.class).get(context.getMethod(), context.bci());
+        return (T) aUniverse.replaceObject(element);
     }
 
     private static <T> boolean isDeleted(T element, MetaAccessProvider metaAccess) {

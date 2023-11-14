@@ -33,16 +33,7 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Type;
 import java.util.List;
 
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.CallTargetNode;
-import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
-import jdk.graal.compiler.nodes.StateSplit;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.java.NewArrayNode;
-
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
-import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.invoke.MethodHandleUtils;
@@ -51,6 +42,13 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.CallTargetNode;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.StateSplit;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
@@ -85,8 +83,8 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        UniverseMetaAccess metaAccess = (UniverseMetaAccess) providers.getMetaAccess();
-        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
+        AnalysisMetaAccess metaAccess = (AnalysisMetaAccess) providers.getMetaAccess();
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
 
         List<ValueNode> args = kit.loadArguments(method.toParameterTypes());
         ValueNode receiver = null;
@@ -105,13 +103,7 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
             storeIndexedNode.setStateAfter(kit.getFrameState().create(kit.bci(), storeIndexedNode));
         }
 
-        ResolvedJavaMethod invokeTarget;
-        if (metaAccess instanceof AnalysisMetaAccess) {
-            invokeTarget = metaAccess.getUniverse().lookup(substitutionBaseMethod.getOriginal());
-        } else {
-            invokeTarget = metaAccess.getUniverse().lookup(((AnalysisMetaAccess) metaAccess.getWrapped()).getUniverse().lookup(substitutionBaseMethod.getOriginal()));
-        }
-
+        ResolvedJavaMethod invokeTarget = metaAccess.getUniverse().lookup(substitutionBaseMethod.getOriginal());
         InvokeWithExceptionNode invoke;
         if (substitutionBaseMethod.isStatic()) {
             invoke = kit.createInvokeWithExceptionAndUnwind(invokeTarget, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci(), parameterArray);

@@ -33,6 +33,14 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
+import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
+import com.oracle.svm.core.reflect.ReflectionAccessorHolder;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.code.FactoryMethodSupport;
+import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.util.ReflectionUtil;
+
 import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
@@ -61,16 +69,6 @@ import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.type.StampTool;
-
-import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
-import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
-import com.oracle.svm.core.reflect.ReflectionAccessorHolder;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.code.FactoryMethodSupport;
-import com.oracle.svm.hosted.phases.HostedGraphKit;
-import com.oracle.svm.util.ReflectionUtil;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -106,7 +104,7 @@ public class ReflectionGraphKit extends HostedGraphKit {
     private final List<ExceptionObjectNode> invocationTargetExceptionPaths = new ArrayList<>();
 
     public ReflectionGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method, GraphProvider.Purpose purpose) {
-        super(debug, providers, method, purpose);
+        super(debug, providers, method);
     }
 
     @Override
@@ -155,7 +153,7 @@ public class ReflectionGraphKit extends HostedGraphKit {
     public void emitInvocationTargetException() {
         AbstractMergeNode merge = continueWithMerge(invocationTargetExceptionPaths);
         ValueNode exception = createPhi(invocationTargetExceptionPaths, merge);
-        ResolvedJavaMethod throwInvocationTargetException = FactoryMethodSupport.singleton().lookup((UniverseMetaAccess) getMetaAccess(),
+        ResolvedJavaMethod throwInvocationTargetException = FactoryMethodSupport.singleton().lookup(getMetaAccess(),
                         getMetaAccess().lookupJavaMethod(invocationTargetExceptionConstructor), true);
         InvokeWithExceptionNode invoke = createJavaCallWithExceptionAndUnwind(CallTargetNode.InvokeKind.Static, throwInvocationTargetException, exception);
         invoke.setInlineControl(Invoke.InlineControl.Never);

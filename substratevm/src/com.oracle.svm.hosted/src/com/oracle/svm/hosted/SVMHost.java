@@ -51,27 +51,6 @@ import java.util.function.BiPredicate;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
-import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
-import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.debug.MethodFilter;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.java.GraphBuilderPhase.Instance;
-import jdk.graal.compiler.nodes.StaticDeoptimizingNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.extended.UnsafeAccessNode;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import jdk.graal.compiler.nodes.java.AccessFieldNode;
-import jdk.graal.compiler.nodes.java.AccessMonitorNode;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.OptimisticOptimizations;
-import jdk.graal.compiler.phases.common.BoxNodeIdentityPhase;
-import jdk.graal.compiler.phases.common.CanonicalizerPhase;
-import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -83,7 +62,6 @@ import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -143,6 +121,27 @@ import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.MethodFilter;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.java.GraphBuilderPhase.Instance;
+import jdk.graal.compiler.nodes.StaticDeoptimizingNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.UnsafeAccessNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import jdk.graal.compiler.nodes.java.AccessFieldNode;
+import jdk.graal.compiler.nodes.java.AccessMonitorNode;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.phases.common.BoxNodeIdentityPhase;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -276,7 +275,7 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public boolean isRelocatedPointer(UniverseMetaAccess metaAccess, JavaConstant constant) {
+    public boolean isRelocatedPointer(JavaConstant constant) {
         return constant instanceof RelocatableConstant;
     }
 
@@ -327,8 +326,6 @@ public class SVMHost extends HostVM {
         return initializedAtBuildTime;
     }
 
-    private final boolean parseOnce = SubstrateOptions.parseOnce();
-
     @Override
     public GraphBuilderConfiguration updateGraphBuilderConfiguration(GraphBuilderConfiguration config, AnalysisMethod method) {
         GraphBuilderConfiguration updatedConfig = config.withRetainLocalVariables(retainLocalVariables()).withUnresolvedIsError(linkAtBuildTimeSupport.linkAtBuildTime(method.getDeclaringClass()))
@@ -341,22 +338,12 @@ public class SVMHost extends HostVM {
     }
 
     private boolean retainLocalVariables() {
-        if (parseOnce) {
-            /*
-             * Disabling liveness analysis preserves the values of local variables beyond the
-             * bytecode-liveness. This greatly helps debugging. Note that when local variable
-             * numbers are reused by javac, local variables can still be assigned to illegal values.
-             */
-            return SubstrateOptions.optimizationLevel() == OptimizationLevel.O0;
-
-        } else {
-            /*
-             * We want to always disable the liveness analysis, since we want the points-to analysis
-             * to be as conservative as possible. The analysis results can then be used with the
-             * liveness analysis enabled or disabled.
-             */
-            return true;
-        }
+        /*
+         * Disabling liveness analysis preserves the values of local variables beyond the
+         * bytecode-liveness. This greatly helps debugging. Note that when local variable numbers
+         * are reused by javac, local variables can still be assigned to illegal values.
+         */
+        return SubstrateOptions.optimizationLevel() == OptimizationLevel.O0;
     }
 
     @Override
@@ -565,31 +552,27 @@ public class SVMHost extends HostVM {
                 graph.getGraphState().configureExplicitExceptionsNoDeoptIfNecessary();
             }
 
-            if (parseOnce) {
-                if (!SubstrateCompilationDirectives.isRuntimeCompiledMethod(method)) {
-                    /*
-                     * Runtime compiled methods should not have assertions. If they do, then they
-                     * should be caught via the blocklist instead of being converted to bytecode
-                     * exceptions.
-                     */
-                    new ImplicitAssertionsPhase().apply(graph, getProviders(method.getMultiMethodKey()));
-                }
-                UninterruptibleAnnotationChecker.checkAfterParsing(method, graph);
-
-                optimizeAfterParsing(bb, method, graph);
+            if (!SubstrateCompilationDirectives.isRuntimeCompiledMethod(method)) {
                 /*
-                 * Do a complete Canonicalizer run once before graph encoding, to clean up any
-                 * leftover uncanonicalized nodes.
+                 * Runtime compiled methods should not have assertions. If they do, then they should
+                 * be caught via the blocklist instead of being converted to bytecode exceptions.
                  */
-                CanonicalizerPhase.create().apply(graph, getProviders(method.getMultiMethodKey()));
-                /*
-                 * To avoid keeping the whole Graal graphs alive in production use cases, we extract
-                 * the necessary bits of information and store them in secondary storage maps.
-                 */
-                if (InliningUtilities.isTrivialMethod(graph)) {
-                    analysisTrivialMethods.put(method, true);
-                }
+                new ImplicitAssertionsPhase().apply(graph, getProviders(method.getMultiMethodKey()));
+            }
+            UninterruptibleAnnotationChecker.checkAfterParsing(method, graph);
 
+            optimizeAfterParsing(bb, method, graph);
+            /*
+             * Do a complete Canonicalizer run once before graph encoding, to clean up any leftover
+             * uncanonicalized nodes.
+             */
+            CanonicalizerPhase.create().apply(graph, getProviders(method.getMultiMethodKey()));
+            /*
+             * To avoid keeping the whole Graal graphs alive in production use cases, we extract the
+             * necessary bits of information and store them in secondary storage maps.
+             */
+            if (InliningUtilities.isTrivialMethod(graph)) {
+                analysisTrivialMethods.put(method, true);
             }
 
             super.methodAfterParsingHook(bb, method, graph);
@@ -647,15 +630,6 @@ public class SVMHost extends HostVM {
              * verification features.
              */
             analysisGraphs.put(method, graph);
-        }
-        /*
-         * To avoid keeping the whole Graal graphs alive in production use cases, we extract the
-         * necessary bits of information and store them in secondary storage maps.
-         */
-        if (!parseOnce) {
-            if (InliningUtilities.isTrivialMethod(graph)) {
-                analysisTrivialMethods.put(method, true);
-            }
         }
         for (Node n : graph.getNodes()) {
             if (n instanceof StackValueNode) {

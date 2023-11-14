@@ -30,15 +30,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.java.MonitorEnterNode;
-import jdk.graal.compiler.nodes.java.MonitorExitNode;
-import jdk.graal.compiler.nodes.java.MonitorIdNode;
-
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.c.CGlobalDataFactory;
@@ -54,6 +45,14 @@ import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.hosted.heap.SVMImageHeapScanner;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.java.MonitorEnterNode;
+import jdk.graal.compiler.nodes.java.MonitorExitNode;
+import jdk.graal.compiler.nodes.java.MonitorIdNode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.LineNumberTable;
@@ -108,7 +107,7 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        JNIGraphKit kit = new JNIGraphKit(debug, providers, method, purpose);
+        JNIGraphKit kit = new JNIGraphKit(debug, providers, method);
         StructuredGraph graph = kit.getGraph();
 
         InvokeWithExceptionNode handleFrame = kit.nativeCallPrologue();

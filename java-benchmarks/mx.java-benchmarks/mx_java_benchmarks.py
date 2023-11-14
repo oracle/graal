@@ -362,7 +362,6 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                 '-H:+AddAllCharsets',
                 '-H:+ReportExceptionStackTraces',
         ] + mx_sdk_vm_impl.svm_experimental_options([
-                '-H:-ParseOnce',
                 '-H:+AllowFoldMethods',
                 '-H:-UseServiceLoaderFeature',
                 '-H:+AllowDeprecatedBuilderClassesOnImageClasspath', # needs to be removed once GR-41746 is fixed

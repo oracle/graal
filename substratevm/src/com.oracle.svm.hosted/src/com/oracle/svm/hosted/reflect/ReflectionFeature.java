@@ -35,9 +35,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -84,6 +81,9 @@ import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.phases.util.Providers;
 import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.Reflection;
 import jdk.vm.ci.meta.JavaKind;
@@ -217,7 +217,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
             } else {
                 expandSignature = createExpandSignatureMethod(member, false);
                 AnalysisMethod constructor = analysisAccess.getMetaAccess().lookupJavaMethod(member);
-                AnalysisMethod factoryMethod = (AnalysisMethod) FactoryMethodSupport.singleton().lookup(analysisAccess.getMetaAccess(), constructor, false);
+                AnalysisMethod factoryMethod = FactoryMethodSupport.singleton().lookup(analysisAccess.getMetaAccess(), constructor, false);
                 directTarget = register(factoryMethod, "Factory method, registered in " + ReflectionFeature.class);
                 if (!constructor.getDeclaringClass().isInitialized()) {
                     initializeBeforeInvoke = analysisAccess.getHostVM().dynamicHub(constructor.getDeclaringClass());

@@ -24,6 +24,12 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
+import com.oracle.svm.util.ModuleSupport;
+
 import jdk.graal.compiler.core.common.BootstrapMethodIntrospection;
 import jdk.graal.compiler.java.BciBlockMapping;
 import jdk.graal.compiler.java.BytecodeParser;
@@ -33,21 +39,12 @@ import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.word.WordTypes;
-
-import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
-import com.oracle.svm.util.ModuleSupport;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -105,21 +102,6 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
             return super.applyInvocationPlugin(invokeKind, args, targetMethod, resultType, plugin);
         }
 
-        private final boolean parseOnce = SubstrateOptions.parseOnce();
-
-        @Override
-        protected BytecodeParser.ExceptionEdgeAction getActionForInvokeExceptionEdge(InlineInfo lastInlineInfo) {
-            if (!parseOnce && !insideTryBlock()) {
-                /*
-                 * The static analysis does not track the flow of exceptions across method
-                 * boundaries. Therefore, it is not necessary to have exception edges that go
-                 * directly to an UnwindNode because there is no exception handler in between.
-                 */
-                return ExceptionEdgeAction.OMIT;
-            }
-            return super.getActionForInvokeExceptionEdge(lastInlineInfo);
-        }
-
         private boolean tryNodePluginForDynamicInvocation(BootstrapMethodIntrospection bootstrap) {
             for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
                 var result = plugin.convertInvokeDynamic(this, bootstrap);
@@ -133,11 +115,9 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
 
         @Override
         protected void genInvokeDynamic(int cpi, int opcode) {
-            if (parseOnce) {
-                BootstrapMethodIntrospection bootstrap = ((AnalysisConstantPool) constantPool).lookupBootstrapMethodIntrospection(cpi, opcode);
-                if (bootstrap != null && tryNodePluginForDynamicInvocation(bootstrap)) {
-                    return;
-                }
+            BootstrapMethodIntrospection bootstrap = ((AnalysisConstantPool) constantPool).lookupBootstrapMethodIntrospection(cpi, opcode);
+            if (bootstrap != null && tryNodePluginForDynamicInvocation(bootstrap)) {
+                return;
             }
             super.genInvokeDynamic(cpi, opcode);
         }
@@ -151,18 +131,16 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
         @Override
         protected FrameStateBuilder createFrameStateForExceptionHandling(int bci) {
             var dispatchState = super.createFrameStateForExceptionHandling(bci);
-            if (SubstrateOptions.parseOnce()) {
-                /*
-                 * It is beneficial to eagerly clear all non-live locals on the exception object
-                 * before entering the dispatch target. This helps us prune unneeded values from the
-                 * graph, which can positively impact our analysis. Since deoptimization is not
-                 * possible, then there is no risk in clearing the unneeded locals.
-                 */
-                AnalysisMethod aMethod = (AnalysisMethod) method;
-                if (aMethod.isOriginalMethod() && !SubstrateCompilationDirectives.singleton().isRegisteredForDeoptTesting(aMethod)) {
-                    BciBlockMapping.BciBlock dispatchBlock = getDispatchBlock(bci);
-                    clearNonLiveLocals(dispatchState, dispatchBlock, true);
-                }
+            /*
+             * It is beneficial to eagerly clear all non-live locals on the exception object before
+             * entering the dispatch target. This helps us prune unneeded values from the graph,
+             * which can positively impact our analysis. Since deoptimization is not possible, then
+             * there is no risk in clearing the unneeded locals.
+             */
+            AnalysisMethod aMethod = (AnalysisMethod) method;
+            if (aMethod.isOriginalMethod() && !SubstrateCompilationDirectives.singleton().isRegisteredForDeoptTesting(aMethod)) {
+                BciBlockMapping.BciBlock dispatchBlock = getDispatchBlock(bci);
+                clearNonLiveLocals(dispatchState, dispatchBlock, true);
             }
             return dispatchState;
         }

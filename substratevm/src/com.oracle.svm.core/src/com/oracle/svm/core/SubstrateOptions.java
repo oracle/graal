@@ -75,7 +75,7 @@ import jdk.internal.misc.Unsafe;
 public class SubstrateOptions {
 
     @Option(help = "Deprecated, option no longer has any effect.", deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
-    public static final HostedOptionKey<Boolean> ParseOnce = new HostedOptionKey<>(true);
+    static final HostedOptionKey<Boolean> ParseOnce = new HostedOptionKey<>(true);
     @Option(help = "Deprecated, option no longer has any effect.", deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
     static final HostedOptionKey<Boolean> ParseOnceJIT = new HostedOptionKey<>(true);
     @Option(help = "Preserve the local variable information for every Java source line to allow line-by-line stepping in the debugger. Allow the lookup of Java-level method information, e.g., in stack traces.")//
@@ -85,14 +85,6 @@ public class SubstrateOptions {
 
     @Option(help = "Image Build ID is a 128-bit UUID string generated randomly, once per bundle or digest of input args when bundles are not used.")//
     public static final HostedOptionKey<String> ImageBuildID = new HostedOptionKey<>("");
-
-    public static boolean parseOnce() {
-        /*
-         * GR-48579: Old code only reachable when this method would return false will be deleted
-         * later.
-         */
-        return true;
-    }
 
     @Option(help = "Module containing the class that contains the main entry point. Optional if --shared is used.", type = OptionType.User)//
     public static final HostedOptionKey<String> Module = new HostedOptionKey<>("");

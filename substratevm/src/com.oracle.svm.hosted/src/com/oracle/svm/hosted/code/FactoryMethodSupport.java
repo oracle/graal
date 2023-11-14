@@ -27,25 +27,20 @@ package com.oracle.svm.hosted.code;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
-import jdk.graal.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.code.FactoryMethodHolder;
 import com.oracle.svm.core.code.FactoryThrowMethodHolder;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.meta.HostedMetaAccess;
-import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
+import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
+import jdk.graal.compiler.nodes.java.NewInstanceNode;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -61,19 +56,7 @@ public class FactoryMethodSupport {
     private final Map<AnalysisMethod, FactoryMethod> factoryMethods = new ConcurrentHashMap<>();
     private final Map<AnalysisMethod, FactoryMethod> factoryThrowMethods = new ConcurrentHashMap<>();
 
-    public ResolvedJavaMethod lookup(UniverseMetaAccess metaAccess, ResolvedJavaMethod constructor, boolean throwAllocatedObject) {
-        HostedUniverse hUniverse;
-        AnalysisMetaAccess aMetaAccess;
-        if (metaAccess instanceof HostedMetaAccess) {
-            hUniverse = (HostedUniverse) metaAccess.getUniverse();
-            aMetaAccess = (AnalysisMetaAccess) metaAccess.getWrapped();
-        } else {
-            hUniverse = null;
-            aMetaAccess = (AnalysisMetaAccess) metaAccess;
-        }
-        AnalysisUniverse aUniverse = aMetaAccess.getUniverse();
-
-        AnalysisMethod aConstructor = constructor instanceof HostedMethod ? ((HostedMethod) constructor).getWrapped() : (AnalysisMethod) constructor;
+    public AnalysisMethod lookup(AnalysisMetaAccess aMetaAccess, AnalysisMethod aConstructor, boolean throwAllocatedObject) {
         VMError.guarantee(aConstructor.getDeclaringClass().isInstanceClass() && !aConstructor.getDeclaringClass().isAbstract(), "Must be a non-abstract instance class");
         Map<AnalysisMethod, FactoryMethod> methods = throwAllocatedObject ? factoryThrowMethods : factoryMethods;
         FactoryMethod factoryMethod = methods.computeIfAbsent(aConstructor, key -> {
@@ -98,12 +81,7 @@ public class FactoryMethodSupport {
             return new FactoryMethod(name, unwrappedConstructor, unwrappedDeclaringClass, unwrappedSignature, unwrappedConstantPool, throwAllocatedObject);
         });
 
-        AnalysisMethod aFactoryMethod = aUniverse.lookup(factoryMethod);
-        if (hUniverse != null) {
-            return hUniverse.lookup(aFactoryMethod);
-        } else {
-            return aFactoryMethod;
-        }
+        return aMetaAccess.getUniverse().lookup(factoryMethod);
     }
 
     protected AbstractNewObjectNode createNewInstance(HostedGraphKit kit, ResolvedJavaType type, boolean fillContents) {
