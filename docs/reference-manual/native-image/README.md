@@ -107,12 +107,12 @@ For example, build a native executable for a HelloWorld application.
     javac HelloWorld.java
     native-image HelloWorld
     ```
-    It will create a native executable, `helloWorld`, in the current working directory. 
+    It will create a native executable, `helloworld`, in the current working directory. 
     
 3. Run the application:
 
     ```shell
-    ./helloWorld
+    ./helloworld
     ```
     You can time it to see the resources used:
     
