@@ -773,13 +773,13 @@ def _remove_redundant_entries(cp):
     return os.pathsep.join([e for e in cp if e not in redundantClasspathEntries])
 
 
-class GraalUnittestConfig(mx_truffle.TruffleUnittestConfig):
+class GraalUnittestConfig(mx_unittest.MxUnittestConfig):
 
-    def __init__(self, name='graal'):
-        super(GraalUnittestConfig, self).__init__(name)
+    def __init__(self):
+        super(GraalUnittestConfig, self).__init__('graal')
 
     def apply(self, config):
-        vmArgs, mainClass, mainClassArgs = super(GraalUnittestConfig, self).apply(config)
+        vmArgs, mainClass, mainClassArgs = config
         cpIndex, cp = mx.find_classpath_arg(vmArgs)
         if cp:
             cp = _remove_redundant_entries(cp)

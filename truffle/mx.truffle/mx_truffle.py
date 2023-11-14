@@ -188,8 +188,8 @@ def _open_module_exports_args():
 
 class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
 
-    def __init__(self, name='truffle'):
-        super(TruffleUnittestConfig, self).__init__(name)
+    def __init__(self):
+        super(TruffleUnittestConfig, self).__init__('truffle')
 
     def apply(self, config):
         vmArgs, mainClass, mainClassArgs = config
@@ -269,10 +269,6 @@ class _TruffleNFIUnittestConfig(mx_unittest.MxUnittestConfig):
 
     def apply(self, config):
         vmArgs, mainClass, mainClassArgs = config
-        # Disable DefaultRuntime warning
-        vmArgs = vmArgs + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
-        # Assert for enter/return parity of ProbeNode
-        vmArgs = vmArgs + ['-Dpolyglot.engine.AssertProbes=true', '-Dpolyglot.engine.AllowExperimentalOptions=true']
         # Add runtimeConfig vm args
         vmArgs = vmArgs + _TruffleNFIUnittestConfig.runtimeConfig.vm_args()
         return (vmArgs, mainClass, mainClassArgs)
@@ -599,15 +595,6 @@ def _is_graalvm(jdk):
                     return True
     return False
 
-
-_shouldRunTCKUnittestConfig = True
-
-
-def should_add_tck_participant(shouldInstal):
-    global _shouldRunTCKUnittestConfig
-    _shouldRunTCKUnittestConfig = shouldInstal
-
-
 def _collect_distributions(dist_filter, dist_collector):
     def import_visitor(suite, suite_import, predicate, collector, seenSuites, **extra_args):
         suite_collector(mx.suite(suite_import.name), predicate, collector, seenSuites)
@@ -660,13 +647,15 @@ def _collect_distributions_by_service(required_services, entries_collector):
     _collect_distributions(provides_service, entries_collector)
 
 
-class TCKUnittestConfig(mx_unittest.MxUnittestConfig):
+class _TCKUnittestConfig(mx_unittest.MxUnittestConfig):
+
+    lookupTCKProviders = False
 
     def __init__(self):
-        super(TCKUnittestConfig, self).__init__(name='truffle-tck')
+        super(_TCKUnittestConfig, self).__init__(name='truffle-tck')
 
     def processDeps(self, deps):
-        if _shouldRunTCKUnittestConfig:
+        if _TCKUnittestConfig.lookupTCKProviders:
             tck_providers = []
             _collect_distributions_by_service(["org.graalvm.polyglot.tck.LanguageProvider"], tck_providers)
             truffle_runtime = [mx.distribution(n) for n in resolve_truffle_dist_names()]
@@ -688,13 +677,28 @@ class TCKUnittestConfig(mx_unittest.MxUnittestConfig):
 
     def apply(self, config):
         vmArgs, mainClass, mainClassArgs = config
-        if not TCKUnittestConfig._has_disable_assertions_option(vmArgs):
+        # Disable DefaultRuntime warning
+        vmArgs = vmArgs + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
+        if not _TCKUnittestConfig._has_disable_assertions_option(vmArgs):
             # Assert for enter/return parity of ProbeNode
             vmArgs = vmArgs + ['-Dpolyglot.engine.AssertProbes=true', '-Dpolyglot.engine.AllowExperimentalOptions=true']
         return (vmArgs, mainClass, mainClassArgs)
 
 
-mx_unittest.register_unittest_config(TCKUnittestConfig())
+mx_unittest.register_unittest_config(_TCKUnittestConfig())
+
+
+class _EnableTCKUnittestConfigAction(Action):
+    def __init__(self, **kwargs):
+        kwargs['required'] = False
+        kwargs['nargs'] = 0
+        super(_EnableTCKUnittestConfigAction, self).__init__(**kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        _TCKUnittestConfig.lookupTCKProviders = True
+
+
+mx_unittest.add_unittest_argument('--lookup-truffle-tck-providers', default=False, help='Enables lookup of Truffle TCK providers.', action=_EnableTCKUnittestConfigAction)
 
 """
 Merges META-INF/truffle/language and META-INF/truffle/instrument files.
@@ -804,6 +808,7 @@ def tck(args):
             break
         index = index - 1
     unitTestOptions = args_no_tests[0:max(index - (1 if has_separator_arg else 0), 0)]
+    unitTestOptions.append('--lookup-truffle-tck-providers')
     jvmOptions = args_no_tests[index:len(args_no_tests)]
     if tckConfiguration == "default":
         unittest(unitTestOptions + ["--"] + jvmOptions + tests)

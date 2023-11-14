@@ -750,6 +750,7 @@ suite = {
             "distDependencies" : [
                 "LSP",
                 "truffle:TRUFFLE_SL",
+                "truffle:TRUFFLE_TEST",  # runtime dependency for unittest config
             ],
             "exclude": [
               "mx:HAMCREST",

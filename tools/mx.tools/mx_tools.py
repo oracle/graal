@@ -41,7 +41,6 @@ import mx_gate
 import mx_unittest
 import mx_benchmark
 import mx_sdk_vm
-import mx_truffle
 
 import sys
 
@@ -186,13 +185,13 @@ def dap_types_gen(args):
     mx.log('DAP types generated to: ' + out)
 
 
-class ToolsUnittestConfig(mx_truffle.TruffleUnittestConfig):
+class ToolsUnittestConfig(mx_unittest.MxUnittestConfig):
 
-    def __init__(self, name='tools'):
-        super(ToolsUnittestConfig, self).__init__(name)
+    def __init__(self):
+        super(ToolsUnittestConfig, self).__init__('tools')
 
     def apply(self, config):
-        vmArgs, mainClass, mainClassArgs = super(ToolsUnittestConfig, self).apply(config)
+        vmArgs, mainClass, mainClassArgs = config
         # This is required to access jdk.internal.module.Modules which
         # in turn allows us to dynamically open fields/methods to reflection.
         vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']

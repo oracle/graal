@@ -1832,9 +1832,9 @@ suite = {
       "distDependencies" : [
           "TRUFFLE_API",
           "TRUFFLE_TCK",
-          "TRUFFLE_SL"
+          "TRUFFLE_SL",
+          "TRUFFLE_TEST",
       ],
-      "unittestConfig": "truffle",
       "maven" : False
     },
 
