@@ -40,7 +40,6 @@ In our CI, we build it using:
 - the latest JVMCI-enabled JDK8 ([pre-built archives](https://github.com/graalvm/openjdk8-jvmci-builder/releases); [build instructions](https://github.com/graalvm/openjdk8-jvmci-builder)). The `JAVA_HOME` environment variable must point to it.
 - `gcc`: `4.9.2`
 - `make`: `3.83`
-- `binutils`: `2.23.2`
 - `cmake`: `3.15.2`
 
 Newer versions might also work. For more details, please check the README file of each component.
