@@ -26,6 +26,7 @@ package jdk.graal.compiler.hotspot.test;
 
 import static jdk.graal.compiler.core.common.GraalOptions.FullUnroll;
 import static jdk.graal.compiler.core.common.GraalOptions.LoopPeeling;
+import static jdk.graal.compiler.core.common.GraalOptions.OptReadElimination;
 import static jdk.graal.compiler.core.common.GraalOptions.PartialEscapeAnalysis;
 import static jdk.graal.compiler.core.common.GraalOptions.PartialUnroll;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.referentOffset;
@@ -37,21 +38,25 @@ import java.util.EnumSet;
 import java.util.ListIterator;
 import java.util.Objects;
 
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.test.Graal;
-import jdk.graal.compiler.core.test.TestPhase;
-import jdk.graal.compiler.nodes.extended.RawLoadNode;
-import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.core.common.memory.BarrierType;
+import jdk.graal.compiler.core.test.TestPhase;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotBackend;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntime.HotSpotGC;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.extended.RawLoadNode;
 import jdk.graal.compiler.nodes.gc.G1PostWriteBarrier;
 import jdk.graal.compiler.nodes.gc.G1PreWriteBarrier;
 import jdk.graal.compiler.nodes.gc.G1ReferentFieldReadBarrier;
 import jdk.graal.compiler.nodes.gc.SerialWriteBarrier;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.WriteNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
@@ -61,10 +66,6 @@ import jdk.graal.compiler.phases.common.WriteBarrierAdditionPhase;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.runtime.RuntimeProvider;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -351,7 +352,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
     }
 
     protected Result testWithoutPEA(String name, Object... args) {
-        return test(new OptionValues(getInitialOptions(), PartialEscapeAnalysis, false, FullUnroll, false, LoopPeeling, false, PartialUnroll, false), name, args);
+        return test(new OptionValues(getInitialOptions(), PartialEscapeAnalysis, false, FullUnroll, false, LoopPeeling, false, PartialUnroll, false, OptReadElimination, false), name, args);
     }
 
     @Before
