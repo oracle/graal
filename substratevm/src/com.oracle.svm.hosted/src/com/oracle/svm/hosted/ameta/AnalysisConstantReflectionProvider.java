@@ -196,10 +196,6 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     }
 
     public JavaConstant readValue(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant receiver, boolean returnSimulatedValues) {
-        return readValue(suppliedMetaAccess, field, receiver, returnSimulatedValues, true);
-    }
-
-    public JavaConstant readValue(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant receiver, boolean returnSimulatedValues, boolean readFromShadowHeap) {
         if (!field.isStatic()) {
             if (receiver.isNull() || !field.getDeclaringClass().isAssignableFrom(((TypedConstant) receiver).getType(metaAccess))) {
                 /*
@@ -219,11 +215,11 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         if (returnSimulatedValues) {
             value = readSimulatedValue(field);
         }
-        if (value == null && field.isStatic() && returnSimulatedValues && readFromShadowHeap) {
+        if (value == null && field.isStatic()) {
             /*
-             * The shadow heap uses simulated values for static fields by default. So, only when
-             * simulated values are explicitly requested we can read via the shadow heap. Otherwise,
-             * this will lead to recursive parsing request errors.
+             * The shadow heap simply returns the hosted value for static fields, it doesn't
+             * directly store simulated values. The simulated values are only accessible via
+             * SimulateClassInitializerSupport.getSimulatedFieldValue().
              */
             if (SimulateClassInitializerSupport.singleton().isEnabled()) {
                 /*
@@ -242,20 +238,18 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             value = heapObject.readFieldValue(field);
         }
         if (value == null) {
-            value = doReadValue(field, universe.toHosted(receiver), suppliedMetaAccess);
+            value = readHostedFieldValue(suppliedMetaAccess, field, receiver);
         }
-        return interceptValue(suppliedMetaAccess, field, value);
+        return value;
     }
 
-    /** Read the field value and wrap it in a value supplier without performing any replacements. */
-    public ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, JavaConstant receiver, boolean returnSimulatedValues) {
-        if (returnSimulatedValues) {
-            var simulatedValue = readSimulatedValue(field);
-            if (simulatedValue != null) {
-                return ValueSupplier.eagerValue(simulatedValue);
-            }
-        }
-
+    /**
+     * Read the field value and wrap it in a value supplier without performing any replacements. The
+     * shadow heap doesn't directly store simulated values. The simulated values are only accessible
+     * via {@link SimulateClassInitializerSupport#getSimulatedFieldValue(AnalysisField)}. The shadow
+     * heap is a snapshot of the hosted state; simulated values are a level above the shadow heap.
+     */
+    public ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, JavaConstant receiver) {
         if (ReadableJavaField.isValueAvailable(field)) {
             /* Materialize and return the value. */
             return ValueSupplier.eagerValue(doReadValue(field, receiver, metaAccess));
@@ -270,6 +264,11 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
          * available will result in an error.
          */
         return ValueSupplier.lazyValue(() -> doReadValue(field, receiver), () -> ReadableJavaField.isValueAvailable(field));
+    }
+
+    /** Returns the hosted filed value. The receiver is guaranteed to be a hosted constant. */
+    public JavaConstant readHostedFieldValue(UniverseMetaAccess access, AnalysisField field, JavaConstant receiver) {
+        return interceptValue(access, field, doReadValue(field, universe.toHosted(receiver), access));
     }
 
     /**

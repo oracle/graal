@@ -119,7 +119,7 @@ public abstract class ImageHeapScanner {
         AnalysisType declaringClass = field.getDeclaringClass();
         if (field.isStatic()) {
             if (isValueAvailable(field)) {
-                JavaConstant fieldValue = declaringClass.getOrComputeData().readFieldValue(field);
+                JavaConstant fieldValue = readStaticFieldValue(field);
                 markReachable(fieldValue, reason);
                 notifyAnalysis(field, null, fieldValue, reason);
             } else if (field.canBeNull()) {
@@ -525,6 +525,14 @@ public abstract class ImageHeapScanner {
 
     protected String formatReason(String message, ScanReason reason) {
         return message + ' ' + reason;
+    }
+
+    /**
+     * Redirect static fields reading. The implementors can overwrite this and provide additional
+     * sources for static fields values.
+     */
+    public JavaConstant readStaticFieldValue(AnalysisField field) {
+        return field.getDeclaringClass().getOrComputeData().readFieldValue(field);
     }
 
     protected ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, JavaConstant receiver) {

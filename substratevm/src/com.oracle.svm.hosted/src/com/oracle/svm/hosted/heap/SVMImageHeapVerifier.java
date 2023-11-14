@@ -31,11 +31,13 @@ import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.ImageHeap;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 
@@ -99,7 +101,8 @@ public class SVMImageHeapVerifier extends HeapSnapshotVerifier {
              * The verifier compares the hosted values with the ones from the shadow heap, so the
              * constant reflection must not return shadow heap values.
              */
-            return constantReflectionProvider.readValue(metaAccess, field, receiver, true, false);
+            VMError.guarantee(!(receiver instanceof ImageHeapConstant));
+            return constantReflectionProvider.readHostedFieldValue(metaAccess, field, receiver);
         }
     }
 
