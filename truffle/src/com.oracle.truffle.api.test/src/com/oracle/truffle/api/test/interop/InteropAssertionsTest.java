@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1774,6 +1774,7 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         assertFails(() -> hashLib.getHashValuesIterator(hashTest), AssertionError.class);
     }
 
+    @Test
     public void testArityException() {
         assertNotNull(ArityException.create(0, 0, -1));
         assertNotNull(ArityException.create(0, 1, -1));
@@ -1808,10 +1809,10 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         assertEquals(1, ArityException.create(0, 0, 1).getActualArity());
         assertEquals(0, ArityException.create(1, 2, 0).getActualArity());
 
-        assertEquals("Arity error - actual unknown, expected 0", ArityException.create(0, 0, -1).getMessage());
-        assertEquals("Arity error - actual 1, expected 0", ArityException.create(0, 0, 1).getMessage());
-        assertEquals("Arity error - actual 2, expected 0-1", ArityException.create(0, 1, 2).getMessage());
-        assertEquals("Arity error - actual unknown, expected 0+", ArityException.create(0, -1, -1).getMessage());
-        assertEquals("Arity error - actual 0, expected 1+", ArityException.create(1, -1, 0).getMessage());
+        assertEquals("Arity error - expected: 0 actual: unknown", ArityException.create(0, 0, -1).getMessage());
+        assertEquals("Arity error - expected: 0 actual: 1", ArityException.create(0, 0, 1).getMessage());
+        assertEquals("Arity error - expected: 0-1 actual: 2", ArityException.create(0, 1, 2).getMessage());
+        assertEquals("Arity error - expected: 0+ actual: unknown", ArityException.create(0, -1, -1).getMessage());
+        assertEquals("Arity error - expected: 1+ actual: 0", ArityException.create(1, -1, 0).getMessage());
     }
 }
