@@ -692,9 +692,6 @@ public class NativeImageGenerator {
                         AfterHeapLayoutAccessImpl config = new AfterHeapLayoutAccessImpl(featureHandler, loader, heap, hMetaAccess, debug);
                         featureHandler.forEachFeature(feature -> feature.afterHeapLayout(config));
 
-                        /* Re-run shadow heap verification after heap layout. */
-                        aUniverse.getHeapVerifier().checkHeapSnapshot(debug, hMetaAccess, "after heap layout");
-
                         createAbstractImage(k, hostedEntryPoints, heap, hMetaAccess, codeCache);
 
                         if (ImageSingletons.contains(DynamicMethodAddressResolutionHostedSupport.class)) {
