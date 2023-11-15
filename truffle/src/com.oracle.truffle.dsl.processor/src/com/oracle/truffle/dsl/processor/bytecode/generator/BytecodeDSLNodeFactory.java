@@ -1106,18 +1106,29 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.BytecodeIntrospection, "getIntrospectionData");
         CodeTreeBuilder b = ex.createBuilder();
 
-        b.declaration(generic(context.getDeclaredType(List.class), context.getDeclaredType(Object.class)), "instructions", "new ArrayList<>()");
+        b.declaration(generic(type(List.class), type(Object[].class)), "instructions", "new ArrayList<>()");
 
         b.declaration(type(int[].class), "bci", "new int[1]");
+        b.startTryBlock();
 
         b.startFor().string("; bci[0] < bc.length;").end().startBlock();
         b.startStatement().startCall("instructions", "add").startCall("parseInstruction").string("bci[0]").string(readBc("bci[0]")).string("bci").end().end().end();
         b.end();
 
+        b.end().startCatchBlock(type(Throwable.class), "e");
+        b.statement("String parsed = String.join(\"\\n    \", instructions.stream().map((i) -> new Instruction(i).toString()).toList())");
+        b.startThrow().startNew(type(IllegalStateException.class));
+        b.startGroup();
+        b.doubleQuote("Error parsing instructions at ").string(" + bci[0] + ").doubleQuote(". Parsed instructions so far: \\n    ").string(" + parsed");
+        b.end();
+        b.string("e");
+        b.end().end();
+        b.end(); // catch block
+
         b.statement("Object[] exHandlersInfo = new Object[handlers.length / 5]");
 
         b.startFor().string("int idx = 0; idx < exHandlersInfo.length; idx++").end().startBlock();
-        b.statement("exHandlersInfo[idx] = new Object[]{ handlers[idx*5], handlers[idx*5 + 1], handlers[idx*5 + 2], handlers[idx*5 + 4] }");
+        b.statement("exHandlersInfo[idx] = new Object[]{ handlers[idx * 5], handlers[idx * 5 + 1], handlers[idx * 5 + 2], handlers[idx * 5 + 4] }");
         b.end();
 
         // todo: source info
