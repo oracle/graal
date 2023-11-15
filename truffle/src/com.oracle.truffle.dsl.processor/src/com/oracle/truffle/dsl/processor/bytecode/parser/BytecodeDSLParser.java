@@ -617,7 +617,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                     continue;
                 }
                 for (int i = 0; i < instruction.signature.valueCount; i++) {
-                    if (instruction.needsBoxingElimination(model, i)) {
+                    if (instruction.getQuickeningRoot().needsBoxingElimination(model, i)) {
                         instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, "child" + i + "_bci");
                     }
                 }
