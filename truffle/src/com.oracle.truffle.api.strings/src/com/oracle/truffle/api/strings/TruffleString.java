@@ -2500,26 +2500,22 @@ public final class TruffleString extends AbstractTruffleString {
 
         @Specialization(guards = "!isSupportedEncoding(a.encoding())")
         static NativePointer doNativeUnsupported(Node node, @SuppressWarnings("unused") AbstractTruffleString a, NativePointer data,
-                        @Shared("materializeProfile") @Cached InlinedConditionProfile materializeProfile) {
+                        @Shared @Cached InlinedConditionProfile materializeProfile) {
             data.materializeByteArray(node, a, materializeProfile);
             return data;
         }
 
         @Specialization
-        final byte[] doLazyConcat(AbstractTruffleString a, @SuppressWarnings("unused") LazyConcat data) {
-            return doLazyConcatIntl(this, a);
-        }
-
-        private static byte[] doLazyConcatIntl(ToIndexableNode location, AbstractTruffleString a) {
+        static byte[] doLazyConcat(Node node, AbstractTruffleString a, @SuppressWarnings("unused") LazyConcat data) {
             // note: the write to a.data is racy, and we deliberately read it from the TString
             // object again after the race to de-duplicate simultaneously generated arrays
-            a.setData(LazyConcat.flatten(location, (TruffleString) a));
+            a.setData(LazyConcat.flatten(node, (TruffleString) a));
             return (byte[]) a.data();
         }
 
         @Specialization
         static byte[] doLazyLong(Node node, AbstractTruffleString a, LazyLong data,
-                        @Shared("materializeProfile") @Cached InlinedConditionProfile materializeProfile) {
+                        @Shared @Cached InlinedConditionProfile materializeProfile) {
             // same pattern as in #doLazyConcat: racy write to data.bytes and read the result
             // again to de-duplicate
             if (materializeProfile.profile(node, data.bytes == null)) {
@@ -2548,7 +2544,7 @@ public final class TruffleString extends AbstractTruffleString {
                 }
             }
 
-            private Object doNativeOrLazy(Node node, AbstractTruffleString a, Object data) {
+            private static Object doNativeOrLazy(Node node, AbstractTruffleString a, Object data) {
                 if (data instanceof NativePointer nativePointer && Encoding.isSupported(a.encoding())) {
                     return nativePointer;
                 }
@@ -2556,12 +2552,12 @@ public final class TruffleString extends AbstractTruffleString {
             }
 
             @TruffleBoundary
-            private Object doMaterialize(Node node, AbstractTruffleString a, Object data) {
+            private static Object doMaterialize(Node node, AbstractTruffleString a, Object data) {
                 if (data instanceof NativePointer nativePointer) {
                     assert !TStringGuards.isSupportedEncoding(a.encoding());
                     return ToIndexableNode.doNativeUnsupported(node, a, nativePointer, InlinedConditionProfile.getUncached());
                 } else if (data instanceof LazyConcat) {
-                    return doLazyConcat(a, (LazyConcat) data);
+                    return doLazyConcat(node, a, (LazyConcat) data);
                 } else if (data instanceof LazyLong) {
                     return ToIndexableNode.doLazyLong(node, a, (LazyLong) data, InlinedConditionProfile.getUncached());
                 } else {
