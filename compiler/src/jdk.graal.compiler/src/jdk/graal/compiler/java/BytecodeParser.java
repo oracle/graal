@@ -818,7 +818,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 }
                 if (invalidBCIsToFind != 0) {
                     throw new GraalError(
-                                    "Invalid BCI state missmatch: This root compiled method substitution %s " +
+                                    "Invalid BCI state mismatch: This root compiled method substitution %s " +
                                                     "uses invalid side-effecting nodes resulting in invalid deoptimization information. " +
                                                     "Method substitutions must never have more than one state (the after state) for deoptimization." +
                                                     " Multiple states are only allowed if they are dominated by a control-flow split, there is only" +
