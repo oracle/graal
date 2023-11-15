@@ -87,7 +87,7 @@ public class TruffleTypes {
         }
         ExpectErrorTypes = Collections.unmodifiableList(types);
     }
-    public final DeclaredType SpecializationDebugListener = c.getDeclaredTypeOptional("com.oracle.truffle.api.bytecode.test.SpecializationDebugListener");
+    public final DeclaredType BytecodeDebugListener = c.getDeclaredTypeOptional("com.oracle.truffle.api.bytecode.debug.BytecodeDebugListener");
 
     // Graal SDK
     public static final String OptionCategory_Name = "org.graalvm.options.OptionCategory";

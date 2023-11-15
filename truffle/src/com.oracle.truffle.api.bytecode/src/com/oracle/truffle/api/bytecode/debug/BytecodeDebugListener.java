@@ -38,48 +38,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.test;
+package com.oracle.truffle.api.bytecode.debug;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.bytecode.debug.BytecodeDebugListener;
 import com.oracle.truffle.api.bytecode.introspection.Instruction;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.nodes.RootNode;
 
-public abstract class DebugBytecodeRootNode extends RootNode implements BytecodeDebugListener {
+/**
+ * Subclass this bytecode node to get additional debug event that are normally not available. Useful
+ * for testing and debugging.
+ */
+public interface BytecodeDebugListener {
 
-    static boolean traceQuickening = false;
-
-    protected DebugBytecodeRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
-        super(language, frameDescriptor);
+    @SuppressWarnings("unused")
+    default void onSpecialize(Instruction instruction, String specialization) {
     }
 
-    final AtomicInteger quickeningCount = new AtomicInteger();
-    final AtomicInteger specializeCount = new AtomicInteger();
-
-    @Override
-    public void onQuicken(Instruction before, Instruction after) {
-        if (traceQuickening) {
-            System.out.printf("Quicken %s: %n     %s%n  -> %s%n", before.getName(), before, after);
-        }
-        quickeningCount.incrementAndGet();
+    @SuppressWarnings("unused")
+    default void onQuicken(Instruction before, Instruction after) {
     }
 
-    public void onQuickenOperand(Instruction base, int operandIndex, Instruction operandBefore, Instruction operandAfter) {
-        if (traceQuickening) {
-            System.out.printf("Quicken operand index %s for %s: %n     %s%n  -> %s%n", operandIndex, base.getName(),
-                            operandBefore, operandAfter);
-        }
-        quickeningCount.incrementAndGet();
+    @SuppressWarnings("unused")
+    default void onQuickenOperand(Instruction baseInstruction, int operandIndex, Instruction operandBefore, Instruction operandAfter) {
     }
 
-    @Override
-    public void onSpecialize(Instruction instruction, String specialization) {
-        if (traceQuickening) {
-            System.out.printf("Specialize %s: %n     %s%n", specialization, instruction);
-        }
-        specializeCount.incrementAndGet();
-    }
 }

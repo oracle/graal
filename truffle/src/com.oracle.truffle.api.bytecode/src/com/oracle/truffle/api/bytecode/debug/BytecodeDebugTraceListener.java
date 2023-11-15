@@ -38,26 +38,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.test;
+package com.oracle.truffle.api.bytecode.debug;
+
+import java.io.PrintStream;
 
 import com.oracle.truffle.api.bytecode.introspection.Instruction;
 
-/**
- * Subclass this bytecode node to get additional debug event that are normally not available. Useful
- * for testing and debugging.
- */
-public interface SpecializationDebugListener {
+public interface BytecodeDebugTraceListener extends BytecodeDebugListener {
 
-    @SuppressWarnings("unused")
-    default void onSpecialize(Instruction instruction, String specialization) {
-    }
-
-    @SuppressWarnings("unused")
     default void onQuicken(Instruction before, Instruction after) {
+        PrintStream out = System.out;
+        out.printf("Quicken %s: %n     %s%n  -> %s%n", before.getName(), before, after);
     }
 
-    @SuppressWarnings("unused")
-    default void onQuickenOperand(Instruction baseInstruction, int operandIndex, Instruction operandBefore, Instruction operandAfter) {
+    default void onQuickenOperand(Instruction base, int operandIndex, Instruction operandBefore, Instruction operandAfter) {
+        PrintStream out = System.out;
+        out.printf("Quicken operand index %s for %s: %n     %s%n  -> %s%n", operandIndex, base.getName(),
+                        operandBefore, operandAfter);
+    }
+
+    @Override
+    default void onSpecialize(Instruction instruction, String specialization) {
+        PrintStream out = System.out;
+        out.printf("Specialize %s: %n     %s%n", specialization, instruction);
     }
 
 }
