@@ -473,22 +473,19 @@ public class TruffleInvocationPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative) {
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                    if (stride.isConstant()) {
-                        int strideAsInt = stride.asJavaConstant().asInt();
-                        JavaKind componentType = switch (strideAsInt) {
-                            case 0 -> JavaKind.Boolean; // unsigned bytes
-                            case 1 -> JavaKind.Char;
-                            case 2 -> JavaKind.Int;
-                            default -> throw GraalError.shouldNotReachHereUnexpectedValue(strideAsInt);
-                        };
+                    Stride constStride = constantStrideParam(stride);
+                    JavaKind componentType = switch (constStride) {
+                        case S1 -> JavaKind.Boolean; // unsigned bytes
+                        case S2 -> JavaKind.Char;
+                        case S4 -> JavaKind.Int;
+                        default -> throw GraalError.shouldNotReachHereUnexpectedValue(constStride);
+                    };
 
-                        var arrayStart = b.add(new ComputeObjectAddressNode(array, offset));
-                        var initialValue = ConstantNode.forInt(0, b.getGraph());
-                        b.addPush(JavaKind.Int, new VectorizedHashCodeNode(arrayStart, length, initialValue, componentType));
-                        return true;
-                    }
+                    var arrayStart = b.add(new ComputeObjectAddressNode(array, offset));
+                    var initialValue = ConstantNode.forInt(0, b.getGraph());
+                    b.addPush(JavaKind.Int, new VectorizedHashCodeNode(arrayStart, length, initialValue, componentType));
+                    return true;
                 }
-                return false;
             }
         });
     }
