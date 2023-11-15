@@ -3502,7 +3502,7 @@ public abstract class InteropLibrary extends Library {
             try {
                 Object result = delegate.readMember(receiver, identifier);
                 assert delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
-                assert wasReadable || isMultiThreaded(receiver) : violationInvariant(receiver, identifier);
+                assert wasReadable || isMultiThreaded(receiver) || delegate.hasMemberReadSideEffects(receiver, identifier) : violationInvariant(receiver, identifier);
                 assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
@@ -3524,7 +3524,7 @@ public abstract class InteropLibrary extends Library {
             try {
                 delegate.writeMember(receiver, identifier, value);
                 assert delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
-                assert wasWritable || isMultiThreaded(receiver) : violationInvariant(receiver, identifier);
+                assert wasWritable || isMultiThreaded(receiver) || delegate.hasMemberWriteSideEffects(receiver, identifier) : violationInvariant(receiver, identifier);
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException || e instanceof UnknownIdentifierException || e instanceof UnsupportedTypeException : violationPost(receiver, e);
                 throw e;
@@ -3543,7 +3543,7 @@ public abstract class InteropLibrary extends Library {
             try {
                 delegate.removeMember(receiver, identifier);
                 assert delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
-                assert wasRemovable || isMultiThreaded(receiver) : violationInvariant(receiver, identifier);
+                assert wasRemovable || isMultiThreaded(receiver) || delegate.hasMemberWriteSideEffects(receiver, identifier) : violationInvariant(receiver, identifier);
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException || e instanceof UnknownIdentifierException : violationPost(receiver, e);
                 throw e;
@@ -3564,7 +3564,7 @@ public abstract class InteropLibrary extends Library {
             try {
                 Object result = delegate.invokeMember(receiver, identifier, arguments);
                 assert delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
-                assert wasInvocable || isMultiThreaded(receiver) : violationInvariant(receiver, identifier);
+                assert wasInvocable || isMultiThreaded(receiver) || delegate.hasMemberReadSideEffects(receiver, identifier) : violationInvariant(receiver, identifier);
                 assert validInteropReturn(receiver, result);
                 return result;
             } catch (InteropException e) {
