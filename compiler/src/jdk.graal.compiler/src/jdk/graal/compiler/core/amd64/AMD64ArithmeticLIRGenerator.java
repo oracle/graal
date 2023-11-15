@@ -903,12 +903,41 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
 
     @Override
     public Value emitNarrow(Value inputVal, int bits) {
-        if (inputVal.getPlatformKind() == AMD64Kind.QWORD && bits <= 32) {
+        if ((inputVal instanceof ConstantValue con) && (con.getConstant() instanceof JavaConstant jCon)) {
+            /*
+             * Narrow constants explicitly. Otherwise, assumptions in the remaining LIR generation
+             * might be violated.
+             */
+            JavaKind jKind = jCon.getJavaKind();
+            assert jKind.isNumericInteger() : "Can only narrow integer constants.";
+            assert bits <= jKind.getByteCount() * 8 : "Narrow input has fewer bits than narrow output.";
+
+            long mask = CodeUtil.mask(bits);
+            long narrowed = CodeUtil.signExtend(jCon.asLong() & mask, bits);
+
+            switch (jKind) {
+                case Byte:
+                    return new ConstantValue(LIRKind.combine(inputVal), JavaConstant.forByte((byte) narrowed));
+                case Short:
+                    return new ConstantValue(LIRKind.combine(inputVal), JavaConstant.forShort((short) narrowed));
+                case Char:
+                    return new ConstantValue(LIRKind.combine(inputVal), JavaConstant.forChar((char) narrowed));
+                case Int:
+                    return new ConstantValue(LIRKind.combine(inputVal), JavaConstant.forInt((int) narrowed));
+                case Long:
+                    if (bits <= 32) {
+                        return new ConstantValue(LIRKind.combine(inputVal).changeType(AMD64Kind.DWORD), JavaConstant.forInt((int) narrowed));
+                    } else {
+                        return new ConstantValue(LIRKind.combine(inputVal), JavaConstant.forLong(narrowed));
+                    }
+                default:
+                    GraalError.shouldNotReachHere("Unexpected Java kind for constant during narrowing: " + jKind);
+            }
+        } else if (inputVal.getPlatformKind() == AMD64Kind.QWORD && bits <= 32) {
             // TODO make it possible to reinterpret Long as Int in LIR without move
             return emitConvertOp(LIRKind.combine(inputVal).changeType(AMD64Kind.DWORD), AMD64RMOp.MOV, DWORD, inputVal);
-        } else {
-            return inputVal;
         }
+        return inputVal;
     }
 
     @Override

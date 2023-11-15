@@ -61,6 +61,7 @@ import jdk.graal.compiler.core.match.ComplexMatchResult;
 import jdk.graal.compiler.core.match.MatchRule;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.lir.CastValue;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.LabelRef;
@@ -632,7 +633,10 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     public ComplexMatchResult writeNarrow(WriteNode root, NarrowNode narrow) {
         return builder -> {
             LIRKind writeKind = getLIRGeneratorTool().getLIRKind(root.value().stamp(NodeView.DEFAULT));
-            getArithmeticLIRGenerator().emitStore(writeKind, operand(root.getAddress()), operand(narrow.getValue()), state(root), root.getMemoryOrder());
+            Value input = operand(narrow.getValue());
+            LIRKind inputKind = LIRKind.combine(input).changeType(writeKind.getPlatformKind());
+            Value narrowed = new CastValue(inputKind, getLIRGeneratorTool().asAllocatable(input));
+            getArithmeticLIRGenerator().emitStore(writeKind, operand(root.getAddress()), narrowed, state(root), root.getMemoryOrder());
             return null;
         };
     }
