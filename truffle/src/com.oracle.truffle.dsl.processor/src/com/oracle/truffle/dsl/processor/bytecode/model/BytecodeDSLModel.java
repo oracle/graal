@@ -431,6 +431,10 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return boxingEliminatedTypes.contains(mirror);
     }
 
+    public OperationModel getOperationByName(String name) {
+        return operations.get(name);
+    }
+
     public Collection<OperationModel> getOperations() {
         return operations.values();
     }

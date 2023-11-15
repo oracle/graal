@@ -397,13 +397,11 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
         @Operation
         static final class Add {
             @Specialization
-            @ForceQuickening
             public static long doLong(long lhs, long rhs) {
                 return lhs + rhs;
             }
 
             @Specialization
-            @ForceQuickening
             public static int doInt(int lhs, int rhs) {
                 return lhs + rhs;
             }
@@ -419,21 +417,18 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
         static final class Abs {
 
             @Specialization(guards = "v >= 0")
-            @ForceQuickening
             @ForceQuickening("positiveAndNegative")
             public static long doGreaterZero(long v) {
                 return v;
             }
 
             @Specialization(guards = "v < 0")
-            @ForceQuickening
             @ForceQuickening("positiveAndNegative")
             public static long doLessThanZero(long v) {
                 return -v;
             }
 
             @Specialization
-            @ForceQuickening
             public static int doInt(int v) {
                 return -v;
             }

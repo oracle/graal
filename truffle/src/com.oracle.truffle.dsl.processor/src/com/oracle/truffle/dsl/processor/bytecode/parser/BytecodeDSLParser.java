@@ -202,7 +202,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.enableYield = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableYield");
         model.storeBciInFrame = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "storeBciInFrame");
         model.enableQuickening = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableQuickening");
-        model.specializationDebugListener = types.SpecializationDebugListener == null ? false : ElementUtils.isAssignable(typeElement.asType(), types.SpecializationDebugListener);
+        model.specializationDebugListener = types.BytecodeDebugListener == null ? false : ElementUtils.isAssignable(typeElement.asType(), types.BytecodeDebugListener);
         model.addDefault();
 
         // check basic declaration properties
@@ -523,45 +523,91 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 if (operation.kind != OperationKind.CUSTOM_SIMPLE) {
                     continue;
                 }
-                InstructionModel instruction = operation.instruction;
-                boolean autoQuicken = false;
-                for (int valueIndex = 0; valueIndex < instruction.signature.valueCount; valueIndex++) {
-                    TypeMirror type = instruction.signature.getSpecializedType(valueIndex);
+                InstructionModel genericInstruction = operation.instruction;
+                boolean autoOperationQuicken = false;
+                for (int valueIndex = 0; valueIndex < genericInstruction.signature.valueCount; valueIndex++) {
+                    TypeMirror type = genericInstruction.signature.getSpecializedType(valueIndex);
                     if (model.isBoxingEliminated(type)) {
-                        autoQuicken = true;
+                        autoOperationQuicken = true;
                         break;
                     }
                 }
-                if (autoQuicken) {
+                if (autoOperationQuicken) {
                     List<String> allIds = operation.instruction.nodeData.getSpecializations().stream().filter((s) -> s.getMethod() != null).map((s) -> s.getMethodName()).toList();
                     quickenings.add(new QuickenDecision(operation.name, new HashSet<>(allIds)));
+                }
+
+                boolean genericReturnBoxingElimanted = model.isBoxingEliminated(genericInstruction.signature.returnType);
+
+                if (operation.instruction.nodeData.getSpecializations().size() > 1) {
+                    for (SpecializationData specialization : operation.instruction.nodeData.getSpecializations()) {
+                        if (specialization.getMethod() == null || specialization.isFallback()) {
+                            continue;
+                        }
+                        boolean autoQuickenSpecialization = false;
+                        if (model.isBoxingEliminated(specialization.getMethod().getReturnType()) && //
+                                        /*
+                                         * Unexpected result specializations effectively have an
+                                         * Object return type. This could probably be directly
+                                         * handled by the bytecode DSL.
+                                         */
+                                        !specialization.hasUnexpectedResultRewrite() && //
+                                        /*
+                                         * If the instruction signature is already boxing eliminated
+                                         * we do not need to automatically quicken each
+                                         * specialization for its return type. This avoids automatic
+                                         * quickening of specializations if only the return type
+                                         * needs quickening.
+                                         */
+                                        !genericReturnBoxingElimanted) {
+                            autoQuickenSpecialization = true;
+                        }
+                        for (int valueIndex = 0; valueIndex < genericInstruction.signature.valueCount; valueIndex++) {
+                            TypeMirror type = specialization.getSignatureParameters().get(valueIndex).getType();
+                            if (model.isBoxingEliminated(type)) {
+                                autoQuickenSpecialization = true;
+                                break;
+                            }
+                        }
+
+                        if (autoQuickenSpecialization) {
+                            List<String> allIds = List.of(specialization.getMethodName());
+                            quickenings.add(new QuickenDecision(operation.name, new HashSet<>(allIds)));
+                        }
+                    }
                 }
             }
         }
 
-        Set<QuickenDecision> uniqueQuickenings = new LinkedHashSet<>(quickenings);
-        for (QuickenDecision decision : uniqueQuickenings) {
-            OperationModel operation = null;
-            for (OperationModel current : model.getOperations()) {
-                if (current.name.equals(decision.operation())) {
-                    operation = current;
-                    break;
+        Map<String, List<QuickenDecision>> quickeningsByOperation = quickenings.stream().distinct().collect(Collectors.groupingBy(QuickenDecision::operation));
+        for (var groupedDecision : quickeningsByOperation.entrySet()) {
+            String operationName = groupedDecision.getKey();
+            List<QuickenDecision> decisions = groupedDecision.getValue();
+            OperationModel operation = model.getOperationByName(operationName);
+            List<List<SpecializationData>> resolvedQuickenings = decisions.stream().map((d) -> operation.instruction.nodeData.findSpecializationsByName(d.specializations())).sorted(
+                            (s0, s1) -> {
+                                if (s0.size() != s1.size()) {
+                                    // sort by size we want to check single specialization
+                                    // quickenings first
+                                    return Integer.compare(s0.size(), s1.size());
+                                }
+                                return 0;
+                            }).toList();
+
+            for (List<SpecializationData> includedSpecializations : resolvedQuickenings) {
+                String name;
+                if (includedSpecializations.size() == operation.instruction.nodeData.getSpecializations().size()) {
+                    // all specializations included
+                    name = "#";
+                } else {
+                    name = String.join("#", includedSpecializations.stream().map((s) -> s.getId()).toList());
                 }
-            }
 
-            List<SpecializationData> includedSpecializations = operation.instruction.nodeData.findSpecializationsByName(decision.specializations());
-            String name;
-            if (includedSpecializations.size() == operation.instruction.nodeData.getSpecializations().size()) {
-                // all specializations included
-                name = "#";
-            } else {
-                name = String.join("#", includedSpecializations.stream().map((s) -> s.getId()).toList());
+                Signature signature = CustomOperationParser.createPolymorphicSignature(includedSpecializations.stream().map(s -> s.getMethod()).toList(), null);
+                InstructionModel baseInstruction = operation.instruction;
+                InstructionModel quickenedInstruction = model.quickenInstruction(baseInstruction, signature, ElementUtils.firstLetterUpperCase(name));
+                quickenedInstruction.filteredSpecializations = includedSpecializations;
             }
-
-            Signature signature = CustomOperationParser.createPolymorphicSignature(includedSpecializations.stream().map(s -> s.getMethod()).toList(), null);
-            InstructionModel baseInstruction = operation.instruction;
-            InstructionModel quickenedInstruction = model.quickenInstruction(baseInstruction, signature, ElementUtils.firstLetterUpperCase(name));
-            quickenedInstruction.filteredSpecializations = includedSpecializations;
         }
 
         if (model.usesBoxingElimination()) {
