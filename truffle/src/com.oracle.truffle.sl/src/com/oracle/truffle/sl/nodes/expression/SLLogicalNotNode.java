@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.sl.nodes.expression;
 
-import com.oracle.truffle.api.bytecode.ForceQuickening;
 import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -61,7 +60,6 @@ import com.oracle.truffle.sl.nodes.SLExpressionNode;
 public abstract class SLLogicalNotNode extends SLExpressionNode {
 
     @Specialization
-    @ForceQuickening
     public static boolean doBoolean(boolean value) {
         return !value;
     }
