@@ -405,6 +405,21 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         int currentId = 1;
         for (InstructionModel m : newInstructions.values()) {
             m.setId(currentId++);
+
+            /*
+             * Make sure the instruction format for quickening is valid.
+             */
+
+            if (m.isQuickening()) {
+                InstructionModel root = m.getQuickeningRoot();
+                if (root.getInstructionLength() != m.getInstructionLength()) {
+                    throw new AssertionError(String.format(
+                                    "All quickenings must have the same instruction length as the root instruction. " +
+                                                    "Invalid instruction length %s for instruction %s. Expected length %s from root %s.",
+                                    m.getInstructionLength(), m.name, root.getInstructionLength(), root.name));
+                }
+
+            }
         }
 
         this.instructions = newInstructions;
