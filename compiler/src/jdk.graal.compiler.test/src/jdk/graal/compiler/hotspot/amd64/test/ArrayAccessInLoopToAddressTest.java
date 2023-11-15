@@ -55,10 +55,4 @@ public class ArrayAccessInLoopToAddressTest extends GraalCompilerTest {
     public void testNegativeInductionVariable() {
         test("negativeInductionVariable", new short[]{1, 3, 7, 9});
     }
-
-    @Override
-    protected SpeculationLog getSpeculationLog() {
-        return new HotSpotSpeculationLog();
-    }
-
 }
