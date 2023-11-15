@@ -48,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.RuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
@@ -65,8 +66,8 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.bytecode.SLBytecodeRootNode;
-import com.oracle.truffle.sl.bytecode.SLBytecodeSerialization;
 import com.oracle.truffle.sl.bytecode.SLBytecodeRootNodeGen;
+import com.oracle.truffle.sl.bytecode.SLBytecodeSerialization;
 import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.ArithmeticContext;
 import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.BlockContext;
 import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.Break_statementContext;
@@ -119,6 +120,9 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
         }
 
         for (SLBytecodeRootNode node : nodes.getNodes()) {
+
+            System.out.println(node.dump());
+
             TruffleString name = node.getTSName();
             RootCallTarget callTarget = node.getCallTarget();
             functions.put(name, callTarget);
@@ -359,9 +363,7 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
 
     @Override
     public Void visitExpression(ExpressionContext ctx) {
-
         b.beginTag(StandardTags.ExpressionTag.class);
-
         List<Logic_termContext> terms = ctx.logic_term();
         if (terms.size() == 1) {
             visit(terms.get(0));
@@ -376,10 +378,7 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
 
     @Override
     public Void visitLogic_term(Logic_termContext ctx) {
-
         b.beginTag(StandardTags.ExpressionTag.class);
-        b.beginSLUnbox();
-
         List<Logic_factorContext> factors = ctx.logic_factor();
         if (factors.size() == 1) {
             visit(factors.get(0));
@@ -388,7 +387,6 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
             emitShortCircuitOperands(factors);
             b.endSLAnd();
         }
-        b.endSLUnbox();
         b.endTag();
 
         return null;
@@ -414,48 +412,47 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
         }
 
         b.beginTag(StandardTags.ExpressionTag.class);
-        b.beginSLUnbox();
 
         switch (ctx.OP_COMPARE().getText()) {
             case "<":
                 b.beginSLLessThan();
-                visit(ctx.arithmetic(0));
-                visit(ctx.arithmetic(1));
+                visitUnboxed(ctx.arithmetic(0));
+                visitUnboxed(ctx.arithmetic(1));
                 b.endSLLessThan();
                 break;
             case "<=":
                 b.beginSLLessOrEqual();
-                visit(ctx.arithmetic(0));
-                visit(ctx.arithmetic(1));
+                visitUnboxed(ctx.arithmetic(0));
+                visitUnboxed(ctx.arithmetic(1));
                 b.endSLLessOrEqual();
                 break;
             case ">":
                 b.beginSLLogicalNot();
                 b.beginSLLessOrEqual();
-                visit(ctx.arithmetic(0));
-                visit(ctx.arithmetic(1));
+                visitUnboxed(ctx.arithmetic(0));
+                visitUnboxed(ctx.arithmetic(1));
                 b.endSLLessOrEqual();
                 b.endSLLogicalNot();
                 break;
             case ">=":
                 b.beginSLLogicalNot();
                 b.beginSLLessThan();
-                visit(ctx.arithmetic(0));
-                visit(ctx.arithmetic(1));
+                visitUnboxed(ctx.arithmetic(0));
+                visitUnboxed(ctx.arithmetic(1));
                 b.endSLLessThan();
                 b.endSLLogicalNot();
                 break;
             case "==":
                 b.beginSLEqual();
-                visit(ctx.arithmetic(0));
-                visit(ctx.arithmetic(1));
+                visitUnboxed(ctx.arithmetic(0));
+                visitUnboxed(ctx.arithmetic(1));
                 b.endSLEqual();
                 break;
             case "!=":
                 b.beginSLLogicalNot();
                 b.beginSLEqual();
-                visit(ctx.arithmetic(0));
-                visit(ctx.arithmetic(1));
+                visitUnboxed(ctx.arithmetic(0));
+                visitUnboxed(ctx.arithmetic(1));
                 b.endSLEqual();
                 b.endSLLogicalNot();
                 break;
@@ -463,10 +460,33 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
                 throw new UnsupportedOperationException();
         }
 
-        b.endSLUnbox();
         b.endTag();
 
         return null;
+    }
+
+    private void visitUnboxed(RuleContext ctx) {
+        if (needsUnboxing(ctx)) {
+            // skip unboxing for constants
+            b.beginSLUnbox();
+            visit(ctx);
+            b.endSLUnbox();
+        } else {
+            visit(ctx);
+        }
+    }
+
+    private boolean needsUnboxing(ParseTree tree) {
+        if (tree instanceof NumericLiteralContext || tree instanceof StringLiteralContext) {
+            // constants are guaranteed to be already unboxed
+            return false;
+        }
+        for (int i = 0; i < tree.getChildCount(); i++) {
+            if (needsUnboxing(tree.getChild(i))) {
+                return true;
+            }
+        }
+        return tree.getChildCount() == 0;
     }
 
     @Override
@@ -474,42 +494,40 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
 
         if (!ctx.OP_ADD().isEmpty()) {
             b.beginTag(StandardTags.ExpressionTag.class);
-            b.beginSLUnbox();
-        }
 
-        for (int i = ctx.OP_ADD().size() - 1; i >= 0; i--) {
-            switch (ctx.OP_ADD(i).getText()) {
-                case "+":
-                    b.beginSLAdd();
-                    break;
-                case "-":
-                    b.beginSLSub();
-                    break;
-                default:
-                    throw new UnsupportedOperationException();
+            for (int i = ctx.OP_ADD().size() - 1; i >= 0; i--) {
+                switch (ctx.OP_ADD(i).getText()) {
+                    case "+":
+                        b.beginSLAdd();
+                        break;
+                    case "-":
+                        b.beginSLSub();
+                        break;
+                    default:
+                        throw new UnsupportedOperationException();
+                }
             }
-        }
 
-        visit(ctx.term(0));
+            visitUnboxed(ctx.term(0));
 
-        for (int i = 0; i < ctx.OP_ADD().size(); i++) {
-            visit(ctx.term(i + 1));
+            for (int i = 0; i < ctx.OP_ADD().size(); i++) {
+                visitUnboxed(ctx.term(i + 1));
 
-            switch (ctx.OP_ADD(i).getText()) {
-                case "+":
-                    b.endSLAdd();
-                    break;
-                case "-":
-                    b.endSLSub();
-                    break;
-                default:
-                    throw new UnsupportedOperationException();
+                switch (ctx.OP_ADD(i).getText()) {
+                    case "+":
+                        b.endSLAdd();
+                        break;
+                    case "-":
+                        b.endSLSub();
+                        break;
+                    default:
+                        throw new UnsupportedOperationException();
+                }
             }
-        }
 
-        if (!ctx.OP_ADD().isEmpty()) {
-            b.endSLUnbox();
             b.endTag();
+        } else {
+            visit(ctx.term(0));
         }
 
         return null;
@@ -519,47 +537,40 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
     public Void visitTerm(TermContext ctx) {
         if (!ctx.OP_MUL().isEmpty()) {
             b.beginTag(StandardTags.ExpressionTag.class);
-            b.beginSLUnbox();
-        }
-        for (int i = ctx.OP_MUL().size() - 1; i >= 0; i--) {
-            switch (ctx.OP_MUL(i).getText()) {
-                case "*":
-                    b.beginSLMul();
-                    break;
-                case "/":
-                    b.beginSLDiv();
-                    break;
-                default:
-                    throw new UnsupportedOperationException();
+
+            for (int i = ctx.OP_MUL().size() - 1; i >= 0; i--) {
+                switch (ctx.OP_MUL(i).getText()) {
+                    case "*":
+                        b.beginSLMul();
+                        break;
+                    case "/":
+                        b.beginSLDiv();
+                        break;
+                    default:
+                        throw new UnsupportedOperationException();
+                }
             }
-        }
+            visitUnboxed(ctx.factor(0));
 
-        b.beginSLUnbox();
-        visit(ctx.factor(0));
-        b.endSLUnbox();
+            for (int i = 0; i < ctx.OP_MUL().size(); i++) {
+                visitUnboxed(ctx.factor(i + 1));
 
-        for (int i = 0; i < ctx.OP_MUL().size(); i++) {
-            b.beginSLUnbox();
-            visit(ctx.factor(i + 1));
-            b.endSLUnbox();
-
-            switch (ctx.OP_MUL(i).getText()) {
-                case "*":
-                    b.endSLMul();
-                    break;
-                case "/":
-                    b.endSLDiv();
-                    break;
-                default:
-                    throw new UnsupportedOperationException();
+                switch (ctx.OP_MUL(i).getText()) {
+                    case "*":
+                        b.endSLMul();
+                        break;
+                    case "/":
+                        b.endSLDiv();
+                        break;
+                    default:
+                        throw new UnsupportedOperationException();
+                }
             }
-        }
 
-        if (!ctx.OP_MUL().isEmpty()) {
-            b.endSLUnbox();
             b.endTag();
+        } else {
+            visit(ctx.factor(0));
         }
-
         return null;
     }
 
