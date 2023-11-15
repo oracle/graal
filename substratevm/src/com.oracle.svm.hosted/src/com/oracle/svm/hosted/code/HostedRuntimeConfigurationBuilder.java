@@ -24,6 +24,19 @@
  */
 package com.oracle.svm.hosted.code;
 
+import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
+import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
+import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
+import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.hosted.meta.HostedConstantFieldProvider;
+import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
+import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.meta.HostedUniverse;
+
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
@@ -38,22 +51,6 @@ import jdk.graal.compiler.nodes.spi.StampProvider;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.word.WordTypes;
-
-import com.oracle.graal.pointsto.heap.ImageHeapScanner;
-import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
-import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
-import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
-import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
-import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
-import com.oracle.svm.hosted.meta.HostedConstantFieldProvider;
-import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
-import com.oracle.svm.hosted.meta.HostedMetaAccess;
-import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
-import com.oracle.svm.hosted.meta.HostedUniverse;
-
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -62,15 +59,13 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
 
     private final HostedUniverse universe;
     private final HostedProviders analysisProviders;
-    private final ImageHeapScanner heapScanner;
 
-    public HostedRuntimeConfigurationBuilder(OptionValues options, ImageHeapScanner heapScanner, SVMHost hostVM, HostedUniverse universe, HostedMetaAccess metaAccess,
+    public HostedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, HostedUniverse universe, HostedMetaAccess metaAccess,
                     HostedProviders analysisProviders, ClassInitializationSupport classInitializationSupport, LoopsDataProvider originalLoopsDataProvider,
-                    SubstratePlatformConfigurationProvider platformConfig) {
-        super(options, hostVM, metaAccess, SubstrateBackendFactory.get()::newBackend, classInitializationSupport, originalLoopsDataProvider, platformConfig);
+                    SubstratePlatformConfigurationProvider platformConfig, SnippetReflectionProvider snippetReflection) {
+        super(options, hostVM, metaAccess, SubstrateBackendFactory.get()::newBackend, classInitializationSupport, originalLoopsDataProvider, platformConfig, snippetReflection);
         this.universe = universe;
         this.analysisProviders = analysisProviders;
-        this.heapScanner = heapScanner;
     }
 
     @Override
@@ -94,11 +89,6 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
     @Override
     protected LoweringProvider createLoweringProvider(ForeignCallsProvider foreignCalls, MetaAccessExtensionProvider metaAccessExtensionProvider) {
         return SubstrateLoweringProvider.createForHosted(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider);
-    }
-
-    @Override
-    protected SnippetReflectionProvider createSnippetReflectionProvider(WordTypes wordTypes) {
-        return new HostedSnippetReflectionProvider(heapScanner, wordTypes);
     }
 
     @Override

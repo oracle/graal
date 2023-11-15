@@ -24,16 +24,17 @@
  */
 package com.oracle.svm.graal.hosted;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
-import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
-
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
 import com.oracle.svm.graal.meta.SubstrateConstantFieldProvider;
 import com.oracle.svm.graal.meta.SubstrateConstantReflectionProvider;
 import com.oracle.svm.graal.meta.SubstrateMetaAccess;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -44,17 +45,21 @@ public class SubstrateProviders {
     private final SubstrateMetaAccess metaAccess;
     private final ConstantFieldProvider constantFieldProvider;
     private final ConstantReflectionProvider constantReflection;
+    private final SnippetReflectionProvider snippetReflectionProvider;
 
-    SubstrateProviders(AnalysisMetaAccess aMetaAccess, SubstrateMetaAccess metaAccess) {
+    SubstrateProviders(AnalysisMetaAccess aMetaAccess, SubstrateMetaAccess metaAccess, WordTypes wordTypes) {
         this.metaAccess = metaAccess;
         this.constantFieldProvider = new SubstrateConstantFieldProvider(aMetaAccess);
         this.constantReflection = new SubstrateConstantReflectionProvider(this.metaAccess);
+        this.snippetReflectionProvider = new SubstrateSnippetReflectionProvider(wordTypes);
     }
 
-    protected SubstrateProviders(SubstrateMetaAccess metaAccess, ConstantFieldProvider constantFieldProvider, ConstantReflectionProvider constantReflection) {
+    protected SubstrateProviders(SubstrateMetaAccess metaAccess, ConstantFieldProvider constantFieldProvider, ConstantReflectionProvider constantReflection,
+                    SnippetReflectionProvider snippetReflection) {
         this.metaAccess = metaAccess;
         this.constantFieldProvider = constantFieldProvider;
         this.constantReflection = constantReflection;
+        this.snippetReflectionProvider = snippetReflection;
     }
 
     public MetaAccessProvider getMetaAccessProvider() {
@@ -70,7 +75,7 @@ public class SubstrateProviders {
     }
 
     public SnippetReflectionProvider getSnippetReflectionProvider() {
-        return TruffleRuntimeCompilationSupport.getRuntimeConfig().getSnippetReflection();
+        return snippetReflectionProvider;
     }
 
     public ForeignCallsProvider getForeignCallsProvider() {

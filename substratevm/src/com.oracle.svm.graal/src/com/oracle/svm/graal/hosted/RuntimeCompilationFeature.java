@@ -54,6 +54,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -64,6 +65,7 @@ import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
+import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.meta.SharedType;
@@ -360,7 +362,8 @@ public abstract class RuntimeCompilationFeature {
 
         DuringSetupAccessImpl config = (DuringSetupAccessImpl) c;
         AnalysisMetaAccess aMetaAccess = config.getMetaAccess();
-        SubstrateProviders substrateProviders = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).getSubstrateProviders(aMetaAccess);
+        SubstrateWordTypes wordTypes = new SubstrateWordTypes(aMetaAccess, FrameAccess.getWordKind());
+        SubstrateProviders substrateProviders = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).getSubstrateProviders(aMetaAccess, wordTypes);
         objectReplacer = new GraalGraphObjectReplacer(config.getUniverse(), substrateProviders, universeFactory);
         config.registerObjectReplacer(objectReplacer);
     }
@@ -372,7 +375,7 @@ public abstract class RuntimeCompilationFeature {
         SubstratePlatformConfigurationProvider platformConfig = new SubstratePlatformConfigurationProvider(ImageSingletons.lookup(BarrierSetProvider.class).createBarrierSet(config.getMetaAccess()));
         RuntimeConfiguration runtimeConfig = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class)
                         .createRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(), config.getMetaAccess(),
-                                        backendProvider, classInitializationSupport, originalProviders.getLoopsDataProvider(), platformConfig)
+                                        backendProvider, classInitializationSupport, originalProviders.getLoopsDataProvider(), platformConfig, config.getBigBang().getSnippetReflectionProvider())
                         .build();
 
         Providers runtimeProviders = runtimeConfig.getProviders();
