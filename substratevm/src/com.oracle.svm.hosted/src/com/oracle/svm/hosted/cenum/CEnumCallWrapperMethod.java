@@ -26,12 +26,6 @@ package com.oracle.svm.hosted.cenum;
 
 import java.lang.reflect.Modifier;
 
-import jdk.graal.compiler.core.common.type.Stamp;
-import jdk.graal.compiler.core.common.type.StampFactory;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.NodeView;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.ValueNode;
 import org.graalvm.nativeimage.c.constant.CEnumLookup;
 import org.graalvm.nativeimage.c.constant.CEnumValue;
 
@@ -44,6 +38,12 @@ import com.oracle.svm.hosted.phases.CInterfaceEnumTool;
 import com.oracle.svm.hosted.phases.CInterfaceInvocationPlugin;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -74,7 +74,7 @@ public class CEnumCallWrapperMethod extends CustomSubstitutionMethod {
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
 
-        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
         StructuredGraph graph = kit.getGraph();
 
         ResolvedJavaType returnType = (ResolvedJavaType) method.getSignature().getReturnType(null);

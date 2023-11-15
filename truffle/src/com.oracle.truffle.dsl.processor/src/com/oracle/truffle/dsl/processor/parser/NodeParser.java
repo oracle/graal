@@ -607,10 +607,12 @@ public final class NodeParser extends AbstractParser<NodeData> {
             boolean usesSpecializationClass = FlatNodeGenFactory.useSpecializationClass(specialization);
             boolean usesSharedInlineNodes = false;
             boolean usesExclusiveInlineNodes = false;
+            ArrayList<String> sharedInlinedCachesNames = new ArrayList<>(specialization.getCaches().size());
             for (CacheExpression cache : specialization.getCaches()) {
                 if (cache.getInlinedNode() != null) {
                     usesInlinedNodes = true;
                     if (cache.getSharedGroup() != null) {
+                        sharedInlinedCachesNames.add(cache.getParameter().getLocalName());
                         usesSharedInlineNodes = true;
                     } else {
                         usesExclusiveInlineNodes = true;
@@ -621,12 +623,12 @@ public final class NodeParser extends AbstractParser<NodeData> {
             if (usesInlinedNodes) {
                 if (usesSpecializationClass && usesSharedInlineNodes && usesExclusiveInlineNodes) {
                     specialization.addSuppressableWarning(TruffleSuppressedWarnings.INTERPRETED_PERFORMANCE,
-                                    "It is discouraged that specializations with specialization data class combine " + //
+                                    String.format("It is discouraged that specializations with specialization data class combine " + //
                                                     "shared and exclusive @Cached inline nodes or profiles arguments. Truffle inlining support code then must " + //
                                                     "traverse the parent pointer in order to resolve the inline data of the shared nodes or profiles, " + //
-                                                    "which incurs performance hit in the interpreter. To resolve this: make all the arguments @Exclusive, " + //
-                                                    "or merge specializations to avoid @Shared arguments, or if the footprint benefit outweighs the " + //
-                                                    "performance degradation, then suppress the warning.");
+                                                    "which incurs performance hit in the interpreter. To resolve this: make @Exclusive all the currently @Shared inline " + //
+                                                    "arguments (%s), or merge specializations to avoid @Shared arguments, or if the footprint benefit " + //
+                                                    "outweighs the performance degradation, then suppress the warning.", String.join(", ", sharedInlinedCachesNames)));
                 }
 
                 boolean isStatic = element.getModifiers().contains(Modifier.STATIC);

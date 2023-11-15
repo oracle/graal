@@ -31,12 +31,34 @@ import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
+import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
+import com.oracle.svm.core.graal.nodes.DeoptEntryBeginNode;
+import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
+import com.oracle.svm.core.graal.nodes.DeoptEntrySupport;
+import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
+import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.UserError.UserException;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ExceptionSynthesizer;
+import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
+import com.oracle.svm.hosted.code.FactoryMethodSupport;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
+import com.oracle.svm.hosted.nodes.DeoptProxyNode;
+import com.oracle.svm.util.ReflectionUtil;
+
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.type.StampPair;
-import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
-import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.java.BciBlockMapping;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.FrameStateBuilder;
@@ -65,33 +87,6 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.word.WordTypes;
-
-import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
-import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
-import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
-import com.oracle.svm.common.meta.MultiMethod;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
-import com.oracle.svm.core.graal.nodes.DeoptEntryBeginNode;
-import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
-import com.oracle.svm.core.graal.nodes.DeoptEntrySupport;
-import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
-import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
-import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
-import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.UserError.UserException;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.ExceptionSynthesizer;
-import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
-import com.oracle.svm.hosted.code.FactoryMethodSupport;
-import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
-import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.nodes.DeoptProxyNode;
-import com.oracle.svm.util.ReflectionUtil;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaKind;
@@ -376,7 +371,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         public static <T extends Throwable> void replaceWithThrowingAtRuntime(SharedBytecodeParser b, T throwable) {
             Throwable cause = throwable.getCause();
             if (cause != null) {
-                var metaAccess = (UniverseMetaAccess) b.getMetaAccess();
+                var metaAccess = (AnalysisMetaAccess) b.getMetaAccess();
                 /* Invoke method that creates a cause-instance with cause-message */
                 var causeCtor = ReflectionUtil.lookupConstructor(cause.getClass(), String.class);
                 ResolvedJavaMethod causeCtorMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(causeCtor), false);
@@ -416,7 +411,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
              * we can access the ParsingReason in here we will be able to get rid of throwException.
              */
             var errorCtor = ReflectionUtil.lookupConstructor(throwableClass, String.class);
-            var metaAccess = (UniverseMetaAccess) b.getMetaAccess();
+            var metaAccess = (AnalysisMetaAccess) b.getMetaAccess();
             ResolvedJavaMethod throwingMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);
             ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(throwableMessage), b.getMetaAccess(), b.getGraph());
             boolean verifyStates = b.getFrameStateBuilder().disableStateVerification();
@@ -580,7 +575,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 checkWordType(args[i + (isStatic ? 0 : 1)], targetMethod.getSignature().getParameterType(i, null), "call argument");
             }
 
-            return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, profile, null, profile);
+            return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp);
         }
 
         @Override
@@ -646,7 +641,9 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         protected static boolean isDeoptimizationEnabled() {
-            return DeoptimizationSupport.enabled() && !SubstrateUtil.isBuildingLibgraal();
+            boolean result = DeoptimizationSupport.enabled();
+            assert !(result && SubstrateUtil.isBuildingLibgraal()) : "Deoptimization support should not be enabled while building libgraal";
+            return result;
         }
 
         protected final boolean isMethodDeoptTarget() {
@@ -655,23 +652,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
         @Override
         protected boolean asyncExceptionLiveness() {
-            if (SubstrateOptions.parseOnce()) {
-                /*
-                 * Only methods which can deoptimize need to consider live locals from asynchronous
-                 * exception handlers.
-                 */
-                if (method instanceof MultiMethod) {
-                    return ((MultiMethod) method).getMultiMethodKey() == SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
-                }
-
-            } else {
-                if (method instanceof HostedMethod) {
-                    /*
-                     * Only methods which can deoptimize need to consider live locals from
-                     * asynchronous exception handlers.
-                     */
-                    return ((HostedMethod) method).canDeoptimize();
-                }
+            /*
+             * Only methods which can deoptimize need to consider live locals from asynchronous
+             * exception handlers.
+             */
+            if (method instanceof MultiMethod) {
+                return ((MultiMethod) method).getMultiMethodKey() == SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
             }
 
             /*
@@ -847,28 +833,6 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         @Override
         public boolean allowDeoptInPlugins() {
             return super.allowDeoptInPlugins();
-        }
-
-        @Override
-        @SuppressWarnings("try")
-        protected ValueNode emitIncompatibleClassChangeCheck(ValueNode object, ResolvedJavaType checkedType) {
-            try (DebugCloseable context = maybeDisableNodeSourcePositions()) {
-                return super.emitIncompatibleClassChangeCheck(object, checkedType);
-            }
-        }
-
-        private DebugCloseable maybeDisableNodeSourcePositions() {
-            if (!SubstrateOptions.parseOnce() && graph.trackNodeSourcePosition()) {
-                /*
-                 * Without "parse once", we use the bci of the invocation to look up static analysis
-                 * results. Having a InstanceOfNode with the same bci disables static analysis
-                 * results because we treat non-unique bci as "do not store any information. The
-                 * workaround is to give the InstanceOfNode for the incompatible class change check
-                 * the invalid bci -1.
-                 */
-                return graph.withNodeSourcePosition(new NodeSourcePosition(createBytecodePosition(), method, -1));
-            }
-            return null;
         }
     }
 }

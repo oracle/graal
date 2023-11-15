@@ -29,7 +29,7 @@ import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.svm.graal.GraalSupport;
+import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
 import com.oracle.svm.graal.meta.SubstrateConstantFieldProvider;
 import com.oracle.svm.graal.meta.SubstrateConstantReflectionProvider;
 import com.oracle.svm.graal.meta.SubstrateMetaAccess;
@@ -70,10 +70,10 @@ public class SubstrateProviders {
     }
 
     public SnippetReflectionProvider getSnippetReflectionProvider() {
-        return GraalSupport.getRuntimeConfig().getSnippetReflection();
+        return TruffleRuntimeCompilationSupport.getRuntimeConfig().getSnippetReflection();
     }
 
     public ForeignCallsProvider getForeignCallsProvider() {
-        return GraalSupport.getRuntimeConfig().getProviders().getForeignCalls();
+        return TruffleRuntimeCompilationSupport.getRuntimeConfig().getProviders().getForeignCalls();
     }
 }

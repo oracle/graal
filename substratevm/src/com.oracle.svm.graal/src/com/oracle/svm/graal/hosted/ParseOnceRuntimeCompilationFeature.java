@@ -76,7 +76,7 @@ import com.oracle.svm.core.graal.nodes.InlinedInvokeArgumentsNode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.graal.GraalSupport;
+import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.HeapBreakdownProvider;
@@ -99,7 +99,6 @@ import com.oracle.svm.hosted.phases.ConstantFoldLoadFieldPlugin;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils.AccumulativeInlineScope;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils.AlwaysInlineScope;
-import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
 
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
@@ -386,7 +385,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
 
         if (newRuntimeMethodsSeen) {
             SubstrateMethod[] methodsToCompileArr = substrateAnalysisMethods.stream().toArray(SubstrateMethod[]::new);
-            GraalSupport.setMethodsToCompile(config, methodsToCompileArr);
+            TruffleRuntimeCompilationSupport.setMethodsToCompile(config, methodsToCompileArr);
             config.requireAnalysisIteration();
             newRuntimeMethodsSeen = false;
         }
@@ -397,7 +396,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         for (NodeClass<?> nodeClass : nodeClasses) {
             metaAccess.lookupJavaType(nodeClass.getClazz()).registerAsAllocated("All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
         }
-        if (GraalSupport.setGraphEncoding(config, graphEncoder.getEncoding(), graphEncoder.getObjects(), nodeClasses)) {
+        if (TruffleRuntimeCompilationSupport.setGraphEncoding(config, graphEncoder.getEncoding(), graphEncoder.getObjects(), nodeClasses)) {
             config.requireAnalysisIteration();
         }
     }
@@ -654,7 +653,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         }
 
         HeapBreakdownProvider.singleton().setGraphEncodingByteLength(graphEncoder.getEncoding().length);
-        GraalSupport.setGraphEncoding(null, graphEncoder.getEncoding(), graphEncoder.getObjects(), graphEncoder.getNodeClasses());
+        TruffleRuntimeCompilationSupport.setGraphEncoding(null, graphEncoder.getEncoding(), graphEncoder.getObjects(), graphEncoder.getNodeClasses());
 
         objectReplacer.setMethodsImplementations();
 
@@ -710,12 +709,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
             protected PhaseSuite<HighTierContext> getAfterParseSuite() {
                 PhaseSuite<HighTierContext> suite = super.getAfterParseSuite();
                 if (Options.RemoveUnneededDeoptSupport.getValue()) {
-                    var iterator = suite.findPhase(StrengthenStampsPhase.class);
-                    if (iterator == null) {
-                        suite.prependPhase(new RemoveUnneededDeoptSupport());
-                    } else {
-                        iterator.add(new RemoveUnneededDeoptSupport());
-                    }
+                    suite.prependPhase(new RemoveUnneededDeoptSupport());
                 }
 
                 return suite;

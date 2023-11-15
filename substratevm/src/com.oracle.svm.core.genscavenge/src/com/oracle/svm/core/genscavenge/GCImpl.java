@@ -413,7 +413,7 @@ public final class GCImpl implements GC {
 
         if (SubstrateGCOptions.PrintGC.getValue() || SubstrateGCOptions.VerboseGC.getValue()) {
             String collectionType = completeCollection ? "Full GC" : "Incremental GC";
-            printGCPrefixAndTime().string(collectionType).string(" (").string(cause.getName()).string(") ")
+            printGCPrefixAndTime().string("Pause ").string(collectionType).string(" (").string(cause.getName()).string(") ")
                             .rational(beforeGc.totalUsed(), M, 2).string("M->").rational(heapAccounting.getUsedBytes(), M, 2).string("M ")
                             .rational(timers.collection.getMeasuredNanos(), TimeUtils.nanosPerMilli, 3).string("ms").newline();
         }

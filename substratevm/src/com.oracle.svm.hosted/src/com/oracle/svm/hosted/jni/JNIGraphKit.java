@@ -24,6 +24,13 @@
  */
 package com.oracle.svm.hosted.jni;
 
+import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.jni.JNIGeneratedMethodSupport;
+import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
+import com.oracle.svm.core.jni.access.JNIReflectionDictionary;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
+import com.oracle.svm.hosted.phases.HostedGraphKit;
+
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -46,15 +53,6 @@ import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
-
-import com.oracle.graal.pointsto.infrastructure.GraphProvider;
-import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.jni.JNIGeneratedMethodSupport;
-import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
-import com.oracle.svm.core.jni.access.JNIReflectionDictionary;
-import com.oracle.svm.core.jni.headers.JNIMethodId;
-import com.oracle.svm.hosted.phases.HostedGraphKit;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -64,8 +62,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class JNIGraphKit extends HostedGraphKit {
 
-    JNIGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method, GraphProvider.Purpose purpose) {
-        super(debug, providers, method, purpose);
+    JNIGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method) {
+        super(debug, providers, method);
     }
 
     public ValueNode checkObjectType(ValueNode uncheckedValue, ResolvedJavaType type, boolean checkNonNull) {

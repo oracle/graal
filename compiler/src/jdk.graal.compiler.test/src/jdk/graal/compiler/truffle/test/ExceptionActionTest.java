@@ -134,7 +134,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertFalse(formatMessage("Unexpected OptimizationFailedException.", log, output), hasOptFailedException(log));
         };
         executeInSubProcess(verifier, ExceptionActionTest::createConstantNode,
-                        new String[]{"-Dgraal.CrashAt=com.oracle.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
+                        new String[]{"-Djdk.graal.CrashAt=com.oracle.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
                         "engine.CompilationFailureAction", "ExitVM",
                         "compiler.PerformanceWarningsAreFatal", "all");
     }
@@ -147,7 +147,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertFalse(formatMessage("Unexpected OptimizationFailedException.", log, output), hasOptFailedException(log));
         };
         executeInSubProcess(verifier, ExceptionActionTest::createConstantNode,
-                        new String[]{"-Dgraal.CrashAt=com.oracle.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
+                        new String[]{"-Djdk.graal.CrashAt=com.oracle.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
                         "engine.TraceCompilationDetails", "true");
     }
 
@@ -164,7 +164,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             String[] useVMOptions = Arrays.copyOf(additionalVmOptions, additionalVmOptions.length + 2);
             useVMOptions[useVMOptions.length - 2] = String.format("-D%s=%s", LOG_FILE_PROPERTY, log);
             // Prevent graal graph dumping for ExceptionAction#Diagnose
-            useVMOptions[useVMOptions.length - 1] = "-Dgraal.Dump=Truffle:0";
+            useVMOptions[useVMOptions.length - 1] = "-Djdk.graal.Dump=Truffle:0";
             subprocess = SubprocessTestUtils.executeInSubprocess(ExceptionActionTest.class, () -> {
                 setupContext(contextOptions);
                 OptimizedCallTarget target = (OptimizedCallTarget) rootNodeFactory.get().getCallTarget();

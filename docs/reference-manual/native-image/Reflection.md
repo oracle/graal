@@ -9,13 +9,17 @@ redirect_from: /reference-manual/native-image/Reflection/
 # Reflection in Native Image
 
 Java reflection support (the `java.lang.reflect.*` API) enables Java code to examine its own classes, methods, fields and their properties at run time.
-
-Native Image has partial support for reflection and needs to know ahead-of-time the reflectively accessed program elements.
-Examining and accessing program elements through `java.lang.reflect.*` or loading classes with `Class.forName(String)` at run time requires preparing additional metadata for those program elements.
 (Note: loading classes with `Class.forName(String)` are included here since it is closely related to reflection.)
 
+Native Image supports reflection in ahead-of-time compiled images, but requires additional configuration in many cases.
+Examining and accessing program elements through `java.lang.reflect.*` or loading classes with `Class.forName(String)` at run time requires preparing additional metadata for those program elements in the image.
+This metadata must be stored in the image already when it is created ahead-of-time.
+
 Native Image tries to resolve the target elements through a static analysis that detects calls to the Reflection API.
-Where the analysis fails, the program elements reflectively accessed at run time must be specified using a manual configuration. See [Reachability Metadata](ReachabilityMetadata.md) and [Collect Metadata with the Tracing Agent](AutomaticMetadataCollection.md) for more information.
+Where the analysis fails, the program elements reflectively accessed at run time must be specified using a manual configuration.
+See [Reachability Metadata](ReachabilityMetadata.md) for more details on this configuration.
+Note that you can [Collect Metadata with the Tracing Agent](AutomaticMetadataCollection.md).
+Using this manual or agent-provided configuration the image builder can include the required metadata in the created image, allowing reflective accesses during image runtime.
 
 ### Table of Contents
 

@@ -13,6 +13,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     jdk + vm_common.vm_env_mixin(std.toString(jdk.jdk_version)),
 
   vm_java_21_llvm:: self.vm_java_21 + graal_common['labsjdk-ce-21-llvm'],
+  vm_java_Latest_llvm:: self.vm_java_Latest + graal_common['labsjdk-ce-latest-llvm'],
 
   binaries_repository: 'lafo',
   maven_deploy_repository: 'lafo-maven',
@@ -43,7 +44,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     ],
   },
 
-  notify_releaser_build: vm_common.common_vm_linux + graal_common.linux_amd64 + {
+  notify_releaser_build: vm_common.deploy_daily_vm_linux_amd64 + {
     name: 'daily-deploy-vm-notify-releaser-build-linux-amd64',
     packages+: {
       curl: '>=7.50.1',
@@ -70,12 +71,12 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       'daily-deploy-vm-espresso-java21-darwin-aarch64',
       'daily-deploy-vm-espresso-java21-windows-amd64',
     ],
-    targets+: ['daily', 'deploy'],
     notify_groups:: ['deploy'],
   },
 
-  diskspace_required: {
-    java21_linux_amd64: "30GB",
+  default_diskspace_required(os, arch, large): {
+    # `os` and `arch` are not yet used
+    'diskspace_required': if (large) then '30GB' else '25GB',
   },
 
   maven_deploy_base_functions: {
@@ -193,24 +194,40 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     #
 
     # Linux/AMD64
+    # - JDK-Latest
+    vm_common.deploy_vm_base_javaLatest_linux_amd64,
+    # - JDK21
     vm_common.deploy_vm_base_java21_linux_amd64,
     vm_common.deploy_vm_installables_standalones_java21_linux_amd64,
 
     # Linux/AARCH64
+    # - JDK-Latest
+    vm_common.deploy_vm_base_javaLatest_linux_aarch64,
+    # - JDK21
     vm_common.deploy_vm_base_java21_linux_aarch64,
     vm_common.deploy_vm_installables_standalones_java21_linux_aarch64,
 
     # Darwin/AMD64
+    # - JDK-Latest
+    # GR-49652
+    # vm_common.deploy_vm_base_javaLatest_darwin_amd64,
+    # - JDK21
     vm_common.deploy_vm_base_java21_darwin_amd64,
     vm_common.deploy_vm_installables_java21_darwin_amd64,
     vm_common.deploy_vm_standalones_java21_darwin_amd64,
 
     # Darwin/AARCH64
+    # - JDK-Latest
+    vm_common.deploy_vm_base_javaLatest_darwin_aarch64,
+    # - JDK21
     vm_common.deploy_vm_base_java21_darwin_aarch64,
     vm_common.deploy_vm_installables_java21_darwin_aarch64,
     vm_common.deploy_vm_standalones_java21_darwin_aarch64,
 
     # Windows/AMD64
+    # - JDK-Latest
+    vm_common.deploy_vm_base_javaLatest_windows_amd64,
+    # - JDK21
     vm_common.deploy_vm_base_java21_windows_amd64,
     vm_common.deploy_vm_installables_java21_windows_amd64,
     vm_common.deploy_vm_standalones_java21_windows_amd64,

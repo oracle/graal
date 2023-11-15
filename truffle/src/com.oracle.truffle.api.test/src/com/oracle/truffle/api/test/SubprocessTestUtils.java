@@ -225,7 +225,7 @@ public final class SubprocessTestUtils {
     }
 
     private static String graalOption(String optionName) {
-        return "-Dgraal." + optionName;
+        return "-Djdk.graal." + optionName;
     }
 
     private static String engineOption(String optionName) {

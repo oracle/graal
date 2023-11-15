@@ -150,6 +150,13 @@ local common_json = import "../common.json";
       } else {},
     },
 
+    black:: {
+      packages+: {
+        # black is used to format python source code
+        "pip:black": common_json.pip.black,
+      },
+    },
+
     local code_tools = {
       downloads+: if 'jdk_version' in self && self.jdk_version > 21 then {
         TOOLS_JAVA_HOME: jdks_data['oraclejdk21'],
@@ -181,12 +188,7 @@ local common_json = import "../common.json";
     graalnodejs:: {
       packages+: if self.os == "linux" then {
         cmake: "==3.22.2",
-      } + (if self.arch == "aarch64" then {
-        "00:devtoolset": "==10",
-      } else {
-        "00:devtoolset": "==11",
-      })
-      else {},
+      } else {},
     },
 
     svm:: {
@@ -203,14 +205,6 @@ local common_json = import "../common.json";
         "*/callgrind.*",
         "*.log",
       ],
-
-      packages+: if self.os == "linux" && std.objectHas(self, "os_distro") && self.os_distro == "ol" then
-        (if self.arch == "aarch64" then {
-          "00:devtoolset": "==10",
-        } else {
-          "00:devtoolset": "==11",
-        })
-      else {},
     },
   },
 
@@ -307,6 +301,12 @@ local common_json = import "../common.json";
       mount_modules: true,
     },
   },
+  local ol8 = {
+    docker+: {
+      image: "buildslave_ol8",
+      mount_modules: true,
+    },
+  },
   local ol9 = {
     docker+: {
       image: "buildslave_ol9",
@@ -326,6 +326,14 @@ local common_json = import "../common.json";
   local deps_windows = {
   },
 
+  local ol_devtoolset = {
+    packages+: (if self.arch == "aarch64" then {
+      "00:devtoolset": "==10", # GCC 10.2.1, make 4.2.1, binutils 2.35, valgrind 3.16.1
+    } else {
+      "00:devtoolset": "==11", # GCC 11.2, make 4.3, binutils 2.36, valgrind 3.17
+    }),
+  },
+
   local linux   = deps_linux   + common + { os:: "linux",   capabilities+: [self.os] },
   local darwin  = deps_darwin  + common + { os:: "darwin",  capabilities+: [self.os] },
   local windows = deps_windows + common + { os:: "windows", capabilities+: [self.os] },
@@ -333,20 +341,23 @@ local common_json = import "../common.json";
 
   local amd64   = { arch:: "amd64",   capabilities+: [self.arch] },
   local aarch64 = { arch:: "aarch64", capabilities+: [self.arch] },
-  local ol_distro = {os_distro:: "ol"},
+  # Always include the devtoolset on Oracle Linux to use the same system toolchain for all builds
+  local ol_distro = { os_distro:: "ol" } + ol_devtoolset,
 
   linux_amd64: linux + amd64 + ol7 + ol_distro,
-  linux_amd64_ubuntu: linux + amd64 + ubuntu22 + {os_distro:: "ubuntu"},
+  linux_amd64_ol8: linux + amd64 + ol8 + ol_distro,
   linux_amd64_ol9: linux + amd64 + ol9 + ol_distro,
   linux_aarch64: linux + aarch64 + ol_distro,
+  linux_aarch64_ol8: linux + aarch64 + ol8 + ol_distro,
   linux_aarch64_ol9: linux + aarch64 + ol9 + ol_distro,
+
+  linux_amd64_ubuntu: linux + amd64 + ubuntu22 + { os_distro:: "ubuntu" },
 
   darwin_amd64: darwin + amd64,
   darwin_aarch64: darwin + aarch64,
 
   windows_amd64: windows + amd64,
   windows_server_2016_amd64: windows_server_2016 + amd64,
-
 
   # Utils
   disable_proxies: {

@@ -44,12 +44,14 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.IsolateListenerSupport;
 import com.oracle.svm.core.IsolateListenerSupportFeature;
 import com.oracle.svm.core.RegisterDumper;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.jfr.JfrExecutionSamplerSupported;
 import com.oracle.svm.core.jfr.JfrFeature;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -58,6 +60,7 @@ import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
+import com.oracle.svm.core.thread.ThreadListenerSupportFeature;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.UserError;
 
@@ -128,7 +131,7 @@ public final class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler 
     }
 
     private static boolean isPlatformSupported() {
-        return Platform.includedIn(Platform.LINUX.class);
+        return Platform.includedIn(Platform.LINUX.class) && SubstrateOptions.EnableSignalHandling.getValue();
     }
 
     private static void validateSamplerOption(HostedOptionKey<Boolean> isSamplerEnabled) {
@@ -149,12 +152,12 @@ public final class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler 
 class PosixSubstrateSigProfHandlerFeature implements InternalFeature {
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(IsolateListenerSupportFeature.class, JfrFeature.class);
+        return List.of(ThreadListenerSupportFeature.class, IsolateListenerSupportFeature.class, JfrFeature.class);
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        if (JfrFeature.isExecutionSamplerSupported() && isSignalHandlerBasedExecutionSamplerEnabled()) {
+        if (JfrExecutionSamplerSupported.isSupported() && isSignalHandlerBasedExecutionSamplerEnabled()) {
             SubstrateSigprofHandler sampler = new PosixSubstrateSigprofHandler();
             ImageSingletons.add(JfrExecutionSampler.class, sampler);
             ImageSingletons.add(SubstrateSigprofHandler.class, sampler);

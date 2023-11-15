@@ -28,19 +28,19 @@ import java.lang.invoke.MethodType;
 import java.util.List;
 
 import org.graalvm.collections.Pair;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.ValueNode;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 class ForeignGraphKit extends HostedGraphKit {
     ForeignGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method, GraphProvider.Purpose purpose) {
-        super(debug, providers, method, purpose);
+        super(debug, providers, method);
     }
 
     Pair<List<ValueNode>, ValueNode> unpackArgumentsAndExtractNEP(ValueNode argumentsArray, MethodType methodType) {

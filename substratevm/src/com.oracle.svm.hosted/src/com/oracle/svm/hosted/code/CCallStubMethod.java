@@ -26,10 +26,6 @@ package com.oracle.svm.hosted.code;
 
 import java.util.List;
 
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.java.FrameStateBuilder;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.ValueNode;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.constant.CEnumLookup;
 
@@ -44,6 +40,10 @@ import com.oracle.svm.hosted.c.info.EnumLookupInfo;
 import com.oracle.svm.hosted.phases.CInterfaceEnumTool;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.java.FrameStateBuilder;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -67,7 +67,7 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
         NativeLibraries nativeLibraries = CEntryPointCallStubSupport.singleton().getNativeLibraries();
         boolean deoptimizationTarget = MultiMethod.isDeoptTarget(method);
-        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
         FrameStateBuilder state = kit.getFrameState();
         List<ValueNode> arguments = kit.loadArguments(getParameterTypesForLoad(method));
         ValueNode callAddress = createTargetAddressNode(kit, providers, arguments);

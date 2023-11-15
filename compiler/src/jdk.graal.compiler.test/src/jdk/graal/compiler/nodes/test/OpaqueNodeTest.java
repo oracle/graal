@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.results;
+package jdk.graal.compiler.nodes.test;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.infrastructure.Universe;
-import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import jdk.vm.ci.meta.JavaTypeProfile;
-import jdk.vm.ci.meta.TriState;
+import org.junit.Test;
 
-/**
- * Implementation of the ResultsBuilder providing no feedback for optimizations. Used in
- * Reachability Analysis.
- */
-public class DefaultResultsBuilder extends AbstractAnalysisResultsBuilder {
-    public DefaultResultsBuilder(BigBang bb, Universe converter) {
-        super(bb, converter);
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.core.test.GraalCompilerTest;
+
+public class OpaqueNodeTest extends GraalCompilerTest {
+
+    public static byte[] arr = new byte[10];
+
+    public static void writeConstSnippet() {
+        final int i = 300;
+        int j = GraalDirectives.opaque(i);
+        arr[0] = (byte) j;
     }
 
-    @Override
-    public StaticAnalysisResults makeOrApplyResults(AnalysisMethod method) {
-        return StaticAnalysisResults.NO_RESULTS;
+    @Test
+    public void testWriteConst() {
+        test("writeConstSnippet");
+        assertTrue(arr[0] == (byte) 300);
     }
 
-    @Override
-    public JavaTypeProfile makeTypeProfile(AnalysisField field) {
-        return new JavaTypeProfile(TriState.UNKNOWN, 1, new JavaTypeProfile.ProfiledType[0]);
+    public static int fld = 200;
+
+    public static void writeSnippet() {
+        int i = fld + 100;
+        int j = GraalDirectives.opaque(i);
+        arr[0] = (byte) j;
+    }
+
+    @Test
+    public void testWrite() {
+        test("writeSnippet");
+        assertTrue(arr[0] == (byte) 300);
     }
 }

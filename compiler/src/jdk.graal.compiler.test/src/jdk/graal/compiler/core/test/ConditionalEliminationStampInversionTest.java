@@ -24,12 +24,15 @@
  */
 package jdk.graal.compiler.core.test;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.AndNode;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
@@ -37,9 +40,6 @@ import jdk.graal.compiler.nodes.calc.IntegerTestNode;
 import jdk.graal.compiler.nodes.calc.SignExtendNode;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.phases.common.ConditionalEliminationPhase;
-import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
-import org.junit.Test;
-
 import jdk.vm.ci.code.InvalidInstalledCodeException;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -101,7 +101,7 @@ public class ConditionalEliminationStampInversionTest extends GraalCompilerTest 
         GraphUtil.killCFG(((IfNode) ifNode).trueSuccessor());
         g.replaceSplitWithFixed((IfNode) ifNode, guard, ((IfNode) ifNode).falseSuccessor());
 
-        new ConditionalEliminationPhase(false).apply(g, getDefaultHighTierContext());
+        new ConditionalEliminationPhase(createCanonicalizerPhase(), false).apply(g, getDefaultHighTierContext());
 
         // the inner condition should still be alive and the following execution return true
         assert (boolean) getCode(getResolvedJavaMethod("snippet"), g, true, true, getInitialOptions()).executeVarargs((byte) -5);

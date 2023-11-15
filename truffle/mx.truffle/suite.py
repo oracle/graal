@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.44.1",
+  "mxversion": "7.0.3",
   "name" : "truffle",
   "version" : "24.0.0",
   "release" : False,
@@ -143,12 +143,12 @@ suite = {
 
     "JSON" : {
       "moduleName" : "org.json",
-      "digest" : "sha512:4deb046af3b06169c7dd81275f0ff0e56438701c171c72c290c6525dd1f2fff775f12257a6f75576f9bce3835bd68d92c8b196624faa86721097d1ef7ded3f17",
-      "sourceDigest" : "sha512:bef30df9a77fabb292f08e5761469103831676423a8a928008bb26a1d87966c049327de0b681c51c6d4a501697a53683dd78c8b39a4ad02b7e572d999e7d638c",
+      "digest" : "sha512:a5cdd1ed984448d6538746429f2d1a0ec8f64f93af0e84870ce898a9f07a81d11bf27d2ee081471975772efc8a0d3d5e05541197a532066e9edb09ad032d31a3",
+      "sourceDigest" : "sha512:80b382663f1bfd31f668eeb083a0a5a1620153e195e5b030da8f4c320f6126d7183ecb11f4b1afc8408a385c0918caa9f77942376499f9723dd7134dadd57a89",
       "maven" : {
         "groupId" : "org.json",
         "artifactId" : "json",
-        "version" : "20230227",
+        "version" : "20231013",
       },
     },
 

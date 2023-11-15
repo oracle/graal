@@ -48,7 +48,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     base_cmd:: ['mx', '--env', env, '--dy', 'polybenchmarks'],
   },
 
-  vm_bench_polybenchmarks_linux_build: vm_common.svm_common_linux_amd64 + vm_common.truffleruby_linux_amd64 + vm.custom_vm_linux + self.vm_bench_common + vm.vm_java_21 + self.polybench_hpc_linux_common + self.vm_bench_polybenchmarks_base(env='polybench-${VM_ENV}') {
+  vm_bench_polybenchmarks_linux_build: vm_common.svm_common_linux_amd64 + vm_common.truffleruby_linux_amd64 + vm.custom_vm_linux + self.vm_bench_common + vm.vm_java_21 + self.polybench_hpc_linux_common + self.vm_bench_polybenchmarks_base(env='polybench-${VM_ENV}') + {
     setup+: [
       self.base_cmd + ['sforceimports'],
     ],
@@ -65,7 +65,6 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         ]
       }
     ],
-    targets+: ['ondemand'],
   },
 
   vm_bench_polybenchmarks_linux_common(vm_config='jvm', is_gate=false, suite='default:*'): vm_common.svm_common_linux_amd64 + vm_common.truffleruby_linux_amd64 + vm.custom_vm_linux + self.vm_bench_common + vm.vm_java_21 + self.polybench_hpc_linux_common + self.vm_bench_polybenchmarks_base(env='polybench-${VM_ENV}') {
@@ -259,8 +258,8 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
       ] + xms + xmx + [
         "--experimental-options",
         "--engine.CompilationFailureAction=ExitVM",
-        "-Dgraal.DumpOnError=true",
-        "-Dgraal.PrintGraph=File",
+        "-Djdk.graal.DumpOnError=true",
+        "-Djdk.graal.PrintGraph=File",
         "--js-vm=graal-js",
         "--js-vm-config=default",
         "--jvm=server",
@@ -294,7 +293,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_memory          + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-memory-linux-amd64', notify_groups:: ['polybench'] },
 
     # Produces the graalvm-with-polybench artifact
-    vm_common.vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_build + {name: 'ondemand-vm-build-' + vm.vm_setup.short_name + '-with-polybench-linux-amd64', notify_groups:: ['polybench']},
+    vm_common.ondemand_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_build + {name: 'ondemand-vm-build-' + vm.vm_setup.short_name + '-with-polybench-linux-amd64', notify_groups:: ['polybench']},
 
     # Consume the graalvm-with-polybench artifact
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='native')                        + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-default-native-linux-amd64', notify_groups:: ['polybench']},

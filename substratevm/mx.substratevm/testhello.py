@@ -900,7 +900,7 @@ def test():
     checker.check(exec_string, skip_fails=False)
     exec_string = execute("backtrace 3")
     rexp = [r"#0%shello\.Hello::lambda\$(static\$)?0%s %s at hello/Hello\.java:210"%(spaces_pattern, no_param_types_pattern, no_arg_values_pattern),
-            r"#1%s%s in hello\.Hello\$\$Lambda\$(%s/0x)?%s::get%s at hello/Hello\.java:238"%(spaces_pattern, address_pattern, digits_pattern, hex_digits_pattern, wildcard_pattern),
+            r"#1%s%s in hello\.Hello\$\$Lambda((\$%s/0x)|(\$)|(\.0x|/0x))?%s::get%s at hello/Hello\.java:238"%(spaces_pattern, address_pattern, digits_pattern, hex_digits_pattern, wildcard_pattern),
             r"#2%shello\.Hello::main%s %s at hello/Hello\.java:238"%(spaces_pattern, param_types_pattern, arg_values_pattern)]
     checker = Checker('backtrace in lambda', rexp)
     checker.check(exec_string, skip_fails=False)

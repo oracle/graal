@@ -30,7 +30,6 @@ import java.lang.reflect.Executable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -39,6 +38,60 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.Feature.AfterCompilationAccess;
+import org.graalvm.nativeimage.hosted.Feature.AfterHeapLayoutAccess;
+import org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess;
+import org.graalvm.nativeimage.hosted.Feature.BeforeHeapLayoutAccess;
+import org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess;
+
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.graal.RuntimeCompilationCanaryFeature;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
+import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.meta.SubstrateReplacements;
+import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
+import com.oracle.svm.core.heap.BarrierSetProvider;
+import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.RuntimeOptionValues;
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.graal.GraalSupport;
+import com.oracle.svm.graal.SubstrateGraalRuntime;
+import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
+import com.oracle.svm.graal.meta.SubstrateField;
+import com.oracle.svm.graal.meta.SubstrateMethod;
+import com.oracle.svm.graal.meta.SubstrateType;
+import com.oracle.svm.graal.meta.SubstrateUniverseFactory;
+import com.oracle.svm.hosted.FeatureHandler;
+import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.FeatureImpl.AfterHeapLayoutAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.NativeImageGenerator;
+import com.oracle.svm.hosted.ProgressReporter;
+import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 
 import jdk.graal.compiler.api.runtime.GraalRuntime;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
@@ -60,70 +113,9 @@ import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.word.WordTypes;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.Feature.AfterCompilationAccess;
-import org.graalvm.nativeimage.hosted.Feature.AfterHeapLayoutAccess;
-import org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess;
-import org.graalvm.nativeimage.hosted.Feature.BeforeHeapLayoutAccess;
-import org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
-
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.util.GraalAccess;
-import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.GraalConfiguration;
-import com.oracle.svm.core.graal.RuntimeCompilationCanaryFeature;
-import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
-import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
-import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.meta.SubstrateReplacements;
-import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
-import com.oracle.svm.core.heap.BarrierSetProvider;
-import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.option.RuntimeOptionValues;
-import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.graal.GraalSupport;
-import com.oracle.svm.graal.SubstrateGraalRuntime;
-import com.oracle.svm.graal.meta.SubstrateField;
-import com.oracle.svm.graal.meta.SubstrateMethod;
-import com.oracle.svm.graal.meta.SubstrateType;
-import com.oracle.svm.graal.meta.SubstrateUniverseFactory;
-import com.oracle.svm.hosted.FeatureHandler;
-import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.FeatureImpl.AfterHeapLayoutAccessImpl;
-import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
-import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
-import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
-import com.oracle.svm.hosted.NativeImageGenerator;
-import com.oracle.svm.hosted.ProgressReporter;
-import com.oracle.svm.hosted.analysis.Inflation;
-import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
-import com.oracle.svm.hosted.meta.HostedField;
-import com.oracle.svm.hosted.meta.HostedMetaAccess;
-import com.oracle.svm.hosted.meta.HostedType;
-import com.oracle.svm.hosted.meta.HostedUniverse;
-import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
-import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -133,7 +125,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * compilation, ensures that all required {@link SubstrateType}, {@link SubstrateMethod},
  * {@link SubstrateField} objects are created by {@link GraalGraphObjectReplacer} and added to the
  * image. Data that is prepared during image generation and used at run time is stored in
- * {@link GraalSupport}.
+ * {@link TruffleRuntimeCompilationSupport}.
  */
 public abstract class RuntimeCompilationFeature {
 
@@ -156,22 +148,6 @@ public abstract class RuntimeCompilationFeature {
         public boolean getAsBoolean() {
             return ImageSingletons.contains(RuntimeCompilationFeature.class);
         }
-    }
-
-    /**
-     * This predicate is used to distinguish between building a Graal native image as a shared
-     * library for HotSpot (non-pure) or Graal as a compiler used only for a runtime in the same
-     * image (pure).
-     */
-    public static final class IsEnabledAndNotLibgraal implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return isEnabledAndNotLibgraal();
-        }
-    }
-
-    public static boolean isEnabledAndNotLibgraal() {
-        return ImageSingletons.contains(RuntimeCompilationFeature.class) && !SubstrateUtil.isBuildingLibgraal();
     }
 
     public static RuntimeCompilationFeature singleton() {
@@ -366,11 +342,7 @@ public abstract class RuntimeCompilationFeature {
     }
 
     protected static List<Class<? extends Feature>> getRequiredFeaturesHelper() {
-        if (SubstrateUtil.isBuildingLibgraal()) {
-            return List.of(FieldsOffsetsFeature.class);
-        } else {
-            return List.of(RuntimeCompilationCanaryFeature.class, DeoptimizationFeature.class, FieldsOffsetsFeature.class);
-        }
+        return List.of(RuntimeCompilationCanaryFeature.class, DeoptimizationFeature.class, GraalCompilerFeature.class);
     }
 
     public void setUniverseFactory(SubstrateUniverseFactory universeFactory) {
@@ -381,7 +353,7 @@ public abstract class RuntimeCompilationFeature {
         if (SubstrateOptions.useLLVMBackend()) {
             throw UserError.abort("Runtime compilation is currently unimplemented on the LLVM backend (GR-43073).");
         }
-        ImageSingletons.add(GraalSupport.class, new GraalSupport());
+        ImageSingletons.add(TruffleRuntimeCompilationSupport.class, new TruffleRuntimeCompilationSupport());
         if (!ImageSingletons.contains(SubstrateGraalCompilerSetup.class)) {
             ImageSingletons.add(SubstrateGraalCompilerSetup.class, new SubstrateGraalCompilerSetup());
         }
@@ -391,12 +363,10 @@ public abstract class RuntimeCompilationFeature {
         SubstrateProviders substrateProviders = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).getSubstrateProviders(aMetaAccess);
         objectReplacer = new GraalGraphObjectReplacer(config.getUniverse(), substrateProviders, universeFactory);
         config.registerObjectReplacer(objectReplacer);
-
-        config.registerClassReachabilityListener(GraalSupport::registerPhaseStatistics);
     }
 
     private void installRuntimeConfig(BeforeAnalysisAccessImpl config) {
-        Function<Providers, SubstrateBackend> backendProvider = GraalSupport.getRuntimeBackendProvider();
+        Function<Providers, SubstrateBackend> backendProvider = TruffleRuntimeCompilationSupport.getRuntimeBackendProvider();
         ClassInitializationSupport classInitializationSupport = config.getHostVM().getClassInitializationSupport();
         Providers originalProviders = GraalAccess.getOriginalProviders();
         SubstratePlatformConfigurationProvider platformConfig = new SubstratePlatformConfigurationProvider(ImageSingletons.lookup(BarrierSetProvider.class).createBarrierSet(config.getMetaAccess()));
@@ -415,7 +385,7 @@ public abstract class RuntimeCompilationFeature {
         FeatureHandler featureHandler = config.getFeatureHandler();
         final boolean supportsStubBasedPlugins = !SubstrateOptions.useLLVMBackend();
 
-        NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, runtimeConfig, hostedProviders, config.getMetaAccess(), config.getUniverse(), null, null, config.getNativeLibraries(),
+        NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, runtimeConfig, hostedProviders, config.getMetaAccess(), config.getUniverse(), null, config.getNativeLibraries(),
                         config.getImageClassLoader(), ParsingReason.JITCompilation, ((Inflation) config.getBigBang()).getAnnotationSubstitutionProcessor(),
                         new SubstrateClassInitializationPlugin(config.getHostVM()), ConfigurationValues.getTarget(), supportsStubBasedPlugins);
 
@@ -427,33 +397,12 @@ public abstract class RuntimeCompilationFeature {
         Suites firstTierSuites = NativeImageGenerator.createFirstTierSuites(featureHandler, runtimeConfig, runtimeConfig.getSnippetReflection(), false);
         LIRSuites firstTierLirSuites = NativeImageGenerator.createFirstTierLIRSuites(featureHandler, runtimeConfig.getProviders(), false);
 
-        GraalSupport.setRuntimeConfig(runtimeConfig, suites, lirSuites, firstTierSuites, firstTierLirSuites);
+        TruffleRuntimeCompilationSupport.setRuntimeConfig(runtimeConfig, suites, lirSuites, firstTierSuites, firstTierLirSuites);
     }
 
     protected final void beforeAnalysisHelper(BeforeAnalysisAccess c) {
-        DebugContext debug = DebugContext.forCurrentThread();
-
-        // box lowering accesses the caches for those classes and thus needs reflective access
-        for (JavaKind kind : new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char,
-                        JavaKind.Double, JavaKind.Float, JavaKind.Int, JavaKind.Long, JavaKind.Short}) {
-            RuntimeReflection.register(kind.toBoxedJavaClass());
-            Class<?>[] innerClasses = kind.toBoxedJavaClass().getDeclaredClasses();
-            if (innerClasses != null && innerClasses.length > 0) {
-                RuntimeReflection.register(innerClasses[0]);
-                try {
-                    RuntimeReflection.register(innerClasses[0].getDeclaredField("cache"));
-                } catch (Throwable t) {
-                    throw debug.handle(t);
-                }
-            }
-        }
 
         BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) c;
-
-        GraalSupport.allocatePhaseStatisticsCache();
-
-        populateMatchRuleRegistry();
-
         installRuntimeConfig(config);
 
         SubstrateGraalRuntime graalRuntime = new SubstrateGraalRuntime();
@@ -471,16 +420,14 @@ public abstract class RuntimeCompilationFeature {
         /*
          * Ensure all snippet types are registered as used.
          */
-        SubstrateReplacements replacements = (SubstrateReplacements) GraalSupport.getRuntimeConfig().getProviders().getReplacements();
+        SubstrateReplacements replacements = (SubstrateReplacements) TruffleRuntimeCompilationSupport.getRuntimeConfig().getProviders().getReplacements();
         for (NodeClass<?> nodeClass : replacements.getSnippetNodeClasses()) {
             config.getMetaAccess().lookupJavaType(nodeClass.getClazz()).registerAsAllocated("All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
         }
         /*
          * Ensure runtime snippet graphs are analyzed.
          */
-        if (!SubstrateUtil.isBuildingLibgraal()) {
-            NativeImageGenerator.performSnippetGraphAnalysis(config.getBigBang(), replacements, config.getBigBang().getOptions());
-        }
+        NativeImageGenerator.performSnippetGraphAnalysis(config.getBigBang(), replacements, config.getBigBang().getOptions());
 
         /*
          * Ensure that all snippet methods have their SubstrateMethod object created by the object
@@ -489,11 +436,6 @@ public abstract class RuntimeCompilationFeature {
         for (ResolvedJavaMethod method : replacements.getSnippetMethods()) {
             objectReplacer.apply(method);
         }
-    }
-
-    private static void populateMatchRuleRegistry() {
-        GraalSupport.get().setMatchRuleRegistry(new HashMap<>());
-        GraalConfiguration.runtimeInstance().populateMatchRuleRegistry(GraalSupport.get().getMatchRuleRegistry());
     }
 
     @SuppressWarnings("unused")
@@ -517,15 +459,11 @@ public abstract class RuntimeCompilationFeature {
         initialized = true;
 
         hostedProviders = newHostedProviders;
-        graphBuilderConfig = newGraphBuilderConfig;
+        graphBuilderConfig = newGraphBuilderConfig.withNodeSourcePosition(true);
         assert !runtimeCompilationCandidatePredicateUpdated : "Updated compilation predicate multiple times";
         runtimeCompilationCandidatePredicate = newRuntimeCompilationCandidatePredicate;
         runtimeCompilationCandidatePredicateUpdated = true;
         deoptimizeOnExceptionPredicate = newDeoptimizeOnExceptionPredicate;
-
-        if (SubstrateOptions.IncludeNodeSourcePositions.getValue() || SubstrateOptions.parseOnce()) {
-            graphBuilderConfig = graphBuilderConfig.withNodeSourcePosition(true);
-        }
     }
 
     public SubstrateMethod requireFrameInformationForMethod(ResolvedJavaMethod method, BeforeAnalysisAccessImpl config, boolean registerAsRoot) {
@@ -664,8 +602,8 @@ public abstract class RuntimeCompilationFeature {
 
     protected final void beforeHeapLayoutHelper(BeforeHeapLayoutAccess a) {
         objectReplacer.registerImmutableObjects(a);
-        GraalSupport.registerImmutableObjects(a);
-        ((SubstrateReplacements) GraalSupport.getRuntimeConfig().getProviders().getReplacements()).registerImmutableObjects(a);
+        TruffleRuntimeCompilationSupport.registerImmutableObjects(a);
+        ((SubstrateReplacements) TruffleRuntimeCompilationSupport.getRuntimeConfig().getProviders().getReplacements()).registerImmutableObjects(a);
     }
 
     protected final void afterHeapLayoutHelper(AfterHeapLayoutAccess a) {
@@ -688,56 +626,6 @@ public abstract class RuntimeCompilationFeature {
                 }
             }
         }
-    }
-}
-
-/**
- * The graphs for runtime compilation use the analysis universe, but we want to incorporate static
- * analysis results from the hosted universe. So we temporarily convert metadata objects to the
- * hosted universe, and the final type back to the analysis universe.
- */
-class RuntimeStrengthenStampsPhase extends StrengthenStampsPhase {
-
-    private final HostedUniverse hUniverse;
-    private final GraalGraphObjectReplacer objectReplacer;
-
-    RuntimeStrengthenStampsPhase(HostedUniverse hUniverse, GraalGraphObjectReplacer objectReplacer) {
-        this.hUniverse = hUniverse;
-        this.objectReplacer = objectReplacer;
-    }
-
-    @Override
-    protected HostedType toHosted(ResolvedJavaType type) {
-        if (type == null) {
-            return null;
-        }
-        assert type instanceof AnalysisType;
-        return hUniverse.lookup(type);
-    }
-
-    @Override
-    protected HostedField toHosted(ResolvedJavaField field) {
-        if (field == null) {
-            return null;
-        }
-        assert field instanceof AnalysisField;
-        return hUniverse.lookup(field);
-    }
-
-    @Override
-    protected ResolvedJavaType toTarget(ResolvedJavaType type) {
-        AnalysisType result = ((HostedType) type).getWrapped();
-
-        if (!objectReplacer.typeCreated(result)) {
-            /*
-             * The SubstrateType has not been created during analysis. We cannot crate new types at
-             * this point, because it can make objects reachable that the static analysis has not
-             * seen.
-             */
-            return null;
-        }
-
-        return result;
     }
 }
 

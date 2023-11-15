@@ -53,6 +53,56 @@ import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.jniutils.JNI;
+import org.graalvm.jniutils.JNIExceptionWrapper;
+import org.graalvm.jniutils.JNIMethodScope;
+import org.graalvm.jniutils.JNIUtil;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.LogHandler;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.VMRuntime;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
+
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.InvokeInfo;
+import com.oracle.svm.core.OS;
+import com.oracle.svm.core.RuntimeAssertionsSupport;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.log.FunctionPointerLogHandler;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.option.RuntimeOptionValues;
+import com.oracle.svm.core.option.XOptions;
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.UserError.UserException;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.graal.hosted.GraalCompilerFeature;
+import com.oracle.svm.graal.hotspot.libgraal.LibGraalEntryPoints.RuntimeStubInfo;
+import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.jni.JNIFeature;
+import com.oracle.svm.hosted.reflect.ReflectionFeature;
+import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.ReflectionUtil;
+
 import jdk.graal.compiler.code.DisassemblerProvider;
 import jdk.graal.compiler.core.GraalServiceThread;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
@@ -94,56 +144,6 @@ import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilerImpl;
 import jdk.graal.compiler.truffle.hotspot.TruffleCallBoundaryInstrumentationFactory;
 import jdk.graal.compiler.truffle.substitutions.GraphBuilderInvocationPluginProvider;
 import jdk.graal.compiler.truffle.substitutions.GraphDecoderInvocationPluginProvider;
-import org.graalvm.jniutils.JNI;
-import org.graalvm.jniutils.JNIExceptionWrapper;
-import org.graalvm.jniutils.JNIMethodScope;
-import org.graalvm.jniutils.JNIUtil;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.LogHandler;
-import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.VMRuntime;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
-
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.meta.InvokeInfo;
-import com.oracle.svm.core.OS;
-import com.oracle.svm.core.RuntimeAssertionsSupport;
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataFactory;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.log.FunctionPointerLogHandler;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.option.RuntimeOptionValues;
-import com.oracle.svm.core.option.XOptions;
-import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.UserError.UserException;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.graal.hosted.RuntimeCompilationFeature;
-import com.oracle.svm.graal.hotspot.libgraal.LibGraalEntryPoints.RuntimeStubInfo;
-import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
-import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.jni.JNIFeature;
-import com.oracle.svm.hosted.reflect.ReflectionFeature;
-import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.ModuleSupport;
-import com.oracle.svm.util.ReflectionUtil;
-
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
@@ -200,7 +200,7 @@ public class LibGraalFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(JNIFeature.class, RuntimeCompilationFeature.getRuntimeCompilationFeature(), ReflectionFeature.class);
+        return List.of(JNIFeature.class, GraalCompilerFeature.class, ReflectionFeature.class);
     }
 
     public static final class IsEnabled implements BooleanSupplier {
@@ -753,37 +753,42 @@ final class HotSpotGraalOptionValuesUtil {
     // Support for CrashAtThrowsOOME
     static final GlobalAtomicLong OOME_CRASH_DONE = new GlobalAtomicLong(0);
 
-    private static final String LIBGRAAL_PREFIX = "libgraal.";
-    private static final String LIBGRAAL_XOPTION_PREFIX = "libgraal.X";
+    private static final String LEGACY_LIBGRAAL_PREFIX = "libgraal.";
+    private static final String LEGACY_LIBGRAAL_XOPTION_PREFIX = "libgraal.X";
+    private static final String LIBGRAAL_PREFIX = "jdk.libgraal.";
+    private static final String LIBGRAAL_XOPTION_PREFIX = "jdk.libgraal.X";
 
     static OptionValues initializeOptions() {
+
         // Parse "graal." options.
         RuntimeOptionValues options = RuntimeOptionValues.singleton();
         options.update(HotSpotGraalOptionValues.parseOptions());
 
-        // Parse "libgraal." options. This includes the XOptions as well
-        // as normal Graal options that are specified with the "libgraal."
+        // Parse "jdk.libgraal." options. This includes the XOptions as well
+        // as normal Graal options that are specified with the "jdk.libgraal."
         // prefix so that they're parsed only in libgraal and not jargraal.
         // A motivating use case for this is CompileTheWorld + libgraal
         // where one may want to see GC stats with the VerboseGC option.
         // Since CompileTheWorld also initializes jargraal, specifying this
-        // option with -Dgraal.VerboseGC would cause the VM to exit with an
-        // unknown option error. Specifying it as -Dlibgraal.VerboseGC=true
+        // option with -Djdk.graal.VerboseGC would cause the VM to exit with an
+        // unknown option error. Specifying it as -Djdk.libgraal.VerboseGC=true
         // avoids the error and provides the desired behavior.
         Map<String, String> savedProps = jdk.vm.ci.services.Services.getSavedProperties();
         EconomicMap<String, String> optionSettings = EconomicMap.create();
         for (Map.Entry<String, String> e : savedProps.entrySet()) {
-            String name = e.getKey();
-            if (name.startsWith(LIBGRAAL_PREFIX)) {
-                if (name.startsWith(LIBGRAAL_XOPTION_PREFIX)) {
-                    String xarg = removePrefix(name, LIBGRAAL_XOPTION_PREFIX) + e.getValue();
+            String key = e.getKey();
+            String name = withoutPrefix(key, LIBGRAAL_PREFIX, LEGACY_LIBGRAAL_PREFIX);
+            if (name != null) {
+                String xarg = withoutPrefix(key, LIBGRAAL_XOPTION_PREFIX, LEGACY_LIBGRAAL_XOPTION_PREFIX);
+                if (xarg != null) {
+                    xarg += e.getValue();
                     if (XOptions.setOption(xarg)) {
                         continue;
                     }
                 }
 
                 String value = e.getValue();
-                optionSettings.put(removePrefix(name, LIBGRAAL_PREFIX), value);
+                optionSettings.put(name, value);
             }
         }
         if (!optionSettings.isEmpty()) {
@@ -800,9 +805,14 @@ final class HotSpotGraalOptionValuesUtil {
         return options;
     }
 
-    private static String removePrefix(String value, String prefix) {
-        assert value.startsWith(prefix);
-        return value.substring(prefix.length());
+    private static String withoutPrefix(String value, String prefix, String prefixAlias) {
+        if (value.startsWith(prefix)) {
+            return value.substring(prefix.length());
+        }
+        if (value.startsWith(prefixAlias)) {
+            return value.substring(prefixAlias.length());
+        }
+        return null;
     }
 }
 
@@ -830,7 +840,7 @@ final class Target_jdk_graal_compiler_core_GraalCompiler {
     private static boolean notifyCrash(String crashMessage) {
         if (LibGraalOptions.CrashAtThrowsOOME.getValue()) {
             if (HotSpotGraalOptionValuesUtil.OOME_CRASH_DONE.compareAndSet(0L, 1L)) {
-                // The -Dlibgraal.Xmx option should also be employed to make this
+                // The -Djdk.libgraal.Xmx option should also be employed to make this
                 // this allocation fail quicky
                 String largeString = Arrays.toString(new int[Integer.MAX_VALUE - 1]);
                 throw new InternalError("Failed to trigger OOME: largeString.length=" + largeString.length());

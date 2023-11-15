@@ -168,7 +168,7 @@ public class ObjectScanner {
                                 System.lineSeparator() + backtrace);
             }
 
-            if (fieldValue.getJavaKind() == JavaKind.Object && bb.getHostVM().isRelocatedPointer(bb.getMetaAccess(), fieldValue)) {
+            if (fieldValue.getJavaKind() == JavaKind.Object && bb.getHostVM().isRelocatedPointer(fieldValue)) {
                 scanningObserver.forRelocatedPointerFieldValue(receiver, field, fieldValue, reason);
             } else if (fieldValue.isNull()) {
                 scanningObserver.forNullFieldValue(receiver, field, reason);

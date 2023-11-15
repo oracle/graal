@@ -4,7 +4,7 @@
     "Jsonnet files should not include this file directly but use ci/common.jsonnet instead."
   ],
 
-  "mx_version": "6.53.2",
+  "mx_version": "7.0.3",
 
   "COMMENT.jdks": "When adding or removing JDKs keep in sync with JDKs in ci/common.jsonnet",
   "jdks": {
@@ -60,6 +60,7 @@
   "pip": {
     "ninja_syntax": "==1.7.2",
     "lazy-object-proxy": "==1.6.0",
-    "pylint": "==2.4.4"
+    "pylint": "==2.4.4",
+    "black": "==23.11.0"
   }
 }

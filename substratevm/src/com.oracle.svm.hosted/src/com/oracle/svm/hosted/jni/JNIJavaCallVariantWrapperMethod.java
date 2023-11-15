@@ -27,6 +27,24 @@ package com.oracle.svm.hosted.jni;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.word.LocationIdentity;
+
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
+import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
+import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
+import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
+import com.oracle.svm.core.graal.nodes.ReadCallerStackPointerNode;
+import com.oracle.svm.core.graal.nodes.VaListInitializationNode;
+import com.oracle.svm.core.graal.nodes.VaListNextArgNode;
+import com.oracle.svm.core.jni.CallVariant;
+import com.oracle.svm.core.jni.JNIJavaCallVariantWrapperHolder;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.code.EntryPointCallStubMethod;
+import com.oracle.svm.hosted.code.SimpleSignature;
+
 import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
@@ -49,27 +67,6 @@ import jdk.graal.compiler.nodes.calc.FloatConvertNode;
 import jdk.graal.compiler.nodes.calc.ReinterpretNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.word.WordTypes;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.word.LocationIdentity;
-
-import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
-import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
-import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
-import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
-import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
-import com.oracle.svm.core.graal.nodes.ReadCallerStackPointerNode;
-import com.oracle.svm.core.graal.nodes.VaListInitializationNode;
-import com.oracle.svm.core.graal.nodes.VaListNextArgNode;
-import com.oracle.svm.core.jni.CallVariant;
-import com.oracle.svm.core.jni.JNIJavaCallVariantWrapperHolder;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.code.EntryPointCallStubMethod;
-import com.oracle.svm.hosted.code.SimpleSignature;
-import com.oracle.svm.hosted.meta.HostedMetaAccess;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -141,15 +138,10 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        UniverseMetaAccess metaAccess = (UniverseMetaAccess) providers.getMetaAccess();
-        JNIGraphKit kit = new JNIGraphKit(debug, providers, method, purpose);
+        AnalysisMetaAccess aMetaAccess = (AnalysisMetaAccess) providers.getMetaAccess();
+        JNIGraphKit kit = new JNIGraphKit(debug, providers, method);
 
-        AnalysisMetaAccess aMetaAccess = (AnalysisMetaAccess) ((metaAccess instanceof AnalysisMetaAccess) ? metaAccess : metaAccess.getWrapped());
         Signature invokeSignature = aMetaAccess.getUniverse().lookup(callWrapperSignature, getDeclaringClass());
-        if (metaAccess instanceof HostedMetaAccess) {
-            // signature might not exist in the hosted universe because it does not match any method
-            invokeSignature = new WrappedSignature(metaAccess.getUniverse(), invokeSignature, getDeclaringClass());
-        }
 
         JavaKind wordKind = providers.getWordTypes().getWordKind();
         int slotIndex = 0;

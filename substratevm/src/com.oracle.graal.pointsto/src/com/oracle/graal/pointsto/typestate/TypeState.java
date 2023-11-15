@@ -122,17 +122,6 @@ public abstract class TypeState {
         return false;
     }
 
-    public boolean verifyDeclaredType(BigBang bb, AnalysisType declaredType) {
-        if (declaredType != null) {
-            for (AnalysisType e : types(bb)) {
-                if (!declaredType.isAssignableFrom(e)) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
     @Override
     public int hashCode() {
         return super.hashCode();
@@ -211,11 +200,6 @@ public abstract class TypeState {
     }
 
     public static TypeState forIntersection(PointsToAnalysis bb, TypeState s1, TypeState s2) {
-        /*
-         * All filtered types (s1) must be marked as instantiated to ensures that the filter state
-         * (s2) has been updated before a type appears in the input, otherwise types can be missed.
-         */
-        assert !bb.extendedAsserts() || checkTypes(bb, s1);
         if (s1.isEmpty()) {
             return s1;
         } else if (s1.isNull()) {
@@ -236,11 +220,6 @@ public abstract class TypeState {
     }
 
     public static TypeState forSubtraction(PointsToAnalysis bb, TypeState s1, TypeState s2) {
-        /*
-         * All filtered types (s1) must be marked as instantiated to ensures that the filter state
-         * (s2) has been updated before a type appears in the input, otherwise types can be missed.
-         */
-        assert !bb.extendedAsserts() || checkTypes(bb, s1);
         if (s1.isEmpty()) {
             return s1;
         } else if (s1.isNull()) {
@@ -259,17 +238,6 @@ public abstract class TypeState {
             return bb.analysisPolicy().doSubtraction(bb, (MultiTypeState) s1, (MultiTypeState) s2);
         }
     }
-
-    private static boolean checkTypes(BigBang bb, TypeState state) {
-        for (AnalysisType type : state.types(bb)) {
-            if (!type.isInstantiated()) {
-                System.out.println("Processing a type not yet marked as instantiated: " + type.getName());
-                return false;
-            }
-        }
-        return true;
-    }
-
 }
 
 final class EmptyTypeState extends TypeState {

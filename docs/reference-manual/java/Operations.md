@@ -25,7 +25,7 @@ It can be disabled with `-XX:-UseJVMCINativeLibrary`.
 
 The first thing to be sure of when measuring performance is to ensure the JVM is using the Oracle GraalVM compiler.
 In the GraalVM binary, the JVM is configured to use the Graal compiler as the top tier compiler by default.
-You can confirm this by adding `-Dgraal.ShowConfiguration=info` to the command line.
+You can confirm this by adding `-Djdk.graal.ShowConfiguration=info` to the command line.
 It will produce a line of output similar to the one below when the compiler is initialized:
 
 ```shell
@@ -101,7 +101,7 @@ In this example, there is likely an error in the code produced by the Graal comp
 When filing an issue on [GitHub](https://github.com/oracle/graal/issues) for such a crash, you should first attempt to reproduce the crash with extra diagnostics enabled for the compilation of the problematic method.
 In this example, you would add the following to your command line:
 ```shell
--Dgraal.MethodFilter=NodeLIRBuilder.matchComplexExpressions, -Dgraal.Dump=:2
+-Djdk.graal.MethodFilter=NodeLIRBuilder.matchComplexExpressions, -Djdk.graal.Dump=:2
 ```
 
 These options are described in more detail [here](https://github.com/oracle/graal/blob/master/compiler/docs/Debugging.md).
@@ -113,7 +113,7 @@ Quite often, the crash location does not exist directly in the problematic metho
 In such a case, simply filtering for the problematic method might not capture an erroneous compilation causing a crash.
 
 To improve the likelihood of capturing an erroneous compilation, you need to broaden the `MethodFilter` value.
-To guide this, add `-Dgraal.PrintCompilation=true` when trying to reproduce the crash so you can see what was compiled just before the crash.
+To guide this, add `-Djdk.graal.PrintCompilation=true` when trying to reproduce the crash so you can see what was compiled just before the crash.
 
 The following shows sample output from the console:
 ```shell
@@ -133,13 +133,13 @@ HotSpotCompilation-1221        Ljdk.graal.compiler/hotspot/amd64/AMD64HotSpotLIR
 # Failed to write core dump. Core dumps have been disabled. To enable core dumping, try "ulimit -c unlimited" before starting Java again
 ```
 Here we see that the crash happened in a different method than the first crash.
-As such, we expand the filter argument to be `-Dgraal.MethodFilter=NodeLIRBuilder.matchComplexExpressions,AMD64HotSpotLIRGenerator.getResult` and run again.
+As such, we expand the filter argument to be `-Djdk.graal.MethodFilter=NodeLIRBuilder.matchComplexExpressions,AMD64HotSpotLIRGenerator.getResult` and run again.
 
 When the VM crashes in this way, it does not execute the shutdown code that archives the Graal compiler diagnostic output or delete the directory it was written to.
 This must be done manually after the crash.
 
 By default, the directory is `$PWD/graal-dumps/<timestamp>`; for example, `./graal-dumps/1499938817387`.
-However, you can set the directory with `-Dgraal.DumpPath=<path>`.
+However, you can set the directory with `-Djdk.graal.DumpPath=<path>`.
 
 A message, such as the following, is printed to the console when this directory is first used by the compiler:
 ```shell

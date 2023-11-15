@@ -202,8 +202,13 @@ public class GraalHotSpotVMConfigAccess {
         }
     }
 
+    /**
+     * Name of system property that can be used to change behavior of reporting config errors.
+     */
+    private static final String JVMCI_CONFIG_CHECK_PROP_NAME = "debug.jdk.graal.jvmciConfigCheck";
+
     static void reportError(String rawErrorMessage) {
-        String value = System.getenv("JVMCI_CONFIG_CHECK");
+        String value = getSavedProperty(JVMCI_CONFIG_CHECK_PROP_NAME);
         if (!JVMCI && value == null) {
             // We cannot control when VM config updates are made in non-JVMCI
             // JDKs so disable this check by default.
@@ -217,10 +222,10 @@ public class GraalHotSpotVMConfigAccess {
         String javaHome = getSavedProperty("java.home");
         String vmName = getSavedProperty("java.vm.name");
         if (warn) {
-            message.format("%nSet the JVMCI_CONFIG_CHECK environment variable to \"ignore\" to suppress ");
+            message.format("%nSet the %s system property to \"ignore\" to suppress ", JVMCI_CONFIG_CHECK_PROP_NAME);
             message.format("this warning and continue execution.%n");
         } else {
-            message.format("%nSet the JVMCI_CONFIG_CHECK environment variable to \"ignore\" to suppress ");
+            message.format("%nSet the %s system property to \"ignore\" to suppress ", JVMCI_CONFIG_CHECK_PROP_NAME);
             message.format("this error or to \"warn\" to emit a warning and continue execution.%n");
         }
         message.format("Currently used Java home directory is %s.%n", javaHome);

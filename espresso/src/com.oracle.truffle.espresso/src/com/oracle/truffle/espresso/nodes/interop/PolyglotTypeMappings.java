@@ -27,18 +27,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.oracle.truffle.espresso.impl.ArrayKlass;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.options.OptionMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -46,6 +47,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.vm.VM;
 
 public class PolyglotTypeMappings {
 
@@ -142,14 +144,54 @@ public class PolyglotTypeMappings {
         } else {
             warn(current, meta.getContext());
         }
-        converters.put("byte[]", new PrimitiveArrayConverter(meta._byte_array));
-        converters.put("boolean[]", new PrimitiveArrayConverter(meta._boolean_array));
-        converters.put("char[]", new PrimitiveArrayConverter(meta._char_array));
-        converters.put("short[]", new PrimitiveArrayConverter(meta._short_array));
-        converters.put("int[]", new PrimitiveArrayConverter(meta._int_array));
-        converters.put("long[]", new PrimitiveArrayConverter(meta._long_array));
-        converters.put("float[]", new PrimitiveArrayConverter(meta._float_array));
-        converters.put("double[]", new PrimitiveArrayConverter(meta._double_array));
+
+        // primitive array types
+        converters.put("byte[]", new BuiltinArrayTypeConverter(meta._byte_array));
+        converters.put("boolean[]", new BuiltinArrayTypeConverter(meta._boolean_array));
+        converters.put("char[]", new BuiltinArrayTypeConverter(meta._char_array));
+        converters.put("short[]", new BuiltinArrayTypeConverter(meta._short_array));
+        converters.put("int[]", new BuiltinArrayTypeConverter(meta._int_array));
+        converters.put("long[]", new BuiltinArrayTypeConverter(meta._long_array));
+        converters.put("float[]", new BuiltinArrayTypeConverter(meta._float_array));
+        converters.put("double[]", new BuiltinArrayTypeConverter(meta._double_array));
+
+        // String array type
+        converters.put("java.lang.String[]", new BuiltinArrayTypeConverter(meta.java_lang_String_array));
+
+        // common java.* exception types where only exception message is expected to be transferred
+        converters.put("java.lang.ClassCastException", new BuiltinExceptionTypeConverter(meta.java_lang_ClassCastException));
+        converters.put("java.lang.IllegalArgumentException", new BuiltinExceptionTypeConverter(meta.java_lang_IllegalArgumentException));
+        converters.put("java.lang.ClassNotFoundException", new BuiltinExceptionTypeConverter(meta.java_lang_ClassNotFoundException));
+        converters.put("java.lang.IllegalStateException", new BuiltinExceptionTypeConverter(meta.java_lang_IllegalStateException));
+        converters.put("java.util.NoSuchElementException", new BuiltinExceptionTypeConverter(meta.java_util_NoSuchElementException));
+        converters.put("java.lang.NullPointerException", new BuiltinExceptionTypeConverter(meta.java_lang_NullPointerException));
+        converters.put("java.lang.NumberFormatException", new BuiltinExceptionTypeConverter(meta.java_lang_NumberFormatException));
+        converters.put("java.lang.UnsupportedOperationException", new BuiltinExceptionTypeConverter(meta.java_lang_UnsupportedOperationException));
+        converters.put("java.lang.NoSuchMethodException", new BuiltinExceptionTypeConverter(meta.java_lang_NoSuchMethodException));
+        converters.put("java.lang.NoSuchFieldException", new BuiltinExceptionTypeConverter(meta.java_lang_NoSuchFieldException));
+        converters.put("java.lang.LinkageError", new BuiltinExceptionTypeConverter(meta.java_lang_LinkageError));
+        converters.put("java.lang.ArithmeticException", new BuiltinExceptionTypeConverter(meta.java_lang_ArithmeticException));
+        converters.put("java.lang.SecurityException", new BuiltinExceptionTypeConverter(meta.java_lang_SecurityException));
+        converters.put("java.lang.CloneNotSupportedException", new BuiltinExceptionTypeConverter(meta.java_lang_CloneNotSupportedException));
+        converters.put("java.lang.InstantiationError", new BuiltinExceptionTypeConverter(meta.java_lang_InstantiationError));
+        converters.put("java.lang.InstantiationException", new BuiltinExceptionTypeConverter(meta.java_lang_InstantiationException));
+        converters.put("java.lang.ExceptionInInitializerError", new BuiltinExceptionTypeConverter(meta.java_lang_ExceptionInInitializerError));
+        converters.put("java.lang.StringIndexOutOfBoundsException", new BuiltinExceptionTypeConverter(meta.java_lang_StringIndexOutOfBoundsException));
+        converters.put("java.lang.ArrayIndexOutOfBoundsException", new BuiltinExceptionTypeConverter(meta.java_lang_ArrayIndexOutOfBoundsException));
+        converters.put("java.lang.IndexOutOfBoundsException", new BuiltinExceptionTypeConverter(meta.java_lang_IndexOutOfBoundsException));
+        converters.put("java.lang.ArrayStoreException", new BuiltinExceptionTypeConverter(meta.java_lang_ArrayStoreException));
+        converters.put("java.lang.UnsatisfiedLinkError", new BuiltinExceptionTypeConverter(meta.java_lang_UnsatisfiedLinkError));
+        converters.put("java.lang.ClassCircularityError", new BuiltinExceptionTypeConverter(meta.java_lang_ClassCircularityError));
+        converters.put("java.lang.ClassFormatError", new BuiltinExceptionTypeConverter(meta.java_lang_ClassFormatError));
+        converters.put("java.lang.VerifyError", new BuiltinExceptionTypeConverter(meta.java_lang_VerifyError));
+        converters.put("java.lang.InternalError", new BuiltinExceptionTypeConverter(meta.java_lang_InternalError));
+        converters.put("java.lang.AbstractMethodError", new BuiltinExceptionTypeConverter(meta.java_lang_AbstractMethodError));
+        converters.put("java.lang.OutOfMemoryError", new BuiltinExceptionTypeConverter(meta.java_lang_OutOfMemoryError));
+        converters.put("java.lang.StackOverflowError", new BuiltinExceptionTypeConverter(meta.java_lang_StackOverflowError));
+        converters.put("java.lang.InterruptedException", new BuiltinExceptionTypeConverter(meta.java_lang_InterruptedException));
+        converters.put("java.lang.NoClassDefFoundError", new BuiltinExceptionTypeConverter(meta.java_lang_NoClassDefFoundError));
+        converters.put("java.lang.IllegalMonitorStateException", new BuiltinExceptionTypeConverter(meta.java_lang_IllegalMonitorStateException));
+        converters.put("java.lang.NegativeArraySizeException", new BuiltinExceptionTypeConverter(meta.java_lang_NegativeArraySizeException));
         internalTypeConverterFunctions = EconomicMap.create(converters);
     }
 
@@ -272,10 +314,10 @@ public class PolyglotTypeMappings {
     }
 
     public interface InternalTypeConverter {
-        StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso);
+        StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) throws UnsupportedTypeException;
     }
 
-    public class TypeConverterImpl implements TypeConverter {
+    public static class TypeConverterImpl implements TypeConverter {
         private final Object receiver;
         private final DirectCallNode callNode;
 
@@ -289,10 +331,10 @@ public class PolyglotTypeMappings {
         }
     }
 
-    public final class OptionalTypeConverter implements InternalTypeConverter {
+    public static final class OptionalTypeConverter implements InternalTypeConverter {
 
         @Override
-        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) {
+        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) throws UnsupportedTypeException {
             try {
                 Object result = interop.invokeMember(value, "orElse", StaticObject.NULL);
                 if (interop.isNull(result)) {
@@ -303,16 +345,15 @@ public class PolyglotTypeMappings {
                     return guestOptional;
                 }
             } catch (InteropException e) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw EspressoError.shouldNotReachHere();
+                throw UnsupportedTypeException.create(new Object[]{value}, "Could not cast foreign object to Optional", e);
             }
         }
     }
 
-    public final class BigDecimalTypeConverter implements InternalTypeConverter {
+    public static final class BigDecimalTypeConverter implements InternalTypeConverter {
 
         @Override
-        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) {
+        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) throws UnsupportedTypeException {
             try {
                 // state required to reconstruct in guest
                 int scale = interop.asInt(interop.invokeMember(value, "scale"));
@@ -330,31 +371,89 @@ public class PolyglotTypeMappings {
                 meta.java_math_BigDecimal_init.invokeDirect(guestBigDecimal, guestBigInteger, scale, guestMathContext);
                 return guestBigDecimal;
             } catch (InteropException e) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw EspressoError.shouldNotReachHere();
+                throw UnsupportedTypeException.create(new Object[]{value}, "Could not cast foreign object to BigDecimal", e);
             }
         }
 
         @TruffleBoundary
-        private StaticObject toByteArray(BigInteger bigInteger, Meta meta) {
+        private static StaticObject toByteArray(BigInteger bigInteger, Meta meta) {
             return StaticObject.wrap(bigInteger.toByteArray(), meta);
         }
     }
 
-    public final class PrimitiveArrayConverter implements InternalTypeConverter {
+    public static final class BuiltinArrayTypeConverter implements InternalTypeConverter {
 
         private final ArrayKlass klass;
 
-        public PrimitiveArrayConverter(ArrayKlass klass) {
+        public BuiltinArrayTypeConverter(ArrayKlass klass) {
             this.klass = klass;
         }
 
         @Override
-        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) {
+        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) throws UnsupportedTypeException {
             if (!interop.hasArrayElements(value)) {
-                throw new ClassCastException();
+                boundaryThrow(value);
             }
             return StaticObject.createForeign(toEspresso.getLanguage(), klass, value, interop);
+        }
+
+        @TruffleBoundary
+        private void boundaryThrow(Object value) throws UnsupportedTypeException {
+            throw UnsupportedTypeException.create(new Object[]{value},
+                            EspressoError.format("Could not cast foreign object to %s: %s", klass.getNameAsString(), "foreign object has no array elements"));
+        }
+    }
+
+    public static final class BuiltinExceptionTypeConverter implements InternalTypeConverter {
+
+        private final ObjectKlass exceptionKlass;
+        private final Method messageConstructor;
+
+        public BuiltinExceptionTypeConverter(ObjectKlass klass) {
+            this.exceptionKlass = klass;
+            this.messageConstructor = klass.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void_String, Klass.LookupMode.INSTANCE_ONLY);
+        }
+
+        @Override
+        public StaticObject convertInternal(InteropLibrary interop, Object value, Meta meta, ToReference.DynamicToReference toEspresso) throws UnsupportedTypeException {
+            if (!interop.isException(value)) {
+                throw UnsupportedTypeException.create(new Object[]{value},
+                                EspressoError.format("Could not cast foreign object to %s: %s", exceptionKlass.getNameAsString(), "foreign object is not an exception"));
+            }
+            EspressoContext context = meta.getContext();
+            // an espresso foreign exception type value will be passed from Interop invocations
+            // whereas the raw foreign exception object is passed from ToEspressoNode
+            StaticObject foreignException;
+            if (value instanceof StaticObject) {
+                foreignException = (StaticObject) value;
+            } else {
+                foreignException = StaticObject.createForeignException(context, value, interop);
+            }
+
+            // create the correctly typed guest exception that
+            // will store the foreign exception in backtrace
+            StaticObject result = context.getAllocator().createNew(exceptionKlass);
+            StaticObject guestMessage;
+            try {
+                String message = interop.asString(interop.getExceptionMessage(foreignException));
+                guestMessage = meta.toGuestString(message);
+            } catch (UnsupportedMessageException e) {
+                guestMessage = StaticObject.NULL;
+            }
+            messageConstructor.invokeDirect(result, guestMessage);
+            /*
+             * The back trace of the guest exception wrapper must be set to the foreign exception
+             * object, then the back trace is retained in the guest code and the stackTrace field
+             * set to null to trigger backtrace lookups
+             */
+            meta.java_lang_Throwable_backtrace.setObject(result, meta.java_lang_Throwable_backtrace.getObject(foreignException));
+            if (meta.getJavaVersion().java9OrLater()) {
+                meta.java_lang_Throwable_depth.setInt(result, meta.java_lang_Throwable_depth.getInt(foreignException));
+            }
+            meta.java_lang_Throwable_stackTrace.setObject(result, StaticObject.NULL);
+            meta.HIDDEN_FRAMES.setHiddenObject(result, VM.StackTrace.FOREIGN_MARKER_STACK_TRACE);
+
+            return result;
         }
     }
 }

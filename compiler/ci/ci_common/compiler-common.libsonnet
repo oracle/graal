@@ -69,15 +69,13 @@
     benchmark_cmd:: bench_common.hwlocIfNuma(self.should_use_hwloc, self.plain_benchmark_cmd, node=self.default_numa_node),
     min_heap_size:: if std.objectHasAll(self.environment, 'XMS') then ["-Xms${XMS}"] else [],
     max_heap_size:: if std.objectHasAll(self.environment, 'XMX') then ["-Xmx${XMX}"] else [],
-    _WarnMissingIntrinsic:: true, # won't be needed after GR-34642
     extra_vm_args::
       ["--profiler=${MX_PROFILER}",
       "--jvm=${JVM}",
       "--jvm-config=${JVM_CONFIG}",
       "-XX:+PrintConcurrentLocks",
-      "-Dgraal.CompilationFailureAction=Diagnose",
+      "-Djdk.graal.CompilationFailureAction=Diagnose",
       "-XX:+CITime"] +
-      (if self._WarnMissingIntrinsic then ["-Dgraal.WarnMissingIntrinsic=true"] else []) +
       self.min_heap_size +
       self.max_heap_size,
     should_mx_build:: true,
