@@ -26,14 +26,12 @@ package jdk.graal.compiler.nodes.extended;
 
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.spi.NodeWithIdentity;
-import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import jdk.vm.ci.meta.Value;
 
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
@@ -62,15 +60,6 @@ public final class OpaqueValueNode extends OpaqueNode implements NodeWithIdentit
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        Value val = gen.operand(getValue());
-        if (LIRValueUtil.isVariable(val)) {
-            gen.setResult(this, val);
-        } else {
-            /*
-             * Keep "hiding" the value by moving it to a register. This avoids, for example,
-             * "unexpected" constants popping up during LIR generation.
-             */
-            gen.setResult(this, gen.getLIRGeneratorTool().emitMove(val));
-        }
+        gen.setResult(this, gen.operand(getValue()));
     }
 }
