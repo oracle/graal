@@ -37,4 +37,11 @@ public interface PlatformConfigurationProvider {
      * in a byte array.
      */
     boolean canVirtualizeLargeByteArrayAccess();
+
+    /**
+     * Returns whether the underlying VM enforces strict monitorenter order.
+     */
+    default boolean requiresStrictLockOrder() {
+        return false;
+    }
 }
