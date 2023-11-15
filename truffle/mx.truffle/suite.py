@@ -1833,8 +1833,9 @@ suite = {
           "TRUFFLE_API",
           "TRUFFLE_TCK",
           "TRUFFLE_SL",
-          "TRUFFLE_TEST",
+          "TRUFFLE_TCK_TESTS",
       ],
+      "unittestConfig": "truffle",
       "maven" : False
     },
 
@@ -1921,8 +1922,6 @@ suite = {
          "TRUFFLE_SL",
          "TRUFFLE_TCK_COMMON",
          "TRUFFLE_TCK_TESTS",
-         "TRUFFLE_NFI",
-         "TRUFFLE_NFI_LIBFFI",
          "TRUFFLE_DSL_PROCESSOR",
          "TRUFFLE_TCK",
          "TRUFFLE_TCK_INSTRUMENTATION",
@@ -1944,6 +1943,7 @@ suite = {
        "distDependencies": [
         "TRUFFLE_TEST",
         "TRUFFLE_NFI",
+        "TRUFFLE_NFI_LIBFFI",
         "TRUFFLE_TEST_NATIVE",
       ],
       "unittestConfig": "truffle-nfi",

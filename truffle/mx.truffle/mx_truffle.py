@@ -193,10 +193,6 @@ class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
 
     def apply(self, config):
         vmArgs, mainClass, mainClassArgs = config
-        # Disable DefaultRuntime warning
-        vmArgs = vmArgs + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
-        # Assert for enter/return parity of ProbeNode
-        vmArgs = vmArgs + ['-Dpolyglot.engine.AssertProbes=true', '-Dpolyglot.engine.AllowExperimentalOptions=true']
 
         # This is required to access jdk.internal.module.Modules which
         # in turn allows us to dynamically open fields/methods to reflection.

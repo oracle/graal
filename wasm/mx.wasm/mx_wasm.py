@@ -152,6 +152,10 @@ class WasmUnittestConfig(mx_unittest.MxUnittestConfig):
     def apply(self, config):
         (vmArgs, mainClass, mainClassArgs) = config
         vmArgs = vmArgs + ['-Dpolyglot.engine.AllowExperimentalOptions=true']
+        # Disable DefaultRuntime warning
+        vmArgs = vmArgs + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
+        # Assert for enter/return parity of ProbeNode
+        vmArgs = vmArgs + ['-Dpolyglot.engine.AssertProbes=true', '-Dpolyglot.engine.AllowExperimentalOptions=true']
         # limit heap memory to 2G, unless otherwise specified
         if not any(a.startswith('-Xm') for a in vmArgs):
             vmArgs += ['-Xmx2g']
