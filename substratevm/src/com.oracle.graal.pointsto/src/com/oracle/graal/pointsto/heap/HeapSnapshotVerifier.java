@@ -25,6 +25,7 @@
 package com.oracle.graal.pointsto.heap;
 
 import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
+import static com.oracle.graal.pointsto.ObjectScanner.constantAsObject;
 
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -46,6 +47,7 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 public class HeapSnapshotVerifier {
 
@@ -188,6 +190,8 @@ public class HeapSnapshotVerifier {
                 Consumer<ScanReason> onAnalysisModified = analysisModified(reason, format, field, unwrappedSnapshot, fieldValue);
                 result = scanner.patchStaticField(typeData, field, fieldValue, reason, onAnalysisModified).ensureDone();
                 heapPatched = true;
+            } else if (patchPrimitiveArrayValue(fieldSnapshot, fieldValue)) {
+                heapPatched = true;
             }
             scanner.ensureReaderInstalled(result);
         }
@@ -199,6 +203,8 @@ public class HeapSnapshotVerifier {
                 String format = "Value mismatch for instance field %s of %s %n snapshot:  %s %n new value: %s %n";
                 Consumer<ScanReason> onAnalysisModified = analysisModified(reason, format, field, asString(receiver), unwrappedSnapshot, fieldValue);
                 result = scanner.patchInstanceField(receiverObject, field, fieldValue, reason, onAnalysisModified).ensureDone();
+                heapPatched = true;
+            } else if (patchPrimitiveArrayValue(fieldSnapshot, fieldValue)) {
                 heapPatched = true;
             }
             scanner.ensureReaderInstalled(result);
@@ -247,8 +253,46 @@ public class HeapSnapshotVerifier {
                 Consumer<ScanReason> onAnalysisModified = analysisModified(reason, format, index, asString(array), elementSnapshot, elementValue);
                 result = scanner.patchArrayElement(arrayObject, index, elementValue, reason, onAnalysisModified).ensureDone();
                 heapPatched = true;
+            } else if (patchPrimitiveArrayValue(elementSnapshot, elementValue)) {
+                heapPatched = true;
             }
             scanner.ensureReaderInstalled(result);
+        }
+
+        /**
+         * {@link ImageHeapPrimitiveArray} clones the original primitive array and keeps a reference
+         * to the original hosted object. The original hosted array can change value, so we use a
+         * deep equals to check element equality. This method assumes and checks that the originally
+         * shadowed object did not change since if that happens then the entire constant should have
+         * been patched instead.
+         */
+        private boolean patchPrimitiveArrayValue(JavaConstant snapshot, JavaConstant newValue) {
+            if (snapshot.isNull()) {
+                AnalysisError.guarantee(newValue.isNull());
+                return false;
+            }
+            if (isPrimitiveArrayConstant(snapshot)) {
+                AnalysisError.guarantee(isPrimitiveArrayConstant(newValue));
+                Object snapshotArray = ((ImageHeapPrimitiveArray) snapshot).getArray();
+                Object newValueArray = constantAsObject(bb, newValue);
+                if (!Objects.deepEquals(snapshotArray, newValueArray)) {
+                    /* Guarantee that the shadowed constant and the hosted constant are the same. */
+                    AnalysisError.guarantee(bb.getConstantReflectionProvider().constantEquals(snapshot, newValue));
+                    Integer length = bb.getConstantReflectionProvider().readArrayLength(newValue);
+                    /* Since the shadowed constant didn't change, the length should match. */
+                    System.arraycopy(newValueArray, 0, snapshotArray, 0, length);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private boolean isPrimitiveArrayConstant(JavaConstant snapshot) {
+            if (snapshot.getJavaKind() == JavaKind.Object) {
+                AnalysisType type = bb.getMetaAccess().lookupJavaType(snapshot);
+                return type.isArray() && type.getComponentType().getJavaKind() != JavaKind.Object;
+            }
+            return false;
         }
 
         @SuppressWarnings({"unchecked", "rawtypes"})
