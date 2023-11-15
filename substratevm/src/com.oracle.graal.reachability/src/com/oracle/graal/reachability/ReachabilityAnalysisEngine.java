@@ -25,6 +25,7 @@
 package com.oracle.graal.reachability;
 
 import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.Deque;
@@ -147,6 +148,13 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
             }
         }
         throw AnalysisError.userError("Field not found: " + fieldName);
+    }
+
+    @Override
+    public AnalysisType addRootField(Field field) {
+        AnalysisField analysisField = getMetaAccess().lookupJavaField(field);
+        analysisField.registerAsAccessed("root field");
+        return analysisField.getType();
     }
 
     @Override

@@ -25,6 +25,7 @@
 package com.oracle.graal.pointsto;
 
 import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -57,6 +58,8 @@ public interface ReachabilityAnalysis {
      * Marks given field as accessed.
      */
     AnalysisType addRootField(Class<?> clazz, String fieldName);
+
+    AnalysisType addRootField(Field field);
 
     /**
      * Registers the method as root. Must be an {@link MultiMethod#ORIGINAL_METHOD}.

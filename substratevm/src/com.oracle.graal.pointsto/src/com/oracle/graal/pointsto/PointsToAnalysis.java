@@ -477,12 +477,27 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         for (ResolvedJavaField javaField : type.getInstanceFields(true)) {
             AnalysisField field = (AnalysisField) javaField;
             if (field.getName().equals(fieldName)) {
-                field.registerAsAccessed("root field");
-                processRootField(type, field);
-                return field.getType();
+                return addRootField(type, field);
             }
         }
         throw shouldNotReachHere("field not found: " + fieldName);
+    }
+
+    @Override
+    public AnalysisType addRootField(Field field) {
+        AnalysisField analysisField = getMetaAccess().lookupJavaField(field);
+        if (analysisField.isStatic()) {
+            return addRootStaticField(analysisField);
+        } else {
+            AnalysisType analysisType = getMetaAccess().lookupJavaType(field.getDeclaringClass());
+            return addRootField(analysisType, analysisField);
+        }
+    }
+
+    private AnalysisType addRootField(AnalysisType type, AnalysisField field) {
+        field.registerAsAccessed("root field");
+        processRootField(type, field);
+        return field.getType();
     }
 
     private void processRootField(AnalysisType type, AnalysisField field) {
@@ -509,21 +524,25 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         try {
             reflectField = clazz.getField(fieldName);
             AnalysisField field = metaAccess.lookupJavaField(reflectField);
-            field.registerAsAccessed("static root field");
-            JavaKind storageKind = field.getStorageKind();
-            if (isSupportedJavaKind(storageKind)) {
-                if (storageKind.isObject()) {
-                    TypeFlow<?> fieldFlow = field.getType().getTypeFlow(this, true);
-                    fieldFlow.addUse(this, field.getStaticFieldFlow());
-                } else {
-                    field.getStaticFieldFlow().addState(this, TypeState.anyPrimitiveState());
-                }
-            }
-            return field.getType();
+            return addRootStaticField(field);
 
         } catch (NoSuchFieldException e) {
             throw shouldNotReachHere("field not found: " + fieldName);
         }
+    }
+
+    private AnalysisType addRootStaticField(AnalysisField field) {
+        field.registerAsAccessed("static root field");
+        JavaKind storageKind = field.getStorageKind();
+        if (isSupportedJavaKind(storageKind)) {
+            if (storageKind.isObject()) {
+                TypeFlow<?> fieldFlow = field.getType().getTypeFlow(this, true);
+                fieldFlow.addUse(this, field.getStaticFieldFlow());
+            } else {
+                field.getStaticFieldFlow().addState(this, TypeState.anyPrimitiveState());
+            }
+        }
+        return field.getType();
     }
 
     @Override

@@ -101,7 +101,7 @@ public abstract class ClassInclusionPolicy {
      * Includes the given field in the image.
      */
     public void includeField(Field field) {
-        bb.postTask(debug -> bb.getMetaAccess().lookupJavaField(field).registerAsAccessed(reason));
+        bb.postTask(debug -> bb.addRootField(field));
     }
 
     /**
