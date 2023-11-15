@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.test;
+package com.oracle.svm.graal.hotspot.libgraal;
 
-import static jdk.graal.compiler.hotspot.HotSpotGraalOptionValues.GRAAL_OPTION_PROPERTY_PREFIX;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.PrintStream;
-
-import org.junit.Assert;
-import org.junit.Test;
-
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.options.OptionsParser;
-
-public class HotSpotGraalOptionValuesTest extends HotSpotGraalCompilerTest {
-
-    @Test
-    public void testPrintHelp() throws IOException {
-        OptionValues options = getInitialOptions();
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            PrintStream out = new PrintStream(baos);
-            options.printHelp(OptionsParser.getOptionsLoader(), out, GRAAL_OPTION_PROPERTY_PREFIX);
-            Assert.assertNotEquals(baos.size(), 0);
-        }
+/**
+ * Libgraal-specific subclass so that we can distinguish between Native Image and libgraal runtime
+ * options.
+ */
+public class LibGraalRuntimeOptionKey<T> extends RuntimeOptionKey<T> {
+    LibGraalRuntimeOptionKey(T defaultValue, RuntimeOptionKeyFlag... flags) {
+        super(defaultValue, flags);
     }
 }

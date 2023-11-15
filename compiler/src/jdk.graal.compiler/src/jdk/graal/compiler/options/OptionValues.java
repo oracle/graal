@@ -206,34 +206,48 @@ public class OptionValues {
             }
         }
         for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
+            String key = e.getKey();
             OptionDescriptor desc = e.getValue();
-            Object value = desc.getOptionKey().getValue(this);
-            if (value instanceof String) {
-                value = '"' + String.valueOf(value) + '"';
-            }
-            String name = namePrefix + e.getKey();
-            String assign = containsKey(desc.getOptionKey()) ? ":=" : "=";
-            String typeName = desc.getOptionKey() instanceof EnumOptionKey ? "String" : desc.getOptionValueType().getSimpleName();
-            String linePrefix = String.format("%s %s %s ", name, assign, value);
-            int typeStartPos = PROPERTY_LINE_WIDTH - typeName.length();
-            int linePad = typeStartPos - linePrefix.length();
-            if (linePad > 0) {
-                out.printf("%s%-" + linePad + "s[%s]%n", linePrefix, "", typeName);
-            } else {
-                out.printf("%s[%s]%n", linePrefix, typeName);
-            }
-
-            List<String> helpLines;
-            String help = desc.getHelp();
-            if (help.length() != 0) {
-                helpLines = wrap(help, PROPERTY_LINE_WIDTH - PROPERTY_HELP_INDENT);
-                helpLines.addAll(desc.getExtraHelp());
-            } else {
-                helpLines = desc.getExtraHelp();
-            }
-            for (String line : helpLines) {
-                out.printf("%" + PROPERTY_HELP_INDENT + "s%s%n", "", line);
+            if (!excludeOptionFromHelp(key, desc)) {
+                printHelp(out, namePrefix, key, desc);
             }
         }
+    }
+
+    private void printHelp(PrintStream out, String namePrefix, String key, OptionDescriptor desc) {
+        Object value = desc.getOptionKey().getValue(this);
+        if (value instanceof String) {
+            value = '"' + String.valueOf(value) + '"';
+        }
+        String name = namePrefix + key;
+        String assign = containsKey(desc.getOptionKey()) ? ":=" : "=";
+        String typeName = desc.getOptionKey() instanceof EnumOptionKey ? "String" : desc.getOptionValueType().getSimpleName();
+        String linePrefix = String.format("%s %s %s ", name, assign, value);
+        int typeStartPos = PROPERTY_LINE_WIDTH - typeName.length();
+        int linePad = typeStartPos - linePrefix.length();
+        if (linePad > 0) {
+            out.printf("%s%-" + linePad + "s[%s]%n", linePrefix, "", typeName);
+        } else {
+            out.printf("%s[%s]%n", linePrefix, typeName);
+        }
+
+        List<String> helpLines;
+        String help = desc.getHelp();
+        if (help.length() != 0) {
+            helpLines = wrap(help, PROPERTY_LINE_WIDTH - PROPERTY_HELP_INDENT);
+            helpLines.addAll(desc.getExtraHelp());
+        } else {
+            helpLines = desc.getExtraHelp();
+        }
+        for (String line : helpLines) {
+            out.printf("%" + PROPERTY_HELP_INDENT + "s%s%n", "", line);
+        }
+    }
+
+    private static boolean excludeOptionFromHelp(String optionKey, OptionDescriptor desc) {
+        /* Filter out debug, Truffle, and Native Image options. */
+        return desc.getOptionType() == OptionType.Debug ||
+                        optionKey.startsWith("compiler.") ||
+                        optionKey.startsWith("internal.");
     }
 }
