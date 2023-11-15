@@ -154,15 +154,7 @@ public class HeapSnapshotVerifier {
 
         @Override
         public boolean forNullFieldValue(JavaConstant receiver, AnalysisField field, ScanReason reason) {
-            boolean result = false;
-            ObjectScanningObserver scanningObserver = scanner.getScanningObserver();
-            if (scanningObserver != null) {
-                result = scanningObserver.forNullFieldValue(receiver, field, reason);
-                if (result) {
-                    analysisModified = true;
-                }
-            }
-            return result;
+            return verifyFieldValue(receiver, field, JavaConstant.NULL_POINTER, reason);
         }
 
         @Override
@@ -227,16 +219,11 @@ public class HeapSnapshotVerifier {
         }
 
         @Override
-        public boolean forNullArrayElement(JavaConstant array, AnalysisType arrayType, int elementIndex, ScanReason reason) {
-            boolean result = false;
-            ObjectScanningObserver scanningObserver = scanner.getScanningObserver();
-            if (scanningObserver != null) {
-                result = scanningObserver.forNullArrayElement(array, arrayType, elementIndex, reason);
-                if (result) {
-                    analysisModified = true;
-                }
-            }
-            return result;
+        public boolean forNullArrayElement(JavaConstant array, AnalysisType arrayType, int index, ScanReason reason) {
+            ImageHeapObjectArray arrayObject = (ImageHeapObjectArray) getSnapshot(array, reason);
+            JavaConstant elementSnapshot = arrayObject.readElementValue(index);
+            verifyArrayElementValue(JavaConstant.NULL_POINTER, index, reason, array, arrayObject, elementSnapshot);
+            return false;
         }
 
         @Override

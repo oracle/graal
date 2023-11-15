@@ -712,10 +712,6 @@ public abstract class ImageHeapScanner {
         scanningObserver = null;
     }
 
-    public ObjectScanningObserver getScanningObserver() {
-        return scanningObserver;
-    }
-
     protected abstract Class<?> getClass(String className);
 
     protected AnalysisType lookupJavaType(String className) {
