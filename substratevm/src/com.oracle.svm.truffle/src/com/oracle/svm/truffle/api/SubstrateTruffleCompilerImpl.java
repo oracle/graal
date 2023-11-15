@@ -49,7 +49,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
 import com.oracle.svm.core.option.RuntimeOptionValues;
-import com.oracle.svm.graal.GraalSupport;
+import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
 import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.truffle.SubstrateTruffleCompilationIdentifier;
 import com.oracle.svm.truffle.TruffleSupport;
@@ -112,17 +112,17 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
 
     @Override
     public DebugContext createDebugContext(OptionValues options, CompilationIdentifier compilationId, TruffleCompilable callTarget, PrintStream logStream) {
-        return GraalSupport.get().openDebugContext(options, compilationId, callTarget, logStream);
+        return TruffleRuntimeCompilationSupport.get().openDebugContext(options, compilationId, callTarget, logStream);
     }
 
     @Override
     protected DiagnosticsOutputDirectory getDebugOutputDirectory() {
-        return GraalSupport.get().getDebugOutputDirectory();
+        return TruffleRuntimeCompilationSupport.get().getDebugOutputDirectory();
     }
 
     @Override
     protected Map<CompilationWrapper.ExceptionAction, Integer> getCompilationProblemsPerAction() {
-        return GraalSupport.get().getCompilationProblemsPerAction();
+        return TruffleRuntimeCompilationSupport.get().getCompilationProblemsPerAction();
     }
 
     @Override

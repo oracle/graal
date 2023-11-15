@@ -55,7 +55,7 @@ public class SubstrateGraalRuntime implements GraalRuntime, RuntimeProvider {
         if (clazz == RuntimeProvider.class) {
             return (T) this;
         } else if (clazz == SnippetReflectionProvider.class) {
-            return (T) GraalSupport.getRuntimeConfig().getSnippetReflection();
+            return (T) TruffleRuntimeCompilationSupport.getRuntimeConfig().getSnippetReflection();
         } else if (clazz == StackIntrospection.class) {
             return (T) SubstrateStackIntrospection.SINGLETON;
         }
@@ -64,13 +64,13 @@ public class SubstrateGraalRuntime implements GraalRuntime, RuntimeProvider {
 
     @Override
     public Backend getHostBackend() {
-        return GraalSupport.getRuntimeConfig().getBackendForNormalMethod();
+        return TruffleRuntimeCompilationSupport.getRuntimeConfig().getBackendForNormalMethod();
     }
 
     @Override
     public <T extends Architecture> Backend getBackend(Class<T> arch) {
-        assert arch.isInstance(GraalSupport.getRuntimeConfig().getBackendForNormalMethod().getTarget().arch);
-        return GraalSupport.getRuntimeConfig().getBackendForNormalMethod();
+        assert arch.isInstance(TruffleRuntimeCompilationSupport.getRuntimeConfig().getBackendForNormalMethod().getTarget().arch);
+        return TruffleRuntimeCompilationSupport.getRuntimeConfig().getBackendForNormalMethod();
     }
 
     @Override

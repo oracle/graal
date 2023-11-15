@@ -29,18 +29,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.api.runtime.GraalRuntime;
-import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
-import jdk.graal.compiler.debug.MetricKey;
-import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
-import jdk.graal.compiler.hotspot.HotSpotBackendFactory;
-import jdk.graal.compiler.hotspot.SnippetResolvedJavaMethod;
-import jdk.graal.compiler.hotspot.SnippetResolvedJavaType;
-import jdk.graal.compiler.nodes.FieldLocationIdentity;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.nativeimage.hosted.Feature.BeforeHeapLayoutAccess;
 
@@ -51,14 +39,13 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.common.meta.MultiMethod;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.graal.GraalSupport;
+import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
 import com.oracle.svm.graal.SubstrateGraalRuntime;
 import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
@@ -76,6 +63,18 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.api.runtime.GraalRuntime;
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.debug.MetricKey;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
+import jdk.graal.compiler.hotspot.HotSpotBackendFactory;
+import jdk.graal.compiler.hotspot.SnippetResolvedJavaMethod;
+import jdk.graal.compiler.hotspot.SnippetResolvedJavaType;
+import jdk.graal.compiler.nodes.FieldLocationIdentity;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
@@ -213,11 +212,10 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             throw new UnsupportedFeatureException(jvmciCleanerClass.getName() + " objects should not appear in the image: " + source);
         }
         String className = destClass.getName();
-        assert SubstrateUtil.isBuildingLibgraal() || !className.contains(".hotspot.") || className.contains(".svm.jtt.hotspot.") : "HotSpot object in image " + className;
+        assert !className.contains(".hotspot.") || className.contains(".svm.jtt.hotspot.") : "HotSpot object in image " + className;
         assert !className.contains(".graal.reachability") : "Analysis meta object in image " + className;
         assert !className.contains(".pointsto.meta.") : "Analysis meta object in image " + className;
         assert !className.contains(".hosted.meta.") : "Hosted meta object in image " + className;
-        assert !SubstrateUtil.isBuildingLibgraal() || !className.contains(".svm.hosted.snippets.") : "Hosted snippet object in image " + className;
 
         return dest;
     }
@@ -290,8 +288,8 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
                 sField = newField;
 
                 sField.setLinks(createType(aField.getType()), createType(aField.getDeclaringClass()));
-                GraalSupport.rescan(aUniverse, sField.getType());
-                GraalSupport.rescan(aUniverse, sField.getDeclaringClass());
+                TruffleRuntimeCompilationSupport.rescan(aUniverse, sField.getType());
+                TruffleRuntimeCompilationSupport.rescan(aUniverse, sField.getDeclaringClass());
             }
         }
         return sField;
@@ -338,10 +336,10 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             if (sType == null) {
                 sType = newType;
                 hub.setMetaType(sType);
-                GraalSupport.rescan(aUniverse, hub.getMetaType());
+                TruffleRuntimeCompilationSupport.rescan(aUniverse, hub.getMetaType());
 
                 sType.setRawAllInstanceFields(createAllInstanceFields(aType));
-                GraalSupport.rescan(aUniverse, sType.getRawAllInstanceFields());
+                TruffleRuntimeCompilationSupport.rescan(aUniverse, sType.getRawAllInstanceFields());
                 createType(aType.getSuperclass());
                 createType(aType.getComponentType());
                 for (AnalysisType aInterface : aType.getInterfaces()) {
