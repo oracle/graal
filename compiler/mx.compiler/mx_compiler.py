@@ -620,25 +620,27 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
         k: default_iterations for k, v in renaissance_suite.renaissanceIterations().items() if v > 0
     }
 
-    for name in renaissance_suite.benchmarkList(bmSuiteArgs):
-        iterations = renaissance_gate_iterations.get(name, -1)
-        with Task(prefix + 'Renaissance:' + name, tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
+    # Renaissance is missing the msvc redistributable on Windows [GR-50132]
+    if not mx.is_windows():
+        for name in renaissance_suite.benchmarkList(bmSuiteArgs):
+            iterations = renaissance_gate_iterations.get(name, -1)
+            with Task(prefix + 'Renaissance:' + name, tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
+                if t:
+                    _gate_renaissance(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + enable_assertions)
+
+        with mx_gate.Task('Renaissance benchmark daily workload', tasks, tags=['renaissance_daily'], report=task_report_component) as t:
             if t:
-                _gate_renaissance(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + enable_assertions)
+                for name in renaissance_suite.benchmarkList(bmSuiteArgs):
+                    iterations = int(renaissance_suite.renaissanceIterations().get(name, -1) * default_iterations_reduction)
+                    for _ in range(default_iterations):
+                        _gate_renaissance(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + enable_assertions)
 
-    with mx_gate.Task('Renaissance benchmark daily workload', tasks, tags=['renaissance_daily'], report=task_report_component) as t:
-        if t:
-            for name in renaissance_suite.benchmarkList(bmSuiteArgs):
-                iterations = int(renaissance_suite.renaissanceIterations().get(name, -1) * default_iterations_reduction)
-                for _ in range(default_iterations):
-                    _gate_renaissance(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + enable_assertions)
-
-    with mx_gate.Task('Renaissance benchmark weekly workload', tasks, tags=['renaissance_weekly'], report=task_report_component) as t:
-        if t:
-            for name in renaissance_suite.benchmarkList(bmSuiteArgs):
-                iterations = int(renaissance_suite.renaissanceIterations().get(name, -1) * default_iterations_reduction)
-                for _ in range(default_iterations * daily_weekly_jobs_ratio):
-                    _gate_renaissance(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + enable_assertions)
+        with mx_gate.Task('Renaissance benchmark weekly workload', tasks, tags=['renaissance_weekly'], report=task_report_component) as t:
+            if t:
+                for name in renaissance_suite.benchmarkList(bmSuiteArgs):
+                    iterations = int(renaissance_suite.renaissanceIterations().get(name, -1) * default_iterations_reduction)
+                    for _ in range(default_iterations * daily_weekly_jobs_ratio):
+                        _gate_renaissance(name, iterations, benchVmArgs + ['-Djdk.graal.TrackNodeSourcePosition=true'] + enable_assertions)
 
     # run benchmark with non default setup #
     ########################################
