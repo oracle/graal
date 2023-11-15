@@ -190,7 +190,7 @@ public class ObjectScanner {
                  * referenced elements are being scanned.
                  */
                 scanConstant(fieldValue, reason);
-            } else if (fieldValue.getJavaKind().isNumericInteger()) {
+            } else if (fieldValue.getJavaKind().isPrimitive()) {
                 scanningObserver.forPrimitiveFieldValue(receiver, field, fieldValue, reason);
             }
 
