@@ -878,100 +878,58 @@ final class TStringOps {
         return runCodePointIndexToByteIndexUTF16Valid(location, stubArray, stubOffset, length, index, isNative);
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static int runReadS0Managed(byte[] array, long byteOffset) {
         return uInt(TStringUnsafe.getByteManaged(array, byteOffset));
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static int runReadS0Native(long array, long byteOffset) {
         return uInt(TStringUnsafe.getByteNative(array, byteOffset));
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static int runReadS1Managed(byte[] array, long byteOffset) {
         return TStringUnsafe.getCharManaged(array, byteOffset);
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static int runReadS1Native(long array, long byteOffset) {
         return TStringUnsafe.getCharNative(array, byteOffset);
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static int runReadS2Managed(byte[] array, long byteOffset) {
         return TStringUnsafe.getIntManaged(array, byteOffset);
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static int runReadS2Native(long array, long byteOffset) {
         return TStringUnsafe.getIntNative(array, byteOffset);
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static long runReadS3Managed(byte[] array, long byteOffset) {
         return TStringUnsafe.getLongManaged(array, byteOffset);
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static long runReadS3Native(long array) {
         return TStringUnsafe.getLongNative(array);
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static void runWriteS0Managed(byte[] array, long byteOffset, byte value) {
         TStringUnsafe.putByteManaged(array, byteOffset, value);
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static void runWriteS0Native(long array, long byteOffset, byte value) {
         TStringUnsafe.putByteNative(array, byteOffset, value);
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static void runWriteS1Managed(byte[] array, long byteOffset, char value) {
         TStringUnsafe.putCharManaged(array, byteOffset, value);
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static void runWriteS1Native(long array, long byteOffset, char value) {
         TStringUnsafe.putCharNative(array, byteOffset, value);
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static void runWriteS2Managed(byte[] array, long byteOffset, int value) {
         TStringUnsafe.putIntManaged(array, byteOffset, value);
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static void runWriteS2Native(long array, long byteOffset, int value) {
         TStringUnsafe.putIntNative(array, byteOffset, value);
     }
