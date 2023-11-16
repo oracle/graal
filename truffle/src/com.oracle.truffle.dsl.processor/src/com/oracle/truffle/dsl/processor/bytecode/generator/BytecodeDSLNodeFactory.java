@@ -652,12 +652,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.returnNull();
         b.end();
 
-        b.statement("Source source = sources[(sourceInfo[0] >> 16) & 0xffff]");
-        b.startIf().string("source.hasBytes()").end().startBlock();
-        b.startReturn().string("source.createUnavailableSection()").end();
-        b.end();
-
-        b.startReturn().string("source.createSection(sourceInfo[1], sourceInfo[2])").end();
+        b.startReturn().string("sources[(sourceInfo[0] >> 16) & 0xffff].createSection(sourceInfo[1], sourceInfo[2])").end();
 
         return ex;
     }
@@ -694,12 +689,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.returnNull();
         b.end();
 
-        b.statement("Source source = sources[(sourceInfo[0] >> 16) & 0xffff]");
-        b.startIf().string("source.hasBytes()").end().startBlock();
-        b.startReturn().string("source.createUnavailableSection()").end();
-        b.end();
-
-        b.statement("return source.createSection(sourceInfo[i + 1], sourceInfo[i + 2])");
+        b.statement("return sources[(sourceInfo[0] >> 16) & 0xffff].createSection(sourceInfo[i + 1], sourceInfo[i + 2])");
 
         return ex;
     }
@@ -2789,6 +2779,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             switch (operation.kind) {
                 case SOURCE:
+                    b.startIf().string(operation.getOperationArgumentName(0) + ".hasBytes()").end().startBlock();
+                    b.startThrow().startNew(type(IllegalArgumentException.class)).doubleQuote("Byte-based sources are not supported.").end(2);
+                    b.end();
+
                     b.startIf().string("sourceIndexStack.length == sourceIndexSp").end().startBlock();
                     b.statement("sourceIndexStack = Arrays.copyOf(sourceIndexStack, sourceIndexSp * 2)");
                     b.end();
