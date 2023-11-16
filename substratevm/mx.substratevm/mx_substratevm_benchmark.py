@@ -627,6 +627,8 @@ class SpecJVM2008NativeImageBenchmarkSuite(mx_java_benchmarks.SpecJvm2008Benchma
     """
     SpecJVM2008 for Native Image
     """
+    # disables formatted report generation since chart generation with JFreeChart loads fonts from disk (from java.home) to compute string width
+    disable_rendered_report = ["-ctf", "false", "-chf", "false"]
 
     def name(self):
         return 'specjvm2008-native-image'
@@ -636,6 +638,7 @@ class SpecJVM2008NativeImageBenchmarkSuite(mx_java_benchmarks.SpecJvm2008Benchma
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         args = super().createCommandLineArgs(benchmarks, bmSuiteArgs)
+
         if benchmarks is None:
             mx.abort("Suite can only run a single benchmark per VM instance.")
         elif len(benchmarks) != 1:
@@ -646,7 +649,7 @@ class SpecJVM2008NativeImageBenchmarkSuite(mx_java_benchmarks.SpecJvm2008Benchma
 
     @staticmethod
     def short_run_args():
-        return ["-wt", "1", "-it", "5"]
+        return SpecJVM2008NativeImageBenchmarkSuite.disable_rendered_report + ["-wt", "1", "-it", "5"]
 
     def extra_agent_run_arg(self, benchmark, args, image_run_args):
         return super().extra_agent_run_arg(benchmark, args, image_run_args) + self.short_run_args() + ["-ikv"]
@@ -659,9 +662,7 @@ class SpecJVM2008NativeImageBenchmarkSuite(mx_java_benchmarks.SpecJvm2008Benchma
         return super().extra_image_build_argument(benchmark, args) + ['-H:-ParseRuntimeOptions']
 
     def extra_run_arg(self, benchmark, args, image_run_args):
-        # disables formatted report generation since chart generation with JFreeChart loads fonts from disk (from java.home) to compute string width
-        disable_rendered_report = ["-ctf", "false", "-chf", "false"]
-        return super().extra_run_arg(benchmark, args, image_run_args) + disable_rendered_report + ["-ikv", "-wt", "5", "-it", "15"]
+        return super().extra_run_arg(benchmark, args, image_run_args) + SpecJVM2008NativeImageBenchmarkSuite.disable_rendered_report + ["-ikv", "-wt", "5", "-it", "15"]
 
     def successPatterns(self):
         return super().successPatterns() + [_successful_stage_pattern]
