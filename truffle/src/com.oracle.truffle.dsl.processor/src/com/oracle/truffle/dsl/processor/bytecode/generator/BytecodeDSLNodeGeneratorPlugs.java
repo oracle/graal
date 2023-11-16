@@ -252,7 +252,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             b.string(" = ");
             b.string("ACCESS.shortArrayRead($bc, oldOperandIndex" + valueIndex + ")");
             b.end();
-            b.declaration(context.getType(short.class), "newOperand" + valueIndex, "oldOperand" + valueIndex);
+            b.declaration(context.getType(short.class), "newOperand" + valueIndex);
         }
 
         boolean elseIf = false;
@@ -261,7 +261,6 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                 // not a valid target instruction -> selected only by parent
                 continue;
             }
-
             elseIf = b.startIf(elseIf);
             CodeTree activeCheck = factory.createOnlyActive(frameState, quickening.filteredSpecializations);
             b.tree(factory.createOnlyActive(frameState, quickening.filteredSpecializations));
@@ -280,9 +279,34 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             }
             b.end().startBlock();
 
-            b.startStatement();
-            b.string("newInstruction = ").tree(bytecodeFactory.createInstructionConstant(quickening));
-            b.end(); // statement
+            for (int valueIndex : boxingEliminated) {
+                TypeMirror specializedType = quickening.signature.getSpecializedType(valueIndex);
+                if (!model.isBoxingEliminated(specializedType)) {
+                    b.startStatement();
+                    b.string("newOperand" + valueIndex, " = undoQuickening(oldOperand" + valueIndex + ")");
+                    b.end();
+                }
+            }
+
+            InstructionModel returnTypeQuickening = findReturnTypeQuickening(quickening);
+
+            if (returnTypeQuickening != null) {
+                b.startIf();
+                b.startCall(BytecodeDSLNodeFactory.createIsQuickeningName(returnTypeQuickening.signature.returnType)).string("$bc[$bci]").end();
+                b.end().startBlock();
+                b.startStatement();
+                b.string("newInstruction = ").tree(bytecodeFactory.createInstructionConstant(returnTypeQuickening));
+                b.end(); // statement
+                b.end().startElseBlock();
+                b.startStatement();
+                b.string("newInstruction = ").tree(bytecodeFactory.createInstructionConstant(quickening));
+                b.end(); // statement
+                b.end();
+            } else {
+                b.startStatement();
+                b.string("newInstruction = ").tree(bytecodeFactory.createInstructionConstant(quickening));
+                b.end(); // statement
+            }
 
             b.end(); // if block
         }
@@ -294,9 +318,25 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             b.end();
         }
 
-        b.startStatement();
-        b.string("newInstruction = ").tree(bytecodeFactory.createInstructionConstant(instruction));
-        b.end(); // statement
+        InstructionModel returnTypeQuickening = findReturnTypeQuickening(instruction);
+        if (returnTypeQuickening != null) {
+            b.startIf();
+            b.startCall(BytecodeDSLNodeFactory.createIsQuickeningName(returnTypeQuickening.signature.returnType)).string("$bc[$bci]").end();
+            b.end().startBlock();
+            b.startStatement();
+            b.string("newInstruction = ").tree(bytecodeFactory.createInstructionConstant(returnTypeQuickening));
+            b.end(); // statement
+            b.end().startElseBlock();
+            b.startStatement();
+            b.string("newInstruction = ").tree(bytecodeFactory.createInstructionConstant(instruction));
+            b.end(); // statement
+            b.end(); // else block
+        } else {
+            b.startStatement();
+            b.string("newInstruction = ").tree(bytecodeFactory.createInstructionConstant(instruction));
+            b.end(); // statement
+        }
+
         b.end(); // else block
 
         for (int valueIndex : boxingEliminated) {
@@ -305,6 +345,19 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         bytecodeFactory.emitQuickening(b, "$root", "$bc", "$bci", null, "newInstruction");
 
         return method;
+    }
+
+    private static InstructionModel findReturnTypeQuickening(InstructionModel quickening) throws AssertionError {
+        InstructionModel returnTypeQuickening = null;
+        for (InstructionModel returnType : quickening.quickenedInstructions) {
+            if (returnType.isReturnTypeQuickening()) {
+                if (returnTypeQuickening != null) {
+                    throw new AssertionError("Multiple return type quickenings not supported.");
+                }
+                returnTypeQuickening = returnType;
+            }
+        }
+        return returnTypeQuickening;
     }
 
     @Override

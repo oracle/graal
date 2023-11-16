@@ -108,6 +108,7 @@ import com.oracle.truffle.dsl.processor.generator.NodeConstants;
 import com.oracle.truffle.dsl.processor.generator.StaticConstants;
 import com.oracle.truffle.dsl.processor.generator.TypeSystemCodeGenerator;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeElement;
@@ -176,6 +177,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     // Represents the index that user locals start from. Depends on the number of reserved slots.
     private int userLocalsStartIndex;
 
+    private final Map<TypeMirror, VariableElement> frameSlotKindConstant = new HashMap<>();
+
     public BytecodeDSLNodeFactory(BytecodeDSLModel model) {
         this.model = model;
         bytecodeNodeGen = GeneratorUtils.createClass(model.templateType, null, Set.of(PUBLIC, FINAL), model.getName(), model.templateType.asType());
@@ -198,6 +201,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         // Define constants for accessing the frame.
         bytecodeNodeGen.addAll(createFrameLayoutConstants());
+
+        if (model.usesBoxingElimination()) {
+            for (TypeMirror boxingEliminatedType : model.boxingEliminatedTypes) {
+                String frameSlotKind = ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxingEliminatedType));
+                CodeVariableElement tag = createFrameSlotKindConstant(frameSlotKind);
+                frameSlotKindConstant.put(boxingEliminatedType, tag);
+                bytecodeNodeGen.add(tag);
+            }
+        }
 
         // Define internal state of the root node.
         List<CodeVariableElement> finalFields = new ArrayList<>();
@@ -366,10 +378,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
         consts.addElementsTo(bytecodeNodeGen);
 
-        if (!model.boxingEliminatedTypes.isEmpty()) {
+        if (model.usesBoxingElimination()) {
             for (TypeMirror boxingEliminatedType : model.boxingEliminatedTypes) {
                 bytecodeNodeGen.add(createCanQuicken(boxingEliminatedType));
                 bytecodeNodeGen.add(createApplyQuickening(boxingEliminatedType));
+                bytecodeNodeGen.add(createIsQuickening(boxingEliminatedType));
             }
             bytecodeNodeGen.add(createUndoQuickening());
         }
@@ -381,6 +394,24 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         bytecodeNodeGen.add(createGetBranchProfiles());
 
         return bytecodeNodeGen;
+    }
+
+    private CodeVariableElement createFrameSlotKindConstant(String frameSlotKind) {
+        CodeVariableElement tag = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "TAG_" + frameSlotKind.toUpperCase());
+        TypeElement type = ElementUtils.castTypeElement(types.FrameSlotKind);
+        int index = 0;
+        for (VariableElement var : ElementFilter.fieldsIn(CompilerFactory.getCompiler(type).getAllMembersInDeclarationOrder(context.getEnvironment(), type))) {
+            if (var.getKind() != ElementKind.ENUM_CONSTANT) {
+                continue;
+            }
+            if (var.getSimpleName().toString().equals(frameSlotKind)) {
+                tag.createDocBuilder().startDoc().string("FrameSlotKind." + frameSlotKind + ".tag").end();
+                tag.createInitBuilder().string(index);
+                return tag;
+            }
+            index++;
+        }
+        throw new AssertionError("Invalid frame slot kind " + frameSlotKind);
     }
 
     private CodeExecutableElement createUndoQuickening() {
@@ -438,8 +469,41 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return executable;
     }
 
+    private CodeExecutableElement createIsQuickening(TypeMirror type) {
+        CodeExecutableElement executable = new CodeExecutableElement(Set.of(PRIVATE, STATIC),
+                        type(boolean.class), createIsQuickeningName(type),
+                        new CodeVariableElement(type(short.class), "operand"));
+
+        CodeTreeBuilder b = executable.createBuilder();
+        List<InstructionModel> returnQuickenings = model.getInstructions().stream().//
+                        filter((i) -> i.isReturnTypeQuickening() && ElementUtils.typeEquals(i.signature.returnType, type)).toList();
+
+        if (returnQuickenings.isEmpty()) {
+            b.returnFalse();
+        } else {
+            b.startSwitch().string("operand").end().startBlock();
+            for (InstructionModel instruction : returnQuickenings) {
+                b.startCase().tree(createInstructionConstant(instruction)).end();
+            }
+            b.startCaseBlock();
+            b.returnTrue();
+            b.end();
+            b.caseDefault();
+            b.startCaseBlock();
+            b.returnFalse();
+            b.end();
+            b.end();
+        }
+
+        return executable;
+    }
+
     static String createApplyQuickeningName(TypeMirror type) {
         return "applyQuickening" + ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(type));
+    }
+
+    static String createIsQuickeningName(TypeMirror type) {
+        return "isQuickening" + ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(type));
     }
 
     private CodeExecutableElement createCanQuicken(TypeMirror type) {
@@ -3527,7 +3591,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startBlock();
                 emitCastOperationData(b, "TransparentOperationData", "operationSp - 1");
                 b.startIf().string("operationData.producedValue").end().startBlock();
-                buildEmitInstruction(b, model.popInstruction, null);
+                buildEmitInstruction(b, model.popInstruction, emitPopArguments(model.popInstruction.getImmediates(), "bci"));
                 b.end();
                 b.statement("break");
                 b.end();
@@ -3659,7 +3723,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     } else if (valueChildren.isEmpty()) {
                         // Simplification: each child should not be value producing.
                         b.startIf().string("producedValue").end().startBlock();
-                        buildEmitInstruction(b, model.popInstruction, null);
+                        buildEmitInstruction(b, model.popInstruction, emitPopArguments(model.popInstruction.getImmediates(), "childBci"));
                         b.end();
                     } else {
                         // Otherwise, partition by value/not value producing.
@@ -3691,7 +3755,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         }
                         b.string(") && producedValue");
                         b.end().startBlock();
-                        buildEmitInstruction(b, model.popInstruction, null);
+                        buildEmitInstruction(b, model.popInstruction, emitPopArguments(model.popInstruction.getImmediates(), "childBci"));
                         b.end();
                     }
                 }
@@ -3893,6 +3957,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 branchArguments[index] = switch (immediate.kind()) {
                     case BYTECODE_INDEX -> (index == 0) ? UNINIT : "childBci";
                     case PROFILE -> "allocateBranchProfile()";
+                    default -> throw new AssertionError("Unexpected immediate: " + immediate);
+                };
+            }
+            return branchArguments;
+        }
+
+        private String[] emitPopArguments(List<InstructionImmediate> immedates, String childBciName) throws AssertionError {
+            String[] branchArguments = new String[immedates.size()];
+            for (int index = 0; index < branchArguments.length; index++) {
+                InstructionImmediate immediate = immedates.get(index);
+                branchArguments[index] = switch (immediate.kind()) {
+                    case BYTECODE_INDEX -> childBciName;
                     default -> throw new AssertionError("Unexpected immediate: " + immediate);
                 };
             }
@@ -4248,11 +4324,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startStatement().startCall("doEmitInstruction");
             b.tree(createInstructionConstant(instr));
+            int argumentsLength = arguments != null ? arguments.length : 0;
+            if (argumentsLength != instr.immediates.size()) {
+                throw new AssertionError("Invalid number of immediates for instruction " + instr.name + ". Expected " + instr.immediates.size() + " but got " + argumentsLength + ". Immediates" +
+                                instr.getImmediates());
+            }
             if (arguments != null) {
-                if (arguments.length != instr.immediates.size()) {
-                    throw new AssertionError("Invalid number of immediates for instruction " + instr.name + ". Expected " + instr.immediates.size() + " but got " + arguments.length + ". Immediates" +
-                                    instr.getImmediates());
-                }
                 for (String argument : arguments) {
                     b.string(argument);
                 }
@@ -4800,7 +4877,32 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("sp += 1");
                         break;
                     case POP:
-                        b.statement(clearFrame("sp - 1"));
+                        if (model.usesBoxingElimination()) {
+                            if (instr.isQuickening()) {
+                                b.startStatement();
+                                b.startCall(lookupDoPop(instr).getSimpleName().toString());
+                                if (model.specializationDebugListener) {
+                                    b.string("$this");
+                                }
+                                b.string("frame");
+                                b.string("bc").string("bci").string("sp");
+                                b.end();
+                                b.end();
+                            } else {
+                                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                                b.startStatement();
+                                b.startCall(lookupDoSpecializePop(instr).getSimpleName().toString());
+                                if (model.specializationDebugListener) {
+                                    b.string("$this");
+                                }
+                                b.string("frame");
+                                b.string("bc").string("bci").string("sp");
+                                b.end();
+                                b.end();
+                            }
+                        } else {
+                            b.statement(clearFrame("sp - 1"));
+                        }
                         b.statement("sp -= 1");
                         break;
                     case DUP:
@@ -5109,6 +5211,133 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             results.addAll(doInstructionMethods.values());
             return results;
+        }
+
+        private CodeExecutableElement lookupDoPop(InstructionModel instr) {
+            CodeExecutableElement method = doInstructionMethods.get(instr);
+            if (method != null) {
+                return method;
+            }
+
+            method = new CodeExecutableElement(
+                            Set.of(PRIVATE, STATIC),
+                            type(void.class), instructionMethodName(instr),
+                            new CodeVariableElement(types.Frame, "frame"),
+                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(int.class), "bci"),
+                            new CodeVariableElement(type(int.class), "sp"));
+
+            boolean isMaterialized = instr.kind == InstructionKind.LOAD_LOCAL_MATERIALIZED;
+            if (isMaterialized) {
+                method.getParameters().add(0, new CodeVariableElement(types.Frame, "stackFrame"));
+            }
+
+            if (model.specializationDebugListener) {
+                method.getParameters().add(0, new CodeVariableElement(bytecodeNodeGen.asType(), "root"));
+            }
+
+            CodeTreeBuilder b = method.createBuilder();
+            TypeMirror inputType = instr.signature.getSpecializedType(0);
+
+            boolean isGeneric = ElementUtils.isObject(inputType);
+
+            if (!isGeneric) {
+                b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end().end().startBlock();
+                b.lineComment("Always clear in compiled code for liveness analysis");
+                b.statement(clearFrame("sp - 1"));
+                b.returnDefault();
+                b.end();
+
+                b.startIf().string("frame.getTag(sp - 1) != ").staticReference(frameSlotKindConstant.get(inputType)).end().startBlock();
+                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                b.startStatement().startCall(lookupDoSpecializeBranchFalse(instr.getQuickeningRoot()).getSimpleName().toString());
+                if (model.specializationDebugListener) {
+                    b.string("root");
+                }
+                b.string("frame").string("bc").string("bci").string("sp");
+                b.end().end();
+                b.returnDefault();
+                b.end();
+            }
+
+            if (isGeneric) {
+                b.statement(clearFrame("sp - 1"));
+            } else {
+                b.lineComment("No need to clear for primitives in the interpreter");
+            }
+
+            doInstructionMethods.put(instr, method);
+            return method;
+
+        }
+
+        private CodeExecutableElement lookupDoSpecializePop(InstructionModel instr) {
+            CodeExecutableElement method = doInstructionMethods.get(instr);
+            if (method != null) {
+                return method;
+            }
+
+            method = new CodeExecutableElement(
+                            Set.of(PRIVATE, STATIC),
+                            type(void.class), instructionMethodName(instr),
+                            new CodeVariableElement(types.Frame, "frame"),
+                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(int.class), "bci"),
+                            new CodeVariableElement(type(int.class), "sp"));
+
+            if (model.specializationDebugListener) {
+                method.getParameters().add(0, new CodeVariableElement(bytecodeNodeGen.asType(), "root"));
+            }
+
+            Map<TypeMirror, InstructionModel> typeToSpecialization = new LinkedHashMap<>();
+            List<InstructionModel> specializations = instr.quickenedInstructions;
+            InstructionModel genericInstruction = null;
+            for (InstructionModel specialization : specializations) {
+                if (model.isBoxingEliminated(specialization.specializedType)) {
+                    typeToSpecialization.put(specialization.specializedType, specialization);
+                } else if (specialization.specializedType == null) {
+                    genericInstruction = specialization;
+                }
+            }
+
+            CodeTreeBuilder b = method.createBuilder();
+            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+
+            b.declaration(type(short.class), "newInstruction");
+            b.declaration(type(short.class), "newOperand");
+            b.declaration(type(int.class), "operandIndex", readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
+            b.declaration(type(short.class), "operand", readInstruction("bc", "operandIndex"));
+
+            b.startStatement();
+            b.type(type(Object.class)).string(" value = ");
+            startRequireFrame(b, type(Object.class)).string("frame").string("sp - 1").end();
+            b.end();
+
+            boolean elseIf = false;
+            for (var entry : typeToSpecialization.entrySet()) {
+                TypeMirror type = entry.getKey();
+                elseIf = b.startIf(elseIf);
+                b.string("value instanceof ").type(ElementUtils.boxType(type)).string(" && ");
+                b.newLine().string("     (newOperand = ").startCall(createApplyQuickeningName(type)).string("operand").end().string(") != -1");
+                b.end().startBlock();
+
+                InstructionModel specialization = entry.getValue();
+                b.startStatement().string("newInstruction = ").tree(createInstructionConstant(specialization)).end();
+                b.end(); // else block
+                b.end(); // if block
+            }
+
+            b.startElseBlock(elseIf);
+            b.statement("newOperand = undoQuickening(operand)");
+            b.startStatement().string("newInstruction = ").tree(createInstructionConstant(genericInstruction)).end();
+            b.end();
+
+            emitQuickeningOperand(b, "root", "bc", "bci", null, 0, "operandIndex", "operand", "newOperand");
+            emitQuickening(b, "root", "bc", "bci", null, "newInstruction");
+            b.statement(clearFrame("sp - 1"));
+
+            doInstructionMethods.put(instr, method);
+            return method;
         }
 
         private CodeExecutableElement lookupDoBranchFalse(InstructionModel instr) {
@@ -6475,6 +6704,28 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     private static String childString(int numChildren) {
         return numChildren + ((numChildren == 1) ? " child" : " children");
+    }
+
+    private static CodeTree readInstruction(String bc, String bci) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        b.startCall("ACCESS", "shortArrayRead");
+        b.string(bc);
+        b.startGroup();
+        b.string(bci);
+        b.end();
+        b.end();
+        return b.build();
+    }
+
+    private static CodeTree readImmediate(String bc, String bci, InstructionImmediate immediate) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        b.startCall("ACCESS", "shortArrayRead");
+        b.string(bc);
+        b.startGroup();
+        b.string(bci).string(" + ").string(immediate.offset());
+        b.end();
+        b.end();
+        return b.build();
     }
 
     /**

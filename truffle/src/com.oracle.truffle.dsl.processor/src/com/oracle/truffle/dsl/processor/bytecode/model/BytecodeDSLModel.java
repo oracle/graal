@@ -156,7 +156,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     }
 
     public void addDefault() {
-        popInstruction = instruction(InstructionKind.POP, "pop", signature(void.class));
+        popInstruction = instruction(InstructionKind.POP, "pop", signature(void.class, Object.class));
         dupInstruction = instruction(InstructionKind.DUP, "dup", signature(void.class));
         trapInstruction = instruction(InstructionKind.TRAP, "trap", signature(void.class));
         returnInstruction = instruction(InstructionKind.RETURN, "return", signature(void.class, Object.class));

@@ -379,6 +379,234 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
         assertStable(quickenings, node);
     }
 
+    /*
+     * Tests that if you switch from a boxing eliminated operand to a non boxing eliminated operand
+     * that the boxing elimination is disabled.
+     */
+    @Test
+    public void testSwitchQuickening0() {
+        BoxingEliminationTestRootNode node = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginSwitchQuickening0();
+            b.emitLoadArgument(0);
+            b.endSwitchQuickening0();
+            b.endReturn();
+
+            b.endRoot();
+
+        });
+
+        assertQuickenings(node, 0, 0);
+        assertInstructions(node,
+                        "load.argument",
+                        "c.SwitchQuickening0",
+                        "return",
+                        "pop");
+
+        assertEquals(1L, node.getCallTarget().call(1L));
+
+        assertInstructions(node,
+                        "load.argument$Long",
+                        "c.SwitchQuickening0$One",
+                        "return",
+                        "pop");
+
+        assertEquals("42", node.getCallTarget().call("42"));
+
+        assertInstructions(node,
+                        "load.argument",
+                        "c.SwitchQuickening0$NonNull",
+                        "return",
+                        "pop");
+
+        assertEquals(null, node.getCallTarget().call((Object) null));
+
+        assertInstructions(node,
+                        "load.argument",
+                        "c.SwitchQuickening0$Object",
+                        "return",
+                        "pop");
+
+        var quickenings = assertQuickenings(node, 7, 3);
+        assertStable(quickenings, node, "42");
+        assertStable(quickenings, node, 1L);
+        assertStable(quickenings, node, (Object) null);
+    }
+
+    @Test
+    public void testSwitchQuickening1() {
+        BoxingEliminationTestRootNode node = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginGenericOperationWithLong();
+            b.beginGenericOperationWithLong();
+            b.beginSwitchQuickening1();
+            b.emitLoadArgument(0);
+            b.endSwitchQuickening1();
+            b.endGenericOperationWithLong();
+            b.endGenericOperationWithLong();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertQuickenings(node, 0, 0);
+        assertInstructions(node,
+                        "load.argument",
+                        "c.SwitchQuickening1",
+                        "c.GenericOperationWithLong",
+                        "c.GenericOperationWithLong",
+                        "return",
+                        "pop");
+
+        assertEquals(1L, node.getCallTarget().call(1L));
+
+        assertInstructions(node,
+                        "load.argument$Long",
+                        "c.SwitchQuickening1$One$unboxed",
+                        "c.GenericOperationWithLong$Long$unboxed",
+                        "c.GenericOperationWithLong$Long",
+                        "return",
+                        "pop");
+
+        assertEquals(2L, node.getCallTarget().call(2L));
+
+        assertInstructions(node,
+                        "load.argument$Long",
+                        // assert that instructions stay unboxed during respecializations
+                        "c.SwitchQuickening1$GreaterEqualOne$unboxed",
+                        "c.GenericOperationWithLong$Long$unboxed",
+                        "c.GenericOperationWithLong$Long",
+                        "return",
+                        "pop");
+
+        var quickenings = assertQuickenings(node, 8, 4);
+        assertStable(quickenings, node, 1L);
+    }
+
+    @Test
+    public void testSwitchQuickening2() {
+        BoxingEliminationTestRootNode node = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginPassLongOrInt();
+            b.beginPassLongOrInt();
+            b.beginLongToInt();
+            b.emitLoadArgument(0);
+            b.endLongToInt();
+            b.endPassLongOrInt();
+            b.endPassLongOrInt();
+            b.endReturn();
+
+            b.endRoot();
+
+        });
+
+        assertQuickenings(node, 0, 0);
+        assertInstructions(node,
+                        "load.argument",
+                        "c.LongToInt",
+                        "c.PassLongOrInt",
+                        "c.PassLongOrInt",
+                        "return",
+                        "pop");
+
+        assertEquals(1L, node.getCallTarget().call(1L));
+
+        assertInstructions(node,
+                        "load.argument$Long",
+                        "c.LongToInt$One$unboxed",
+                        "c.PassLongOrInt$Long$unboxed",
+                        "c.PassLongOrInt$Long",
+                        "return",
+                        "pop");
+
+        assertEquals(2, node.getCallTarget().call(2L));
+
+        printInstructions(node);
+
+        assertInstructions(node,
+                        "load.argument$Long",
+                        "c.LongToInt$GreaterEqualOne$unboxed",
+                        // test that this is unboxed even if
+                        // it was previously specialized to long
+                        "c.PassLongOrInt$Int$unboxed",
+                        "c.PassLongOrInt$Int",
+                        "return",
+                        "pop");
+
+        var quickenings = assertQuickenings(node, 12, 6);
+        assertStable(quickenings, node, 1L);
+        assertStable(quickenings, node, 2L);
+    }
+
+    @Test
+    public void testPopUnboxed() {
+        BoxingEliminationTestRootNode node = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginBlock();
+            b.beginPassLongOrInt();
+            b.beginPassLongOrInt();
+            b.beginLongToInt();
+            b.emitLoadArgument(0);
+            b.endLongToInt();
+            b.endPassLongOrInt();
+            b.endPassLongOrInt();
+            b.endBlock();
+            b.beginReturn();
+            b.emitLoadConstant(42);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertQuickenings(node, 0, 0);
+        assertInstructions(node,
+                        "load.argument",
+                        "c.LongToInt",
+                        "c.PassLongOrInt",
+                        "c.PassLongOrInt",
+                        "pop",
+                        "load.constant",
+                        "return",
+                        "pop");
+
+        assertEquals(42, node.getCallTarget().call(1L));
+
+        assertInstructions(node,
+                        "load.argument$Long",
+                        "c.LongToInt$One$unboxed",
+                        "c.PassLongOrInt$Long$unboxed",
+                        "c.PassLongOrInt$Long$unboxed",
+                        "pop$Long",
+                        "load.constant",
+                        "return",
+                        "pop");
+
+        assertEquals(42, node.getCallTarget().call(2L));
+
+        printInstructions(node);
+
+        assertInstructions(node,
+                        "load.argument$Long",
+                        "c.LongToInt$GreaterEqualOne$unboxed",
+                        "c.PassLongOrInt$Int$unboxed",
+                        "c.PassLongOrInt$Int$unboxed",
+                        "pop$Int",
+                        "load.constant",
+                        "return",
+                        "pop");
+
+        var quickenings = assertQuickenings(node, 16, 6);
+        assertStable(quickenings, node, 1L);
+        assertStable(quickenings, node, 2L);
+    }
+
     private static BoxingEliminationTestRootNode parse(BytecodeParser<BoxingEliminationTestRootNodeGen.Builder> builder) {
         BytecodeNodes<BoxingEliminationTestRootNode> nodes = BoxingEliminationTestRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
         return nodes.getNodes().get(nodes.getNodes().size() - 1);
@@ -491,6 +719,74 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
             @Specialization(rewriteOn = UnexpectedResultException.class)
             static boolean doObject(@SuppressWarnings("unused") Object o) throws UnexpectedResultException {
                 throw new UnexpectedResultException(o);
+            }
+
+        }
+
+        @Operation
+        static final class SwitchQuickening0 {
+
+            @Specialization(guards = "o == 1")
+            @ForceQuickening
+            static long doOne(long o) {
+                return o;
+            }
+
+            @Specialization(guards = "o != null", replaces = "doOne")
+            @ForceQuickening
+            static Object doNonNull(Object o) {
+                return o;
+            }
+
+            @Specialization(replaces = "doNonNull")
+            @ForceQuickening
+            static Object doObject(Object o) {
+                return o;
+            }
+
+        }
+
+        @Operation
+        static final class SwitchQuickening1 {
+
+            @Specialization(guards = "o == 1")
+            static long doOne(long o) {
+                return o;
+            }
+
+            @Specialization(guards = "o >= 1", replaces = "doOne")
+            static long doGreaterEqualOne(long o) {
+                return o;
+            }
+
+        }
+
+        @Operation
+        static final class LongToInt {
+
+            @Specialization(guards = "o == 1")
+            static long doOne(long o) {
+                return o;
+            }
+
+            @Specialization(guards = "o >= 1", replaces = "doOne")
+            static int doGreaterEqualOne(long o) {
+                return (int) o;
+            }
+
+        }
+
+        @Operation
+        static final class PassLongOrInt {
+
+            @Specialization
+            static long doLong(long o) {
+                return o;
+            }
+
+            @Specialization(replaces = "doLong")
+            static int doInt(int o) {
+                return o;
             }
 
         }
