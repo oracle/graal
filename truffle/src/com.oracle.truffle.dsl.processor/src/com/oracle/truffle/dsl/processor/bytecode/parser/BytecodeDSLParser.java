@@ -515,8 +515,8 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
         /*
          * If boxing elimination is enabled and the language uses operations with statically known
-         * types we generate a quickening decision for each operation with all specializations
-         * automatically. This is the easiest way to avoid duplicate quickening.
+         * types we generate a quickening decisions for each operation and specialization in order
+         * to enable boxing elimination.
          */
         if (model.usesBoxingElimination()) {
             for (OperationModel operation : model.getOperations()) {
@@ -538,7 +538,6 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 }
 
                 boolean genericReturnBoxingElimanted = model.isBoxingEliminated(genericInstruction.signature.returnType);
-
                 if (operation.instruction.nodeData.getSpecializations().size() > 1) {
                     for (SpecializationData specialization : operation.instruction.nodeData.getSpecializations()) {
                         if (specialization.getMethod() == null || specialization.isFallback()) {
@@ -587,8 +586,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             List<List<SpecializationData>> resolvedQuickenings = decisions.stream().map((d) -> operation.instruction.nodeData.findSpecializationsByName(d.specializations())).sorted(
                             (s0, s1) -> {
                                 if (s0.size() != s1.size()) {
-                                    // sort by size we want to check single specialization
-                                    // quickenings first
+                                    // sort by size we want to check single specializations first
                                     return Integer.compare(s0.size(), s1.size());
                                 }
                                 return 0;
@@ -612,7 +610,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
         if (model.usesBoxingElimination()) {
             for (InstructionModel instruction : model.getInstructions()) {
-                if (instruction.signature == null || instruction.kind == InstructionKind.CUSTOM_SHORT_CIRCUIT) {
+                if (instruction.kind == InstructionKind.CUSTOM_SHORT_CIRCUIT) {
                     // short circuits should be supported in the future
                     continue;
                 }
@@ -659,6 +657,23 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                             returnTypeQuickening.returnTypeQuickening = true;
                         }
                         break;
+                    case POP:
+                        instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, "child0_bci");
+                        instruction.specializedType = context.getType(Object.class);
+
+                        for (TypeMirror boxedType : model.boxingEliminatedTypes) {
+                            InstructionModel specializedInstruction = model.quickenInstruction(instruction,
+                                            new Signature(context.getType(void.class), List.of(boxedType)),
+                                            ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxedType)));
+                            specializedInstruction.returnTypeQuickening = false;
+                            specializedInstruction.specializedType = boxedType;
+                        }
+
+                        InstructionModel genericQuickening = model.quickenInstruction(instruction,
+                                        instruction.signature, "generic");
+                        genericQuickening.returnTypeQuickening = false;
+                        genericQuickening.specializedType = null;
+                        break;
                     case DUP:
                         // TODO
                         break;
@@ -681,7 +696,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
                         }
 
-                        InstructionModel genericQuickening = model.quickenInstruction(instruction,
+                        genericQuickening = model.quickenInstruction(instruction,
                                         instruction.signature,
                                         "generic");
                         genericQuickening.returnTypeQuickening = false;
