@@ -4011,11 +4011,11 @@ def graalvm_home(stage1=False, fatalIfMissing=False):
     return _graalvm_home
 
 
-def graalvm_home_from_env(extra_mx_args, env, stage1=False):
+def graalvm_home_from_env(extra_mx_args, env, stage1=False, suite=None):
     args = ['--quiet'] + extra_mx_args + ['graalvm-home'] + (['--stage1'] if stage1 else [])
     out = mx.OutputCapture()
     err = mx.OutputCapture()
-    exit_status = mx.run_mx(args, out=out, err=err, env=env, nonZeroIsFatal=False)
+    exit_status = mx.run_mx(args, suite=suite, out=out, err=err, env=env, nonZeroIsFatal=False)
     if exit_status:
         mx.warn(f"'mx {mx.list_to_cmd_line(args)}' returned {exit_status}. Stdout:\n{out.data.strip()}\nStderr: {err.data.strip()}")
         mx.abort(exit_status)
