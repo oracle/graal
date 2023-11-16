@@ -1422,7 +1422,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             InstructionModel representativeInstruction = entry.getValue().get(0);
             InstructionImmediate imm = representativeInstruction.getImmediate(ImmediateKind.NODE);
             b.startBlock();
-            b.statement("nodeIndex = " + readBc("bci + " + imm.offset()));
+
+            b.startStatement().string("nodeIndex = ");
+            b.tree(readImmediate("bc", "bci", imm));
+            b.end();
+
             b.statement("bci += " + representativeInstruction.getInstructionLength());
             b.statement("break");
             b.end();
@@ -1570,7 +1574,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startBlock();
             InstructionImmediate imm = instr.getImmediate(ImmediateKind.NODE);
-            b.statement("nodeIndex = " + readBc("bci + " + imm.offset()));
+            b.startStatement().string("nodeIndex = ");
+            b.tree(readImmediate("bc", "bci", imm));
+            b.end();
             b.statement("node = new " + cachedDataClassName(instr) + "()");
             b.statement("bci += " + instr.getInstructionLength());
             b.statement("break");
@@ -3585,7 +3591,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startBlock();
                 emitCastOperationData(b, "TransparentOperationData", "operationSp - 1");
                 b.startIf().string("operationData.producedValue").end().startBlock();
-                buildEmitInstruction(b, model.popInstruction, emitPopArguments(model.popInstruction.getImmediates(), "bci"));
+                buildEmitInstruction(b, model.popInstruction, emitPopArguments("bci"));
                 b.end();
                 b.statement("break");
                 b.end();
@@ -3604,7 +3610,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     buildEmitBooleanConverterInstruction(b, op.instruction);
                     InstructionImmediate branchIndex = op.instruction.getImmediate(ImmediateKind.BYTECODE_INDEX);
                     b.statement("operationData.branchFixupBcis.add(bci + " + branchIndex.offset() + ")");
-                    op.instruction.getImmediates(ImmediateKind.BYTECODE_INDEX);
                     buildEmitInstruction(b, op.instruction, new String[]{UNINIT});
                     b.end();
 
@@ -3717,7 +3722,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     } else if (valueChildren.isEmpty()) {
                         // Simplification: each child should not be value producing.
                         b.startIf().string("producedValue").end().startBlock();
-                        buildEmitInstruction(b, model.popInstruction, emitPopArguments(model.popInstruction.getImmediates(), "childBci"));
+                        buildEmitInstruction(b, model.popInstruction, emitPopArguments("childBci"));
                         b.end();
                     } else {
                         // Otherwise, partition by value/not value producing.
@@ -3749,7 +3754,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         }
                         b.string(") && producedValue");
                         b.end().startBlock();
-                        buildEmitInstruction(b, model.popInstruction, emitPopArguments(model.popInstruction.getImmediates(), "childBci"));
+                        buildEmitInstruction(b, model.popInstruction, emitPopArguments("childBci"));
                         b.end();
                     }
                 }
@@ -3790,7 +3795,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.startIf().string("childIndex == 0").end().startBlock();
                         b.statement("operationData.falseBranchFixupBci = bci + " + model.branchFalseInstruction.getImmediates(ImmediateKind.BYTECODE_INDEX).get(0).offset());
                         emitFinallyRelativeBranchCheck(b, 1);
-                        buildEmitInstruction(b, model.branchFalseInstruction, emitBranchArguments(model.branchFalseInstruction.getImmediates()));
+                        buildEmitInstruction(b, model.branchFalseInstruction, emitBranchFalseArguments());
                         b.end().startElseBlock();
                         b.statement("int toUpdate = operationData.falseBranchFixupBci");
                         b.statement(writeBc("toUpdate", "(short) bci"));
@@ -3806,7 +3811,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("operationData.falseBranchFixupBci = bci + 1");
                         emitFinallyRelativeBranchCheck(b, 1);
 
-                        buildEmitInstruction(b, model.branchFalseInstruction, emitBranchArguments(model.branchFalseInstruction.getImmediates()));
+                        buildEmitInstruction(b, model.branchFalseInstruction, emitBranchFalseArguments());
                         b.end().startElseIf().string("childIndex == 1").end().startBlock();
                         b.statement("operationData.endBranchFixupBci = bci + 1");
                         emitFinallyRelativeBranchCheck(b, 1);
@@ -3831,7 +3836,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("operationData.endBranchFixupBci = bci + 1");
                         emitFinallyRelativeBranchCheck(b, 1);
 
-                        buildEmitInstruction(b, model.branchFalseInstruction, emitBranchArguments(model.branchFalseInstruction.getImmediates()));
+                        buildEmitInstruction(b, model.branchFalseInstruction, emitBranchFalseArguments());
                         b.end().startElseBlock();
                         emitFinallyRelativeBranchCheck(b, 1);
                         buildEmitInstruction(b, model.branchBackwardInstruction, new String[]{"(short) operationData.whileStartBci"});
@@ -3944,7 +3949,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private String[] emitBranchArguments(List<InstructionImmediate> immedates) throws AssertionError {
+        private String[] emitBranchFalseArguments() {
+            List<InstructionImmediate> immedates = model.branchFalseInstruction.getImmediates();
             String[] branchArguments = new String[immedates.size()];
             for (int index = 0; index < branchArguments.length; index++) {
                 InstructionImmediate immediate = immedates.get(index);
@@ -3957,7 +3963,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return branchArguments;
         }
 
-        private String[] emitPopArguments(List<InstructionImmediate> immedates, String childBciName) throws AssertionError {
+        private String[] emitPopArguments(String childBciName) {
+            List<InstructionImmediate> immedates = model.popInstruction.getImmediates();
             String[] branchArguments = new String[immedates.size()];
             for (int index = 0; index < branchArguments.length; index++) {
                 InstructionImmediate immediate = immedates.get(index);
@@ -4775,7 +4782,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         } else {
                             b.startStaticCall(types.BytecodeSupport, "profileBranch");
                             b.string("branchProfiles");
-                            b.string(readBc("bci + " + instr.getImmediate(ImmediateKind.PROFILE).offset()));
+                            b.tree(readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.PROFILE)));
                             if (model.isBoxingEliminated(context.getType(boolean.class))) {
                                 if (instr.isQuickening()) {
                                     b.startCall(lookupDoBranchFalse(instr).getSimpleName().toString());
@@ -5484,7 +5491,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             CodeTreeBuilder b = method.createBuilder();
 
-            String readSlot = "ACCESS.shortArrayRead(bc, bci + " + instr.getImmediate(ImmediateKind.INTEGER).offset() + ")";
+            CodeTree readSlot = readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.INTEGER));
             boolean generic = ElementUtils.typeEquals(type(Object.class), slotType);
 
             if (!generic) {
@@ -5494,9 +5501,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startStatement();
             startSetFrame(b, inputType).string(needsStackFrame ? "stackFrame" : "frame").string("sp");
             if (generic) {
-                startRequireFrame(b, slotType).string("frame").string(readSlot).end();
+                startRequireFrame(b, slotType).string("frame").tree(readSlot).end();
             } else {
-                startExpectFrame(b, slotType).string("frame").string(readSlot).end();
+                startExpectFrame(b, slotType).string("frame").tree(readSlot).end();
             }
             b.end();
             b.end(); // statement
@@ -5546,7 +5553,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = method.createBuilder();
 
             b.declaration(type(short.class), "newInstruction");
-            b.declaration(type(int.class), "slot", "ACCESS.shortArrayRead(bc, bci + " + instr.getImmediate(ImmediateKind.INTEGER).offset() + ")");
+            b.declaration(type(int.class), "slot", readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.INTEGER)));
             b.declaration(type(Object.class), "value");
 
             Map<TypeMirror, InstructionModel> typeToSpecialization = new HashMap<>();
@@ -5598,7 +5605,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(); // switch
 
             emitQuickening(b, "root", "bc", "bci", null, "newInstruction");
-
             b.startStatement();
             startSetFrame(b, type(Object.class)).string(stackFrame).string("sp").string("value").end();
             b.end();
@@ -5656,10 +5662,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             boolean generic = ElementUtils.typeEquals(type(Object.class), inputType);
 
-            String readSlot = "ACCESS.shortArrayRead(bc, bci + " + instr.getImmediate(ImmediateKind.INTEGER).offset() + ")";
+            CodeTree readSlot = readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.INTEGER));
             if (generic && !ElementUtils.needsCastTo(inputType, slotType)) {
                 b.startStatement();
-                startSetFrame(b, slotType).string("frame").string(readSlot);
+                startSetFrame(b, slotType).string("frame").tree(readSlot);
                 b.string("local");
                 b.end();
                 b.end();
@@ -5732,9 +5738,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.declaration(type(short.class), "newInstruction");
             b.declaration(type(short.class), "newOperand");
-            b.declaration(type(int.class), "operandIndex", "ACCESS.shortArrayRead(bc, bci + " + instr.getImmediate(ImmediateKind.BYTECODE_INDEX).offset() + ")");
+            b.declaration(type(int.class), "operandIndex", readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
             b.declaration(type(short.class), "operand", "ACCESS.shortArrayRead(bc, operandIndex)");
-            b.declaration(type(int.class), "slot", "ACCESS.shortArrayRead(bc, bci + " + instr.getImmediate(ImmediateKind.INTEGER).offset() + ")");
+            b.declaration(type(int.class), "slot", readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.INTEGER)));
             b.declaration(types.FrameSlotKind, "newKind");
 
             Map<TypeMirror, InstructionModel> typeToSpecialization = new HashMap<>();
@@ -5913,8 +5919,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             if (!tier.isUncached) {
                 // If not in the uncached interpreter, we need to retrieve the node for the call.
-                InstructionImmediate imm = instr.getImmediate(ImmediateKind.NODE);
-                String nodeIndex = readBc("bci + " + imm.offset());
+                CodeTree nodeIndex = readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.NODE));
                 CodeTree readNode = CodeTreeBuilder.createBuilder().string(readNode(cachedType, nodeIndex)).build();
                 b.declaration(cachedType, "node", readNode);
 
@@ -5977,14 +5982,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 for (InstructionImmediate immediate : instr.getImmediates(ImmediateKind.LOCAL_SETTER)) {
                     b.startStaticCall(types.LocalSetter, "get");
-                    b.string(readBc("bci + " + immediate.offset()));
+                    b.tree(readImmediate("bc", "bci", immediate));
                     b.end();
                 }
 
                 for (InstructionImmediate immediate : instr.getImmediates(ImmediateKind.LOCAL_SETTER_RANGE_START)) {
                     b.startStaticCall(types.LocalSetterRange, "get");
-                    b.string(readBc("bci + " + immediate.offset())); // start
-                    b.string(readBc("bci + " + (immediate.offset() + 1))); // length
+                    b.tree(readImmediate("bc", "bci", immediate)); // start
+                    b.tree(readImmediate("bc", "bci", immediate)); // length
                     b.end();
                 }
             }
@@ -6525,12 +6530,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return String.format("branchProfiles == null ? 0 : ACCESS.intArrayRead(branchProfiles, %s)", index);
     }
 
-    private static String readNode(TypeMirror expectedType, String index) {
+    private static String readNode(TypeMirror expectedType, CodeTree index) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         b.startCall("ACCESS.cast");
         b.startCall("ACCESS.objectArrayRead");
         b.string("cachedNodes");
-        b.string(index);
+        b.tree(index);
         b.end();
         b.typeLiteral(expectedType);
         b.end();
@@ -6717,6 +6722,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.string(bc);
         b.startGroup();
         b.string(bci).string(" + ").string(immediate.offset());
+        b.startComment().string(" imm ", immediate.name(), " ").end();
         b.end();
         b.end();
         return b.build();
