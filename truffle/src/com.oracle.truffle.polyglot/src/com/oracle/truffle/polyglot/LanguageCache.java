@@ -78,6 +78,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.provider.TruffleLanguageProvider;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
 import com.oracle.truffle.polyglot.EngineAccessor.StrongClassLoaderSupplier;
+import org.graalvm.home.HomeFinder;
 import org.graalvm.polyglot.SandboxPolicy;
 
 /**
@@ -352,7 +353,14 @@ final class LanguageCache implements Comparable<LanguageCache> {
                 }
             }
         }
-        String languageHome = getLanguageHomeImpl(id);
+        /*
+         * We utilize the `HomeFinder#getLanguageHomes()` function because it works for legacy,
+         * standalone, and unchained builds. It's important to note that this code is never
+         * reachable during native image execution, and thus, using it doesn't introduce
+         * `ProcessProperties#getExecutableName` function in the generated native image.
+         */
+        Path languageHomePath = HomeFinder.getInstance().getLanguageHomes().get(id);
+        String languageHome = languageHomePath != null ? languageHomePath.toString() : null;
         String implementationName = reg.implementationName();
         String version = reg.version();
         TreeSet<String> characterMimes = new TreeSet<>();
@@ -398,7 +406,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return sb.toString();
     }
 
-    private static String getLanguageHomeImpl(String languageId) {
+    private static String getLanguageHomeFromSystemProperty(String languageId) {
         return toRealStringPath("org.graalvm.language." + languageId + ".home");
     }
 
@@ -573,7 +581,12 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     String getLanguageHome() {
         if (languageHome == null) {
-            languageHome = getLanguageHomeImpl(id);
+            /*
+             * In the legacy build, the language home property is set by the GraalVMLocator at
+             * startup. We cannot use the HomeFinder#getLanguageHomes() function because it would
+             * make the ProcessProperties#getExecutableName() reachable.
+             */
+            languageHome = getLanguageHomeFromSystemProperty(id);
         }
         return languageHome;
     }
