@@ -468,9 +468,9 @@ public class TruffleInvocationPlugins {
         });
 
         r.registerConditional(VectorizedHashCodeNode.isSupported(arch), new InlineOnlyInvocationPlugin(
-                        "runHashCode", byte[].class, long.class, int.class, int.class, boolean.class) {
+                        "runHashCode", nodeType, byte[].class, long.class, int.class, int.class, boolean.class) {
             @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative) {
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
                     Stride constStride = constantStrideParam(stride);
