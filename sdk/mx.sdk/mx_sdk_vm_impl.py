@@ -4135,7 +4135,7 @@ def graalvm_clean_env(out_env=None):
     env = out_env or os.environ.copy()
     for env_var in ['DYNAMIC_IMPORTS', 'COMPONENTS', 'NATIVE_IMAGES', 'EXCLUDE_COMPONENTS', 'DISABLE_INSTALLABLES', 'NON_REBUILDABLE_IMAGES']:
         if env_var in env:
-            env.pop(env)
+            env.pop(env_var)
     return env
 
 
