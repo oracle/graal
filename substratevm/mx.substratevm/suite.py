@@ -946,6 +946,24 @@ suite = {
             "jacoco" : "exclude",
         },
 
+        "com.oracle.svm.with.space.test": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "mx:JUNIT_TOOL",
+                "sdk:NATIVEIMAGE",
+            ],
+            "checkstyle": "com.oracle.svm.test",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "SVM_PROCESSOR",
+            ],
+            "javaCompliance" : "21+",
+            "spotbugs": "false",
+            "jacoco" : "exclude",
+        },
+
         "com.oracle.svm.configure.test": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -1990,6 +2008,21 @@ suite = {
             "SVM_CONFIGURE",
           ],
           "testDistribution" : True,
+        },
+
+        # Special test distribution used for testing inclusion of resources from jar files with a space in their name.
+        # The space in the distribution name is intentional.
+        "SVM_TESTS WITH SPACE" : {
+            "subDir": "src",
+            "relpath" : True,
+            "dependencies" : [
+                "com.oracle.svm.with.space.test",
+            ],
+            "distDependencies": [
+                "sdk:NATIVEIMAGE",
+                "mx:JUNIT_TOOL",
+            ],
+            "testDistribution" : True,
         },
 
         "POLYGLOT_NATIVE_API" : {
