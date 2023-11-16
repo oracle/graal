@@ -134,6 +134,7 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.AddressLoweringByNodePhase;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.amd64.AMD64IntrinsicStubs;
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CPUFeatureAccess;
@@ -1556,12 +1557,20 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         crb.emitLIR();
     }
 
+    private AMD64Assembler createAssemblerNoOptions() {
+        OptionValues o = new OptionValues(EconomicMap.create());
+        return createAssembler(o);
+    }
+
     @Override
     public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier,
                     RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset) {
 
         CompilationResult result = new CompilationResult(identifier);
-        AMD64Assembler asm = new AMD64Assembler(getTarget());
+        AMD64Assembler asm = createAssemblerNoOptions();
+        if (SubstrateControlFlowIntegrity.enabled()) {
+            asm.endbranch();
+        }
         if (SubstrateOptions.SpawnIsolates.getValue()) { // method id is offset from heap base
             asm.movq(rax, new AMD64Address(threadArg.getRegister(), threadIsolateOffset));
             /*
