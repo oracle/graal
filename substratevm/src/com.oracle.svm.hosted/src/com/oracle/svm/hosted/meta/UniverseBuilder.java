@@ -1060,7 +1060,7 @@ public class UniverseBuilder {
                 boolean isObject = (storageKind == JavaKind.Object);
                 layoutHelper = LayoutEncoding.forArray(type, isObject, ol.getArrayBaseOffset(storageKind), ol.getArrayIndexShift(storageKind));
                 if (ol.isIdentityHashFieldInObjectHeader() || ol.isIdentityHashFieldAtTypeSpecificOffset()) {
-                    identityHashOffset = NumUtil.safeToInt(ol.getArrayIdentityHashOffset(0L));
+                    identityHashOffset = NumUtil.safeToInt(ol.getObjectHeaderIdentityHashOffset());
                 }
             } else if (type.isInterface()) {
                 layoutHelper = LayoutEncoding.forInterface();

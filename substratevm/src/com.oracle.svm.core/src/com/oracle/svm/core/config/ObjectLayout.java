@@ -49,8 +49,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * {@link #isIdentityHashFieldInObjectHeader()}).</li>
  * <li>At a type specific offset, potentially outside the object header (see
  * {@link #isIdentityHashFieldAtTypeSpecificOffset()}).</li>
- * <li>Outside the object header, at a type and object state specific offset (see
- * {@link #isIdentityHashFieldOptional()}).</li>
+ * <li>Outside the object header, at a type- or object-specific offset (see
+ * {@link #isIdentityHashFieldOptional()}). Note that the field is not part of every object. When an
+ * object needs the field, the object is resized during garbage collection to accommodate the
+ * field.</li>
  * </ol>
  */
 public final class ObjectLayout {
@@ -72,7 +74,6 @@ public final class ObjectLayout {
         assert CodeUtil.isPowerOf2(objectAlignment) : objectAlignment;
         assert arrayLengthOffset % Integer.BYTES == 0;
         assert hubOffset < firstFieldOffset && hubOffset < arrayLengthOffset : hubOffset;
-        assert identityHashMode == IdentityHashMode.OBJECT_HEADER || identityHashMode == IdentityHashMode.TYPE_SPECIFIC || identityHashMode == IdentityHashMode.OPTIONAL;
         assert (identityHashMode != IdentityHashMode.OPTIONAL && headerIdentityHashOffset > 0 && headerIdentityHashOffset < arrayLengthOffset && headerIdentityHashOffset % Integer.BYTES == 0) ||
                         (identityHashMode == IdentityHashMode.OPTIONAL && headerIdentityHashOffset == -1);
 
@@ -175,7 +176,6 @@ public final class ObjectLayout {
         return identityHashMode == IdentityHashMode.OPTIONAL.value;
     }
 
-    /** If {@link #isIdentityHashFieldInObjectHeader()}, then returns that offset. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getObjectHeaderIdentityHashOffset() {
         if (GraalDirectives.inIntrinsic()) {
@@ -257,7 +257,7 @@ public final class ObjectLayout {
         OBJECT_HEADER(0),
         /* At a type-specific offset (potentially outside the object header). */
         TYPE_SPECIFIC(1),
-        /* At a type and object-state specific offset (outside the object header). */
+        /* At a type- or object-specific offset (outside the object header). */
         OPTIONAL(2);
 
         final int value;

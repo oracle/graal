@@ -90,7 +90,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         numAlignmentBits = CodeUtil.log2(ConfigurationValues.getObjectLayout().getAlignment());
         int numMinimumReservedBits = 3;
         VMError.guarantee(numMinimumReservedBits <= numAlignmentBits, "Minimum set of reserved bits must be provided by object alignment");
-        if (isIdentityHasFieldOptional()) {
+        if (isIdentityHashFieldOptional()) {
             VMError.guarantee(ReferenceAccess.singleton().haveCompressedReferences(), "Ensures hubs (at the start of the image heap) remain addressable");
             numReservedBits = numMinimumReservedBits + 2;
             VMError.guarantee(numReservedBits <= numAlignmentBits || hasShift(),
@@ -160,9 +160,9 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Override
     public boolean hasOptionalIdentityHashField(Word header) {
         if (GraalDirectives.inIntrinsic()) {
-            ReplacementsUtil.staticAssert(isIdentityHasFieldOptional(), "use only when hashcode fields are optional");
+            ReplacementsUtil.staticAssert(isIdentityHashFieldOptional(), "use only when hashcode fields are optional");
         } else {
-            VMError.guarantee(isIdentityHasFieldOptional(), "use only when hashcode fields are optional");
+            VMError.guarantee(isIdentityHashFieldOptional(), "use only when hashcode fields are optional");
         }
 
         UnsignedWord inFieldState = IDHASH_STATE_IN_FIELD.shiftLeft(IDHASH_STATE_SHIFT);
@@ -172,7 +172,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void setIdentityHashInField(Object o) {
         assert VMOperation.isGCInProgress();
-        VMError.guarantee(isIdentityHasFieldOptional());
+        VMError.guarantee(isIdentityHashFieldOptional());
         UnsignedWord oldHeader = readHeaderFromObject(o);
         UnsignedWord inFieldState = IDHASH_STATE_IN_FIELD.shiftLeft(IDHASH_STATE_SHIFT);
         UnsignedWord newHeader = oldHeader.and(IDHASH_STATE_BITS.not()).or(inFieldState);
@@ -198,9 +198,9 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Override
     public void setIdentityHashFromAddress(Pointer ptr, Word currentHeader) {
         if (GraalDirectives.inIntrinsic()) {
-            ReplacementsUtil.staticAssert(isIdentityHasFieldOptional(), "use only when hashcode fields are optional");
+            ReplacementsUtil.staticAssert(isIdentityHashFieldOptional(), "use only when hashcode fields are optional");
         } else {
-            assert isIdentityHasFieldOptional() : "use only when hashcode fields are optional";
+            assert isIdentityHashFieldOptional() : "use only when hashcode fields are optional";
             assert !hasIdentityHashFromAddress(currentHeader) : "must not already have a hashcode";
         }
 
@@ -222,9 +222,9 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static boolean hasIdentityHashFromAddressInline(Word header) {
         if (GraalDirectives.inIntrinsic()) {
-            ReplacementsUtil.staticAssert(isIdentityHasFieldOptional(), "use only when hashcode fields are optional");
+            ReplacementsUtil.staticAssert(isIdentityHashFieldOptional(), "use only when hashcode fields are optional");
         } else {
-            assert isIdentityHasFieldOptional();
+            assert isIdentityHashFieldOptional();
         }
 
         UnsignedWord fromAddressState = IDHASH_STATE_FROM_ADDRESS.shiftLeft(IDHASH_STATE_SHIFT);
@@ -317,7 +317,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
                 assert obj.getPartition() instanceof FillerObjectDummyPartition;
             }
         }
-        if (isIdentityHasFieldOptional()) {
+        if (isIdentityHashFieldOptional()) {
             header |= (IDHASH_STATE_IN_FIELD.rawValue() << IDHASH_STATE_SHIFT);
         }
         return header;
@@ -435,7 +435,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     @Fold
-    static boolean isIdentityHasFieldOptional() {
+    static boolean isIdentityHashFieldOptional() {
         return ConfigurationValues.getObjectLayout().isIdentityHashFieldOptional();
     }
 }

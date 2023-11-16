@@ -633,7 +633,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     /**
      * If possible, use {@link LayoutEncoding#getIdentityHashOffset(Object)} instead. If the hash
      * code field is optional, note that this method may return an offset that is outside the bounds
-     * of a freshly the object.
+     * of a newly allocated object.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getIdentityHashOffset() {
