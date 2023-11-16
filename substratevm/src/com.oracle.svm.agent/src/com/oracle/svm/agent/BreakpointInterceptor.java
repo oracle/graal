@@ -61,7 +61,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -102,6 +101,8 @@ import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventMode;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiFrameInfo;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiInterface;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiLocationFormat;
+
+import jdk.graal.compiler.core.common.NumUtil;
 
 /**
  * Intercepts events of interest via breakpoints in Java code.
@@ -679,18 +680,30 @@ final class BreakpointInterceptor {
             callerMethod = state.getCallerMethod(3);
         }
         JNIObjectHandle callerClass = getMethodDeclaringClass(callerMethod);
-        JNIObjectHandle callerModule = getObjectArgument(thread, 0);
-        JNIObjectHandle module = getObjectArgument(thread, 1);
         JNIObjectHandle baseName = getObjectArgument(thread, 2);
         JNIObjectHandle locale = getObjectArgument(thread, 3);
-        JNIObjectHandle control = getObjectArgument(thread, 4);
-        JNIObjectHandle result = Support.callStaticObjectMethodLLLLL(jni, bp.clazz, bp.method, callerModule, module, baseName, locale, control);
-        BundleInfo bundleInfo = BundleInfo.NONE;
-        if (!clearException(jni)) {
-            bundleInfo = extractBundleInfo(jni, result);
+        traceReflectBreakpoint(jni, nullHandle(), nullHandle(), callerClass, bp.specification.methodName, true, state.getFullStackTraceOrNull(),
+                        Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, fromJniString(jni, baseName), readLocaleTag(jni, locale), Tracer.UNKNOWN_VALUE);
+        return true;
+    }
+
+    /*
+     * Bundles.putBundleInCache is the single point through which all bundles queried through
+     * sun.util.resources.Bundles go
+     */
+    private static boolean putBundleInCache(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle callerClass = state.getDirectCallerClass();
+        JNIObjectHandle cacheKey = getObjectArgument(thread, 0);
+        JNIObjectHandle baseName = Support.callObjectMethod(jni, cacheKey, agent.handles().sunUtilResourcesBundlesCacheKeyGetName);
+        if (clearException(jni)) {
+            baseName = nullHandle();
         }
-        traceReflectBreakpoint(jni, nullHandle(), nullHandle(), callerClass, "getBundleImpl", true, state.getFullStackTraceOrNull(),
-                        Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, fromJniString(jni, baseName), Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, bundleInfo.classNames, bundleInfo.locales);
+        JNIObjectHandle locale = Support.callObjectMethod(jni, cacheKey, agent.handles().sunUtilResourcesBundlesCacheKeyGetLocale);
+        if (clearException(jni)) {
+            locale = nullHandle();
+        }
+        traceReflectBreakpoint(jni, nullHandle(), nullHandle(), callerClass, bp.specification.methodName, true, state.getFullStackTraceOrNull(),
+                        Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, fromJniString(jni, baseName), readLocaleTag(jni, locale), Tracer.UNKNOWN_VALUE);
         return true;
     }
 
@@ -701,59 +714,6 @@ final class BreakpointInterceptor {
             return "";
         }
         return fromJniString(jni, languageTag);
-    }
-
-    private static final class BundleInfo {
-
-        static final BundleInfo NONE = new BundleInfo(new String[0], new String[0]);
-
-        final String[] classNames;
-        final String[] locales;
-
-        BundleInfo(String[] classNames, String[] locales) {
-            this.classNames = classNames;
-            this.locales = locales;
-        }
-    }
-
-    /**
-     * Traverses the bundle parent chain and collects classnames and locales of all encountered
-     * bundles.
-     *
-     */
-    private static BundleInfo extractBundleInfo(JNIEnvironment jni, JNIObjectHandle bundle) {
-        List<String> locales = new ArrayList<>();
-        List<String> classNames = new ArrayList<>();
-        JNIObjectHandle curr = bundle;
-        while (curr.notEqual(nullHandle())) {
-            JNIObjectHandle locale = Support.callObjectMethod(jni, curr, agent.handles().getJavaUtilResourceBundleGetLocale(jni));
-            if (clearException(jni)) {
-                return BundleInfo.NONE;
-            }
-            String localeTag = readLocaleTag(jni, locale);
-            if (localeTag.equals("und")) {
-                /*- Root locale is serialized into "und" */
-                localeTag = "";
-            }
-            JNIObjectHandle clazz = Support.callObjectMethod(jni, curr, agent.handles().javaLangObjectGetClass);
-            if (!clearException(jni)) {
-                JNIObjectHandle classNameHandle = Support.callObjectMethod(jni, clazz, agent.handles().javaLangClassGetName);
-                if (!clearException(jni)) {
-                    classNames.add(fromJniString(jni, classNameHandle));
-                    locales.add(localeTag);
-                }
-            }
-            curr = getResourceBundleParent(jni, curr);
-        }
-        return new BundleInfo(classNames.toArray(new String[0]), locales.toArray(new String[0]));
-    }
-
-    private static JNIObjectHandle getResourceBundleParent(JNIEnvironment jni, JNIObjectHandle bundle) {
-        JNIObjectHandle parent = Support.readObjectField(jni, bundle, agent.handles().getJavaUtilResourceBundleParentField(jni));
-        if (!clearException(jni)) {
-            return parent;
-        }
-        return nullHandle();
     }
 
     private static boolean loadClass(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
@@ -784,6 +744,13 @@ final class BreakpointInterceptor {
         JNIObjectHandle name = getObjectArgument(thread, 1);
         String className = fromJniString(jni, name);
         traceReflectBreakpoint(jni, bp.clazz, nullHandle(), callerClass, bp.specification.methodName, className != null, state.getFullStackTraceOrNull(), className);
+        return true;
+    }
+
+    private static boolean findSystemClass(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle callerClass = state.getDirectCallerClass();
+        JNIObjectHandle className = getObjectArgument(thread, 1);
+        traceReflectBreakpoint(jni, bp.clazz, nullHandle(), callerClass, bp.specification.methodName, true, state.getFullStackTraceOrNull(), fromJniString(jni, className));
         return true;
     }
 
@@ -1009,6 +976,18 @@ final class BreakpointInterceptor {
         boolean validCapturingClass = nullHandle().notEqual(capturingClass);
 
         traceSerializeBreakpoint(jni, "SerializedLambda.readResolve", validCapturingClass, state.getFullStackTraceOrNull(), capturingClassName);
+        return true;
+    }
+
+    private static boolean readClassDescriptor(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle desc = getObjectArgument(thread, 1);
+        JNIMethodId descriptor = agent.handles().getJavaIoObjectStreamClassGetName(jni);
+        var name = Support.callObjectMethod(jni, desc, descriptor);
+        if (clearException(jni)) {
+            name = nullHandle();
+        }
+        var className = fromJniString(jni, name);
+        traceSerializeBreakpoint(jni, "ObjectInputStream.readClassDescriptor", true, state.getFullStackTraceOrNull(), className, null);
         return true;
     }
 
@@ -1544,6 +1523,9 @@ final class BreakpointInterceptor {
                     brk("java/lang/reflect/Array", "newInstance", "(Ljava/lang/Class;I)Ljava/lang/Object;", BreakpointInterceptor::newArrayInstance),
                     brk("java/lang/reflect/Array", "newInstance", "(Ljava/lang/Class;[I)Ljava/lang/Object;", BreakpointInterceptor::newArrayInstanceMulti),
 
+                    brk("java/lang/ClassLoader", "findSystemClass", "(Ljava/lang/String;)Ljava/lang/Class;",
+                                    BreakpointInterceptor::findSystemClass),
+
                     brk("jdk/internal/loader/BuiltinClassLoader", "findResource", "(Ljava/lang/String;Ljava/lang/String;)Ljava/net/URL;", BreakpointInterceptor::findResource),
                     brk("jdk/internal/loader/BuiltinClassLoader", "findResourceAsStream", "(Ljava/lang/String;Ljava/lang/String;)Ljava/io/InputStream;", BreakpointInterceptor::findResource),
                     brk("jdk/internal/loader/Loader", "findResource", "(Ljava/lang/String;Ljava/lang/String;)Ljava/net/URL;", BreakpointInterceptor::findResource),
@@ -1562,6 +1544,7 @@ final class BreakpointInterceptor {
                                     "(Ljava/lang/ClassLoader;[Ljava/lang/Class;Ljava/lang/reflect/InvocationHandler;)Ljava/lang/Object;", BreakpointInterceptor::newProxyInstance),
 
                     brk("java/lang/invoke/SerializedLambda", "readResolve", "()Ljava/lang/Object;", BreakpointInterceptor::serializedLambdaReadResolve),
+                    brk("java/io/ObjectInputStream", "resolveClass", "(Ljava/io/ObjectStreamClass;)Ljava/lang/Class;", BreakpointInterceptor::readClassDescriptor),
                     brk("java/io/ObjectStreamClass", "<init>", "(Ljava/lang/Class;)V", BreakpointInterceptor::objectStreamClassConstructor),
                     brk("jdk/internal/reflect/ReflectionFactory",
                                     "newConstructorForSerialization",
@@ -1570,6 +1553,8 @@ final class BreakpointInterceptor {
                                     "getBundleImpl",
                                     "(Ljava/lang/Module;Ljava/lang/Module;Ljava/lang/String;Ljava/util/Locale;Ljava/util/ResourceBundle$Control;)Ljava/util/ResourceBundle;",
                                     BreakpointInterceptor::getBundleImpl),
+                    brk("sun/util/resources/Bundles", "putBundleInCache", "(Lsun/util/resources/Bundles$CacheKey;Ljava/util/ResourceBundle;)Ljava/util/ResourceBundle;",
+                                    BreakpointInterceptor::putBundleInCache),
 
                     // In Java 9+, these are Java methods that call private methods
                     optionalBrk("jdk/internal/misc/Unsafe", "objectFieldOffset", "(Ljava/lang/Class;Ljava/lang/String;)J", BreakpointInterceptor::objectFieldOffsetByName),

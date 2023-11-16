@@ -142,6 +142,13 @@ Code may also write non-static final fields like `String.value` in this example,
 More than one configuration can be used by specifying multiple paths for `ReflectionConfigurationFiles` and separating them with `,`.
 Also, `-H:ReflectionConfigurationResources` can be specified to load one or several configuration files from the build's class path, such as from a JAR file.
 
+### Elements and queries registered by default
+
+Querying the methods and constructor of `java.lang.Object` does not require configuration. The Java access rules still apply.
+Likewise, when using the [strict metadata mode](#strict-metadata-mode), it is possible to query the public or declared fields, methods and constructors of `java.lang.Object`, primitive classes and array classes without requiring a configuration entry.
+These queries return empty arrays in most cases, except for `java.lang.Object` methods and constructors and array public methods (all inherited from `java.lang.Object`). The image size impact of this inclusion is therefore minimal.
+On the other hand, it is necessary to register these methods and constructors if they need to be reflectively invoked at run-time, via `Method.invoke()` or `Constructor.newInstance()`.
+
 ## Conditional Configuration
 
 With conditional configuration, a class configuration entry is applied only if a provided `condition` is satisfied.

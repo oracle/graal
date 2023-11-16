@@ -259,8 +259,26 @@ public final class Resources {
         assert MissingRegistrationUtils.throwMissingRegistrationErrors();
         synchronized (includePatterns) {
             updateTimeStamp();
-            includePatterns.put(new ModuleResourcePair(module, pattern), Boolean.TRUE);
+            includePatterns.put(new ModuleResourcePair(module, handleEscapedCharacters(pattern)), Boolean.TRUE);
         }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)//
+    private static final String BEGIN_ESCAPED_SEQUENCE = "\\Q";
+
+    @Platforms(Platform.HOSTED_ONLY.class)//
+    private static final String END_ESCAPED_SEQUENCE = "\\E";
+
+    /*
+     * This handles generated include patterns which start and end with \Q and \E. The actual
+     * resource name is located inbetween those tags.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static String handleEscapedCharacters(String pattern) {
+        if (pattern.startsWith(BEGIN_ESCAPED_SEQUENCE) && pattern.endsWith(END_ESCAPED_SEQUENCE)) {
+            return pattern.substring(BEGIN_ESCAPED_SEQUENCE.length(), pattern.length() - END_ESCAPED_SEQUENCE.length());
+        }
+        return pattern;
     }
 
     /**

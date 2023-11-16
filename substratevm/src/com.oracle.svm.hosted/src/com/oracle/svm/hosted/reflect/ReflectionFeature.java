@@ -31,6 +31,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,6 +57,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
+import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -104,6 +106,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
      */
     private static final Method findCallerSensitiveAdapterMethod = ReflectionUtil.lookupMethod(ReflectionUtil.lookupClass(false, "jdk.internal.reflect.DirectMethodHandleAccessor"),
                     "findCSMethodAdapter", Method.class);
+    private static final List<Class<?>> PRIMITIVE_CLASSES = List.of(void.class, boolean.class, byte.class, short.class, char.class, int.class, long.class, float.class, double.class);
 
     private AnnotationSubstitutionProcessor annotationSubstitutions;
 
@@ -265,6 +268,11 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
         loader = access.getImageClassLoader();
         annotationSubstitutions = ((Inflation) access.getBigBang()).getAnnotationSubstitutionProcessor();
+
+        /* Primitive classes cannot be accessed through Class.forName() */
+        for (Class<?> primitiveClass : PRIMITIVE_CLASSES) {
+            ClassForNameSupport.registerNegativeQuery(primitiveClass.getName());
+        }
     }
 
     @Override
@@ -282,7 +290,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         access.registerFieldValueTransformer(ReflectionUtil.lookupField(SubstrateMethodAccessor.class, "vtableOffset"), new ComputeVTableOffset());
 
         /* Make sure array classes don't need to be registered for reflection. */
-        RuntimeReflection.register(Object[].class.getMethods());
+        RuntimeReflection.register(Object.class.getDeclaredMethods());
     }
 
     @Override

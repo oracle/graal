@@ -48,19 +48,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.graph.iterators.NodeIterable;
-import jdk.graal.compiler.java.GraphBuilderPhase;
-import jdk.graal.compiler.java.LambdaUtils;
-import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.OptimisticOptimizations;
-import jdk.graal.compiler.phases.tiers.HighTierContext;
-import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
-import jdk.graal.compiler.replacements.MethodHandlePlugin;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -94,6 +81,19 @@ import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.iterators.NodeIterable;
+import jdk.graal.compiler.java.GraphBuilderPhase;
+import jdk.graal.compiler.java.LambdaUtils;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.phases.tiers.HighTierContext;
+import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.replacements.MethodHandlePlugin;
 import jdk.internal.reflect.ReflectionFactory;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -468,6 +468,8 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         }
 
         Class<?> serializationTargetClass = typeResolver.resolveType(targetClassName);
+        /* With invalid streams we have to register the class for lookup */
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(condition, targetClassName);
         if (serializationTargetClass == null) {
             return;
         }
@@ -500,6 +502,11 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         if (!Serializable.class.isAssignableFrom(serializationTargetClass)) {
             return;
         }
+        /*
+         * Making this class reachable as it will end up in the image heap without the analysis
+         * knowing.
+         */
+        RuntimeReflection.register(java.io.ObjectOutputStream.class);
 
         if (denyRegistry.isAllowed(serializationTargetClass)) {
             if (customTargetConstructorClass != null) {

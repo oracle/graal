@@ -36,6 +36,7 @@ import java.util.List;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.loader.Resource;
+import org.graalvm.nativeimage.ImageInfo;
 
 public class ResourcesHelper {
 
@@ -106,8 +107,10 @@ public class ResourcesHelper {
         return Resources.singleton().createURL(module, resourceName);
     }
 
-    public static InputStream nameToResourceInputStream(String resourceName) throws IOException {
-        URL url = nameToResourceURL(resourceName);
+    public static InputStream nameToResourceInputStream(String mn, String resourceName) throws IOException {
+        VMError.guarantee(ImageInfo.inImageRuntimeCode(), "ResourcesHelper code should only be used at runtime");
+        Module module = ModuleLayer.boot().findModule(mn).orElse(null);
+        URL url = nameToResourceURL(module, resourceName);
         return url != null ? url.openStream() : null;
     }
 

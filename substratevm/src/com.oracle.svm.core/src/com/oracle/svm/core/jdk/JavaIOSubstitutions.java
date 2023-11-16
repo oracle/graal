@@ -69,7 +69,7 @@ final class Target_java_io_ObjectStreamClass {
         }
 
         if (Serializable.class.isAssignableFrom(cl)) {
-            if (!DynamicHub.fromClass(cl).isRegisteredForSerialization()) {
+            if (!cl.isArray() && !DynamicHub.fromClass(cl).isRegisteredForSerialization()) {
                 boolean isLambda = cl.getTypeName().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING);
                 boolean isProxy = Proxy.isProxyClass(cl);
                 if (isProxy || isLambda) {
