@@ -1229,7 +1229,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.startFor().string("int i = 0; i < variadicCount; i++").end().startBlock();
         b.statement("int index = sp - variadicCount + i");
         b.statement("result[i] = " + getFrameObject("index"));
-        b.statement(clearFrame("index"));
+        b.statement(clearFrame("frame", "index"));
         b.end();
 
         b.statement("return result");
@@ -4902,7 +4902,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                 b.end();
                             }
                         } else {
-                            b.statement(clearFrame("sp - 1"));
+                            b.statement(clearFrame("frame", "sp - 1"));
                         }
                         b.statement("sp -= 1");
                         break;
@@ -5013,7 +5013,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                 if (model.specializationDebugListener) {
                                     b.string("$this");
                                 }
-                                b.string(localFrame()).string("bc").string("bci").string("sp");
+                                b.string("frame");
+                                if (model.enableYield) {
+                                    b.string("localFrame");
+                                }
+                                b.string("bc").string("bci").string("sp");
                                 startGetFrame(b, type(Object.class)).string("frame").string("sp - 1").end();
                                 b.end();
                                 b.end();
@@ -5023,7 +5027,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             startSetFrame(b, type(Object.class)).string(localFrame()).string(readBc("bci + 1")).string(getFrameObject("sp - 1")).end();
                             b.end();
                         }
-                        b.statement(clearFrame("sp - 1"));
+                        b.statement(clearFrame("frame", "sp - 1"));
                         b.statement("sp -= 1");
                         break;
                     case STORE_LOCAL_MATERIALIZED:
@@ -5046,17 +5050,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                 if (model.specializationDebugListener) {
                                     b.string("$this");
                                 }
-                                b.string(materializedFrame).string("bc").string("bci").string("sp");
+                                b.string("frame").string(materializedFrame).string("bc").string("bci").string("sp");
                                 startGetFrame(b, type(Object.class)).string(localFrame()).string("sp - 1").end();
                                 b.end();
                                 b.end();
                             }
                         } else {
                             b.statement(materializedFrame + ".setObject(" + readBc("bci + 1") + ", " + getFrameObject("sp - 1") + ")");
+                            b.statement(clearFrame("frame", "sp - 1"));
+                            b.statement(clearFrame("frame", "sp - 2"));
                         }
 
-                        b.statement(clearFrame("sp - 1"));
-                        b.statement(clearFrame("sp - 2"));
                         b.statement("sp -= 2");
                         break;
                     case THROW:
@@ -5113,7 +5117,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         } else {
                             // Stack: [..., value, convertedValue]
                             // pop convertedValue
-                            b.statement(clearFrame("sp - 1"));
+                            b.statement(clearFrame("frame", "sp - 1"));
                             b.statement("sp -= 1");
                         }
                         b.statement("bci = " + readBc("bci + 1"));
@@ -5122,13 +5126,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         if (shortCircuitInstruction.returnConvertedValue()) {
                             // Stack: [..., convertedValue]
                             // clear convertedValue
-                            b.statement(clearFrame("sp - 1"));
+                            b.statement(clearFrame("frame", "sp - 1"));
                             b.statement("sp -= 1");
                         } else {
                             // Stack: [..., value, convertedValue]
                             // clear convertedValue and value
-                            b.statement(clearFrame("sp - 1"));
-                            b.statement(clearFrame("sp - 2"));
+                            b.statement(clearFrame("frame", "sp - 1"));
+                            b.statement(clearFrame("frame", "sp - 2"));
                             b.statement("sp -= 2");
                         }
                         b.statement("bci += " + instr.getInstructionLength());
@@ -5183,7 +5187,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("int handlerSp = handlers[idx + 3] + $this.numLocals");
             b.statement("assert sp >= handlerSp");
             b.startWhile().string("sp > handlerSp").end().startBlock();
-            b.statement(clearFrame("--sp"));
+            b.statement(clearFrame("frame", "--sp"));
             b.end();
 
             b.statement(setFrameObject(localFrame(), "handlers[idx + 4]", "ex"));
@@ -5220,6 +5224,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 return method;
             }
 
+            // TODO fib in SL does not boxing eliminate properly for POP
+
             method = new CodeExecutableElement(
                             Set.of(PRIVATE, STATIC),
                             type(void.class), instructionMethodName(instr),
@@ -5245,7 +5251,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (!isGeneric) {
                 b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end().end().startBlock();
                 b.lineComment("Always clear in compiled code for liveness analysis");
-                b.statement(clearFrame("sp - 1"));
+                b.statement(clearFrame("frame", "sp - 1"));
                 b.returnDefault();
                 b.end();
 
@@ -5262,7 +5268,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             if (isGeneric) {
-                b.statement(clearFrame("sp - 1"));
+                b.statement(clearFrame("frame", "sp - 1"));
             } else {
                 b.lineComment("No need to clear for primitives in the interpreter");
             }
@@ -5335,7 +5341,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             emitQuickeningOperand(b, "root", "bc", "bci", null, 0, "operandIndex", "operand", "newOperand");
             emitQuickening(b, "root", "bc", "bci", null, "newInstruction");
-            b.statement(clearFrame("sp - 1"));
+            b.statement(clearFrame("frame", "sp - 1"));
 
             doInstructionMethods.put(instr, method);
             return method;
@@ -5644,7 +5650,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startTryBlock();
 
             b.startStatement().string("local = ");
-            startExpectFrame(b, inputType).string(needsStackFrame ? "stackFrame" : "frame").string("sp - 1").end();
+            String stackFrame = needsStackFrame ? "stackFrame" : "frame";
+            startExpectFrame(b, inputType).string(stackFrame).string("sp - 1").end();
             b.end();
 
             b.end().startCatchBlock(types.UnexpectedResultException, "ex");
@@ -5653,8 +5660,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (model.specializationDebugListener) {
                 b.string("root");
             }
-            b.string("frame").string("bc").string("bci").string("sp");
-            b.string("ex.getResult()");
+            if (needsStackFrame) {
+                b.string("stackFrame");
+            }
+            b.string("frame").string("bc").string("bci").string("sp").string("ex.getResult()");
             b.end().end();
 
             b.returnDefault();
@@ -5669,6 +5678,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.string("local");
                 b.end();
                 b.end();
+                b.statement(clearFrame(stackFrame, "sp - 1"));
+                if (instr.kind == InstructionKind.STORE_LOCAL_MATERIALIZED) {
+                    b.statement(clearFrame(stackFrame, "sp - 2"));
+                }
             } else {
                 boolean needsCast = ElementUtils.needsCastTo(inputType, slotType);
                 b.declaration(type(int.class), "slot", readSlot);
@@ -5691,6 +5704,20 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
                 b.end(); // set frame
                 b.end(); // statement
+
+                if (instr.kind == InstructionKind.STORE_LOCAL_MATERIALIZED) {
+                    b.statement(clearFrame(stackFrame, "sp - 1"));
+                    b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end().end().startBlock();
+                    b.lineComment("Clear primitive for compiler liveness analysis");
+                    b.statement(clearFrame(stackFrame, "sp - 2"));
+                    b.end();
+                } else {
+                    b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end().end().startBlock();
+                    b.lineComment("Clear primitive for compiler liveness analysis");
+                    b.statement(clearFrame(stackFrame, "sp - 1"));
+                    b.end();
+                }
+
                 b.returnDefault();
 
                 if (needsCast) {
@@ -5705,6 +5732,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startStatement().startCall(lookupDoSpecializeStoreLocal(instr.getQuickeningRoot()).getSimpleName().toString());
                 if (model.specializationDebugListener) {
                     b.string("root");
+                }
+                if (needsStackFrame) {
+                    b.string("stackFrame");
                 }
                 b.string("frame").string("bc").string("bci").string("sp").string("local");
 
@@ -5729,6 +5759,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(int.class), "sp"),
                             new CodeVariableElement(type(Object.class), "local"));
+
+            boolean needsStackFrame = instr.kind == InstructionKind.STORE_LOCAL_MATERIALIZED || model.enableYield;
+            if (needsStackFrame) {
+                method.getParameters().add(0, new CodeVariableElement(types.Frame, "stackFrame"));
+            }
+
+            String stackFrame = needsStackFrame ? "stackFrame" : "frame";
 
             if (model.specializationDebugListener) {
                 method.getParameters().add(0, new CodeVariableElement(bytecodeNodeGen.asType(), "root"));
@@ -5818,6 +5855,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             emitQuickeningOperand(b, "root", "bc", "bci", null, 0, "operandIndex", "operand", "newOperand");
             emitQuickening(b, "root", "bc", "bci", null, "newInstruction");
+
+            b.statement(clearFrame(stackFrame, "sp - 1"));
+            if (instr.kind == InstructionKind.STORE_LOCAL_MATERIALIZED) {
+                b.statement(clearFrame(stackFrame, "sp - 2"));
+            }
 
             doInstructionMethods.put(instr, method);
             return method;
@@ -6042,7 +6084,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             for (int i = stackEffect; i < 0; i++) {
                 // When stackEffect is negative, values should be cleared from the top of the stack.
-                b.statement(clearFrame("sp - " + -i));
+                b.statement(clearFrame("frame", "sp - " + -i));
             }
 
             // In continueAt, call the helper and adjust sp.
@@ -6682,8 +6724,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return String.format("ACCESS.setObject(%s, %s, %s)", frame, index, value);
     }
 
-    private static String clearFrame(String index) {
-        return String.format("ACCESS.clear(frame, %s)", index);
+    private static String clearFrame(String frame, String index) {
+        return String.format("ACCESS.clear(%s, %s)", frame, index);
     }
 
     private static String copyFrameSlot(String src, String dst) {
