@@ -930,9 +930,9 @@ class NativeImageVM(GraalVm):
 
     def run_stage_instrument_image(self, config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations, profile_path):
         executable_name_args = ['-o', instrumentation_image_name]
-        pgo_args = ['--pgo=' + config.latest_profile_path, '-R:ProfilesDumpFile=' + profile_path]
+        pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += svm_experimental_options(['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled'])
-        instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
+        instrument_args = ['--pgo-instrument', '-R:ProfilesDumpFile=' + profile_path] + ([] if i == 0 else pgo_args)
         if self.jdk_profiles_collect:
             instrument_args += svm_experimental_options(['-H:+ProfilingEnabled', '-H:+AOTPriorityInline', '-H:-SamplingCollect', f'-H:ProfilingPackagePrefixes={self.generate_profiling_package_prefixes()}'])
 
