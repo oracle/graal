@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes.interop;
 
+import java.math.BigInteger;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -174,6 +175,9 @@ public abstract class ToReference extends ToEspressoNode {
         if (targetType == meta.java_util_Date) {
             return ToReferenceFactory.ToDateNodeGen.create();
         }
+        if (targetType == meta.java_math_BigInteger) {
+            return ToReferenceFactory.ToBigIntegerNodeGen.create();
+        }
         if (isTypeConverterEnabled(targetType)) {
             return ToReferenceFactory.ToMappedTypeNodeGen.create((ObjectKlass) targetType);
         }
@@ -293,6 +297,9 @@ public abstract class ToReference extends ToEspressoNode {
         }
         if (targetType == meta.java_util_Date) {
             return ToReferenceFactory.ToDateNodeGen.getUncached();
+        }
+        if (targetType == meta.java_math_BigInteger) {
+            return ToReferenceFactory.ToBigIntegerNodeGen.getUncached();
         }
         throw new IllegalStateException("unknown types must be handled separately!");
     }
@@ -918,13 +925,14 @@ public abstract class ToReference extends ToEspressoNode {
 
         @Specialization(guards = {
                         "interop.isNumber(value)",
-                        "!isStaticObject(value)"
+                        "!isStaticObject(value)",
+                        "!isHostNumber(value)"
         })
         StaticObject doForeignNumber(Object value,
-                        @SuppressWarnings("unused") @Cached.Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached.Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @SuppressWarnings("unused") @Bind("getContext()") EspressoContext context) throws UnsupportedTypeException {
-            if (interop.fitsInDouble(value)) {
-                return StaticObject.createForeign(getLanguage(), getMeta().java_lang_Number, value, interop);
+            if (interop.fitsInBigInteger(value) || interop.fitsInDouble(value)) {
+                return StaticObject.createForeign(getLanguage(), context.getMeta().polyglot.EspressoForeignNumber, value, interop);
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw UnsupportedTypeException.create(new Object[]{value}, "unsupported number");
@@ -1454,32 +1462,14 @@ public abstract class ToReference extends ToEspressoNode {
 
         @Specialization(guards = {
                         "interop.isNumber(value)",
-                        "!isStaticObject(value)"
+                        "!isStaticObject(value)",
+                        "!isHostNumber(value)"
         })
         StaticObject doForeignNumber(Object value,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
-            try {
-                if (interop.fitsInByte(value)) {
-                    return meta.boxByte(interop.asByte(value));
-                }
-                if (interop.fitsInShort(value)) {
-                    return meta.boxShort(interop.asShort(value));
-                }
-                if (interop.fitsInInt(value)) {
-                    return meta.boxInteger(interop.asInt(value));
-                }
-                if (interop.fitsInLong(value)) {
-                    return meta.boxLong(interop.asLong(value));
-                }
-                if (interop.fitsInFloat(value)) {
-                    return meta.boxFloat(interop.asFloat(value));
-                }
-                if (interop.fitsInDouble(value)) {
-                    return meta.boxDouble(interop.asDouble(value));
-                }
-            } catch (UnsupportedMessageException ex) {
-                throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_lang_Number.getTypeAsString());
+            if (interop.fitsInBigInteger(value) || interop.fitsInDouble(value)) {
+                return StaticObject.createForeign(getLanguage(), meta.polyglot.EspressoForeignNumber, value, interop);
             }
             throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_lang_Number.getTypeAsString());
         }
@@ -2113,6 +2103,53 @@ public abstract class ToReference extends ToEspressoNode {
         }
     }
 
+    @NodeInfo(shortName = "BigInteger type mapping")
+    @GenerateUncached
+    public abstract static class ToBigInteger extends ToReference {
+        protected static final int LIMIT = 4;
+
+        @Specialization(guards = {
+                        "interop.isNull(value)",
+                        "!isStaticObject(value)"
+        })
+        StaticObject doForeignNull(Object value,
+                        @SuppressWarnings("unused") @Cached.Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+            return StaticObject.createForeignNull(EspressoLanguage.get(this), value);
+        }
+
+        @Specialization
+        public StaticObject doEspresso(StaticObject value,
+                        @Cached InstanceOf.Dynamic instanceOf,
+                        @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+            if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass(), meta.java_math_BigInteger)) {
+                return value; // pass through, NULL coercion not needed.
+            }
+            throw UnsupportedTypeException.create(new Object[]{value}, meta.java_math_BigInteger.getTypeAsString());
+        }
+
+        @Specialization(guards = "interop.fitsInBigInteger(value)")
+        StaticObject doForeignBigInteger(Object value,
+                        @Cached.Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Bind("getMeta()") Meta meta) {
+            try {
+                BigInteger bigInteger = interop.asBigInteger(value);
+                StaticObject guestBigInteger = getAllocator().createNew(meta.java_math_BigInteger);
+                byte[] bytes = bigInteger.toByteArray();
+                meta.java_math_BigInteger_init.invokeDirect(guestBigInteger, StaticObject.wrap(bytes, meta));
+                return guestBigInteger;
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere("Contract violation: if fitsInBigInteger returns true, asBigInteger must succeed.");
+            }
+        }
+
+        @Specialization(guards = "!interop.fitsInBigInteger(value)")
+        StaticObject doUnsupported(Object value,
+                        @SuppressWarnings("unused") @Cached.Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+            throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_math_BigInteger.getTypeAsString());
+        }
+    }
+
     @NodeInfo(shortName = "unknown type mapping")
     public abstract static class ToUnknown extends ToReference {
         protected static final int LIMIT = 4;
@@ -2167,6 +2204,10 @@ public abstract class ToReference extends ToEspressoNode {
 
     static boolean isStaticObject(Object obj) {
         return obj instanceof StaticObject;
+    }
+
+    static boolean isHostNumber(Object obj) {
+        return obj instanceof Number;
     }
 
     static boolean isEspressoString(StaticObject obj, Meta meta) {

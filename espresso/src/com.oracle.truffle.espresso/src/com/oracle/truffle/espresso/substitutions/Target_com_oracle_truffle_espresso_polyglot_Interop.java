@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import java.math.BigInteger;
 import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -402,6 +403,27 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     }
 
     /**
+     * Returns <code>true</code> if the receiver represents a <code>number</code> and its value fits
+     * in a Java BigInteger without loss of precision, else <code>false</code>. Invoking this
+     * message does not cause any observable side-effects.
+     *
+     * @see InteropLibrary#fitsInBigInteger(Object)
+     */
+    @Substitution
+    abstract static class FitsInBigInteger extends SubstitutionNode {
+        static final int LIMIT = 2;
+
+        abstract boolean execute(@JavaType(Object.class) StaticObject receiver);
+
+        @Specialization
+        boolean doCached(
+                @JavaType(Object.class) StaticObject receiver,
+                @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+            return interop.fitsInBigInteger(InteropUtils.unwrapForeign(getLanguage(), receiver));
+        }
+    }
+
+    /**
      * Returns the receiver value as Java byte primitive if the number fits without loss of
      * precision. Invoking this message does not cause any observable side-effects.
      *
@@ -562,6 +584,33 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @Cached BranchProfile exceptionProfile) {
             try {
                 return interop.asDouble(InteropUtils.unwrapForeign(getLanguage(), receiver));
+            } catch (InteropException e) {
+                exceptionProfile.enter();
+                throw throwInteropExceptionAsGuest.execute(e);
+            }
+        }
+    }
+
+    /**
+     * Returns the receiver value as Java BigInteger if the number fits without loss of
+     * precision. Invoking this message does not cause any observable side-effects.
+     *
+     * @see InteropLibrary#asBigInteger(Object)
+     */
+    @Substitution
+    @Throws(others = @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"))
+    abstract static class AsBigInteger extends SubstitutionNode {
+
+        abstract @JavaType(BigInteger.class) StaticObject execute(@JavaType(Object.class) StaticObject receiver);
+
+        @Specialization
+        @JavaType(BigInteger.class) StaticObject doCached(
+                @JavaType(Object.class) StaticObject receiver,
+                @Cached ToReference.ToBigInteger toBigInteger,
+                @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
+                @Cached BranchProfile exceptionProfile) {
+            try {
+                return toBigInteger.execute(InteropUtils.unwrapForeign(getLanguage(), receiver));
             } catch (InteropException e) {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);
