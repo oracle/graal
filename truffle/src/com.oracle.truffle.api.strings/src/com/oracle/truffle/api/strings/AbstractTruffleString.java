@@ -437,14 +437,12 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
 
     final void checkEncoding(TruffleString.Encoding expectedEncoding) {
         if (!isCompatibleToIntl(expectedEncoding)) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw InternalErrors.wrongEncoding(expectedEncoding);
         }
     }
 
     final void looseCheckEncoding(TruffleString.Encoding expectedEncoding, int codeRangeA) {
         if (!isLooselyCompatibleTo(expectedEncoding.id, expectedEncoding.maxCompatibleCodeRange, codeRangeA)) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw InternalErrors.wrongEncoding(expectedEncoding);
         }
     }
@@ -459,10 +457,8 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
 
     static int rawIndex(int byteIndex, TruffleString.Encoding expectedEncoding) {
         if (isUTF16(expectedEncoding) && (byteIndex & 1) != 0) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw InternalErrors.illegalArgument("misaligned byte index on UTF-16 string");
         } else if (isUTF32(expectedEncoding) && (byteIndex & 3) != 0) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw InternalErrors.illegalArgument("misaligned byte index on UTF-32 string");
         }
         return byteIndex >> expectedEncoding.naturalStride;
@@ -470,7 +466,6 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
 
     static int rawIndexUTF16(int byteIndex) {
         if ((byteIndex & 1) != 0) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw InternalErrors.illegalArgument("misaligned byte index on UTF-16 string");
         }
         return byteIndex >> Encoding.UTF_16.naturalStride;
@@ -478,7 +473,6 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
 
     static int rawIndexUTF32(int byteIndex) {
         if ((byteIndex & 3) != 0) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw InternalErrors.illegalArgument("misaligned byte index on UTF-32 string");
         }
         return byteIndex >> Encoding.UTF_32.naturalStride;
@@ -580,7 +574,6 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
 
     static void checkArrayRange(int arrayLength, int byteOffset, int byteLength) {
         if (Integer.toUnsignedLong(byteOffset) + Integer.toUnsignedLong(byteLength) > arrayLength) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw InternalErrors.substringOutOfBounds();
         }
     }
