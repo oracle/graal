@@ -941,7 +941,7 @@ public final class Symbol<T> extends ByteSequence {
                         "Lcom/oracle/truffle/espresso/polyglot/collections/EspressoForeignSet;");
 
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_impl_EspressoForeignNumber = StaticSymbols.putType(
-                "Lcom/oracle/truffle/espresso/polyglot/impl/EspressoForeignNumber;");
+                        "Lcom/oracle/truffle/espresso/polyglot/impl/EspressoForeignNumber;");
 
         // Panama
         public static final Symbol<Type> jdk_internal_foreign_abi_VMStorage = StaticSymbols.putType("Ljdk/internal/foreign/abi/VMStorage;");

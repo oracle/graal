@@ -417,8 +417,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
         @Specialization
         boolean doCached(
-                @JavaType(Object.class) StaticObject receiver,
-                @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+                        @JavaType(Object.class) StaticObject receiver,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
             return interop.fitsInBigInteger(InteropUtils.unwrapForeign(getLanguage(), receiver));
         }
     }
@@ -592,8 +592,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     }
 
     /**
-     * Returns the receiver value as Java BigInteger if the number fits without loss of
-     * precision. Invoking this message does not cause any observable side-effects.
+     * Returns the receiver value as Java BigInteger if the number fits without loss of precision.
+     * Invoking this message does not cause any observable side-effects.
      *
      * @see InteropLibrary#asBigInteger(Object)
      */
@@ -604,11 +604,12 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         abstract @JavaType(BigInteger.class) StaticObject execute(@JavaType(Object.class) StaticObject receiver);
 
         @Specialization
-        @JavaType(BigInteger.class) StaticObject doCached(
-                @JavaType(Object.class) StaticObject receiver,
-                @Cached ToReference.ToBigInteger toBigInteger,
-                @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
-                @Cached BranchProfile exceptionProfile) {
+        @JavaType(BigInteger.class)
+        StaticObject doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @Cached ToReference.ToBigInteger toBigInteger,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
+                        @Cached BranchProfile exceptionProfile) {
             try {
                 return toBigInteger.execute(InteropUtils.unwrapForeign(getLanguage(), receiver));
             } catch (InteropException e) {
@@ -3898,7 +3899,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * <p>
      * Throws UnsupportedMessageException if and only if {@link HasHashEntries} returns
      * {@code false} for the same receiver.
-     * 
+     *
      * @since 21.1
      */
     @Substitution

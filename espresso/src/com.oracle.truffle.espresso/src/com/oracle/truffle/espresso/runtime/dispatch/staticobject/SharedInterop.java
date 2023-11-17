@@ -64,14 +64,14 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 /**
  * Implementation of Espresso interop in a way that can be safely shared across contexts until code
  * sharing is implemented.
- * 
+ *
  * This works by looking up the context of the receiver, then selecting the context-specific
  * implementation for the object, based on the dispatch class that would have been selected when the
  * language is not shared.
- * 
+ *
  * In case an implementation cannot be found, the message will return the default value, as defined
  * in {@link InteropLibrary}.
- * 
+ *
  * @see #getTarget(StaticObject, InteropMessage.Message)
  * @see InteropMessageFactories
  */
@@ -601,8 +601,8 @@ public class SharedInterop {
 
     @ExportMessage
     public static BigInteger asBigInteger(StaticObject receiver,
-                                          @Cached IndirectCallNode callNode,
-                                          @Cached CallSharedInteropMessage sharedCallNode) throws UnsupportedMessageException {
+                    @Cached IndirectCallNode callNode,
+                    @Cached CallSharedInteropMessage sharedCallNode) throws UnsupportedMessageException {
         int dispatchId = receiver.getKlass().getDispatchId();
         InteropMessage.Message message = InteropMessage.Message.AsDouble;
         if (InteropMessageFactories.isShareable(dispatchId, message)) {
