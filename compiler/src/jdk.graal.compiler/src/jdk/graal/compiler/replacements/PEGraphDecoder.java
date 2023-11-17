@@ -1260,6 +1260,11 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
          * The GraphEncoder assigns parameters a nodeId immediately after the fixed nodes.
          * Initializing createdNodes here avoid decoding and immediately replacing the
          * ParameterNodes.
+         *
+         * The normal inliner would build PiNodes here to correct mismatches between caller argument
+         * and callee parameter stamps. We don't do that during graph decoding since ParameterNodes
+         * are never created in the first place, instead directly connecting the caller arguments to
+         * usages in the callee, meaning there can be no stamp mismatch.
          */
         int firstArgumentNodeId = inlineScope.maxFixedNodeOrderId + 1;
         for (int i = 0; i < arguments.length; i++) {
