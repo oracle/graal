@@ -48,8 +48,8 @@ then
     exit 1
 fi
 
-UNICODE_VERSION=15.0.0
-EMOJI_VERSION=15.0
+UNICODE_VERSION=15.1.0
+EMOJI_VERSION=15.1
 
 mkdir -p ./dat
 

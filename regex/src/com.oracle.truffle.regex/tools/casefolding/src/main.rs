@@ -927,7 +927,7 @@ fn main() -> Result<()> {
 fn generate_case_fold_data() -> Result<()> {
     let mut multi_character_strings: HashMap<String, IElement> = HashMap::new();
 
-    let unicode_version = "15.0.0";
+    let unicode_version = "15.1.0";
     let unicode_version_oracle_db = "12.1.0";
     let unicode_data_txt = fetch(format!("https://www.unicode.org/Public/{}/ucd/UnicodeData.txt", unicode_version))?;
     let unicode_case_folding_txt = fetch(format!("https://www.unicode.org/Public/{}/ucd/CaseFolding.txt", unicode_version))?;
