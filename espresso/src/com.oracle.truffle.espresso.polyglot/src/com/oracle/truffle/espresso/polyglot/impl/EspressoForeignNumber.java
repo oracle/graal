@@ -45,6 +45,8 @@ import com.oracle.truffle.espresso.polyglot.UnsupportedMessageException;
 
 public final class EspressoForeignNumber extends Number {
 
+    private static final long serialVersionUID = -3542446384652078237L;
+
     @Override
     public int intValue() {
         if (Interop.fitsInDouble(this)) {
