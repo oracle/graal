@@ -563,10 +563,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             specializations = instruction.filteredSpecializations;
             /*
              * If specializations are filtered we know we know all of them are active at the same
-             * time, so we can skip state checks. Ideally we would generate an assertion for this,
-             * but we can't due to race conditions.
+             * time, so we can skip state checks.
              */
-            skipStateChecks = true;
+            skipStateChecks = specializations.size() == 1;
         }
         return factory.createExecuteMethod(el, executable, specializations, skipStateChecks && instruction.isQuickening());
     }
@@ -5223,8 +5222,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (method != null) {
                 return method;
             }
-
-            // TODO fib in SL does not boxing eliminate properly for POP
 
             method = new CodeExecutableElement(
                             Set.of(PRIVATE, STATIC),
