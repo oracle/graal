@@ -101,9 +101,6 @@ public abstract class FastAccess {
 
     public abstract void uncheckedSetObject(Frame frame, int slot, Object value);
 
-    // TODO implement this directly in the frame to avoid throwing unnecessary
-    // FrameSlotTypeException
-
     public final boolean expectBoolean(Frame frame, int slot) throws UnexpectedResultException {
         try {
             return getBoolean(frame, slot);
@@ -149,14 +146,6 @@ public abstract class FastAccess {
         }
     }
 
-    public final Object requireObject(Frame frame, int slot) {
-        try {
-            return getObject(frame, slot);
-        } catch (FrameSlotTypeException e) {
-            return frame.getValue(slot);
-        }
-    }
-
     public final float expectFloat(Frame frame, int slot) throws UnexpectedResultException {
         try {
             return getFloat(frame, slot);
@@ -172,6 +161,14 @@ public abstract class FastAccess {
         } catch (FrameSlotTypeException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw unexpectedValue(frame, slot);
+        }
+    }
+
+    public final Object requireObject(Frame frame, int slot) {
+        try {
+            return getObject(frame, slot);
+        } catch (FrameSlotTypeException e) {
+            return frame.getValue(slot);
         }
     }
 

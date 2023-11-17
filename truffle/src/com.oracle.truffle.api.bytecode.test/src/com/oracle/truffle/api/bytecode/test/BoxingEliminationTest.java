@@ -527,8 +527,6 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
 
         assertEquals(2, node.getCallTarget().call(2L));
 
-        printInstructions(node);
-
         assertInstructions(node,
                         "load.argument$Long",
                         "c.LongToInt$GreaterEqualOne$unboxed",
@@ -590,8 +588,6 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
 
         assertEquals(42, node.getCallTarget().call(2L));
 
-        printInstructions(node);
-
         assertInstructions(node,
                         "load.argument$Long",
                         "c.LongToInt$GreaterEqualOne$unboxed",
@@ -646,12 +642,14 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
 
             @Specialization(guards = "v >= 0")
             @ForceQuickening("positiveAndNegative")
+            @ForceQuickening
             public static long doGreaterZero(long v) {
                 return v;
             }
 
             @Specialization(guards = "v < 0")
             @ForceQuickening("positiveAndNegative")
+            @ForceQuickening
             public static long doLessThanZero(long v) {
                 return -v;
             }
@@ -721,6 +719,11 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                 throw new UnexpectedResultException(o);
             }
 
+            @Specialization(replaces = "doObject")
+            static boolean doExpected(@SuppressWarnings("unused") Object o) {
+                return o != null;
+            }
+
         }
 
         @Operation
@@ -750,11 +753,13 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
         static final class SwitchQuickening1 {
 
             @Specialization(guards = "o == 1")
+            @ForceQuickening
             static long doOne(long o) {
                 return o;
             }
 
             @Specialization(guards = "o >= 1", replaces = "doOne")
+            @ForceQuickening
             static long doGreaterEqualOne(long o) {
                 return o;
             }

@@ -94,6 +94,7 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.NodeData;
+import com.oracle.truffle.dsl.processor.model.Parameter;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
@@ -314,7 +315,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             return;
         }
 
-        // TODO: metadata
+        // TODO metadata
 
         // find and bind type system
         AnnotationMirror typeSystemRefMirror = ElementUtils.findAnnotationMirror(typeElement, types.TypeSystemReference);
@@ -523,57 +524,63 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 if (operation.kind != OperationKind.CUSTOM_SIMPLE) {
                     continue;
                 }
-                InstructionModel genericInstruction = operation.instruction;
-                boolean autoOperationQuicken = false;
-                for (int valueIndex = 0; valueIndex < genericInstruction.signature.valueCount; valueIndex++) {
-                    TypeMirror type = genericInstruction.signature.getSpecializedType(valueIndex);
-                    if (model.isBoxingEliminated(type)) {
-                        autoOperationQuicken = true;
-                        break;
+
+                boolean genericReturnBoxingEliminated = model.isBoxingEliminated(operation.instruction.signature.returnType);
+                /*
+                 * First we group specializations by boxing eliminated signature. Every
+                 * specialization has at most one boxing signature, so at most we will get one
+                 * boxing signature for each specialization out of this (assuming no implicit
+                 * casts).
+                 */
+                Map<List<TypeMirror>, List<SpecializationData>> boxingGroups = new LinkedHashMap<>();
+                for (SpecializationData specialization : operation.instruction.nodeData.getReachableSpecializations()) {
+                    if (specialization.getMethod() == null) {
+                        continue;
                     }
+
+                    Iterable<TypeMirror> signatureTypes;
+                    if (genericReturnBoxingEliminated) {
+                        /*
+                         * If the generic instruction already supports boxing elimination with its
+                         * return type we do not need to generate boxing elimination signatures for
+                         * return types at all.
+                         */
+                        signatureTypes = specialization.getSignatureParameters().stream().map((p) -> p.getType()).toList();
+                    } else {
+                        signatureTypes = specialization.getTypeSignature();
+                    }
+
+                    List<TypeMirror> signature = new ArrayList<>();
+                    for (TypeMirror actualType : signatureTypes) {
+                        TypeMirror boxingType;
+                        if (model.isBoxingEliminated(actualType)) {
+                            boxingType = actualType;
+                        } else {
+                            boxingType = context.getType(Object.class);
+                        }
+                        signature.add(boxingType);
+                    }
+
+                    if (specialization.hasUnexpectedResultRewrite()) {
+                        /*
+                         * Unexpected result specializations effectively have an Object return type.
+                         */
+                        signature.set(0, context.getType(Object.class));
+                    }
+
+                    boxingGroups.computeIfAbsent(signature, (s) -> new ArrayList<>()).add(specialization);
                 }
-                if (autoOperationQuicken) {
-                    List<String> allIds = operation.instruction.nodeData.getSpecializations().stream().filter((s) -> s.getMethod() != null).map((s) -> s.getMethodName()).toList();
+
+                for (List<TypeMirror> boxingGroup : boxingGroups.keySet().stream().//
+                                filter((s) -> countBoxingEliminatedTypes(model, s) > 0).//
+                                // Sort by number of boxing eliminated types.
+                                sorted((s0, s1) -> {
+                                    return Long.compare(countBoxingEliminatedTypes(model, s0), countBoxingEliminatedTypes(model, s1));
+
+                                }).toList()) {
+                    List<SpecializationData> specializations = boxingGroups.get(boxingGroup);
+                    List<String> allIds = specializations.stream().filter((s) -> s.getMethod() != null).map((s) -> s.getMethodName()).toList();
                     quickenings.add(new QuickenDecision(operation.name, new HashSet<>(allIds)));
-                }
-
-                boolean genericReturnBoxingElimanted = model.isBoxingEliminated(genericInstruction.signature.returnType);
-                if (operation.instruction.nodeData.getSpecializations().size() > 1) {
-                    for (SpecializationData specialization : operation.instruction.nodeData.getSpecializations()) {
-                        if (specialization.getMethod() == null || specialization.isFallback()) {
-                            continue;
-                        }
-                        boolean autoQuickenSpecialization = false;
-                        if (model.isBoxingEliminated(specialization.getMethod().getReturnType()) && //
-                                        /*
-                                         * Unexpected result specializations effectively have an
-                                         * Object return type. This could probably be directly
-                                         * handled by the bytecode DSL.
-                                         */
-                                        !specialization.hasUnexpectedResultRewrite() && //
-                                        /*
-                                         * If the instruction signature is already boxing eliminated
-                                         * we do not need to automatically quicken each
-                                         * specialization for its return type. This avoids automatic
-                                         * quickening of specializations if only the return type
-                                         * needs quickening.
-                                         */
-                                        !genericReturnBoxingElimanted) {
-                            autoQuickenSpecialization = true;
-                        }
-                        for (int valueIndex = 0; valueIndex < genericInstruction.signature.valueCount; valueIndex++) {
-                            TypeMirror type = specialization.getSignatureParameters().get(valueIndex).getType();
-                            if (model.isBoxingEliminated(type)) {
-                                autoQuickenSpecialization = true;
-                                break;
-                            }
-                        }
-
-                        if (autoQuickenSpecialization) {
-                            List<String> allIds = List.of(specialization.getMethodName());
-                            quickenings.add(new QuickenDecision(operation.name, new HashSet<>(allIds)));
-                        }
-                    }
                 }
             }
         }
@@ -600,7 +607,6 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 } else {
                     name = String.join("#", includedSpecializations.stream().map((s) -> s.getId()).toList());
                 }
-
                 Signature signature = CustomOperationParser.createPolymorphicSignature(includedSpecializations.stream().map(s -> s.getMethod()).toList(), null);
                 InstructionModel baseInstruction = operation.instruction;
                 InstructionModel quickenedInstruction = model.quickenInstruction(baseInstruction, signature, ElementUtils.firstLetterUpperCase(name));
@@ -771,6 +777,10 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.finalizeInstructions();
 
         return;
+    }
+
+    private static long countBoxingEliminatedTypes(BytecodeDSLModel model, List<TypeMirror> s0) {
+        return s0.stream().filter((t) -> model.isBoxingEliminated(t)).count();
     }
 
     private List<QuickenDecision> parseForceQuickenings(BytecodeDSLModel model) {
