@@ -629,6 +629,7 @@ class SpecJVM2008NativeImageBenchmarkSuite(mx_java_benchmarks.SpecJvm2008Benchma
     """
     # disables formatted report generation since chart generation with JFreeChart loads fonts from disk (from java.home) to compute string width
     disable_rendered_report = ["-ctf", "false", "-chf", "false"]
+    short_run_args = disable_rendered_report + ["-wt", "1", "-it", "1", "-ikv"]
 
     def name(self):
         return 'specjvm2008-native-image'
@@ -647,22 +648,18 @@ class SpecJVM2008NativeImageBenchmarkSuite(mx_java_benchmarks.SpecJvm2008Benchma
             self.benchmark_name = benchmarks[0]
         return args
 
-    @staticmethod
-    def short_run_args():
-        return SpecJVM2008NativeImageBenchmarkSuite.disable_rendered_report + ["-wt", "1", "-it", "5"]
-
     def extra_agent_run_arg(self, benchmark, args, image_run_args):
-        return super().extra_agent_run_arg(benchmark, args, image_run_args) + self.short_run_args() + ["-ikv"]
+        return super().extra_agent_run_arg(benchmark, args, image_run_args) + SpecJVM2008NativeImageBenchmarkSuite.short_run_args
 
     def extra_profile_run_arg(self, benchmark, args, image_run_args, should_strip_run_args):
-        return super().extra_profile_run_arg(benchmark, args, image_run_args, should_strip_run_args) + self.short_run_args() + ["-ikv"]
+        return super().extra_profile_run_arg(benchmark, args, image_run_args, should_strip_run_args) + SpecJVM2008NativeImageBenchmarkSuite.short_run_args
 
     def extra_image_build_argument(self, benchmark, args):
         # Don't wrap the option `-H:-ParseRuntimeOptions` with `mx_sdk_vm_impl.svm_experimental_options`, as all args are wrapped already.
         return super().extra_image_build_argument(benchmark, args) + ['-H:-ParseRuntimeOptions']
 
     def extra_run_arg(self, benchmark, args, image_run_args):
-        return super().extra_run_arg(benchmark, args, image_run_args) + SpecJVM2008NativeImageBenchmarkSuite.disable_rendered_report + ["-ikv", "-wt", "5", "-it", "15"]
+        return super().extra_run_arg(benchmark, args, image_run_args) + SpecJVM2008NativeImageBenchmarkSuite.short_run_args
 
     def successPatterns(self):
         return super().successPatterns() + [_successful_stage_pattern]
