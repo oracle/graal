@@ -3591,7 +3591,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startBlock();
                 emitCastOperationData(b, "TransparentOperationData", "operationSp - 1");
                 b.startIf().string("operationData.producedValue").end().startBlock();
-                buildEmitInstruction(b, model.popInstruction, emitPopArguments("bci"));
+                buildEmitInstruction(b, model.popInstruction, emitPopArguments("operationData.childBci"));
                 b.end();
                 b.statement("break");
                 b.end();
