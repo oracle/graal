@@ -12,6 +12,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
 
   sulong:: {
     suite:: "sulong",
+    extra_mx_args+:: [ "--dynamicimport", "/compiler" ],
     setup+: [
       ["cd", "./sulong"],
     ],
@@ -28,29 +29,67 @@ local sc = (import "ci_common/sulong-common.jsonnet");
   },
 
   regular_builds:: [
-    sc.gate + $.sulong + sc.labsjdk21 + sc.linux_amd64 + sc.style + { name: "gate-sulong-style-fullbuild-jdk21-linux-amd64" },
-    sc.gate + $.sulong + sc.labsjdk21 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags("build,sulongMisc,parser") + $.sulong_test_toolchain + { name: "gate-sulong-misc-parser-jdk21-linux-amd64" },
-    sc.gate + $.sulong + sc.labsjdk21 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,gcc_c") + { name: "gate-sulong-gcc_c-jdk21-linux-amd64", timelimit: "45:00" },
-    sc.gate + $.sulong + sc.labsjdk21 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,gcc_cpp") + { name: "gate-sulong-gcc_cpp-jdk21-linux-amd64", timelimit: "45:00" },
-    sc.gate + $.sulong + sc.labsjdk21 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags("build,gcc_fortran") + { name: "gate-sulong-gcc_fortran-jdk21-linux-amd64" },
+    sc.gate + $.sulong + sc.labsjdkLatest + sc.linux_amd64 + sc.style + { name: "gate-sulong-style-fullbuild-jdk-latest-linux-amd64" },
+    sc.gate + $.sulong + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags("build,sulongMisc,parser") + $.sulong_test_toolchain + { name: "gate-sulong-misc-parser-jdk-latest-linux-amd64" },
+    sc.gate + $.sulong + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,gcc_c") + { name: "gate-sulong-gcc_c-jdk-latest-linux-amd64", timelimit: "45:00" },
+    sc.gate + $.sulong + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,gcc_cpp") + { name: "gate-sulong-gcc_cpp-jdk-latest-linux-amd64", timelimit: "45:00" },
+    sc.gate + $.sulong + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags("build,gcc_fortran") + { name: "gate-sulong-gcc_fortran-jdk-latest-linux-amd64" },
 
-    sc.weekly + $.sulong + sc.labsjdk21 + sc.linux_amd64 + sc.llvm4 + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTags) + { name: "weekly-sulong-basic-nwcc-llvm-v40-jdk21-linux-amd64" },
-    sc.weekly + $.sulong + sc.labsjdk21 + sc.linux_amd64 + sc.llvm6 + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTags) + { name: "weekly-sulong-basic-nwcc-llvm-v60-jdk21-linux-amd64" },
-    sc.weekly + $.sulong + sc.labsjdk21 + sc.linux_amd64 + sc.llvm8 + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTags) + { name: "weekly-sulong-basic-nwcc-llvm-v80-jdk21-linux-amd64" },
+    sc.weekly + $.sulong + sc.labsjdkLatest + sc.linux_amd64 + sc.llvm4 + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTags) + { name: "weekly-sulong-basic-nwcc-llvm-v40-jdk-latest-linux-amd64" },
+    sc.weekly + $.sulong + sc.labsjdkLatest + sc.linux_amd64 + sc.llvm6 + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTags) + { name: "weekly-sulong-basic-nwcc-llvm-v60-jdk-latest-linux-amd64" },
+    sc.weekly + $.sulong + sc.labsjdkLatest + sc.linux_amd64 + sc.llvm8 + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTags) + { name: "weekly-sulong-basic-nwcc-llvm-v80-jdk-latest-linux-amd64" },
 
-    sc.weekly + $.sulong + sc.labsjdk21 + sc.darwin_amd64 + sc.llvm4 + sc.gateTags(basicTags) + { name: "weekly-sulong-basic-nwcc-llvm-v40-jdk21-darwin-amd64", timelimit: "0:45:00" },
-    sc.gate + $.sulong + sc.labsjdk21 + sc.darwin_amd64 + sc.llvmBundled + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk21-darwin-amd64", timelimit: "0:45:00" },
+    # JDK latest only works on MacOS Ventura (GR-49652)
+    # sc.weekly + $.sulong + sc.labsjdkLatest + sc.darwin_amd64 + sc.llvm4 + sc.gateTags(basicTags) + { name: "weekly-sulong-basic-nwcc-llvm-v40-jdk-latest-darwin-amd64", timelimit: "0:45:00" },
+    # sc.gate + $.sulong + sc.labsjdkLatest + sc.darwin_amd64 + sc.llvmBundled + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk-latest-darwin-amd64", timelimit: "0:45:00", capabilities+: ["!darwin_bigsur", "ram16gb"] },
+    # remove the following build once GR-49652 is fixed
+    sc.gate + $.sulong + sc.labsjdk21 + sc.darwin_amd64 + sc.llvmBundled + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk21-darwin-amd64", timelimit: "0:45:00", capabilities+: ["!darwin_bigsur", "ram16gb"] },
 
-    sc.gate + $.sulong + sc.labsjdk_ee_17 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk17-linux-amd64" },
+    sc.gate + $.sulong + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk-latest-linux-amd64" },
     sc.gate + $.sulong + sc.labsjdk21 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags(basicTagsToolchain) + { name: "gate-sulong-basic-nwcc-llvm-toolchain-jdk21-linux-amd64" },
 
-    sc.gate + $.sulong + sc.labsjdk21 + sc.linux_aarch64 + sc.llvmBundled + sc.requireGMP + sc.gateTags(basicTagsNoNWCC) + { name: "gate-sulong-basic-llvm-jdk21-linux-aarch64", timelimit: "30:00" },
+    sc.gate + $.sulong + sc.labsjdkLatest + sc.linux_aarch64 + sc.llvmBundled + sc.requireGMP + sc.gateTags(basicTagsNoNWCC) + { name: "gate-sulong-basic-llvm-jdk-latest-linux-aarch64", timelimit: "30:00" },
 
-    sc.gate + $.sulong + sc.labsjdk21 + sc.darwin_aarch64 + sc.llvmBundled + sc.requireGMP + sc.gateTags(basicTagsNoNWCC) + { name: "gate-sulong-basic-llvm-jdk21-darwin-aarch64", timelimit: "30:00" },
+    sc.gate + $.sulong + sc.labsjdkLatest + sc.darwin_aarch64 + sc.llvmBundled + sc.requireGMP + sc.gateTags(basicTagsNoNWCC) + { name: "gate-sulong-basic-llvm-jdk-latest-darwin-aarch64", timelimit: "30:00" },
 
-    sc.gate + $.sulong + sc.labsjdk21 + sc.windows_amd64 + sc.llvmBundled + sc.gateTags("build,sulongStandalone,interop") + { name: "gate-sulong-standalone-interop-jdk21-windows-amd64", timelimit: "30:00" },
-    sc.gate + $.sulong + sc.labsjdk21 + sc.windows_amd64 + sc.llvmBundled + sc.gateTags("build,nwcc,llvm,toolchain") + { name: "gate-sulong-nwcc-llvm-toolchain-jdk21-windows-amd64" },
+    sc.gate + $.sulong + sc.labsjdkLatest + sc.windows_amd64 + sc.llvmBundled + sc.gateTags("build,sulongStandalone,interop") + { name: "gate-sulong-standalone-interop-jdk-latest-windows-amd64", timelimit: "30:00" },
+    sc.gate + $.sulong + sc.labsjdkLatest + sc.windows_amd64 + sc.llvmBundled + sc.gateTags("build,nwcc,llvm,toolchain") + { name: "gate-sulong-nwcc-llvm-toolchain-jdk-latest-windows-amd64" },
   ],
+
+  standalone_builds::
+    sc.mapPrototypePlatformName(
+    [
+        sc.gate + $.sulong + sc.gateTags("standalone") {
+          job:: "test-ce-standalones-jvm",
+          extra_mx_args+:: ["--env", "ce-llvm-standalones", "--use-llvm-standalone=jvm"],
+        },
+        sc.gate + $.sulong + sc.gateTags("standalone") {
+          job:: "test-ce-standalones-native",
+          extra_mx_args+:: ["--env", "ce-llvm-standalones", "--use-llvm-standalone=native"],
+        },
+    ],
+    [
+      [sc.linux_amd64,    [sc.labsjdkLatest]],
+      # JDK latest only works on MacOS Ventura (GR-49652)
+      # [sc.darwin_amd64,   [sc.labsjdkLatest]],
+      [sc.windows_amd64 + { capabilities+: ["windows_server_2016"] /* work around native-image bug GR-48515 */ },  [sc.labsjdkLatest]],
+      [sc.linux_aarch64,  [sc.labsjdkLatest]],
+      [sc.darwin_aarch64, [sc.labsjdkLatest]],
+    ],
+    [
+      { name: "gate-sulong-test-ce-standalones-jvm-jdk-latest-linux-amd64",    timelimit: "1:00:00" },
+      # JDK latest only works on MacOS Ventura (GR-49652)
+      # { name: "daily-sulong-test-ce-standalones-jvm-jdk-latest-darwin-amd64",  timelimit: "1:00:00", targets: [] } + sc.daily,
+      { name: "gate-sulong-test-ce-standalones-jvm-jdk-latest-windows-amd64",  timelimit: "1:00:00" },
+      { name: "gate-sulong-test-ce-standalones-jvm-jdk-latest-linux-aarch64",  timelimit: "1:00:00" },
+      { name: "gate-sulong-test-ce-standalones-jvm-jdk-latest-darwin-aarch64", timelimit: "1:00:00" },
+      { name: "gate-sulong-test-ce-standalones-native-jdk-latest-linux-amd64",    timelimit: "1:00:00" },
+      # JDK latest only works on MacOS Ventura (GR-49652)
+      # { name: "daily-sulong-test-ce-standalones-native-jdk-latest-darwin-amd64",  timelimit: "1:00:00", targets: [] } + sc.daily,
+      { name: "gate-sulong-test-ce-standalones-native-jdk-latest-windows-amd64",  timelimit: "1:00:00" },
+      { name: "gate-sulong-test-ce-standalones-native-jdk-latest-linux-aarch64",  timelimit: "1:00:00" },
+      { name: "gate-sulong-test-ce-standalones-native-jdk-latest-darwin-aarch64", timelimit: "1:00:00" },
+    ]),
 
   coverage_builds::
     sc.mapPrototypePlatformName([sc.weekly + $.sulong + sc.coverage($.regular_builds)],
@@ -69,5 +108,5 @@ local sc = (import "ci_common/sulong-common.jsonnet");
       { name: "weekly-sulong-coverage-jdk21-darwin-aarch64", timelimit: "1:00:00" },
     ]),
 
-  builds: [ sc.defBuild(b) for b in self.regular_builds + self.coverage_builds ],
+  builds: [ sc.defBuild(b) for b in self.regular_builds + self.standalone_builds + self.coverage_builds ],
 }

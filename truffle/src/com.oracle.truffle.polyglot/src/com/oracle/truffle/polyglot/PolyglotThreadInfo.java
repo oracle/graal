@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,10 @@ package com.oracle.truffle.polyglot;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
 import java.util.BitSet;
+import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
+import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -51,10 +54,10 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.SpecializationStatistics;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.utilities.TruffleWeakReference;
-import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 
 final class PolyglotThreadInfo {
 
@@ -87,6 +90,16 @@ final class PolyglotThreadInfo {
     private final BitSet initializedLanguageContexts;
     private boolean finalizationComplete;
 
+    private final List<ProbeNode> probesEnterList;
+
+    private static final boolean ASSERT_ENTER_RETURN_PARITY;
+
+    static {
+        boolean assertsOn = false;
+        assert !!(assertsOn = true);
+        ASSERT_ENTER_RETURN_PARITY = assertsOn;
+    }
+
     PolyglotThreadInfo(PolyglotContextImpl context, Thread thread, boolean polyglotThreadFirstEnter) {
         this.context = context;
         this.thread = new TruffleWeakReference<>(thread);
@@ -115,6 +128,16 @@ final class PolyglotThreadInfo {
             initializedLanguageContexts = new BitSet(context.contexts.length);
         } else {
             initializedLanguageContexts = null;
+        }
+        this.probesEnterList = initProbesEnterList(context);
+    }
+
+    private static List<ProbeNode> initProbesEnterList(PolyglotContextImpl context) {
+        boolean assertProbes = context != null && context.engine.probeAssertionsEnabled;
+        if (assertProbes) {
+            return new ArrayList<>();
+        } else {
+            return null;
         }
     }
 
@@ -149,9 +172,13 @@ final class PolyglotThreadInfo {
         return finalizationComplete;
     }
 
-    void setFinalizationComplete() {
+    void setFinalizationComplete(PolyglotEngineImpl engine, boolean mustSucceed) {
         assert Thread.holdsLock(context);
         this.finalizationComplete = true;
+        // Assert only when !mustSucceed, partity might not be met on cancellation.
+        if (ASSERT_ENTER_RETURN_PARITY && !mustSucceed && engine.probeAssertionsEnabled) {
+            assertProbeThreadFinalized();
+        }
     }
 
     boolean isSafepointActive() {
@@ -172,6 +199,7 @@ final class PolyglotThreadInfo {
     public void setContextThreadLocals(Object[] contextThreadLocals) {
         assert Thread.holdsLock(context);
         this.contextThreadLocals = contextThreadLocals;
+        this.fastThreadLocals[PolyglotFastThreadLocals.CONTEXT_THREAD_LOCALS_INDEX] = contextThreadLocals;
     }
 
     boolean isCurrent() {
@@ -197,6 +225,7 @@ final class PolyglotThreadInfo {
     @SuppressFBWarnings("VO_VOLATILE_INCREMENT")
     Object[] enterInternal() {
         Object[] prev = PolyglotFastThreadLocals.enter(this);
+        assert Thread.currentThread() == getThread() : "Volatile increment is safe on a single thread only.";
         enteredCount++;
         return prev;
     }
@@ -212,6 +241,7 @@ final class PolyglotThreadInfo {
      */
     @SuppressFBWarnings("VO_VOLATILE_INCREMENT")
     void leaveInternal(Object[] prev) {
+        assert Thread.currentThread() == getThread() : "Volatile decrement is safe on a single thread only.";
         enteredCount--;
         PolyglotFastThreadLocals.leave(prev);
     }
@@ -232,10 +262,6 @@ final class PolyglotThreadInfo {
         return polyglotThreadOwnerContext == c;
     }
 
-    /*
-     * Volatile decrement is safe if only one thread does it.
-     */
-    @SuppressFBWarnings("VO_VOLATILE_INCREMENT")
     void notifyLeave(PolyglotEngineImpl engine, PolyglotContextImpl profiledContext) {
         assert Thread.currentThread() == getThread();
 
@@ -254,12 +280,44 @@ final class PolyglotThreadInfo {
         }
     }
 
-    Object getThreadLocal(LocalLocation l) {
-        // thread id is guaranteed to be unique
-        return l.readLocal(this.context, getThreadLocals(l.engine), true);
+    @TruffleBoundary
+    private void assertProbeThreadFinalized() {
+        if (probesEnterList != null) {
+            assert probesEnterList.isEmpty() : getEnteredProbesMessage(probesEnterList);
+        }
     }
 
-    private Object[] getThreadLocals(PolyglotEngineImpl e) {
+    private static String getEnteredProbesMessage(List<ProbeNode> probes) {
+        StringBuilder sb = new StringBuilder("Found entered probes without return: ");
+        sb.append(probes);
+        sb.append("\nSpecifically, a call to ProbeNode.onEnter()/onResume() does not have a corresponding call to ProbeNode.onReturnValue()/onReturnExceptionalOrUnwind()/onYield().");
+        for (ProbeNode probe : probes) {
+            sb.append("\n  probe ");
+            sb.append(probe);
+            sb.append(" with parent node ");
+            sb.append(probe.getParent().getClass());
+        }
+        sb.append('\n');
+        return sb.toString();
+    }
+
+    @TruffleBoundary
+    void assertProbeEntered(ProbeNode probe) {
+        Objects.requireNonNull(probe);
+        probesEnterList.add(probe);
+    }
+
+    @TruffleBoundary
+    void assertProbeReturned(ProbeNode probe) {
+        assert !probesEnterList.isEmpty() : "ProbeNode " + probe + " with parent " + probe.getParent().getClass() + " exited without enter";
+        ProbeNode lastProbe = probesEnterList.remove(probesEnterList.size() - 1);
+        assert probe == lastProbe : "Entered probe " + lastProbe + " with parent " + lastProbe.getParent().getClass() + " differs from the returned probe " +
+                        probe + " with parent " + probe.getParent().getClass() + "\n" +
+                        "Specifically, a call to onEnter()/onResume() on " + lastProbe + " was not followed by a call to onReturnValue()/onReturnExceptionalOrUnwind()/onYield() on the same probe, " +
+                        "but on " + probe + " instead.";
+    }
+
+    Object[] getThreadLocals(PolyglotEngineImpl e) {
         CompilerAsserts.partialEvaluationConstant(e);
         Object[] locals = this.contextThreadLocals;
         assert locals != null : "thread local not initialized.";

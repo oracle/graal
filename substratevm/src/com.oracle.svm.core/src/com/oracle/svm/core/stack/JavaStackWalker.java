@@ -45,6 +45,7 @@ import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -133,6 +134,11 @@ public final class JavaStackWalker {
     public static boolean initWalk(JavaStackWalk walk, IsolateThread thread) {
         assert thread.notEqual(CurrentIsolate.getCurrentThread()) : "Cannot walk the current stack with this method, it would miss all frames after the last frame anchor";
         assert VMOperation.isInProgressAtSafepoint() : "Walking the stack of another thread is only safe when that thread is stopped at a safepoint";
+
+        if (SafepointBehavior.isCrashedThread(thread)) {
+            /* Skip crashed threads because they may no longer have a stack. */
+            return false;
+        }
 
         JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor(thread);
         boolean result = anchor.isNonNull();
@@ -293,6 +299,7 @@ public final class JavaStackWalker {
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
     public static boolean walkThread(IsolateThread thread, Pointer endSP, ParameterizedStackFrameVisitor visitor, Object data) {
+        assert thread.isNonNull();
         JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
         if (initWalk(walk, thread)) {
             walk.setEndSP(endSP);

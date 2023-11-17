@@ -35,8 +35,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -188,9 +187,6 @@ public class JavaMainWrapper {
      * 445: Unnamed Classes and Instance Main Methods (Preview).
      */
     public static boolean instanceMainMethodSupported() {
-        if (JavaVersionUtil.JAVA_SPEC < 21) {
-            return false;
-        }
         var previewFeature = ReflectionUtil.lookupClass(true, "jdk.internal.misc.PreviewFeatures");
         try {
             return previewFeature != null && (Boolean) previewFeature.getDeclaredMethod("isEnabled").invoke(null);

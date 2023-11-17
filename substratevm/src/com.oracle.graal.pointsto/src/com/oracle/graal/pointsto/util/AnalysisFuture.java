@@ -28,13 +28,15 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 
-import org.graalvm.compiler.debug.GraalError;
-
 /** Extend FutureTask for custom error reporting. */
 public class AnalysisFuture<V> extends FutureTask<V> {
 
     public AnalysisFuture(Callable<V> callable) {
         super(callable);
+    }
+
+    public AnalysisFuture(Runnable runnable) {
+        super(runnable, null);
     }
 
     public AnalysisFuture(Runnable runnable, V result) {
@@ -45,8 +47,12 @@ public class AnalysisFuture<V> extends FutureTask<V> {
     protected void setException(Throwable t) {
         /* First complete the task. */
         super.setException(t);
-        /* Then report the error as a GraalError. */
-        throw new GraalError(t);
+        /* If it is an AnalysisError just rethrow it. */
+        if (t instanceof AnalysisError ae) {
+            throw ae;
+        }
+        /* Otherwise wrap it in an AnalysisError. */
+        throw new AnalysisError(t);
     }
 
     /** Run the task, wait for it to complete if necessary, then retrieve its result. */

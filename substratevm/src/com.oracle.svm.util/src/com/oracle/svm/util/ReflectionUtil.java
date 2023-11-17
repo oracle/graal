@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.util;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -113,6 +115,16 @@ public final class ReflectionUtil {
         try {
             return constructor.newInstance(initArgs);
         } catch (ReflectiveOperationException ex) {
+            throw new ReflectionUtilError(ex);
+        }
+    }
+
+    public static VarHandle unreflectField(Class<?> declaringClass, String fieldName, MethodHandles.Lookup lookup) {
+        try {
+            Field field = ReflectionUtil.lookupField(declaringClass, fieldName);
+            MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(declaringClass, lookup);
+            return privateLookup.unreflectVarHandle(field);
+        } catch (IllegalAccessException ex) {
             throw new ReflectionUtilError(ex);
         }
     }

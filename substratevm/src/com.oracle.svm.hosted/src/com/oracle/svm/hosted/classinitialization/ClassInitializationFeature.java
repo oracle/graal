@@ -39,10 +39,10 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.java.LambdaUtils;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.java.LambdaUtils;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -99,15 +99,13 @@ public class ClassInitializationFeature implements InternalFeature {
         initializationSupport.initializeAtBuildTime("com.oracle.objectfile", NATIVE_IMAGE_CLASS_REASON);
 
         initializationSupport.initializeAtBuildTime("org.graalvm.collections", NATIVE_IMAGE_CLASS_REASON);
-        initializationSupport.initializeAtBuildTime("org.graalvm.compiler", NATIVE_IMAGE_CLASS_REASON);
+        initializationSupport.initializeAtBuildTime("jdk.graal.compiler", NATIVE_IMAGE_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("org.graalvm.word", NATIVE_IMAGE_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("org.graalvm.nativeimage", NATIVE_IMAGE_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("org.graalvm.nativebridge", NATIVE_IMAGE_CLASS_REASON);
-        initializationSupport.initializeAtBuildTime("org.graalvm.util", NATIVE_IMAGE_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("org.graalvm.home", NATIVE_IMAGE_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("org.graalvm.polyglot", NATIVE_IMAGE_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("org.graalvm.options", NATIVE_IMAGE_CLASS_REASON);
-        initializationSupport.initializeAtBuildTime("org.graalvm.graphio", NATIVE_IMAGE_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("org.graalvm.jniutils", NATIVE_IMAGE_CLASS_REASON);
     }
 
@@ -168,13 +166,17 @@ public class ClassInitializationFeature implements InternalFeature {
                 }
             });
 
-            if (!ClassInitializationOptions.UseDeprecatedOldClassInitialization.getValue()) {
+            if (ClassInitializationOptions.StrictImageHeap.getValue()) {
+                msg += System.lineSeparator();
                 msg += """
-
-                                If you see this error while migrating to a newer GraalVM release, please note that the class initialization strategy has changed in GraalVM for JDK 21.
-                                All classes can now be used at image build time. However, only classes explicitly marked as --initialize-at-build-time are allowed to be in the image heap.
-                                This rule is now strictly enforced, i.e., the problem might be solvable by registering the reported type as --initialize-at-build-time.
-                                """.replaceAll("\n", System.lineSeparator());
+                                If you are seeing this message after upgrading to a new GraalVM release, this means that some objects ended up in the image heap without their type being marked with --initialize-at-build-time.
+                                To fix this, include %s in your configuration. If the classes do not originate from your code, it is advised to update all library or framework dependencies to the latest version before addressing this error.
+                                """
+                                .replaceAll("\n", System.lineSeparator())
+                                .formatted(
+                                                SubstrateOptionsParser.commandArgument(ClassInitializationOptions.StrictImageHeap, "+", true, false),
+                                                SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, proxyOrLambda ? proxyLambdaInterfaceCSV : typeName,
+                                                                "initialize-at-build-time", true, false));
             }
 
             msg += System.lineSeparator() + "The following detailed trace displays from which field in the code the object was reached.";

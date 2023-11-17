@@ -33,7 +33,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "d0f359c29ec97722301997359ee878ea053da19e",
+                "version": "0caaded94e1197d04d43324b95da107931249173",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                 ]
@@ -42,14 +42,14 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "d0f359c29ec97722301997359ee878ea053da19e",
+                "version": "0caaded94e1197d04d43324b95da107931249173",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                 ]
             },
             {
                 "name": "truffleruby",
-                "version": "54e846c7056eca31085c78cfd363c26ca4bd547a",
+                "version": "3058b24152613d37461e272ff57302e36d9552e0",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -57,7 +57,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "4d2fdc9f4b2a5e6e41c1e55283dbeb174d22f626",
+                "version": "0fca9c09f61433f9622e2dffde3913a1a2175895",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -65,7 +65,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "a11219c24f39bd819a0580f979f8ef90b60d95e2",
+                "version": "9105e899f40095bc5b087c849f8ef902c65aae35",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
@@ -221,6 +221,29 @@ suite = {
             "description": "GraalVM Installer support distribution for the GraalVM",
             "layout": {
                 "components/polyglot/.registry" : "string:",
+            },
+            "maven": False,
+        },
+        "INSTALLER_DEPRECATED_GRAALVM_SUPPORT": {
+            "native": True,
+            "description": "Deprecated GraalVM Updater launchers support for the GraalVM",
+            "platformDependent": True,
+            "os": {
+                "linux": {
+                    "layout": {
+                        "bin/gu": "file:mx.vm/gu-deprecated",
+                    },
+                },
+                "darwin": {
+                    "layout": {
+                        "bin/gu": "file:mx.vm/gu-deprecated",
+                    },
+                },
+                "windows": {
+                    "layout": {
+                        "bin/gu.cmd": "file:mx.vm/gu-deprecated.cmd",
+                    },
+                },
             },
             "maven": False,
         },

@@ -27,51 +27,6 @@ package com.oracle.svm.core.graal.replacements;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.StampPair;
-import org.graalvm.compiler.core.common.type.TypeReference;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.java.FrameStateBuilder;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.BeginNode;
-import org.graalvm.compiler.nodes.CallTargetNode;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.IndirectCallTargetNode;
-import org.graalvm.compiler.nodes.InvokeNode;
-import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.MergeNode;
-import org.graalvm.compiler.nodes.PiNode;
-import org.graalvm.compiler.nodes.ReturnNode;
-import org.graalvm.compiler.nodes.StateSplit;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.UnwindNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.WithExceptionNode;
-import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.calc.NarrowNode;
-import org.graalvm.compiler.nodes.extended.BoxNode;
-import org.graalvm.compiler.nodes.extended.FixedValueAnchorNode;
-import org.graalvm.compiler.nodes.extended.GuardingNode;
-import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
-import org.graalvm.compiler.nodes.extended.UnboxNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
-import org.graalvm.compiler.nodes.java.LoadFieldNode;
-import org.graalvm.compiler.nodes.java.LoadIndexedNode;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.java.StoreIndexedNode;
-import org.graalvm.compiler.phases.common.inlining.InliningUtil;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.GraphKit;
-import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -85,6 +40,51 @@ import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.java.FrameStateBuilder;
+import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.BeginNode;
+import jdk.graal.compiler.nodes.CallTargetNode;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.IndirectCallTargetNode;
+import jdk.graal.compiler.nodes.InvokeNode;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.MergeNode;
+import jdk.graal.compiler.nodes.PiNode;
+import jdk.graal.compiler.nodes.ReturnNode;
+import jdk.graal.compiler.nodes.StateSplit;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.UnwindNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.WithExceptionNode;
+import jdk.graal.compiler.nodes.calc.FloatingNode;
+import jdk.graal.compiler.nodes.calc.NarrowNode;
+import jdk.graal.compiler.nodes.extended.BoxNode;
+import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
+import jdk.graal.compiler.nodes.extended.GuardingNode;
+import jdk.graal.compiler.nodes.extended.StateSplitProxyNode;
+import jdk.graal.compiler.nodes.extended.UnboxNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.nodes.java.LoadIndexedNode;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.java.StoreIndexedNode;
+import jdk.graal.compiler.phases.common.inlining.InliningUtil;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.GraphKit;
+import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.Constant;
@@ -100,9 +100,8 @@ public class SubstrateGraphKit extends GraphKit {
     private final FrameStateBuilder frameState;
     private int nextBCI;
 
-    // For GR-45916 this should be unconditionally true when parseOnce is enabled.
     private static boolean trackNodeSourcePosition(boolean forceTrackNodeSourcePosition) {
-        return forceTrackNodeSourcePosition || (SubstrateOptions.parseOnce() && !SubstrateOptions.ParseOnceJIT.getValue());
+        return forceTrackNodeSourcePosition || SubstrateOptions.parseOnce();
     }
 
     @SuppressWarnings("this-escape")
@@ -123,8 +122,8 @@ public class SubstrateGraphKit extends GraphKit {
     }
 
     @Override
-    protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, int bci) {
-        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, null, null, null);
+    public MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, int bci) {
+        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp);
     }
 
     public SubstrateLoweringProvider getLoweringProvider() {

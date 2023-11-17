@@ -262,7 +262,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
      * the {@link TruffleCompiler} with {@link #getTruffleCompiler(TruffleCompilable)
      * getTruffleCompiler}.
      */
-    protected final String getCompilerConfigurationName() {
+    public final String getCompilerConfigurationName() {
         return compilationSupport.getCompilerConfigurationName(this);
     }
 
@@ -961,7 +961,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         // so that compilation errors or effects are still properly waited for.
         boolean interrupted = false;
         try {
-            while (true) {
+            while (true) { // TERMINATION ARGUMENT: busy loop
                 try {
                     task.awaitCompletion();
                     break;
@@ -1034,10 +1034,10 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         } else {
             ServiceLoader<T> runtimeLoader = ServiceLoader.load(service, runtimeClassLoader);
             /*
-             * The Graal module (i.e., jdk.internal.vm.compiler) is loaded by the platform class
-             * loader. Its module dependencies such as Truffle are supplied via --module-path which
-             * means they are loaded by the app class loader. As such, we need to search the app
-             * class loader path as well.
+             * The Graal module (i.e., jdk.graal.compiler) is loaded by the platform class loader.
+             * Its module dependencies such as Truffle are supplied via --module-path which means
+             * they are loaded by the app class loader. As such, we need to search the app class
+             * loader path as well.
              */
             return List.of(runtimeLoader, appLoader);
         }
@@ -1045,7 +1045,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
 
     @SuppressWarnings("deprecation")
     private static com.oracle.truffle.api.object.LayoutFactory selectObjectLayoutFactory(Iterable<? extends Iterable<com.oracle.truffle.api.object.LayoutFactory>> availableLayoutFactories) {
-        String layoutFactoryImplName = Services.getSavedProperties().get("truffle.object.LayoutFactory");
+        String layoutFactoryImplName = Services.getSavedProperty("truffle.object.LayoutFactory");
         com.oracle.truffle.api.object.LayoutFactory bestLayoutFactory = null;
         for (Iterable<com.oracle.truffle.api.object.LayoutFactory> currentLayoutFactories : availableLayoutFactories) {
             for (com.oracle.truffle.api.object.LayoutFactory currentLayoutFactory : currentLayoutFactories) {

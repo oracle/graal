@@ -129,6 +129,10 @@ final class PolyglotEngineOptions {
                     "Enables printing of code sharing related information to the logger. This option is intended to support debugging language implementations.")//
     static final OptionKey<Boolean> TraceCodeSharing = new OptionKey<>(false);
 
+    @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, sandbox = SandboxPolicy.UNTRUSTED, usageSyntax = "true|false", help = "" +
+                    "Asserts that enter and return are always called in pairs on ProbeNode, verifies correct behavior of wrapper nodes. Java asserts need to be turned on for this option to have an effect. (default: false)")//
+    static final OptionKey<Boolean> AssertProbes = new OptionKey<>(false);
+
     enum StaticObjectStorageStrategies {
         DEFAULT,
         ARRAY_BASED,

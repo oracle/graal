@@ -45,8 +45,6 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-import org.graalvm.polyglot.Engine;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -105,6 +103,7 @@ import com.oracle.truffle.espresso.runtime.jimage.BasicImageReader;
 import com.oracle.truffle.espresso.runtime.panama.DowncallStubs;
 import com.oracle.truffle.espresso.runtime.panama.Platform;
 import com.oracle.truffle.espresso.runtime.panama.UpcallStubs;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -679,10 +678,8 @@ public final class EspressoContext {
     }
 
     private void initVmProperties() {
-        final EspressoProperties.Builder builder = EspressoProperties.newPlatformBuilder();
-        // If --java.JavaHome is not specified, Espresso tries to use the same (jars and native)
-        // libraries bundled with GraalVM.
-        builder.javaHome(Engine.findHome());
+        EspressoProperties.Builder builder = EspressoProperties.newPlatformBuilder(getEspressoLibs());
+        builder.javaHome(getEspressoRuntime());
         EspressoProperties.processOptions(builder, getEnv().getOptions(), this);
         getNativeAccess().updateEspressoProperties(builder, getEnv().getOptions());
         vmProperties = builder.build();
@@ -1196,5 +1193,13 @@ public final class EspressoContext {
 
     public UpcallStubs getUpcallStubs() {
         return upcallStubs;
+    }
+
+    public Path getEspressoLibs() {
+        return EspressoLanguage.getEspressoLibs(getEnv());
+    }
+
+    public Path getEspressoRuntime() {
+        return EspressoLanguage.getEspressoRuntime(getEnv());
     }
 }

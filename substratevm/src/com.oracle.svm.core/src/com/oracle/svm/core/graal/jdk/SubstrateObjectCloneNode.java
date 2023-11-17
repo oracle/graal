@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,21 +24,22 @@
  */
 package com.oracle.svm.core.graal.jdk;
 
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.StampPair;
-import org.graalvm.compiler.core.common.type.TypeReference;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.InputType;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.DeoptimizingNode.DeoptBefore;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.java.LoadFieldNode;
-import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.nodes.spi.VirtualizerTool;
-import org.graalvm.compiler.replacements.nodes.BasicObjectCloneNode;
-import org.graalvm.compiler.replacements.nodes.MacroNode;
+import jdk.graal.compiler.core.common.type.ObjectStamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.InputType;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.DeoptimizingNode.DeoptBefore;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.nodes.spi.Lowerable;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.nodes.spi.VirtualizerTool;
+import jdk.graal.compiler.replacements.nodes.BasicObjectCloneNode;
+import jdk.graal.compiler.replacements.nodes.MacroNode;
 
 import com.oracle.svm.core.meta.SharedType;
 
@@ -53,7 +54,17 @@ public final class SubstrateObjectCloneNode extends BasicObjectCloneNode impleme
     @OptionalInput(InputType.State) protected FrameState stateBefore;
 
     protected SubstrateObjectCloneNode(MacroParams p) {
-        super(TYPE, p);
+        this(p, null, null);
+    }
+
+    private SubstrateObjectCloneNode(MacroParams p, FrameState stateBefore, FrameState stateAfter) {
+        super(TYPE, p, stateAfter);
+        this.stateBefore = stateBefore;
+    }
+
+    @Override
+    protected SubstrateObjectCloneNode duplicateWithNewStamp(ObjectStamp newStamp) {
+        return new SubstrateObjectCloneNode(copyParamsWithImprovedStamp(newStamp), stateBefore(), stateAfter());
     }
 
     @Override

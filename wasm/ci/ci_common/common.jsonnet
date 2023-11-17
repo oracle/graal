@@ -53,7 +53,7 @@ local graal_suite_root = root_ci.graal_suite_root;
   },
 
   windows_common:: {
-    packages+: $.devkits["windows-jdk" + self.jdk_version].packages,
+    packages+: $.devkits["windows-" + self.jdk_name].packages,
   },
 
   windows_amd64:: common.windows_amd64 + self.windows_common,
@@ -93,7 +93,7 @@ local graal_suite_root = root_ci.graal_suite_root;
 
   nodejs:: {
     downloads+: {
-      NODE: {name: 'node', version: 'v16.13.2', platformspecific: true},
+      NODE: {name: 'node', version: 'v18.14.1', platformspecific: true},
     },
     environment+: {
       NODE_DIR: '${NODE}/bin',
@@ -105,7 +105,7 @@ local graal_suite_root = root_ci.graal_suite_root;
   local gate_cmd_full = ['mx', '--dynamicimports', graal_suite_root, 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
 
   common:: {
-    name_suffix:: (if std.objectHasAll(self, 'jdk_version') then '-jdk' + self.jdk_version else '') + '-' + self.os + '-' + self.arch,
+    name_suffix:: (if 'jdk_name' in self then '-' + self.jdk_name else '') + '-' + self.os + '-' + self.arch,
   },
 
   setup_common:: self.common + {

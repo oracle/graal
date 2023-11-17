@@ -24,16 +24,15 @@
  */
 package com.oracle.svm.core.jdk;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import java.security.AccessControlContext;
+import java.security.ProtectionDomain;
 
+import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
 import sun.security.util.Debug;
-
-import java.security.AccessControlContext;
-import java.security.ProtectionDomain;
 
 @TargetClass(java.security.AccessControlContext.class)
 final class Target_java_security_AccessControlContext {
@@ -55,7 +54,7 @@ final class Target_java_security_AccessControlContext {
      * initialized at run time because configuration parsing is in a class initializer.
      */
     @Substitute
-    @Fold
+    @AlwaysInline(value = "Null must propagate")
     static Debug getDebug() {
         return null;
     }

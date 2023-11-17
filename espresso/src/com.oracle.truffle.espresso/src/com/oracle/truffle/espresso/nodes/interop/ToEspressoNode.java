@@ -46,7 +46,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 /**
  * Handles conversions of (potentially) foreign objects to Espresso types.
@@ -177,7 +177,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             try {
                 Object metaObject = getMetaObjectOrThrow(value, interop);
-                ProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), targetType);
+                WrappedProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), targetType);
                 if (proxyKlass != null) {
                     targetType.safeInitialize();
                     return proxyKlass.createProxyInstance(value, getLanguage(), interop);

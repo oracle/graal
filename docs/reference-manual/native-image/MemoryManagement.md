@@ -16,11 +16,11 @@ The Java heap is created when the native image starts up, and may increase or de
 When the heap becomes full, a garbage collection is triggered to reclaim memory of objects that are no longer used.
 
 For managing the Java heap, Native Image provides different garbage collector (GC) implementations:
-* The **Serial GC** is the default GC in GraalVM.
+* The **Serial GC** is the default GC in GraalVM Native Image.
 It is optimized for low memory footprint and small Java heap sizes.
-* The **G1 GC** (not available in GraalVM Community Edition) is a multi-threaded GC that is optimized to reduce stop-the-world pauses and therefore improve latency, while achieving high throughput.
-To enable G1, specify the option `--gc=G1` at image build time.
-Currently, G1 can only be used in native images that are built on Linux for AMD64.
+* The **G1 GC** is a multi-threaded GC that is optimized to reduce stop-the-world pauses and therefore improve latency, while achieving high throughput.
+To enable it, pass the option `--gc=G1` to the `native-image` builder.
+Currently, G1 Garbage Collector can be used with Native Image on the Linux AMD64 and AArch64 architectures. (Not available in GraalVM Community Edition.)
 * The **Epsilon GC** (available with GraalVM 21.2 or later) is a no-op garbage collector that does not do any garbage collection and therefore never frees any allocated memory.
 The primary use case for this GC are very short running applications that only allocate a small amount of memory.
 To enable the Epsilon GC, specify the option `--gc=epsilon` at image build time.
@@ -42,7 +42,7 @@ The exact values may depend on the system configuration and the used GC.
 
 * The *maximum Java heap size* defines the upper limit for the size of the whole Java heap.
 If the Java heap is full and the GC is unable reclaim sufficient memory for a Java object allocation, the allocation will fail with the `OutOfMemoryError`.
-Note: The maximum heap size is only the upper limit for the Java heap and not necessarily the upper limit for the total amount of consumed memory, as Native Image places some data such as thread stacks, just-in-time compiled code, and internal data structures in memory that is separate from the Java heap.
+Note: The maximum heap size is only the upper limit for the Java heap and not necessarily the upper limit for the total amount of consumed memory, as Native Image places some data such as thread stacks, just-in-time compiled code (for Truffle runtime compilation), and internal data structures in memory that is separate from the Java heap.
 * The *minimum Java heap size* defines how much memory the GC may always assume as reserved for the Java heap, no matter how little of that memory is actually used.
 * The *young generation size* determines the amount of Java memory that can be allocated without triggering a garbage collection.
 
@@ -119,9 +119,9 @@ The following options are available with `-H:InitialCollectionPolicy=BySpaceAndT
 ## G1 Garbage Collector
 
 Oracle GraalVM also provides the Garbage-First (G1) garbage collector, which is based on the G1 GC from the Java HotSpot VM.
-Currently, G1 can only be used in native images that are built on Linux for AMD64.
-To enable it, pass the option `--gc=G1` to the native image builder.
+Currently, G1 Garbage Collector can be used with Native Image on the Linux AMD64 and AArch64 architectures. (Not available in GraalVM Community Edition.)
 
+To enable it, pass the option `--gc=G1` to the `native-image` builder.
 ```shell
 # Build a native image that uses the G1 GC with default settings
 native-image --gc=G1 HelloWorld

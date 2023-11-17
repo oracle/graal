@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.heap;
 
-import org.graalvm.compiler.api.directives.GraalDirectives;
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.word.BarrieredAccess;
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.word.BarrieredAccess;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;

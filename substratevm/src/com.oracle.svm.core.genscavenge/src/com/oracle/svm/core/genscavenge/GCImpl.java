@@ -29,7 +29,6 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.ref.Reference;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -81,6 +80,7 @@ import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jfr.JfrGCWhen;
 import com.oracle.svm.core.jfr.JfrTicks;
+import com.oracle.svm.core.jfr.events.AllocationRequiringGCEvent;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
@@ -95,6 +95,8 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalMTSupport;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * Garbage collector (incremental or complete) for {@link HeapImpl}.
@@ -144,12 +146,13 @@ public final class GCImpl implements GC {
         collect(cause, false);
     }
 
-    public void maybeCollectOnAllocation() {
+    public void maybeCollectOnAllocation(UnsignedWord allocationSize) {
         boolean outOfMemory = false;
         if (hasNeverCollectPolicy()) {
             UnsignedWord edenUsed = HeapImpl.getAccounting().getEdenUsedBytes();
             outOfMemory = edenUsed.aboveThan(GCImpl.getPolicy().getMaximumHeapSize());
         } else if (getPolicy().shouldCollectOnAllocation()) {
+            AllocationRequiringGCEvent.emit(getCollectionEpoch(), allocationSize);
             outOfMemory = collectWithoutAllocating(GenScavengeGCCause.OnAllocation, false);
         }
         if (outOfMemory) {
@@ -158,9 +161,9 @@ public final class GCImpl implements GC {
     }
 
     @Override
-    public void maybeCauseUserRequestedCollection(GCCause cause, boolean fullGC) {
-        if (policy.shouldCollectOnRequest(cause, fullGC)) {
-            collect(cause, fullGC);
+    public void collectionHint(boolean fullGC) {
+        if (policy.shouldCollectOnHint(fullGC)) {
+            collect(GCCause.HintedGC, fullGC);
         }
     }
 
@@ -183,6 +186,7 @@ public final class GCImpl implements GC {
         UnmanagedMemoryUtil.fill((Pointer) data, WordFactory.unsigned(size), (byte) 0);
         data.setCauseId(cause.getId());
         data.setRequestingEpoch(getCollectionEpoch());
+        data.setCompleteCollectionCount(GCImpl.getAccounting().getCompleteCollectionCount());
         data.setRequestingNanoTime(System.nanoTime());
         data.setForceFullGC(forceFullGC);
         enqueueCollectOperation(data);
@@ -197,7 +201,8 @@ public final class GCImpl implements GC {
     /** The body of the VMOperation to do the collection. */
     private void collectOperation(CollectionVMOperationData data) {
         assert VMOperation.isGCInProgress();
-        assert getCollectionEpoch().equal(data.getRequestingEpoch());
+        assert getCollectionEpoch().equal(data.getRequestingEpoch()) ||
+                        data.getForceFullGC() && GCImpl.getAccounting().getCompleteCollectionCount() == data.getCompleteCollectionCount() : "unnecessary GC?";
 
         timers.mutator.closeAt(data.getRequestingNanoTime());
         timers.resetAllExceptMutator();
@@ -207,14 +212,14 @@ public final class GCImpl implements GC {
         printGCBefore(cause);
 
         ThreadLocalAllocation.disableAndFlushForAllThreads();
-        GenScavengeMemoryPoolMXBeans.notifyBeforeCollection();
+        GenScavengeMemoryPoolMXBeans.singleton().notifyBeforeCollection();
         HeapImpl.getAccounting().notifyBeforeCollection();
 
         boolean outOfMemory = collectImpl(cause, data.getRequestingNanoTime(), data.getForceFullGC());
         data.setOutOfMemory(outOfMemory);
 
         HeapImpl.getAccounting().notifyAfterCollection();
-        GenScavengeMemoryPoolMXBeans.notifyAfterCollection();
+        GenScavengeMemoryPoolMXBeans.singleton().notifyAfterCollection();
 
         printGCAfter(cause);
         JfrGCHeapSummaryEvent.emit(JfrGCWhen.AFTER_GC);
@@ -1205,7 +1210,12 @@ public final class GCImpl implements GC {
         @Override
         protected boolean hasWork(NativeVMOperationData data) {
             CollectionVMOperationData d = (CollectionVMOperationData) data;
-            return HeapImpl.getGCImpl().getCollectionEpoch().equal(d.getRequestingEpoch());
+            if (d.getForceFullGC()) {
+                /* Skip if another full GC happened in the meanwhile. */
+                return GCImpl.getAccounting().getCompleteCollectionCount() == d.getCompleteCollectionCount();
+            }
+            /* Skip if any other GC happened in the meanwhile. */
+            return GCImpl.getGCImpl().getCollectionEpoch().equal(d.getRequestingEpoch());
         }
     }
 
@@ -1234,6 +1244,12 @@ public final class GCImpl implements GC {
 
         @RawField
         void setForceFullGC(boolean value);
+
+        @RawField
+        long getCompleteCollectionCount();
+
+        @RawField
+        void setCompleteCollectionCount(long value);
 
         @RawField
         boolean getOutOfMemory();

@@ -28,9 +28,8 @@ import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.HashMap;
 
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.options.OptionsParser;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.options.OptionsParser;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -70,13 +69,7 @@ public class JfrMetadataTypeLibrary {
             MetadataRepository.getInstance();
 
             Method getTypes = ReflectionUtil.lookupMethod(TypeLibrary.class, "getTypes");
-            if (JavaVersionUtil.JAVA_SPEC >= 21) {
-                return (Collection<Type>) getTypes.invoke(null);
-            } else {
-                Method getInstance = ReflectionUtil.lookupMethod(TypeLibrary.class, "getInstance");
-                TypeLibrary instance = (TypeLibrary) getInstance.invoke(null);
-                return (Collection<Type>) getTypes.invoke(instance);
-            }
+            return (Collection<Type>) getTypes.invoke(null);
         } catch (Throwable e) {
             throw VMError.shouldNotReachHere("Error while calling TypeLibrary.getTypes().", e);
         }

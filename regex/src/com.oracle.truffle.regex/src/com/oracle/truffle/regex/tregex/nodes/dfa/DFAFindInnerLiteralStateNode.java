@@ -67,7 +67,7 @@ public final class DFAFindInnerLiteralStateNode extends DFAAbstractStateNode {
     }
 
     int executeInnerLiteralSearch(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
-        return executor.getIndexOfStringNode().execute(locals.getInput(), locals.getIndex(), executor.getMaxIndex(locals), innerLiteral.getLiteralContent(),
+        return executor.getIndexOfStringNode().execute(executor, locals.getInput(), locals.getIndex(), executor.getMaxIndex(locals), innerLiteral.getLiteralContent(),
                         innerLiteral.getMaskContent(), executor.getEncoding());
     }
 

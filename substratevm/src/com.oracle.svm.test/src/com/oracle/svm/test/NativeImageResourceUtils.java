@@ -42,6 +42,7 @@ public class NativeImageResourceUtils {
 
     public static final String ROOT_DIRECTORY = "/";
     public static final String RESOURCE_DIR = "/resources";
+    public static final String SIMPLE_RESOURCE_DIR = "/simpleDir";
     public static final String RESOURCE_EMPTY_DIR = RESOURCE_DIR + "/empty";
     public static final String RESOURCE_FILE_1 = RESOURCE_DIR + "/resource-test1.txt";
     public static final String RESOURCE_FILE_2 = RESOURCE_DIR + "/resource-test2.txt";
@@ -55,6 +56,7 @@ public class NativeImageResourceUtils {
             // Remove leading / for the resource patterns
             Module resourceModule = TestFeature.class.getModule();
             RuntimeResourceAccess.addResource(resourceModule, RESOURCE_DIR.substring(1));
+            RuntimeResourceAccess.addResource(resourceModule, SIMPLE_RESOURCE_DIR.substring(1));
             RuntimeResourceAccess.addResource(resourceModule, RESOURCE_EMPTY_DIR.substring(1));
             RuntimeResourceAccess.addResource(resourceModule, RESOURCE_FILE_1.substring(1));
             RuntimeResourceAccess.addResource(resourceModule, RESOURCE_FILE_2.substring(1));

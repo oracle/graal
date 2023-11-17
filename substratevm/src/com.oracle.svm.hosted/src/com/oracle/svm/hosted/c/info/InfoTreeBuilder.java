@@ -32,8 +32,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.graalvm.compiler.bytecode.BridgeMethodUtils;
-import org.graalvm.compiler.phases.util.Providers;
+import jdk.graal.compiler.bytecode.BridgeMethodUtils;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.constant.CEnumConstant;

@@ -43,9 +43,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.nodes.ValueNode;
-
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
@@ -61,7 +58,6 @@ import com.oracle.graal.pointsto.flow.FilterTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.FrozenFieldFilterTypeFlow;
-import com.oracle.graal.pointsto.flow.InstanceOfTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadInstanceFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadStaticFieldTypeFlow;
@@ -85,6 +81,8 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.util.ClassUtil;
 
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaType;
@@ -365,7 +363,7 @@ public class PointsToStats {
             return;
         }
 
-        assert typeStateStats.containsKey(s1) && typeStateStats.containsKey(s2) && typeStateStats.containsKey(result);
+        assert typeStateStats.containsKey(s1) && typeStateStats.containsKey(s2) && typeStateStats.containsKey(result) : typeFlowStats;
 
         UnionOperation union = new UnionOperation(s1, s2, result);
         AtomicInteger counter = unionStats.computeIfAbsent(union, (k) -> new AtomicInteger());
@@ -496,9 +494,6 @@ public class PointsToStats {
         } else if (flow instanceof FrozenFieldFilterTypeFlow) {
             FrozenFieldFilterTypeFlow filter = (FrozenFieldFilterTypeFlow) flow;
             return "FrozenFieldFilter(" + formatField(filter.getSource()) + ")";
-        } else if (flow instanceof InstanceOfTypeFlow) {
-            InstanceOfTypeFlow instanceOf = (InstanceOfTypeFlow) flow;
-            return "InstanceOf(" + formatType(instanceOf.getDeclaredType(), true) + ")@" + formatSource(flow);
         } else if (flow instanceof NewInstanceTypeFlow) {
             return "NewInstance(" + flow.getDeclaredType().toJavaName(false) + ")@" + formatSource(flow);
         } else if (flow instanceof DynamicNewInstanceTypeFlow) {

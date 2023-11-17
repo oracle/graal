@@ -30,14 +30,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.compiler.options.Option;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -48,6 +47,7 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.util.VMError;
 
 public final class FileSystemProviderSupport {
 
@@ -403,42 +403,10 @@ final class Target_java_io_UnixFileSystem {
     @Alias //
     @InjectAccessors(UserDirAccessors.class) //
     private String userDir;
-
-    @Alias //
-    @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.io.ExpiringCache") //
-    @TargetElement(onlyWith = JDK20OrEarlier.class)//
-    private Target_java_io_ExpiringCache cache;
-
-    /*
-     * The prefix cache on Linux/MacOS only caches elements in the Java home directory, which does
-     * not exist at image runtime. So we disable that cache completely, which is done by
-     * substituting the value of FileSystem.useCanonPrefixCache to false in the substitution below.
-     */
-    @Delete //
-    @TargetElement(onlyWith = JDK20OrEarlier.class)//
-    private String javaHome;
-    /*
-     * Ideally, we would mark this field as @Delete too. However, the javaHomePrefixCache is cleared
-     * from various methods, and we do not want to change those methods.
-     */
-    @Alias //
-    @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.io.ExpiringCache") //
-    @TargetElement(onlyWith = JDK20OrEarlier.class)//
-    private Target_java_io_ExpiringCache javaHomePrefixCache;
 }
 
 @TargetClass(className = "java.io.FileSystem")
 final class Target_java_io_FileSystem {
-
-    /*
-     * Linux/MacOS only: disable the usage of the javaHomePrefixCache. On Windows, the prefix cache
-     * is not specific to the Java home directory and therefore can remain enabled.
-     */
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class}) //
-    @Alias //
-    @RecomputeFieldValue(kind = Kind.FromAlias, isFinal = true) //
-    @TargetElement(onlyWith = JDK20OrEarlier.class)//
-    static boolean useCanonPrefixCache = false;
 
     @Alias
     native String normalize(String path);
@@ -455,6 +423,11 @@ class UserDirAccessors {
                         ? that.normalize(System.getProperty("user.dir"))
                         : SystemPropertiesSupport.singleton().userDir();
     }
+
+    @SuppressWarnings("unused")
+    static void setUserDir(Target_java_io_FileSystem that, String value) {
+        throw VMError.shouldNotReachHere("Field userDir is initialized at build time");
+    }
 }
 
 @TargetClass(className = "java.io.WinNTFileSystem")
@@ -464,18 +437,4 @@ final class Target_java_io_WinNTFileSystem {
     @Alias //
     @InjectAccessors(UserDirAccessors.class) //
     private String userDir;
-
-    @Alias //
-    @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.io.ExpiringCache") //
-    @TargetElement(onlyWith = JDK20OrEarlier.class)//
-    private Target_java_io_ExpiringCache cache;
-
-    @Alias //
-    @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.io.ExpiringCache") //
-    @TargetElement(onlyWith = JDK20OrEarlier.class)//
-    private Target_java_io_ExpiringCache prefixCache;
-}
-
-@TargetClass(className = "java.io.ExpiringCache", onlyWith = JDK20OrEarlier.class)
-final class Target_java_io_ExpiringCache {
 }

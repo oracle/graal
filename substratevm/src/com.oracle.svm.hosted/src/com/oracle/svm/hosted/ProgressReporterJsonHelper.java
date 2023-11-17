@@ -108,9 +108,9 @@ public class ProgressReporterJsonHelper {
         RUNTIME_COMPILED_METHODS_COUNT("runtime_compiled_methods", null, "count"),
         GRAPH_ENCODING_SIZE("runtime_compiled_methods", null, "graph_encoding_bytes");
 
-        private String bucket;
-        private String jsonKey;
-        private String subBucket;
+        private final String bucket;
+        private final String jsonKey;
+        private final String subBucket;
 
         ImageDetailKey(String bucket, String subBucket, String key) {
             this.bucket = bucket;
@@ -135,8 +135,8 @@ public class ProgressReporterJsonHelper {
         MEMORY_TOTAL("memory", "system_total"),
         TOTAL_SECS(null, "total_secs");
 
-        private String bucket;
-        private String jsonKey;
+        private final String bucket;
+        private final String jsonKey;
 
         ResourceUsageKey(String bucket, String key) {
             this.bucket = bucket;
@@ -170,8 +170,8 @@ public class ProgressReporterJsonHelper {
         DEPRECATED_CLASS_JNI("classes", "jni"),
         DEPRECATED_CLASS_REFLECT("classes", "reflection");
 
-        private String key;
-        private String bucket;
+        private final String key;
+        private final String bucket;
 
         AnalysisResults(String bucket, String key) {
             this.key = key;
@@ -209,8 +209,8 @@ public class ProgressReporterJsonHelper {
         GC("garbage_collector", null),
         CC("c_compiler", null);
 
-        private String key;
-        private String bucket;
+        private final String key;
+        private final String bucket;
 
         GeneralInfo(String key, String bucket) {
             this.key = key;

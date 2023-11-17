@@ -45,9 +45,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.options.OptionDescriptor;
-import org.graalvm.compiler.options.OptionDescriptors;
-import org.graalvm.compiler.options.OptionStability;
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionDescriptors;
+import jdk.graal.compiler.options.OptionStability;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -97,7 +97,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     private final Map<String, PathsOptionInfo> pathOptions;
     private final Set<String> stableOptionNames;
 
-    private boolean experimentalOptionsAreUnlocked = false;
+    private int numberOfActiveUnlockExperimentalVMOptions = 0;
     private Set<String> illegalExperimentalOptions = new HashSet<>(0);
 
     APIOptionHandler(NativeImage nativeImage) {
@@ -303,15 +303,25 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         String translatedOption = translateOption(args);
         if (translatedOption != null) {
             args.poll();
-            nativeImage.addPlainImageBuilderArg(NativeImage.injectHostedOptionOrigin(translatedOption, args.argumentOrigin + OptionOrigin.isAPISuffix));
+            nativeImage.addPlainImageBuilderArg(translatedOption, args.argumentOrigin + OptionOrigin.isAPISuffix);
             return true;
         }
         if (ENTER_UNLOCK_SCOPE.equals(headArg)) {
-            experimentalOptionsAreUnlocked = true;
+            if (args.numberOfFirstObservedActiveUnlockExperimentalVMOptions < 0) {
+                /*
+                 * Remember numberOfExperimentalOptionsUnlocks per ArgumentQueue for verification
+                 * purposes only. Each queue cannot lock more than it unlocks.
+                 */
+                args.numberOfFirstObservedActiveUnlockExperimentalVMOptions = numberOfActiveUnlockExperimentalVMOptions;
+            }
+            numberOfActiveUnlockExperimentalVMOptions++;
         } else if (LEAVE_UNLOCK_SCOPE.equals(headArg)) {
-            VMError.guarantee(experimentalOptionsAreUnlocked, "ensureConsistentUnlockScopes() missed an open unlock scope");
-            experimentalOptionsAreUnlocked = false;
-        } else if (!experimentalOptionsAreUnlocked && !OptionOrigin.isAPI(args.argumentOrigin) && headArg.startsWith(NativeImage.oH) && stableOptionNames.stream().noneMatch(p -> headArg.matches(p))) {
+            if (numberOfActiveUnlockExperimentalVMOptions <= 0 || numberOfActiveUnlockExperimentalVMOptions <= args.numberOfFirstObservedActiveUnlockExperimentalVMOptions) {
+                throw VMError.shouldNotReachHere("Unlocking of experimental options in inconsistent state: trying to lock more scopes than exist or allowed.");
+            }
+            numberOfActiveUnlockExperimentalVMOptions--;
+        } else if (numberOfActiveUnlockExperimentalVMOptions == 0 && !OptionOrigin.isAPI(args.argumentOrigin) && headArg.startsWith(NativeImage.oH) &&
+                        stableOptionNames.stream().noneMatch(p -> headArg.matches(p))) {
             illegalExperimentalOptions.add(headArg);
         }
         for (Entry<String, GroupInfo> entry : groupInfos.entrySet()) {
@@ -357,9 +367,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                         whitespaceSeparated = true;
                         break found;
                     } else {
-                        boolean withSeparator = valueSeparator != APIOption.NO_SEPARATOR;
-                        String separatorString = withSeparator ? Character.toString(valueSeparator) : "";
-                        String optionNameWithSeparator = optionName + separatorString;
+                        String optionNameWithSeparator = optionName + APIOption.Utils.valueSeparatorToString(valueSeparator);
                         if (headArg.startsWith(optionNameWithSeparator)) {
                             option = optionInfo;
                             int length = optionNameWithSeparator.length();
@@ -623,7 +631,7 @@ final class APIOptionFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, APIOptionFeature.class, true,
-                        "jdk.internal.vm.compiler", "org.graalvm.compiler.options");
+                        "jdk.graal.compiler", "jdk.graal.compiler.options");
     }
 
     @Override

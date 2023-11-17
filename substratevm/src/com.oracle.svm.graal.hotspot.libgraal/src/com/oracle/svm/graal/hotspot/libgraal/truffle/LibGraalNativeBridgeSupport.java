@@ -26,8 +26,8 @@ package com.oracle.svm.graal.hotspot.libgraal.truffle;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.serviceprovider.IsolateUtil;
+import jdk.graal.compiler.debug.TTY;
+import jdk.graal.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.NativeBridgeSupport;
 
@@ -80,7 +80,7 @@ public final class LibGraalNativeBridgeSupport implements NativeBridgeSupport {
     private int traceLevel() {
         int res = traceLevel.get();
         if (res == UNINITIALIZED_TRACE_LEVEL) {
-            String var = Services.getSavedProperties().get(JNI_LIBGRAAL_TRACE_LEVEL_PROPERTY_NAME);
+            String var = Services.getSavedProperty(JNI_LIBGRAAL_TRACE_LEVEL_PROPERTY_NAME);
             if (var != null) {
                 try {
                     res = Integer.parseInt(var);

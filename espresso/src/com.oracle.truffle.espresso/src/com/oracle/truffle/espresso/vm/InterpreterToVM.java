@@ -55,7 +55,7 @@ import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Throws;
@@ -114,7 +114,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
     }
 
     @TruffleBoundary
-    private static String outOfBoundsMessage(int index, int length) {
+    public static String outOfBoundsMessage(int index, int length) {
         return "Index " + index + " out of bounds for length " + length;
     }
 
@@ -664,6 +664,10 @@ public final class InterpreterToVM extends ContextAccessImpl {
                             int bci = espressoNode.readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY));
                             frames.add(new VM.EspressoStackElement(method, bci));
                             count++;
+                        } else {
+                            if (count == 0 && !DefaultHiddenFramesFilter.INSTANCE.include(method)) {
+                                frames.markTopFrameHidden();
+                            }
                         }
                     }
                 }

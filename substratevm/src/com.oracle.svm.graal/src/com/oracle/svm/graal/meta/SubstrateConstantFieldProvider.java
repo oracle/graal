@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.graal.meta;
 
-import org.graalvm.compiler.core.common.spi.JavaConstantFieldProvider;
+import jdk.graal.compiler.core.common.spi.JavaConstantFieldProvider;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;

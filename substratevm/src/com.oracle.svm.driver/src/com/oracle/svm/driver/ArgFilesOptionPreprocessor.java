@@ -33,21 +33,28 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-class ArgFilesOptionPreprocessor {
+import com.oracle.svm.hosted.util.JDKArgsUtils;
+
+public class ArgFilesOptionPreprocessor {
 
     private static final String DISABLE_AT_FILES_OPTION = "--disable-@files";
 
     private boolean disableAtFiles = false;
 
     public List<String> process(String currentArg) {
-        switch (currentArg) {
-            case DISABLE_AT_FILES_OPTION:
-                disableAtFiles = true;
-                return List.of();
+        String argWithoutQuotes = currentArg.replaceAll("['\"]*", "");
+        if (DISABLE_AT_FILES_OPTION.equals(argWithoutQuotes)) {
+            disableAtFiles = true;
+            return List.of();
         }
 
-        if (!disableAtFiles && currentArg.startsWith("@")) {
-            Path argFile = Paths.get(currentArg.substring(1));
+        if (!disableAtFiles && argWithoutQuotes.startsWith("@")) {
+            String argWithoutAt = argWithoutQuotes.substring(1);
+            if (argWithoutAt.startsWith("@")) {
+                // escaped @argument
+                return List.of(argWithoutAt);
+            }
+            Path argFile = Paths.get(argWithoutAt);
             return readArgFile(argFile);
         }
 
@@ -130,7 +137,7 @@ class ArgFilesOptionPreprocessor {
 
             // Skip white space characters
             if (ctx.state == PARSER_STATE.FIND_NEXT || ctx.state == PARSER_STATE.SKIP_LEAD_WS) {
-                while (ch == ' ' || ch == '\n' || ch == '\r' || ch == '\t' || ch == '\f') {
+                while (JDKArgsUtils.isspace(ch)) {
                     nextc++;
                     if (nextc >= eob) {
                         return null;

@@ -29,26 +29,6 @@ import java.util.List;
 import java.util.ListIterator;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.core.aarch64.AArch64NodeMatchRules;
-import org.graalvm.compiler.core.amd64.AMD64NodeMatchRules;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
-import org.graalvm.compiler.core.gen.NodeMatchRules;
-import org.graalvm.compiler.core.match.MatchRuleRegistry;
-import org.graalvm.compiler.core.match.MatchStatement;
-import org.graalvm.compiler.core.riscv64.RISCV64NodeMatchRules;
-import org.graalvm.compiler.core.riscv64.RISCV64ReflectionUtil;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.hotspot.CommunityCompilerConfigurationFactory;
-import org.graalvm.compiler.lir.phases.LIRSuites;
-import org.graalvm.compiler.nodes.spi.LoweringProvider;
-import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.PhaseSuite;
-import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.phases.tiers.Suites;
-import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -58,10 +38,30 @@ import com.oracle.svm.core.graal.code.SubstrateLoweringProviderFactory;
 import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.core.aarch64.AArch64NodeMatchRules;
+import jdk.graal.compiler.core.amd64.AMD64NodeMatchRules;
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
+import jdk.graal.compiler.core.gen.NodeMatchRules;
+import jdk.graal.compiler.core.match.MatchRuleRegistry;
+import jdk.graal.compiler.core.match.MatchStatement;
+import jdk.graal.compiler.core.riscv64.RISCV64NodeMatchRules;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.hotspot.CommunityCompilerConfigurationFactory;
+import jdk.graal.compiler.lir.phases.LIRSuites;
+import jdk.graal.compiler.nodes.spi.LoweringProvider;
+import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.PhaseSuite;
+import jdk.graal.compiler.phases.tiers.HighTierContext;
+import jdk.graal.compiler.phases.tiers.Suites;
+import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.riscv64.RISCV64;
 
 class HostedWrapper {
     GraalConfiguration config;
@@ -139,7 +139,7 @@ public class GraalConfiguration {
             matchRuleClass = AMD64NodeMatchRules.class;
         } else if (hostedArchitecture instanceof AArch64) {
             matchRuleClass = AArch64NodeMatchRules.class;
-        } else if (RISCV64ReflectionUtil.getArch(false).isInstance(hostedArchitecture)) {
+        } else if (hostedArchitecture instanceof RISCV64) {
             matchRuleClass = RISCV64NodeMatchRules.class;
         } else {
             throw VMError.shouldNotReachHere("Can not instantiate NodeMatchRules for architecture " + hostedArchitecture.getName());

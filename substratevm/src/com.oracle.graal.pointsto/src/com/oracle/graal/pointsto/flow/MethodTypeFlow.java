@@ -30,13 +30,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.debug.Assertions;
-import org.graalvm.compiler.nodes.ParameterNode;
-import org.graalvm.compiler.nodes.ReturnNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.builder.TypeFlowGraphBuilder;
@@ -45,6 +38,12 @@ import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisError.ParsingError;
+
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.ReturnNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 
 public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
@@ -161,6 +160,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
                             !reason.getSource().getMethod().equals(method), "Parsing reason cannot be in the target method itself: %s", method);
 
             parsingReason = reason;
+            method.setParsingReason(PointsToAnalysisMethod.unwrapInvokeReason(reason));
             try {
                 MethodTypeFlowBuilder builder = bb.createMethodTypeFlowBuilder(bb, method, null, graphKind);
                 try {
@@ -226,9 +226,9 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         return flowsGraph == null ? Collections.emptyList() : List.of(flowsGraph);
     }
 
-    public EconomicMap<Object, InvokeTypeFlow> getInvokes() {
+    public List<InvokeTypeFlow> getInvokes() {
         ensureFlowsGraphSealed();
-        return flowsGraph == null ? EconomicMap.emptyMap() : flowsGraph.getInvokes();
+        return flowsGraph == null ? List.of() : flowsGraph.getInvokes();
     }
 
     public TypeFlow<?> getParameter(int idx) {
@@ -252,12 +252,8 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
      * method does not always return a parameter.
      */
     public int getReturnedParameterIndex() {
-        assert flowsGraphCreated();
+        assert flowsGraphCreated() : returnedParameterIndex;
         return returnedParameterIndex;
-    }
-
-    public Object getParsingReason() {
-        return PointsToAnalysisMethod.unwrapInvokeReason(parsingReason);
     }
 
     @Override
@@ -282,7 +278,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
      * @return whether a new graph was created
      */
     public synchronized boolean updateFlowsGraph(PointsToAnalysis bb, MethodFlowsGraph.GraphKind newGraphKind, InvokeTypeFlow newParsingReason, boolean forceReparse) {
-        assert !method.isOriginalMethod();
+        assert !method.isOriginalMethod() : method;
         if (sealedFlowsGraph != null) {
             throwSealedError();
         }
@@ -300,7 +296,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
             return false;
         }
         if (newGraphKind == MethodFlowsGraph.GraphKind.STUB) {
-            assert originalGraphKind == MethodFlowsGraph.GraphKind.STUB;
+            assert originalGraphKind == MethodFlowsGraph.GraphKind.STUB : originalGraphKind;
             /*
              * No action is needed since a stub creation is idempotent.
              */
@@ -316,10 +312,11 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         }
         if (newParsingReason != null) {
             parsingReason = newParsingReason;
+            method.setParsingReason(PointsToAnalysisMethod.unwrapInvokeReason(newParsingReason));
         }
 
         try {
-            assert returnedParameterIndex == -1;
+            assert returnedParameterIndex == -1 : returnedParameterIndex;
 
             // if the graph is a stub, then it has not yet be registered as implementation invoked
             boolean registerAsImplementationInvoked = originalGraphKind == MethodFlowsGraph.GraphKind.STUB;

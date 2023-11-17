@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,16 +40,15 @@
  */
 package org.graalvm.nativeimage.hosted;
 
-import java.util.Arrays;
-import java.util.Locale;
-import java.util.Objects;
-import java.util.regex.Pattern;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
+
+import java.util.Arrays;
+import java.util.Locale;
+import java.util.Objects;
 
 /**
  * This class can be used to register Java resources and ResourceBundles that should be accessible
@@ -69,8 +68,7 @@ public final class RuntimeResourceAccess {
     public static void addResource(Module module, String resourcePath) {
         Objects.requireNonNull(module);
         Objects.requireNonNull(resourcePath);
-        ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(),
-                        withModuleName(module, Pattern.quote(resourcePath)));
+        ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(module, resourcePath);
     }
 
     /**

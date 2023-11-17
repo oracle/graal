@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1551,6 +1551,38 @@ public final class DebuggerSession implements Closeable {
         }
 
         @Override
+        protected void onYield(VirtualFrame frame, Object value) {
+            if (stepping.get()) {
+                doYield(frame.materialize());
+                doStepAfter(frame.materialize(), value);
+            }
+        }
+
+        @TruffleBoundary
+        private void doYield(MaterializedFrame frame) {
+            SteppingStrategy steppingStrategy = getSteppingStrategy(Thread.currentThread());
+            if (steppingStrategy != null) {
+                steppingStrategy.setYieldBreak(frame, context.getInstrumentedSourceSection());
+            }
+        }
+
+        @Override
+        protected void onResume(VirtualFrame frame) {
+            if (stepping.get()) {
+                doYieldResume(frame.materialize());
+                doStepBefore(frame.materialize());
+            }
+        }
+
+        @TruffleBoundary
+        private void doYieldResume(MaterializedFrame frame) {
+            SteppingStrategy steppingStrategy = getSteppingStrategy(Thread.currentThread());
+            if (steppingStrategy != null) {
+                steppingStrategy.setYieldResume(context, frame);
+            }
+        }
+
+        @Override
         protected void onInputValue(VirtualFrame frame, EventContext inputContext, int inputIndex, Object inputValue) {
             if (stepping.get() && hasExpressionElement) {
                 saveInputValue(frame, inputIndex, inputValue);
@@ -1688,6 +1720,32 @@ public final class DebuggerSession implements Closeable {
                 if (newResult != result) {
                     throw getContext().createUnwind(new ChangedReturnInfo(newResult));
                 }
+            }
+        }
+
+        @Override
+        protected void onYield(VirtualFrame frame, Object value) {
+            if (stepping.get()) {
+                doReturn(frame.materialize(), value);
+            }
+        }
+
+        @Override
+        protected void onResume(VirtualFrame frame) {
+            if (stepping.get()) {
+                doYieldResume(frame.materialize());
+                if (hasRootElement) {
+                    super.onEnter(frame);
+                }
+            }
+        }
+
+        @TruffleBoundary
+        private void doYieldResume(MaterializedFrame frame) {
+            SteppingStrategy steppingStrategy = getSteppingStrategy(Thread.currentThread());
+            if (steppingStrategy != null) {
+                steppingStrategy.setYieldResume(context, frame);
+                steppingStrategy.notifyCallEntry();
             }
         }
 

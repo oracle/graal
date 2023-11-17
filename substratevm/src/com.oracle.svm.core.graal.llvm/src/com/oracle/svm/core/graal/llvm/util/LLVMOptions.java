@@ -27,8 +27,8 @@ package com.oracle.svm.core.graal.llvm.util;
 import java.util.Arrays;
 import java.util.List;
 
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionType;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
 
 import com.oracle.svm.core.option.HostedOptionKey;
 

@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
-import org.graalvm.compiler.word.ObjectAccess;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -166,7 +166,13 @@ public final class Space {
     }
 
     public void logUsage(Log log, boolean logIfEmpty) {
-        UnsignedWord chunkBytes = getChunkBytes();
+        UnsignedWord chunkBytes;
+        if (isEdenSpace() && !VMOperation.isGCInProgress()) {
+            chunkBytes = HeapImpl.getAccounting().getEdenUsedBytes();
+        } else {
+            chunkBytes = getChunkBytes();
+        }
+
         if (logIfEmpty || chunkBytes.aboveThan(0)) {
             log.string(getName()).string(": ").rational(chunkBytes, GCImpl.M, 2).string("M (")
                             .rational(accounting.getAlignedChunkBytes(), GCImpl.M, 2).string("M in ").signed(accounting.getAlignedChunkCount()).string(" aligned chunks, ")

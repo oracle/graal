@@ -30,7 +30,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 
-import org.graalvm.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.NumUtil;
 
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecisionMap;
@@ -45,7 +45,7 @@ import com.oracle.objectfile.io.AssemblyBuffer;
 import com.oracle.objectfile.io.OutputAssembler;
 import com.oracle.objectfile.macho.MachOObjectFile.MachOSection;
 import com.oracle.objectfile.macho.MachOObjectFile.Segment64Command;
-import org.graalvm.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.GraalError;
 
 class MachORelocationElement extends MachOObjectFile.LinkEditElement {
     /*

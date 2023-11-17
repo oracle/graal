@@ -42,6 +42,8 @@ env:
   MX_GIT_CACHE: refcache
   MX_PATH: ${{ github.workspace }}/mx
   MX_PYTHON: python3.8
+  # Enforce experimental option checking in CI (GR-47922)
+  NATIVE_IMAGE_EXPERIMENTAL_OPTIONS_ARE_FATAL: "true"
 
 permissions:
   contents: read # to fetch code (actions/checkout)
@@ -60,7 +62,7 @@ jobs:
               GATE_TAGS: "style,fullbuild,test"
               PRIMARY: "compiler"
           - env:
-              JDK_VERSION: "21"
+              JDK_VERSION: "latest"
               GATE_TAGS: "build,bootstraplite"
               PRIMARY: "compiler"
           # /espresso
@@ -74,16 +76,16 @@ jobs:
               GATE_TAGS: "style,fullbuild"
               PRIMARY: "substratevm"
           - env:
-              JDK_VERSION: "21"
+              JDK_VERSION: "latest"
               GATE_TAGS: "build,helloworld,native_unittests"
               PRIMARY: "substratevm"
               PIP_PACKAGES: "jsonschema==4.6.1"
           - env:
-              JDK_VERSION: "21"
+              JDK_VERSION: "latest"
               GATE_TAGS: "build,debuginfotest"
               PRIMARY: "substratevm"
           - env:
-              JDK_VERSION: "21"
+              JDK_VERSION: "latest"
               GATE_TAGS: "hellomodule"
               PRIMARY: "substratevm"
           # /sulong
@@ -98,7 +100,7 @@ jobs:
               PRIMARY: "truffle"
           # /vm
           - env:
-              JDK_VERSION: "21"
+              JDK_VERSION: "latest"
               GATE_TAGS: "build,sulong"
               GATE_OPTS: "--no-warning-as-error"
               PRIMARY: "vm"
@@ -107,7 +109,7 @@ jobs:
               DISABLE_POLYGLOT: true
               DISABLE_LIBPOLYGLOT: true
           - env:
-              JDK_VERSION: "21"
+              JDK_VERSION: "latest"
               GATE_TAGS: "build"
               GATE_OPTS: "--no-warning-as-error"
               PRIMARY: "vm"

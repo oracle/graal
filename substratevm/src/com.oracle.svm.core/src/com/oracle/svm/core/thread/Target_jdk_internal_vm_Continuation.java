@@ -25,62 +25,61 @@
 package com.oracle.svm.core.thread;
 
 import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.InternalVMMethod;
-import com.oracle.svm.core.jdk.JDK19OrLater;
-import com.oracle.svm.core.jdk.LoomJDK;
-import com.oracle.svm.core.jdk.NotLoomJDK;
+import com.oracle.svm.core.heap.StoredContinuation;
+import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.util.VMError;
 
-@TargetClass(className = "Continuation", classNameProvider = Package_jdk_internal_vm_helper.class, onlyWith = {JDK19OrLater.class, NotLoomJDK.class})
-@Substitute
-@SuppressWarnings("unused")
-final class Target_jdk_internal_vm_Continuation__WithoutLoom {
-    @Substitute
-    static boolean yield(Target_jdk_internal_vm_ContinuationScope scope) {
-        throw VMError.shouldNotReachHereAtRuntime();
-    }
-
-    @Substitute
-    static void pin() {
-        throw VMError.shouldNotReachHereAtRuntime();
-    }
-
-    @Substitute
-    static void unpin() {
-        throw VMError.shouldNotReachHereAtRuntime();
-    }
-}
-
-@TargetClass(className = "Continuation", classNameProvider = Package_jdk_internal_vm_helper.class, onlyWith = LoomJDK.class)
+@TargetClass(className = "jdk.internal.vm.Continuation")
 public final class Target_jdk_internal_vm_Continuation {
     @Substitute
     private static void registerNatives() {
     }
 
-    @Alias//
+    @Alias //
     Runnable target;
 
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    Continuation internal;
-
     /** Treated as unsigned, located in native class {@code ContinuationEntry} in JDK code. */
-    @Inject//
+    @Inject //
     int pinCount;
 
-    // Checkstyle: resume
+    /** Stored execution state if not executing. */
+    @Inject //
+    StoredContinuation stored;
+
+    /** Replaced by {@link #stored}. */
+    @Delete //
+    Target_jdk_internal_vm_StackChunk tail;
+
+    /** Frame pointer to return to when yielding, {@code null} if not executing. */
+    @Inject //
+    Pointer sp;
+
+    /** While executing, where to return to when yielding, {@code null} if not executing. */
+    @Inject //
+    CodePointer ip;
+
+    /** While executing, frame pointer of initial frame of continuation, {@code null} otherwise. */
+    @Inject //
+    Pointer baseSP;
+
+    @Inject //
+    int overflowCheckState;
 
     @Substitute
-    private boolean isEmpty() {
-        return internal == null || internal.isEmpty();
+    boolean isEmpty() {
+        return stored == null;
     }
 
     @Alias
@@ -98,7 +97,7 @@ public final class Target_jdk_internal_vm_Continuation {
         if (cont != null) {
             while (true) {
                 if (cont.pinCount != 0) {
-                    return LoomSupport.FREEZE_PINNED_CS;
+                    return ContinuationSupport.FREEZE_PINNED_CS;
                 }
                 if (cont.getParent() == null) {
                     break;
@@ -109,44 +108,42 @@ public final class Target_jdk_internal_vm_Continuation {
                 cont = cont.getParent();
             }
             JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor(CurrentIsolate.getCurrentThread());
-            if (anchor.isNonNull() && cont.internal.getBaseSP().aboveThan(anchor.getLastJavaSP())) {
-                return LoomSupport.FREEZE_PINNED_NATIVE;
+            if (anchor.isNonNull() && cont.baseSP.aboveThan(anchor.getLastJavaSP())) {
+                return ContinuationSupport.FREEZE_PINNED_NATIVE;
             }
         }
-        return LoomSupport.FREEZE_OK;
+        return ContinuationSupport.FREEZE_OK;
     }
 
     @Substitute
     boolean isStarted() {
-        return internal != null && internal.isStarted();
+        return stored != null;
     }
 
     @Alias
     public static native Target_jdk_internal_vm_Continuation getCurrentContinuation(Target_jdk_internal_vm_ContinuationScope scope);
 
-    /* GR-44975 Needs to be removed and reverted to a method reference */
-    @InternalVMMethod
-    private static class ContinuationEnter0 implements Runnable {
-        private final Target_jdk_internal_vm_Continuation continuation;
-
-        ContinuationEnter0(Target_jdk_internal_vm_Continuation c) {
-            this.continuation = c;
-        }
-
-        @Override
-        public void run() {
-            continuation.enter0();
-        }
-    }
-
     @Substitute
-    static void enterSpecial(Target_jdk_internal_vm_Continuation c, boolean isContinue, boolean isVirtualThread) {
+    static void enterSpecial(Target_jdk_internal_vm_Continuation c, @SuppressWarnings("unused") boolean isContinue, boolean isVirtualThread) {
         assert isVirtualThread;
-        if (!isContinue) {
-            assert c.internal == null;
-            c.internal = new Continuation(new ContinuationEnter0(c));
+
+        int stateBefore = StackOverflowCheck.singleton().getState();
+        VMError.guarantee(!StackOverflowCheck.singleton().isYellowZoneAvailable());
+
+        assert isContinue == (c.stored != null);
+        if (isContinue) {
+            StackOverflowCheck.singleton().setState(c.overflowCheckState);
         }
-        c.internal.enter();
+        try {
+            ContinuationInternals.enterSpecial0(c, isContinue);
+        } catch (StackOverflowError e) {
+            throw (e == ImplicitExceptions.CACHED_STACK_OVERFLOW_ERROR) ? new StackOverflowError() : e;
+        } finally {
+            c.overflowCheckState = StackOverflowCheck.singleton().getState();
+            StackOverflowCheck.singleton().setState(stateBefore);
+
+            assert c.sp.isNull() && c.ip.isNull() && c.baseSP.isNull();
+        }
     }
 
     @Substitute
@@ -157,7 +154,7 @@ public final class Target_jdk_internal_vm_Continuation {
         if (pinnedReason != 0) {
             return pinnedReason;
         }
-        return cont.internal.yield();
+        return ContinuationInternals.doYield0(cont);
     }
 
     @Alias
@@ -173,7 +170,7 @@ public final class Target_jdk_internal_vm_Continuation {
     }
 
     @Substitute
-    private void enter0() {
+    void enter0() {
         /*
          * Normally enter would call enter0 and not the other way around, but our internals are
          * slightly different and we do this so we have "enter" on the bottom of the observable
@@ -183,7 +180,7 @@ public final class Target_jdk_internal_vm_Continuation {
     }
 
     @Substitute
-    static void pin() {
+    public static void pin() {
         Target_java_lang_Thread carrier = JavaThreads.toTarget(Target_java_lang_Thread.currentCarrierThread());
         if (carrier.cont != null) {
             if (carrier.cont.pinCount + 1 == 0) { // unsigned arithmetic
@@ -194,7 +191,7 @@ public final class Target_jdk_internal_vm_Continuation {
     }
 
     @Substitute
-    static void unpin() {
+    public static void unpin() {
         Target_java_lang_Thread carrier = JavaThreads.toTarget(Target_java_lang_Thread.currentCarrierThread());
         if (carrier.cont != null) {
             if (carrier.cont.pinCount == 0) {
@@ -206,4 +203,18 @@ public final class Target_jdk_internal_vm_Continuation {
 
     @Alias
     static native boolean isPinned(Target_jdk_internal_vm_ContinuationScope scope);
+
+    /** Accesses {@link #tail}. */
+    @Substitute
+    void postYieldCleanup() {
+    }
+
+    /** Accesses {@link #tail}, no known callers. */
+    @Delete
+    native void dump();
+}
+
+@TargetClass(className = "jdk.internal.vm.StackChunk")
+@Delete
+final class Target_jdk_internal_vm_StackChunk {
 }

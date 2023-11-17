@@ -36,8 +36,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -85,8 +85,8 @@ public class JfrManager {
     public RuntimeSupport.Hook startupHook() {
         return isFirstIsolate -> {
             parseFlightRecorderLogging(SubstrateOptions.FlightRecorderLogging.getValue());
+            periodicEventSetup();
             if (isJFREnabled()) {
-                periodicEventSetup();
                 initRecording();
             }
         };

@@ -28,15 +28,12 @@ import static com.oracle.graal.pointsto.reports.ReportUtils.fieldComparator;
 import static com.oracle.graal.pointsto.reports.ReportUtils.positionComparator;
 
 import java.io.PrintWriter;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
@@ -50,11 +47,6 @@ public final class AnalysisHeapHistogramPrinter extends ObjectScanner {
     }
 
     private static void doPrint(PrintWriter out, BigBang bb) {
-        if (!PointstoOptions.ExhaustiveHeapScan.getValue(bb.getOptions())) {
-            String types = Arrays.stream(bb.skippedHeapTypes()).map(t -> t.toJavaName()).collect(Collectors.joining(", "));
-            System.out.println("Exhaustive heap scanning is disabled. The analysis heap histogram will not contain all instances of types: " + types);
-            System.out.println("Exhaustive heap scanning can be turned on using -H:+ExhaustiveHeapScan.");
-        }
         Map<AnalysisType, Integer> histogram = new HashMap<>();
         AnalysisHeapHistogramPrinter printer = new AnalysisHeapHistogramPrinter(bb, histogram);
         printer.scanBootImageHeapRoots(fieldComparator, positionComparator);

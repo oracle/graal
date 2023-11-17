@@ -24,8 +24,10 @@
  */
 package com.oracle.svm.core.foreign;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
+
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -137,5 +139,5 @@ public class ForeignFunctionsRuntime {
 
     @Platforms(Platform.HOSTED_ONLY.class)//
     public static final SnippetRuntime.SubstrateForeignCallDescriptor CAPTURE_CALL_STATE = SnippetRuntime.findForeignCall(ForeignFunctionsRuntime.class,
-                    "captureCallState", false, LocationIdentity.any());
+                    "captureCallState", HAS_SIDE_EFFECT, LocationIdentity.any());
 }

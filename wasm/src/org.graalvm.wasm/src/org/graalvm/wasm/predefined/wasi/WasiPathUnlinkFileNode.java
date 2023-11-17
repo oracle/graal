@@ -40,33 +40,37 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.fd.Fd;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
+
 public class WasiPathUnlinkFileNode extends WasmBuiltinRootNode {
-    public WasiPathUnlinkFileNode(WasmLanguage language, WasmInstance instance) {
-        super(language, instance);
+    public WasiPathUnlinkFileNode(WasmLanguage language, WasmModule module) {
+        super(language, module);
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         final Object[] args = frame.getArguments();
-        return pathUnlinkFile(context, (int) args[0], (int) args[1], (int) args[2]);
+        return pathUnlinkFile(context, memory(frame), (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1), (int) WasmArguments.getArgument(args, 2));
     }
 
     @TruffleBoundary
-    private int pathUnlinkFile(WasmContext context, int fd, int pathAddress, int pathLength) {
+    private int pathUnlinkFile(WasmContext context, WasmMemory memory, int fd, int pathAddress, int pathLength) {
         final Fd handle = context.fdManager().get(fd);
         if (handle == null) {
             return Errno.Badf.ordinal();
         }
-        return handle.pathUnlinkFile(this, memory(), pathAddress, pathLength).ordinal();
+        return handle.pathUnlinkFile(this, memory, pathAddress, pathLength).ordinal();
     }
 
     @Override

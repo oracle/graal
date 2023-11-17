@@ -162,7 +162,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
 
         @Override
         public void initFlow(PointsToAnalysis bb) {
-            assert !bb.analysisPolicy().isContextSensitiveAnalysis() || this.isClone();
+            assert !bb.analysisPolicy().isContextSensitiveAnalysis() || this.isClone() : this;
             /*
              * Register the unsafe load. It will be force-updated when new unsafe fields are
              * registered.
@@ -278,7 +278,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
 
             for (AnalysisObject object : objectState.objects(bb)) {
                 AnalysisType objectType = object.type();
-                assert !objectType.isArray();
+                assert !objectType.isArray() : objectType;
 
                 for (AnalysisField field : objectType.unsafeAccessedFields(partitionKind)) {
                     TypeFlow<?> fieldFlow = object.getInstanceFieldFlow(bb, objectFlow, source, field, false);

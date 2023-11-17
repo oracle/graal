@@ -27,7 +27,7 @@ package com.oracle.svm.graal.isolated;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;

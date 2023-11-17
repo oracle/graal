@@ -37,7 +37,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.compiler.java.LambdaUtils;
+import jdk.graal.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
@@ -52,7 +52,6 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
-import com.oracle.svm.util.LogUtils;
 
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -89,8 +88,7 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
     final MetaAccessProvider metaAccess;
 
     public static ClassInitializationSupport create(MetaAccessProvider metaAccess, ImageClassLoader loader) {
-        if (ClassInitializationOptions.UseDeprecatedOldClassInitialization.getValue()) {
-            LogUtils.warning("Using old deprecated class initialization strategy. Only classes that are marked explicitly as '--initialize-at-build-time' can be used during image generation.");
+        if (!ClassInitializationOptions.StrictImageHeap.getValue()) {
             return new ProvenSafeClassInitializationSupport(metaAccess, loader);
         }
         return new AllowAllHostedUsagesClassInitializationSupport(metaAccess, loader);

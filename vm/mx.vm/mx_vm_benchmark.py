@@ -1,6 +1,4 @@
 #
-# ----------------------------------------------------------------------------------------------------
-#
 # Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
@@ -24,7 +22,7 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
-# ----------------------------------------------------------------------------------------------------
+
 import datetime
 import os
 import re
@@ -136,7 +134,7 @@ class NativeImageVM(GraalVm):
             self.bmSuite = bm_suite
             self.benchmark_suite_name = bm_suite.benchSuiteName(args) if len(inspect.getfullargspec(bm_suite.benchSuiteName).args) > 1 else bm_suite.benchSuiteName()
             self.benchmark_name = bm_suite.benchmarkName()
-            self.executable, self.classpath_arguments, self.system_properties, self.image_vm_args, image_run_args, self.split_run = NativeImageVM.extract_benchmark_arguments(args)
+            self.executable, self.classpath_arguments, self.modulepath_arguments, self.system_properties, self.image_vm_args, image_run_args, self.split_run = NativeImageVM.extract_benchmark_arguments(args)
             self.extra_image_build_arguments = bm_suite.extra_image_build_argument(self.benchmark_name, args)
             # use list() to create fresh copies to safeguard against accidental modification
             self.image_run_args = bm_suite.extra_run_arg(self.benchmark_name, args, list(image_run_args))
@@ -174,57 +172,59 @@ class NativeImageVM(GraalVm):
             self.latest_profile_path = self.profile_path_no_extension + '-latest' + self.profile_file_extension
             self.config_dir = os.path.join(self.output_dir, 'config')
             self.log_dir = self.output_dir
-            self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')]
-            self.base_image_build_args += ['--no-fallback', '-g']
-            self.base_image_build_args += svm_experimental_options(['-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '--diagnostics-mode']) if vm.is_gate else []
-            self.base_image_build_args += ['-H:+ReportExceptionStackTraces']
-            self.base_image_build_args += bm_suite.build_assertions(self.benchmark_name, vm.is_gate)
+            base_image_build_args = ['--no-fallback', '-g']
+            base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '--diagnostics-mode'] if vm.is_gate else []
+            base_image_build_args += ['-H:+ReportExceptionStackTraces']
+            base_image_build_args += bm_suite.build_assertions(self.benchmark_name, vm.is_gate)
 
-            self.base_image_build_args += self.system_properties
+            base_image_build_args += self.system_properties
             self.bundle_path = self.get_bundle_path_if_present()
             self.bundle_create_path = self.get_bundle_create_path_if_present()
             if not self.bundle_path:
-                self.base_image_build_args += self.classpath_arguments
-                self.base_image_build_args += self.executable
-                self.base_image_build_args += svm_experimental_options(['-H:Path=' + self.output_dir])
-            self.base_image_build_args += svm_experimental_options([
+                base_image_build_args += self.classpath_arguments
+                base_image_build_args += self.modulepath_arguments
+                base_image_build_args += self.executable
+                base_image_build_args += ['-H:Path=' + self.output_dir]
+            base_image_build_args += [
                 '-H:ConfigurationFileDirectories=' + self.config_dir,
                 '-H:+PrintAnalysisStatistics',
                 '-H:+PrintCallEdges',
                 '-H:+CollectImageBuildStatistics',
-            ])
+            ]
             self.image_build_reports_directory = os.path.join(self.output_dir, 'reports')
             if self.bundle_create_path is not None:
                 self.image_build_reports_directory = os.path.join(self.output_dir, self.bundle_create_path)
             self.image_build_stats_file = os.path.join(self.image_build_reports_directory, 'image_build_statistics.json')
 
             if vm.is_quickbuild:
-                self.base_image_build_args += ['-Ob']
+                base_image_build_args += ['-Ob']
             if vm.use_string_inlining:
-                self.base_image_build_args += svm_experimental_options(['-H:+UseStringInlining'])
+                base_image_build_args += ['-H:+UseStringInlining']
             if vm.is_llvm:
-                self.base_image_build_args += ['--features=org.graalvm.home.HomeFinderFeature'] + svm_experimental_options(['-H:CompilerBackend=llvm', '-H:DeadlockWatchdogInterval=0'])
+                base_image_build_args += ['--features=org.graalvm.home.HomeFinderFeature'] + ['-H:CompilerBackend=llvm', '-H:DeadlockWatchdogInterval=0']
             if vm.gc:
-                self.base_image_build_args += ['--gc=' + vm.gc] + svm_experimental_options(['-H:+SpawnIsolates'])
+                base_image_build_args += ['--gc=' + vm.gc] + ['-H:+SpawnIsolates']
             if vm.native_architecture:
-                self.base_image_build_args += ['-march=native']
+                base_image_build_args += ['-march=native']
             if vm.analysis_context_sensitivity:
-                self.base_image_build_args += svm_experimental_options(['-H:AnalysisContextSensitivity=' + vm.analysis_context_sensitivity, '-H:-RemoveSaturatedTypeFlows', '-H:+AliasArrayTypeFlows'])
+                base_image_build_args += ['-H:AnalysisContextSensitivity=' + vm.analysis_context_sensitivity, '-H:-RemoveSaturatedTypeFlows', '-H:+AliasArrayTypeFlows']
             if vm.no_inlining_before_analysis:
-                self.base_image_build_args += svm_experimental_options(['-H:-InlineBeforeAnalysis'])
+                base_image_build_args += ['-H:-InlineBeforeAnalysis']
             if vm.optimization_level:
-                self.base_image_build_args += ['-' + vm.optimization_level]
+                base_image_build_args += ['-' + vm.optimization_level]
             if vm.async_sampler:
-                self.base_image_build_args += ['-R:+FlightRecorder',
+                base_image_build_args += ['-R:+FlightRecorder',
                                                '-R:StartFlightRecording=filename=default.jfr',
                                                '--enable-monitoring=jfr']
                 for stage in ('instrument-image', 'instrument-run'):
                     if stage in self.stages:
                         self.stages.remove(stage)
             if self.image_vm_args is not None:
-                self.base_image_build_args += self.image_vm_args
+                base_image_build_args += self.image_vm_args
             self.is_runnable = self.check_runnable()
-            self.base_image_build_args += self.extra_image_build_arguments
+            base_image_build_args += self.extra_image_build_arguments
+            # benchmarks are allowed to use experimental options
+            self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')] + svm_experimental_options(base_image_build_args)
 
         def check_runnable(self):
             # TODO remove once there is load available for the specified benchmarks
@@ -459,7 +459,7 @@ class NativeImageVM(GraalVm):
     _VM_OPTS_SPACE_SEPARATED_ARG = ['-mp', '-modulepath', '-limitmods', '-addmods', '-upgrademodulepath', '-m',
                                     '--module-path', '--limit-modules', '--add-modules', '--upgrade-module-path',
                                     '--module', '--module-source-path', '--add-exports', '--add-opens', '--add-reads',
-                                    '--patch-module', '--boot-class-path', '--source-path', '-cp', '-classpath']
+                                    '--patch-module', '--boot-class-path', '--source-path', '-cp', '-classpath', '-p']
 
     @staticmethod
     def _split_vm_arguments(args):
@@ -495,6 +495,7 @@ class NativeImageVM(GraalVm):
         vm_args, executable, image_run_args = NativeImageVM._split_vm_arguments(clean_args)
 
         classpath_arguments = []
+        modulepath_arguments = []
         system_properties = [a for a in vm_args if a.startswith('-D')]
         image_vm_args = []
         i = 0
@@ -505,6 +506,9 @@ class NativeImageVM(GraalVm):
                 i += 1
             elif vm_arg.startswith('-cp') or vm_arg.startswith('-classpath'):
                 classpath_arguments += [vm_arg, vm_args[i + 1]]
+                i += 2
+            elif vm_arg.startswith('-p') or vm_arg.startswith('-modulepath'):
+                modulepath_arguments += [vm_arg, vm_args[i + 1]]
                 i += 2
             else:
                 if not any(vm_arg.startswith(elem) for elem in NativeImageVM.supported_vm_arg_prefixes()):
@@ -518,7 +522,7 @@ class NativeImageVM(GraalVm):
                     image_vm_args.append(vm_arg)
                     i += 1
 
-        return executable, classpath_arguments, system_properties, image_vm_args, image_run_args, split_run
+        return executable, classpath_arguments, modulepath_arguments, system_properties, image_vm_args, image_run_args, split_run
 
     class Stages:
         def __init__(self, config, bench_out, bench_err, is_gate, non_zero_is_fatal, cwd):
@@ -910,7 +914,7 @@ class NativeImageVM(GraalVm):
         if config.image_vm_args is not None:
             hotspot_vm_args += config.image_vm_args
 
-        hotspot_args = hotspot_vm_args + config.classpath_arguments + config.system_properties + config.executable + config.extra_agent_run_args
+        hotspot_args = hotspot_vm_args + config.classpath_arguments + config.modulepath_arguments + config.system_properties + config.executable + config.extra_agent_run_args
         with stages.set_command(self.generate_java_command(hotspot_args)) as s:
             s.execute_command()
 

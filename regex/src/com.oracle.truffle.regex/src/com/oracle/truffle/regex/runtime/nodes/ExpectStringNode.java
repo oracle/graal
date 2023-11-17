@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.runtime.nodes;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -52,6 +53,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 
 @GenerateUncached
+@GenerateInline(false)
 public abstract class ExpectStringNode extends Node {
 
     public abstract TruffleString execute(Object arg, TruffleString.Encoding encoding);

@@ -105,7 +105,7 @@ com.oracle.truffle.sl.nodes.expression.SLLessThanNodeGen.executeBoolean_long_lon
 com.oracle.truffle.sl.nodes.expression.SLLessThanNodeGen.executeBoolean(SLLessThanNodeGen.java:33) [bci: 14]
 com.oracle.truffle.sl.nodes.controlflow.SLWhileRepeatingNode.evaluateCondition(SLWhileRepeatingNode.java:133) [bci: 5]
 com.oracle.truffle.sl.nodes.controlflow.SLWhileRepeatingNode.executeRepeating(SLWhileRepeatingNode.java:102) [bci: 2]
-org.graalvm.compiler.truffle.OptimizedOSRLoopNode.executeLoop(OptimizedOSRLoopNode.java:113) [bci: 61]
+com.oracle.truffle.runtime.OptimizedOSRLoopNode.executeLoop(OptimizedOSRLoopNode.java:113) [bci: 61]
 com.oracle.truffle.sl.nodes.controlflow.SLWhileNode.executeVoid(SLWhileNode.java:69) [bci: 5]
 com.oracle.truffle.sl.nodes.controlflow.SLBlockNode.executeVoid(SLBlockNode.java:84) [bci: 37]
 com.oracle.truffle.sl.nodes.controlflow.SLFunctionBodyNode.executeGeneric(SLFunctionBodyNode.java:81) [bci: 5]

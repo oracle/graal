@@ -40,4 +40,4 @@
 # SOFTWARE.
 #
 
-./simpletool js example.js
+./simpletool example.js

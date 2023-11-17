@@ -63,9 +63,9 @@ public class NotReadableValuesTest {
         InspectorTester tester = InspectorTester.start(true);
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
-        assertTrue(tester.compareReceivedMessages(
+        tester.receiveMessages(
                         "{\"result\":{},\"id\":1}\n" +
-                        "{\"result\":{},\"id\":2}\n"));
+                        "{\"result\":{\"debuggerId\":\"UniqueDebuggerId.", "},\"id\":2}\n");
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":3}\n" +

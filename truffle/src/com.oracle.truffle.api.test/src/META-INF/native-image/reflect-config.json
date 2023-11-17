@@ -223,5 +223,9 @@
     "methods": [
       { "name": "setTestCacheRoot", "parameterTypes": ["java.nio.file.Path", "boolean"] }
     ]
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.AutomaticLeaveTest$ContextCloser",
+    "allPublicMethods": true
   }
 ]

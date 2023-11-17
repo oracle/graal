@@ -26,7 +26,6 @@ package com.oracle.svm.core.jdk;
 
 import java.util.Optional;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
@@ -81,7 +80,7 @@ class SimpleWebServerFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return JavaVersionUtil.JAVA_SPEC >= 19 && requiredModule().isPresent();
+        return requiredModule().isPresent();
     }
 
     @Override

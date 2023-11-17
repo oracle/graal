@@ -29,10 +29,10 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.compiler.core.common.util.FrequencyEncoder;
-import org.graalvm.compiler.core.common.util.TypeConversion;
-import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
-import org.graalvm.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.core.common.util.FrequencyEncoder;
+import jdk.graal.compiler.core.common.util.TypeConversion;
+import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
+import jdk.graal.compiler.graph.NodeSourcePosition;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
@@ -106,7 +106,7 @@ public class DeoptimizationSourcePositionEncoder {
                 startOffset = DeoptimizationSourcePositionDecoder.NO_SOURCE_POSITION;
             } else {
                 startOffset = TypeConversion.asS4(encodeSourcePositions(sourcePosition, sourcePositionStartOffsets, encodingBuffer));
-                assert startOffset > DeoptimizationSourcePositionDecoder.NO_SOURCE_POSITION;
+                assert startOffset > DeoptimizationSourcePositionDecoder.NO_SOURCE_POSITION : startOffset;
             }
             NonmovableArrays.setInt(deoptStartOffsets, i, startOffset);
         }
@@ -128,7 +128,7 @@ public class DeoptimizationSourcePositionEncoder {
         long callerRelativeOffset = DeoptimizationSourcePositionDecoder.NO_CALLER;
         if (sourcePosition.getCaller() != null) {
             callerRelativeOffset = startAbsoluteOffset - callerAbsoluteOffset;
-            assert callerRelativeOffset > DeoptimizationSourcePositionDecoder.NO_CALLER;
+            assert callerRelativeOffset > DeoptimizationSourcePositionDecoder.NO_CALLER : sourcePosition;
         }
 
         encodingBuffer.putUV(callerRelativeOffset);
@@ -157,8 +157,8 @@ public class DeoptimizationSourcePositionEncoder {
             return;
         }
 
-        assert originalPosition.getBCI() == decodedSourcePosition.getBCI();
-        assert originalPosition.getMethod().equals(decodedSourcePosition.getMethod());
+        assert originalPosition.getBCI() == decodedSourcePosition.getBCI() : decodedSourcePosition;
+        assert originalPosition.getMethod().equals(decodedSourcePosition.getMethod()) : decodedSourcePosition;
         verifySourcePosition(originalPosition.getCaller(), decodedSourcePosition.getCaller());
     }
 }

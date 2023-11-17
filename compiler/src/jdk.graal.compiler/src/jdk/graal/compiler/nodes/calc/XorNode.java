@@ -1,0 +1,134 @@
+/*
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package jdk.graal.compiler.nodes.calc;
+
+import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
+import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
+import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Xor;
+import jdk.graal.compiler.core.common.type.PrimitiveStamp;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.spi.Canonicalizable;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.nodes.util.GraphUtil;
+
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.PrimitiveConstant;
+
+@NodeInfo(shortName = "^")
+public final class XorNode extends BinaryArithmeticNode<Xor> implements Canonicalizable.BinaryCommutative<ValueNode>, NarrowableArithmeticNode {
+
+    public static final NodeClass<XorNode> TYPE = NodeClass.create(XorNode.class);
+
+    public XorNode(ValueNode x, ValueNode y) {
+        super(TYPE, getArithmeticOpTable(x).getXor(), x, y);
+        assert x.stamp(NodeView.DEFAULT).isCompatible(y.stamp(NodeView.DEFAULT));
+    }
+
+    private XorNode(ValueNode x, ValueNode y, Stamp forcedStamp) {
+        super(TYPE, forcedStamp, x, y);
+    }
+
+    /**
+     * Create a new XorNode with a forced stamp, without eager folding. This should only be used in
+     * snippet code, where native-image may assign wrong stamps during graph generation.
+     */
+    public static ValueNode createForSnippet(ValueNode x, ValueNode y, Stamp forcedStamp) {
+        return new XorNode(x, y, forcedStamp);
+    }
+
+    public static ValueNode create(ValueNode x, ValueNode y, NodeView view) {
+        BinaryOp<Xor> op = ArithmeticOpTable.forStamp(x.stamp(view)).getXor();
+        Stamp stamp = op.foldStamp(x.stamp(view), y.stamp(view));
+        ConstantNode tryConstantFold = tryConstantFold(op, x, y, stamp, view);
+        if (tryConstantFold != null) {
+            return tryConstantFold;
+        }
+        return canonical(null, op, stamp, x, y, view);
+    }
+
+    @Override
+    protected BinaryOp<Xor> getOp(ArithmeticOpTable table) {
+        return table.getXor();
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        ValueNode ret = super.canonical(tool, forX, forY);
+        if (ret != this) {
+            return ret;
+        }
+
+        NodeView view = NodeView.from(tool);
+        return canonical(this, getOp(forX, forY), stamp(NodeView.DEFAULT), forX, forY, view);
+    }
+
+    private static ValueNode canonical(XorNode self, BinaryOp<Xor> op, Stamp stamp, ValueNode forX, ValueNode forY, NodeView view) {
+        if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
+            return ConstantNode.forPrimitive(stamp, op.getZero(forX.stamp(view)));
+        }
+
+        if (forX.isConstant() && !forY.isConstant()) {
+            return new XorNode(forY, forX);
+        }
+
+        if (forY.isConstant()) {
+            Constant c = forY.asConstant();
+            if (op.isNeutral(c)) {
+                return forX;
+            }
+
+            if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getJavaKind().isNumericInteger()) {
+                long rawY = ((PrimitiveConstant) c).asLong();
+                long mask = CodeUtil.mask(PrimitiveStamp.getBits(stamp));
+                if ((rawY & mask) == mask) {
+                    return new NotNode(forX);
+                }
+            }
+            return reassociateMatchedValues(self != null ? self : (XorNode) new XorNode(forX, forY).maybeCommuteInputs(), ValueNode.isConstantPredicate(), forX, forY, view);
+        }
+        if (forX instanceof NotNode && forY instanceof NotNode) {
+            // ~x ^ ~y |-> x ^ y
+            return XorNode.create(((NotNode) forX).getValue(), ((NotNode) forY).getValue(), view);
+        }
+        if (forY instanceof NotNode && ((NotNode) forY).getValue() == forX) {
+            // x ^ ~x |-> -1
+            return ConstantNode.forIntegerStamp(forX.stamp(NodeView.DEFAULT), -1L);
+        }
+        return self != null ? self : new XorNode(forX, forY).maybeCommuteInputs();
+    }
+
+    @Override
+    public void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool gen) {
+        nodeValueMap.setResult(this, gen.emitXor(nodeValueMap.operand(getX()), nodeValueMap.operand(getY())));
+    }
+}

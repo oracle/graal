@@ -31,11 +31,11 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.Indent;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
@@ -61,6 +61,7 @@ import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
+import com.oracle.svm.hosted.meta.RelocatableConstant;
 
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaConstant;
@@ -147,7 +148,7 @@ public final class NativeImageHeapWriter {
             throw NativeImageHeap.reportIllegalType(ex.getType(), info);
         }
 
-        if (value.getJavaKind() == JavaKind.Object && heap.hMetaAccess.isInstanceOf(value, RelocatedPointer.class)) {
+        if (value instanceof RelocatableConstant) {
             addNonDataRelocation(buffer, index, snippetReflection().asObject(RelocatedPointer.class, value));
         } else {
             write(buffer, index, value, info != null ? info : field);
@@ -181,7 +182,7 @@ public final class NativeImageHeapWriter {
     }
 
     private void writeConstant(RelocatableBuffer buffer, int index, JavaKind kind, JavaConstant constant, ObjectInfo info) {
-        if (heap.hMetaAccess.isInstanceOf(constant, RelocatedPointer.class)) {
+        if (constant instanceof RelocatableConstant) {
             addNonDataRelocation(buffer, index, snippetReflection().asObject(RelocatedPointer.class, constant));
             return;
         }

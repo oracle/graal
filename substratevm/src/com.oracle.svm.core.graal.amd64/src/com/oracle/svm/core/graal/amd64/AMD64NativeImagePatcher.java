@@ -26,10 +26,10 @@ package com.oracle.svm.core.graal.amd64;
 
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.asm.Assembler;
-import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.AddressDisplacementAnnotation;
-import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandDataAnnotation;
-import org.graalvm.compiler.code.CompilationResult;
+import jdk.graal.compiler.asm.Assembler;
+import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.AddressDisplacementAnnotation;
+import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandDataAnnotation;
+import jdk.graal.compiler.code.CompilationResult;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

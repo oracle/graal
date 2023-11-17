@@ -24,21 +24,35 @@
  */
 package com.oracle.svm.core.c.function;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Objects;
 
+import com.oracle.svm.core.util.HostedByteBufferPointer;
 import org.graalvm.nativeimage.AnnotationAccess;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.util.VMError;
 
 /**
  * Errors returned by {@link CEntryPointActions} and {@link CEntryPointNativeFunctions} and their
- * implementation, including snippets and foreign function calls. These are non-API, with the
- * exception of 0 = success.
+ * implementation, including snippets and foreign function calls. These are non-public API as
+ * callers such as libgraal rely on those values.
  */
 public final class CEntryPointErrors {
     private CEntryPointErrors() {
@@ -58,6 +72,9 @@ public final class CEntryPointErrors {
 
     @Description("An argument was NULL.") //
     public static final int NULL_ARGUMENT = 2;
+
+    @Description("Memory allocation failed, the OS is probably out of memory.") //
+    public static final int ALLOCATION_FAILED = 3;
 
     @Description("The specified thread is not attached to the isolate.") //
     public static final int UNATTACHED_THREAD = 4;
@@ -122,7 +139,7 @@ public final class CEntryPointErrors {
     @Description("The isolate arguments could not be parsed.") //
     public static final int ARGUMENT_PARSING_FAILED = 22;
 
-    @Description("Current target does not support the following CPU features that are required by the image.") //
+    @Description("Current target does not support the CPU features that are required by the image.") //
     public static final int CPU_FEATURE_CHECK_FAILED = 23;
 
     @Description("Image page size is incompatible with run-time page size. Rebuild image with -H:PageSize=[pagesize] to set appropriately.") //
@@ -149,6 +166,9 @@ public final class CEntryPointErrors {
     @Description("Could not create unique GOT file even after retrying.") //
     public static final int DYNAMIC_METHOD_ADDRESS_RESOLUTION_GOT_UNIQUE_FILE_CREATE_FAILED = 31;
 
+    @Description("Could not determine the stack boundaries.") //
+    public static final int UNKNOWN_STACK_BOUNDARIES = 32;
+
     public static String getDescription(int code) {
         String result = null;
         if (code >= 0 && code < DESCRIPTIONS.length) {
@@ -160,7 +180,53 @@ public final class CEntryPointErrors {
         return result;
     }
 
+    /**
+     * Gets the description for {@code code} as a C string.
+     *
+     * @param code an error code
+     * @return the description for {@code} or a null pointer if no description is available
+     */
+    @Uninterruptible(reason = "Called when isolate creation fails.")
+    public static CCharPointer getDescriptionAsCString(int code) {
+        return (CCharPointer) getDescriptionAsCString(code, (Pointer) CSTRING_DESCRIPTIONS.get());
+    }
+
+    /**
+     * Searches {@code cstrings} for a description of {@code code}.
+     *
+     * @return the description for {@code} or a null pointer if no description is available
+     */
+    @Uninterruptible(reason = "Called when isolate creation fails.")
+    private static Pointer getDescriptionAsCString(int code, Pointer cstrings) {
+        int offset = 0;
+        int startOffset = 0;
+        int codeIndex = 0;
+        while (true) {
+            byte ch = cstrings.readByte(offset);
+            if (ch == 1) {
+                break;
+            } else if (ch == 0) {
+                startOffset = offset + 1;
+                codeIndex++;
+            } else if (code == codeIndex) {
+                return cstrings.add(startOffset);
+            }
+            offset++;
+        }
+        return WordFactory.nullPointer();
+    }
+
     private static final String[] DESCRIPTIONS;
+
+    /**
+     * The error descriptions as C strings in a single contiguous chunk of global memory. This is
+     * required to be able to access descriptions when errors occur during isolate creation. Without
+     * an isolate, static fields are not usable.
+     *
+     * @see #toCStrings
+     */
+    private static final CGlobalData<CCharPointer> CSTRING_DESCRIPTIONS;
+
     static {
         try {
             String[] array = new String[16];
@@ -177,9 +243,64 @@ public final class CEntryPointErrors {
                 }
                 array[value] = description;
             }
-            DESCRIPTIONS = Arrays.copyOf(array, maxValue + 1);
-        } catch (IllegalAccessException e) {
+            String[] descriptions = Arrays.copyOf(array, maxValue + 1);
+            byte[] cstrings = toCStrings(descriptions);
+            DESCRIPTIONS = descriptions;
+            CSTRING_DESCRIPTIONS = CGlobalDataFactory.createBytes(() -> cstrings);
+        } catch (IllegalAccessException | IOException e) {
             throw VMError.shouldNotReachHere(e);
         }
+    }
+
+    /**
+     * Converts all entries in {@code descriptions} to 0-terminated C strings and concatenates them
+     * into a single byte array with a final terminator of 1. Null entries are converted to 0 length
+     * C strings.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static byte[] toCStrings(String[] descriptions) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        for (int code = 0; code < descriptions.length; code++) {
+            String description = descriptions[code];
+            if (description != null) {
+                baos.write(description.getBytes(StandardCharsets.UTF_8));
+            }
+            baos.write(0);
+        }
+        baos.write(1);
+        return checkedCStrings(descriptions, baos.toByteArray());
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static byte[] checkedCStrings(String[] descriptions, byte[] cstrings) {
+        for (int i = 0; i < cstrings.length; i++) {
+            byte ch = cstrings[i];
+            VMError.guarantee(ch != 1 || i == cstrings.length - 1, "only last byte in cstrings may be 1, got %d at index %d", ch, i);
+        }
+        for (int code = 0; code < descriptions.length; code++) {
+            String expect = descriptions[code];
+            Pointer cstringsPointer = new HostedByteBufferPointer(ByteBuffer.wrap(cstrings), 0);
+            String actual = toJavaString(getDescriptionAsCString(code, cstringsPointer));
+            if (!Objects.equals(expect, actual)) {
+                throw VMError.shouldNotReachHere("code %d: expected %s, got %s", code, expect, actual);
+            }
+        }
+        return cstrings;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static String toJavaString(Pointer res) {
+        if (res.isNonNull()) {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            int i = 0;
+            while (true) {
+                byte ch = res.readByte(i++);
+                if (ch == 0) {
+                    return new String(baos.toByteArray(), StandardCharsets.UTF_8);
+                }
+                baos.write(ch);
+            }
+        }
+        return null;
     }
 }

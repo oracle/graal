@@ -27,7 +27,6 @@ package com.oracle.svm.hosted;
 import java.util.List;
 import java.util.function.Supplier;
 
-import com.oracle.svm.util.LogUtils;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.BuildArtifacts;
@@ -44,6 +43,8 @@ import com.oracle.svm.hosted.ProgressReporter.DirectPrinter;
 import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
 import com.oracle.svm.hosted.util.CPUTypeAArch64;
 import com.oracle.svm.hosted.util.CPUTypeAMD64;
+import com.oracle.svm.hosted.util.CPUTypeRISCV64;
+import com.oracle.svm.util.LogUtils;
 
 @AutomaticallyRegisteredFeature
 public class ProgressReporterFeature implements InternalFeature {
@@ -102,6 +103,7 @@ public class ProgressReporterFeature implements InternalFeature {
         return switch (SubstrateUtil.getArchitectureName()) {
             case "aarch64" -> CPUTypeAArch64.nativeSupportsMoreFeaturesThanSelected();
             case "amd64" -> CPUTypeAMD64.nativeSupportsMoreFeaturesThanSelected();
+            case "riscv64" -> CPUTypeRISCV64.nativeSupportsMoreFeaturesThanSelected();
             default -> false;
         };
     }
@@ -124,12 +126,10 @@ public class ProgressReporterFeature implements InternalFeature {
     }
 
     public record UserRecommendation(String id, String description, Supplier<Boolean> isApplicable) {
-        public UserRecommendation(String id, String description, Supplier<Boolean> isApplicable) {
+        public UserRecommendation {
             assert id.toUpperCase().equals(id) && id.length() < 5 : "id must be uppercase and have fewer than 5 chars";
-            assert description.length() < 74 : "description must have fewer than 74 chars to fit in terminal";
-            this.id = id;
-            this.description = description;
-            this.isApplicable = isApplicable;
+            int maxLength = 74;
+            assert description.length() < maxLength : "description must have fewer than " + maxLength + " chars to fit in terminal. Length: " + description.length();
         }
     }
 }

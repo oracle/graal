@@ -1,4 +1,3 @@
-# ----------------------------------------------------------------------------------------------------
 #
 # Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -23,13 +22,14 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
-# ----------------------------------------------------------------------------------------------------
+
 import json
 import shutil
 
 import mx
 import mx_subst
 import mx_unittest
+import mx_sdk
 import mx_sdk_vm
 import mx_sdk_vm_impl
 
@@ -73,6 +73,7 @@ class VmGateTasks:
     svm_truffle_tck_js = 'svm-truffle-tck-js'
     svm_truffle_tck_python = 'svm-truffle-tck-python'
     truffle_unchained = 'truffle-unchained'
+    maven_downloader = 'maven-downloader'
 
 def _unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
@@ -86,8 +87,8 @@ def _unittest_config_participant(config):
 mx_unittest.add_config_participant(_unittest_config_participant)
 
 def _get_CountUppercase_vmargs():
-    cp = mx.project("jdk.internal.vm.compiler.test").classpath_repr()
-    return ['-cp', cp, 'org.graalvm.compiler.test.CountUppercase']
+    cp = mx.project("jdk.graal.compiler.test").classpath_repr()
+    return ['-cp', cp, 'jdk.graal.compiler.test.CountUppercase']
 
 def _check_compiler_log(compiler_log_file, expectations, extra_check=None, extra_log_files=None):
     """
@@ -371,7 +372,7 @@ def _test_libgraal_CompilationTimeout_JIT():
         expectations = ['detected long running compilation'] + (['a stuck compilation'] if vm_can_exit else [])
         _check_compiler_log(compiler_log_file, expectations)
         if vm_can_exit:
-            # org.graalvm.compiler.core.CompilationWatchDog.EventHandler.STUCK_COMPILATION_EXIT_CODE
+            # jdk.graal.compiler.core.CompilationWatchDog.EventHandler.STUCK_COMPILATION_EXIT_CODE
             if exit_code != 84:
                 mx.abort(f'expected process to exit with 84 (indicating a stuck compilation) instead of {exit_code}')
         elif exit_code != 0:
@@ -417,7 +418,7 @@ def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
         expectations = ['detected long running compilation'] + (['a stuck compilation'] if vm_can_exit else [])
         _check_compiler_log(compiler_log_file, expectations, extra_log_files=[truffle_log_file])
         if vm_can_exit:
-            # org.graalvm.compiler.core.CompilationWatchDog.EventHandler.STUCK_COMPILATION_EXIT_CODE
+            # jdk.graal.compiler.core.CompilationWatchDog.EventHandler.STUCK_COMPILATION_EXIT_CODE
             if exit_code != 84:
                 mx.abort(f'expected process to exit with 84 (indicating a stuck compilation) instead of {exit_code}')
         elif exit_code != 0:
@@ -553,6 +554,7 @@ def gate_body(args, tasks):
     gate_svm_truffle_tck_js(tasks)
     gate_svm_truffle_tck_python(tasks)
     gate_truffle_unchained(tasks)
+    gate_maven_downloader(tasks)
 
 def graalvm_svm():
     """
@@ -616,14 +618,14 @@ def gate_sulong(tasks):
         if t:
             lli = join(mx_sdk_vm_impl.graalvm_output(), 'bin', 'lli')
             sulong = mx.suite('sulong')
-            sulong.extensions.testLLVMImage(lli, libPath=False, unittestArgs=['--enable-timing'])
+            sulong.extensions.testLLVMImage(lli, libPath=False, unittestArgs=['--suite=sulong', '--enable-timing'])
 
     with Task('Run SulongSuite tests as native-image with engine cache', tasks, tags=[VmGateTasks.sulong_aot]) as t:
         if t:
             lli = join(mx_sdk_vm_impl.graalvm_output(), 'bin', 'lli')
             sulong = mx.suite('sulong')
-            sulong.extensions.testLLVMImage(lli, libPath=False, unittestArgs=['--enable-timing', '--sulong-config', 'AOTCacheStoreNative'])
-            sulong.extensions.testLLVMImage(lli, libPath=False, unittestArgs=['--enable-timing', '--sulong-config', 'AOTCacheLoadNative'])
+            sulong.extensions.testLLVMImage(lli, libPath=False, unittestArgs=['--suite=sulong', '--enable-timing', '--sulong-config', 'AOTCacheStoreNative'])
+            sulong.extensions.testLLVMImage(lli, libPath=False, unittestArgs=['--suite=sulong', '--enable-timing', '--sulong-config', 'AOTCacheLoadNative'])
 
     with Task('Run Sulong interop tests as native-image', tasks, tags=[VmGateTasks.sulong]) as t:
         if t:
@@ -677,9 +679,6 @@ def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id, langu
         ] + mx_sdk_vm_impl.svm_experimental_options([
             '-H:ClassInitialization=:build_time',
             '-H:+EnforceMaxRuntimeCompileMethods',
-            '-H:-InlineBeforeAnalysis',
-            '-H:-ParseOnceJIT', #GR-47163
-            '-H:-VerifyDeoptimizationEntryPoints', #GR-47163
             '-cp',
             cp,
             '-H:-FoldSecurityManagerGetter',
@@ -773,6 +772,51 @@ def gate_truffle_unchained(tasks):
             if not truffle_suite:
                 mx.abort("Cannot resolve truffle suite.")
             mx_truffle.sl_native_optimized_gate_tests()
+
+def gate_maven_downloader(tasks):
+    with Task('Maven Downloader prepare maven repo', tasks, tags=[VmGateTasks.maven_downloader]) as t:
+        if t:
+            mx.suite('sulong')
+            mx_sdk.maven_deploy_public([], licenses=['EPL-2.0', 'GPLv2-CPE', 'ICU,GPLv2', 'BSD-new', 'UPL', 'MIT'], deploy_snapshots=False)
+            mx.build(["--dep", "sdk:MAVEN_DOWNLOADER"])
+            jdk = mx.get_jdk()
+            mvnDownloader = mx.distribution("sdk:MAVEN_DOWNLOADER")
+            vm_args = mx.get_runtime_jvm_args([mvnDownloader], jdk=jdk)
+            vm_args.append(mvnDownloader.mainClass)
+            output_dir = os.path.join(_suite.get_mx_output_dir(), 'downloaded-mvn-modules')
+            shutil.rmtree(output_dir, ignore_errors=True)
+            env = os.environ.copy()
+            if mx._opts.verbose:
+                env["org.graalvm.maven.downloader.logLevel"] = "ALL"
+            mvntoolargs = [
+                "-r", f"file://{abspath(mx_sdk.maven_deploy_public_repo_dir())}",
+                "-o", output_dir,
+                "-v", mx_sdk_vm_impl.graalvm_version('graalvm'),
+                "-a",
+            ]
+            mx.run_java(vm_args + mvntoolargs + ["polyglot"], jdk=jdk, env=env)
+            # now we should have all jars for llvm-language in the output dir
+            entries = os.listdir(output_dir)
+            for entry in entries:
+                if isdir(entry):
+                    mx.abort("We do not expect the maven downloader to create directories")
+                os.rename(join(output_dir, entry), join(output_dir, f"first_download_{entry}"))
+            if not any(re.search("polyglot.*\\.jar", entry) for entry in entries):
+                mx.abort("We expected polyglot to have been downloaded")
+            if any(re.search("llvm.*\\.jar", entry) for entry in entries):
+                mx.abort("We did not expect llvm to have been downloaded")
+            # now we download something higher up the dependency tree, to check
+            # that existing files (even though renamed) are not clobbered and
+            # no duplicate modules are placed in the output directory
+            mx.run_java(vm_args + mvntoolargs + ["llvm-community"], jdk=jdk, env=env)
+            entries = os.listdir(output_dir)
+            for entry in entries:
+                if isdir(entry):
+                    mx.abort("We do not expect the maven downloader to create directories")
+                if f"first_download_{entry}" in entries:
+                    mx.abort("We do not expect the maven downloader to download modules that are already there")
+            if not any(re.search("llvm-language-native.*\\.jar", entry) for entry in entries):
+                mx.abort("We did not expect llvm-language-native to have been downloaded via llvm-community meta pom")
 
 def build_tests_image(image_dir, options, unit_tests=None, additional_deps=None, shared_lib=False):
     native_image_context, svm = graalvm_svm()

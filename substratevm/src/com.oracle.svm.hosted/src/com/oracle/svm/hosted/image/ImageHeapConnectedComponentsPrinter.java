@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -216,7 +216,7 @@ public class ImageHeapConnectedComponentsPrinter {
             for (Iterator<ConnectedComponent> iterator = connectedComponents.iterator(); iterator.hasNext();) {
                 ConnectedComponent connectedComponent = iterator.next();
                 writer.append('{').newline();
-                writer.quote("componentId").append(':').quote(connectedComponent.getId()).append(',').newline();
+                writer.quote("componentId").append(':').printValue(connectedComponent.getId()).append(',').newline();
                 writer.quote("sizeInBytes").append(':').append(String.valueOf(connectedComponent.getSizeInBytes())).append(',').newline();
                 writer.quote("objects").append(":[");
                 List<ObjectInfo> objects = connectedComponent.getObjects();
@@ -374,7 +374,7 @@ public class ImageHeapConnectedComponentsPrinter {
         for (Iterator<ObjectInfo> iterator = objects.iterator(); iterator.hasNext();) {
             ObjectInfo objectInfo = iterator.next();
             writer.append('{');
-            writer.quote("className").append(':').quote(objectInfo.getObject().getClass().getName()).append(',');
+            writer.quote("className").append(':').quote(objectInfo.getObjectClass().getName()).append(',');
             writer.quote("identityHashCode").append(':').quote(String.valueOf(objectInfo.getIdentityHashCode())).append(',');
             writer.quote("constantValue").append(':').quote(constantAsRawString(bb, objectInfo.getConstant())).append(',');
             printReasonToJson(objectInfo.getMainReason(), writer);

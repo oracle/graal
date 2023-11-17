@@ -727,8 +727,8 @@ abstract class TestClassInitializationFeature implements Feature {
 }
 
 /**
- * For testing with {@link ClassInitializationOptions#UseDeprecatedOldClassInitialization} set to
- * true and simulation of class initializer disabled.
+ * For testing with {@link ClassInitializationOptions#StrictImageHeap} set to false and simulation
+ * of class initializer disabled.
  */
 class TestClassInitializationFeatureOldPolicyFeature extends TestClassInitializationFeature {
 
@@ -765,8 +765,8 @@ class TestClassInitializationFeatureOldPolicyFeature extends TestClassInitializa
 }
 
 /**
- * For testing with {@link ClassInitializationOptions#UseDeprecatedOldClassInitialization} set to
- * false and simulation of class initializer enabled.
+ * For testing with {@link ClassInitializationOptions#StrictImageHeap} set to true and simulation of
+ * class initializer enabled.
  */
 class TestClassInitializationFeatureNewPolicyFeature extends TestClassInitializationFeature {
     @Override

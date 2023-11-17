@@ -30,6 +30,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,15 +42,10 @@ import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TimerTask;
-import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.core.riscv64.ShadowedRISCV64;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
@@ -73,7 +69,6 @@ import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.option.HostedOptionParser;
@@ -83,9 +78,11 @@ import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
+import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.riscv64.RISCV64;
 import jdk.vm.ci.runtime.JVMCI;
 
 public class NativeImageGeneratorRunner {
@@ -102,23 +99,23 @@ public class NativeImageGeneratorRunner {
         arguments = extractDriverArguments(arguments);
         final String[] classPath = extractImagePathEntries(arguments, SubstrateOptions.IMAGE_CLASSPATH_PREFIX);
         final String[] modulePath = extractImagePathEntries(arguments, SubstrateOptions.IMAGE_MODULEPATH_PREFIX);
-        int watchPID = extractWatchPID(arguments);
+        String keepAliveFile = extractKeepAliveFile(arguments);
         TimerTask timerTask = null;
-        if (watchPID >= 0) {
-            UserError.guarantee(OS.getCurrent().hasProcFS, "%s <pid> requires system with /proc", SubstrateOptions.WATCHPID_PREFIX);
+        if (keepAliveFile != null) {
             timerTask = new TimerTask() {
-                int cmdlineHashCode = 0;
+                Path file = Paths.get(keepAliveFile);
+                int fileHashCode = 0;
 
                 @Override
                 public void run() {
                     try {
-                        int currentCmdlineHashCode = Arrays.hashCode(Files.readAllBytes(Paths.get("/proc/" + watchPID + "/cmdline")));
-                        if (cmdlineHashCode == 0) {
-                            cmdlineHashCode = currentCmdlineHashCode;
-                        } else if (currentCmdlineHashCode != cmdlineHashCode) {
-                            System.exit(ExitStatus.WATCHDOG_EXIT.getValue());
+                        int currentFileHashCode = Arrays.hashCode(Files.readAllBytes(file));
+                        if (fileHashCode == 0) {
+                            fileHashCode = currentFileHashCode;
+                        } else if (currentFileHashCode != fileHashCode) {
+                            throw new RuntimeException();
                         }
-                    } catch (IOException e) {
+                    } catch (Exception e) {
                         System.exit(ExitStatus.WATCHDOG_EXIT.getValue());
                     }
                 }
@@ -225,9 +222,10 @@ public class NativeImageGeneratorRunner {
         for (Module potentialNeedModule : potentialNeededModules) {
             if (requiringModule.canRead(potentialNeedModule)) {
                 /* Filter out GraalVM modules */
-                if (potentialNeedModule.getName().startsWith("jdk.internal.vm.c") || /* JVMCI */
+                if (potentialNeedModule.getName().equals("jdk.internal.vm.ci") || /* JVMCI */
                                 /* graal */
                                 potentialNeedModule.getName().startsWith("org.graalvm.") ||
+                                potentialNeedModule.getName().startsWith("jdk.graal.compiler") ||
                                 /* enterprise graal */
                                 potentialNeedModule.getName().startsWith("com.oracle.graal.") ||
                                 /* exclude all truffle modules */
@@ -294,6 +292,12 @@ public class NativeImageGeneratorRunner {
          */
         NativeImageGenerator.setSystemPropertiesForImageEarly();
 
+        /*
+         * Size the common pool before creating the image class loader because it is the first
+         * component to use the common pool.
+         */
+        NativeImageOptions.setCommonPoolParallelism(nativeImageClassLoaderSupport.getParsedHostedOptions());
+
         return new ImageClassLoader(NativeImageGenerator.getTargetPlatform(nativeImageClassLoader), nativeImageClassLoaderSupport);
     }
 
@@ -328,18 +332,18 @@ public class NativeImageGeneratorRunner {
         }
     }
 
-    public static int extractWatchPID(List<String> arguments) {
-        int cpIndex = arguments.indexOf(SubstrateOptions.WATCHPID_PREFIX);
+    public static String extractKeepAliveFile(List<String> arguments) {
+        int cpIndex = arguments.indexOf(SubstrateOptions.KEEP_ALIVE_PREFIX);
         if (cpIndex >= 0) {
             if (cpIndex + 1 >= arguments.size()) {
-                throw UserError.abort("ProcessID must be provided after the '%s' argument", SubstrateOptions.WATCHPID_PREFIX);
+                throw UserError.abort("Path to keep-alive file must be provided after the '%s' argument", SubstrateOptions.KEEP_ALIVE_PREFIX);
             }
             arguments.remove(cpIndex);
             String pidStr = arguments.get(cpIndex);
             arguments.remove(cpIndex);
-            return Integer.parseInt(pidStr);
+            return pidStr;
         }
-        return -1;
+        return null;
     }
 
     private static void reportToolUserError(String msg) {
@@ -348,7 +352,7 @@ public class NativeImageGeneratorRunner {
 
     private static boolean isValidArchitecture() {
         final Architecture originalTargetArch = GraalAccess.getOriginalTarget().arch;
-        return originalTargetArch instanceof AMD64 || originalTargetArch instanceof AArch64 || ShadowedRISCV64.instanceOf(originalTargetArch);
+        return originalTargetArch instanceof AMD64 || originalTargetArch instanceof AArch64 || originalTargetArch instanceof RISCV64;
     }
 
     private static boolean isValidOperatingSystem() {
@@ -373,9 +377,6 @@ public class NativeImageGeneratorRunner {
             return ExitStatus.OK.getValue();
         }
 
-        ForkJoinPool analysisExecutor = null;
-        ForkJoinPool compilationExecutor = null;
-
         ProgressReporter reporter = new ProgressReporter(parsedHostedOptions);
         Throwable vmError = null;
         boolean wasSuccessfulBuild = false;
@@ -384,9 +385,6 @@ public class NativeImageGeneratorRunner {
             try (StopTimer ignored1 = classlistTimer.start()) {
                 classLoader.loadAllClasses();
             }
-
-            DebugContext debug = new DebugContext.Builder(parsedHostedOptions, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
-
             if (imageName.length() == 0) {
                 throw UserError.abort("No output file name specified. Use '%s'", SubstrateOptionsParser.commandArgument(SubstrateOptions.Name, "<output-file>"));
             }
@@ -522,21 +520,8 @@ public class NativeImageGeneratorRunner {
                     mainEntryPointData = createMainEntryPointData(imageKind, mainEntryPoint);
                 }
 
-                /*
-                 * Since the main thread helps to process analysis and compilation tasks (see use of
-                 * awaitQuiescence() in CompletionExecutor), subtract one to determine the number of
-                 * dedicated threads in ForkJoinPools.
-                 */
-                final int numberOfHelpingThreads = 1; // main thread
-                int numberOfThreads = NativeImageOptions.NumberOfThreads.getValue(parsedHostedOptions);
-                int numberOfAnalysisThreads = NativeImageOptions.getNumberOfAnalysisThreads(numberOfThreads, parsedHostedOptions) - numberOfHelpingThreads;
-                int numberOfCompilationThreads = numberOfThreads - numberOfHelpingThreads;
-                analysisExecutor = NativeImagePointsToAnalysis.createExecutor(debug, numberOfAnalysisThreads);
-                compilationExecutor = NativeImagePointsToAnalysis.createExecutor(debug, numberOfCompilationThreads);
-
                 generator = createImageGenerator(classLoader, optionParser, mainEntryPointData, reporter);
-                generator.run(entryPoints, javaMainSupport, imageName, imageKind, SubstitutionProcessor.IDENTITY,
-                                compilationExecutor, analysisExecutor, optionParser.getRuntimeOptionNames(), timerCollection);
+                generator.run(entryPoints, javaMainSupport, imageName, imageKind, SubstitutionProcessor.IDENTITY, optionParser.getRuntimeOptionNames(), timerCollection);
                 wasSuccessfulBuild = true;
             } finally {
                 if (!wasSuccessfulBuild) {
@@ -544,12 +529,6 @@ public class NativeImageGeneratorRunner {
                 }
             }
         } catch (InterruptImageBuilding e) {
-            if (analysisExecutor != null) {
-                analysisExecutor.shutdownNow();
-            }
-            if (compilationExecutor != null) {
-                compilationExecutor.shutdownNow();
-            }
             throw e;
         } catch (FallbackFeature.FallbackImageRequest e) {
             if (FallbackExecutor.class.getName().equals(SubstrateOptions.Class.getValue())) {
@@ -741,8 +720,8 @@ public class NativeImageGeneratorRunner {
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.polyglot");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.truffle");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.internal.vm.ci");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.internal.vm.compiler");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, true, "jdk.internal.vm.compiler.management");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.graal.compiler");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, true, "jdk.graal.compiler.management");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, true, "com.oracle.graal.graal_enterprise");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.loader");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.misc");

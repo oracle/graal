@@ -97,4 +97,12 @@ public class StringUtil {
     public static final String joinSingleQuoted(List<String> strings) {
         return joinSingleQuoted(strings.toArray(new String[strings.size()]));
     }
+
+    public static String toSlashSeparated(String string) {
+        return string.replace('.', '/');
+    }
+
+    public static String toDotSeparated(String string) {
+        return string.replace('/', '.');
+    }
 }

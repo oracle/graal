@@ -26,7 +26,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeSpecial;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeSpecialNodeGen;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public final class InvokeSpecialQuickNode extends InvokeQuickNode {
 

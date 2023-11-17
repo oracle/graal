@@ -534,7 +534,7 @@ public final class RegexASTBuilder {
      * @param token aside from the source sections, the token most importantly contains the set of
      *            code points and strings to be included in the class set
      */
-    public void addClassSet(Token.ClassSet token, CaseFoldTable.CaseFoldingAlgorithm caseUnfoldAlgo) {
+    public void addClassSet(Token.ClassSet token, CaseFoldData.CaseFoldUnfoldAlgorithm caseUnfoldAlgo) {
         CodePointSetAccumulator buf = compilationBuffer.getCodePointSetAccumulator1();
 
         ClassSetContents contents = token.getContents();
@@ -552,7 +552,7 @@ public final class RegexASTBuilder {
                 if (caseUnfoldAlgo != null) {
                     buf.clear();
                     buf.addCodePoint(cp);
-                    CaseFoldTable.applyCaseFoldUnfold(buf, compilationBuffer.getCodePointSetAccumulator2(), caseUnfoldAlgo);
+                    CaseFoldData.applyCaseFoldUnfold(buf, compilationBuffer.getCodePointSetAccumulator2(), caseUnfoldAlgo);
                     addCharClass(buf.toCodePointSet());
                 } else {
                     addCharClass(CodePointSet.create(cp));
@@ -565,7 +565,7 @@ public final class RegexASTBuilder {
             if (caseUnfoldAlgo != null) {
                 buf.clear();
                 buf.addSet(contents.getCodePointSet());
-                CaseFoldTable.applyCaseFoldUnfold(buf, compilationBuffer.getCodePointSetAccumulator2(), caseUnfoldAlgo);
+                CaseFoldData.applyCaseFoldUnfold(buf, compilationBuffer.getCodePointSetAccumulator2(), caseUnfoldAlgo);
                 addCharClass(buf.toCodePointSet());
             } else {
                 addCharClass(contents.getCodePointSet());
@@ -714,20 +714,32 @@ public final class RegexASTBuilder {
         } else {
             if (quantifier.getMin() == 0 && (curTerm.isLookAroundAssertion() || curTermIsZeroWidthGroup ||
                             curTerm.isCharacterClass() && curTerm.asCharacterClass().getCharSet().matchesNothing())) {
+                // NB: If JavaScript ever gets possessive quantifiers, we might have to adjust this.
                 removeCurTerm();
                 return;
             }
         }
         if (quantifier.getMin() > 0 && (curTerm.isLookAroundAssertion() || curTermIsZeroWidthGroup)) {
-            // quantifying LookAroundAssertions doesn't do anything if quantifier.getMin() > 0, so
-            // ignore.
+            // Quantifying LookAroundAssertions doesn't do anything if quantifier.getMin() > 0, so
+            // ignore. A possessive quantifier would still result in atomicity.
+            if (quantifier.isPossessive()) {
+                wrapCurTermInAtomicGroup();
+            }
             return;
         }
         if (quantifier.getMin() == 1 && quantifier.getMax() == 1) {
             // x{1,1} -> x
+            if (quantifier.isPossessive()) {
+                wrapCurTermInAtomicGroup();
+            }
             return;
         }
         curTerm = addQuantifier(curTerm, quantifier);
+        if (quantifier.isPossessive()) {
+            wrapCurTermInAtomicGroup();
+            // do not attempt to merge quantifiers when possessive quantifiers are present
+            return;
+        }
         // merge equal successive quantified terms
         if (curSequence.size() > 1) {
             Term prevTerm = curSequence.getTerms().get(curSequence.size() - 2);

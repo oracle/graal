@@ -24,13 +24,15 @@
  */
 package com.oracle.svm.core.heap;
 
+import java.util.concurrent.locks.ReentrantLock;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Containers;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMOperation;
@@ -44,22 +46,21 @@ public class PhysicalMemory {
 
     /** Implemented by operating-system specific code. */
     public interface PhysicalMemorySupport {
-
-        /* Will be removed in GR-48001. */
-        default boolean hasSize() {
-            throw VMError.shouldNotReachHere("Unused, will be removed");
-        }
-
         /** Get the size of physical memory from the OS. */
         UnsignedWord size();
     }
 
-    private static final AtomicInteger INITIALIZING = new AtomicInteger(0);
+    private static final ReentrantLock LOCK = new ReentrantLock();
     private static final UnsignedWord UNSET_SENTINEL = UnsignedUtils.MAX_VALUE;
     private static UnsignedWord cachedSize = UNSET_SENTINEL;
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isInitialized() {
         return cachedSize != UNSET_SENTINEL;
+    }
+
+    public static boolean isInitializationInProgress() {
+        return LOCK.isHeldByCurrentThread();
     }
 
     /**
@@ -79,23 +80,21 @@ public class PhysicalMemory {
         }
 
         if (!isInitialized()) {
-            /*
-             * Multiple threads can race to initialize the cache. This is OK because all of them
-             * will (most-likely) compute the same value.
-             */
-            INITIALIZING.incrementAndGet();
-            try {
-                long memoryLimit = SubstrateOptions.MaxRAM.getValue();
-                if (memoryLimit > 0) {
-                    cachedSize = WordFactory.unsigned(memoryLimit);
-                } else {
-                    memoryLimit = Containers.memoryLimitInBytes();
-                    cachedSize = memoryLimit > 0
-                                    ? WordFactory.unsigned(memoryLimit)
-                                    : ImageSingletons.lookup(PhysicalMemorySupport.class).size();
+            long memoryLimit = SubstrateOptions.MaxRAM.getValue();
+            if (memoryLimit > 0) {
+                cachedSize = WordFactory.unsigned(memoryLimit);
+            } else {
+                LOCK.lock();
+                try {
+                    if (!isInitialized()) {
+                        memoryLimit = Containers.memoryLimitInBytes();
+                        cachedSize = memoryLimit > 0
+                                        ? WordFactory.unsigned(memoryLimit)
+                                        : ImageSingletons.lookup(PhysicalMemorySupport.class).size();
+                    }
+                } finally {
+                    LOCK.unlock();
                 }
-            } finally {
-                INITIALIZING.decrementAndGet();
             }
         }
 
@@ -106,6 +105,7 @@ public class PhysicalMemory {
      * Returns the size of physical memory in bytes that has been previously cached. This method
      * must not be called if {@link #isInitialized()} is still false.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getCachedSize() {
         VMError.guarantee(isInitialized(), "Cached physical memory size is not available");
         return cachedSize;

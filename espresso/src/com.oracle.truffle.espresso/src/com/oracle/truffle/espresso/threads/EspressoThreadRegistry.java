@@ -41,7 +41,7 @@ import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.VM;
 
 public final class EspressoThreadRegistry extends ContextAccessImpl {
@@ -279,6 +279,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
             if (getJavaVersion().java17OrEarlier()) {
                 getThreadAccess().setPriority(guestThread, Thread.NORM_PRIORITY);
             }
+            getThreadAccess().setEETopAlive(guestThread);
             getThreadAccess().initializeHiddenFields(guestThread, hostThread, managedByEspresso);
             registerThread(hostThread, guestThread);
             assert getThreadAccess().getCurrentGuestThread() != null;
@@ -322,6 +323,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
         if (getJavaVersion().java17OrEarlier()) {
             getThreadAccess().setPriority(mainThread, Thread.NORM_PRIORITY);
         }
+        getThreadAccess().setEETopAlive(mainThread);
         getThreadAccess().initializeHiddenFields(mainThread, hostThread, false);
         registerMainThread(hostThread, mainThread);
 

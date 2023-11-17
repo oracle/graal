@@ -32,7 +32,6 @@ import java.io.File;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
@@ -41,26 +40,20 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BooleanSupplier;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
-import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
-import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
-import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.impl.InternalPlatform;
-import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.Containers;
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.Processor;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
@@ -91,7 +84,7 @@ final class Target_java_lang_Object {
 
     @Substitute
     @TargetElement(name = "getClass")
-    private Object getClassSubst() {
+    private DynamicHub getClassSubst() {
         return readHub(this);
     }
 
@@ -108,7 +101,6 @@ final class Target_java_lang_Object {
     }
 
     @Delete
-    @TargetElement(onlyWith = JDK19OrLater.class)
     private native void wait0(long timeoutMillis);
 
     @Substitute
@@ -139,11 +131,12 @@ final class Target_java_lang_Enum {
          * The original implementation creates and caches a HashMap to make the lookup faster. For
          * simplicity, we do a linear search for now.
          */
-        Enum<?>[] enumConstants = DynamicHub.fromClass(enumType).getEnumConstantsShared();
+        Object[] enumConstants = DynamicHub.fromClass(enumType).getEnumConstantsShared();
         if (enumConstants == null) {
             throw new IllegalArgumentException(enumType.getName() + " is not an enum type");
         }
-        for (Enum<?> e : enumConstants) {
+        for (Object o : enumConstants) {
+            Enum<?> e = (Enum<?>) o;
             if (e.name().equals(name)) {
                 return e;
             }
@@ -191,73 +184,6 @@ final class Target_java_lang_String {
     @Alias //
     int hash;
 
-    /**
-     * This is a copy of String.split from the JDK, but with the fastpath loop factored out into a
-     * separate method. This allows inlining and constant folding of the condition for call sites
-     * where the regex is a constant (which is a common usage pattern).
-     *
-     * JDK-8262994 should make that refactoring in OpenJDK, after which this substitution can be
-     * removed.
-     */
-    @Substitute
-    public String[] split(String regex, int limit) {
-        /*
-         * fastpath if the regex is a (1) one-char String and this character is not one of the
-         * RegEx's meta characters ".$|()[{^?*+\\", or (2) two-char String and the first char is the
-         * backslash and the second is not the ascii digit or ascii letter.
-         */
-        char ch = 0;
-        if (((regex.length() == 1 &&
-                        ".$|()[{^?*+\\".indexOf(ch = regex.charAt(0)) == -1) ||
-                        (regex.length() == 2 &&
-                                        regex.charAt(0) == '\\' &&
-                                        (((ch = regex.charAt(1)) - '0') | ('9' - ch)) < 0 &&
-                                        ((ch - 'a') | ('z' - ch)) < 0 &&
-                                        ((ch - 'A') | ('Z' - ch)) < 0)) &&
-                        (ch < Character.MIN_HIGH_SURROGATE ||
-                                        ch > Character.MAX_LOW_SURROGATE)) {
-            return StringHelper.simpleSplit(SubstrateUtil.cast(this, String.class), limit, ch);
-        }
-        return Pattern.compile(regex).split(SubstrateUtil.cast(this, String.class), limit);
-    }
-}
-
-final class StringHelper {
-    static String[] simpleSplit(String that, int limit, char ch) {
-        int off = 0;
-        int next = 0;
-        boolean limited = limit > 0;
-        ArrayList<String> list = new ArrayList<>();
-        while ((next = that.indexOf(ch, off)) != -1) {
-            if (!limited || list.size() < limit - 1) {
-                list.add(that.substring(off, next));
-                off = next + 1;
-            } else {    // last one
-                // assert (list.size() == limit - 1);
-                int last = that.length();
-                list.add(that.substring(off, last));
-                off = last;
-                break;
-            }
-        }
-        // If no match was found, return this
-        if (off == 0) {
-            return new String[]{that};
-        }
-        // Add remaining segment
-        if (!limited || list.size() < limit) {
-            list.add(that.substring(off, that.length()));
-        }
-        // Construct result
-        int resultSize = list.size();
-        if (limit == 0) {
-            while (resultSize > 0 && list.get(resultSize - 1).isEmpty()) {
-                resultSize--;
-            }
-        }
-        String[] result = new String[resultSize];
-        return list.subList(0, resultSize).toArray(result);
-    }
 }
 
 @TargetClass(className = "java.lang.StringLatin1")
@@ -387,21 +313,7 @@ final class Target_java_lang_StackTraceElement {
      * @param depth ignored
      */
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class)
     static StackTraceElement[] of(Object x, int depth) {
-        return StackTraceBuilder.build((long[]) x);
-    }
-
-    /**
-     * Constructs the {@link StackTraceElement} array from a {@link Throwable}.
-     *
-     * @param t the {@link Throwable} object
-     * @param depth ignored
-     */
-    @Substitute
-    @TargetElement(onlyWith = JDK17OrEarlier.class)
-    static StackTraceElement[] of(Target_java_lang_Throwable t, int depth) {
-        Object x = t.backtrace;
         return StackTraceBuilder.build((long[]) x);
     }
 }
@@ -417,16 +329,7 @@ final class Target_java_lang_Runtime {
     @Substitute
     @Platforms(InternalPlatform.PLATFORM_JNI.class)
     private int availableProcessors() {
-        int optionValue = SubstrateOptions.ActiveProcessorCount.getValue();
-        if (optionValue > 0) {
-            return optionValue;
-        }
-
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            return Containers.activeProcessorCount();
-        } else {
-            return 1;
-        }
+        return Processor.singleton().getActiveProcessorCount();
     }
 }
 
@@ -582,159 +485,6 @@ final class Target_java_lang_Math {
     }
 }
 
-@TargetClass(value = StrictMath.class, onlyWith = JDK20OrEarlier.class)
-@Platforms(InternalPlatform.NATIVE_ONLY.class)
-final class Target_java_lang_StrictMath {
-
-    @Substitute
-    private static double sin(double a) {
-        return StrictMathInvoker.sin(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
-    }
-
-    @Substitute
-    private static double cos(double a) {
-        return StrictMathInvoker.cos(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
-    }
-
-    @Substitute
-    private static double tan(double a) {
-        return StrictMathInvoker.tan(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
-    }
-
-    @Substitute
-    private static double asin(double a) {
-        return StrictMathInvoker.asin(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
-    }
-
-    @Substitute
-    private static double acos(double a) {
-        return StrictMathInvoker.acos(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
-    }
-
-    @Substitute
-    private static double atan(double a) {
-        return StrictMathInvoker.atan(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
-    }
-
-    @Substitute
-    private static double log(double a) {
-        return StrictMathInvoker.log(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
-    }
-
-    @Substitute
-    private static double log10(double a) {
-        return StrictMathInvoker.log10(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
-    }
-
-    @Substitute
-    private static double sqrt(double a) {
-        return StrictMathInvoker.sqrt(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
-    }
-
-    // Checkstyle: stop
-    @Substitute
-    private static double IEEEremainder(double f1, double f2) {
-        return StrictMathInvoker.IEEEremainder(WordFactory.nullPointer(), WordFactory.nullPointer(), f1, f2);
-    }
-    // Checkstyle: resume
-
-    @Substitute
-    private static double atan2(double y, double x) {
-        return StrictMathInvoker.atan2(WordFactory.nullPointer(), WordFactory.nullPointer(), y, x);
-    }
-
-    @Substitute
-    private static double sinh(double x) {
-        return StrictMathInvoker.sinh(WordFactory.nullPointer(), WordFactory.nullPointer(), x);
-    }
-
-    @Substitute
-    private static double cosh(double x) {
-        return StrictMathInvoker.cosh(WordFactory.nullPointer(), WordFactory.nullPointer(), x);
-    }
-
-    @Substitute
-    private static double tanh(double x) {
-        return StrictMathInvoker.tanh(WordFactory.nullPointer(), WordFactory.nullPointer(), x);
-    }
-
-    @Substitute
-    private static double expm1(double x) {
-        return StrictMathInvoker.expm1(WordFactory.nullPointer(), WordFactory.nullPointer(), x);
-    }
-
-    @Substitute
-    private static double log1p(double x) {
-        return StrictMathInvoker.log1p(WordFactory.nullPointer(), WordFactory.nullPointer(), x);
-    }
-}
-
-@CLibrary(value = "java", requireStatic = true, dependsOn = "fdlibm")
-final class StrictMathInvoker {
-
-    @CFunction(value = "Java_java_lang_StrictMath_sin", transition = CFunction.Transition.NO_TRANSITION)
-    static native double sin(WordBase jnienv, WordBase clazz, double a);
-
-    @CFunction(value = "Java_java_lang_StrictMath_cos", transition = CFunction.Transition.NO_TRANSITION)
-    static native double cos(WordBase jnienv, WordBase clazz, double a);
-
-    @CFunction(value = "Java_java_lang_StrictMath_tan", transition = CFunction.Transition.NO_TRANSITION)
-    static native double tan(WordBase jnienv, WordBase clazz, double a);
-
-    @CFunction(value = "Java_java_lang_StrictMath_asin", transition = CFunction.Transition.NO_TRANSITION)
-    static native double asin(WordBase jnienv, WordBase clazz, double a);
-
-    @CFunction(value = "Java_java_lang_StrictMath_acos", transition = CFunction.Transition.NO_TRANSITION)
-    static native double acos(WordBase jnienv, WordBase clazz, double a);
-
-    @CFunction(value = "Java_java_lang_StrictMath_atan", transition = CFunction.Transition.NO_TRANSITION)
-    static native double atan(WordBase jnienv, WordBase clazz, double a);
-
-    @CFunction(value = "Java_java_lang_StrictMath_exp", transition = CFunction.Transition.NO_TRANSITION)
-    static native double exp(WordBase jnienv, WordBase clazz, double a);
-
-    @CFunction(value = "Java_java_lang_StrictMath_log", transition = CFunction.Transition.NO_TRANSITION)
-    static native double log(WordBase jnienv, WordBase clazz, double a);
-
-    @CFunction(value = "Java_java_lang_StrictMath_log10", transition = CFunction.Transition.NO_TRANSITION)
-    static native double log10(WordBase jnienv, WordBase clazz, double a);
-
-    @CFunction(value = "Java_java_lang_StrictMath_sqrt", transition = CFunction.Transition.NO_TRANSITION)
-    static native double sqrt(WordBase jnienv, WordBase clazz, double a);
-
-    @CFunction(value = "Java_java_lang_StrictMath_cbrt", transition = CFunction.Transition.NO_TRANSITION)
-    static native double cbrt(WordBase jnienv, WordBase clazz, double a);
-
-    // Checkstyle: stop
-    @CFunction(value = "Java_java_lang_StrictMath_IEEEremainder", transition = CFunction.Transition.NO_TRANSITION)
-    static native double IEEEremainder(WordBase jnienv, WordBase clazz, double f1, double f2);
-    // Checkstyle: resume
-
-    @CFunction(value = "Java_java_lang_StrictMath_atan2", transition = CFunction.Transition.NO_TRANSITION)
-    static native double atan2(WordBase jnienv, WordBase clazz, double y, double x);
-
-    @CFunction(value = "Java_java_lang_StrictMath_pow", transition = CFunction.Transition.NO_TRANSITION)
-    static native double pow(WordBase jnienv, WordBase clazz, double a, double b);
-
-    @CFunction(value = "Java_java_lang_StrictMath_sinh", transition = CFunction.Transition.NO_TRANSITION)
-    static native double sinh(WordBase jnienv, WordBase clazz, double x);
-
-    @CFunction(value = "Java_java_lang_StrictMath_cosh", transition = CFunction.Transition.NO_TRANSITION)
-    static native double cosh(WordBase jnienv, WordBase clazz, double x);
-
-    @CFunction(value = "Java_java_lang_StrictMath_tanh", transition = CFunction.Transition.NO_TRANSITION)
-    static native double tanh(WordBase jnienv, WordBase clazz, double x);
-
-    @CFunction(value = "Java_java_lang_StrictMath_hypot", transition = CFunction.Transition.NO_TRANSITION)
-    static native double hypot(WordBase jnienv, WordBase clazz, double x, double y);
-
-    @CFunction(value = "Java_java_lang_StrictMath_expm1", transition = CFunction.Transition.NO_TRANSITION)
-    static native double expm1(WordBase jnienv, WordBase clazz, double x);
-
-    @CFunction(value = "Java_java_lang_StrictMath_log1p", transition = CFunction.Transition.NO_TRANSITION)
-    static native double log1p(WordBase jnienv, WordBase clazz, double x);
-}
-
 /**
  * We do not have dynamic class loading (and therefore no class unloading), so it is not necessary
  * to keep the complicated code that the JDK uses. However, our simple substitutions have a drawback
@@ -785,35 +535,6 @@ final class Target_java_lang_ClassValue {
     @Substitute
     private void remove(Class<?> type) {
         values.remove(type);
-    }
-}
-
-@SuppressWarnings({"deprecation", "unused"})
-@TargetClass(className = "java.lang.Compiler", onlyWith = JDK20OrEarlier.class)
-final class Target_java_lang_Compiler {
-    @Substitute
-    static Object command(Object arg) {
-        return null;
-    }
-
-    @SuppressWarnings({"unused"})
-    @Substitute
-    static boolean compileClass(Class<?> clazz) {
-        return false;
-    }
-
-    @SuppressWarnings({"unused"})
-    @Substitute
-    static boolean compileClasses(String string) {
-        return false;
-    }
-
-    @Substitute
-    static void enable() {
-    }
-
-    @Substitute
-    static void disable() {
     }
 }
 

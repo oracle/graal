@@ -99,13 +99,13 @@ public class TraceFileWriter extends Tracer implements TracingResultWriter {
     }
 
     private static void printValue(JsonWriter json, Object value) throws IOException {
-        String s = null;
+        Object s = null;
         if (value instanceof byte[]) {
             s = Base64.getEncoder().encodeToString((byte[]) value);
         } else if (value != null) {
-            s = value.toString();
+            s = value;
         }
-        json.quote(s);
+        json.printValue(s);
     }
 
     private void traceEntry(String s) throws IOException {

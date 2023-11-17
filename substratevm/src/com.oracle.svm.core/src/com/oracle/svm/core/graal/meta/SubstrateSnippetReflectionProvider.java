@@ -27,8 +27,8 @@ package com.oracle.svm.core.graal.meta;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.word.WordTypes;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.word.WordTypes;
 
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;

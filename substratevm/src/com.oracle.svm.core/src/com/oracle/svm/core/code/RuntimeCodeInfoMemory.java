@@ -26,7 +26,7 @@ package com.oracle.svm.core.code;
 
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -215,7 +215,7 @@ public class RuntimeCodeInfoMemory {
 
     public boolean remove(CodeInfo info) {
         assert !VMOperation.isGCInProgress() : "Must call removeDuringGC";
-        assert info.isNonNull();
+        assert info.isNonNull() : "null";
         lock.lock();
         try {
             return remove0(info);

@@ -30,21 +30,26 @@ import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_1;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_2;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_3;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_4;
+import static com.oracle.svm.test.NativeImageResourceUtils.SIMPLE_RESOURCE_DIR;
 import static com.oracle.svm.test.NativeImageResourceUtils.compareTwoURLs;
 import static com.oracle.svm.test.NativeImageResourceUtils.resourceNameToURL;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
 
 import org.junit.Assert;
@@ -124,6 +129,36 @@ public class NativeImageResourceTest {
 
         String nonCanonicalResourceDirectoryName = RESOURCE_DIR + "/./";
         resourceNameToURL(nonCanonicalResourceDirectoryName, false);
+    }
+
+    @Test
+    public void registeredResourceDirectoryHasContent() throws IOException {
+        URL directory = NativeImageResourceUtils.class.getResource(SIMPLE_RESOURCE_DIR);
+        Assert.assertNotNull("Resource " + SIMPLE_RESOURCE_DIR + " is not found!", directory);
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(directory.openStream()));
+        Assert.assertNotNull("Resource" + SIMPLE_RESOURCE_DIR + " should have content", reader.readLine());
+    }
+
+    @Test
+    public void getConditionalDirectoryResource() throws IOException {
+        // check if resource is added conditionally
+        String directoryName = "/resourcesFromDir";
+        URL directory = NativeImageResourceUtils.class.getResource(directoryName);
+        Assert.assertNotNull("Resource " + directoryName + " is not found!", directory);
+
+        // check content of resource
+        List<String> expected = IntStream.range(0, 4).mapToObj(i -> "cond-resource" + i + ".txt").toList();
+        BufferedReader reader = new BufferedReader(new InputStreamReader(directory.openStream()));
+        List<String> actual = new ArrayList<>();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            actual.add(line);
+        }
+
+        for (String resource : expected) {
+            Assert.assertTrue(actual.contains(resource));
+        }
     }
 
     /**

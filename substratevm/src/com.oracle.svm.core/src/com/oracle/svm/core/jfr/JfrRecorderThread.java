@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.jfr;
 
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -83,7 +83,7 @@ public class JfrRecorderThread extends Thread {
                 }
             }
         } catch (Throwable e) {
-            VMError.shouldNotReachHere("No exception must by thrown in the JFR recorder thread as this could break file IO operations.");
+            VMError.shouldNotReachHere("No exception must by thrown in the JFR recorder thread as this could break file IO operations.", e);
         }
     }
 
