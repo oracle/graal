@@ -77,6 +77,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
@@ -106,6 +107,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     // Reflection data
     private final Map<Class<?>, RecordComponent[]> registeredRecordComponents = new ConcurrentHashMap<>();
+
+    /**
+     * Member classes accessible for reflection through {@link Class#getDeclaredClasses()} and
+     * {@link Class#getClasses()}.
+     */
     private final Map<Class<?>, Set<Class<?>>> innerClasses = new ConcurrentHashMap<>();
     private final Map<Class<?>, Integer> enabledQueriesFlags = new ConcurrentHashMap<>();
     private final Map<AnalysisField, Field> registeredFields = new ConcurrentHashMap<>();
@@ -170,7 +176,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         Objects.requireNonNull(clazz, () -> nullErrorMessage("class"));
         checkNotSealed();
         register(analysisUniverse -> registerConditionalConfiguration(condition,
-                        () -> analysisUniverse.getBigbang().postTask(debug -> registerClass(clazz, unsafeInstantiated))));
+                        () -> analysisUniverse.getBigbang().postTask(debug -> registerClass(clazz, unsafeInstantiated, true))));
     }
 
     @Override
@@ -178,7 +184,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         checkNotSealed();
         registerConditionalConfiguration(condition, () -> setQueryFlag(clazz, ALL_CLASSES_FLAG));
         try {
-            register(condition, clazz.getClasses());
+            for (Class<?> innerClass : clazz.getClasses()) {
+                innerClasses.computeIfAbsent(innerClass.getDeclaringClass(), c -> ConcurrentHashMap.newKeySet()).add(innerClass);
+                registerClass(innerClass, false, !MissingRegistrationUtils.throwMissingRegistrationErrors());
+            }
         } catch (LinkageError e) {
             /* Ignore the error */
         }
@@ -189,13 +198,16 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         checkNotSealed();
         registerConditionalConfiguration(condition, () -> setQueryFlag(clazz, ALL_DECLARED_CLASSES_FLAG));
         try {
-            register(condition, clazz.getDeclaredClasses());
+            for (Class<?> innerClass : clazz.getDeclaredClasses()) {
+                innerClasses.computeIfAbsent(clazz, c -> ConcurrentHashMap.newKeySet()).add(innerClass);
+                registerClass(innerClass, false, !MissingRegistrationUtils.throwMissingRegistrationErrors());
+            }
         } catch (LinkageError e) {
             /* Ignore the error */
         }
     }
 
-    private void registerClass(Class<?> clazz, boolean unsafeInstantiated) {
+    private void registerClass(Class<?> clazz, boolean unsafeInstantiated, boolean allowForName) {
         if (shouldExcludeClass(clazz)) {
             return;
         }
@@ -206,14 +218,26 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             type.registerAsAllocated("Is registered for reflection.");
         }
 
-        ClassForNameSupport.registerClass(clazz);
+        if (allowForName) {
+            ClassForNameSupport.registerClass(clazz);
 
-        try {
-            if (clazz.getEnclosingClass() != null) {
-                innerClasses.computeIfAbsent(metaAccess.lookupJavaType(clazz.getEnclosingClass()).getJavaClass(), (enclosingType) -> ConcurrentHashMap.newKeySet()).add(clazz);
+            if (!MissingRegistrationUtils.throwMissingRegistrationErrors()) {
+                /*
+                 * We have to ensure that code that relies on classes registered for reflection
+                 * being accessible through Class.get(Declared)Classes() keeps working. However,
+                 * this behavior means that those methods can return incomplete sets of inner
+                 * classes, which is not coherent with the Java specification and is therefore
+                 * disabled under the strict metadata mode (-H:ThrowMissingRegistrationErrors).
+                 */
+                try {
+                    if (clazz.getEnclosingClass() != null) {
+                        Class<?> enclosingClass = metaAccess.lookupJavaType(clazz.getEnclosingClass()).getJavaClass();
+                        innerClasses.computeIfAbsent(enclosingClass, (enclosingType) -> ConcurrentHashMap.newKeySet()).add(clazz);
+                    }
+                } catch (LinkageError e) {
+                    reportLinkingErrors(clazz, List.of(e));
+                }
             }
-        } catch (LinkageError e) {
-            reportLinkingErrors(clazz, List.of(e));
         }
     }
 
