@@ -236,6 +236,13 @@ class NativeImageBenchmarkConfig:
         # the bundle might also inject experimental options, but they will be appropriately locked/unlocked.
         self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')] + svm_experimental_options(base_image_build_args) + bundle_args
 
+
+    def get_build_output_json_file(self, instrument_phase: bool) -> Path:
+        """
+        TODO document
+        """
+        return Path(self.image_build_reports_directory) / f"build-output-{'instrument' if instrument_phase else 'final'}.json"
+
     def get_instrument_image_build_stats_file(self) -> Path:
         """
         Produce a unique path to put image build stats for 'instrument-image' stages.
@@ -706,6 +713,22 @@ class NativeImageVM(GraalVm):
                 return int(args[0], 16)
 
         return [
+            # TODO this is just a proof-of-concept
+            mx_benchmark.JsonFixedFileRule(
+                self.config.get_build_output_json_file(True),
+                {
+                    "benchmark": benchmarks[0],
+                    "metric.name": "max-rss",
+                    "metric.type": "numeric",
+                    "metric.unit": "MB",
+                    "metric.value": ("<resource_usage.memory.peak_rss_bytes>", lambda b: int(float(b) / 2**20)),
+                    "metric.score-function": "id",
+                    "metric.better": "lower",
+                    "metric.iteration": 0,
+                    "native-image.opt": ("O<general_info.graal_compiler.optimization_level>", str),
+                },
+                ["general_info.graal_compiler.optimization_level", "resource_usage.memory.peak_rss_bytes"],
+            ),
             mx_benchmark.StdOutRule(
                 r"The executed image size for benchmark (?P<bench_suite>[a-zA-Z0-9_\-]+):(?P<benchmark>[a-zA-Z0-9_\-]+) is (?P<value>[0-9]+) B",
                 {
@@ -845,9 +868,13 @@ class NativeImageVM(GraalVm):
         if "image" in self.stages_info.stages_till_now:
             rules.append(mx_benchmark.JsonFixedFileRule(self.config.image_build_stats_file, template, keys))
 
+
         # We're prefixing metric.object with 'instrument-', so it must exist.
         # If metrics without metric.object are ever used here, the function needs to alternatively prefix metrtic.name.
         assert "metric.object" in template
+
+        # TODO Rewrite. We should not prefix `instrument-`. Instead, this info should be part of the `host-vm-config`
+        # TOD Gate behind flag enabling metrics for the instrumentation stages
 
         # Prefix metric.object with 'instrument-' for instrumentation data
         instrument_template = template.copy()
@@ -997,7 +1024,11 @@ class NativeImageVM(GraalVm):
         if self.jdk_profiles_collect:
             instrument_args += svm_experimental_options(['-H:+AOTPriorityInline', '-H:-SamplingCollect', f'-H:ProfilingPackagePrefixes={self.generate_profiling_package_prefixes()}'])
 
-        with self.stages.set_command(self.config.base_image_build_args + executable_name_args + instrument_args) as s:
+        collection_args = []
+        # TODO Gate behind flag enabling metrics for the instrumentation stages
+        collection_args += svm_experimental_options([f"-H:BuildOutputJSONFile={self.config.get_build_output_json_file(True)}"])
+
+        with self.stages.set_command(self.config.base_image_build_args + executable_name_args + instrument_args + collection_args) as s:
             s.execute_command()
             if self.config.bundle_path is not None:
                 NativeImageVM.copy_bundle_output(self.config, self.config.instrumentation_executable_name)
@@ -1069,7 +1100,9 @@ class NativeImageVM(GraalVm):
                 mx.warn("To dump the profile inference features to a specific location, please set the '{}' flag.".format(dump_file_flag))
         else:
             ml_args = []
-        final_image_command = self.config.base_image_build_args + executable_name_args + (pgo_args if self.pgo_instrumentation else []) + jdk_profiles_args + ml_args
+
+        collection_args = svm_experimental_options([f"-H:BuildOutputJSONFile={self.config.get_build_output_json_file(False)}"])
+        final_image_command = self.config.base_image_build_args + executable_name_args + (pgo_args if self.pgo_instrumentation else []) + jdk_profiles_args + ml_args + collection_args
         with self.stages.set_command(final_image_command) as s:
             s.execute_command()
             if self.config.bundle_path is not None:
