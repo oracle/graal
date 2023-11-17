@@ -4525,7 +4525,6 @@ public final class TruffleString extends AbstractTruffleString {
         int compare(AbstractTruffleString a, AbstractTruffleString b, Encoding expectedEncoding,
                         @Cached ToIndexableNode toIndexableNodeA,
                         @Cached ToIndexableNode toIndexableNodeB) {
-            nullCheck(expectedEncoding);
             a.looseCheckEncoding(expectedEncoding, a.codeRange());
             b.looseCheckEncoding(expectedEncoding, b.codeRange());
             Object aData = toIndexableNodeA.execute(this, a, a.data());

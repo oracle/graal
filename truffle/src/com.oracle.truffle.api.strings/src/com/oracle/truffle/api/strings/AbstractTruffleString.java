@@ -557,13 +557,6 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
         }
     }
 
-    static void nullCheck(Object o) {
-        if (o == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new NullPointerException("unexpected null pointer");
-        }
-    }
-
     static void checkByteLength(int byteLength, Encoding encoding) {
         if (isUTF16(encoding)) {
             TruffleString.checkByteLengthUTF16(byteLength);
