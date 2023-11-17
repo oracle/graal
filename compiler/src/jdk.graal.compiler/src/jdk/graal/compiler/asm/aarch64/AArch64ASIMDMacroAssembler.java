@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -310,6 +310,8 @@ public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
      * <p>
      * Preferred alias for sshll when only sign-extending the vector elements.
      *
+     * Extracts vector elements from the lower half of the source register.
+     *
      * @param srcESize source element size. Cannot be ElementSize.DoubleWord. The destination
      *            element size will be double this width.
      * @param dst SIMD register.
@@ -320,9 +322,27 @@ public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.338 Signed extend long.<br>
+     * <p>
+     * Preferred alias for sshll2 when only sign-extending the vector elements.
+     *
+     * Extracts vector elements from the upper half of the source register.
+     *
+     * @param srcESize source element size. Cannot be ElementSize.DoubleWord. The destination
+     *            element size will be double this width.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void sxtl2VV(ElementSize srcESize, Register dst, Register src) {
+        sshll2VVI(srcESize, dst, src, 0);
+    }
+
+    /**
      * C7.2.398 Unsigned extend long.<br>
      * <p>
      * Preferred alias for ushll when only zero-extending the vector elements.
+     *
+     * Extracts vector elements from the lower half of the source register.
      *
      * @param srcESize source element size. Cannot be ElementSize.DoubleWord. The destination
      *            element size will be double this width.
@@ -337,6 +357,8 @@ public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
      * C7.2.398 Unsigned extend long.<br>
      * <p>
      * Preferred alias for ushll2 when only zero-extending the vector elements.
+     *
+     * Extracts vector elements from the upper half of the source register.
      *
      * @param srcESize source element size. Cannot be ElementSize.DoubleWord. The destination
      *            element size will be double this width.
