@@ -145,6 +145,9 @@ class BasicImpl<TContext extends BasicImpl.ThreadContext> extends CausalityImple
                 cause = topCause;
             }
         }
+        if (cause == consequence) {
+            return;
+        }
         directEdges.put(new Graph.DirectEdge(cause, consequence), Boolean.TRUE);
     }
 

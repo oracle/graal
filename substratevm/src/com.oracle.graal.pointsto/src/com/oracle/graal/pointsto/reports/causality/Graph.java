@@ -504,21 +504,23 @@ class Graph {
 
                 adj.remove(f);
                 for (FlowNode next : forward) {
-                    if (next == f) {
-                        continue;
-                    }
-
+                    assert (next != f);
                     var nextBackward = adj.get(next).getRight();
-                    nextBackward.addAll(backward);
+                    for (FlowNode prev : backward) {
+                        if (prev != f && prev != next) {
+                            nextBackward.add(prev);
+                        }
+                    }
                     nextBackward.remove(f);
                 }
                 for (FlowNode prev : backward) {
-                    if (prev == f) {
-                        continue;
-                    }
-
+                    assert (prev != f);
                     var prevForward = adj.get(prev).getLeft();
-                    prevForward.addAll(forward);
+                    for (FlowNode next : forward) {
+                        if (next != f && next != prev) {
+                            prevForward.add(next);
+                        }
+                    }
                     prevForward.remove(f);
                 }
                 removed++;
@@ -533,8 +535,6 @@ class Graph {
     private static Map<FlowNode, Pair<Set<FlowNode>, Set<FlowNode>>> edgeListToAdjacency(HashSet<FlowEdge> interflows) {
         Map<FlowNode, Pair<Set<FlowNode>, Set<FlowNode>>> adj = new HashMap<>();
         for (FlowEdge e : interflows) {
-            if (e.from == e.to)
-                continue;
             adj.computeIfAbsent(e.from, f -> Pair.create(new HashSet<>(), new HashSet<>())).getLeft().add(e.to);
             adj.computeIfAbsent(e.to, f -> Pair.create(new HashSet<>(), new HashSet<>())).getRight().add(e.from);
         }
