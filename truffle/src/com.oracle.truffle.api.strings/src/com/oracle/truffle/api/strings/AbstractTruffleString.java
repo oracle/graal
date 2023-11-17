@@ -157,21 +157,18 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
         } else if (data instanceof NativePointer) {
             validateDataNative(offset, length, stride);
         } else {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
     private static void validateDataLazy(int offset, int length, int stride) {
         if (!Stride.isStride(stride) || offset != 0 || Integer.toUnsignedLong(length) << stride > Integer.MAX_VALUE) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
     private static void validateDataNative(int offset, int length, int stride) {
         if (!Stride.isStride(stride) || offset < 0 || Integer.toUnsignedLong(length) << stride > Integer.MAX_VALUE) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw CompilerDirectives.shouldNotReachHere();
         }
     }
@@ -1458,7 +1455,6 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
 
         void setBytes(TruffleString a, byte[] bytes) {
             if (a.offset() != 0 || a.length() != bytes.length) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw CompilerDirectives.shouldNotReachHere();
             }
             this.bytes = bytes;

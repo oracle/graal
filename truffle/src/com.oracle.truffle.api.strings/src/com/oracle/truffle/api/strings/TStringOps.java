@@ -159,7 +159,6 @@ final class TStringOps {
         } else {
             if (array == null) {
                 // make sure that array has a non-null stamp
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw CompilerDirectives.shouldNotReachHere();
             }
             switch (stride) {
@@ -188,7 +187,6 @@ final class TStringOps {
         } else {
             if (array == null) {
                 // make sure that array has a non-null stamp
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw CompilerDirectives.shouldNotReachHere();
             }
             switch (stride) {
@@ -1599,7 +1597,6 @@ final class TStringOps {
 
     static void validateRegion(byte[] array, int offset, int length, int stride) {
         if ((Integer.toUnsignedLong(offset) + (Integer.toUnsignedLong(length) << stride)) > array.length) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw CompilerDirectives.shouldNotReachHere();
         }
     }
@@ -1607,7 +1604,6 @@ final class TStringOps {
     private static void validateRegion(char[] array, int offset, int length) {
         int charOffset = offset >> 1;
         if ((Integer.toUnsignedLong(charOffset) + (Integer.toUnsignedLong(length))) > array.length) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw CompilerDirectives.shouldNotReachHere();
         }
     }
@@ -1615,21 +1611,18 @@ final class TStringOps {
     private static void validateRegion(int[] array, int offset, int length) {
         int intOffset = offset >> 2;
         if ((Integer.toUnsignedLong(intOffset) + (Integer.toUnsignedLong(length))) > array.length) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
     private static void validateRegion(byte[] stubArray, int offset, int length, int stride, boolean isNative) {
         if (invalidOffsetOrLength(stubArray, offset, length, stride, isNative)) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
     private static void validateRegionIndex(byte[] stubArray, int offset, int length, int stride, int i, boolean isNative) {
         if (invalidOffsetOrLength(stubArray, offset, length, stride, isNative) || invalidIndex(length, i)) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw CompilerDirectives.shouldNotReachHere();
         }
     }
