@@ -45,6 +45,18 @@ public class OpaqueNodeTest extends GraalCompilerTest {
         assertTrue(arr[0] == (byte) 300);
     }
 
+    public static void writeNegConstSnippet() {
+        final int i = -300;
+        int j = GraalDirectives.opaque(i);
+        arr[0] = (byte) j;
+    }
+
+    @Test
+    public void testNegConstWrite() {
+        test("writeNegConstSnippet");
+        assertTrue(arr[0] == (byte) -300);
+    }
+
     public static int fld = 200;
 
     public static void writeSnippet() {
@@ -57,5 +69,17 @@ public class OpaqueNodeTest extends GraalCompilerTest {
     public void testWrite() {
         test("writeSnippet");
         assertTrue(arr[0] == (byte) 300);
+    }
+
+    public static void writeNegSnippet() {
+        int i = fld - 500;
+        int j = GraalDirectives.opaque(i);
+        arr[0] = (byte) j;
+    }
+
+    @Test
+    public void testNegWrite() {
+        test("writeNegSnippet");
+        assertTrue(arr[0] == (byte) -300);
     }
 }
