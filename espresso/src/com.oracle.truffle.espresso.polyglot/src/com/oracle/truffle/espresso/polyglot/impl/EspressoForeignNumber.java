@@ -49,38 +49,26 @@ public final class EspressoForeignNumber extends Number {
 
     @Override
     public int intValue() {
-        if (Interop.fitsInDouble(this)) {
-            try {
-                return (int) Interop.asDouble(this);
-            } catch (UnsupportedMessageException e) {
-                // fall through to throwing
-            }
-        }
-        throw new UnsupportedOperationException();
+        return (int) longValue();
     }
 
     @Override
     public long longValue() {
-        if (Interop.fitsInDouble(this)) {
+        if (Interop.fitsInLong(this)) {
             try {
-                return (long) Interop.asDouble(this);
+                return Interop.asLong(this);
             } catch (UnsupportedMessageException e) {
-                // fall through to throwing
+                // should never happen, just fall through
             }
+        } else {
+            return (long) doubleValue();
         }
         throw new UnsupportedOperationException();
     }
 
     @Override
     public float floatValue() {
-        if (Interop.fitsInDouble(this)) {
-            try {
-                return (float) Interop.asDouble(this);
-            } catch (UnsupportedMessageException e) {
-                // fall through to throwing
-            }
-        }
-        throw new UnsupportedOperationException();
+        return (float) doubleValue();
     }
 
     @Override

@@ -314,19 +314,18 @@ public class EspressoInterop extends BaseInterop {
         }
         Klass klass = receiver.getKlass();
         Meta meta = klass.getMeta();
-        if (isAtMostInt(klass) || klass == meta.java_lang_Double) {
+        if (isAtMostLong(klass) || klass == meta.java_math_BigInteger) {
             return true;
         }
-        if (klass == meta.java_lang_Long) {
-            long content = meta.java_lang_Long_value.getLong(receiver);
-            double doubleContent = content;
-            return content != Long.MAX_VALUE && (long) doubleContent == content;
-        }
         if (klass == meta.java_lang_Float) {
-            float content = meta.java_lang_Float_value.getFloat(receiver);
-            return !Float.isFinite(content) || (double) content == content;
+            float floatValue = meta.java_lang_Float_value.getFloat(receiver);
+            return floatValue % 1 == 0 && !isNegativeZero(floatValue);
         }
-        return klass == meta.java_math_BigInteger;
+        if (klass == meta.java_lang_Double) {
+            double doubleValue = meta.java_lang_Double_value.getDouble(receiver);
+            return doubleValue % 1 == 0 && !isNegativeZero(doubleValue);
+        }
+        return false;
     }
 
     private static Number readNumberValue(StaticObject receiver) throws UnsupportedMessageException {
@@ -427,9 +426,28 @@ public class EspressoInterop extends BaseInterop {
             StaticObject guestByteArray = (StaticObject) meta.java_math_BigInteger_toByteArray.invokeDirect(receiver);
             byte[] bytes = guestByteArray.unwrap(meta.getLanguage());
             return new BigInteger(bytes);
-        } else {
-            double doubleValue = readNumberValue(receiver).doubleValue();
-            return BigDecimal.valueOf(doubleValue).toBigInteger();
+        } else if (fitsInLong(receiver)) {
+            long longValue = asLong(receiver);
+            return toBigInteger(longValue);
+        } else if (fitsInDouble(receiver)) {
+            double doubleValue = asDouble(receiver);
+            // we know it fits in BigInteger so no need to check the double value
+            return toBigInteger(doubleValue);
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @TruffleBoundary
+    private static BigInteger toBigInteger(long longValue) {
+        return BigInteger.valueOf(longValue);
+    }
+
+    @TruffleBoundary
+    private static BigInteger toBigInteger(double doubleValue) {
+        try {
+            return new BigDecimal(doubleValue).toBigIntegerExact();
+        } catch (ArithmeticException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
         }
     }
 
