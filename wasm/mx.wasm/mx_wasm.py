@@ -143,15 +143,26 @@ def graal_wasm_gate_runner(args, tasks):
 
 add_gate_runner(_suite, graal_wasm_gate_runner)
 
-def _unittest_config_participant(config):
-    (vmArgs, mainClass, mainClassArgs) = config
-    # limit heap memory to 2G, unless otherwise specified
-    if not any(a.startswith('-Xm') for a in vmArgs):
-        vmArgs += ['-Xmx2g']
-    return (vmArgs, mainClass, mainClassArgs)
 
-mx_unittest.add_config_participant(_unittest_config_participant)
+class WasmUnittestConfig(mx_unittest.MxUnittestConfig):
 
+    def __init__(self):
+        super(WasmUnittestConfig, self).__init__('wasm')
+
+    def apply(self, config):
+        (vmArgs, mainClass, mainClassArgs) = config
+        vmArgs = vmArgs + ['-Dpolyglot.engine.AllowExperimentalOptions=true']
+        # Disable DefaultRuntime warning
+        vmArgs = vmArgs + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
+        # Assert for enter/return parity of ProbeNode
+        vmArgs = vmArgs + ['-Dpolyglot.engine.AssertProbes=true', '-Dpolyglot.engine.AllowExperimentalOptions=true']
+        # limit heap memory to 2G, unless otherwise specified
+        if not any(a.startswith('-Xm') for a in vmArgs):
+            vmArgs += ['-Xmx2g']
+        return (vmArgs, mainClass, mainClassArgs)
+
+
+mx_unittest.register_unittest_config(WasmUnittestConfig())
 
 #
 # Project types.

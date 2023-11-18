@@ -1309,6 +1309,7 @@ suite = {
       ],
       "useModulePath": True,
       "description" : "Module with JUnit tests for testing Truffle API in modular applications.",
+      "unittestConfig": "truffle",
       "maven": False,
     },
 
@@ -1328,6 +1329,7 @@ suite = {
       ],
       "useModulePath": True,
       "description" : "Separate test module for testing Truffle API in modular applications.",
+      "unittestConfig": "truffle",
       "maven": False,
     },
 
@@ -1703,15 +1705,18 @@ suite = {
       ],
       "distDependencies" : [
         "sdk:POLYGLOT_TCK",
-        "TRUFFLE_TCK_COMMON"
+        "TRUFFLE_TCK_COMMON",
+        "TRUFFLE_TCK_INSTRUMENTATION",
       ],
       "exclude" : ["mx:JUNIT"],
       "description" : "A collection of tests that can certify language implementation to be compliant\nwith most recent requirements of the Truffle infrastructure and tooling.",
       "allowsJavadocWarnings": True,
       "testDistribution" : False,
+      "unittestConfig": "truffle-tck",
       "maven": {
           "tag": ["default", "public"],
       },
+      "noMavenJavadoc": True,
     },
 
     "TRUFFLE_TCK_TESTS_LANGUAGE" : {
@@ -1827,8 +1832,10 @@ suite = {
       "distDependencies" : [
           "TRUFFLE_API",
           "TRUFFLE_TCK",
-          "TRUFFLE_SL"
+          "TRUFFLE_SL",
+          "TRUFFLE_TCK_TESTS",
       ],
+      "unittestConfig": "truffle",
       "maven" : False
     },
 
@@ -1843,9 +1850,14 @@ suite = {
       ],
       "distDependencies" : [
         "sdk:POLYGLOT_TCK",
-        "TRUFFLE_SL"
+        "TRUFFLE_SL",
       ],
-      "maven" : False
+      "description" : "Truffle TCK provider for SL language.",
+      "maven" : {
+        "artifactId": "sl-truffle-tck",
+        "tag": ["default", "public"],
+      },
+      "noMavenJavadoc": True,
     },
 
     "TRUFFLE_ST" : {
@@ -1878,6 +1890,7 @@ suite = {
         "TRUFFLE_API",
         "TRUFFLE_ST"
       ],
+      "unittestConfig": "truffle",
       "maven" : False
     },
 
@@ -1893,7 +1906,6 @@ suite = {
          "com.oracle.truffle.api.debug.test",
          "com.oracle.truffle.api.strings.test",
          "com.oracle.truffle.object.basic.test",
-         "com.oracle.truffle.nfi.test",
          "com.oracle.truffle.api.staticobject.test",
        ],
        "exclude" : [
@@ -1910,14 +1922,32 @@ suite = {
          "TRUFFLE_SL",
          "TRUFFLE_TCK_COMMON",
          "TRUFFLE_TCK_TESTS",
-         "TRUFFLE_NFI",
-         "TRUFFLE_NFI_LIBFFI",
          "TRUFFLE_DSL_PROCESSOR",
-         "TRUFFLE_TEST_NATIVE",
          "TRUFFLE_TCK",
          "TRUFFLE_TCK_INSTRUMENTATION",
       ],
+      "unittestConfig": "truffle",
       "maven" : False,
+     },
+
+    "TRUFFLE_NFI_TEST": {
+       "subDir": "src",
+       "javaCompliance": "17+",
+       "dependencies": [
+         "com.oracle.truffle.nfi.test",
+       ],
+       "exclude": [
+         "mx:HAMCREST",
+         "mx:JUNIT",
+       ],
+       "distDependencies": [
+        "TRUFFLE_TEST",
+        "TRUFFLE_NFI",
+        "TRUFFLE_NFI_LIBFFI",
+        "TRUFFLE_TEST_NATIVE",
+      ],
+      "unittestConfig": "truffle-nfi",
+      "maven": False,
      },
 
      "TRUFFLE_TEST_NATIVE" : {
@@ -1929,7 +1959,8 @@ suite = {
          "com.oracle.truffle.nfi.test.native.isolation",
        ],
        "testDistribution" : True,
-      "maven" : False,
+       "unittestConfig": "truffle",
+       "maven" : False,
      },
 
     "TRUFFLE_NFI_GRAALVM_SUPPORT" : {

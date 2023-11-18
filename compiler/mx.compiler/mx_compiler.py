@@ -774,52 +774,58 @@ def _remove_redundant_entries(cp):
                         redundantClasspathEntries.add(path)
     return os.pathsep.join([e for e in cp if e not in redundantClasspathEntries])
 
-def _unittest_config_participant(config):
-    vmArgs, mainClass, mainClassArgs = config
-    cpIndex, cp = mx.find_classpath_arg(vmArgs)
-    if cp:
-        cp = _remove_redundant_entries(cp)
 
-        vmArgs[cpIndex] = cp
-        # JVMCI is dynamically exported to Graal when JVMCI is initialized. This is too late
-        # for the junit harness which uses reflection to find @Test methods. In addition, the
-        # tests widely use JVMCI classes so JVMCI needs to also export all its packages to
-        # ALL-UNNAMED.
-        mainClassArgs.extend(['-JUnitOpenPackages', 'jdk.internal.vm.ci/*=org.graalvm.truffle.runtime,jdk.graal.compiler,ALL-UNNAMED'])
+class GraalUnittestConfig(mx_unittest.MxUnittestConfig):
 
-        limited_modules = None
-        for arg in vmArgs:
-            if arg.startswith('--limit-modules'):
-                assert arg.startswith('--limit-modules='), ('--limit-modules must be separated from its value by "="')
-                limited_modules = arg[len('--limit-modules='):].split(',')
+    def __init__(self):
+        super(GraalUnittestConfig, self).__init__('graal')
 
-        # Export packages in all Graal modules and their dependencies
-        for dist in _graal_config().dists:
-            jmd = as_java_module(dist, jdk)
-            if limited_modules is None or jmd.name in limited_modules:
-                mainClassArgs.extend(['-JUnitOpenPackages', jmd.name + '/*'])
-                vmArgs.append('--add-modules=' + jmd.name)
+    def apply(self, config):
+        vmArgs, mainClass, mainClassArgs = config
+        cpIndex, cp = mx.find_classpath_arg(vmArgs)
+        if cp:
+            cp = _remove_redundant_entries(cp)
 
-    vmArgs.append('-Djdk.graal.TrackNodeSourcePosition=true')
-    vmArgs.append('-esa')
+            vmArgs[cpIndex] = cp
+            # JVMCI is dynamically exported to Graal when JVMCI is initialized. This is too late
+            # for the junit harness which uses reflection to find @Test methods. In addition, the
+            # tests widely use JVMCI classes so JVMCI needs to also export all its packages to
+            # ALL-UNNAMED.
+            mainClassArgs.extend(['-JUnitOpenPackages', 'jdk.internal.vm.ci/*=org.graalvm.truffle.runtime,jdk.graal.compiler,ALL-UNNAMED'])
 
-    # Always run unit tests without UseJVMCICompiler unless explicitly requested
-    if _get_XX_option_value(vmArgs, 'UseJVMCICompiler', None) is None:
-        vmArgs.append('-XX:-UseJVMCICompiler')
+            limited_modules = None
+            for arg in vmArgs:
+                if arg.startswith('--limit-modules'):
+                    assert arg.startswith('--limit-modules='), ('--limit-modules must be separated from its value by "="')
+                    limited_modules = arg[len('--limit-modules='):].split(',')
 
-    # The type-profile width 8 is the default when using the JVMCI compiler.
-    # This value must be forced, because we do not used the JVMCI compiler
-    # in the unit tests by default.
-    if _get_XX_option_value(vmArgs, 'TypeProfileWidth', None) is None:
-        vmArgs.append('-XX:TypeProfileWidth=8')
+            # Export packages in all Graal modules and their dependencies
+            for dist in _graal_config().dists:
+                jmd = as_java_module(dist, jdk)
+                if limited_modules is None or jmd.name in limited_modules:
+                    mainClassArgs.extend(['-JUnitOpenPackages', jmd.name + '/*'])
+                    vmArgs.append('--add-modules=' + jmd.name)
 
-    # TODO: GR-31197, this should be removed.
-    vmArgs.append('-Dpolyglot.engine.DynamicCompilationThresholds=false')
-    vmArgs.append('-Dpolyglot.engine.AllowExperimentalOptions=true')
+        vmArgs.append('-Djdk.graal.TrackNodeSourcePosition=true')
+        vmArgs.append('-esa')
 
-    return (vmArgs, mainClass, mainClassArgs)
+        # Always run unit tests without UseJVMCICompiler unless explicitly requested
+        if _get_XX_option_value(vmArgs, 'UseJVMCICompiler', None) is None:
+            vmArgs.append('-XX:-UseJVMCICompiler')
 
-mx_unittest.add_config_participant(_unittest_config_participant)
+        # The type-profile width 8 is the default when using the JVMCI compiler.
+        # This value must be forced, because we do not used the JVMCI compiler
+        # in the unit tests by default.
+        if _get_XX_option_value(vmArgs, 'TypeProfileWidth', None) is None:
+            vmArgs.append('-XX:TypeProfileWidth=8')
+
+        # TODO: GR-31197, this should be removed.
+        vmArgs.append('-Dpolyglot.engine.DynamicCompilationThresholds=false')
+        vmArgs.append('-Dpolyglot.engine.AllowExperimentalOptions=true')
+        return (vmArgs, mainClass, mainClassArgs)
+
+
+mx_unittest.register_unittest_config(GraalUnittestConfig())
 
 _use_graalvm = False
 

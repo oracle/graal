@@ -879,6 +879,7 @@ suite = {
       ],
       "javadocType": "api",
       "description" : """GraalVM TCK SPI""",
+      "useModulePath": True,
       "maven": {
           "tag": ["default", "public"],
       },

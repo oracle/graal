@@ -303,6 +303,7 @@ suite = {
         "WASM",
       ],
       "maven" : False,
+      "unittestConfig": "wasm",
     },
 
     "WASM_TESTCASES" : {
@@ -320,6 +321,7 @@ suite = {
       "defaultBuild" : False,
       "maven" : False,
       "testDistribution" : True,
+      "unittestConfig": "wasm",
     },
 
     "WASM_BENCHMARKS" : {

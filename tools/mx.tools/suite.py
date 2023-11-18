@@ -404,6 +404,7 @@ suite = {
               "mx:JUNIT",
             ],
             "maven": False,
+            "unittestConfig": "tools",
         },
         "CHROMEINSPECTOR_GRAALVM_SUPPORT" : {
             "native" : True,
@@ -495,6 +496,7 @@ suite = {
             ],
             "description" : "Tests for the Ultimate Insights Gathering Platform",
             "maven" : False,
+            "unittestConfig": "tools",
         },
         "INSIGHT_GRAALVM_SUPPORT" : {
             "native" : True,
@@ -618,6 +620,7 @@ suite = {
             ],
             "description" : "Tests for the truffle coverage tool.",
             "maven" : False,
+            "unittestConfig": "tools",
          },
         "TRUFFLE_COVERAGE_GRAALVM_SUPPORT" : {
             "native" : True,
@@ -673,6 +676,7 @@ suite = {
             ],
             "description" : "Tests for the Truffle Debug Protocol Server.",
             "maven" : False,
+            "unittestConfig": "tools",
          },
         "DAP_GRAALVM_SUPPORT" : {
             "native" : True,
@@ -746,6 +750,7 @@ suite = {
             "distDependencies" : [
                 "LSP",
                 "truffle:TRUFFLE_SL",
+                "truffle:TRUFFLE_TEST",  # runtime dependency for unittest config
             ],
             "exclude": [
               "mx:HAMCREST",
@@ -753,6 +758,7 @@ suite = {
             ],
             "description" : "Tests for the Truffle Language Server backend.",
             "maven": False,
+            "unittestConfig": "tools",
         },
         "LSP_GRAALVM_SUPPORT" : {
             "native" : True,
