@@ -125,6 +125,10 @@ public class ObjectScanner {
     }
 
     protected void scanEmbeddedRoot(JavaConstant root, BytecodePosition position) {
+        if (root instanceof ImageHeapConstant ihc && ihc.getHostedObject() == null) {
+            /* Skip embedded simulated constants. */
+            return;
+        }
         try {
             EmbeddedRootScan reason = new EmbeddedRootScan(position, root);
             scanningObserver.forEmbeddedRoot(root, reason);
@@ -160,6 +164,11 @@ public class ObjectScanner {
             assert isUnwrapped(receiver) : receiver;
 
             JavaConstant fieldValue = readFieldValue(field, receiver);
+            if (fieldValue instanceof ImageHeapConstant ihc && ihc.getHostedObject() == null) {
+                /* Skip reachable simulated constants. */
+                return;
+            }
+
             if (fieldValue == null) {
                 StringBuilder backtrace = new StringBuilder();
                 buildObjectBacktrace(bb, reason, backtrace);
@@ -181,7 +190,7 @@ public class ObjectScanner {
                  * referenced elements are being scanned.
                  */
                 scanConstant(fieldValue, reason);
-            } else if (fieldValue.getJavaKind().isNumericInteger()) {
+            } else if (fieldValue.getJavaKind().isPrimitive()) {
                 scanningObserver.forPrimitiveFieldValue(receiver, field, fieldValue, reason);
             }
 
@@ -190,8 +199,9 @@ public class ObjectScanner {
         }
     }
 
+    @SuppressWarnings("unchecked")
     protected JavaConstant readFieldValue(AnalysisField field, JavaConstant receiver) {
-        return bb.getConstantReflectionProvider().readFieldValue(field, receiver);
+        return ((ConstantReflectionProviderExtension<AnalysisField>) bb.getConstantReflectionProvider()).readHostedFieldValue(bb.getMetaAccess(), field, receiver);
     }
 
     /**
@@ -423,7 +433,7 @@ public class ObjectScanner {
                         scanField(field, entry.constant, entry.reason);
                     }
                 }
-            } else if (type.isArray() && bb.getWordTypes().asKind(type.getComponentType()) == JavaKind.Object) {
+            } else if (type.isArray() && type.getComponentType().getJavaKind() == JavaKind.Object) {
                 /* Scan the array elements. */
                 scanArray(entry.constant, entry.reason);
             }

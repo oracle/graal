@@ -300,8 +300,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void encodeSnippets() {
-        GraphEncoder encoder = new GraphEncoder(ConfigurationValues.getTarget().arch);
+    public void encodeSnippets(GraphEncoder encoder) {
         while (!builder.deferred.isEmpty()) {
             builder.deferred.pop().run();
         }

@@ -31,14 +31,10 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.core.common.CompressEncoding;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
+import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
@@ -55,6 +51,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.hosted.code.CEntryPointLiteralFeature;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedClass;
@@ -63,6 +60,11 @@ import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.Indent;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -149,7 +151,7 @@ public final class NativeImageHeapWriter {
         }
 
         if (value instanceof RelocatableConstant) {
-            addNonDataRelocation(buffer, index, snippetReflection().asObject(RelocatedPointer.class, value));
+            addNonDataRelocation(buffer, index, prepareRelocatable(info, value));
         } else {
             write(buffer, index, value, info != null ? info : field);
         }
@@ -183,7 +185,7 @@ public final class NativeImageHeapWriter {
 
     private void writeConstant(RelocatableBuffer buffer, int index, JavaKind kind, JavaConstant constant, ObjectInfo info) {
         if (constant instanceof RelocatableConstant) {
-            addNonDataRelocation(buffer, index, snippetReflection().asObject(RelocatedPointer.class, constant));
+            addNonDataRelocation(buffer, index, prepareRelocatable(info, constant));
             return;
         }
 
@@ -197,6 +199,16 @@ public final class NativeImageHeapWriter {
             con = constant;
         }
         write(buffer, index, con, info);
+    }
+
+    /**
+     * Ensure the pointer has been processed by {@link CEntryPointLiteralFeature}. The replacement
+     * done when the value is added to the shadow heap can miss the transformation from
+     * {@link CEntryPointLiteralCodePointer} to {@link MethodPointer} because this transformation
+     * can only happen late, during compilation.
+     */
+    private RelocatedPointer prepareRelocatable(ObjectInfo info, JavaConstant value) {
+        return (RelocatedPointer) maybeReplace(snippetReflection().asObject(RelocatedPointer.class, value), info);
     }
 
     private void writeConstant(RelocatableBuffer buffer, int index, JavaKind kind, Object value, ObjectInfo info) {

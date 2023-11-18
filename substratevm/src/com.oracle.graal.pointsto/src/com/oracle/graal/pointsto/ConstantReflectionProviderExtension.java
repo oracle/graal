@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal.isolated;
+package com.oracle.graal.pointsto;
 
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.svm.graal.hosted.SubstrateProviders;
-import com.oracle.svm.graal.meta.SubstrateConstantFieldProvider;
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 
-public final class IsolateAwareProviders extends SubstrateProviders {
-    public IsolateAwareProviders(AnalysisMetaAccess aMetaAccess, IsolateAwareMetaAccess sMetaAccess) {
-        super(sMetaAccess, new SubstrateConstantFieldProvider(aMetaAccess), new IsolateAwareConstantReflectionProvider(sMetaAccess), new IsolateAwareSnippetReflectionProvider());
-    }
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
+
+public interface ConstantReflectionProviderExtension<T extends ResolvedJavaField> extends ConstantReflectionProvider {
+    JavaConstant readHostedFieldValue(UniverseMetaAccess access, T field, JavaConstant receiver);
 }

@@ -284,6 +284,7 @@ import jdk.graal.compiler.java.BciBlockMapping;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import jdk.graal.compiler.loop.phases.SpeculativeGuardMovementPhase;
+import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
@@ -596,8 +597,9 @@ public class NativeImageGenerator {
                 BuildPhaseProvider.markHostedUniverseBuilt();
                 ClassInitializationSupport classInitializationSupport = bb.getHostVM().getClassInitializationSupport();
                 SubstratePlatformConfigurationProvider platformConfig = getPlatformConfig(hMetaAccess);
-                runtimeConfiguration = new HostedRuntimeConfigurationBuilder(options, aUniverse.getHeapScanner(), bb.getHostVM(), hUniverse, hMetaAccess, bb.getProviders(MultiMethod.ORIGINAL_METHOD),
-                                classInitializationSupport, GraalAccess.getOriginalProviders().getLoopsDataProvider(), platformConfig).build();
+                runtimeConfiguration = new HostedRuntimeConfigurationBuilder(options, bb.getHostVM(), hUniverse, hMetaAccess,
+                                bb.getProviders(MultiMethod.ORIGINAL_METHOD), classInitializationSupport, GraalAccess.getOriginalProviders().getLoopsDataProvider(), platformConfig,
+                                bb.getSnippetReflectionProvider()).build();
 
                 registerGraphBuilderPlugins(featureHandler, runtimeConfiguration, (HostedProviders) runtimeConfiguration.getProviders(), bb.getMetaAccess(), aUniverse,
                                 hUniverse,
@@ -689,9 +691,6 @@ public class NativeImageGenerator {
 
                         AfterHeapLayoutAccessImpl config = new AfterHeapLayoutAccessImpl(featureHandler, loader, heap, hMetaAccess, debug);
                         featureHandler.forEachFeature(feature -> feature.afterHeapLayout(config));
-
-                        /* Re-run shadow heap verification after heap layout. */
-                        aUniverse.getHeapVerifier().checkHeapSnapshot(debug, hMetaAccess, "after heap layout");
 
                         createAbstractImage(k, hostedEntryPoints, heap, hMetaAccess, codeCache);
 
@@ -1136,7 +1135,7 @@ public class NativeImageGenerator {
 
             NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, null, aProviders, aMetaAccess, aUniverse, null, nativeLibraries, loader, ParsingReason.PointsToAnalysis,
                             bb.getAnnotationSubstitutionProcessor(), classInitializationPlugin, ConfigurationValues.getTarget(), supportsStubBasedPlugins);
-            registerReplacements(debug, featureHandler, null, aProviders, true, initForeignCalls);
+            registerReplacements(debug, featureHandler, null, aProviders, true, initForeignCalls, new GraphEncoder(ConfigurationValues.getTarget().arch));
 
             performSnippetGraphAnalysis(bb, aReplacements, options);
         }
@@ -1441,7 +1440,7 @@ public class NativeImageGenerator {
 
     @SuppressWarnings("try")
     public static void registerReplacements(DebugContext debug, FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, Providers providers,
-                    boolean hosted, boolean initForeignCalls) {
+                    boolean hosted, boolean initForeignCalls, GraphEncoder encoder) {
         OptionValues options = hosted ? HostedOptionValues.singleton() : RuntimeOptionValues.singleton();
 
         SubstrateForeignCallsProvider foreignCallsProvider = (SubstrateForeignCallsProvider) providers.getForeignCalls();
@@ -1463,7 +1462,7 @@ public class NativeImageGenerator {
 
         SubstrateReplacements replacements = (SubstrateReplacements) providers.getReplacements();
         assert checkInvocationPluginMethods(replacements);
-        replacements.encodeSnippets();
+        replacements.encodeSnippets(encoder);
     }
 
     private static boolean checkInvocationPluginMethods(SubstrateReplacements replacements) {

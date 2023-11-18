@@ -38,6 +38,8 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import com.oracle.svm.core.config.ConfigurationValues;
+import jdk.graal.compiler.nodes.GraphEncoder;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -376,7 +378,7 @@ public class CompileQueue {
     }
 
     protected void callForReplacements(DebugContext debug, @SuppressWarnings("hiding") RuntimeConfiguration runtimeConfig) {
-        NativeImageGenerator.registerReplacements(debug, featureHandler, runtimeConfig, runtimeConfig.getProviders(), true, true);
+        NativeImageGenerator.registerReplacements(debug, featureHandler, runtimeConfig, runtimeConfig.getProviders(), true, true, new GraphEncoder(ConfigurationValues.getTarget().arch));
     }
 
     @SuppressWarnings("try")

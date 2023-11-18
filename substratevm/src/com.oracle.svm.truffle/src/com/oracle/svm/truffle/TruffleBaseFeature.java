@@ -74,6 +74,7 @@ import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.BuildArtifacts;
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
@@ -89,6 +90,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -458,7 +460,8 @@ public final class TruffleBaseFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (graalGraphObjectReplacer == null) {
             BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
-            SubstrateProviders substrateProviders = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).getSubstrateProviders(metaAccess);
+            SubstrateWordTypes wordTypes = new SubstrateWordTypes(config.getMetaAccess(), FrameAccess.getWordKind());
+            SubstrateProviders substrateProviders = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).getSubstrateProviders(metaAccess, wordTypes);
             graalGraphObjectReplacer = new GraalGraphObjectReplacer(config.getUniverse(), substrateProviders, new SubstrateUniverseFactory());
             graalGraphObjectReplacer.setAnalysisAccess(config);
         }

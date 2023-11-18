@@ -45,7 +45,7 @@ public class ImageHeap {
      * not-yet-executed {@link AnalysisFuture} of {@link ImageHeapConstant} or its results, an
      * {@link ImageHeapConstant}. Not all objects in this cache are reachable.
      */
-    private final ConcurrentHashMap<JavaConstant, /* ImageHeapObject */ Object> objectsCache;
+    private final ConcurrentHashMap<JavaConstant, /* ImageHeapConstant */ Object> objectsCache;
     /** Store a mapping from types to object snapshots. */
     private final Map<AnalysisType, Set<ImageHeapConstant>> reachableObjects;
 
@@ -78,7 +78,7 @@ public class ImageHeap {
     /** Get the constant snapshot from the cache. */
     public Object getSnapshot(JavaConstant constant) {
         if (constant instanceof ImageHeapConstant imageHeapConstant) {
-            assert imageHeapConstant.getHostedObject() == null || objectsCache.get(imageHeapConstant.getHostedObject()) == imageHeapConstant;
+            assert imageHeapConstant.getHostedObject() == null || objectsCache.get(imageHeapConstant.getHostedObject()).equals(imageHeapConstant);
             return imageHeapConstant;
         }
         return objectsCache.get(constant);

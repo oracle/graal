@@ -257,14 +257,14 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
              * the previous behavior where the raw object was extracted and used as a key when
              * constructing the image heap map.
              */
-            return this.constantData == other.constantData;
+            return this.constantData == other.constantData && this.compressed == other.compressed;
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return constantData.hashCode();
+        return constantData.hashCode() + (compressed ? 1 : 0);
     }
 
     @Override
