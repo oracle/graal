@@ -32,8 +32,10 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -46,6 +48,7 @@ import org.graalvm.nativeimage.hosted.Feature.AfterHeapLayoutAccess;
 import org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess;
 import org.graalvm.nativeimage.hosted.Feature.BeforeHeapLayoutAccess;
 import org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess;
+import org.graalvm.word.LocationIdentity;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
@@ -420,10 +423,16 @@ public abstract class RuntimeCompilationFeature {
     public static class RuntimeCompilationGraphEncoder extends GraphEncoder {
 
         private final ImageHeapScanner heapScanner;
+        /**
+         * Cache already converted location identity objects to avoid creating multiple new
+         * instances for the same underlying location identity.
+         */
+        private final Map<ImageHeapConstant, LocationIdentity> locationIdentityCache;
 
         public RuntimeCompilationGraphEncoder(Architecture architecture, ImageHeapScanner heapScanner) {
             super(architecture);
             this.heapScanner = heapScanner;
+            this.locationIdentityCache = new ConcurrentHashMap<>();
         }
 
         @Override
@@ -441,12 +450,12 @@ public abstract class RuntimeCompilationFeature {
             return new RuntimeCompilationGraphDecoder(architecture, decodedGraph, heapScanner);
         }
 
-        private static Object unwrap(Object object) {
+        private Object unwrap(Object object) {
             if (object instanceof ImageHeapConstant ihc) {
                 VMError.guarantee(ihc.getHostedObject() != null);
                 return ihc.getHostedObject();
-            } else if (object instanceof ObjectLocationIdentity oli && oli.getObject() instanceof ImageHeapConstant ihc) {
-                return ObjectLocationIdentity.create(ihc.getHostedObject());
+            } else if (object instanceof ObjectLocationIdentity oli && oli.getObject() instanceof ImageHeapConstant heapConstant) {
+                return locationIdentityCache.computeIfAbsent(heapConstant, (hc) -> ObjectLocationIdentity.create(hc.getHostedObject()));
             }
             return object;
         }
@@ -455,10 +464,16 @@ public abstract class RuntimeCompilationFeature {
     static class RuntimeCompilationGraphDecoder extends GraphDecoder {
 
         private final ImageHeapScanner heapScanner;
+        /**
+         * Cache already converted location identity objects to avoid creating multiple new
+         * instances for the same underlying location identity.
+         */
+        private final Map<JavaConstant, LocationIdentity> locationIdentityCache;
 
         RuntimeCompilationGraphDecoder(Architecture architecture, StructuredGraph graph, ImageHeapScanner heapScanner) {
             super(architecture, graph);
             this.heapScanner = heapScanner;
+            this.locationIdentityCache = new ConcurrentHashMap<>();
         }
 
         @Override
@@ -467,7 +482,7 @@ public abstract class RuntimeCompilationFeature {
             if (object instanceof JavaConstant constant) {
                 return heapScanner.getImageHeapConstant(constant);
             } else if (object instanceof ObjectLocationIdentity oli) {
-                return ObjectLocationIdentity.create(heapScanner.getImageHeapConstant(oli.getObject()));
+                return locationIdentityCache.computeIfAbsent(oli.getObject(), (obj) -> ObjectLocationIdentity.create(heapScanner.getImageHeapConstant(obj)));
             }
             return object;
         }
