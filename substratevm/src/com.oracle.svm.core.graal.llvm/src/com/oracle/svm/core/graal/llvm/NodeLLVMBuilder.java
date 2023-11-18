@@ -149,7 +149,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
     protected NodeLLVMBuilder(StructuredGraph graph, LLVMGenerator gen) {
         this.gen = gen;
         this.builder = gen.getBuilder();
-        this.debugInfoBuilder = new SubstrateDebugInfoBuilder(graph, gen.getProviders().getSnippetReflection(), gen.getProviders().getMetaAccessExtensionProvider(), this);
+        this.debugInfoBuilder = new SubstrateDebugInfoBuilder(graph, gen.getProviders().getMetaAccessExtensionProvider(), this);
         setCompilationResultMethod(gen.getCompilationResult(), graph);
 
         for (HIRBlock block : graph.getLastSchedule().getCFG().getBlocks()) {
