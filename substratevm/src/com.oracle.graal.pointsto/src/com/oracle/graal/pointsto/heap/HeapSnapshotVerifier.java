@@ -226,27 +226,23 @@ public class HeapSnapshotVerifier {
 
         @Override
         public boolean forNullArrayElement(JavaConstant array, AnalysisType arrayType, int index, ScanReason reason) {
-            ImageHeapObjectArray arrayObject = (ImageHeapObjectArray) getSnapshot(array, reason);
-            JavaConstant elementSnapshot = arrayObject.readElementValue(index);
-            verifyArrayElementValue(JavaConstant.NULL_POINTER, index, reason, array, arrayObject, elementSnapshot);
-            return false;
+            return verifyArrayElementValue(JavaConstant.NULL_POINTER, index, reason, array);
         }
 
         @Override
         public boolean forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementValue, AnalysisType elementType, int index, ScanReason reason) {
+            return verifyArrayElementValue(elementValue, index, reason, array);
+        }
+
+        private boolean verifyArrayElementValue(JavaConstant elementValue, int index, ScanReason reason, JavaConstant array) {
+            ImageHeapObjectArray arrayObject = (ImageHeapObjectArray) getSnapshot(array, reason);
             /*
              * We don't care if an array element in the shadow heap was not yet read, i.e., the
              * future is not yet materialized. This can happen with values originating from lazy
              * fields that become available but may have not yet been consumed. We simply execute
              * the future, then compare the produced value.
              */
-            ImageHeapObjectArray arrayObject = (ImageHeapObjectArray) getSnapshot(array, reason);
             JavaConstant elementSnapshot = arrayObject.readElementValue(index);
-            verifyArrayElementValue(elementValue, index, reason, array, arrayObject, elementSnapshot);
-            return false;
-        }
-
-        private void verifyArrayElementValue(JavaConstant elementValue, int index, ScanReason reason, JavaConstant array, ImageHeapObjectArray arrayObject, JavaConstant elementSnapshot) {
             JavaConstant result = elementSnapshot;
             if (!Objects.equals(maybeUnwrapSnapshot(elementSnapshot, elementValue instanceof ImageHeapConstant), elementValue)) {
                 String format = "Value mismatch for array element at index %s of %s %n snapshot:  %s %n new value: %s %n";
@@ -257,6 +253,7 @@ public class HeapSnapshotVerifier {
                 heapPatched = true;
             }
             scanner.ensureReaderInstalled(result);
+            return false;
         }
 
         /**
