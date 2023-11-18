@@ -69,7 +69,7 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy {
         if (inliningUtils.alwaysInlineInvoke((AnalysisMetaAccess) b.getMetaAccess(), method)) {
             return true;
         }
-        if (b.getDepth() > maxInliningDepth) {
+        if (b.getDepth() >= maxInliningDepth) {
             return false;
         }
         if (b.recursiveInliningDepth(method) > 0) {
