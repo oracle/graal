@@ -31,10 +31,13 @@ import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEn
 import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.UTF_8;
 import static jdk.graal.compiler.nodes.NamedLocationIdentity.getArrayLocation;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.StrideUtil;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool.ArrayIndexOfVariant;
+import jdk.graal.compiler.nodes.ComputeObjectAddressNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
@@ -47,6 +50,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.InlineOnlyInvo
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.OptionalLazySymbol;
 import jdk.graal.compiler.nodes.spi.Replacements;
+import jdk.graal.compiler.replacements.InvocationPluginHelper;
 import jdk.graal.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 import jdk.graal.compiler.replacements.nodes.ArrayIndexOfMacroNode;
 import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
@@ -54,8 +58,7 @@ import jdk.graal.compiler.replacements.nodes.ArrayRegionCompareToNode;
 import jdk.graal.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import jdk.graal.compiler.replacements.nodes.CalcStringAttributesMacroNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode;
-import org.graalvm.word.LocationIdentity;
-
+import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
@@ -70,7 +73,7 @@ public class TruffleInvocationPlugins {
 
     public static void register(Architecture architecture, InvocationPlugins plugins, Replacements replacements) {
         if (architecture instanceof AMD64 || architecture instanceof AArch64) {
-            registerTStringPlugins(plugins, replacements);
+            registerTStringPlugins(plugins, replacements, architecture);
             registerArrayUtilsPlugins(plugins, replacements);
         }
     }
@@ -263,7 +266,8 @@ public class TruffleInvocationPlugins {
         return LocationIdentity.any();
     }
 
-    private static void registerTStringPlugins(InvocationPlugins plugins, Replacements replacements) {
+    @SuppressWarnings("try")
+    private static void registerTStringPlugins(InvocationPlugins plugins, Replacements replacements, Architecture arch) {
         plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/strings/TStringOps;"));
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.strings.TStringOps", replacements);
 
@@ -460,6 +464,28 @@ public class TruffleInvocationPlugins {
                 MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length);
                 b.addPush(JavaKind.Int, new CalcStringAttributesMacroNode(params, UTF_32, false, getArrayLocation(JavaKind.Int)));
                 return true;
+            }
+        });
+
+        r.registerConditional(VectorizedHashCodeNode.isSupported(arch), new InlineOnlyInvocationPlugin(
+                        "runHashCode", nodeType, byte[].class, long.class, int.class, int.class, boolean.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
+                            ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    Stride constStride = constantStrideParam(stride);
+                    JavaKind componentType = switch (constStride) {
+                        case S1 -> JavaKind.Boolean; // unsigned bytes
+                        case S2 -> JavaKind.Char;
+                        case S4 -> JavaKind.Int;
+                        default -> throw GraalError.shouldNotReachHereUnexpectedValue(constStride);
+                    };
+
+                    var arrayStart = b.add(new ComputeObjectAddressNode(array, offset));
+                    var initialValue = ConstantNode.forInt(0, b.getGraph());
+                    b.addPush(JavaKind.Int, new VectorizedHashCodeNode(arrayStart, length, initialValue, componentType));
+                    return true;
+                }
             }
         });
     }
