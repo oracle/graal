@@ -30,12 +30,24 @@ import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK22OrLater;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 @TargetClass(className = "jdk.internal.vm.ContinuationSupport")
 final class Target_jdk_internal_vm_ContinuationSupport {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeContinuationsSupported.class, isFinal = true) //
     static boolean SUPPORTED;
+
+    @Substitute
+    @TargetElement(onlyWith = JDK22OrLater.class)
+    @Fold
+    public static boolean isSupported() {
+        return ContinuationsFeature.isSupported();
+    }
 }
 
 @Platforms(Platform.HOSTED_ONLY.class)
