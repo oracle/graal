@@ -55,7 +55,6 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
@@ -210,14 +209,8 @@ final class Target_java_lang_Throwable {
 
     @Alias //
     @TargetElement(onlyWith = JDK22OrLater.class) //
-    @InjectAccessors(JFRTracingAccessor.class) //
+    @RecomputeFieldValue(kind = Kind.FromAlias, isFinal = true) //
     static boolean jfrTracing = false;
-
-    private static final class JFRTracingAccessor {
-        public static boolean get() {
-            return false;
-        }
-    }
 
     @Alias @RecomputeFieldValue(kind = Reset)//
     Object backtrace;
