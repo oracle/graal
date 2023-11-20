@@ -147,6 +147,7 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         assert nRegs >= 2 && CodeUtil.isPowerOf2(nRegs) : "number of vectors must be >= 2 and a power of 2";
         final int elementsPerVector = ASIMDSize.FullReg.bytes() / ElementSize.Word.bytes();
         final int elementsPerIteration = elementsPerVector * nRegs;
+        final int maxConsecutiveRegs = Math.min(nRegs, 4);
 
         // @formatter:off
         // elementsPerIteration = 16;
@@ -197,41 +198,17 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
             masm.loadAddress(rscratch1, dataChunkStart);
 
             ASIMDSize loadVecSize = elSize == ElementSize.Byte || elSize == ElementSize.HalfWord ? ASIMDSize.HalfReg : ASIMDSize.FullReg;
-            int consecutiveRegs = elSize == ElementSize.Byte ? 2 : 4;
-            boolean useMultiRegisterLoad = elSize == ElementSize.Byte && allConsecutiveSIMDRegisters(vtmp) && nRegs >= 4;
-            if (useMultiRegisterLoad) {
-                int regsFilledPerLoad = 4;
-                for (int ldVi = 0; ldVi < nRegs; ldVi += regsFilledPerLoad) {
-                    // load vector size chunk of memory into vtmp, and optionally increment address
-                    if (consecutiveRegs == 2) {
-                        assert elSize == ElementSize.Byte : elSize;
-                        AArch64Address indexedAddr = nRegs == regsFilledPerLoad
-                                        ? AArch64Address.createStructureNoOffsetAddress(rscratch1)
-                                        : AArch64Address.createStructureImmediatePostIndexAddress(ASIMDInstruction.LD1_MULTIPLE_2R,
-                                                        loadVecSize, elSize, rscratch1, loadVecSize.bytes() * consecutiveRegs);
-                        masm.neon.ld1MultipleVV(loadVecSize, elSize, vtmp[ldVi], vtmp[ldVi + 1], indexedAddr);
-                    } else {
-                        assert consecutiveRegs == 4 : consecutiveRegs;
-                        assert elSize == ElementSize.HalfWord || elSize == ElementSize.Word : elSize;
-                        AArch64Address indexedAddr = nRegs == regsFilledPerLoad
-                                        ? AArch64Address.createStructureNoOffsetAddress(rscratch1)
-                                        : AArch64Address.createStructureImmediatePostIndexAddress(ASIMDInstruction.LD1_MULTIPLE_4R,
-                                                        loadVecSize, elSize, rscratch1, loadVecSize.bytes() * consecutiveRegs);
-                        masm.neon.ld1MultipleVVVV(loadVecSize, elSize, vtmp[ldVi], vtmp[ldVi + 1], vtmp[ldVi + 2], vtmp[ldVi + 3], indexedAddr);
-                    }
-                    extendVectorsToWord(masm, unsigned, loadVecSize, elSize, vtmp, ldVi, consecutiveRegs);
-                }
-            } else {
-                int regsFilledPerLoad = loadVecSize.bytes() / ElementSize.Word.bytes() / elSize.bytes();
-                AArch64Address indexedAddr = nRegs == regsFilledPerLoad
-                                ? AArch64Address.createStructureNoOffsetAddress(rscratch1)
-                                : AArch64Address.createStructureImmediatePostIndexAddress(ASIMDInstruction.LD1_MULTIPLE_1R,
-                                                loadVecSize, elSize, rscratch1, loadVecSize.bytes());
-                // load vector size chunk of memory into vtmp, and optionally increment address
-                for (int ldVi = 0; ldVi < nRegs; ldVi += regsFilledPerLoad) {
-                    masm.neon.ld1MultipleV(loadVecSize, elSize, vtmp[ldVi], indexedAddr);
-                    extendVectorsToWord(masm, unsigned, loadVecSize, elSize, vtmp, ldVi, consecutiveRegs);
-                }
+            // number of <loadVecSize> registers needed to load to fill 4 full vectors.
+            // i.e. byte: 1 full or 2 half, halfword: 2 full or 4 half, word: 4 full.
+            int consecutiveRegs = Math.min(elSize.bytes() * ASIMDSize.FullReg.bytes() / loadVecSize.bytes(), maxConsecutiveRegs);
+            int extensionFactor = (ElementSize.Word.bytes() / elSize.bytes()) / (ASIMDSize.FullReg.bytes() / loadVecSize.bytes());
+            int regsFilledPerLoad = consecutiveRegs * extensionFactor;
+            boolean postIndex = consecutiveRegs > 2;
+            for (int ldVi = 0; ldVi < nRegs; ldVi += regsFilledPerLoad) {
+                loadConsecutiveVectors(masm, loadVecSize, elSize, rscratch1, vtmp, ldVi, consecutiveRegs, postIndex, false);
+            }
+            for (int ldVi = 0; ldVi < nRegs; ldVi += regsFilledPerLoad) {
+                extendVectorsToWord(masm, unsigned, loadVecSize, elSize, vtmp, ldVi, consecutiveRegs);
             }
         }
 
@@ -264,15 +241,9 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         if (coefOffset != 0) {
             masm.add(64, coefAddrReg, coefAddrReg, coefOffset);
         }
-        if (allConsecutiveSIMDRegisters(vcoef) && vcoef.length == 4) {
-            AArch64Address coefAddr = AArch64Address.createStructureNoOffsetAddress(tmp2);
-            masm.neon.ld1MultipleVVVV(ASIMDSize.FullReg, ElementSize.Word, vcoef[0], vcoef[1], vcoef[2], vcoef[3], coefAddr);
-        } else {
-            AArch64Address coefAddrPostIndex = AArch64Address.createStructureImmediatePostIndexAddress(ASIMDInstruction.LD1_MULTIPLE_1R,
-                            ASIMDSize.FullReg, ElementSize.Word, coefAddrReg, ASIMDSize.FullReg.bytes());
-            for (int idx = 0; idx < nRegs; idx++) {
-                masm.neon.ld1MultipleV(ASIMDSize.FullReg, ElementSize.Word, vcoef[idx], coefAddrPostIndex);
-            }
+        for (int i = 0; i < nRegs; i += maxConsecutiveRegs) {
+            boolean postIndex = maxConsecutiveRegs < nRegs;
+            loadConsecutiveVectors(masm, ASIMDSize.FullReg, ElementSize.Word, coefAddrReg, vcoef, i, maxConsecutiveRegs, postIndex, false);
         }
 
         // vresult *= vcoef;
@@ -333,13 +304,91 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
     }
 
     /**
+     * Load consecutive vector registers from a register-based memory address, and optionally
+     * increment the address register by the loaded bytes.
+     */
+    private static void loadConsecutiveVectors(AArch64MacroAssembler masm,
+                    ASIMDSize vecSize, ElementSize elSize, Register indexedAddrReg, Register[] vreg,
+                    int startReg, int consecutiveRegs, boolean postIndex, boolean preferLd1) {
+        assert consecutiveRegs <= 4 : consecutiveRegs;
+        switch (consecutiveRegs) {
+            case 2 -> {
+                if (preferLd1 && allConsecutiveSIMDRegisters(vreg)) {
+                    masm.neon.ld1MultipleVV(vecSize, elSize, vreg[startReg], vreg[startReg + 1],
+                                    addressForLd1M(2, vecSize, elSize, indexedAddrReg, postIndex));
+                } else {
+                    masm.fldp(vecSize.bits(), vreg[startReg], vreg[startReg + 1],
+                                    addressForLdp(vecSize, indexedAddrReg, postIndex, 0));
+                }
+            }
+            case 4 -> {
+                if (preferLd1 && allConsecutiveSIMDRegisters(vreg)) {
+                    masm.neon.ld1MultipleVVVV(vecSize, elSize,
+                                    vreg[startReg], vreg[startReg + 1], vreg[startReg + 2], vreg[startReg + 3],
+                                    addressForLd1M(4, vecSize, elSize, indexedAddrReg, postIndex));
+                } else {
+                    masm.fldp(vecSize.bits(), vreg[startReg], vreg[startReg + 1],
+                                    addressForLdp(vecSize, indexedAddrReg, postIndex, 0));
+                    masm.fldp(vecSize.bits(), vreg[startReg + 2], vreg[startReg + 3],
+                                    addressForLdp(vecSize, indexedAddrReg, postIndex, 2));
+                }
+            }
+            default -> {
+                for (int i = 0; i < consecutiveRegs; i++) {
+                    if (preferLd1 && (consecutiveRegs == 1 || postIndex)) {
+                        masm.neon.ld1MultipleV(vecSize, elSize, vreg[startReg + i],
+                                        addressForLd1M(1, vecSize, elSize, indexedAddrReg, postIndex));
+                    } else {
+                        masm.fldr(vecSize.bits(), vreg[startReg + i],
+                                        addressForLdr(vecSize, indexedAddrReg, postIndex, i));
+                    }
+                }
+            }
+        }
+    }
+
+    private static AArch64Address addressForLdr(ASIMDSize vecSize, Register indexedAddrReg, boolean postIndex, int offsetScaled) {
+        int scale = vecSize.bytes();
+        if (postIndex) {
+            return AArch64Address.createImmediateAddress(vecSize.bits(), AddressingMode.IMMEDIATE_POST_INDEXED, indexedAddrReg, scale);
+        } else {
+            return AArch64Address.createImmediateAddress(vecSize.bits(), AddressingMode.IMMEDIATE_UNSIGNED_SCALED, indexedAddrReg, offsetScaled * scale);
+        }
+    }
+
+    private static AArch64Address addressForLdp(ASIMDSize vecSize, Register indexedAddrReg, boolean postIndex, int offsetScaled) {
+        int scale = vecSize.bytes();
+        if (postIndex) {
+            return AArch64Address.createImmediateAddress(vecSize.bits(), AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, indexedAddrReg, 2 * scale);
+        } else {
+            return AArch64Address.createImmediateAddress(vecSize.bits(), AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED, indexedAddrReg, offsetScaled * scale);
+        }
+    }
+
+    private static AArch64Address addressForLd1M(int loadedVectors, ASIMDSize vecSize, ElementSize elSize, Register indexedAddrReg, boolean postIndex) {
+        if (postIndex) {
+            var ld1Instruction = switch (loadedVectors) {
+                case 1 -> ASIMDInstruction.LD1_MULTIPLE_1R;
+                case 2 -> ASIMDInstruction.LD1_MULTIPLE_2R;
+                case 3 -> ASIMDInstruction.LD1_MULTIPLE_3R;
+                case 4 -> ASIMDInstruction.LD1_MULTIPLE_4R;
+                default -> throw GraalError.shouldNotReachHereUnexpectedValue(loadedVectors);
+            };
+            int incrementUnscaled = vecSize.bytes() * loadedVectors;
+            return AArch64Address.createStructureImmediatePostIndexAddress(ld1Instruction, vecSize, elSize, indexedAddrReg, incrementUnscaled);
+        } else {
+            return AArch64Address.createStructureNoOffsetAddress(indexedAddrReg);
+        }
+    }
+
+    /**
      * Zero-or-sign-extend byte-or-halfword vector registers to word-size vectors.
      */
-    private static void extendVectorsToWord(AArch64MacroAssembler masm, boolean unsigned, ASIMDSize startVecSize, ElementSize startElSize, Register[] vtmp, int start, int startSourceRegs) {
+    private static void extendVectorsToWord(AArch64MacroAssembler masm, boolean unsigned, ASIMDSize startVecSize, ElementSize startElSize, Register[] vtmp, int start, int srcRegsInitial) {
         ASIMDSize vecSize = startVecSize;
         ElementSize srcElSize = startElSize;
         ElementSize endElSize = ElementSize.Word;
-        int srcRegs = startSourceRegs;
+        int srcRegs = srcRegsInitial;
         while (srcElSize.bytes() < endElSize.bytes()) {
             if (vecSize == ASIMDSize.HalfReg) {
                 vecSize = ASIMDSize.FullReg;
@@ -357,7 +406,7 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
      */
     private static void extendSameRegs(AArch64MacroAssembler masm, boolean unsigned, ElementSize srcElSize, Register[] vtmp, int start, int srcRegs) {
         for (int i = start; i < start + srcRegs; i++) {
-            xtlVV(masm, unsigned, srcElSize, vtmp[start + i], vtmp[start + i]);
+            xtlVV(masm, unsigned, srcElSize, vtmp[i], vtmp[i]);
         }
     }
 
