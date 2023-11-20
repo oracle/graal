@@ -310,7 +310,11 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
     }
 
     private static boolean useSingleton(ExportsLibrary libraryExport, Map<String, ExportMessageData> messages, boolean cached) {
-        return libraryExport.isFinalReceiver() && !libraryExport.needsRewrites() && !libraryExport.needsDynamicDispatch() && !needsReceiver(libraryExport, messages, cached);
+        return libraryExport.isFinalReceiver() && //
+                        !libraryExport.needsState() && //
+                        !libraryExport.needsLibraryNode() && //
+                        !libraryExport.needsDynamicDispatch() && //
+                        !needsReceiver(libraryExport, messages, cached);
     }
 
     CodeTypeElement createResolvedExports(ExportsLibrary libraryExport, Map<String, ExportMessageData> messages, String className, CodeTypeElement cacheClass, CodeTypeElement uncachedClass) {
@@ -748,7 +752,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         cacheClass.addOptional(createCastMethod(libraryExports, messages, exportReceiverType, true));
         cacheClass.addOptional(accepts);
 
-        if (!libraryExports.needsRewrites() && useSingleton(libraryExports, messages, true)) {
+        if (useSingleton(libraryExports, messages, true)) {
             CodeExecutableElement isAdoptable = cacheClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "isAdoptable")));
             builder = isAdoptable.createBuilder();
             if (libraryExports.needsDynamicDispatch()) {
@@ -866,7 +870,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                     // signature
                     GeneratorUtils.addThrownExceptions(cachedExecute, message.getExecutable().getThrownTypes());
                 }
-                if (libraryExports.needsRewrites()) {
+                if (libraryExports.needsState()) {
                     injectCachedAssertions(export.getExportsLibrary().getLibrary(), cachedExecute);
                 }
                 if (message.isDeprecated()) {
