@@ -210,14 +210,6 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
                                         : AArch64Address.createStructureImmediatePostIndexAddress(ASIMDInstruction.LD1_MULTIPLE_2R,
                                                         loadVecSize, elSize, rscratch1, loadVecSize.bytes() * consecutiveRegs);
                         masm.neon.ld1MultipleVV(loadVecSize, elSize, vtmp[ldVi], vtmp[ldVi + 1], indexedAddr);
-                        // extend byte to halfword
-                        xtlVV(masm, unsigned, elSize, vtmp[ldVi + 1], vtmp[ldVi + 1]);
-                        xtlVV(masm, unsigned, elSize, vtmp[ldVi], vtmp[ldVi]);
-                        // extend halfword to word
-                        xtl2VV(masm, unsigned, ElementSize.HalfWord, vtmp[ldVi + 3], vtmp[ldVi + 1]);
-                        xtlVV(masm, unsigned, ElementSize.HalfWord, vtmp[ldVi + 2], vtmp[ldVi + 1]);
-                        xtl2VV(masm, unsigned, ElementSize.HalfWord, vtmp[ldVi + 1], vtmp[ldVi]);
-                        xtlVV(masm, unsigned, ElementSize.HalfWord, vtmp[ldVi], vtmp[ldVi]);
                     } else {
                         assert consecutiveRegs == 4 : consecutiveRegs;
                         assert elSize == ElementSize.HalfWord || elSize == ElementSize.Word : elSize;
@@ -226,13 +218,8 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
                                         : AArch64Address.createStructureImmediatePostIndexAddress(ASIMDInstruction.LD1_MULTIPLE_4R,
                                                         loadVecSize, elSize, rscratch1, loadVecSize.bytes() * consecutiveRegs);
                         masm.neon.ld1MultipleVVVV(loadVecSize, elSize, vtmp[ldVi], vtmp[ldVi + 1], vtmp[ldVi + 2], vtmp[ldVi + 3], indexedAddr);
-                        if (elSize == ElementSize.HalfWord) {
-                            for (int i = 0; i < consecutiveRegs; i++) {
-                                // extend halfword to word
-                                xtlVV(masm, unsigned, elSize, vtmp[ldVi + i], vtmp[ldVi + i]);
-                            }
-                        }
                     }
+                    extendVectorsToWord(masm, unsigned, loadVecSize, elSize, vtmp, ldVi, consecutiveRegs);
                 }
             } else {
                 int regsFilledPerLoad = loadVecSize.bytes() / ElementSize.Word.bytes() / elSize.bytes();
@@ -243,32 +230,7 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
                 // load vector size chunk of memory into vtmp, and optionally increment address
                 for (int ldVi = 0; ldVi < nRegs; ldVi += regsFilledPerLoad) {
                     masm.neon.ld1MultipleV(loadVecSize, elSize, vtmp[ldVi], indexedAddr);
-                }
-                // expand (i.e. zero- or sign-extend) vector elements to int size
-                if (elSize == ElementSize.Byte || elSize == ElementSize.HalfWord) {
-                    for (int ldVi = 0; ldVi < nRegs; ldVi += regsFilledPerLoad) {
-                        if (loadVecSize == ASIMDSize.HalfReg) {
-                            xtlVV(masm, unsigned, elSize, vtmp[ldVi], vtmp[ldVi]);
-                        } else {
-                            xtl2VV(masm, unsigned, elSize, vtmp[ldVi + 1], vtmp[ldVi]);
-                            xtlVV(masm, unsigned, elSize, vtmp[ldVi], vtmp[ldVi]);
-                        }
-                    }
-                    if (elSize == ElementSize.Byte) {
-                        for (int ldVi = 0; ldVi < nRegs; ldVi += regsFilledPerLoad) {
-                            if (loadVecSize == ASIMDSize.HalfReg) {
-                                assert regsFilledPerLoad == 2 : regsFilledPerLoad;
-                                xtl2VV(masm, unsigned, ElementSize.HalfWord, vtmp[ldVi + 1], vtmp[ldVi]);
-                                xtlVV(masm, unsigned, ElementSize.HalfWord, vtmp[ldVi], vtmp[ldVi]);
-                            } else {
-                                assert regsFilledPerLoad == 4 : regsFilledPerLoad;
-                                xtl2VV(masm, unsigned, ElementSize.HalfWord, vtmp[ldVi + 3], vtmp[ldVi + 1]);
-                                xtlVV(masm, unsigned, ElementSize.HalfWord, vtmp[ldVi + 2], vtmp[ldVi + 1]);
-                                xtl2VV(masm, unsigned, ElementSize.HalfWord, vtmp[ldVi + 1], vtmp[ldVi]);
-                                xtlVV(masm, unsigned, ElementSize.HalfWord, vtmp[ldVi], vtmp[ldVi]);
-                            }
-                        }
-                    }
+                    extendVectorsToWord(masm, unsigned, loadVecSize, elSize, vtmp, ldVi, consecutiveRegs);
                 }
             }
         }
@@ -368,6 +330,49 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         }
         // }
         masm.bind(labelEnd);
+    }
+
+    /**
+     * Zero-or-sign-extend byte-or-halfword vector registers to word-size vectors.
+     */
+    private static void extendVectorsToWord(AArch64MacroAssembler masm, boolean unsigned, ASIMDSize startVecSize, ElementSize startElSize, Register[] vtmp, int start, int startSourceRegs) {
+        ASIMDSize vecSize = startVecSize;
+        ElementSize srcElSize = startElSize;
+        ElementSize endElSize = ElementSize.Word;
+        int srcRegs = startSourceRegs;
+        while (srcElSize.bytes() < endElSize.bytes()) {
+            if (vecSize == ASIMDSize.HalfReg) {
+                vecSize = ASIMDSize.FullReg;
+                extendSameRegs(masm, unsigned, srcElSize, vtmp, start, srcRegs);
+            } else {
+                extendPairwise(masm, unsigned, srcElSize, vtmp, start, srcRegs);
+                srcRegs *= 2;
+            }
+            srcElSize = srcElSize.expand();
+        }
+    }
+
+    /**
+     * Zero-or-sign-extend byte-to-halfword or halfword-to-word within the same register.
+     */
+    private static void extendSameRegs(AArch64MacroAssembler masm, boolean unsigned, ElementSize srcElSize, Register[] vtmp, int start, int srcRegs) {
+        for (int i = start; i < start + srcRegs; i++) {
+            xtlVV(masm, unsigned, srcElSize, vtmp[start + i], vtmp[start + i]);
+        }
+    }
+
+    /**
+     * Zero-or-sign-extend 1 to 2 or 2 to 4 vectors (byte-to-halfword or halfword-to-word).
+     *
+     * Note that the registers need to be written in the right order to not overwrite any source
+     * register before we've extended all its elements.
+     */
+    private static void extendPairwise(AArch64MacroAssembler masm, boolean unsigned, ElementSize srcElSize, Register[] vtmp, int start, int srcRegs) {
+        int dstRegs = srcRegs * 2;
+        for (int srci = start + srcRegs - 1, dsti = start + dstRegs - 1; srci >= start; srci -= 1, dsti -= 2) {
+            xtl2VV(masm, unsigned, srcElSize, vtmp[dsti], vtmp[srci]);
+            xtlVV(masm, unsigned, srcElSize, vtmp[dsti - 1], vtmp[srci]);
+        }
     }
 
     /**
