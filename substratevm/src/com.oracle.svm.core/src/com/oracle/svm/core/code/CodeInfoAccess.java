@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.code;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.UnsignedWord;
@@ -37,12 +36,15 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
+import com.oracle.svm.core.code.FrameInfoDecoder.ConstantAccess;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * Provides functionality to query information about a unit of compiled code from a {@link CodeInfo}
@@ -258,8 +260,8 @@ public final class CodeInfoAccess {
         return getObjectField(info, CodeInfoImpl.NAME_OBJFIELD);
     }
 
-    public static long lookupDeoptimizationEntrypoint(CodeInfo info, long method, long encodedBci, CodeInfoQueryResult codeInfo) {
-        return CodeInfoDecoder.lookupDeoptimizationEntrypoint(info, method, encodedBci, codeInfo);
+    public static long lookupDeoptimizationEntrypoint(CodeInfo info, long method, long encodedBci, CodeInfoQueryResult codeInfo, ConstantAccess constantAccess) {
+        return CodeInfoDecoder.lookupDeoptimizationEntrypoint(info, method, encodedBci, codeInfo, constantAccess);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -280,7 +282,11 @@ public final class CodeInfoAccess {
     }
 
     public static void lookupCodeInfo(CodeInfo info, long ip, CodeInfoQueryResult codeInfoQueryResult) {
-        CodeInfoDecoder.lookupCodeInfo(info, ip, codeInfoQueryResult);
+        lookupCodeInfo(info, ip, codeInfoQueryResult, FrameInfoDecoder.SubstrateConstantAccess);
+    }
+
+    public static void lookupCodeInfo(CodeInfo info, long ip, CodeInfoQueryResult codeInfoQueryResult, ConstantAccess constantAccess) {
+        CodeInfoDecoder.lookupCodeInfo(info, ip, codeInfoQueryResult, constantAccess);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
