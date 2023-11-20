@@ -73,7 +73,7 @@ public abstract class ClassInclusionPolicy {
      * Determine if the given field needs to be included in the image according to the policy.
      */
     public boolean isFieldIncluded(Field field) {
-        return isAccessible(field);
+        return bb.getHostVM().isFieldIncluded(bb, field);
     }
 
     /**
@@ -105,12 +105,16 @@ public abstract class ClassInclusionPolicy {
     }
 
     /**
-     * The analysis for the base layer of a layered image assumes that any method or field that is
-     * reachable using the base java access rules can be an entry point. An upper layer does not
-     * have access to the packages from a lower layer. Thus, only the public classes with their
-     * public and protected inner classes, methods and fields can be accessed by an upper layer.
-     * Protected elements from final or sealed class cannot be accessed as an upper layer cannot
+     * The analysis for the base layer of a layered image assumes that any method that is reachable
+     * using the base java access rules can be an entry point. An upper layer does not have access
+     * to the packages from a lower layer. Thus, only the public classes with their public and
+     * protected inner classes and methods can be accessed by an upper layer.
+     * <p>
+     * Protected elements from a final or sealed class cannot be accessed as an upper layer cannot
      * create a new class that extends the final or sealed class.
+     * <p>
+     * All the fields are included disregarding access rules as a missing field would cause issues
+     * in the object layout.
      */
     public static class LayeredBaseImageInclusionPolicy extends ClassInclusionPolicy {
         public LayeredBaseImageInclusionPolicy(Object reason) {
