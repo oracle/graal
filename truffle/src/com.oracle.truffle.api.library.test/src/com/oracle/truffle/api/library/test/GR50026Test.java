@@ -118,18 +118,6 @@ public class GR50026Test extends AbstractLibraryTest {
         assertFalse(lib1.isAdoptable());
     }
 
-    @GenerateInline
-    @GenerateCached(false)
-    @GenerateUncached
-    abstract static class Helper1 extends Node {
-        public abstract boolean execute(Node inliningTarget, Object arg);
-
-        @Specialization
-        boolean doSomething(Object arg) {
-            return false;
-        }
-    }
-
     // no singleton cached node
     @ExportLibrary(GR50026TestLibrary.class)
     public static final class TestBindNode {
