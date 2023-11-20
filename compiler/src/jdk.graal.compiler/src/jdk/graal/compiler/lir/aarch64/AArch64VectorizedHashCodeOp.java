@@ -275,8 +275,6 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
 
         // vresult[i] = vresult[i] * vnext + vtmp[i];
         for (int idx = 0; idx < nRegs; idx++) {
-            // masm.neon.mulVVV(FullReg, ElementSize.Word, vresult[idx], vresult[idx], vnext);
-            // masm.neon.addVVV(FullReg, ElementSize.Word, vresult[idx], vresult[idx], vtmp[idx]);
             masm.neon.mlaVVV(ASIMDSize.FullReg, ElementSize.Word, vtmp[idx], vresult[idx], vnext);
             masm.neon.moveVV(ASIMDSize.FullReg, vresult[idx], vtmp[idx]);
         }
@@ -378,7 +376,6 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
      */
     private static void reduceVectorLanes(AArch64MacroAssembler masm, ASIMDSize vsize, Register[] vresult) {
         // reduce vectors pairwise until there's only a single vector left
-        // e.g. vresult = vresult[0].add(vresult[1]).add(vresult[2]).add(vresult[3]);
         for (int nRegs = vresult.length, stride = 1; nRegs >= 2; nRegs /= 2, stride *= 2) {
             for (int i = 0; i < vresult.length - stride; i += 2 * stride) {
                 masm.neon.addVVV(vsize, ElementSize.Word, vresult[i], vresult[i], vresult[i + stride]);
@@ -387,7 +384,7 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
                 masm.neon.addVVV(vsize, ElementSize.Word, vresult[0], vresult[0], vresult[(nRegs - 1) * stride]);
             }
         }
-        // result = vresult.reduceLanes(ADD);
+        // reduce vector lanes horizontally to a scalar value (vresult.reduceLanes(ADD))
         masm.neon.addvSV(vsize, ElementSize.Word, vresult[0], vresult[0]);
     }
 
