@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.graalvm.compiler.loop.phases.LoopTransformations;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
@@ -231,7 +233,7 @@ public class LoopFragmentInside extends LoopFragment {
                 opaqueUnrolledStrides.put(loop.loopBegin(), opaque);
             } else {
                 assert counted.getLimitCheckedIV().isConstantStride();
-                assert Math.addExact(counted.getLimitCheckedIV().constantStride(), counted.getLimitCheckedIV().constantStride()) == counted.getLimitCheckedIV().constantStride() * 2;
+                assert !LoopTransformations.strideAdditionOverflows(loop) : "Stride addition must not overflow";
                 ValueNode previousValue = opaque.getValue();
                 opaque.setValue(graph.addOrUniqueWithInputs(AddNode.add(counterStride, previousValue, NodeView.DEFAULT)));
                 GraphUtil.tryKillUnused(previousValue);
