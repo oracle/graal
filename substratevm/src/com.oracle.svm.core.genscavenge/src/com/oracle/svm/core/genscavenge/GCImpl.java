@@ -190,7 +190,12 @@ public final class GCImpl implements GC {
         data.setRequestingNanoTime(System.nanoTime());
         data.setForceFullGC(forceFullGC);
         enqueueCollectOperation(data);
-        return data.getOutOfMemory();
+
+        boolean outOfMemory = data.getOutOfMemory();
+        if (outOfMemory && SerialGCOptions.IgnoreMaxHeapSizeWhileInVMOperation.getValue() && VMOperation.isInProgress()) {
+            outOfMemory = false;
+        }
+        return outOfMemory;
     }
 
     @Uninterruptible(reason = "Used as a transition between uninterruptible and interruptible code", calleeMustBe = false)
