@@ -415,7 +415,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    static BigInteger asBigInteger(StaticObject receiver) throws UnsupportedMessageException {
+    public static BigInteger asBigInteger(StaticObject receiver) throws UnsupportedMessageException {
         receiver.checkNotForeign();
         if (!fitsInBigInteger(receiver)) {
             CompilerDirectives.transferToInterpreter();

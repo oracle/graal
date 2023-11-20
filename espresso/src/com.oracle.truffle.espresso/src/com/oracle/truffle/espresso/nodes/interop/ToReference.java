@@ -56,6 +56,7 @@ import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
 import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.EspressoInterop;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 @NodeInfo(shortName = "Convert to Espresso StaticObject")
@@ -2117,14 +2118,22 @@ public abstract class ToReference extends ToEspressoNode {
             return StaticObject.createForeignNull(EspressoLanguage.get(this), value);
         }
 
-        @Specialization
+        @Specialization(guards = "!value.isForeignObject()")
         public StaticObject doEspresso(StaticObject value,
                         @Cached InstanceOf.Dynamic instanceOf,
                         @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
             if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass(), meta.java_math_BigInteger)) {
                 return value; // pass through, NULL coercion not needed.
             }
-            throw UnsupportedTypeException.create(new Object[]{value}, meta.java_math_BigInteger.getTypeAsString());
+            try {
+                BigInteger bigInteger = EspressoInterop.asBigInteger(value);
+                StaticObject guestBigInteger = getAllocator().createNew(meta.java_math_BigInteger);
+                byte[] bytes = bigInteger.toByteArray();
+                meta.java_math_BigInteger_init.invokeDirect(guestBigInteger, StaticObject.wrap(bytes, meta));
+                return guestBigInteger;
+            } catch (UnsupportedMessageException e) {
+                throw UnsupportedTypeException.create(new Object[]{value}, meta.java_math_BigInteger.getTypeAsString());
+            }
         }
 
         @Specialization(guards = "interop.fitsInBigInteger(value)")

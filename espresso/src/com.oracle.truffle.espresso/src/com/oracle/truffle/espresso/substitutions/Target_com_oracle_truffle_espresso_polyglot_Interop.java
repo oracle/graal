@@ -612,9 +612,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @Cached BranchProfile exceptionProfile) {
             try {
                 return toBigInteger.execute(InteropUtils.unwrapForeign(getLanguage(), receiver));
-            } catch (InteropException e) {
+            } catch (UnsupportedTypeException e) {
                 exceptionProfile.enter();
-                throw throwInteropExceptionAsGuest.execute(e);
+                throw throwInteropExceptionAsGuest.execute(UnsupportedMessageException.create());
             }
         }
     }
