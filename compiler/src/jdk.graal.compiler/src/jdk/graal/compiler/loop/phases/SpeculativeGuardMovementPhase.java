@@ -592,7 +592,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
 
             CountedLoopInfo countedLoop = loopEx.counted();
 
-            if (profilingInfo != null && !(profilingInfo instanceof DefaultProfilingInfo)) {
+            if (!(profilingInfo instanceof DefaultProfilingInfo)) {
                 double loopFreqThreshold = 1;
                 if (!(iv.initNode() instanceof ConstantNode && bound instanceof ConstantNode)) {
                     // additional compare and short-circuit-or introduced in optimizeCompare
@@ -930,10 +930,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                     return false;
                 }
             }
-            if (profilingInfo == null) {
-                return false;
-            }
-            if (checkDeoptimizationCount) {
+            if (checkDeoptimizationCount && profilingInfo != null) {
                 if (profilingInfo.getDeoptimizationCount(DeoptimizationReason.LoopLimitCheck) > 1) {
                     debug.log("Preventing Speculative Guard Motion because of failed LoopLimitCheck");
                     return false;
