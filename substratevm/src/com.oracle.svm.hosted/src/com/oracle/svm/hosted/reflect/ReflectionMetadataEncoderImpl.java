@@ -282,7 +282,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         if (signers != null) {
             signerConstants = new JavaConstant[signers.length];
             for (int i = 0; i < signers.length; ++i) {
-                signerConstants[i] = snippetReflection.unwrapConstant(snippetReflection.forObject(signers[i]));
+                signerConstants[i] = snippetReflection.forObject(signers[i]);
                 addConstantObject(signerConstants[i]);
             }
         }
@@ -294,12 +294,11 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
     }
 
     private void addConstantObject(JavaConstant constant) {
-        assert !(constant instanceof ImageHeapConstant);
         encoders.objectConstants.addObject(constant);
     }
 
     private void registerError(Throwable error) {
-        addConstantObject(snippetReflection.unwrapConstant(snippetReflection.forObject(error)));
+        addConstantObject(snippetReflection.forObject(error));
     }
 
     private static final Method getEnclosingMethod0 = ReflectionUtil.lookupMethod(Class.class, "getEnclosingMethod0");
@@ -422,7 +421,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         ReflectParameterMetadata[] reflectParameters = registerReflectParameters(reflectMethod);
         JavaConstant accessorConstant = null;
         if (accessor != null) {
-            accessorConstant = snippetReflection.unwrapConstant(snippetReflection.forObject(accessor));
+            accessorConstant = snippetReflection.forObject(accessor);
             addConstantObject(accessorConstant);
         }
 
@@ -458,7 +457,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         AnnotationMemberValue annotationDefault = isMethod ? registerAnnotationDefaultValues((AnalysisMethod) analysisObject) : null;
         ReflectParameterMetadata[] reflectParameters = isExecutable ? registerReflectParameters((Executable) object) : null;
         AccessibleObject holder = ReflectionMetadataEncoder.getHolder(object);
-        JavaConstant heapObjectConstant = snippetReflection.unwrapConstant(snippetReflection.forObject(holder));
+        JavaConstant heapObjectConstant = snippetReflection.forObject(holder);
         addConstantObject(heapObjectConstant);
 
         AccessibleObjectMetadata metadata;
@@ -534,7 +533,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
             encoders.sourceMethodNames.addObject(string);
         }
         for (JavaConstant proxy : annotationValue.getExceptionProxies(snippetReflection)) {
-            addConstantObject(snippetReflection.unwrapConstant(proxy));
+            addConstantObject(proxy);
         }
     }
 
@@ -743,7 +742,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
     }
 
     private int encodeErrorIndex(Throwable error) {
-        int index = encoders.objectConstants.getIndex(snippetReflection.unwrapConstant(snippetReflection.forObject(error)));
+        int index = encoders.objectConstants.getIndex(snippetReflection.forObject(error));
         int encodedIndex = FIRST_ERROR_INDEX - index;
         VMError.guarantee(ReflectionMetadataDecoderImpl.isErrorIndex(encodedIndex));
         return encodedIndex;
