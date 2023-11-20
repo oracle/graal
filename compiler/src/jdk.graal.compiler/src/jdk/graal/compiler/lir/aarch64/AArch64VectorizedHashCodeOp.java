@@ -76,7 +76,7 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         this.arrayKind = arrayKind;
 
         this.temp = allocateTempRegisters(tool, 5);
-        this.vectorTemp = allocateVectorRegisters(tool, 13);
+        this.vectorTemp = allocateVectorRegisters(tool, 9); // (1 vnext + 4 vresult + 4 vtmp/vcoef)
     }
 
     private static void arraysHashcodeElload(AArch64MacroAssembler masm, Register dst, AArch64Address src, JavaKind eltype) {
@@ -133,7 +133,7 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         Register vnext = asRegister(vectorTemp[0]);
         Register[] vcoef = {asRegister(vectorTemp[1]), asRegister(vectorTemp[2]), asRegister(vectorTemp[3]), asRegister(vectorTemp[4])};
         Register[] vresult = {asRegister(vectorTemp[5]), asRegister(vectorTemp[6]), asRegister(vectorTemp[7]), asRegister(vectorTemp[8])};
-        Register[] vtmp = {asRegister(vectorTemp[9]), asRegister(vectorTemp[10]), asRegister(vectorTemp[11]), asRegister(vectorTemp[12])};
+        Register[] vtmp = vcoef;
 
         final boolean unsigned = arrayKind == JavaKind.Boolean || arrayKind == JavaKind.Char;
         final ElementSize elSize = switch (arrayKind) {
