@@ -91,23 +91,6 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
     }
 
     private static final int[] POWERS_OF_31_BACKWARDS = new int[]{
-                    2111290369,
-                    -2010103841,
-                    350799937,
-                    11316127,
-                    693101697,
-                    -254736545,
-                    961614017,
-                    31019807,
-                    -2077209343,
-                    -67006753,
-                    1244764481,
-                    -2038056289,
-                    211350913,
-                    -408824225,
-                    -844471871,
-                    -997072353,
-                    1353309697,
                     -510534177,
                     1507551809,
                     -505558625,
@@ -191,19 +174,8 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         Register next = tmp3;
 
         // vnext = IntVector.broadcast(I128, power_of_31_backwards[0]);
-        boolean useConstant = true;
-        if (useConstant) {
-            int nextValue = POWERS_OF_31_BACKWARDS[POWERS_OF_31_BACKWARDS.length - elementsPerIteration - 1];
-            masm.mov(next, nextValue);
-        } else {
-            crb.recordDataReferenceInCode(powersOf31);
-            masm.adrpAdd(next);
-            int nextOffset = (POWERS_OF_31_BACKWARDS.length - elementsPerIteration - 1) * JavaKind.Int.getByteCount();
-            if (nextOffset != 0) {
-                masm.add(64, next, next, nextOffset);
-            }
-            masm.ldr(32, next, AArch64Address.createBaseRegisterOnlyAddress(32, next));
-        }
+        int nextPow31 = POWERS_OF_31_BACKWARDS[POWERS_OF_31_BACKWARDS.length - elementsPerIteration] * 31;
+        masm.mov(next, nextPow31);
         masm.neon.dupVG(ASIMDSize.FullReg, ElementSize.Word, vnext, next);
 
         // bound = cnt1 & ~(elementsPerIteration - 1);
