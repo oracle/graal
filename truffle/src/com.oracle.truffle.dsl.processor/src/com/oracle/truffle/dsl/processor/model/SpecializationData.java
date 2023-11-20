@@ -690,9 +690,6 @@ public final class SpecializationData extends TemplateMethod {
                     return true;
                 }
             }
-            if (node.getTypeSystem().hasImplicitSourceTypes(parameter.getType())) {
-                return true;
-            }
 
             signatureIndex++;
         }
