@@ -423,18 +423,21 @@ public class EspressoInterop extends BaseInterop {
         }
         Meta meta = getMeta();
         if (receiver.getKlass() == meta.java_math_BigInteger) {
-            StaticObject guestByteArray = (StaticObject) meta.java_math_BigInteger_toByteArray.invokeDirect(receiver);
-            byte[] bytes = guestByteArray.unwrap(meta.getLanguage());
-            return new BigInteger(bytes);
+            return toHostBigInteger(receiver, meta);
         } else if (fitsInLong(receiver)) {
-            long longValue = asLong(receiver);
-            return toBigInteger(longValue);
+            return toBigInteger(asLong(receiver));
         } else if (fitsInDouble(receiver)) {
-            double doubleValue = asDouble(receiver);
             // we know it fits in BigInteger so no need to check the double value
-            return toBigInteger(doubleValue);
+            return toBigInteger(asDouble(receiver));
         }
         throw UnsupportedMessageException.create();
+    }
+
+    @TruffleBoundary
+    private static BigInteger toHostBigInteger(StaticObject receiver, Meta meta) {
+        StaticObject guestByteArray = (StaticObject) meta.java_math_BigInteger_toByteArray.invokeDirect(receiver);
+        byte[] bytes = guestByteArray.unwrap(meta.getLanguage());
+        return new BigInteger(bytes);
     }
 
     @TruffleBoundary

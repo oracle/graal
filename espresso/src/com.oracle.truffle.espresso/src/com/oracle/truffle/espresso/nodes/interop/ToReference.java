@@ -2127,13 +2127,18 @@ public abstract class ToReference extends ToEspressoNode {
             }
             try {
                 BigInteger bigInteger = EspressoInterop.asBigInteger(value);
-                StaticObject guestBigInteger = getAllocator().createNew(meta.java_math_BigInteger);
-                byte[] bytes = bigInteger.toByteArray();
-                meta.java_math_BigInteger_init.invokeDirect(guestBigInteger, StaticObject.wrap(bytes, meta));
-                return guestBigInteger;
+                return toGuestBigInteger(meta, bigInteger);
             } catch (UnsupportedMessageException e) {
                 throw UnsupportedTypeException.create(new Object[]{value}, meta.java_math_BigInteger.getTypeAsString());
             }
+        }
+
+        @TruffleBoundary
+        private StaticObject toGuestBigInteger(Meta meta, BigInteger bigInteger) {
+            byte[] bytes = bigInteger.toByteArray();
+            StaticObject guestBigInteger = getAllocator().createNew(meta.java_math_BigInteger);
+            meta.java_math_BigInteger_init.invokeDirect(guestBigInteger, StaticObject.wrap(bytes, meta));
+            return guestBigInteger;
         }
 
         @Specialization(guards = "interop.fitsInBigInteger(value)")
@@ -2142,10 +2147,7 @@ public abstract class ToReference extends ToEspressoNode {
                         @Bind("getMeta()") Meta meta) {
             try {
                 BigInteger bigInteger = interop.asBigInteger(value);
-                StaticObject guestBigInteger = getAllocator().createNew(meta.java_math_BigInteger);
-                byte[] bytes = bigInteger.toByteArray();
-                meta.java_math_BigInteger_init.invokeDirect(guestBigInteger, StaticObject.wrap(bytes, meta));
-                return guestBigInteger;
+                return toGuestBigInteger(meta, bigInteger);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("Contract violation: if fitsInBigInteger returns true, asBigInteger must succeed.");
