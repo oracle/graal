@@ -126,7 +126,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // New lightweight locking, with monitors as 2nd tier
     public static final int LM_LIGHTWEIGHT = 2;
 
-    public final int lockingMode = getFlag("LockingMode", Integer.class);
+    public final int lockingMode = getFlag("LockingMode", Integer.class, LM_LEGACY, JDK >= 21);
     public final boolean foldStableValues = getFlag("FoldStableValues", Boolean.class);
     public final int maxVectorSize = getFlag("MaxVectorSize", Integer.class);
 
