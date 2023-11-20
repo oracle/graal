@@ -235,7 +235,8 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
             INSTANCE_FIELD_TYPE_STORE_UPDATER.compareAndSet(this, null, new AtomicReferenceArray<>(type.getInstanceFields(true).length));
         }
 
-        AnalysisError.guarantee(field.getPosition() >= 0 && field.getPosition() < instanceFieldsTypeStore.length());
+        AnalysisError.guarantee(field.getPosition() >= 0 && field.getPosition() < instanceFieldsTypeStore.length(), "Field %s.%s has invalid position %d.", field.getDeclaringClass().toJavaName(),
+                        field.getName(), field.getPosition());
 
         FieldTypeStore fieldStore = instanceFieldsTypeStore.get(field.getPosition());
         if (fieldStore == null) {

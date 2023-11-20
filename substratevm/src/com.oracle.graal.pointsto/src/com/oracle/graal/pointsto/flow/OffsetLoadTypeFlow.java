@@ -183,7 +183,21 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
              * read from any of the static fields marked for unsafe access.
              */
             for (AnalysisField field : bb.getUniverse().getUnsafeAccessedStaticFields()) {
-                field.getStaticFieldFlow().addUse(bb, this);
+                /*
+                 * Primitive type states are not propagated through unsafe loads/stores. Instead,
+                 * both primitive fields that are unsafe written and all unsafe loads for primitives
+                 * are pre-saturated.
+                 */
+                if (field.getStorageKind().isObject()) {
+                    field.getStaticFieldFlow().addUse(bb, this);
+                }
+            }
+        }
+
+        protected void processField(PointsToAnalysis bb, AnalysisObject object, AnalysisField field) {
+            if (field.getStorageKind().isObject()) {
+                TypeFlow<?> fieldFlow = object.getInstanceFieldFlow(bb, objectFlow, source, field, false);
+                fieldFlow.addUse(bb, this);
             }
         }
     }
@@ -225,8 +239,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
                 } else {
                     for (AnalysisField field : objectType.unsafeAccessedFields()) {
                         assert field != null;
-                        TypeFlow<?> fieldFlow = object.getInstanceFieldFlow(bb, objectFlow, source, field, false);
-                        fieldFlow.addUse(bb, this);
+                        processField(bb, object, field);
                     }
                 }
             }
@@ -281,8 +294,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
                 assert !objectType.isArray() : objectType;
 
                 for (AnalysisField field : objectType.unsafeAccessedFields(partitionKind)) {
-                    TypeFlow<?> fieldFlow = object.getInstanceFieldFlow(bb, objectFlow, source, field, false);
-                    fieldFlow.addUse(bb, this);
+                    processField(bb, object, field);
                 }
             }
         }

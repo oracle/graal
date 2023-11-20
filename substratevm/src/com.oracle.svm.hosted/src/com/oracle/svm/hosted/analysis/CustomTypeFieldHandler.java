@@ -35,6 +35,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
 
 public abstract class CustomTypeFieldHandler {
@@ -57,13 +58,17 @@ public abstract class CustomTypeFieldHandler {
          */
         assert field.isAccessed();
         if (field.wrapped instanceof ComputedValueField computedField) {
-            if (!computedField.isValueAvailableBeforeAnalysis() && field.getJavaKind().isObject()) {
+            if (!computedField.isValueAvailableBeforeAnalysis() && field.getStorageKind().isObject()) {
                 injectFieldTypes(field, field.getType());
+            } else if (bb.trackPrimitiveValues() && field.getStorageKind().isPrimitive() && field instanceof PointsToAnalysisField ptaField) {
+                ptaField.saturatePrimitiveField();
             }
         } else if (field.isComputedValue()) {
-            if (!field.getStorageKind().isPrimitive()) {
+            if (field.getStorageKind().isObject()) {
                 field.setCanBeNull(field.computedValueCanBeNull());
                 injectFieldTypes(field, transformTypes(field, field.computedValueTypes()));
+            } else if (bb.trackPrimitiveValues() && field.getStorageKind().isPrimitive() && field instanceof PointsToAnalysisField ptaField) {
+                ptaField.saturatePrimitiveField();
             }
         }
         processedFields.add(field);

@@ -49,10 +49,12 @@ import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.graal.pointsto.typestate.PrimitiveConstantTypeState;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.svm.util.ImageBuildStatistics;
 
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
+import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -111,6 +113,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethodProfile;
 import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.TriState;
@@ -729,7 +732,7 @@ public abstract class StrengthenGraphs {
         }
 
         private Object strengthenStampFromTypeFlow(ValueNode node, TypeFlow<?> nodeFlow, FixedWithNextNode anchorPoint, SimplifierTool tool) {
-            if (nodeFlow == null || node.getStackKind() != JavaKind.Object) {
+            if (nodeFlow == null || !((PointsToAnalysis) bb).isSupportedJavaKind(node.getStackKind())) {
                 return null;
             }
             if (methodFlow.isSaturated((PointsToAnalysis) bb, nodeFlow)) {
@@ -757,7 +760,12 @@ public abstract class StrengthenGraphs {
             }
 
             node.inferStamp();
-            ObjectStamp oldStamp = (ObjectStamp) node.stamp(NodeView.DEFAULT);
+            Stamp s = node.stamp(NodeView.DEFAULT);
+            if (s.isIntegerStamp() || nodeTypeState.isPrimitive()) {
+                return getIntegerStamp(node, s, nodeTypeState);
+            }
+
+            ObjectStamp oldStamp = (ObjectStamp) s;
             AnalysisType oldType = (AnalysisType) oldStamp.type();
             boolean nonNull = oldStamp.nonNull() || !nodeTypeState.canBeNull();
 
@@ -845,6 +853,27 @@ public abstract class StrengthenGraphs {
                 return oldStamp.asNonNull();
             }
             /* Nothing to strengthen. */
+            return null;
+        }
+
+        private IntegerStamp getIntegerStamp(ValueNode node, Stamp stamp, TypeState nodeTypeState) {
+            assert bb.trackPrimitiveValues() : nodeTypeState + "," + node + " in " + node.graph();
+            assert nodeTypeState != null && (nodeTypeState.isEmpty() || nodeTypeState.isPrimitive()) : nodeTypeState + "," + node + " in " + node.graph();
+            if (nodeTypeState instanceof PrimitiveConstantTypeState constantTypeState) {
+                long constantValue = constantTypeState.getValue();
+                if (node instanceof ConstantNode constant) {
+                    /*
+                     * Sanity check, verify that what was proven by the analysis is consistent with
+                     * the constant node in the graph.
+                     */
+                    Constant value = constant.getValue();
+                    assert value instanceof PrimitiveConstant : "Node " + value + " should be a primitive constant when extracting an integer stamp, method " + node.graph().method();
+                    assert ((PrimitiveConstant) value).asLong() == constantValue : "The actual value of node: " + value + " is different than the value " + constantValue +
+                                    " computed by points-to analysis, method in " + node.graph().method();
+                } else {
+                    return IntegerStamp.createConstant(((IntegerStamp) stamp).getBits(), constantValue);
+                }
+            }
             return null;
         }
 

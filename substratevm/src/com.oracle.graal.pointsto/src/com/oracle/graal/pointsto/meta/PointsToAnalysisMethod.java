@@ -34,7 +34,6 @@ import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualParameterTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
-import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
@@ -43,7 +42,6 @@ import com.oracle.graal.pointsto.util.ConcurrentLightHashMap;
 import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class PointsToAnalysisMethod extends AnalysisMethod {
@@ -193,7 +191,7 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
          * The receiver flow of the context insensitive invoke is the type flow of its declaring
          * class.
          */
-        AllInstantiatedTypeFlow receiverFlow = receiverType.getTypeFlow(bb, false);
+        var receiverFlow = receiverType.getTypeFlow(bb, false);
 
         actualParameters[0] = receiverFlow;
         for (int i = 1; i < actualParameters.length; i++) {
@@ -201,7 +199,7 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
         }
         ActualReturnTypeFlow actualReturn = null;
         AnalysisType returnType = (AnalysisType) method.getSignature().getReturnType(null);
-        if (returnType.getStorageKind() == JavaKind.Object) {
+        if (bb.isSupportedJavaKind(returnType.getStorageKind())) {
             actualReturn = new ActualReturnTypeFlow(returnType);
         }
 
@@ -225,7 +223,7 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
      */
     private static void initContextInsensitiveInvoke(PointsToAnalysis bb, AnalysisMethod method, InvokeTypeFlow invoke) {
         AnalysisType receiverType = method.getDeclaringClass();
-        AllInstantiatedTypeFlow receiverFlow = receiverType.getTypeFlow(bb, false);
+        var receiverFlow = receiverType.getTypeFlow(bb, false);
         receiverFlow.addObserver(bb, invoke);
     }
 

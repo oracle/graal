@@ -48,7 +48,7 @@ public class PointsToCustomTypeFieldHandler extends CustomTypeFieldHandler {
 
         /* Link the field with all declared types. */
         for (AnalysisType type : customTypes) {
-            if (type.isPrimitive()) {
+            if (type.isPrimitive() || type.isWordType()) {
                 continue;
             }
             TypeFlow<?> typeFlow = type.getTypeFlow(analysis, true);
@@ -59,7 +59,7 @@ public class PointsToCustomTypeFieldHandler extends CustomTypeFieldHandler {
                 if (type.isArray()) {
                     AnalysisType fieldComponentType = type.getComponentType();
                     aField.getInitialInstanceFieldFlow().addUse(analysis, aField.getInstanceFieldFlow());
-                    if (!fieldComponentType.isPrimitive()) {
+                    if (!(fieldComponentType.isPrimitive() || fieldComponentType.isWordType())) {
                         /*
                          * Write the component type abstract object into the field array elements
                          * type flow, i.e., the array elements type flow of the abstract object of
