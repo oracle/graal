@@ -136,7 +136,7 @@ public abstract class InvokeEspressoNode extends EspressoNode {
         if (!argsConverted) {
             Klass[] parameterKlasses = getParameterKlasses(method.getMethod());
             for (int i = 0; i < expectedArity; i++) {
-                convertedArguments[i] = toEspressoNode.execute(InteropUtils.unwrap(getLanguage(), arguments[i], getMeta()), parameterKlasses[i]);
+                convertedArguments[i] = toEspressoNode.execute(arguments[i], parameterKlasses[i]);
             }
         }
 

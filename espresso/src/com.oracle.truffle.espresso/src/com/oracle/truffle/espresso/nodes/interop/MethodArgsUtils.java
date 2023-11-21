@@ -99,8 +99,6 @@ public class MethodArgsUtils {
 
     @TruffleBoundary
     public static CandidateMethodWithArgs ensureVarArgsArrayCreated(CandidateMethodWithArgs matched, ToEspressoNode.DynamicToEspresso toEspressoNode) {
-        EspressoLanguage language = matched.getMethod().getLanguage();
-        Meta meta = matched.getMethod().getMeta();
         int varArgsIndex = matched.getParameterTypes().length - 1;
         Klass varArgsArrayType = matched.getParameterTypes()[varArgsIndex];
         Klass varArgsType = ((ArrayKlass) varArgsArrayType).getComponentType();
@@ -118,10 +116,14 @@ public class MethodArgsUtils {
             varArgsType = primitiveTypeToBoxedType((PrimitiveKlass) varArgsType);
         }
 
+        EspressoLanguage language = matched.getMethod().getLanguage();
+        Meta meta = varArgsType.getMeta();
         int index = 0;
         for (int i = varArgsIndex; i < matched.getConvertedArgs().length; i++) {
             Object inputArg = matched.getConvertedArgs()[i];
             try {
+                // Already converted arguments could be foreign wrappers,
+                // so we need to unwrap here before ToEspresso.
                 Object convertedArg = toEspressoNode.execute(InteropUtils.unwrap(language, inputArg, meta), varArgsType);
                 if (!isPrimitive) {
                     Object[] array = varArgsArray.unwrap(matched.getMethod().getLanguage());
