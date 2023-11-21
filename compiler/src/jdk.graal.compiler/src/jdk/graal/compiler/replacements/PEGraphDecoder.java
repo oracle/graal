@@ -49,6 +49,7 @@ import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.common.cfg.CFGVerifier;
+import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
@@ -89,6 +90,7 @@ import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
 import jdk.graal.compiler.nodes.MergeNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.PluginReplacementInterface;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.SimplifyingGraphDecoder;
@@ -1252,6 +1254,21 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             }
         }
 
+        /*
+         * Create Pi nodes to correct mismatches between caller argument and callee parameter
+         * stamps, which can be caused by e.g. invokes with an unresolved return type, or OSRLocals
+         * which always have an unrestricted stamp.
+         */
+        Stamp[] paramStamps = StampFactory.createParameterStamps(graph.getAssumptions(), inlineMethod);
+        assert paramStamps.length == arguments.length : "Invoke arguments and parameters have different counts";
+        for (int i = 0; i < paramStamps.length; i++) {
+            Stamp argStamp = arguments[i].stamp(NodeView.DEFAULT);
+            // Argument to an Object-type parameter can have a non-object stamp due to plugins
+            if (argStamp instanceof ObjectStamp && paramStamps[i] instanceof ObjectStamp) {
+                arguments[i] = graph.addOrUnique(PiNode.create(arguments[i], paramStamps[i]));
+            }
+        }
+
         predecessor = afterMethodScopeCreation(inlineScope, predecessor);
 
         LoopScope inlineLoopScope = createInitialLoopScope(inlineScope, predecessor);
@@ -1260,11 +1277,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
          * The GraphEncoder assigns parameters a nodeId immediately after the fixed nodes.
          * Initializing createdNodes here avoid decoding and immediately replacing the
          * ParameterNodes.
-         *
-         * The normal inliner would build PiNodes here to correct mismatches between caller argument
-         * and callee parameter stamps. We don't do that during graph decoding since ParameterNodes
-         * are never created in the first place, instead directly connecting the caller arguments to
-         * usages in the callee, meaning there can be no stamp mismatch.
          */
         int firstArgumentNodeId = inlineScope.maxFixedNodeOrderId + 1;
         for (int i = 0; i < arguments.length; i++) {
