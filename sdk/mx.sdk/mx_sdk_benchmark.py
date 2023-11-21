@@ -468,9 +468,11 @@ class NativeImageBenchmarkMixin(object):
 
     def run_stage(self, vm, stage, command, out, err, cwd, nonZeroIsFatal):
         final_command = command
-        if stage == 'run':
+        # Apply command mapper hooks (e.g. trackers) for all stages that run benchmark workloads
+        # We cannot apply them for the image stages because the datapoints are indistinguishable from datapoints
+        # produced in the the corresponding run stages.
+        if stage in ["agent", "instrument-run", "run"]:
             final_command = self.apply_command_mapper_hooks(command, vm)
-
         return mx.run(final_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
 
     def is_native_mode(self, bm_suite_args: List[str]):
@@ -484,7 +486,8 @@ class NativeImageBenchmarkMixin(object):
         return "native-image" in jvm_flag
 
     def apply_command_mapper_hooks(self, cmd, vm):
-        return mx.apply_command_mapper_hooks(cmd, vm.command_mapper_hooks)
+        # TODO use vm to access hooks
+        return mx.apply_command_mapper_hooks(cmd, self._command_mapper_hooks)
 
     def extra_image_build_argument(self, _, args):
         return parse_prefixed_args('-Dnative-image.benchmark.extra-image-build-argument=', args)
