@@ -58,12 +58,11 @@ public final class EspressoForeignNumber extends Number {
             try {
                 return Interop.asLong(this);
             } catch (UnsupportedMessageException e) {
-                // should never happen, just fall through
+                throw new UnsupportedOperationException(e);
             }
         } else {
             return (long) doubleValue();
         }
-        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -77,7 +76,7 @@ public final class EspressoForeignNumber extends Number {
             try {
                 return Interop.asDouble(this);
             } catch (UnsupportedMessageException e) {
-                // fall through to throwing
+                throw new UnsupportedOperationException(e);
             }
         }
         throw new UnsupportedOperationException();
