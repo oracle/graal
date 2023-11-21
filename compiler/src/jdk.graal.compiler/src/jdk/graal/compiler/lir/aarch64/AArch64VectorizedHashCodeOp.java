@@ -191,24 +191,17 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         // OOO execution can then hopefully do a better job of prefetching
         // load next 16 elements into 4 data vector registers
         // vtmp = ary1[index:index+elementsPerIteration];
-        try (var scratch1 = masm.getScratchRegister()) {
-            var rscratch1 = scratch1.getRegister();
-            // load next chunk address into scratch reg
-            AArch64Address dataChunkStart = AArch64Address.createRegisterOffsetAddress(elSize.bits(), ary1, index, true);
-            masm.loadAddress(rscratch1, dataChunkStart);
-
-            ASIMDSize loadVecSize = ASIMDSize.FullReg;
-            int loadVecBits = loadVecSize.bits();
-            // number of <loadVecSize> registers needed to load to fill 4 full vectors.
-            // i.e. byte: 1 full or 2 half, halfword: 2 full or 4 half, word: 4 full.
-            int consecutiveRegs = Math.min(elSize.bytes() * (ASIMDSize.FullReg.bits() / loadVecBits), maxConsecutiveRegs);
-            int extensionFactor = (ElementSize.Word.bits() / elSize.bits()) / (ASIMDSize.FullReg.bits() / loadVecBits);
-            int regsFilledPerLoad = consecutiveRegs * extensionFactor;
-            boolean postIndex = consecutiveRegs > 2;
-            for (int ldVi = 0; ldVi < nRegs; ldVi += regsFilledPerLoad) {
-                loadConsecutiveVectors(masm, loadVecSize, loadVecBits, elSize, rscratch1, vtmp, ldVi, consecutiveRegs, postIndex, false);
-                extendVectorsToWord(masm, unsigned, loadVecBits, elSize, vtmp, ldVi, consecutiveRegs);
-            }
+        ASIMDSize loadVecSize = ASIMDSize.FullReg;
+        int loadVecBits = loadVecSize.bits();
+        // number of <loadVecSize> registers needed to load to fill 4 full vectors.
+        // i.e. byte: 1 full or 2 half, halfword: 2 full or 4 half, word: 4 full.
+        int consecutiveRegs = Math.min(elSize.bytes() * (ASIMDSize.FullReg.bits() / loadVecBits), maxConsecutiveRegs);
+        int extensionFactor = (ElementSize.Word.bits() / elSize.bits()) / (ASIMDSize.FullReg.bits() / loadVecBits);
+        int regsFilledPerLoad = consecutiveRegs * extensionFactor;
+        for (int ldVi = 0; ldVi < nRegs; ldVi += regsFilledPerLoad) {
+            boolean postIndex = true;
+            loadConsecutiveVectors(masm, loadVecSize, loadVecBits, elSize, ary1, vtmp, ldVi, consecutiveRegs, postIndex, false);
+            extendVectorsToWord(masm, unsigned, loadVecBits, elSize, vtmp, ldVi, consecutiveRegs);
         }
 
         // vresult[i] = vresult[i] * vnext + vtmp[i];
@@ -225,9 +218,8 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         masm.branchConditionally(ConditionFlag.LT, labelUnrolledVectorLoopBegin);
         // }
 
-        // start = ary[bound];
+        // assert index == bound && ary1 == &ary[bound];
         // cnt1 -= bound;
-        masm.loadAddress(ary1, AArch64Address.createRegisterOffsetAddress(elSize.bits(), ary1, bound, true));
         masm.sub(32, cnt1, cnt1, bound);
         // release bound
 
