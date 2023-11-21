@@ -76,6 +76,8 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.typestate.TypeStateUtils;
 import com.oracle.svm.util.ClassUtil;
 
+import jdk.vm.ci.code.BytecodePosition;
+
 class Graph {
     abstract static class Node implements Comparable<Node> {
         private final String toStringCached;
@@ -230,8 +232,13 @@ class Graph {
         static String customToString(TypeFlow<?> f) {
             String str = ClassUtil.getUnqualifiedName(f.getClass());
 
-            if (f.method() != null) {
-                str += " in " + f.method().getQualifiedName();
+            if (f.getSource() instanceof BytecodePosition pos) {
+                StackTraceElement ste = pos.getMethod().asStackTraceElement(pos.getBCI());
+                if (ste.getFileName() != null && ste.getLineNumber() > 0) {
+                    str += " in " + ste;
+                } else {
+                    str += pos.getMethod().format(" in %H.%n(%p)");
+                }
             }
 
             String detail = null;
