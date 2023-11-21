@@ -36,6 +36,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public class MethodArgsUtils {
@@ -98,6 +99,8 @@ public class MethodArgsUtils {
 
     @TruffleBoundary
     public static CandidateMethodWithArgs ensureVarArgsArrayCreated(CandidateMethodWithArgs matched, ToEspressoNode.DynamicToEspresso toEspressoNode) {
+        EspressoLanguage language = matched.getMethod().getLanguage();
+        Meta meta = matched.getMethod().getMeta();
         int varArgsIndex = matched.getParameterTypes().length - 1;
         Klass varArgsArrayType = matched.getParameterTypes()[varArgsIndex];
         Klass varArgsType = ((ArrayKlass) varArgsArrayType).getComponentType();
@@ -119,7 +122,7 @@ public class MethodArgsUtils {
         for (int i = varArgsIndex; i < matched.getConvertedArgs().length; i++) {
             Object inputArg = matched.getConvertedArgs()[i];
             try {
-                Object convertedArg = toEspressoNode.execute(inputArg, varArgsType);
+                Object convertedArg = toEspressoNode.execute(InteropUtils.unwrap(language, inputArg, meta), varArgsType);
                 if (!isPrimitive) {
                     Object[] array = varArgsArray.unwrap(matched.getMethod().getLanguage());
                     array[index++] = convertedArg;

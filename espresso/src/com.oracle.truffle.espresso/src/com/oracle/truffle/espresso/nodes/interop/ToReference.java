@@ -1207,6 +1207,7 @@ public abstract class ToReference extends ToEspressoNode {
         public StaticObject doEspresso(StaticObject value,
                         @Cached InstanceOf.Dynamic instanceOf,
                         @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+            assert !value.isForeignObject();
             if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass(), meta.java_lang_CharSequence)) {
                 return value; // pass through, NULL coercion not needed.
             }
@@ -1258,6 +1259,7 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization
         public StaticObject doEspresso(StaticObject value,
                         @Cached InstanceOf.Dynamic instanceOf) throws UnsupportedTypeException {
+            assert !value.isForeignObject();
             if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass(), targetType)) {
                 return value; // pass through, NULL coercion not needed.
             }
@@ -1315,6 +1317,7 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization
         public StaticObject doEspresso(StaticObject value,
                         @Cached("createInstanceOf(targetType)") InstanceOf instanceOf) throws UnsupportedTypeException {
+            assert !value.isForeignObject();
             if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass())) {
                 return value; // pass through, NULL coercion not needed.
             }
@@ -1373,6 +1376,7 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization
         public StaticObject doEspresso(StaticObject value,
                         @Cached("createInstanceOf(targetType)") InstanceOf instanceOf) throws UnsupportedTypeException {
+            assert !value.isForeignObject();
             if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass())) {
                 return value; // pass through, NULL coercion not needed.
             }
@@ -1425,6 +1429,7 @@ public abstract class ToReference extends ToEspressoNode {
         public StaticObject doEspresso(StaticObject value,
                         @Cached InstanceOf.Dynamic instanceOf,
                         @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+            assert !value.isForeignObject();
             if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass(), meta.java_lang_Number)) {
                 return value; // pass through, NULL coercion not needed.
             }
@@ -1499,6 +1504,7 @@ public abstract class ToReference extends ToEspressoNode {
         public StaticObject doEspresso(StaticObject value,
                         @Cached InstanceOf.Dynamic instanceOf,
                         @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+            assert !value.isForeignObject();
             if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass(), meta._byte_array)) {
                 return value; // pass through, NULL coercion not needed.
             }
@@ -1559,6 +1565,7 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization
         public StaticObject doEspresso(StaticObject value,
                         @Cached InstanceOf.Dynamic instanceOf) throws UnsupportedTypeException {
+            assert !value.isForeignObject();
             if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass(), targetType)) {
                 return value; // pass through, NULL coercion not needed.
             }
@@ -1602,6 +1609,7 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization
         public StaticObject doEspresso(StaticObject value,
                         @Cached InstanceOf.Dynamic instanceOf) throws UnsupportedTypeException {
+            assert !value.isForeignObject();
             if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass(), getMeta().polyglot.ForeignException)) {
                 return value; // pass through, NULL coercion not needed.
             }
@@ -1622,6 +1630,7 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization
         public StaticObject doEspresso(StaticObject value,
                         @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+            assert !value.isForeignObject();
             if (StaticObject.isNull(value) || meta.java_lang_Throwable.isAssignableFrom(value.getKlass())) {
                 return value;
             }
@@ -1658,6 +1667,7 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization
         public StaticObject doEspresso(StaticObject value,
                         @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+            assert !value.isForeignObject();
             if (StaticObject.isNull(value) || meta.java_lang_Exception.isAssignableFrom(value.getKlass())) {
                 return value;
             }
@@ -1698,6 +1708,7 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization
         public StaticObject doEspresso(StaticObject value,
                         @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+            assert !value.isForeignObject();
             if (StaticObject.isNull(value) || meta.java_lang_RuntimeException.isAssignableFrom(value.getKlass())) {
                 return value;
             }
@@ -1748,6 +1759,7 @@ public abstract class ToReference extends ToEspressoNode {
         public StaticObject doEspresso(StaticObject value,
                         @Cached InstanceOf.Dynamic instanceOf,
                         @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+            assert !value.isForeignObject();
             if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass(), meta.java_time_LocalDate)) {
                 return value; // pass through, NULL coercion not needed.
             }
@@ -1836,6 +1848,7 @@ public abstract class ToReference extends ToEspressoNode {
         public StaticObject doEspresso(StaticObject value,
                         @Cached InstanceOf.Dynamic instanceOf,
                         @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+            assert !value.isForeignObject();
             if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass(), meta.java_time_LocalDateTime)) {
                 return value; // pass through, NULL coercion not needed.
             }
@@ -1890,6 +1903,7 @@ public abstract class ToReference extends ToEspressoNode {
         public StaticObject doEspresso(StaticObject value,
                         @Cached InstanceOf.Dynamic instanceOf,
                         @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+            assert !value.isForeignObject();
             if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass(), meta.java_time_ZonedDateTime)) {
                 return value; // pass through, NULL coercion not needed.
             }
@@ -1943,6 +1957,7 @@ public abstract class ToReference extends ToEspressoNode {
         public StaticObject doEspresso(StaticObject value,
                         @Cached InstanceOf.Dynamic instanceOf,
                         @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+            assert !value.isForeignObject();
             if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass(), meta.java_time_Instant)) {
                 return value; // pass through, NULL coercion not needed.
             }
@@ -1987,6 +2002,7 @@ public abstract class ToReference extends ToEspressoNode {
         public StaticObject doEspresso(StaticObject value,
                         @Cached InstanceOf.Dynamic instanceOf,
                         @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+            assert !value.isForeignObject();
             if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass(), meta.java_time_Duration)) {
                 return value; // pass through, NULL coercion not needed.
             }
@@ -2034,6 +2050,7 @@ public abstract class ToReference extends ToEspressoNode {
         public StaticObject doEspresso(StaticObject value,
                         @Cached InstanceOf.Dynamic instanceOf,
                         @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+            assert !value.isForeignObject();
             if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass(), meta.java_time_ZoneId)) {
                 return value; // pass through, NULL coercion not needed.
             }
@@ -2077,6 +2094,7 @@ public abstract class ToReference extends ToEspressoNode {
         public StaticObject doEspresso(StaticObject value,
                         @Cached InstanceOf.Dynamic instanceOf,
                         @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+            assert !value.isForeignObject();
             if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass(), meta.java_util_Date)) {
                 return value; // pass through, NULL coercion not needed.
             }
@@ -2122,6 +2140,7 @@ public abstract class ToReference extends ToEspressoNode {
         public StaticObject doEspresso(StaticObject value,
                         @Cached InstanceOf.Dynamic instanceOf,
                         @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+            assert !value.isForeignObject();
             if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass(), meta.java_math_BigInteger)) {
                 return value; // pass through, NULL coercion not needed.
             }
@@ -2182,6 +2201,7 @@ public abstract class ToReference extends ToEspressoNode {
 
         @Specialization
         public StaticObject doEspresso(StaticObject value) throws UnsupportedTypeException {
+            assert !value.isForeignObject();
             if (StaticObject.isNull(value) || targetType.isAssignableFrom(value.getKlass())) {
                 return value;
             }
