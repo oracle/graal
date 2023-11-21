@@ -461,7 +461,8 @@ builds += [
     ]
     name: gate-vm-style-linux-amd64
   }
-  ${libgraal_compiler} ${vm_java_8}  { name: gate-vm-libgraal-compiler-8-linux-amd64 }
+  #[GR-50064] this benchmark (scala-dacapo:actors) Since we only build & test JDK8 on OpenJDK, this test cannot pass. Solution is to deactivate the test.
+  #${libgraal_compiler} ${vm_java_8}  { name: gate-vm-libgraal-compiler-8-linux-amd64 }
   ${libgraal_compiler} ${vm_java_11} { name: gate-vm-libgraal-compiler-11-linux-amd64 }
   ${libgraal_compiler} ${vm_java_17} { name: gate-vm-libgraal-compiler-17-linux-amd64 }
 
