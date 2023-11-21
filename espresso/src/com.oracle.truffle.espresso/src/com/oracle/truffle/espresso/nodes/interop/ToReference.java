@@ -2118,7 +2118,7 @@ public abstract class ToReference extends ToEspressoNode {
             return StaticObject.createForeignNull(EspressoLanguage.get(this), value);
         }
 
-        @Specialization(guards = "!value.isForeignObject()")
+        @Specialization
         public StaticObject doEspresso(StaticObject value,
                         @Cached InstanceOf.Dynamic instanceOf,
                         @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
