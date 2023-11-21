@@ -95,17 +95,6 @@ public final class CEntryPointActions {
     public static native int enterByIsolate(Isolate isolate);
 
     /**
-     * May only be used during the prologue of a segfault handler. If the thread is already
-     * attached, it enters the existing context of that thread. If the thread is unattached, it
-     * creates a context that is sufficient for executing the segfault handler. After executing the
-     * segfault handler, execution must not resume normally.
-     *
-     * @param isolate isolate in which a context for the current thread exists.
-     * @return 0 on success, otherwise non-zero (see {@link CEntryPointErrors})
-     */
-    public static native int enterAttachThreadFromCrashHandler(Isolate isolate);
-
-    /**
      * Leaves the current thread's current context.
      *
      * @return 0 on success, otherwise non-zero (see {@link CEntryPointErrors})

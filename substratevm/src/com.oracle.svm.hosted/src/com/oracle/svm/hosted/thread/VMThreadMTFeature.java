@@ -31,8 +31,8 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
@@ -72,11 +72,6 @@ public class VMThreadMTFeature implements InternalFeature {
 
     private final VMThreadLocalCollector threadLocalCollector = new VMThreadLocalCollector();
     private final VMThreadLocalMTSupport threadLocalSupport = new VMThreadLocalMTSupport();
-
-    public int getVMThreadSize() {
-        assert threadLocalSupport.vmThreadSize != -1 : "not yet initialized";
-        return threadLocalSupport.vmThreadSize;
-    }
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {

@@ -812,8 +812,10 @@ public class SubstrateDiagnostics {
             Platform platform = ImageSingletons.lookup(Platform.class);
             log.string(", ").string(platform.getOS()).string("/").string(platform.getArchitecture()).newline();
 
-            log.string("Current timestamp: ").unsigned(System.currentTimeMillis()).newline();
-            log.string("VM uptime: ").rational(Isolates.getCurrentUptimeMillis(), TimeUtils.millisPerSecond, 3).string("s").newline();
+            if (!SubstrateOptions.AsyncSignalSafeDiagnostics.getValue()) {
+                log.string("Current timestamp: ").unsigned(System.currentTimeMillis()).newline();
+                log.string("VM uptime: ").rational(Isolates.getCurrentUptimeMillis(), TimeUtils.millisPerSecond, 3).string("s").newline();
+            }
 
             CodeInfo info = CodeInfoTable.getImageCodeInfo();
             Pointer codeStart = (Pointer) CodeInfoAccess.getCodeStart(info);
