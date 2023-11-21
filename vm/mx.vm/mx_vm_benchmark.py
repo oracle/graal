@@ -1192,18 +1192,16 @@ class NativeImageVM(GraalVm):
             raise ValueError(f"Unknown stage {stage_to_run}")
 
 
-class AnalysisReportJsonFileRule(mx_benchmark.JsonBaseRule):
+class AnalysisReportJsonFileRule(mx_benchmark.JsonStdOutFileRule):
     """Rule that looks for JSON file names in the output of the benchmark and looks up the files in the report directory"""
 
     def __init__(self, report_directory, is_diagnostics_mode, replacement, keys):
-        super(AnalysisReportJsonFileRule, self).__init__(replacement, keys)
-        self.pattern = r'^# Printing analysis results stats to: (?P<path>\S+?)$'
-        self.match_name = 'path'
+        super().__init__(r"^# Printing analysis results stats to: (?P<path>\S+?)$", "path", replacement, keys)
         self.is_diagnostics_mode = is_diagnostics_mode
         self.report_directory = report_directory
 
     def getJsonFiles(self, text):
-        json_files = (m.groupdict()[self.match_name] for m in re.finditer(self.pattern, text, re.MULTILINE))
+        json_files = super().getJsonFiles(text)
         found_json_files = []
         for json_file_path in json_files:
             json_file_name = os.path.basename(json_file_path)
