@@ -24,6 +24,8 @@
  */
 package org.graalvm.polyglot.nativeapi.types;
 
+import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
+
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.ObjectHandle;
@@ -249,7 +251,7 @@ public class PolyglotNativeAPITypes {
 
     @CTypedef(name = "poly_fatal_error_callback")
     public interface PolyglotFatalErrorCallback extends CFunctionPointer {
-        @InvokeCFunctionPointer
+        @InvokeCFunctionPointer(transition = NO_TRANSITION)
         void invoke(VoidPointer data);
     }
 }
