@@ -82,6 +82,9 @@ netty-codec-http2    4.1.76.Final   CVE-2022-24823  Medium
 
 You can then use this report to update any vulnerable dependencies found in your executable.
 
+> Note that if `native-image-inspect` is used without the `--sbom` option, it will execute parts of the specified native binary to extract the method-level information.
+This functionality should not be used on native image executables from unknown or untrusted sources.
+
 ## Java serialization in Native Image
 
 Native Image supports Serialization to help users deserialize the constructors for classes, contained in a native executable.
