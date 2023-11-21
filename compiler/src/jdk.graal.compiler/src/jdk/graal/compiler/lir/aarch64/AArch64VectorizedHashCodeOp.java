@@ -198,17 +198,18 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
             masm.loadAddress(rscratch1, dataChunkStart);
 
             ASIMDSize loadVecSize = elSize == ElementSize.Byte || elSize == ElementSize.HalfWord ? ASIMDSize.HalfReg : ASIMDSize.FullReg;
+            int loadVecBits = elSize.bits() * elementsPerVector;
             // number of <loadVecSize> registers needed to load to fill 4 full vectors.
             // i.e. byte: 1 full or 2 half, halfword: 2 full or 4 half, word: 4 full.
-            int consecutiveRegs = Math.min(elSize.bytes() * ASIMDSize.FullReg.bytes() / loadVecSize.bytes(), maxConsecutiveRegs);
-            int extensionFactor = (ElementSize.Word.bytes() / elSize.bytes()) / (ASIMDSize.FullReg.bytes() / loadVecSize.bytes());
+            int consecutiveRegs = Math.min(elSize.bytes() * (ASIMDSize.FullReg.bits() / loadVecBits), maxConsecutiveRegs);
+            int extensionFactor = (ElementSize.Word.bits() / elSize.bits()) / (ASIMDSize.FullReg.bits() / loadVecBits);
             int regsFilledPerLoad = consecutiveRegs * extensionFactor;
             boolean postIndex = consecutiveRegs > 2;
             for (int ldVi = 0; ldVi < nRegs; ldVi += regsFilledPerLoad) {
-                loadConsecutiveVectors(masm, loadVecSize, elSize, rscratch1, vtmp, ldVi, consecutiveRegs, postIndex, false);
+                loadConsecutiveVectors(masm, loadVecSize, loadVecBits, elSize, rscratch1, vtmp, ldVi, consecutiveRegs, postIndex, false);
             }
             for (int ldVi = 0; ldVi < nRegs; ldVi += regsFilledPerLoad) {
-                extendVectorsToWord(masm, unsigned, loadVecSize, elSize, vtmp, ldVi, consecutiveRegs);
+                extendVectorsToWord(masm, unsigned, loadVecBits, elSize, vtmp, ldVi, consecutiveRegs);
             }
         }
 
@@ -243,7 +244,7 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         }
         for (int i = 0; i < nRegs; i += maxConsecutiveRegs) {
             boolean postIndex = maxConsecutiveRegs < nRegs;
-            loadConsecutiveVectors(masm, ASIMDSize.FullReg, ElementSize.Word, coefAddrReg, vcoef, i, maxConsecutiveRegs, postIndex, false);
+            loadConsecutiveVectors(masm, ASIMDSize.FullReg, ASIMDSize.FullReg.bits(), ElementSize.Word, coefAddrReg, vcoef, i, maxConsecutiveRegs, postIndex, false);
         }
 
         // vresult *= vcoef;
@@ -308,38 +309,39 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
      * increment the address register by the loaded bytes.
      */
     private static void loadConsecutiveVectors(AArch64MacroAssembler masm,
-                    ASIMDSize vecSize, ElementSize elSize, Register indexedAddrReg, Register[] vreg,
+                    ASIMDSize vecSize, int vecBits, ElementSize elSize, Register indexedAddrReg, Register[] vreg,
                     int startReg, int consecutiveRegs, boolean postIndex, boolean preferLd1) {
         assert consecutiveRegs <= 4 : consecutiveRegs;
         switch (consecutiveRegs) {
             case 2 -> {
-                if (preferLd1 && allConsecutiveSIMDRegisters(vreg)) {
+                if (preferLd1 && allConsecutiveSIMDRegisters(vreg) && vecBits == vecSize.bits()) {
                     masm.neon.ld1MultipleVV(vecSize, elSize, vreg[startReg], vreg[startReg + 1],
                                     addressForLd1M(2, vecSize, elSize, indexedAddrReg, postIndex));
                 } else {
-                    masm.fldp(vecSize.bits(), vreg[startReg], vreg[startReg + 1],
+                    masm.fldp(vecBits, vreg[startReg], vreg[startReg + 1],
                                     addressForLdp(vecSize, indexedAddrReg, postIndex, 0));
                 }
             }
             case 4 -> {
-                if (preferLd1 && allConsecutiveSIMDRegisters(vreg)) {
+                if (preferLd1 && allConsecutiveSIMDRegisters(vreg) && vecBits == vecSize.bits()) {
                     masm.neon.ld1MultipleVVVV(vecSize, elSize,
                                     vreg[startReg], vreg[startReg + 1], vreg[startReg + 2], vreg[startReg + 3],
                                     addressForLd1M(4, vecSize, elSize, indexedAddrReg, postIndex));
                 } else {
-                    masm.fldp(vecSize.bits(), vreg[startReg], vreg[startReg + 1],
+                    masm.fldp(vecBits, vreg[startReg], vreg[startReg + 1],
                                     addressForLdp(vecSize, indexedAddrReg, postIndex, 0));
-                    masm.fldp(vecSize.bits(), vreg[startReg + 2], vreg[startReg + 3],
+                    masm.fldp(vecBits, vreg[startReg + 2], vreg[startReg + 3],
                                     addressForLdp(vecSize, indexedAddrReg, postIndex, 2));
                 }
             }
             default -> {
+                boolean useLd1 = preferLd1 && (consecutiveRegs == 1 || postIndex) && vecBits == vecSize.bits();
                 for (int i = 0; i < consecutiveRegs; i++) {
-                    if (preferLd1 && (consecutiveRegs == 1 || postIndex)) {
+                    if (useLd1) {
                         masm.neon.ld1MultipleV(vecSize, elSize, vreg[startReg + i],
                                         addressForLd1M(1, vecSize, elSize, indexedAddrReg, postIndex));
                     } else {
-                        masm.fldr(vecSize.bits(), vreg[startReg + i],
+                        masm.fldr(vecBits, vreg[startReg + i],
                                         addressForLdr(vecSize, indexedAddrReg, postIndex, i));
                     }
                 }
@@ -384,15 +386,15 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
     /**
      * Zero-or-sign-extend byte-or-halfword vector registers to word-size vectors.
      */
-    private static void extendVectorsToWord(AArch64MacroAssembler masm, boolean unsigned, ASIMDSize startVecSize, ElementSize startElSize, Register[] vtmp, int start, int srcRegsInitial) {
-        ASIMDSize vecSize = startVecSize;
+    private static void extendVectorsToWord(AArch64MacroAssembler masm, boolean unsigned, int startVecBits, ElementSize startElSize, Register[] vtmp, int start, int srcRegsInitial) {
+        int vecBits = startVecBits;
         ElementSize srcElSize = startElSize;
         ElementSize endElSize = ElementSize.Word;
         int srcRegs = srcRegsInitial;
-        while (srcElSize.bytes() < endElSize.bytes()) {
-            if (vecSize == ASIMDSize.HalfReg) {
-                vecSize = ASIMDSize.FullReg;
+        while (srcElSize.bits() < endElSize.bits()) {
+            if (vecBits < ASIMDSize.FullReg.bits()) {
                 extendSameRegs(masm, unsigned, srcElSize, vtmp, start, srcRegs);
+                vecBits *= 2;
             } else {
                 extendPairwise(masm, unsigned, srcElSize, vtmp, start, srcRegs);
                 srcRegs *= 2;
