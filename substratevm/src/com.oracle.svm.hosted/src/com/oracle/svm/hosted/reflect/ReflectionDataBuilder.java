@@ -246,27 +246,39 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     @Override
     public void registerAllPermittedSubclassesQuery(ConfigurationCondition condition, Class<?> clazz) {
         checkNotSealed();
-        registerConditionalConfiguration(condition, () -> setQueryFlag(clazz, ALL_PERMITTED_SUBCLASSES_FLAG));
-        if (clazz.isSealed()) {
-            register(condition, clazz.getPermittedSubclasses());
-        }
+        registerConditionalConfiguration(condition, () -> {
+            setQueryFlag(clazz, ALL_PERMITTED_SUBCLASSES_FLAG);
+            if (clazz.isSealed()) {
+                register(condition, clazz.getPermittedSubclasses());
+            }
+        });
     }
 
     @Override
     public void registerAllNestMembersQuery(ConfigurationCondition condition, Class<?> clazz) {
         checkNotSealed();
-        registerConditionalConfiguration(condition, () -> setQueryFlag(clazz, ALL_NEST_MEMBERS_FLAG));
-        for (Class<?> nestMember : clazz.getNestMembers()) {
-            if (nestMember != clazz) {
-                register(condition, nestMember);
+        registerConditionalConfiguration(condition, () -> {
+            setQueryFlag(clazz, ALL_NEST_MEMBERS_FLAG);
+            for (Class<?> nestMember : clazz.getNestMembers()) {
+                if (nestMember != clazz) {
+                    register(condition, nestMember);
+                }
             }
-        }
+        });
     }
 
     @Override
     public void registerAllSignersQuery(ConfigurationCondition condition, Class<?> clazz) {
         checkNotSealed();
-        registerConditionalConfiguration(condition, () -> setQueryFlag(clazz, ALL_SIGNERS_FLAG));
+        registerConditionalConfiguration(condition, () -> {
+            setQueryFlag(clazz, ALL_SIGNERS_FLAG);
+            Object[] signers = clazz.getSigners();
+            if (signers != null) {
+                for (Object signer : signers) {
+                    metaAccess.lookupJavaType(signer.getClass()).registerAsInHeap("signer");
+                }
+            }
+        });
     }
 
     @Override
