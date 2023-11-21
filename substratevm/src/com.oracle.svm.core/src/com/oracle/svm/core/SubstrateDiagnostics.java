@@ -938,7 +938,7 @@ public class SubstrateDiagnostics {
             }
 
             log.string("CPU cores (OS): ");
-            if (SubstrateOptions.JNI.getValue()) {
+            if (!SubstrateOptions.AsyncSignalSafeDiagnostics.getValue() && SubstrateOptions.JNI.getValue()) {
                 log.signed(Jvm.JVM_ActiveProcessorCount()).newline();
             } else {
                 log.string("unknown").newline();
@@ -952,8 +952,10 @@ public class SubstrateDiagnostics {
             }
 
             log.string("Page size: ").unsigned(VirtualMemoryProvider.get().getGranularity()).newline();
-            log.string("VM uptime: ").rational(Isolates.getCurrentUptimeMillis(), TimeUtils.millisPerSecond, 3).string("s").newline();
-            log.string("Current timestamp: ").unsigned(System.currentTimeMillis()).newline();
+            if (!SubstrateOptions.AsyncSignalSafeDiagnostics.getValue()) {
+                log.string("VM uptime: ").rational(Isolates.getCurrentUptimeMillis(), TimeUtils.millisPerSecond, 3).string("s").newline();
+                log.string("Current timestamp: ").unsigned(System.currentTimeMillis()).newline();
+            }
 
             CodeInfo info = CodeInfoTable.getImageCodeInfo();
             Pointer codeStart = (Pointer) CodeInfoAccess.getCodeStart(info);
