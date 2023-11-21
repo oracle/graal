@@ -268,7 +268,9 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
                             node.getRootNode().getFrameDescriptor() == frame.getFrameDescriptor()) {
                 Object defaultValue = frame.getFrameDescriptor().getDefaultValue();
                 for (int slot = 0; slot < frame.getFrameDescriptor().getNumberOfSlots(); slot++) {
-                    Assert.assertEquals("Top-most nodes tagged with RootTag should have clean frames.", defaultValue, frame.getValue(slot));
+                    if (!frame.isStatic(slot)) { // Trust static slot usages.
+                        Assert.assertEquals("Top-most nodes tagged with RootTag should have clean frames.", defaultValue, frame.getValue(slot));
+                    }
                 }
             }
         }
