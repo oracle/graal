@@ -1143,7 +1143,7 @@ public class NativeImageGenerator {
         Collection<StructuredGraph> snippetGraphs = replacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options);
         if (bb instanceof NativeImagePointsToAnalysis pointsToAnalysis) {
             for (StructuredGraph graph : snippetGraphs) {
-                HostedConfiguration.instance().registerUsedElements(pointsToAnalysis, graph, false);
+                HostedConfiguration.instance().registerUsedElements(pointsToAnalysis, graph);
             }
         } else if (bb instanceof NativeImageReachabilityAnalysisEngine reachabilityAnalysis) {
             for (StructuredGraph graph : snippetGraphs) {

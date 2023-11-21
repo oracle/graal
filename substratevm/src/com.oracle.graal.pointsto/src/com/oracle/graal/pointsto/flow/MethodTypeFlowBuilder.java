@@ -228,7 +228,7 @@ public class MethodTypeFlowBuilder {
             }
 
             // Do it again after canonicalization changed type checks and field accesses.
-            registerUsedElements(bb, graph, true);
+            registerUsedElements(bb, graph);
 
             return true;
         } catch (Throwable ex) {
@@ -236,7 +236,7 @@ public class MethodTypeFlowBuilder {
         }
     }
 
-    protected static void registerUsedElements(PointsToAnalysis bb, StructuredGraph graph, boolean registerEmbeddedRoots) {
+    protected static void registerUsedElements(PointsToAnalysis bb, StructuredGraph graph) {
         PointsToAnalysisMethod method = (PointsToAnalysisMethod) graph.method();
         HostedProviders providers = bb.getProviders(method);
         for (Node n : graph.getNodes()) {
@@ -310,7 +310,7 @@ public class MethodTypeFlowBuilder {
                     assert StampTool.isExactType(cn) : cn;
                     AnalysisType type = (AnalysisType) StampTool.typeOrNull(cn, bb.getMetaAccess());
                     type.registerAsInHeap(new EmbeddedRootScan(AbstractAnalysisEngine.sourcePosition(cn), root));
-                    if (registerEmbeddedRoots && !ignoreConstant(bb, cn)) {
+                    if (!ignoreConstant(bb, cn)) {
                         registerEmbeddedRoot(bb, cn);
                     }
                 }
