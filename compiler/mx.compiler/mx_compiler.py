@@ -163,11 +163,6 @@ def _run_jvmci_version_check(args=None, jdk=jdk, **kwargs):
 if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore':
     _check_jvmci_version(jdk)
 
-mx_gate.add_jacoco_includes(['org.graalvm.*'])
-mx_gate.add_jacoco_includes(['jdk.graal.compiler.*'])
-mx_gate.add_jacoco_excludes(['com.oracle.truffle'])
-mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution', '@ExcludeFromJacocoInstrumentation'])
-
 def _get_graal_option(vmargs, name, default=None, prefix='-Djdk.graal.'):
     """
     Gets the value of the `name` Graal option in `vmargs`.
@@ -1540,6 +1535,8 @@ mx.update_commands(_suite, {
     'profdiff': [profdiff, '[options] proftool_output1 optimization_log1 proftool_output2 optimization_log2'],
 })
 
+mx.add_argument('--no-jacoco-exclude-truffle', action='store_false', dest='jacoco_exclude_truffle', help="Don't exclude Truffle classes from jacoco annotations.")
+
 def mx_post_parse_cmd_line(opts):
     mx.addJDKFactory(_JVMCI_JDK_TAG, jdk.javaCompliance, GraalJDKFactory())
     mx.add_ide_envvar('JVMCI_VERSION_CHECK')
@@ -1549,3 +1546,9 @@ def mx_post_parse_cmd_line(opts):
 
     global _vm_prefix
     _vm_prefix = opts.vm_prefix
+
+    mx_gate.add_jacoco_includes(['org.graalvm.*'])
+    mx_gate.add_jacoco_includes(['jdk.graal.compiler.*'])
+    mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution', '@ExcludeFromJacocoInstrumentation'])
+    if opts.jacoco_exclude_truffle:
+        mx_gate.add_jacoco_excludes(['com.oracle.truffle'])

@@ -166,9 +166,10 @@ local sulong_deps = common.deps.sulong;
       job:: "coverage",
       skipPlatform:: coverageTags == [],
       gateTags:: ["build"] + coverageTags,
+      extra_mx_args+: ["--no-jacoco-exclude-truffle"],
       extra_gate_args+: ["--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
       teardown+: [
-        self.mx + ["sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
+        ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
       ],
     },
 
