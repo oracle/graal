@@ -197,8 +197,8 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
             AArch64Address dataChunkStart = AArch64Address.createRegisterOffsetAddress(elSize.bits(), ary1, index, true);
             masm.loadAddress(rscratch1, dataChunkStart);
 
-            ASIMDSize loadVecSize = elSize == ElementSize.Byte || elSize == ElementSize.HalfWord ? ASIMDSize.HalfReg : ASIMDSize.FullReg;
-            int loadVecBits = elSize.bits() * elementsPerVector;
+            ASIMDSize loadVecSize = ASIMDSize.FullReg;
+            int loadVecBits = loadVecSize.bits();
             // number of <loadVecSize> registers needed to load to fill 4 full vectors.
             // i.e. byte: 1 full or 2 half, halfword: 2 full or 4 half, word: 4 full.
             int consecutiveRegs = Math.min(elSize.bytes() * (ASIMDSize.FullReg.bits() / loadVecBits), maxConsecutiveRegs);
@@ -207,8 +207,6 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
             boolean postIndex = consecutiveRegs > 2;
             for (int ldVi = 0; ldVi < nRegs; ldVi += regsFilledPerLoad) {
                 loadConsecutiveVectors(masm, loadVecSize, loadVecBits, elSize, rscratch1, vtmp, ldVi, consecutiveRegs, postIndex, false);
-            }
-            for (int ldVi = 0; ldVi < nRegs; ldVi += regsFilledPerLoad) {
                 extendVectorsToWord(masm, unsigned, loadVecBits, elSize, vtmp, ldVi, consecutiveRegs);
             }
         }
