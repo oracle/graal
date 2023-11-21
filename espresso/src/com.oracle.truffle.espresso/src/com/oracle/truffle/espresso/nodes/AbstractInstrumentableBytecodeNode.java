@@ -36,6 +36,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoScope;
 import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
@@ -63,6 +64,11 @@ abstract class AbstractInstrumentableBytecodeNode extends EspressoInstrumentable
     @Override
     public WrapperNode createWrapper(ProbeNode probeNode) {
         return new AbstractInstrumentableBytecodeNodeWrapper(this, probeNode);
+    }
+
+    @Override
+    public SourceSection getSourceSection() {
+        return getRootNode().getSourceSection();
     }
 
     @ExportMessage

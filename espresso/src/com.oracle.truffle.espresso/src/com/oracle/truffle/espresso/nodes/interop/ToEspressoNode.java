@@ -165,7 +165,10 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "!isStaticObject(value)"
         })
         public Object doForeignNull(Object value, @SuppressWarnings("unused") Klass targetType,
-                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+            if (targetType.isPrimitive()) {
+                throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.cat("Cannot cast ", value, " to ", targetType.getTypeAsString()));
+            }
             return StaticObject.createForeignNull(EspressoLanguage.get(this), value);
         }
 
