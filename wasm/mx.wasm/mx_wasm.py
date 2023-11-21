@@ -135,7 +135,7 @@ def graal_wasm_gate_runner(args, tasks):
                 exitcode = mx_benchmark.benchmark([
                         "wasm:WASM_BENCHMARKCASES", "--",
                         "--jvm", "server", "--jvm-config", "graal-core",
-                        "-Dwasmbench.benchmarkName=" + b, "-Dwasmtest.keepTempFiles=true", "--",
+                        "-Dwasmbench.benchmarkName=" + b, "--",
                         "CMicroBenchmarkSuite", "-wi", "1", "-i", "1"])
                 if exitcode != 0:
                     mx.abort("Errors during benchmark tests, aborting.")
