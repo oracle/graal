@@ -456,19 +456,19 @@ public final class Target_jdk_jfr_internal_JVM {
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class) //
     public void include(Thread thread) {
-        SubstrateJVM.get().setExcluded(thread, false);
+        JfrThreadLocal.setExcluded(thread, false);
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class) //
     public void exclude(Thread thread) {
-        SubstrateJVM.get().setExcluded(thread, true);
+        JfrThreadLocal.setExcluded(thread, true);
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class) //
     public boolean isExcluded(Thread thread) {
-        return SubstrateJVM.get().isExcluded(thread);
+        return JfrThreadLocal.isThreadExcluded(thread);
     }
 
     @Substitute
