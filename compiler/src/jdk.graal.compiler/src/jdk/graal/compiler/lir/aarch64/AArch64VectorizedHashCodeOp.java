@@ -183,6 +183,7 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         masm.and(32, bound, cnt1, ~(elementsPerIteration - 1));
 
         // for (; index < bound; index += elementsPerIteration) {
+        masm.align(AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT);
         masm.bind(labelUnrolledVectorLoopBegin);
         // result *= next;
         masm.mul(32, result, result, next);
@@ -249,6 +250,7 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
 
         // } else if (cnt1 < elementsPerIteration) {
 
+        masm.align(AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT);
         masm.bind(labelShortUnrolledBegin);
         // int i = 1;
         masm.mov(index, 1);
@@ -265,6 +267,7 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
             masm.mov(tmp961, 961);
 
             // for (; i < cnt1 ; i += 2) {
+            masm.align(AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT);
             masm.bind(labelShortUnrolledLoopBegin);
             // result *= 31**2;
             // result += ary1[index-1] * 31 + ary1[index]
