@@ -143,9 +143,10 @@ public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
     }
 
     /**
-     * Moves an immediate value into each element of the result.<br>
+     * Moves a vector. This instruction copies the vector in the source SIMD register into the
+     * destination SIMD register.<br>
      *
-     * <code>for i in 0..n-1 do dst[i] = imm</code>
+     * <code>for i in 0..n-1 do dst[i] = src[i]</code>
      */
     public void moveVV(ASIMDSize size, Register dst, Register src) {
         if (!src.equals(dst)) {
