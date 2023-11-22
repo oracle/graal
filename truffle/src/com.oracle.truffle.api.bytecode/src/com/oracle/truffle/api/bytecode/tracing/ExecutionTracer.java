@@ -40,11 +40,13 @@
  */
 package com.oracle.truffle.api.bytecode.tracing;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.bytecode.tracing.BytecodeStatistics.DisabledExecutionTracer;
 import com.oracle.truffle.api.nodes.RootNode;
 
 // per-context per-ops per-thread
 public abstract class ExecutionTracer {
+    @TruffleBoundary
     public static ExecutionTracer get(Class<?> bytecodeClass) {
         BytecodeStatistics stats = BytecodeStatistics.STATISTICS.get();
         if (stats == null) {
