@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.phases.common.LazyValue;
+import jdk.graal.compiler.phases.common.LazyValue;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
@@ -258,24 +258,16 @@ class ReflectionProcessor extends AbstractProcessor {
                 break;
             }
 
-            case "getBundleImplJDK8OrEarlier": {
-                expectSize(args, 6);
-                String baseName = (String) args.get(0);
-                @SuppressWarnings("unchecked")
-                List<String> classNames = (List<String>) args.get(4);
-                @SuppressWarnings("unchecked")
-                List<String> locales = (List<String>) args.get(5);
-                resourceConfiguration.addBundle(condition, classNames, locales, baseName);
-                break;
-            }
-            case "getBundleImplJDK11OrLater": {
+            case "getBundleImpl": {
                 expectSize(args, 7);
                 String baseName = (String) args.get(2);
                 @SuppressWarnings("unchecked")
                 List<String> classNames = (List<String>) args.get(5);
                 @SuppressWarnings("unchecked")
                 List<String> locales = (List<String>) args.get(6);
-                resourceConfiguration.addBundle(condition, classNames, locales, baseName);
+                if (baseName != null) {
+                    resourceConfiguration.addBundle(condition, classNames, locales, baseName);
+                }
                 break;
             }
             case "allocateInstance": {

@@ -26,7 +26,7 @@ package com.oracle.svm.hosted.classinitialization;
 
 import java.lang.reflect.Proxy;
 
-import org.graalvm.compiler.java.LambdaUtils;
+import jdk.graal.compiler.java.LambdaUtils;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -162,8 +162,26 @@ class AllowAllHostedUsagesClassInitializationSupport extends ClassInitialization
         superResult = superResult.max(processInterfaces(clazz, memoize));
 
         if (superResult == InitKind.BUILD_TIME && (Proxy.isProxyClass(clazz) || LambdaUtils.isLambdaType(metaAccess.lookupJavaType(clazz)))) {
-            forceInitializeHosted(clazz, "proxy/lambda classes with interfaces initialized at build time are also initialized at build time", false);
-            return InitKind.BUILD_TIME;
+            /*
+             * To simplify class initialization configuration for proxy and lambda types,
+             * registering all of their implemented interfaces as "initialize at build time" is
+             * equivalent to registering the proxy/lambda type itself. This is safe because we know
+             * that proxy/lambda types themselves have no problematic code in the class initializer
+             * (they are generated classes).
+             * 
+             * Note that we must look at all interfaces, including transitive dependencies.
+             */
+            boolean allInterfacesSpecifiedAsBuildTime = true;
+            for (Class<?> iface : allInterfaces(clazz)) {
+                if (specifiedInitKindFor(iface) != InitKind.BUILD_TIME) {
+                    allInterfacesSpecifiedAsBuildTime = false;
+                    break;
+                }
+            }
+            if (allInterfacesSpecifiedAsBuildTime) {
+                forceInitializeHosted(clazz, "proxy/lambda classes with all interfaces explicitly marked as --initialize-at-build-time are also initialized at build time", false);
+                return InitKind.BUILD_TIME;
+            }
         }
 
         InitKind result = superResult.max(clazzResult);

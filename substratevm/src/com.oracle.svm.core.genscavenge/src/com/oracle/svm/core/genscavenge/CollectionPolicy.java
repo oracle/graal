@@ -30,6 +30,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.util.UserError;
@@ -66,8 +67,8 @@ public interface CollectionPolicy {
         switch (name) {
             case "Adaptive":
                 return AdaptiveCollectionPolicy.class;
-            case "AggressiveShrink":
-                return AggressiveShrinkCollectionPolicy.class;
+            case "LibGraal":
+                return LibGraalCollectionPolicy.class;
             case "Proportionate":
                 return ProportionateSpacesPolicy.class;
             case "BySpaceAndTime":
@@ -121,11 +122,10 @@ public interface CollectionPolicy {
     boolean shouldCollectOnAllocation();
 
     /**
-     * Return true if a user-requested GC (e.g., call to {@link System#gc()} or
-     * {@link org.graalvm.compiler.serviceprovider.GraalServices#notifyLowMemoryPoint(boolean)})
-     * should be performed.
+     * Called when an application provides a hint to the GC that it might be a good time to do a
+     * collection. Returns true if the GC decides to do a collection.
      */
-    boolean shouldCollectOnRequest(GCCause cause, boolean fullGC);
+    boolean shouldCollectOnHint(boolean fullGC);
 
     /**
      * At a safepoint, decides whether to do a complete collection (returning {@code true}) or an
@@ -176,6 +176,7 @@ public interface CollectionPolicy {
      * survivor-to spaces of all ages. In other words, when copying during a collection, up to 2x
      * this amount can be used for surviving objects.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     UnsignedWord getSurvivorSpacesCapacity();
 
     /** The capacity of the young generation, comprising the eden and survivor spaces. */
@@ -200,6 +201,7 @@ public interface CollectionPolicy {
      * 1 (straight from eden) and the {@linkplain HeapParameters#getMaxSurvivorSpaces() number of
      * survivor spaces + 1}.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     int getTenuringAge();
 
     /** Called at the beginning of a collection, in the safepoint operation. */

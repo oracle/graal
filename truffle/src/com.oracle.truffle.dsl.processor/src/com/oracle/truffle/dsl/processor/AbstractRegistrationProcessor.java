@@ -43,10 +43,12 @@ package com.oracle.truffle.dsl.processor;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -65,10 +67,14 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Elements;
+import javax.lang.model.util.Types;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
 import javax.tools.StandardLocation;
@@ -79,6 +85,7 @@ import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.java.compiler.JDTCompiler;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.transform.FixWarningsVisitor;
 import com.oracle.truffle.dsl.processor.java.transform.GenerateOverrideVisitor;
@@ -93,7 +100,6 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         return SourceVersion.latest();
     }
 
-    @SuppressWarnings({"deprecation", "unchecked"})
     @Override
     public final boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         try (ProcessorContext context = ProcessorContext.enter(processingEnv)) {
@@ -113,7 +119,7 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
                 for (Element e : annotatedElements) {
                     AnnotationMirror mirror = ElementUtils.findAnnotationMirror(e, supportedAnnotation.asType());
                     if (mirror != null && e.getKind() == ElementKind.CLASS) {
-                        if (validateRegistration(e, mirror)) {
+                        if (accepts(e, mirror) && validateRegistration(e, mirror)) {
                             TypeElement annotatedElement = (TypeElement) e;
                             String providerImplBinName = generateProvider(annotatedElement);
                             registrations.put(providerImplBinName, annotatedElement);
@@ -126,6 +132,11 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
             }
             return true;
         }
+    }
+
+    @SuppressWarnings("unused")
+    boolean accepts(Element annotatedElement, AnnotationMirror registrationMirror) {
+        return true;
     }
 
     abstract boolean validateRegistration(Element annotatedElement, AnnotationMirror registrationMirror);
@@ -161,11 +172,77 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         processingEnv.getMessager().printMessage(Kind.WARNING, msg, e);
     }
 
-    final void emitWarning(String msg, Element e, AnnotationMirror mirror, AnnotationValue value) {
-        if (ExpectError.isExpectedError(e, msg)) {
-            return;
+    boolean validateInternalResources(Element annotatedElement, AnnotationMirror mirror, ProcessorContext context) {
+        AnnotationValue value = ElementUtils.getAnnotationValue(mirror, "internalResources", true);
+        TruffleTypes types = context.getTypes();
+        Map<String, TypeElement> usedResourceIds = new HashMap<>();
+        for (TypeMirror internalResource : ElementUtils.getAnnotationValueList(TypeMirror.class, mirror, "internalResources")) {
+            TypeElement internalResourceElement = ElementUtils.fromTypeMirror(internalResource);
+            Set<Modifier> modifiers = internalResourceElement.getModifiers();
+            if (internalResourceElement.getEnclosingElement().getKind() != ElementKind.PACKAGE && !modifiers.contains(Modifier.STATIC)) {
+                emitError(String.format("The class %s must be a static inner-class or a top-level class. To resolve this, make the %s static or top-level class.",
+                                getScopedName(internalResourceElement), internalResourceElement.getSimpleName()), annotatedElement, mirror, value);
+                return false;
+            }
+            if (!ElementUtils.isVisible(annotatedElement, internalResourceElement)) {
+                PackageElement targetPackage = ElementUtils.findPackageElement(annotatedElement);
+                emitError(String.format("The class %s must be public or package protected in the %s package. To resolve this, make the %s public or move it to the %s package.",
+                                getScopedName(internalResourceElement), targetPackage.getQualifiedName(), getScopedName(internalResourceElement), targetPackage.getQualifiedName()),
+                                annotatedElement, mirror, value);
+                return false;
+            }
+            AnnotationMirror id = ElementUtils.findAnnotationMirror(internalResourceElement.getAnnotationMirrors(), types.InternalResource_Id);
+            if (id == null) {
+                String idSimpleName = ElementUtils.getSimpleName(types.InternalResource_Id);
+                emitError(String.format("The class %s must be annotated by the @%s annotation. To resolve this, add '@%s(\"resource-id\")' annotation.",
+                                getScopedName(internalResourceElement), idSimpleName, idSimpleName), annotatedElement, mirror, value);
+                return false;
+            }
+            boolean optional = ElementUtils.getAnnotationValue(Boolean.class, id, "optional");
+            if (optional) {
+                String resourceClzName = getScopedName(internalResourceElement);
+                emitError(String.format("Optional internal resources must not be registered using '@Registration' annotation. " +
+                                "To resolve this, remove the '%s' from 'internalResources' the or make the '%s' non-optional by removing 'optional = true'.",
+                                resourceClzName, resourceClzName), annotatedElement, mirror, value);
+                return false;
+            }
+            String resourceComponentId = ElementUtils.getAnnotationValue(String.class, id, "componentId");
+            String registrationComponentId = ElementUtils.getAnnotationValue(String.class, mirror, "id");
+            if (!resourceComponentId.isEmpty() && !resourceComponentId.equals(registrationComponentId)) {
+                String idSimpleName = ElementUtils.getSimpleName(types.InternalResource_Id);
+                emitError(String.format("The '@%s.componentId' for an required internal resources must be unset or equal to '@Registration.id'. " +
+                                "To resolve this, remove the '@%s.componentId = \"%s\"'.",
+                                idSimpleName, idSimpleName, resourceComponentId), annotatedElement, mirror, value);
+                return false;
+            }
+            String idValue = ElementUtils.getAnnotationValue(String.class, id, "value");
+            TypeElement prev = usedResourceIds.put(idValue, internalResourceElement);
+            if (prev != null) {
+                String prevResourceClzName = getScopedName(prev);
+                String newResourceClzName = getScopedName(internalResourceElement);
+                String idSimpleName = ElementUtils.getSimpleName(types.InternalResource_Id);
+                emitError(String.format("Internal resources must have unique ids within the component. But %s and %s use the same id %s. To resolve this, change the @%s value on %s or %s.",
+                                prevResourceClzName, newResourceClzName, idValue, idSimpleName, prevResourceClzName, newResourceClzName), annotatedElement, mirror, value);
+                return false;
+            }
+            boolean foundConstructor = false;
+            for (ExecutableElement constructor : ElementFilter.constructorsIn(internalResourceElement.getEnclosedElements())) {
+                if (!ElementUtils.isVisible(annotatedElement, constructor)) {
+                    continue;
+                }
+                if (!constructor.getParameters().isEmpty()) {
+                    continue;
+                }
+                foundConstructor = true;
+                break;
+            }
+            if (!foundConstructor) {
+                emitError(String.format("The class %s must have a no argument public constructor. To resolve this, add public %s() constructor.",
+                                getScopedName(internalResourceElement), ElementUtils.getSimpleName(internalResourceElement)), annotatedElement, mirror, value);
+                return false;
+            }
         }
-        processingEnv.getMessager().printMessage(Kind.WARNING, msg, e, mirror, value);
+        return true;
     }
 
     static CodeAnnotationMirror copyAnnotations(AnnotationMirror mirror, Predicate<ExecutableElement> filter) {
@@ -186,11 +263,10 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         };
         TypeElement providerElement = context.getTypeElement(getProviderClass());
         CodeTypeElement providerClass = GeneratorUtils.createClass(model, null, EnumSet.of(Modifier.PUBLIC),
-                        createProviderSimpleName(annotatedElement), null);
+                        createProviderSimpleName(annotatedElement), providerElement.asType());
         providerClass.getModifiers().add(Modifier.FINAL);
-        providerClass.getImplements().add(providerElement.asType());
-        for (Element method : ElementFilter.methodsIn(providerElement.getEnclosedElements())) {
-            CodeExecutableElement implementedMethod = CodeExecutableElement.clone((ExecutableElement) method);
+        for (ExecutableElement method : ElementFilter.methodsIn(providerElement.getEnclosedElements())) {
+            CodeExecutableElement implementedMethod = CodeExecutableElement.clone(method);
             implementedMethod.getModifiers().remove(Modifier.ABSTRACT);
             implementMethod(annotatedElement, implementedMethod);
             providerClass.add(implementedMethod);
@@ -224,12 +300,73 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         String filename = "META-INF/truffle-registrations/" + providerClassName;
         try {
             FileObject file = env.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", filename, originatingElements);
-            PrintWriter writer = new PrintWriter(new OutputStreamWriter(file.openOutputStream(), "UTF-8"));
+            PrintWriter writer = new PrintWriter(new OutputStreamWriter(file.openOutputStream(), StandardCharsets.UTF_8));
             writer.println(serviceClassName);
             writer.close();
         } catch (IOException e) {
             handleIOError(e, env, originatingElements[0]);
         }
+    }
+
+    static void generateGetServicesClassNames(AnnotationMirror registration, CodeTreeBuilder builder, ProcessorContext context) {
+        List<TypeMirror> services = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "services");
+        Types types = context.getEnvironment().getTypeUtils();
+        builder.startReturn();
+        builder.startStaticCall(context.getType(List.class), "of");
+        for (TypeMirror service : services) {
+            builder.startGroup().doubleQuote(ElementUtils.getBinaryName((TypeElement) ((DeclaredType) types.erasure(service)).asElement())).end();
+        }
+        builder.end(2);
+    }
+
+    static void generateGetInternalResourceIds(AnnotationMirror registration, CodeTreeBuilder builder, ProcessorContext context) {
+        List<TypeMirror> resources = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "internalResources");
+        builder.startReturn();
+        builder.startStaticCall(context.getType(List.class), "of");
+        Set<String> resourceIds = getResourcesById(resources, context).keySet();
+        for (String resourceId : resourceIds) {
+            builder.doubleQuote(resourceId);
+        }
+        builder.end(2);
+    }
+
+    static void generateCreateInternalResource(AnnotationMirror registration, VariableElement resourceIdParameter, CodeTreeBuilder builder, ProcessorContext context) {
+        List<TypeMirror> resources = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "internalResources");
+        String resourceIdParameterName = resourceIdParameter.getSimpleName().toString();
+        if (resources.isEmpty()) {
+            generateThrowIllegalArgumentException(builder, context, resourceIdParameterName, Set.of());
+        } else {
+            builder.startSwitch().string(resourceIdParameterName).end().startBlock();
+            Map<String, TypeMirror> resourcesByName = getResourcesById(resources, context);
+            for (Map.Entry<String, TypeMirror> e : resourcesByName.entrySet()) {
+                builder.startCase().doubleQuote(e.getKey()).end();
+                builder.startCaseBlock();
+                builder.startReturn().startNew(e.getValue()).end(2);
+                builder.end();
+            }
+            builder.caseDefault();
+            builder.startCaseBlock();
+            generateThrowIllegalArgumentException(builder, context, resourceIdParameterName, resourcesByName.keySet());
+            builder.end(2);
+        }
+    }
+
+    private static void generateThrowIllegalArgumentException(CodeTreeBuilder builder, ProcessorContext context, String resourceIdParameterName, Set<String> supportedIds) {
+        builder.startThrow().startNew(context.getType(IllegalArgumentException.class)).startStaticCall(context.getType(String.class), "format");
+        builder.doubleQuote("Unsupported internal resource id %s, supported ids are " + String.join(", ", supportedIds));
+        builder.string(resourceIdParameterName);
+        builder.end(3);
+    }
+
+    private static Map<String, TypeMirror> getResourcesById(List<TypeMirror> resources, ProcessorContext context) {
+        Map<String, TypeMirror> res = new LinkedHashMap<>();
+        TruffleTypes types = context.getTypes();
+        for (TypeMirror resource : resources) {
+            AnnotationMirror id = ElementUtils.findAnnotationMirror(ElementUtils.castTypeElement(resource).getAnnotationMirrors(), types.InternalResource_Id);
+            String idValue = ElementUtils.getAnnotationValue(String.class, id, "value");
+            res.put(idValue, resource);
+        }
+        return res;
     }
 
     /**
@@ -265,8 +402,8 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         Collections.sort(providerClassNames);
         if (!providerClassNames.isEmpty()) {
             try {
-                FileObject file = env.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", filename, providerRegistrations.values().toArray(new Element[providerRegistrations.size()]));
-                try (PrintWriter out = new PrintWriter(new OutputStreamWriter(file.openOutputStream(), "UTF-8"))) {
+                FileObject file = env.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", filename, providerRegistrations.values().toArray(new Element[0]));
+                try (PrintWriter out = new PrintWriter(new OutputStreamWriter(file.openOutputStream(), StandardCharsets.UTF_8))) {
                     for (String providerClassName : providerClassNames) {
                         out.println(providerClassName);
                     }
@@ -275,6 +412,19 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
                 handleIOError(e, env, providerRegistrations.values().iterator().next());
             }
         }
+    }
+
+    static String getScopedName(TypeElement element) {
+        StringBuilder name = new StringBuilder();
+        Element current = element;
+        while (current.getKind().isClass() || current.getKind().isInterface()) {
+            if (name.length() > 0) {
+                name.insert(0, '.');
+            }
+            name.insert(0, ElementUtils.getSimpleName((TypeElement) current));
+            current = current.getEnclosingElement();
+        }
+        return name.toString();
     }
 
     private static void handleIOError(IOException e, ProcessingEnvironment env, Element element) {
@@ -290,5 +440,4 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
     static boolean shouldGenerateProviderFiles(Element currentElement) {
         return CompilerFactory.getCompiler(currentElement) instanceof JDTCompiler;
     }
-
 }

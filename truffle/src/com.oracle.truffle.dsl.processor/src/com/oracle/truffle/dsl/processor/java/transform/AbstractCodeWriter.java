@@ -294,7 +294,7 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
             for (TypeParameterElement typeParameter : parameters) {
                 write(sep);
                 write(typeParameter.getSimpleName().toString());
-                if (!typeParameter.getBounds().isEmpty()) {
+                if (needsBound(typeParameter)) {
                     write(" extends ");
                     String genericBoundsSep = "";
                     for (TypeMirror type : typeParameter.getBounds()) {
@@ -307,6 +307,18 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
             }
             write(">");
         }
+    }
+
+    private static boolean needsBound(TypeParameterElement typeParameter) {
+        var bounds = typeParameter.getBounds();
+        return switch (bounds.size()) {
+            case 0 -> false;
+            case 1 -> {
+                ProcessorContext ctx = ProcessorContext.getInstance();
+                yield !ctx.getEnvironment().getTypeUtils().isSameType(bounds.get(0), ctx.getDeclaredType(Object.class));
+            }
+            default -> true;
+        };
     }
 
     private static List<VariableElement> getStaticFields(CodeTypeElement clazz) {
@@ -674,9 +686,9 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
                 for (int i = 0; i < typeParameters.size(); i++) {
                     TypeParameterElement param = typeParameters.get(i);
                     write(param.getSimpleName().toString());
-                    List<? extends TypeMirror> bounds = param.getBounds();
-                    if (!bounds.isEmpty()) {
+                    if (needsBound(param)) {
                         write(" extends ");
+                        List<? extends TypeMirror> bounds = param.getBounds();
                         for (int j = 0; j < bounds.size(); j++) {
                             TypeMirror bound = bounds.get(i);
                             write(useImport(e, bound, true));

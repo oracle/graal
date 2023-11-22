@@ -34,7 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -59,6 +58,7 @@ import com.oracle.svm.jvmtiagentbase.AgentIsolate;
 import com.oracle.svm.jvmtiagentbase.JNIHandleSet;
 import com.oracle.svm.jvmtiagentbase.JvmtiAgentBase;
 import com.oracle.svm.jvmtiagentbase.Support;
+import com.oracle.svm.jvmtiagentbase.Support.WrongPhaseError;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiCapabilities;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent;
@@ -216,13 +216,17 @@ public class NativeImageDiagnosticsAgent extends JvmtiAgentBase<NativeImageDiagn
     }
 
     private void onBreakpointCallback(JvmtiEnv jvmti, JNIEnvironment jni, JNIObjectHandle thread, JNIMethodId method) {
-        if (clinitClassMap.get(method.rawValue()) != null) {
-            handleClinitBreakpoint(jvmti, jni, method);
-        } else if (initClassMap.get(method.rawValue()) != null) {
-            handleInitBreakpoint(jvmti, jni, thread);
-        } else {
-            throw VMError.shouldNotReachHere(
-                            "Breakpoint hit for a method that isn't tracked in the diagnostics agent. (For developers: have you set a breakpoint in a method that isn't <clinit> or <init>)");
+        try {
+            if (clinitClassMap.get(method.rawValue()) != null) {
+                handleClinitBreakpoint(jvmti, jni, method);
+            } else if (initClassMap.get(method.rawValue()) != null) {
+                handleInitBreakpoint(jvmti, jni, thread);
+            } else {
+                throw VMError.shouldNotReachHere(
+                                "Breakpoint hit for a method that isn't tracked in the diagnostics agent. (For developers: have you set a breakpoint in a method that isn't <clinit> or <init>)");
+            }
+        } catch (WrongPhaseError exception) {
+            // The VM is shutting down, it's too late to report anything
         }
     }
 
@@ -235,7 +239,10 @@ public class NativeImageDiagnosticsAgent extends JvmtiAgentBase<NativeImageDiagn
 
     private void handleInitBreakpoint(JvmtiEnv jvmti, JNIEnvironment jni, JNIObjectHandle thread) {
         JNIObjectHandle thisHandle = Support.getReceiver(thread);
-        VMError.guarantee(thisHandle.notEqual(nullHandle()));
+        if (thisHandle.equal(nullHandle())) {
+            return;
+        }
+
         ObjectInstantiationTraceCreator stackTraceCreator = new ObjectInstantiationTraceCreator(jvmti, jni);
         JNIObjectHandle threadStackTrace = stackTraceCreator.getStackTraceArray();
         if (!stackTraceCreator.encounteredObjectInstantiatedReportCall()) {
@@ -283,7 +290,7 @@ public class NativeImageDiagnosticsAgent extends JvmtiAgentBase<NativeImageDiagn
 
                 JNIObjectHandle moduleName = Support.callObjectMethod(jni, module, moduleGetName);
                 String name = Support.fromJniString(jni, moduleName);
-                if (name != null && name.equals("org.graalvm.sdk")) {
+                if (name != null && name.equals("org.graalvm.nativeimage")) {
                     clinitTrackingSupportModule = module;
                     break;
                 }
@@ -374,9 +381,8 @@ public class NativeImageDiagnosticsAgent extends JvmtiAgentBase<NativeImageDiagn
         newClassDataLen.write(newClassDataLength);
     }
 
-    static final int ASM6 = 6 << 16;
     static final int ASM8 = 8 << 16;
-    static final int ASM_TARGET_VERSION = JavaVersionUtil.JAVA_SPEC == 11 ? ASM6 : ASM8;
+    static final int ASM_TARGET_VERSION = ASM8;
 
     private byte[] maybeInstrumentClassWithClinit(String clazzName, byte[] clazzData) {
         if (clazzName != null && !advisor.shouldTraceClassInitialization(clazzName.replace('/', '.'))) {

@@ -27,21 +27,20 @@ package com.oracle.svm.hosted.dashboard;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.System.Logger.Level;
 import java.nio.channels.Channels;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
-import org.graalvm.graphio.GraphOutput;
-import org.graalvm.graphio.GraphStructure;
+import jdk.graal.compiler.graphio.GraphOutput;
+import jdk.graal.compiler.graphio.GraphStructure;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterHeapLayoutAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.OnAnalysisExitAccessImpl;
@@ -100,7 +99,7 @@ public class DashboardDumpFeature implements InternalFeature {
                     try {
                         GraphOutput.newBuilder(VoidGraphStructure.INSTANCE).build(Channels.newChannel(os)).close();
                     } catch (IOException ex) {
-                        Logger.getLogger(DashboardDumpFeature.class.getName()).log(Level.SEVERE, null, ex);
+                        System.getLogger(DashboardDumpFeature.class.getName()).log(Level.ERROR, "IOException during Dashboard BGV dump header", ex);
                     }
                 });
             }

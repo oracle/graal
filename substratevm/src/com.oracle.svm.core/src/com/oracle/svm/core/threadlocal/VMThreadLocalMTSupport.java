@@ -24,13 +24,14 @@
  */
 package com.oracle.svm.core.threadlocal;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
@@ -40,9 +41,9 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 
 public class VMThreadLocalMTSupport {
-    @UnknownPrimitiveField public int vmThreadSize = -1;
-    @UnknownObjectField(types = {byte[].class}) public byte[] vmThreadReferenceMapEncoding;
-    @UnknownPrimitiveField public long vmThreadReferenceMapIndex = -1;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) public int vmThreadSize = -1;
+    @UnknownObjectField(availability = ReadyForCompilation.class) public byte[] vmThreadReferenceMapEncoding;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) public long vmThreadReferenceMapIndex = -1;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public VMThreadLocalMTSupport() {
@@ -67,6 +68,7 @@ public class VMThreadLocalMTSupport {
         return (int) result;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void walk(IsolateThread isolateThread, ObjectReferenceVisitor referenceVisitor) {
         NonmovableArray<Byte> threadRefMapEncoding = NonmovableArrays.fromImageHeap(vmThreadReferenceMapEncoding);
         InstanceReferenceMapDecoder.walkOffsetsFromPointer((Pointer) isolateThread, threadRefMapEncoding, vmThreadReferenceMapIndex, referenceVisitor, null);

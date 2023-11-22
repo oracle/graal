@@ -50,7 +50,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.Iterator;
 
-import com.oracle.truffle.api.TruffleOptionDescriptors;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -62,13 +61,13 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.SandboxPolicy;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.TruffleOptionDescriptors;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.test.ExpectError;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
@@ -76,14 +75,10 @@ import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class OptionProcessorTest {
 
-    @BeforeClass
-    public static void runWithWeakEncapsulationOnly() {
-        TruffleTestAssumptions.assumeWeakEncapsulation();
-    }
-
     @Test
     public void testTestLang() {
-        Engine engine = Engine.create();
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+        Engine engine = createEngineBuilder().build();
         OptionDescriptors descriptors = engine.getLanguages().get("optiontestlang1").getOptions();
 
         OptionDescriptor descriptor;
@@ -165,8 +160,8 @@ public class OptionProcessorTest {
 
     @Test
     public void testOptionsInstrument() {
-
-        Engine engine = Engine.create();
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+        Engine engine = createEngineBuilder().build();
         OptionDescriptors descriptors = engine.getInstruments().get("optiontestinstr1").getOptions();
 
         OptionDescriptor descriptor;
@@ -226,7 +221,8 @@ public class OptionProcessorTest {
     @SuppressWarnings("unchecked")
     @Test
     public void testOptionValues() {
-        Engine engine = Engine.create();
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+        Engine engine = createEngineBuilder().build();
         OptionDescriptors descriptors = engine.getInstruments().get("optiontestinstr1").getOptions();
         OptionValues optionValues = engine.getInstruments().get("optiontestinstr1").lookup(OptionValues.class);
         assertSame(descriptors, optionValues.getDescriptors());
@@ -237,7 +233,7 @@ public class OptionProcessorTest {
         assertEquals("defaultValue", optionValues.get(optionKey1));
         assertEquals("defaultValue", optionValues.get(optionKey2));
 
-        engine = Engine.newBuilder().option("optiontestinstr1.StringOption1", "test").build();
+        engine = createEngineBuilder().option("optiontestinstr1.StringOption1", "test").build();
         optionValues = engine.getInstruments().get("optiontestinstr1").lookup(OptionValues.class);
         assertTrue(optionValues.hasSetOptions());
         optionKey1 = descriptors.get("optiontestinstr1.StringOption1").getKey();
@@ -247,12 +243,12 @@ public class OptionProcessorTest {
         assertEquals("test", optionValues.get(optionKey1));
         assertEquals("defaultValue", optionValues.get(optionKey2));
 
-        engine = Engine.newBuilder().allowExperimentalOptions(true).option("optiontestlang1.StringOption1", "testLang").build();
+        engine = createEngineBuilder().allowExperimentalOptions(true).option("optiontestlang1.StringOption1", "testLang").build();
         optionValues = engine.getInstruments().get("optiontestinstr1").lookup(OptionValues.class);
         // A language option was set, not the instrument one. Instrument sees no option set:
         assertFalse(optionValues.hasSetOptions());
 
-        engine = Engine.newBuilder().allowExperimentalOptions(true).option("optiontestinstr1.Thresholds.MaxRetries", "123").option("optiontestinstr1.Thresholds.Capacity", "456").build();
+        engine = createEngineBuilder().allowExperimentalOptions(true).option("optiontestinstr1.Thresholds.MaxRetries", "123").option("optiontestinstr1.Thresholds.Capacity", "456").build();
         optionValues = engine.getInstruments().get("optiontestinstr1").lookup(OptionValues.class);
         assertTrue(optionValues.hasSetOptions());
         assertNull(descriptors.get("optiontestinstr1.ThresholdsDoesNotMatchPrefix"));
@@ -269,7 +265,8 @@ public class OptionProcessorTest {
 
     @Test
     public void testDescriptorPrefixMatching() {
-        Engine engine = Engine.create();
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+        Engine engine = createEngineBuilder().build();
         OptionDescriptors descriptors = engine.getInstruments().get("optiontestinstr1").getOptions();
 
         OptionKey<?> optionKey1 = descriptors.get("optiontestinstr1.ThresholdsSamePrefix").getKey();
@@ -339,9 +336,10 @@ public class OptionProcessorTest {
 
     @Test
     public void testOptionValueEqualsAndHashCode() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         // options are never equals if different engines are used.
-        Context c0 = Context.newBuilder().option("optiontestlang1.StableOption", "foo").build();
-        Context c1 = Context.newBuilder().option("optiontestlang1.StableOption", "foo").build();
+        Context c0 = createContextBuilder().option("optiontestlang1.StableOption", "foo").build();
+        Context c1 = createContextBuilder().option("optiontestlang1.StableOption", "foo").build();
         assertNotEquals(getOptionValues(c0), getOptionValues(c1));
         assertNotEquals(getOptionValues(c1), getOptionValues(c0));
         assertNotEquals(getOptionValues(c0).hashCode(), getOptionValues(c1).hashCode());
@@ -349,7 +347,7 @@ public class OptionProcessorTest {
         c1.close();
 
         // need to use the same engine to support comparing option values.
-        Engine engine = Engine.create();
+        Engine engine = createEngineBuilder().build();
         c0 = Context.newBuilder().engine(engine).option("optiontestlang1.StableOption", "foo").build();
         c1 = Context.newBuilder().engine(engine).option("optiontestlang1.StableOption", "foo").build();
         assertEquals(getOptionValues(c0), getOptionValues(c1));
@@ -394,6 +392,14 @@ public class OptionProcessorTest {
         } finally {
             c.leave();
         }
+    }
+
+    private static Engine.Builder createEngineBuilder() {
+        return Engine.newBuilder().option("engine.WarnOptionDeprecation", "false");
+    }
+
+    private static Context.Builder createContextBuilder() {
+        return Context.newBuilder().option("engine.WarnOptionDeprecation", "false");
     }
 
     @Option.Group("prefix")

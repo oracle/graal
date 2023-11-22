@@ -1661,7 +1661,15 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         assertFails(() -> {
             hashLib.writeHashEntry(hashTest, 1, -1);
             return null;
-        }, AssertionError.class);
+        }, UnsupportedMessageException.class);
+        hashTest.hasHashEntries = true;
+        hashTest.insertable = null;
+        hashTest.modifiable = (k) -> true;
+        hashTest.data = null;
+        assertFails(() -> {
+            hashLib.writeHashEntry(hashTest, 1, -1);
+            return null;
+        }, UnsupportedMessageException.class);
     }
 
     @Test
@@ -1709,7 +1717,7 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         assertFails(() -> {
             hashLib.removeHashEntry(hashTest, 1);
             return null;
-        }, AssertionError.class);
+        }, UnsupportedMessageException.class);
     }
 
     @Test

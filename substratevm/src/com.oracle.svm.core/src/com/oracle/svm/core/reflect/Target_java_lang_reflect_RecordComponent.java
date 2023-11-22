@@ -28,9 +28,8 @@ import java.lang.reflect.Method;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK17OrLater;
 
-@TargetClass(className = "java.lang.reflect.RecordComponent", onlyWith = JDK17OrLater.class)
+@TargetClass(java.lang.reflect.RecordComponent.class)
 public final class Target_java_lang_reflect_RecordComponent {
     @Alias public Class<?> clazz;
 

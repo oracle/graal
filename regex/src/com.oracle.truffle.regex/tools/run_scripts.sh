@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -49,35 +49,32 @@ then
 fi
 
 UNICODE_VERSION=15.0.0
+EMOJI_VERSION=15.0
 
 mkdir -p ./dat
 
-wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/UnicodeData.txt -O dat/UnicodeData.txt
-wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/CaseFolding.txt -O dat/CaseFolding.txt
-wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/SpecialCasing.txt -O dat/SpecialCasing.txt
 wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/PropertyAliases.txt -O dat/PropertyAliases.txt
 wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/PropertyValueAliases.txt -O dat/PropertyValueAliases.txt
 wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/NameAliases.txt -O dat/NameAliases.txt
 wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/emoji/emoji-data.txt -O dat/emoji-data.txt
 wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucdxml/ucd.nounihan.flat.zip -O dat/ucd.nounihan.flat.zip
+wget https://www.unicode.org/Public/emoji/${EMOJI_VERSION}/emoji-sequences.txt -O dat/emoji-sequences.txt
+wget https://www.unicode.org/Public/emoji/${EMOJI_VERSION}/emoji-zwj-sequences.txt -O dat/emoji-zwj-sequences.txt
 
 unzip -d dat dat/ucd.nounihan.flat.zip
 
 ./generate_unicode_properties.py > ../src/com/oracle/truffle/regex/charset/UnicodePropertyData.java
 
-./unicode-script.sh
-
-clojure -Sdeps '{:paths ["."]}' -M --main generate-case-fold-table > dat/case-fold-table.txt
-
-./update_case_fold_table.py
-
-./generate_ruby_case_folding.py > ../src/com/oracle/truffle/regex/tregex/parser/flavors/RubyCaseFoldingData.java
-
 ./generate_name_alias_table.py > ../src/com/oracle/truffle/regex/chardata/UnicodeCharacterAliases.java
 
 rm -r ./dat
 
+pushd casefolding
+cargo build --release && ./target/release/tregex-casefolding
+rm -r ./tmp
+popd
+
 mx build
-mx java -cp `mx paths regex:TREGEX`:`mx paths truffle:TRUFFLE_API`:`mx paths sdk:GRAAL_SDK` com.oracle.truffle.regex.charset.UnicodeGeneralCategoriesGenerator > ../src/com/oracle/truffle/regex/charset/UnicodeGeneralCategories.java
+mx java -cp `mx paths regex:TREGEX`:`mx paths truffle:TRUFFLE_API`:`mx paths sdk:COLLECTIONS` com.oracle.truffle.regex.charset.UnicodeGeneralCategoriesGenerator > ../src/com/oracle/truffle/regex/charset/UnicodeGeneralCategories.java
 
 mx eclipseformat --primary || true

@@ -49,6 +49,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public final class PointsToAnalysisMethod extends AnalysisMethod {
 
     private MethodTypeFlow typeFlow;
+    /** The parsing context in which given method was parsed, preserved after analysis. */
+    private final Object parsingReason;
 
     private Set<InvokeTypeFlow> invokedBy;
     private Set<InvokeTypeFlow> implementationInvokedBy;
@@ -69,11 +71,13 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
     public PointsToAnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped) {
         super(universe, wrapped, MultiMethod.ORIGINAL_METHOD, null);
         typeFlow = declaringClass.universe.analysisPolicy().createMethodTypeFlow(this);
+        parsingReason = typeFlow.getParsingReason();
     }
 
     private PointsToAnalysisMethod(AnalysisMethod original, MultiMethodKey multiMethodKey) {
         super(original, multiMethodKey);
         typeFlow = declaringClass.universe.analysisPolicy().createMethodTypeFlow(this);
+        parsingReason = typeFlow.getParsingReason();
     }
 
     @Override
@@ -97,7 +101,7 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
 
     @Override
     public boolean registerAsInvoked(Object reason) {
-        assert reason instanceof InvokeTypeFlow || reason instanceof String;
+        assert reason instanceof InvokeTypeFlow || reason instanceof String : reason;
         if (invokedBy != null && reason instanceof InvokeTypeFlow) {
             invokedBy.add((InvokeTypeFlow) reason);
         }
@@ -106,7 +110,7 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
 
     @Override
     public boolean registerAsImplementationInvoked(Object reason) {
-        assert reason instanceof InvokeTypeFlow || reason instanceof String;
+        assert reason instanceof InvokeTypeFlow || reason instanceof String : reason;
         if (implementationInvokedBy != null && reason instanceof InvokeTypeFlow) {
             implementationInvokedBy.add((InvokeTypeFlow) reason);
         }
@@ -149,7 +153,7 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
 
     @Override
     public Object getParsingReason() {
-        return typeFlow.getParsingReason();
+        return parsingReason;
     }
 
     public InvokeTypeFlow initAndGetContextInsensitiveInvoke(PointsToAnalysis bb, BytecodePosition originalLocation, boolean isSpecial, MultiMethodKey callerMultiMethodKey) {
@@ -163,13 +167,13 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
     }
 
     /**
-     * Create an unique, per method, context insensitive virtual or special invoke. The context
+     * Create a unique, per method, context insensitive virtual or special invoke. The context
      * insensitive invoke uses the receiver type of the method, i.e., its declaring class. Therefore
      * this invoke will link with all possible callees.
      */
     private static InvokeTypeFlow createContextInsensitiveInvoke(PointsToAnalysis bb, PointsToAnalysisMethod method, BytecodePosition originalLocation, boolean isSpecial,
                     MultiMethodKey callerMultiMethodKey) {
-        assert !method.isStatic();
+        assert !method.isStatic() : method;
         /*
          * The context insensitive invoke has actual parameters and return flows that will be linked
          * to the original actual parameters and return flows at each call site where it will be
@@ -242,8 +246,17 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
         } else {
             /*
              * If only a stub is ever created for this method, then it will not be invoked.
+             *
+             * However, for deopt targets it is possible for a root to temporarily be a stub before
+             * a full flow graph is created.
              */
-            return !getTypeFlow().getMethodFlowsGraphInfo().isStub();
+            return !getTypeFlow().getMethodFlowsGraphInfo().isStub() || (isDirectRootMethod() && isDeoptTarget());
         }
+    }
+
+    @Override
+    public void setReturnsAllInstantiatedTypes() {
+        super.setReturnsAllInstantiatedTypes();
+        assert !getTypeFlow().flowsGraphCreated() : "must call setReturnsAllInstantiatedTypes before typeflow is created";
     }
 }

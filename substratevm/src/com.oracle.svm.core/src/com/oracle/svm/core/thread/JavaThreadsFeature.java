@@ -30,9 +30,10 @@ import java.util.Map;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.ConcurrentIdentityHashMap;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.ClassUtil;
@@ -61,6 +62,13 @@ class JavaThreadsFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         access.registerObjectReplacer(this::collectReachableObjects);
+
+        /*
+         * This currently only means that we don't support setting custom values for
+         * java.lang.ScopedValue.cacheSize at runtime.
+         */
+        RuntimeClassInitialization.initializeAtBuildTime("java.lang.ScopedValue");
+        RuntimeClassInitialization.initializeAtBuildTime("java.lang.ScopedValue$Cache");
     }
 
     private Object collectReachableObjects(Object original) {

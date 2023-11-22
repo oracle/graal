@@ -27,12 +27,8 @@
 #ifdef _WIN64
 /*
  * The following functions are an identical copy of the functions in file TimeZone_md.c found at
- * https://github.com/graalvm/labs-openjdk-11/blob/67ddc3bcadd985ea26997457aec6696f21caf154/src/java.base/windows/native/libjava/TimeZone_md.c
+ * https://github.com/openjdk/jdk12/blob/94d9355a640e7a51ec86fafbaf7dc8fb13570e1c/src/java.base/windows/native/libjava/TimeZone_md.c
  * With the exceptions of the commented functions this file has not been modified from its original.
- *
- * Support for the new tzmappings format, introduced in JDK 12, has been added by backporting
- * JDK-8209167. So, depending on the value of the JDK_VER macro, the resulting code will support
- * either the old format or the new format, but not both.
  */
 #include <windows.h>
 #include <stdio.h>
@@ -154,10 +150,8 @@ static void customZoneName(LONG bias, char *buffer) {
 
 /*
  * Gets the current time zone entry in the "Time Zones" registry.
- *
- * Note that the winMapID parameter is only used if JDK_VER <= 11.
  */
-static int getWinTimeZone(char *winZoneName, char *winMapID)
+static int getWinTimeZone(char *winZoneName)
 {
     DYNAMIC_TIME_ZONE_INFORMATION dtzi;
     DWORD timeType;
@@ -243,7 +237,6 @@ static int getWinTimeZone(char *winZoneName, char *winMapID)
         WCHAR stdNameInReg[MAX_ZONE_CHAR];
         TziValue tempTzi;
         WCHAR *stdNamePtr = tzi.StandardName;
-        DWORD valueSize;
         int onlyMapID;
 
         timeType = GetTimeZoneInformation(&tzi);
@@ -384,28 +377,7 @@ static int getWinTimeZone(char *winZoneName, char *winMapID)
             (void) RegCloseKey(hSubKey);
         }
 
-#if JDK_VER <= 11
-        /*
-         * Get the "MapID" value of the registry to be able to eliminate
-         * duplicated key names later.
-         */
-        valueSize = MAX_MAPID_LENGTH;
-        ret = RegQueryValueExA(hSubKey, "MapID", NULL, &valueType, winMapID, &valueSize);
-        (void) RegCloseKey(hSubKey);
         (void) RegCloseKey(hKey);
-
-        if (ret != ERROR_SUCCESS) {
-            /*
-             * Vista doesn't have mapID. VALUE_UNKNOWN should be returned
-             * only for Windows NT.
-             */
-            if (onlyMapID == 1) {
-                return VALUE_UNKNOWN;
-            }
-        }
-#else
-        (void) RegCloseKey(hKey);
-#endif
     }
 
     return VALUE_KEY;
@@ -450,38 +422,21 @@ static int SVM_readBufferUntilNewLine(char *dst, int num, const char *source, in
 /*
  * Index values for the mapping table.
  */
-#if JDK_VER <= 11
-#define TZ_WIN_NAME     0
-#define TZ_MAPID        1
-#define TZ_REGION       2
-#define TZ_JAVA_NAME    3
-
-#define TZ_NITEMS       4       /* number of items (fields) */
-#else
 #define TZ_WIN_NAME     0
 #define TZ_REGION       1
 #define TZ_JAVA_NAME    2
 
 #define TZ_NITEMS       3       /* number of items (fields) */
-#endif
 
 /*
  * Looks up the mapping table (tzmappings) and returns a Java time
  * zone ID (e.g., "America/Los_Angeles") if found. Otherwise, NULL is
  * returned.
  *
- * value_type is one of the following values:
- *      VALUE_KEY for exact key matching
- *      VALUE_MAPID for MapID (this is
- *      required for the old Windows, such as NT 4.0 SP3).
- *
  * The following function differs from the original by accepting a buffer and reading
  * tzmappings data from it. The original function opens and reads such data from a file.
- *
- * Note that the mapID parameter is only used if JDK_VER <= 11.
  */
-static char *SVM_matchJavaTZ(const char *tzmappings, int value_type, char *tzName,
-                             char *mapID, int tzmappingsLen)
+static char *SVM_matchJavaTZ(const char *tzmappings, char *tzName, int tzmappingsLen)
 {
     int line;
     char *javaTZName = NULL;
@@ -491,10 +446,6 @@ static char *SVM_matchJavaTZ(const char *tzmappings, int value_type, char *tzNam
     const char* errorMessage = "unknown error";
     int currLocation;
     int readChars;
-#if JDK_VER <= 11
-    int IDmatched = 0;
-    int noMapID = *mapID == '\0';       /* no mapID on Vista and later */
-#else
     char region[MAX_REGION_LENGTH];
 
     // Get the user's location
@@ -509,7 +460,6 @@ static char *SVM_matchJavaTZ(const char *tzmappings, int value_type, char *tzNam
             region[0] = '\0';
         }
     }
-#endif
 
     line = 0;
     currLocation = 0;
@@ -557,31 +507,6 @@ static char *SVM_matchJavaTZ(const char *tzmappings, int value_type, char *tzNam
             goto illegal_format;
         }
 
-#if JDK_VER <= 11
-        if (noMapID || strcmp(mapID, items[TZ_MAPID]) == 0) {
-            /*
-             * When there's no mapID, we need to scan items until the
-             * exact match is found or the end of data is detected.
-             */
-            if (!noMapID) {
-                IDmatched = 1;
-            }
-            if (strcmp(items[TZ_WIN_NAME], tzName) == 0) {
-                /*
-                 * Found the time zone in the mapping table.
-                 */
-                javaTZName = _strdup(items[TZ_JAVA_NAME]);
-                break;
-            }
-        } else {
-            if (IDmatched == 1) {
-                /*
-                 * No need to look up the mapping table further.
-                 */
-                break;
-            }
-        }
-#else
         /*
          * We need to scan items until the
          * exact match is found or the end of data is detected.
@@ -597,7 +522,6 @@ static char *SVM_matchJavaTZ(const char *tzmappings, int value_type, char *tzNam
                 break;
             }
         }
-#endif
     }
 
     if (readChars == -1) {
@@ -627,19 +551,16 @@ extern char* getGMTOffsetID();
 char *SVM_FindJavaTZmd(const char *tzmappings, int length)
 {
     char winZoneName[MAX_ZONE_CHAR];
-    char winMapID[MAX_MAPID_LENGTH];
     char *std_timezone = NULL;
     int  result;
 
-    winMapID[0] = 0;
-    result = getWinTimeZone(winZoneName, winMapID);
+    result = getWinTimeZone(winZoneName);
 
     if (result != VALUE_UNKNOWN) {
         if (result == VALUE_GMTOFFSET) {
             std_timezone = _strdup(winZoneName);
         } else {
-            std_timezone = SVM_matchJavaTZ(tzmappings, result,
-                                       winZoneName, winMapID, length);
+            std_timezone = SVM_matchJavaTZ(tzmappings, winZoneName, length);
             if (std_timezone == NULL) {
                 std_timezone = getGMTOffsetID();
             }

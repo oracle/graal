@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,6 +45,10 @@ public class ClangLike extends ClangLikeBase {
         new ClangLike(args, ClangLikeBase.Tool.ClangCL, OS.getCurrent(), Arch.getCurrent(), NATIVE_PLATFORM).run();
     }
 
+    public static void runFlang(String[] args) {
+        new ClangLike(args, ClangLikeBase.Tool.Flang, OS.getCurrent(), Arch.getCurrent(), NATIVE_PLATFORM).run();
+    }
+
     protected ClangLike(String[] args, ClangLikeBase.Tool tool, OS os, Arch arch, String platform) {
         super(args, tool, os, arch, platform);
     }
@@ -56,7 +60,9 @@ public class ClangLike extends ClangLikeBase {
         // Add libc++ unconditionally as C++ might be compiled via clang [GR-23036]
         sulongArgs.add("-stdlib=libc++");
         // Suppress warning because of libc++
-        sulongArgs.add("-Wno-unused-command-line-argument");
+        if (tool != Tool.Flang) {
+            sulongArgs.add("-Wno-unused-command-line-argument");
+        }
         if (tool != Tool.ClangCL) {
             // clang-cl does not support any of these when using CMakeTestCCompiler.cmake
             // set CMAKE_C_FLAGS or CMAKE_CXX_FLAGS instead
@@ -67,6 +73,10 @@ public class ClangLike extends ClangLikeBase {
     @Override
     protected void getLinkerArgs(List<String> sulongArgs) {
         sulongArgs.add("-L" + getSulongHome().resolve(platform).resolve("lib"));
+        if (os == OS.DARWIN && tool == Tool.ClangXX) {
+            // for some reason `-lc++` does not pull in libc++abi, force it instead
+            sulongArgs.add("-lc++abi");
+        }
         super.getLinkerArgs(sulongArgs);
     }
 }

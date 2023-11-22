@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.analysis;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.JSRegexLexer;
 import com.oracle.truffle.regex.tregex.parser.Token;
 
@@ -61,7 +62,7 @@ public final class RegexUnifier {
 
     public RegexUnifier(RegexSource source) {
         this.source = source;
-        this.lexer = new JSRegexLexer(source, RegexFlags.parseFlags(source));
+        this.lexer = new JSRegexLexer(source, RegexFlags.parseFlags(source), new CompilationBuffer(source.getEncoding()));
         this.dump = new StringBuilder(source.getPattern().length());
     }
 
@@ -83,7 +84,7 @@ public final class RegexUnifier {
                     dump.append("\\B");
                     break;
                 case backReference:
-                    dump.append("\\").append(((Token.BackReference) token).getGroupNr());
+                    dump.append("\\").append(((Token.BackReference) token).getGroupNumbers()[0]);
                     break;
                 case quantifier:
                     final Token.Quantifier quantifier = (Token.Quantifier) token;
@@ -126,12 +127,18 @@ public final class RegexUnifier {
                 case groupEnd:
                     dump.append(")");
                     break;
+                case literalChar:
+                    dump.append("x");
+                    break;
                 case charClass:
                     if (((Token.CharacterClass) token).getCodePointSet().matchesSingleChar()) {
                         dump.append("x");
                     } else {
                         dump.append("[c]");
                     }
+                    break;
+                case charClassEnd:
+                    dump.append("[c]");
                     break;
             }
         }

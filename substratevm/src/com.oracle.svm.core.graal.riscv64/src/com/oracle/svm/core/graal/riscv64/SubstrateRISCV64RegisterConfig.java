@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,53 +24,54 @@
  */
 package com.oracle.svm.core.graal.riscv64;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static com.oracle.svm.core.util.VMError.unimplemented;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.allRegisters;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.f10;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.f11;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.f12;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.f13;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.f14;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.f15;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.f16;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.f17;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.f18;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.f19;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.f20;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.f21;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.f22;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.f23;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.f24;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.f25;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.f26;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.f27;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.f8;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.f9;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.x0;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.x1;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.x10;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.x11;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.x12;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.x13;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.x14;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.x15;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.x16;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.x17;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.x18;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.x19;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.x2;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.x20;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.x21;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.x22;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.x23;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.x24;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.x25;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.x26;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.x27;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.x3;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.x8;
-import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.x9;
+import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
+import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.allRegisters;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.f10;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.f11;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.f12;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.f13;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.f14;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.f15;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.f16;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.f17;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.f18;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.f19;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.f20;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.f21;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.f22;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.f23;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.f24;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.f25;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.f26;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.f27;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.f8;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.f9;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.x0;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.x1;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.x10;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.x11;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.x12;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.x13;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.x14;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.x15;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.x16;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.x17;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.x18;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.x19;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.x2;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.x20;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.x21;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.x22;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.x23;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.x24;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.x25;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.x26;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.x27;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.x3;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.x8;
+import static jdk.graal.compiler.core.riscv64.ShadowedRISCV64.x9;
 
 import java.util.ArrayList;
 
@@ -112,6 +113,7 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
     private final RegisterAttributes[] attributesMap;
     private final MetaAccessProvider metaAccess;
 
+    @SuppressWarnings("this-escape")
     public SubstrateRISCV64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, boolean preserveFramePointer) {
         this.target = target;
         this.metaAccess = metaAccess;
@@ -148,7 +150,7 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
                 break;
 
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedInput(config); // ExcludeFromJacocoGeneratedReport
 
         }
 
@@ -172,7 +174,7 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
             case Void:
                 return null;
             default:
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(kind); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -203,7 +205,7 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
 
     @Override
     public RegisterArray getCallingConventionRegisters(Type t, JavaKind kind) {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     private int javaStackParameterAssignment(ValueKindFactory<?> valueKindFactory, AllocatableValue[] locations, int index, JavaKind kind, int currentStackOffset, boolean isOutgoing) {
@@ -217,6 +219,10 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
     @Override
     public CallingConvention getCallingConvention(Type t, JavaType returnType, JavaType[] parameterTypes, ValueKindFactory<?> valueKindFactory) {
         SubstrateCallingConventionType type = (SubstrateCallingConventionType) t;
+        if (type.fixedParameterAssignment != null || type.returnSaving != null) {
+            throw unsupportedFeature("Fixed parameter assignments and return saving are not yet supported on this platform.");
+        }
+
         boolean isEntryPoint = type.nativeABI() && !type.outgoing;
 
         AllocatableValue[] locations = new AllocatableValue[parameterTypes.length];
@@ -259,7 +265,7 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
                         }
                         break;
                     default:
-                        throw shouldNotReachHere();
+                        throw shouldNotReachHereUnexpectedInput(kind); // ExcludeFromJacocoGeneratedReport
                 }
 
             }
@@ -274,7 +280,7 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
                         locations[i] = StackSlot.get(valueKind, currentStackOffset, !type.outgoing);
                         currentStackOffset = currentStackOffset + alignment;
                     } else {
-                        throw VMError.shouldNotReachHere();
+                        throw VMError.unsupportedPlatform(); // ExcludeFromJacocoGeneratedReport
                     }
                 } else {
                     currentStackOffset = javaStackParameterAssignment(valueKindFactory, locations, i, kind, currentStackOffset, type.outgoing);
@@ -289,7 +295,7 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
 
     @Override
     public RegisterArray filterAllocatableRegisters(PlatformKind kind, RegisterArray registers) {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
 }

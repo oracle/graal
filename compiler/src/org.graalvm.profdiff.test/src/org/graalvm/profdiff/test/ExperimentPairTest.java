@@ -30,15 +30,25 @@ import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.List;
 
+import jdk.graal.compiler.nodes.OptimizationLogImpl;
+import org.graalvm.profdiff.command.ExperimentMatcher;
 import org.graalvm.profdiff.core.CompilationFragment;
 import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
+import org.graalvm.profdiff.core.OptionValues;
+import org.graalvm.profdiff.core.ProftoolMethod;
+import org.graalvm.profdiff.core.Writer;
 import org.graalvm.profdiff.core.inlining.InliningTree;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
+import org.graalvm.profdiff.core.optimization.Optimization;
+import org.graalvm.profdiff.core.optimization.OptimizationPhase;
+import org.graalvm.profdiff.core.optimization.OptimizationTree;
+import org.graalvm.profdiff.core.optimization.Position;
 import org.graalvm.profdiff.core.pair.CompilationUnitPair;
 import org.graalvm.profdiff.core.pair.ExperimentPair;
 import org.graalvm.profdiff.core.pair.MethodPair;
+import org.graalvm.profdiff.parser.ExperimentParser;
 import org.graalvm.profdiff.parser.ExperimentParserError;
 import org.junit.Test;
 
@@ -193,5 +203,159 @@ public class ExperimentPairTest {
         assertEquals(1, fragments1.size());
         List<CompilationFragment> fragments2 = asList(experiment2.getMethodOrCreate(b).getCompilationFragments());
         assertEquals(1, fragments2.size());
+    }
+
+    private static ExperimentPair mockExperimentPair() {
+        List<ProftoolMethod> proftoolMethods1 = List.of(new ProftoolMethod("10000", "foo()", ExperimentParser.GRAAL_COMPILER_LEVEL, 70),
+                        new ProftoolMethod("30000", "bar()", ExperimentParser.GRAAL_COMPILER_LEVEL, 30));
+        Experiment experiment1 = new Experiment("1000", ExperimentId.ONE, Experiment.CompilationKind.JIT, 100, proftoolMethods1);
+
+        InliningTreeNode foo1 = new InliningTreeNode("foo()", -1, true, null, false, null, false);
+        foo1.addChild(new InliningTreeNode("bar()", 1, true, null, false, null, false));
+        InliningTree inliningTree1 = new InliningTree(foo1);
+
+        OptimizationPhase rootPhase1 = new OptimizationPhase(OptimizationLogImpl.ROOT_PHASE_NAME);
+        rootPhase1.addChild(new Optimization("Opt", "Bar", Position.create(List.of("bar()", "foo()"), List.of(2, 1)), null));
+        rootPhase1.addChild(new Optimization("Opt", "Foo", Position.create(List.of("foo()"), List.of(2)), null));
+        OptimizationTree optimizationTree1 = new OptimizationTree(rootPhase1);
+
+        experiment1.addCompilationUnit("foo()", "10000", 70, () -> new CompilationUnit.TreePair(optimizationTree1, inliningTree1)).setHot(true);
+
+        InliningTreeNode bar1 = new InliningTreeNode("bar()", -1, true, null, false, null, false);
+        InliningTree inliningTree3 = new InliningTree(bar1);
+
+        OptimizationPhase rootPhase3 = new OptimizationPhase(OptimizationLogImpl.ROOT_PHASE_NAME);
+        rootPhase3.addChild(new Optimization("Opt", "Bar", Position.create(List.of("bar()"), List.of(2)), null));
+        OptimizationTree optimizationTree3 = new OptimizationTree(rootPhase3);
+
+        experiment1.addCompilationUnit("bar()", "30000", 30, () -> new CompilationUnit.TreePair(optimizationTree3, inliningTree3)).setHot(true);
+
+        List<ProftoolMethod> proftoolMethods2 = List.of(new ProftoolMethod("20000", "foo()", ExperimentParser.GRAAL_COMPILER_LEVEL, 95),
+                        new ProftoolMethod("40000", "bar()", ExperimentParser.GRAAL_COMPILER_LEVEL, 5));
+        Experiment experiment2 = new Experiment("2000", ExperimentId.TWO, Experiment.CompilationKind.JIT, 100, proftoolMethods2);
+
+        InliningTreeNode foo2 = new InliningTreeNode("foo()", -1, true, null, false, null, false);
+        foo2.addChild(new InliningTreeNode("bar()", 1, true, null, false, null, false));
+        InliningTree inliningTree2 = new InliningTree(foo2);
+
+        OptimizationPhase rootPhase2 = new OptimizationPhase(OptimizationLogImpl.ROOT_PHASE_NAME);
+        rootPhase2.addChild(new Optimization("Opt", "Bar", Position.create(List.of("bar()", "foo()"), List.of(2, 1)), null));
+        rootPhase2.addChild(new Optimization("Opt", "Foo", Position.create(List.of("foo()"), List.of(2)), null));
+        OptimizationTree optimizationTree2 = new OptimizationTree(rootPhase2);
+
+        experiment2.addCompilationUnit("foo()", "20000", 95, () -> new CompilationUnit.TreePair(optimizationTree2, inliningTree2)).setHot(true);
+
+        InliningTreeNode bar2 = new InliningTreeNode("bar()", -1, true, null, false, null, false);
+        InliningTree inliningTree4 = new InliningTree(bar2);
+
+        OptimizationPhase rootPhase4 = new OptimizationPhase(OptimizationLogImpl.ROOT_PHASE_NAME);
+        rootPhase4.addChild(new Optimization("Opt", "Bar", Position.create(List.of("bar()"), List.of(2)), null));
+        OptimizationTree optimizationTree4 = new OptimizationTree(rootPhase4);
+
+        experiment2.addCompilationUnit("bar()", "40000", 5, () -> new CompilationUnit.TreePair(optimizationTree4, inliningTree4));
+
+        return new ExperimentPair(experiment1, experiment2);
+    }
+
+    @Test
+    public void experimentMatcherWithoutDiffing() throws ExperimentParserError {
+        ExperimentPair pair = mockExperimentPair();
+        var writer = Writer.stringBuilder(new OptionValues());
+        new ExperimentMatcher(writer).match(pair);
+        assertEquals("""
+                        Method foo()
+                            In experiment 1
+                                1 compilations (1 of which are hot)
+                                Compilations
+                                    10000 consumed 70.00% of Graal execution, 70.00% of total *hot*
+                            In experiment 2
+                                1 compilations (1 of which are hot)
+                                Compilations
+                                    20000 consumed 95.00% of Graal execution, 95.00% of total *hot*
+                            Compilation unit 10000 consumed 70.00% of Graal execution, 70.00% of total in experiment 1
+                                Inlining tree
+                                    (root) foo()
+                                        (inlined) bar() at bci 1
+                                Optimization tree
+                                    RootPhase
+                                        Opt Bar at bci 1
+                                        Opt Foo at bci 2
+                            Compilation unit 20000 consumed 95.00% of Graal execution, 95.00% of total in experiment 2
+                                Inlining tree
+                                    (root) foo()
+                                        (inlined) bar() at bci 1
+                                Optimization tree
+                                    RootPhase
+                                        Opt Bar at bci 1
+                                        Opt Foo at bci 2
+
+                        Method bar() is hot only in experiment 1
+                            In experiment 1
+                                1 compilations (1 of which are hot)
+                                Compilations
+                                    30000 consumed 30.00% of Graal execution, 30.00% of total *hot*
+                            In experiment 2
+                                1 compilations (0 of which are hot)
+                                Compilations
+                                    40000 consumed  5.00% of Graal execution,  5.00% of total
+                            Compilation unit 30000 consumed 30.00% of Graal execution, 30.00% of total in experiment 1
+                                Inlining tree
+                                    (root) bar()
+                                Optimization tree
+                                    RootPhase
+                                        Opt Bar at bci 2
+                        """, writer.getOutput());
+    }
+
+    @Test
+    public void matchOptimizationContextTrees() throws ExperimentParserError {
+        ExperimentPair pair = mockExperimentPair();
+        OptionValues optionValues = OptionValues.builder().withDiffCompilations(true).withOptimizationContextTreeEnabled(true).build();
+        var writer = Writer.stringBuilder(optionValues);
+        new ExperimentMatcher(writer).match(pair);
+        assertEquals("""
+                        Method foo()
+                            In experiment 1
+                                1 compilations (1 of which are hot)
+                                Compilations
+                                    10000 consumed 70.00% of Graal execution, 70.00% of total *hot*
+                            In experiment 2
+                                1 compilations (1 of which are hot)
+                                Compilations
+                                    20000 consumed 95.00% of Graal execution, 95.00% of total *hot*
+                            Compilation unit 10000 consumed 70.00% of Graal execution, 70.00% of total in experiment 1 vs
+                            Compilation unit 20000 consumed 95.00% of Graal execution, 95.00% of total in experiment 2
+                                . Optimization-context tree
+                                    . (root) foo()
+                                        . Opt Foo at bci 2
+                                        . (inlined) bar() at bci 1
+                                            . Opt Bar at bci 2
+
+                        Method bar() is hot only in experiment 1
+                            In experiment 1
+                                1 compilations (1 of which are hot)
+                                Compilations
+                                    30000 consumed 30.00% of Graal execution, 30.00% of total *hot*
+                            In experiment 2
+                                1 compilations (0 of which are hot)
+                                Compilations
+                                    40000 consumed  5.00% of Graal execution,  5.00% of total
+                        """, writer.getOutput());
+    }
+
+    @Test
+    public void matchTreesTooBigToCompare() throws ExperimentParserError {
+        ExperimentPair pair = mockExperimentPair();
+        OptionValues optionValues = OptionValues.builder().withDiffCompilations(true).build();
+        var writer = Writer.stringBuilder(optionValues);
+        new ExperimentMatcher(writer, 0).match(pair);
+        String output = writer.getOutput();
+        assertTrue(output.contains("The inlining trees are too big to compare"));
+        assertTrue(output.contains("The optimization trees are too big to compare"));
+
+        optionValues = OptionValues.builder().withDiffCompilations(true).withOptimizationContextTreeEnabled(true).build();
+        writer = Writer.stringBuilder(optionValues);
+        new ExperimentMatcher(writer, 0).match(pair);
+        assertTrue(writer.getOutput().contains("The optimization-context trees are too big to compare"));
     }
 }

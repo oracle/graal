@@ -1,7 +1,7 @@
 # mx --dynamicimports=/vm-enterprise,/substratevm-enterprise,/tools-enterprise --components="Java on Truffle,SubstrateVM Enterprise,suite:tools,suite:tools-enterprise" --native-images=lib:javavm --disable-installables=true graalvm-show
 
 DYNAMIC_IMPORTS=/vm-enterprise,/substratevm-enterprise,/tools-enterprise
-COMPONENTS=Java on Truffle,SubstrateVM Enterprise,suite:tools,suite:tools-enterprise
+COMPONENTS=Java on Truffle,Espresso Standalone jvm.cfg,SubstrateVM Enterprise,suite:tools,suite:tools-enterprise,tflm
 NATIVE_IMAGES=lib:javavm
 DISABLE_INSTALLABLES=true
 EXCLUDE_COMPONENTS=hprf

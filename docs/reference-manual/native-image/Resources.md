@@ -1,9 +1,9 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: dynamic-features
 link_title: Accessing Resources
 permalink: /reference-manual/native-image/dynamic-features/Resources/
-redirect_from: /$version/reference-manual/native-image/Resources/
+redirect_from: /reference-manual/native-image/Resources/
 ---
 
 # Accessing Resources in Native Image

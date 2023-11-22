@@ -42,6 +42,7 @@ package com.oracle.truffle.api.strings;
 
 import java.nio.ByteOrder;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
@@ -97,10 +98,6 @@ final class TStringGuards {
 
     static boolean isBrokenMultiByte(int codeRange) {
         return TSCodeRange.isBrokenMultiByte(codeRange);
-    }
-
-    static boolean isBrokenMultiByte(TruffleStringBuilder sb) {
-        return TSCodeRange.isBrokenMultiByte(sb.getCodeRange());
     }
 
     public static boolean isValidOrBrokenMultiByte(int codeRange) {
@@ -180,10 +177,6 @@ final class TStringGuards {
         return enc == Encoding.UTF_16;
     }
 
-    static boolean isUTF16(TruffleStringBuilder sb) {
-        return isUTF16(sb.getEncoding());
-    }
-
     static boolean isUTF32(int enc) {
         return enc == Encoding.UTF_32.id;
     }
@@ -200,6 +193,10 @@ final class TStringGuards {
         assert Encoding.UTF_32.id == 0;
         assert Encoding.UTF_16.id == 1;
         return enc <= 1;
+    }
+
+    static boolean isUTF(Encoding enc) {
+        return isUTF16Or32(enc) || isUTF8(enc);
     }
 
     static boolean identical(Object a, Object b) {
@@ -238,24 +235,22 @@ final class TStringGuards {
         return a.stride() == 2;
     }
 
-    static boolean isStride0(TruffleStringBuilder sb) {
-        return sb.getStride() == 0;
-    }
-
-    static boolean isStride1(TruffleStringBuilder sb) {
-        return sb.getStride() == 1;
-    }
-
-    static boolean isStride2(TruffleStringBuilder sb) {
-        return sb.getStride() == 2;
-    }
-
     static boolean is7BitCompatible(Encoding encoding) {
         return encoding.is7BitCompatible();
     }
 
     static boolean is8BitCompatible(Encoding encoding) {
         return encoding.is8BitCompatible();
+    }
+
+    static boolean isDefaultVariant(DecodingErrorHandler errorHandler) {
+        return errorHandler == DecodingErrorHandler.DEFAULT ||
+                        errorHandler == DecodingErrorHandler.DEFAULT_UTF8_INCOMPLETE_SEQUENCES ||
+                        errorHandler == DecodingErrorHandler.DEFAULT_KEEP_SURROGATES_IN_UTF8;
+    }
+
+    static boolean isReturnNegative(DecodingErrorHandler errorHandler) {
+        return errorHandler == DecodingErrorHandler.RETURN_NEGATIVE || errorHandler == DecodingErrorHandler.RETURN_NEGATIVE_UTF8_INCOMPLETE_SEQUENCES;
     }
 
     static boolean isBestEffort(TruffleString.ErrorHandling errorHandling) {
@@ -278,5 +273,17 @@ final class TStringGuards {
         // TODO: Inlined Java Strings may be allowed as backing storage for TruffleString in the
         // future, this is a placeholder for now. (GR-34838)
         return false;
+    }
+
+    static boolean isBuiltin(DecodingErrorHandler errorHandler) {
+        boolean ret = errorHandler instanceof Encodings.BuiltinDecodingErrorHandler;
+        CompilerAsserts.partialEvaluationConstant(ret);
+        return ret;
+    }
+
+    static boolean isBuiltin(TranscodingErrorHandler errorHandler) {
+        boolean ret = errorHandler instanceof Encodings.BuiltinTranscodingErrorHandler;
+        CompilerAsserts.partialEvaluationConstant(ret);
+        return ret;
     }
 }

@@ -49,6 +49,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
@@ -86,7 +87,7 @@ import com.oracle.truffle.espresso.redefinition.DetectedChange;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.verifier.MethodVerifier;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -356,10 +357,15 @@ public final class ObjectKlass extends Klass {
     }
 
     boolean isInitializingOrInitializedImpl() {
-        return (initState == INITIALIZED) ||
-                        /* Initializing thread */
-                        (initState == INITIALIZING && getInitLock().isHeldByCurrentThread()) ||
-                        (initState == ERRONEOUS);
+        /*
+         * This has currently 2 uses: 1) In actualInit where it is used under the init lock. 2) In
+         * assertions in the root node.
+         *
+         * In the first case, we know that the current thread holds the init lock. In the second
+         * case, if the state is INITIALIZING we cannot really check the lock because an object
+         * might have been leaked to another thread by the clinit.
+         */
+        return initState >= ERRONEOUS;
     }
 
     boolean isInitializedImpl() {
@@ -397,6 +403,7 @@ public final class ObjectKlass extends Klass {
                 return;
             }
             initState = INITIALIZING;
+            getContext().getLogger().log(Level.FINEST, "Initializing: {0}", this.getNameAsString());
             try {
                 if (!isInterface()) {
                     /*
@@ -412,7 +419,9 @@ public final class ObjectKlass extends Klass {
                     for (ObjectKlass interf : getSuperInterfaces()) {
                         // Initialize all super interfaces, direct and indirect, with default
                         // methods.
-                        interf.recursiveInitialize();
+                        if (interf.hasDefaultMethods()) {
+                            interf.recursiveInitialize();
+                        }
                     }
                 }
                 // Next, execute the class or interface initialization method of C.
@@ -464,7 +473,7 @@ public final class ObjectKlass extends Klass {
                 initState = PREPARED;
                 if (getContext().isMainThreadCreated()) {
                     if (getContext().shouldReportVMEvents()) {
-                        prepareThread = getContext().getCurrentThread();
+                        prepareThread = getContext().getCurrentPlatformThread();
                         getContext().reportClassPrepared(this, prepareThread);
                     }
                 }
@@ -621,13 +630,13 @@ public final class ObjectKlass extends Klass {
     }
 
     private void recursiveInitialize() {
-        if (!isInitializedImpl()) { // Skip synchronization and locks if already init.
-            for (ObjectKlass interf : getSuperInterfaces()) {
+        for (ObjectKlass interf : getSuperInterfaces()) {
+            if (interf.hasDefaultMethods()) {
                 interf.recursiveInitialize();
             }
-            if (hasDeclaredDefaultMethods()) {
-                initializeImpl(); // Does not recursively initialize interfaces
-            }
+        }
+        if (hasDeclaredDefaultMethods()) {
+            initializeImpl(); // Does not recursively initialize interfaces
         }
     }
 
@@ -1309,6 +1318,11 @@ public final class ObjectKlass extends Klass {
         return getKlassVersion().hasDeclaredDefaultMethods;
     }
 
+    private boolean hasDefaultMethods() {
+        assert !getKlassVersion().hasDeclaredDefaultMethods || isInterface();
+        return getKlassVersion().hasDefaultMethods;
+    }
+
     public void initSelfReferenceInPool() {
         getConstantPool().setKlassAt(getLinkedKlass().getParserKlass().getThisKlassIndex(), this);
     }
@@ -1391,7 +1405,7 @@ public final class ObjectKlass extends Klass {
                 ExtensionFieldsMetadata extension = getExtensionFieldsMetadata(true);
                 for (Field declaredField : getDeclaredFields()) {
                     if (!declaredField.isStatic()) {
-                        declaredField.removeByRedefintion();
+                        declaredField.removeByRedefinition();
 
                         int nextFieldSlot = getContext().getClassRedefinition().getNextAvailableFieldSlot();
                         LinkedField.IdMode mode = LinkedKlassFieldLayout.getIdMode(getLinkedKlass().getParserKlass());
@@ -1442,7 +1456,7 @@ public final class ObjectKlass extends Klass {
         }
 
         for (Field removedField : change.getRemovedFields()) {
-            removedField.removeByRedefintion();
+            removedField.removeByRedefinition();
         }
 
         getContext().getClassHierarchyOracle().registerNewKlassVersion(klassVersion);
@@ -1630,7 +1644,9 @@ public final class ObjectKlass extends Klass {
         @CompilationFinal private int computedModifiers = -1;
 
         @CompilationFinal //
-        boolean hasDeclaredDefaultMethods = false;
+        boolean hasDeclaredDefaultMethods;
+        @CompilationFinal //
+        boolean hasDefaultMethods;
 
         @CompilationFinal private HierarchyInfo hierarchyInfo;
 
@@ -1847,6 +1863,7 @@ public final class ObjectKlass extends Klass {
             return Modifier.isFinal(modifiers);
         }
 
+        @Idempotent
         public boolean isInterface() {
             return Modifier.isInterface(modifiers);
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,24 +36,72 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 public class LLVMSourceFunctionType extends LLVMSourceType {
 
-    private final List<LLVMSourceType> types;
+    private static final class TypesProvider {
 
-    @TruffleBoundary
+        private final List<LLVMSourceType> types;
+
+        private TypesProvider(List<LLVMSourceType> types) {
+            this.types = types;
+        }
+
+        @TruffleBoundary
+        public LLVMSourceType getReturnType() {
+            if (types.size() > 0) {
+                return types.get(0);
+            } else {
+                return LLVMSourceType.VOID;
+            }
+        }
+
+        @TruffleBoundary
+        public int getNumberOfParameters() {
+            return Math.max(0, types.size() - 1);
+        }
+
+        @TruffleBoundary
+        public List<LLVMSourceType> getParameterTypes() {
+            if (types.size() <= 1) {
+                return Collections.emptyList();
+            } else {
+                return types.subList(1, types.size() - (isVarArgs() ? 1 : 0));
+            }
+        }
+
+        @TruffleBoundary
+        public boolean isVarArgs() {
+            return types.size() > 1 && types.get(types.size() - 1) == LLVMSourceType.VOID;
+        }
+    }
+
+    private final TypesProvider types;
+
     public LLVMSourceFunctionType(List<LLVMSourceType> types) {
-        // function type do not require size or offset information since there are no concrete
-        // values of them in C/C++/Fortran. they are only used as basis for function pointers
-        super(0L, 0L, 0L, null);
-        assert types != null;
-        this.types = types;
-        setName(() -> {
+        /*
+         * Attention: This constructor is sometimes called with an empty list that will be filled
+         * later.
+         */
+        this(new TypesProvider(types));
+    }
+
+    protected LLVMSourceFunctionType(List<LLVMSourceType> types, Supplier<String> nameSupplier) {
+        /*
+         * Attention: This constructor is sometimes called with an empty list that will be filled
+         * later.
+         */
+        this(new TypesProvider(types), nameSupplier);
+    }
+
+    private LLVMSourceFunctionType(TypesProvider types) {
+        this(types, () -> {
             CompilerAsserts.neverPartOfCompilation();
 
-            StringBuilder nameBuilder = new StringBuilder(getReturnType().getName()).append("(");
+            StringBuilder nameBuilder = new StringBuilder(types.getReturnType().getName()).append("(");
 
-            final List<LLVMSourceType> params = getParameterTypes();
+            final List<LLVMSourceType> params = types.getParameterTypes();
             if (params.size() > 0) {
                 nameBuilder.append(params.get(0).getName());
             }
@@ -61,9 +109,9 @@ public class LLVMSourceFunctionType extends LLVMSourceType {
                 nameBuilder.append(", ").append(params.get(i).getName());
             }
 
-            if (!isVarArgs()) {
+            if (!types.isVarArgs()) {
                 nameBuilder.append(")");
-            } else if (getParameterTypes().size() == 0) {
+            } else if (types.getParameterTypes().size() == 0) {
                 nameBuilder.append("...)");
             } else {
                 nameBuilder.append(", ...)");
@@ -73,32 +121,31 @@ public class LLVMSourceFunctionType extends LLVMSourceType {
         });
     }
 
+    private LLVMSourceFunctionType(TypesProvider types, Supplier<String> nameSupplier) {
+        // function type do not require size or offset information since there are no concrete
+        // values of them in C/C++/Fortran. they are only used as basis for function pointers
+        super(nameSupplier, 0L, 0L, 0L, null);
+        this.types = types;
+    }
+
     @TruffleBoundary
     public LLVMSourceType getReturnType() {
-        if (types.size() > 0) {
-            return types.get(0);
-        } else {
-            return LLVMSourceType.VOID;
-        }
+        return types.getReturnType();
     }
 
     @TruffleBoundary
     public int getNumberOfParameters() {
-        return Math.max(0, types.size() - 1);
+        return types.getNumberOfParameters();
     }
 
     @TruffleBoundary
     public List<LLVMSourceType> getParameterTypes() {
-        if (types.size() <= 1) {
-            return Collections.emptyList();
-        } else {
-            return types.subList(1, types.size() - (isVarArgs() ? 1 : 0));
-        }
+        return types.getParameterTypes();
     }
 
     @TruffleBoundary
     public boolean isVarArgs() {
-        return types.size() > 1 && types.get(types.size() - 1) == LLVMSourceType.VOID;
+        return types.isVarArgs();
     }
 
     @Override

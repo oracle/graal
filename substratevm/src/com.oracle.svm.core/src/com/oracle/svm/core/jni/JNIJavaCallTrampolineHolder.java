@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,7 @@ public final class JNIJavaCallTrampolineHolder {
         } else if (variant == CallVariant.VA_LIST) {
             name.append("valist");
         } else {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereUnexpectedInput(variant); // ExcludeFromJacocoGeneratedReport
         }
         if (nonVirtual) {
             name.append("Nonvirtual");
@@ -71,7 +71,7 @@ public final class JNIJavaCallTrampolineHolder {
         if (trampolineName.startsWith("valist")) {
             return CallVariant.VA_LIST;
         }
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereUnexpectedInput(trampolineName); // ExcludeFromJacocoGeneratedReport
     }
 
     private static native void varargsJavaCallTrampoline();

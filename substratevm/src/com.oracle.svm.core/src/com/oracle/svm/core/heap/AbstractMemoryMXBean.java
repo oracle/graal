@@ -32,25 +32,16 @@ import javax.management.ObjectName;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateGCOptions;
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.code.CodeInfo;
-import com.oracle.svm.core.code.CodeInfoAccess;
-import com.oracle.svm.core.code.RuntimeCodeCache.CodeInfoVisitor;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 
 import sun.management.Util;
 
 public abstract class AbstractMemoryMXBean extends AbstractMXBean implements MemoryMXBean {
 
-    private final MemoryMXBeanCodeInfoVisitor codeInfoVisitor;
-
     @Platforms(Platform.HOSTED_ONLY.class)
     public AbstractMemoryMXBean() {
-        this.codeInfoVisitor = new MemoryMXBeanCodeInfoVisitor();
     }
 
     @Override
@@ -67,9 +58,8 @@ public abstract class AbstractMemoryMXBean extends AbstractMXBean implements Mem
 
     @Override
     public MemoryUsage getNonHeapMemoryUsage() {
-        codeInfoVisitor.reset();
-        RuntimeCodeInfoMemory.singleton().walkRuntimeMethods(codeInfoVisitor);
-        long used = codeInfoVisitor.getRuntimeCodeInfoSize().rawValue();
+        RuntimeCodeInfoMemory.SizeCounters counters = RuntimeCodeInfoMemory.singleton().getSizeCounters();
+        long used = counters.totalSize().rawValue();
         return new MemoryUsage(UNDEFINED_MEMORY_USAGE, used, used, UNDEFINED_MEMORY_USAGE);
     }
 
@@ -86,29 +76,5 @@ public abstract class AbstractMemoryMXBean extends AbstractMXBean implements Mem
     @Override
     public void gc() {
         System.gc();
-    }
-
-    private static final class MemoryMXBeanCodeInfoVisitor implements CodeInfoVisitor {
-        private UnsignedWord runtimeCodeInfoSize;
-
-        @Platforms(Platform.HOSTED_ONLY.class)
-        MemoryMXBeanCodeInfoVisitor() {
-            reset();
-        }
-
-        public UnsignedWord getRuntimeCodeInfoSize() {
-            return runtimeCodeInfoSize;
-        }
-
-        public void reset() {
-            runtimeCodeInfoSize = WordFactory.zero();
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public boolean visitCode(CodeInfo codeInfo) {
-            runtimeCodeInfoSize = runtimeCodeInfoSize.add(CodeInfoAccess.getCodeAndDataMemorySize(codeInfo)).add(CodeInfoAccess.getNativeMetadataSize(codeInfo));
-            return true;
-        }
     }
 }

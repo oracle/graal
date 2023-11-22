@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,26 +40,28 @@
  */
 package org.graalvm.wasm.utils.cases;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.EnumSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Properties;
+import java.util.function.BiConsumer;
+
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.utils.Assert;
 import org.graalvm.wasm.utils.SystemProperties;
+import org.graalvm.wasm.utils.WasmBinaryTools;
 import org.graalvm.wasm.utils.WasmResource;
-
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Properties;
-import java.util.function.BiConsumer;
 
 /**
  * Instances of this class are used for WebAssembly test/benchmark cases.
@@ -87,9 +89,9 @@ public abstract class WasmCase {
         return options;
     }
 
-    public ArrayList<Source> getSources() throws IOException, InterruptedException {
+    public ArrayList<Source> getSources(EnumSet<WasmBinaryTools.WabtOption> wabtOptions) throws IOException, InterruptedException {
         ArrayList<Source> sources = new ArrayList<>();
-        for (Map.Entry<String, byte[]> entry : createBinaries().entrySet()) {
+        for (Map.Entry<String, byte[]> entry : createBinaries(wabtOptions).entrySet()) {
             Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(entry.getValue()), entry.getKey());
             sourceBuilder.cached(false);
             Source source = sourceBuilder.build();
@@ -98,7 +100,7 @@ public abstract class WasmCase {
         return sources;
     }
 
-    public abstract Map<String, byte[]> createBinaries() throws IOException, InterruptedException;
+    public abstract Map<String, byte[]> createBinaries(EnumSet<WasmBinaryTools.WabtOption> wabtOptions) throws IOException, InterruptedException;
 
     public static WasmStringCase create(String name, WasmCaseData data, String program) {
         return new WasmStringCase(name, data, program, new Properties());
@@ -118,7 +120,7 @@ public abstract class WasmCase {
 
             // When an output is expected, we also check that the main function returns is 0 if it
             // returns a number.
-            if (result.isNumber()) {
+            if (result != null && result.isNumber()) {
                 Assert.assertEquals("Failure: exit code:", 0, result.asInt());
             }
         });
@@ -276,13 +278,13 @@ public abstract class WasmCase {
 
     public static void validateResult(BiConsumer<Value, String> validator, Value result, ByteArrayOutputStream capturedStdout) {
         if (validator != null) {
-            try {
-                validator.accept(result, capturedStdout.toString("UTF-8"));
-            } catch (UnsupportedEncodingException e) {
-                Assert.fail("Should not reach here: unsupported encoding");
-            }
+            validator.accept(result, capturedStdout.toString(StandardCharsets.UTF_8));
         } else {
             Assert.fail("Test was not expected to return a value.");
         }
+    }
+
+    public boolean isSkipped() {
+        return options().getProperty("skip-on-windows", "false").equals("true") && System.getProperty("os.arch", "").contains("Windows");
     }
 }

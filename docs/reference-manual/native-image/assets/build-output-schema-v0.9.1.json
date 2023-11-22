@@ -19,6 +19,7 @@
         "name",
         "graalvm_version",
         "java_version",
+        "vendor_version",
         "graal_compiler",
         "c_compiler",
         "garbage_collector"
@@ -32,12 +33,17 @@
         "graalvm_version": {
           "type": "string",
           "default": "",
-          "title": "The GraalVM Native Image version. This value is also used for the 'java.vm.version' property within the generated image"
+          "title": "The GraalVM Native Image version. Deprecated: Please use vendor_version or java_version instead."
         },
         "java_version": {
-          "type": ["string", "null"],
+          "type": "string",
           "default": null,
-          "title": "The Java version of the Native Image build process (or null if not available)"
+          "title": "The Java version of the Native Image build process. This value is also used for the 'java.vm.version' property within the generated image"
+        },
+        "vendor_version": {
+          "type": "string",
+          "default": null,
+          "title": "The vendor version of the VM of the generated image. This value is also used for the 'java.vendor.version' property within the generated image"
         },
         "graal_compiler": {
           "type": "object",
@@ -52,12 +58,18 @@
             "march": {
               "type": "string",
               "default": "",
-              "title": "The marchine type targeted by Graal"
+              "title": "The machine type targeted by Graal"
             },
             "pgo": {
-              "type": "boolean",
-              "default": "",
-              "title": "Whether Profile-Guided Optimizations are enabled or not (Oracle GraalVM only)"
+              "type": "array",
+              "items": {
+                "type": "string",
+                "default": "",
+                "enum": ["instrument", "user-provided", "ML-inferred"],
+                "title": "The name of the enabled PGO mode"
+              },
+              "default": null,
+              "title": "The names of the enabled PGO modes (or null if PGO is not used) (Oracle GraalVM only)"
             }
           },
           "title": "Information about the Graal compiler"
@@ -76,13 +88,13 @@
       "examples": [
         {
           "name": "helloworld",
-          "graalvm_version": "GraalVM 22.2.0-dev Java 17 EE",
+          "graalvm_version": "GraalVM CE 17.0.7+4.1",
           "graal_compiler": {
-            "pgo": false,
             "march": "x86-64-v3",
             "optimization_level": "0"
           },
-          "java_version": "17.0.4+5-jvmci-22.2-b03",
+          "java_version": "17.0.7+4",
+          "vendor_version": "GraalVM CE 17.0.7+4.1",
           "c_compiler": "gcc (linux, x86_64, 9.3.0)",
           "garbage_collector": "Serial GC"
         }
@@ -506,12 +518,13 @@
     {
       "general_info": {
         "name": "helloworld",
-        "graalvm_version": "GraalVM 22.2.0-dev Java 17 CE",
+        "graalvm_version": "GraalVM CE 17.0.7+4.1",
         "graal_compiler": {
           "march": "x86-64-v3",
           "optimization_level": "0"
         },
-        "java_version": "17.0.4+5-jvmci-22.2-b03",
+        "java_version": "17.0.7+4",
+        "vendor_version": "GraalVM CE 17.0.7+4.1",
         "c_compiler": "gcc (linux, x86_64, 9.3.0)",
         "garbage_collector": "Serial GC"
       },
@@ -574,12 +587,13 @@
     {
       "general_info": {
         "name": "helloworld",
-        "graalvm_version": "GraalVM 22.2.0-dev Java 17 CE",
+        "graalvm_version": "GraalVM CE 17.0.7+4.1",
         "graal_compiler": {
           "march": "x86-64-v3",
           "optimization_level": "0"
         },
-        "java_version": null,
+        "java_version": "17.0.7+4",
+        "vendor_version": "GraalVM CE 17.0.7+4.1",
         "c_compiler": null,
         "garbage_collector": "Serial GC"
       },

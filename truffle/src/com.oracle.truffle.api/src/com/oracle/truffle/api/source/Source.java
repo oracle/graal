@@ -84,7 +84,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
  *
  * The starting point is {@link Source#newBuilder(String, TruffleFile)} method.
  *
- * <h3>Read from an URL</h3>
+ * <h3>Read from a URL</h3>
  *
  * One can read remote or in JAR resources using the {@link Source#newBuilder(String, java.net.URL)}
  * factory: <br>
@@ -172,7 +172,7 @@ public abstract class Source {
      * If no one is referencing the polyglot source anymore we can assume that no one relies on the
      * identity of the original polyglot source. So we can just as well free it.
      */
-    volatile WeakReference<org.graalvm.polyglot.Source> cachedPolyglotSource;
+    volatile WeakReference<Object> cachedPolyglotSource;
 
     abstract Object getSourceId();
 
@@ -1088,10 +1088,12 @@ public abstract class Source {
         useContent = enforceInterfaceContracts(useContent);
         String relativePathInLanguageHome = null;
         if (useTruffleFile != null) {
-            // The relativePathInLanguageHome has to be calculated also for Sources created in the
-            // image execution time. They have to have the same hash code as sources created during
-            // the context pre-initialization.
-            relativePathInLanguageHome = SourceAccessor.ACCESSOR.engineSupport().getRelativePathInLanguageHome(useTruffleFile);
+            /*
+             * The relativePathInLanguageHome has to be calculated also for Sources created in the
+             * image execution time. They have to have the same hash code as sources created during
+             * the context pre-initialization.
+             */
+            relativePathInLanguageHome = SourceAccessor.ACCESSOR.engineSupport().getRelativePathInResourceRoot(useTruffleFile);
             if (relativePathInLanguageHome != null) {
                 Object fsEngineObject = SourceAccessor.ACCESSOR.languageSupport().getFileSystemEngineObject(SourceAccessor.ACCESSOR.languageSupport().getFileSystemContext(useTruffleFile));
                 if (SourceAccessor.ACCESSOR.engineSupport().inContextPreInitialization(fsEngineObject)) {

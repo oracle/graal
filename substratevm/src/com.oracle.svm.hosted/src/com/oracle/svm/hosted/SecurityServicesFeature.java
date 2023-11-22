@@ -31,6 +31,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -56,17 +57,17 @@ import java.security.cert.CertificateFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyAgreement;
@@ -78,17 +79,8 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.login.Configuration;
-import javax.security.sasl.SaslClient;
-import javax.security.sasl.SaslClientFactory;
-import javax.security.sasl.SaslServer;
-import javax.security.sasl.SaslServerFactory;
-import javax.smartcardio.TerminalFactory;
-import javax.xml.crypto.dsig.TransformService;
-import javax.xml.crypto.dsig.XMLSignatureFactory;
-import javax.xml.crypto.dsig.keyinfo.KeyInfoFactory;
 
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -159,13 +151,36 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private static final String[] emptyStringArray = new String[0];
 
     /** The list of known service classes defined by the JCA. */
-    private static final Class<?>[] knownServices = {AlgorithmParameterGenerator.class, AlgorithmParameters.class,
-                    CertPathBuilder.class, CertPathValidator.class, CertStore.class, CertificateFactory.class,
-                    Cipher.class, Configuration.class, KeyAgreement.class, KeyFactory.class,
-                    KeyGenerator.class, KeyInfoFactory.class, KeyManagerFactory.class, KeyPairGenerator.class,
-                    KeyStore.class, Mac.class, MessageDigest.class, Policy.class, SSLContext.class,
-                    SaslClientFactory.class, SaslServerFactory.class, SecretKeyFactory.class, SecureRandom.class, Signature.class,
-                    TerminalFactory.class, TransformService.class, TrustManagerFactory.class, XMLSignatureFactory.class};
+    private static final List<Class<?>> knownServices;
+
+    private static final boolean isMscapiModulePresent;
+
+    static {
+        List<Class<?>> classList = new ArrayList<>(List.of(
+                        AlgorithmParameterGenerator.class, AlgorithmParameters.class,
+                        CertPathBuilder.class, CertPathValidator.class, CertStore.class, CertificateFactory.class,
+                        Cipher.class, Configuration.class, KeyAgreement.class, KeyFactory.class,
+                        KeyGenerator.class, KeyManagerFactory.class, KeyPairGenerator.class,
+                        KeyStore.class, Mac.class, MessageDigest.class, Policy.class, SSLContext.class,
+                        SecretKeyFactory.class, SecureRandom.class, Signature.class, TrustManagerFactory.class));
+
+        if (ModuleLayer.boot().findModule("java.security.sasl").isPresent()) {
+            classList.add(ReflectionUtil.lookupClass(false, "javax.security.sasl.SaslClientFactory"));
+            classList.add(ReflectionUtil.lookupClass(false, "javax.security.sasl.SaslServerFactory"));
+        }
+        if (ModuleLayer.boot().findModule("java.xml.crypto").isPresent()) {
+            classList.add(ReflectionUtil.lookupClass(false, "javax.xml.crypto.dsig.TransformService"));
+            classList.add(ReflectionUtil.lookupClass(false, "javax.xml.crypto.dsig.XMLSignatureFactory"));
+            classList.add(ReflectionUtil.lookupClass(false, "javax.xml.crypto.dsig.keyinfo.KeyInfoFactory"));
+        }
+        if (ModuleLayer.boot().findModule("java.smartcardio").isPresent()) {
+            classList.add(ReflectionUtil.lookupClass(false, "javax.smartcardio.TerminalFactory"));
+        }
+
+        isMscapiModulePresent = ModuleLayer.boot().findModule("jdk.crypto.mscapi").isPresent();
+
+        knownServices = Collections.unmodifiableList(classList);
+    }
 
     private ImageClassLoader loader;
     /** Given a service type will return its constructor parameters, if any. */
@@ -180,9 +195,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     /** Providers marked as used by the user. */
     private final Set<String> manuallyMarkedUsedProviderClassNames = new HashSet<>();
-
-    /** Provider verification cache cleaner that removes unused providers from the cache. */
-    private Function<Object, Object> verificationCacheCleaner;
 
     /** Provider verification cache that contains only used providers. */
     private Object filteredVerificationCache;
@@ -200,7 +212,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private Field oidMapField;
     private Field classCacheField;
     private Field constructorCacheField;
-    private Field classRefField;
 
     private Class<?> jceSecurityClass;
 
@@ -208,24 +219,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     public void afterRegistration(AfterRegistrationAccess a) {
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), false, "java.base", "sun.security.x509");
         ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, getClass(), Security.class);
-        disableExperimentalFipsMode(a);
         ImageSingletons.add(SecurityProvidersFilter.class, this);
-    }
-
-    /**
-     * The SunJSSE provider had a experimental feature that bound to a FIPS crypto provider. This
-     * has been removed in JDK-8217835. We disabled explicitly here by calling SunJSSE.isFIPS(). If
-     * it was already enabled that's an error.
-     */
-    private static void disableExperimentalFipsMode(AfterRegistrationAccess a) {
-        if (JavaVersionUtil.JAVA_SPEC <= 11) {
-            try {
-                Boolean isFIPS = (Boolean) method(a, "sun.security.ssl.SunJSSE", "isFIPS").invoke(null);
-                VMError.guarantee(!isFIPS, "SunJSSE is already initialized in experimental FIPS mode.");
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                VMError.shouldNotReachHere(e);
-            }
-        }
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime("javax.security.auth.kerberos.KeyTab",
+                        "Force initialization of sun.security.krb5.KerberosSecrets.javaxSecurityAuthKerberosAccess");
     }
 
     @Override
@@ -235,16 +231,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
         verificationResultsField = access.findField("javax.crypto.JceSecurity", "verificationResults");
         providerListField = access.findField("sun.security.jca.Providers", "providerList");
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            oidTableField = access.findField("sun.security.util.ObjectIdentifier", "oidTable");
-        }
+        oidTableField = access.findField("sun.security.util.ObjectIdentifier", "oidTable");
         oidMapField = access.findField(OIDMap.class, "oidMap");
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            classCacheField = access.findField(Service.class, "classCache");
-            constructorCacheField = access.findField(Service.class, "constructorCache");
-        } else {
-            classRefField = access.findField(Service.class, "classRef");
-        }
+        classCacheField = access.findField(Service.class, "classCache");
+        constructorCacheField = access.findField(Service.class, "constructorCache");
 
         RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
         /*
@@ -267,7 +257,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
          * SeedGenerator.getSystemEntropy().
          */
         rci.rerunInitialization(clazz(access, "sun.security.provider.AbstractDrbg$SeederHolder"), "for substitutions");
-        if (isWindows()) {
+        if (isMscapiModulePresent) {
             /* PRNG.<clinit> creates a Cleaner (see JDK-8210476), which starts its thread. */
             rci.rerunInitialization(clazz(access, "sun.security.mscapi.PRNG"), "for substitutions");
         }
@@ -282,11 +272,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
          */
         rci.rerunInitialization(clazz(access, "sun.security.jca.JCAUtil$CachedSecureRandomHolder"), "for substitutions");
         rci.rerunInitialization(clazz(access, "com.sun.crypto.provider.SunJCE$SecureRandomHolder"), "for substitutions");
-        rci.rerunInitialization(clazz(access, "sun.security.krb5.Confounder"), "for substitutions");
+        optionalClazz(access, "sun.security.krb5.Confounder").ifPresent(clazz -> rci.rerunInitialization(clazz, "for substitutions"));
+        optionalClazz(access, "sun.security.krb5.Config").ifPresent(clazz -> rci.rerunInitialization(clazz, "Reset the value of lazily initialized field sun.security.krb5.Config#singleton"));
 
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            rci.rerunInitialization(clazz(access, "sun.security.jca.JCAUtil"), "JCAUtil.def holds a SecureRandom.");
-        }
+        rci.rerunInitialization(clazz(access, "sun.security.jca.JCAUtil"), "JCAUtil.def holds a SecureRandom.");
 
         /*
          * When SSLContextImpl$DefaultManagersHolder sets-up the TrustManager in its initializer it
@@ -314,7 +303,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
         loader = access.getImageClassLoader();
         jceSecurityClass = loader.findClassOrFail("javax.crypto.JceSecurity");
-        verificationCacheCleaner = constructVerificationCacheCleaner(jceSecurityClass);
 
         /* Ensure sun.security.provider.certpath.CertPathHelper.instance is initialized. */
         access.ensureInitialized("java.security.cert.TrustAnchor");
@@ -344,30 +332,19 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             registerServiceReachabilityHandlers(access);
         }
 
-        if (JavaVersionUtil.JAVA_SPEC <= 11) {
-            // https://bugs.openjdk.java.net/browse/JDK-8235710
-            access.registerReachabilityHandler(SecurityServicesFeature::linkSunEC,
-                            method(access, "sun.security.ec.ECDSASignature", "signDigest", byte[].class, byte[].class, byte[].class, byte[].class, int.class),
-                            method(access, "sun.security.ec.ECDSASignature", "verifySignedDigest", byte[].class, byte[].class, byte[].class, byte[].class));
-            /* Ensure native calls to sun_security_ec* will be resolved as builtIn. */
-            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_ec");
-        }
-
         if (isPosix()) {
-            access.registerReachabilityHandler(SecurityServicesFeature::linkJaas, method(access, "com.sun.security.auth.module.UnixSystem", "getUnixInfo"));
-            /* Resolve calls to com_sun_security_auth_module_UnixSystem* as builtIn. */
-            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_security_auth_module_UnixSystem");
+            Optional<Method> optMethodGetUnixInfo = optionalMethod(access, "com.sun.security.auth.module.UnixSystem", "getUnixInfo");
+            optMethodGetUnixInfo.ifPresent(m -> {
+                access.registerReachabilityHandler(SecurityServicesFeature::linkJaas, m);
+                /* Resolve calls to com_sun_security_auth_module_UnixSystem* as builtIn. */
+                PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_security_auth_module_UnixSystem");
+            });
         }
 
-        if (isWindows()) {
+        if (isMscapiModulePresent) {
             access.registerReachabilityHandler(SecurityServicesFeature::registerSunMSCAPIConfig, clazz(access, "sun.security.mscapi.SunMSCAPI"));
-            // statically linking sunmscapi conflicts with sunEC
-            // after the removal of sunEC in jdk 17, we can statically link sunmscapi
-            if (JavaVersionUtil.JAVA_SPEC >= 17) {
-                access.registerReachabilityHandler(SecurityServicesFeature::linkSunMSCAPI, clazz(access, "sun.security.mscapi.SunMSCAPI"));
-                /* Resolve calls to sun_security_mscapi* as builtIn. */
-                PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_mscapi");
-            }
+            /* Resolve calls to sun_security_mscapi* as builtIn. */
+            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_mscapi");
         }
     }
 
@@ -384,6 +361,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     public boolean shouldRemoveProvider(Provider p) {
+        if (p == null) {
+            return true;
+        }
         if (usedProviders.contains(p)) {
             return false;
         }
@@ -391,9 +371,17 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public Object cleanVerificationCache(Object cache) {
         if (shouldFilterProviders) {
-            Object cleanedCache = verificationCacheCleaner.apply(cache);
+            /*
+             * The verification cache is an WeakIdentityWrapper -> Verification result
+             * ConcurrentHashMap. We do not care about the private WeakIdentityWrapper class, it
+             * extends WeakReference and so using WeakReference.get() is sufficient for us.
+             */
+            var cleanedCache = new ConcurrentHashMap<>((ConcurrentHashMap<WeakReference<Provider>, Object>) cache);
+            cleanedCache.keySet().removeIf(key -> shouldRemoveProvider(key.get()));
+
             if (filteredVerificationCache == null || !filteredVerificationCache.equals(cleanedCache)) {
                 filteredVerificationCache = cleanedCache;
             }
@@ -431,20 +419,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
     }
 
-    private static void linkSunEC(DuringAnalysisAccess a) {
-        NativeLibraries nativeLibraries = ((DuringAnalysisAccessImpl) a).getNativeLibraries();
-        /* We statically link sunec thus we classify it as builtIn library */
-        PlatformNativeLibrarySupport.singleton();
-        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("sunec");
-
-        nativeLibraries.addStaticJniLibrary("sunec");
-        if (isPosix()) {
-            /* Library sunec depends on stdc++ */
-            nativeLibraries.addDynamicNonJniLibrary("stdc++");
-        }
-    }
-
-    private static void linkSunMSCAPI(DuringAnalysisAccess a) {
+    private static void registerSunMSCAPIConfig(BeforeAnalysisAccess a) {
         NativeLibraries nativeLibraries = ((FeatureImpl.DuringAnalysisAccessImpl) a).getNativeLibraries();
         /* We statically link sunmscapi thus we classify it as builtIn library */
         NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("sunmscapi");
@@ -453,27 +428,28 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         /* Library sunmscapi depends on ncrypt and crypt32 */
         nativeLibraries.addDynamicNonJniLibrary("ncrypt");
         nativeLibraries.addDynamicNonJniLibrary("crypt32");
-    }
 
-    private static void registerSunMSCAPIConfig(BeforeAnalysisAccess a) {
         registerForThrowNew(a, "java.security.cert.CertificateParsingException", "java.security.InvalidKeyException",
                         "java.security.KeyException", "java.security.KeyStoreException", "java.security.ProviderException",
                         "java.security.SignatureException", "java.lang.OutOfMemoryError");
 
-        /*
-         * JDK-6782021 changed the `loadKeysOrCertificateChains` method signature, so we try the new
-         * signature first and fall back to the old one in case we're on a JDK without the change.
-         */
-        a.registerReachabilityHandler(SecurityServicesFeature::registerLoadKeysOrCertificateChains,
-                        optionalMethod(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class, int.class)
-                                        .orElseGet(() -> method(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class)));
-        a.registerReachabilityHandler(SecurityServicesFeature::registerGenerateCKeyPair,
-                        method(a, "sun.security.mscapi.CKeyPairGenerator$RSA", "generateCKeyPair", String.class, int.class, String.class));
-        a.registerReachabilityHandler(SecurityServicesFeature::registerCPrivateKeyOf,
-                        method(a, "sun.security.mscapi.CKeyStore", "storePrivateKey", String.class, byte[].class, String.class, int.class));
-        a.registerReachabilityHandler(SecurityServicesFeature::registerCPublicKeyOf,
-                        method(a, "sun.security.mscapi.CSignature", "importECPublicKey", String.class, byte[].class, int.class),
-                        method(a, "sun.security.mscapi.CSignature", "importPublicKey", String.class, byte[].class, int.class));
+        if (isMscapiModulePresent) {
+            /*
+             * JDK-6782021 changed the `loadKeysOrCertificateChains` method signature, so we try the
+             * new signature first and fall back to the old one in case we're on a JDK without the
+             * change.
+             */
+            a.registerReachabilityHandler(SecurityServicesFeature::registerLoadKeysOrCertificateChains,
+                            optionalMethod(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class, int.class)
+                                            .orElseGet(() -> method(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class)));
+            a.registerReachabilityHandler(SecurityServicesFeature::registerGenerateCKeyPair,
+                            method(a, "sun.security.mscapi.CKeyPairGenerator$RSA", "generateCKeyPair", String.class, int.class, String.class));
+            a.registerReachabilityHandler(SecurityServicesFeature::registerCPrivateKeyOf,
+                            method(a, "sun.security.mscapi.CKeyStore", "storePrivateKey", String.class, byte[].class, String.class, int.class));
+            a.registerReachabilityHandler(SecurityServicesFeature::registerCPublicKeyOf,
+                            method(a, "sun.security.mscapi.CSignature", "importECPublicKey", String.class, byte[].class, int.class),
+                            method(a, "sun.security.mscapi.CSignature", "importPublicKey", String.class, byte[].class, int.class));
+        }
     }
 
     private static void registerLoadKeysOrCertificateChains(DuringAnalysisAccess a) {
@@ -505,7 +481,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private static Set<Class<?>> computeKnownServices(BeforeAnalysisAccess access) {
-        Set<Class<?>> allKnownServices = new HashSet<>(Arrays.asList(knownServices));
+        Set<Class<?>> allKnownServices = new HashSet<>(knownServices);
         for (String value : Options.AdditionalSecurityServiceTypes.getValue().values()) {
             for (String serviceClazzName : value.split(",")) {
                 Class<?> serviceClazz = access.findClassByName(serviceClazzName);
@@ -516,7 +492,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         return allKnownServices;
     }
 
-    private void registerSpecialReachabilityHandlers(BeforeAnalysisAccess access) {
+    private Class<?> classSaslClient;
+    private Class<?> classSaslServer;
+
+    private void registerSASLReachabilityHandlers(BeforeAnalysisAccess access) {
         /*
          * Sasl does not conform to the JCA - the service has no getInstance method. We instead use
          * the Sasl facade class for our reachability handlers.
@@ -531,10 +510,14 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             }
 
             Class<?> saslClass = saslClassLookup.getOrFail();
+
+            classSaslClient = ReflectionUtil.lookupClass(false, "javax.security.sasl.SaslClient");
+            classSaslServer = ReflectionUtil.lookupClass(false, "javax.security.sasl.SaslServer");
+
             Method createSaslClient = ReflectionUtil.lookupMethod(saslClass, "createSaslClient", String[].class, String.class, String.class, String.class, Map.class, CallbackHandler.class);
-            access.registerReachabilityHandler(a -> registerServices(a, createSaslClient, SaslClient.class), createSaslClient);
+            access.registerReachabilityHandler(a -> registerServices(a, createSaslClient, classSaslClient), createSaslClient);
             Method createSaslServer = ReflectionUtil.lookupMethod(saslClass, "createSaslServer", String.class, String.class, String.class, Map.class, CallbackHandler.class);
-            access.registerReachabilityHandler(a -> registerServices(a, createSaslServer, SaslServer.class), createSaslServer);
+            access.registerReachabilityHandler(a -> registerServices(a, createSaslServer, classSaslServer), createSaslServer);
         } catch (ReflectionUtil.ReflectionUtilError e) {
             trace(saslRegistrationFailureMessage, e);
         }
@@ -572,7 +555,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             }
         }
 
-        registerSpecialReachabilityHandlers(access);
+        if (ModuleLayer.boot().findModule("java.security.sasl").isPresent()) {
+            registerSASLReachabilityHandlers(access);
+        }
 
         /*
          * On Oracle JDK the SecureRandom service implementations are not automatically discovered
@@ -600,9 +585,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         registerServices(access, trigger, serviceType);
     }
 
-    private static String getServiceType(Class<?> serviceClass) {
+    private String getServiceType(Class<?> serviceClass) {
+        Objects.requireNonNull(serviceClass);
         // Checkstyle: allow Class.getSimpleName
-        if (serviceClass == SaslClient.class || serviceClass == SaslServer.class) {
+        if (serviceClass == classSaslClient || serviceClass == classSaslServer) {
             return serviceClass.getSimpleName() + "Factory";
         }
         return serviceClass.getSimpleName();
@@ -826,18 +812,12 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         access.rescanRoot(verificationResultsField);
         access.rescanRoot(providerListField);
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            access.rescanRoot(oidTableField);
-        }
+        access.rescanRoot(oidTableField);
         if (filteredProviderList != null) {
             for (Provider provider : filteredProviderList.providers()) {
                 for (Service service : provider.getServices()) {
-                    if (JavaVersionUtil.JAVA_SPEC >= 17) {
-                        access.rescanField(service, classCacheField);
-                        access.rescanField(service, constructorCacheField);
-                    } else {
-                        access.rescanField(service, classRefField);
-                    }
+                    access.rescanField(service, classCacheField);
+                    access.rescanField(service, constructorCacheField);
                 }
             }
         }
@@ -853,61 +833,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private static void registerForReflection(Class<?> clazz) {
         RuntimeReflection.register(clazz);
         RuntimeReflection.register(clazz.getConstructors());
-    }
-
-    @SuppressWarnings("unchecked")
-    private Function<Object, Object> constructVerificationCacheCleaner(Class<?> jceSecurity) {
-        /*
-         * For JDK 11, the verification cache is a Provider -> Verification result IdentityHashMap.
-         */
-        if (JavaVersionUtil.JAVA_SPEC <= 11) {
-            return obj -> {
-                Map<Provider, Object> verificationResults;
-                synchronized (jceSecurity) {
-                    /*
-                     * Need to synchronize the iteration of JceSecurity.verificationResults. In the
-                     * original implementation verificationResults is always accessed and modified
-                     * via the static synchronized JceSecurity.getVerificationResult().
-                     *
-                     * Note that even if the value of the JceSecurity.verificationResults may be
-                     * modified concurrently it doesn't affect the correctness of the substitution.
-                     * Its value is never cached (by using RecomputeFieldValue.disableCaching) and
-                     * it will eventually reach a stable state, and it will be snapshotted. The
-                     * synchronization ensures that early reads of the field, that may happen
-                     * concurrently while verification results are still being added to the cache,
-                     * don't result in a ConcurrentModificationException.
-                     */
-                    verificationResults = new IdentityHashMap<>((Map<Provider, Object>) obj);
-                }
-                verificationResults.keySet().removeIf(this::shouldRemoveProvider);
-
-                return verificationResults;
-            };
-        }
-        /*
-         * For JDK 17 and later, the verification cache is an IdentityWrapper -> Verification result
-         * ConcurrentHashMap. The IdentityWrapper contains the actual provider in the 'obj' field.
-         */
-        Class<?> identityWrapper = loader.findClassOrFail("javax.crypto.JceSecurity$IdentityWrapper");
-        Field providerField = ReflectionUtil.lookupField(identityWrapper, "obj");
-
-        Predicate<Object> listRemovalPredicate = wrapper -> {
-            try {
-                return shouldRemoveProvider((Provider) providerField.get(wrapper));
-            } catch (IllegalAccessException e) {
-                throw VMError.shouldNotReachHere(e);
-            }
-        };
-
-        return obj -> {
-            Map<Object, Object> original = (Map<Object, Object>) obj;
-            Map<Object, Object> verificationResults = new ConcurrentHashMap<>(original);
-
-            verificationResults.keySet().removeIf(listRemovalPredicate);
-
-            return verificationResults;
-        };
-
     }
 
     private static boolean isSignature(Service s) {

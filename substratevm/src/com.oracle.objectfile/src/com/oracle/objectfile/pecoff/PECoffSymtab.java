@@ -107,7 +107,7 @@ public class PECoffSymtab extends ObjectFile.Element implements SymbolTable {
         @Override
         public long getDefinedOffset() {
             if (!isDefined()) {
-                throw new IllegalStateException("queried offset of an undefined symbol");
+                throw new IllegalStateException("Queried offset of an undefined symbol");
             } else {
                 return value;
             }
@@ -284,7 +284,7 @@ public class PECoffSymtab extends ObjectFile.Element implements SymbolTable {
 
     private Entry addEntry(Entry entry) {
         if (symtabStruct != null) {
-            throw new IllegalStateException("Symbol table content is already decided.");
+            throw new IllegalStateException("Symbol table content is already decided");
         }
         entriesByName.compute(entry.getName(), (k, v) -> SymbolTable.tryReplace(v, entry));
         entries.add(entry);
@@ -297,7 +297,7 @@ public class PECoffSymtab extends ObjectFile.Element implements SymbolTable {
 
     public int indexOf(Symbol sym) {
         if (symtabStruct == null) {
-            throw new IllegalStateException("Symbol table content is not decided yet.");
+            throw new IllegalStateException("Symbol table content is not decided yet");
         }
         return entriesToIndex.get(sym);
     }

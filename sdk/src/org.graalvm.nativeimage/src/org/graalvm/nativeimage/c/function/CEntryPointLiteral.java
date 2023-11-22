@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,7 +65,7 @@ import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
  * }
  *
  * // Invocation interface (for calls from Java, otherwise CFunctionPointer suffices)
- * interface MyFunctionPointer extends FunctionPointer {
+ * interface MyFunctionPointer extends CFunctionPointer {
  *     &#064;InvokeCFunctionPointer
  *     int invoke(IsolateThread thread, int x, int y);
  * }

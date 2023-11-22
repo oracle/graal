@@ -63,19 +63,13 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class ObjectScanner {
 
+    private static final String INDENTATION_AFTER_NEWLINE = "    ";
+
     protected final BigBang bb;
     private final ReusableSet scannedObjects;
     private final CompletionExecutor executor;
     private final Deque<WorklistEntry> worklist;
     private final ObjectScanningObserver scanningObserver;
-
-    public ObjectScanner(BigBang bb, ObjectScanningObserver scanningObserver) {
-        this(bb, null, new ObjectScanner.ReusableSet(), scanningObserver);
-    }
-
-    public ObjectScanner(BigBang bb, ReusableSet scannedObjects, ObjectScanningObserver scanningObserver) {
-        this(bb, null, scannedObjects, scanningObserver);
-    }
 
     public ObjectScanner(BigBang bb, CompletionExecutor executor, ReusableSet scannedObjects, ObjectScanningObserver scanningObserver) {
         this.bb = bb;
@@ -104,7 +98,7 @@ public class ObjectScanner {
             fields = fieldsList;
         }
         for (AnalysisField field : fields) {
-            if (Modifier.isStatic(field.getModifiers()) && field.getJavaKind() == JavaKind.Object && field.isRead()) {
+            if (Modifier.isStatic(field.getModifiers()) && field.isRead()) {
                 execute(() -> scanRootField(field));
             }
         }
@@ -112,7 +106,8 @@ public class ObjectScanner {
         // scan the constant nodes
         Map<JavaConstant, BytecodePosition> embeddedRoots = bb.getUniverse().getEmbeddedRoots();
         if (embeddedRootComparator != null) {
-            embeddedRoots.entrySet().stream().sorted(Map.Entry.comparingByValue(embeddedRootComparator))
+            embeddedRoots.entrySet().stream()
+                            .sorted(Map.Entry.comparingByValue(embeddedRootComparator))
                             .forEach(entry -> execute(() -> scanEmbeddedRoot(entry.getKey(), entry.getValue())));
         } else {
             embeddedRoots.forEach((key, value) -> execute(() -> scanEmbeddedRoot(key, value)));
@@ -129,7 +124,7 @@ public class ObjectScanner {
         }
     }
 
-    private void scanEmbeddedRoot(JavaConstant root, BytecodePosition position) {
+    protected void scanEmbeddedRoot(JavaConstant root, BytecodePosition position) {
         try {
             EmbeddedRootScan reason = new EmbeddedRootScan(position, root);
             scanningObserver.forEmbeddedRoot(root, reason);
@@ -155,14 +150,16 @@ public class ObjectScanner {
      * @param field the scanned field
      * @param receiver the receiver object
      */
-    protected final void scanField(AnalysisField field, JavaConstant receiver, ScanReason prevReason) {
+    protected void scanField(AnalysisField field, JavaConstant receiver, ScanReason prevReason) {
         ScanReason reason = new FieldScan(field, receiver, prevReason);
         try {
             if (!bb.getUniverse().getHeapScanner().isValueAvailable(field)) {
                 /* The value is not available yet. */
                 return;
             }
-            JavaConstant fieldValue = bb.getConstantReflectionProvider().readFieldValue(field, receiver);
+            assert isUnwrapped(receiver) : receiver;
+
+            JavaConstant fieldValue = readFieldValue(field, receiver);
             if (fieldValue == null) {
                 StringBuilder backtrace = new StringBuilder();
                 buildObjectBacktrace(bb, reason, backtrace);
@@ -184,11 +181,37 @@ public class ObjectScanner {
                  * referenced elements are being scanned.
                  */
                 scanConstant(fieldValue, reason);
+            } else if (fieldValue.getJavaKind().isNumericInteger()) {
+                scanningObserver.forPrimitiveFieldValue(receiver, field, fieldValue, reason);
             }
 
         } catch (UnsupportedFeatureException ex) {
             unsupportedFeatureDuringFieldScan(bb, field, receiver, ex, reason);
         }
+    }
+
+    protected JavaConstant readFieldValue(AnalysisField field, JavaConstant receiver) {
+        return bb.getConstantReflectionProvider().readFieldValue(field, receiver);
+    }
+
+    /**
+     * Must unwrap the receiver if it is an ImageHeapConstant to scan the hosted value, if any, for
+     * verification, otherwise the verification just compares shadow heap with shadow heap for
+     * embedded roots, which is completely useless.
+     */
+    private static JavaConstant maybeUnwrap(JavaConstant receiver) {
+        if (receiver instanceof ImageHeapConstant heapConstant && heapConstant.getHostedObject() != null) {
+            return heapConstant.getHostedObject();
+        }
+        return receiver;
+    }
+
+    private static boolean isUnwrapped(JavaConstant receiver) {
+        if (receiver instanceof ImageHeapConstant heapConstant) {
+            // Non hosted backed ImageHeapConstant is considered unwrapped
+            return heapConstant.getHostedObject() == null;
+        }
+        return true;
     }
 
     /**
@@ -198,6 +221,7 @@ public class ObjectScanner {
      */
     protected final void scanArray(JavaConstant array, ScanReason prevReason) {
 
+        assert isUnwrapped(array) : array;
         AnalysisType arrayType = bb.getMetaAccess().lookupJavaType(array);
         ScanReason reason = new ArrayScan(arrayType, array, prevReason);
 
@@ -205,7 +229,7 @@ public class ObjectScanner {
             if (!arrayType.getComponentType().isPrimitive()) {
                 ImageHeapArray heapArray = (ImageHeapArray) array;
                 for (int idx = 0; idx < heapArray.getLength(); idx++) {
-                    final JavaConstant element = heapArray.getElement(idx);
+                    final JavaConstant element = heapArray.readElementValue(idx);
                     if (element.isNull()) {
                         scanningObserver.forNullArrayElement(array, arrayType, idx, reason);
                     } else {
@@ -221,10 +245,10 @@ public class ObjectScanner {
                     scanningObserver.forNullArrayElement(array, arrayType, idx, reason);
                 } else {
                     try {
-                        JavaConstant element = bb.getSnippetReflectionProvider().forObject(bb.getUniverse().replaceObject(e));
+                        JavaConstant element = bb.getUniverse().getSnippetReflection().forObject(bb.getUniverse().replaceObject(e));
                         scanArrayElement(array, arrayType, reason, idx, element);
                     } catch (UnsupportedFeatureException ex) { /* Object replacement can throw. */
-                        unsupportedFeatureDuringConstantScan(bb, bb.getSnippetReflectionProvider().forObject(e), ex, reason);
+                        unsupportedFeatureDuringConstantScan(bb, bb.getUniverse().getSnippetReflection().forObject(e), ex, reason);
                     }
                 }
             }
@@ -243,21 +267,18 @@ public class ObjectScanner {
         scanConstant(elementConstant, reason);
     }
 
-    public final void scanConstant(JavaConstant value, ScanReason reason) {
+    public void scanConstant(JavaConstant value, ScanReason reason) {
         if (value.isNull() || bb.getMetaAccess().isInstanceOf(value, WordBase.class)) {
             return;
         }
-        if (!bb.scanningPolicy().scanConstant(bb, value)) {
-            bb.registerTypeAsInHeap(bb.getMetaAccess().lookupJavaType(value), reason);
-            return;
-        }
-        Object valueObj = (value instanceof ImageHeapConstant) ? value : constantAsObject(bb, value);
+        JavaConstant unwrappedValue = maybeUnwrap(value);
+        Object valueObj = unwrappedValue instanceof ImageHeapConstant ? unwrappedValue : constantAsObject(bb, unwrappedValue);
         if (scannedObjects.putAndAcquire(valueObj) == null) {
             try {
-                scanningObserver.forScannedConstant(value, reason);
+                scanningObserver.forScannedConstant(unwrappedValue, reason);
             } finally {
                 scannedObjects.release(valueObj);
-                WorklistEntry worklistEntry = new WorklistEntry(value, reason);
+                WorklistEntry worklistEntry = new WorklistEntry(unwrappedValue, reason);
                 if (executor != null) {
                     executor.execute(debug -> doScan(worklistEntry));
                 } else {
@@ -319,11 +340,11 @@ public class ObjectScanner {
     public static AnalysisMethod buildObjectBacktrace(BigBang bb, ScanReason reason, StringBuilder objectBacktrace, String header) {
         ScanReason cur = reason;
         objectBacktrace.append(header);
-        objectBacktrace.append(System.lineSeparator()).append(indent).append(asString(bb, cur));
+        objectBacktrace.append(System.lineSeparator()).append(indent).append(cur.toString(bb));
         ScanReason rootReason = cur;
         cur = cur.previous;
         while (cur != null) {
-            objectBacktrace.append(System.lineSeparator()).append(indent).append(asString(bb, cur));
+            objectBacktrace.append(System.lineSeparator()).append(indent).append(cur.toString(bb));
             rootReason = cur.previous;
             cur = cur.previous;
         }
@@ -335,39 +356,6 @@ public class ObjectScanner {
         return null;
     }
 
-    static String asString(BigBang bb, ScanReason reason) {
-        if (reason instanceof MethodParsing) {
-            MethodParsing mp = (MethodParsing) reason;
-            String str = String.format("parsing method %s reachable via the parsing context", mp.getMethod().asStackTraceElement(0));
-            str += ReportUtils.parsingContext(mp.getMethod(), indent + indent);
-            return str;
-        } else if (reason instanceof FieldConstantFold) {
-            FieldConstantFold fieldFold = (FieldConstantFold) reason;
-            StackTraceElement location = fieldFold.parsedMethod.asStackTraceElement(fieldFold.bci);
-            if (fieldFold.field.isStatic()) {
-                return "trying to constant fold static field " + reason + "\n    at " + location;
-            } else {
-                /* Instance field scans must have a receiver, hence the 'of'. */
-                return "trying to constant fold field " + reason + " of constant \n    " + asString(bb, reason.constant) + "\n    at " + location;
-            }
-        } else if (reason instanceof FieldScan) {
-            FieldScan fieldScan = (FieldScan) reason;
-            if (fieldScan.field.isStatic()) {
-                return "reading static field " + reason + "\n    at " + fieldScan.location();
-            } else {
-                /* Instance field scans must have a receiver, hence the 'of'. */
-                return "reading field " + reason + " of constant \n    " + asString(bb, reason.constant);
-                // + "\n at " + location;
-            }
-        } else if (reason instanceof EmbeddedRootScan) {
-            return "scanning root " + asString(bb, reason.constant) + " embedded in \n    " + reason;
-        } else if (reason instanceof ArrayScan) {
-            return "indexing into array " + asString(bb, reason.constant);
-        } else {
-            return reason.toString();
-        }
-    }
-
     public static String asString(BigBang bb, JavaConstant constant) {
         return asString(bb, constant, true);
     }
@@ -377,12 +365,22 @@ public class ObjectScanner {
             return "null";
         }
         AnalysisType type = bb.getMetaAccess().lookupJavaType(constant);
-        if (constant instanceof ImageHeapConstant) {
-            // Checkstyle: allow Class.getSimpleName
-            return constant.getClass().getSimpleName() + "<" + type.toJavaName() + ">";
-            // Checkstyle: disallow Class.getSimpleName
+        JavaConstant hosted = constant;
+        if (constant instanceof ImageHeapConstant heapConstant) {
+            JavaConstant hostedObject = heapConstant.getHostedObject();
+            if (hostedObject == null) {
+                // Checkstyle: allow Class.getSimpleName
+                return constant.getClass().getSimpleName() + "<" + type.toJavaName() + ">";
+                // Checkstyle: disallow Class.getSimpleName
+            }
+            hosted = hostedObject;
         }
-        Object obj = constantAsObject(bb, constant);
+
+        if (hosted.getJavaKind().isPrimitive()) {
+            return hosted.toValueString();
+        }
+
+        Object obj = constantAsObject(bb, hosted);
         String str = type.toJavaName() + '@' + Integer.toHexString(System.identityHashCode(obj));
         if (appendToString) {
             try {
@@ -419,8 +417,8 @@ public class ObjectScanner {
                 /* Scan constant's instance fields. */
                 for (ResolvedJavaField javaField : type.getInstanceFields(true)) {
                     AnalysisField field = (AnalysisField) javaField;
-                    if (field.getJavaKind() == JavaKind.Object && field.isRead()) {
-                        assert !Modifier.isStatic(field.getModifiers());
+                    if (field.isRead()) {
+                        assert !Modifier.isStatic(field.getModifiers()) : field;
                         scanField(field, entry.constant, entry.reason);
                     }
                 }
@@ -491,15 +489,21 @@ public class ObjectScanner {
         public ScanReason getPrevious() {
             return previous;
         }
+
+        @SuppressWarnings("unused")
+        public String toString(BigBang bb) {
+            return toString();
+        }
     }
 
     public static class OtherReason extends ScanReason {
+        public static final ScanReason UNKNOWN = new OtherReason("manually created constant");
         public static final ScanReason RESCAN = new OtherReason("manually triggered rescan");
         public static final ScanReason HUB = new OtherReason("scanning a class constant");
 
         final String reason;
 
-        protected OtherReason(String reason) {
+        public OtherReason(String reason) {
             super(null, null);
             this.reason = reason;
         }
@@ -514,7 +518,6 @@ public class ObjectScanner {
         final AnalysisField field;
 
         private static ScanReason previous(AnalysisField field) {
-            assert field.isStatic() && field.isRead();
             Object readBy = field.getReadBy();
             if (readBy instanceof BytecodePosition) {
                 ResolvedJavaMethod readingMethod = ((BytecodePosition) readBy).getMethod();
@@ -533,7 +536,6 @@ public class ObjectScanner {
         public FieldScan(AnalysisField field, JavaConstant receiver, ScanReason previous) {
             super(previous, receiver);
             this.field = field;
-            assert field.isRead();
         }
 
         public AnalysisField getField() {
@@ -553,6 +555,16 @@ public class ObjectScanner {
         }
 
         @Override
+        public String toString(BigBang bb) {
+            if (field.isStatic()) {
+                return "reading static field " + field.format("%H.%n") + System.lineSeparator() + "    at " + location();
+            } else {
+                /* Instance field scans must have a receiver, hence the 'of'. */
+                return "reading field " + field.format("%H.%n") + " of constant " + System.lineSeparator() + INDENTATION_AFTER_NEWLINE + asString(bb, constant);
+            }
+        }
+
+        @Override
         public String toString() {
             return field.format("%H.%n");
         }
@@ -568,6 +580,18 @@ public class ObjectScanner {
             this.field = field;
             this.parsedMethod = parsedMethod;
             this.bci = bci;
+        }
+
+        @Override
+        public String toString(BigBang bb) {
+            StackTraceElement location = parsedMethod.asStackTraceElement(bci);
+            if (field.isStatic()) {
+                return "trying to constant fold static field " + field.format("%H.%n") + System.lineSeparator() + "    at " + location;
+            } else {
+                /* Instance field scans must have a receiver, hence the 'of'. */
+                return "trying to constant fold field " + field.format("%H.%n") + " of constant " + System.lineSeparator() +
+                                INDENTATION_AFTER_NEWLINE + asString(bb, constant) + System.lineSeparator() + "    at " + location;
+            }
         }
 
         @Override
@@ -594,18 +618,29 @@ public class ObjectScanner {
 
         @Override
         public String toString() {
-            String str = String.format("Parsing method %s %n", method.asStackTraceElement(0));
-            str += "Parsing context:" + ReportUtils.parsingContext(method);
+            String str = String.format("parsing method %s reachable via the parsing context", method.asStackTraceElement(0));
+            str += ReportUtils.parsingContext(method, indent + indent);
             return str;
         }
     }
 
     public static class ArrayScan extends ScanReason {
         final AnalysisType arrayType;
+        final int idx;
 
         public ArrayScan(AnalysisType arrayType, JavaConstant array, ScanReason previous) {
+            this(arrayType, array, previous, -1);
+        }
+
+        public ArrayScan(AnalysisType arrayType, JavaConstant array, ScanReason previous, int idx) {
             super(previous, array);
             this.arrayType = arrayType;
+            this.idx = idx;
+        }
+
+        @Override
+        public String toString(BigBang bb) {
+            return "indexing into array " + asString(bb, constant) + (idx != -1 ? " at index " + idx : "");
         }
 
         @Override
@@ -628,6 +663,11 @@ public class ObjectScanner {
 
         public AnalysisMethod getMethod() {
             return (AnalysisMethod) position.getMethod();
+        }
+
+        @Override
+        public String toString(BigBang bb) {
+            return "scanning root " + asString(bb, constant) + " embedded in " + System.lineSeparator() + INDENTATION_AFTER_NEWLINE + position.getMethod().asStackTraceElement(position.getBCI());
         }
 
         @Override

@@ -28,20 +28,21 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.deopt.DeoptimizationCanaryFeature;
 import com.oracle.svm.core.deopt.DeoptimizationCounters;
 import com.oracle.svm.core.deopt.DeoptimizationRuntime;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
-import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -66,7 +67,7 @@ public final class DeoptimizationFeature implements InternalFeature {
 
     static {
         try {
-            deoptStubMethod = Deoptimizer.class.getMethod("deoptStub", DeoptimizedFrame.class);
+            deoptStubMethod = Deoptimizer.class.getMethod("deoptStub", Pointer.class, UnsignedWord.class, UnsignedWord.class);
         } catch (NoSuchMethodException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
@@ -92,16 +93,16 @@ public final class DeoptimizationFeature implements InternalFeature {
          * The deoptimization stub is never called directly. It is patched in as the new return
          * address during deoptimization.
          */
-        access.registerAsRoot(deoptStubMethod, true);
+        access.registerAsRoot(deoptStubMethod, true, "Deoptimization stub, registered in " + DeoptimizationFeature.class);
 
         /*
          * The deoptimize run time call is not used for method in the native image, but only for
          * runtime compiled methods. Make sure it gets compiled.
          */
-        access.registerAsRoot((AnalysisMethod) DeoptimizationRuntime.DEOPTIMIZE.findMethod(access.getMetaAccess()), true);
+        access.registerAsRoot((AnalysisMethod) DeoptimizationRuntime.DEOPTIMIZE.findMethod(access.getMetaAccess()), true, "Deoptimization, registered in " + DeoptimizationFeature.class);
 
         if (DeoptTester.enabled()) {
-            access.getBigBang().addRootMethod((AnalysisMethod) DeoptTester.DEOPTTEST.findMethod(access.getMetaAccess()), true);
+            access.getBigBang().addRootMethod((AnalysisMethod) DeoptTester.DEOPTTEST.findMethod(access.getMetaAccess()), true, "Deoptimization test, registered in " + DeoptimizationFeature.class);
         }
     }
 

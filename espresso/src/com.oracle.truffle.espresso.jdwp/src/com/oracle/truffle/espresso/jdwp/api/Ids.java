@@ -128,6 +128,10 @@ public final class Ids<T> {
             log(() -> "Null object from ID: " + id);
             return nullObject;
         }
+        if (id > objects.length) {
+            log(() -> "Unknown object ID: " + id);
+            return null;
+        }
         WeakReference<T> ref = objects[id];
         T o = ref.get();
         if (o == null) {

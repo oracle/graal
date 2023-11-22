@@ -25,13 +25,13 @@
 package com.oracle.svm.core.graal.amd64;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 
-import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
-import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
-import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.asm.amd64.AMD64Address;
+import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
+import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.amd64.AMD64LIRInstruction;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateUtil;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,8 +40,7 @@ public class LLVMSourceForeignType extends LLVMSourceDecoratorType {
     public static final String[] KEYS = new String[]{VALUE_KEY};
 
     public LLVMSourceForeignType(LLVMSourceType wrappedType) {
-        super(0, 0, 0, Function.identity(), wrappedType.getLocation());
-        setBaseType(wrappedType);
+        super(UNKNOWN::getName, 0, 0, 0, wrappedType, Function.identity(), wrappedType.getLocation());
     }
 
     @Override

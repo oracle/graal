@@ -61,6 +61,7 @@ public abstract class JNIHandleSet {
     final JNIMethodId javaLangClassGetName;
     final JNIObjectHandle javaIoSerializable;
 
+    @SuppressWarnings("this-escape")
     public JNIHandleSet(JNIEnvironment env) {
         javaIoSerializable = newClassGlobalRef(env, "java/io/Serializable");
         JNIObjectHandle javaLangClass = findClass(env, "java/lang/Class");

@@ -3,18 +3,21 @@ layout: ni-docs
 toc_group: how-to-guides
 link_title: Create a Heap Dump
 permalink: /reference-manual/native-image/guides/create-heap-dump/
+redirect_from: /reference-manual/native-image/NativeImageHeapdump/
 ---
 
 # Create a Heap Dump from a Native Executable
 
-You can create a heap dump of a running executable to monitor its execution. Just like any other Java heap dump, it can be opened with the [VisualVM](../../../tools/visualvm.md) tool.
+You can create a heap dump of a running executable to monitor its execution.
+Just like any other Java heap dump, it can be opened with the [VisualVM](../../../tools/visualvm.md) tool.
 
-To enable heap dump support, native executables must be built with the `--enable-monitoring=heapdump` option. Heap dumps can then be created in three different ways:
+To enable heap dump support, native executables must be built with the `--enable-monitoring=heapdump` option. Heap dumps can then be created in different ways:
 
 1. Create heap dumps with VisualVM.
-2. Dump the initial heap of a native executable using the `-XX:+DumpHeapAndExit` command-line option.
-3. Create heap dumps sending a `SIGUSR1` signal at run time.
-4. Create heap dumps programmatically using the [`org.graalvm.nativeimage.VMRuntime#dumpHeap`](https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.core/src/com/oracle/svm/core/VMInspectionOptions.java) API.
+2. The command-line option `-XX:+HeapDumpOnOutOfMemoryError` can be used to create a heap dump when the native executable runs out of Java heap memory.
+3. Dump the initial heap of a native executable using the `-XX:+DumpHeapAndExit` command-line option.
+4. Create heap dumps sending a `SIGUSR1` signal at run time.
+5. Create heap dumps programmatically using the [`org.graalvm.nativeimage.VMRuntime#dumpHeap`](https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.core/src/com/oracle/svm/core/VMInspectionOptions.java) API.
 
 All approaches are described below.
 
@@ -29,6 +32,19 @@ A convenient way to create heap dumps is to use [VisualVM](../../../tools/visual
 For this, you need to add `jvmstat` to the `--enable-monitoring` option (for example, `--enable-monitoring=heapdump,jvmstat`).
 This will allow VisualVM to pick up and list running Native Image processes.
 You can then request heap dumps in the same way you can request them when your application runs on the JVM (for example, right-click on the process, then select "Heap Dump").
+
+## Create a Heap Dump on `OutOfMemoryError`
+
+Start the application with the option `-XX:+HeapDumpOnOutOfMemoryError` to get a heap dump when the native executable throws an `OutOfMemoryError` because it ran out of Java heap memory.
+The heap dump is created in a file named `svm-heapdump-<PID>-OOME.hprof`.
+For example:
+
+```shell
+./mem-leak-example -XX:+HeapDumpOnOutOfMemoryError
+Dumping heap to svm-heapdump-67799-OOME.hprof ...
+Heap dump file created [10046752 bytes in 0.49 secs]
+Exception in thread "main" java.lang.OutOfMemoryError: Garbage-collected heap size exceeded.
+```
 
 ## Dump the Initial Heap of a Native Executable
 
@@ -51,10 +67,9 @@ This provides you with enough time to send it a `SIGUSR1` signal. The applicatio
 
 Follow these steps to build a native executable that will produce a heap dump when it receives a `SIGUSR1` signal.
 
-1. Download and install the latest GraalVM JDK with Native Image using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
-    ```bash
-    bash <(curl -sL https://get.graalvm.org/jdk)
-    ``` 
+1. Make sure you have installed a GraalVM JDK.
+The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
+For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
 2.  Save the following code in a file named _SVMHeapDump.java_:
     ```java
@@ -96,6 +111,7 @@ Follow these steps to build a native executable that will produce a heap dump wh
             for (int i = 0; i < 1000; i++) {
                 CROWD.add(new Person());
             }
+
             long pid = ProcessProperties.getProcessID();
             StringBuffer sb1 = new StringBuffer(100);
             sb1.append(DATE_FORMATTER.format(new Date()));
@@ -106,6 +122,7 @@ Follow these steps to build a native executable that will produce a heap dump wh
             sb1.append("to dump the heap into the working directory.\n");
             sb1.append("Starting thread!");
             System.out.println(sb1);
+
             SVMHeapDump t = new SVMHeapDump();
             t.start();
             while (t.isAlive()) {
@@ -121,17 +138,17 @@ Follow these steps to build a native executable that will produce a heap dump wh
     }
 
     class Person {
-            private static Random R = new Random();
-            private String name;
-            private int age;
+        private static Random R = new Random();
+        private String name;
+        private int age;
             
-            public Person() {
-                byte[] array = new byte[7];
-                R.nextBytes(array);
-                name = new String(array, Charset.forName("UTF-8"));
-                age = R.nextInt(100);
-            }
+        public Person() {
+            byte[] array = new byte[7];
+            R.nextBytes(array);
+            name = new String(array, Charset.forName("UTF-8"));
+            age = R.nextInt(100);
         }
+    }
     ```
 
 3. Build a native executable:
@@ -174,7 +191,7 @@ Follow these steps to build a native executable that will produce a heap dump wh
 
 ## Create a Heap Dump from within a Native Executable
 
-The following example shows how to create a heap dump from a running native executable using [`VMRuntime.dumpHeap()`](https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.core/src/com/oracle/svm/core/VMInspection.java) if some condition is met.
+The following example shows how to create a heap dump from a running native executable using [`VMRuntime.dumpHeap()`](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/VMRuntime.html#dumpHeap-java.lang.String-boolean-) if some condition is met.
 The condition to create a heap dump is provided as an option on the command line.
 
 1. Save the code below in a file named _SVMHeapDumpAPI.java_.

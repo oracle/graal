@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -195,6 +195,9 @@ class NativeImageBenchmarkMixin(object):
             add_opens_add_extracts = mx_benchmark._add_opens_and_exports_from_manifest(distribution.path)
         return mx.get_runtime_jvm_args([self.dist], jdk=jdk, exclude_names=mx_sdk_vm_impl.NativePropertiesBuildTask.implicit_excludes) + add_opens_add_extracts
 
+    def extra_jvm_arg(self, benchmark, args):
+        return parse_prefixed_args('-Dnative-image.benchmark.extra-jvm-arg=', args)
+
     def extra_run_arg(self, benchmark, args, image_run_args):
         """Returns all arguments passed to the final image.
 
@@ -270,6 +273,10 @@ class NativeImageBenchmarkMixin(object):
     def build_assertions(self, benchmark, is_gate):
         # We are skipping build assertions when a benchmark is not a part of a gate.
         return ['-J-ea', '-J-esa'] if is_gate else []
+
+    # Override and return False if this suite should not check for samples in runs with PGO
+    def checkSamplesInPgo(self):
+        return True
 
 
 def measureTimeToFirstResponse(bmSuite):
@@ -420,7 +427,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         return {}
 
     def inNativeMode(self):
-        return self.jvm(self.bmSuiteArgs) == "native-image"
+        return "native-image" in self.jvm(self.bmSuiteArgs)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         return self.vmArgs(bmSuiteArgs) + ["-jar", self.applicationPath()]
@@ -706,6 +713,32 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
             return datapoints
         else:
             return super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
+
+
+class NativeImageBundleBasedBenchmarkMixin(object):
+    def applicationDist(self):
+        raise NotImplementedError()
+
+    def uses_bundles(self):
+        raise NotImplementedError()
+
+    def _get_single_file_with_extension_from_dist(self, extension):
+        lib = self.applicationDist()
+        matching_files = [filename for filename in os.listdir(lib) if filename.endswith(extension)]
+        assert len(matching_files) == 1, f"When using bundle support, the benchmark must contain a single file with extension {extension} in its mx library"
+        matching_file = os.path.join(lib, matching_files[0])
+        return matching_file
+
+    def create_bundle_command_line_args(self, benchmarks, bmSuiteArgs):
+        assert self.uses_bundles()
+        executable_jar = self._get_single_file_with_extension_from_dist(".jar")
+        return self.vmArgs(bmSuiteArgs) + ["-jar", executable_jar]
+
+    def create_bundle_image_build_arguments(self):
+        if self.uses_bundles():
+            return [f'--bundle-apply={self._get_single_file_with_extension_from_dist(".nib")}']
+        return []
+
 
 class EmptyEnv:
     def __init__(self, env):

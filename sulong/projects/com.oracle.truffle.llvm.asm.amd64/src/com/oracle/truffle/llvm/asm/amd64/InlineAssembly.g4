@@ -322,6 +322,7 @@ unary_op :
   | 'setpo'
   | 'sets'
   | 'setz'
+  | 'fstcw'
   | 'push'
   | 'pop'
   | 'cmpxchg8b'

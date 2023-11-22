@@ -102,6 +102,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
+import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.AddToSetVisitor;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.util.MathUtil;
@@ -135,6 +136,7 @@ public final class DFAGenerator implements JsonConvertible {
     private boolean hasAmbiguousStates = false;
     private boolean doSimpleCG = false;
     private boolean simpleCGMustCopy = false;
+    private final StateSet<NFA, NFAState> nfaFirstStates;
 
     private DFAStateNodeBuilder[] entryStates;
     private DFACaptureGroupTransitionBuilder[] initialCGTransitions;
@@ -167,6 +169,7 @@ public final class DFAGenerator implements JsonConvertible {
         assert !nfa.isDead();
         this.canonicalizer = new DFATransitionCanonicalizer(this);
         this.matchersBuilder = nfa.getAst().getEncoding().createMatchersBuilder();
+        this.nfaFirstStates = StateSet.create(nfa);
     }
 
     public NFA getNfa() {
@@ -297,6 +300,8 @@ public final class DFAGenerator implements JsonConvertible {
     public void calcDFA() {
         if (isForward()) {
             createInitialStatesForward();
+            addSuccessors(nfaFirstStates, nfa.getUnAnchoredInitialState());
+            addSuccessors(nfaFirstStates, nfa.getAnchoredInitialState());
         } else {
             createInitialStatesBackward();
         }
@@ -304,6 +309,14 @@ public final class DFAGenerator implements JsonConvertible {
             expandState(expansionQueue.pop());
         }
         optimizeDFA();
+    }
+
+    private void addSuccessors(StateSet<NFA, NFAState> stateSet, NFAState state) {
+        if (state != null) {
+            for (NFAStateTransition t : state.getSuccessors()) {
+                stateSet.add(t.getTarget(isForward()));
+            }
+        }
     }
 
     /**
@@ -329,6 +342,10 @@ public final class DFAGenerator implements JsonConvertible {
                     cgLastTransition[i] = lt.getLastTransitionIndex();
                 }
             }
+        }
+        if (executorProps.canFindStart()) {
+            assert getReplacement(getUnanchoredInitialState().getId()) instanceof DFAFindInnerLiteralStateNode;
+            entryStateIDs = new short[]{(short) getUnanchoredInitialState().getId(), (short) getUnanchoredInitialState().getId()};
         }
         states[0] = new DFAInitialStateNode(entryStateIDs, cgLastTransition);
         if (TRegexOptions.TRegexEnableNodeSplitter) {
@@ -438,7 +455,7 @@ public final class DFAGenerator implements JsonConvertible {
             if (isGenericCG()) {
                 transition.getTarget().incPredecessors();
             }
-            if (state.isUnAnchoredFinalState() && !successorState.isFinalState()) {
+            if (state.isUnAnchoredFinalState() && !successorState.isUnAnchoredFinalState()) {
                 simpleCGMustCopy = true;
             }
         }
@@ -634,7 +651,7 @@ public final class DFAGenerator implements JsonConvertible {
                 for (DFAStateTransitionBuilder[] cur : bfsTraversalCur) {
                     for (DFAStateTransitionBuilder t : cur) {
                         DFAStateNodeBuilder target = t.getTarget();
-                        if (visited.get(target.getId())) {
+                        if (visited.get(target.getId()) || target == literalFirstDFAState) {
                             continue;
                         }
                         visited.set(target.getId());
@@ -662,9 +679,10 @@ public final class DFAGenerator implements JsonConvertible {
                  * the resulting DFA would produce wrong results on e.g. /a?aa/. In this exemplary
                  * expression, the DFA would match the literal "aa" and immediately jump to the
                  * successor of the literal's last state, which is the final state. It would never
-                 * match "aaa".
+                 * match "aaa". If the prefix has unbounded quantifiers, the runtime complexity of
+                 * the overall match would also become quadratic in this case.
                  */
-                if (rootSeq.getTerms().get(literalStart - 1).getMinPath() < rootSeq.getTerms().get(literalStart - 1).getMaxPath()) {
+                if (innerLiteralPrefixIsVariableLength(rootSeq, literalStart)) {
                     nfa.setInitialLoopBack(false);
                     if (innerLiteralMatchesPrefix(prefixNFAStates)) {
                         nfa.setInitialLoopBack(true);
@@ -739,17 +757,79 @@ public final class DFAGenerator implements JsonConvertible {
                 nfa.getReverseAnchoredEntry().setSource(reverseAnchoredInitialState);
                 nfa.getReverseUnAnchoredEntry().setSource(reverseUnAnchoredInitialState);
             }
-
+            executorProps.setCanFindStart(innerLiteralCanFindMatchStart(unanchoredInitialState, literalLastDFAState));
             registerStateReplacement(unanchoredInitialState.getId(), new DFAFindInnerLiteralStateNode((short) unanchoredInitialState.getId(),
                             new short[]{(short) literalLastDFAState.getId()}, nfa.getAst().extractInnerLiteral()));
         }
     }
 
+    /**
+     * If the expression contains an inner literal, the forward searching DFA can eagerly determine
+     * the match start if no DFA states after the inner literal contain transitions targeting the
+     * beginning of the expression.
+     */
+    private boolean innerLiteralCanFindMatchStart(DFAStateNodeBuilder unanchoredInitialState, DFAStateNodeBuilder literalLastDFAState) {
+        if (!literalLastDFAState.getNfaTransitionSet().getTargetStateSet().isDisjoint(nfaFirstStates)) {
+            return false;
+        }
+        TBitSet visited = new TBitSet(nextID);
+        visited.set(literalLastDFAState.getId());
+        visited.set(unanchoredInitialState.getId());
+        bfsTraversalCur.clear();
+        bfsTraversalCur.add(literalLastDFAState.getSuccessors());
+        while (!bfsTraversalCur.isEmpty()) {
+            bfsTraversalNext.clear();
+            for (DFAStateTransitionBuilder[] cur : bfsTraversalCur) {
+                for (DFAStateTransitionBuilder t : cur) {
+                    DFAStateNodeBuilder target = t.getTarget();
+                    if (visited.get(target.getId())) {
+                        continue;
+                    }
+                    visited.set(target.getId());
+                    if (!target.getNfaTransitionSet().getTargetStateSet().isDisjoint(nfaFirstStates)) {
+                        bfsTraversalNext.clear();
+                        return false;
+                    }
+                    bfsExpand(target);
+                }
+            }
+            bfsSwapLists();
+        }
+        return true;
+    }
+
+    private static boolean innerLiteralPrefixIsVariableLength(Sequence rootSeq, int literalStart) {
+        ArrayList<Term> terms = rootSeq.getTerms();
+        if (terms.get(literalStart - 1).getMinPath() < terms.get(literalStart - 1).getMaxPath()) {
+            return true;
+        }
+        for (int i = 0; i < literalStart; i++) {
+            if (terms.get(i).hasLoops()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private boolean innerLiteralMatchesPrefix(StateSet<NFA, NFAState> prefixNFAStates) {
+        if (innerLiteralTryMatchPrefix(prefixNFAStates, entryStates[0].getNfaTransitionSet().getTargetStateSet().copy())) {
+            return true;
+        }
+        for (NFAState s : prefixNFAStates) {
+            StateSet<NFA, NFAState> start = StateSet.create(nfa);
+            start.add(s);
+            if (innerLiteralTryMatchPrefix(prefixNFAStates, start)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean innerLiteralTryMatchPrefix(StateSet<NFA, NFAState> prefixNFAStates, StateSet<NFA, NFAState> start) {
         int literalEnd = nfa.getAst().getProperties().getInnerLiteralEnd();
         int literalStart = nfa.getAst().getProperties().getInnerLiteralStart();
         Sequence rootSeq = nfa.getAst().getRoot().getFirstAlternative();
-        StateSet<NFA, NFAState> curState = entryStates[0].getNfaTransitionSet().getTargetStateSet().copy();
+        StateSet<NFA, NFAState> curState = start.copy();
         StateSet<NFA, NFAState> nextState = StateSet.create(nfa);
         for (int i = literalStart; i < literalEnd; i++) {
             CodePointSet c = ((CharacterClass) rootSeq.getTerms().get(i)).getCharSet();

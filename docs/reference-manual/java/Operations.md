@@ -14,7 +14,7 @@ That is, it is first interpreted before its hot methods are compiled.
 This can translate into slightly longer times until the application reaches peak performance when compared to the native compilers in the JVM such as C1 and C2.
 
 To address the issue of taking longer to reach to peak performance, **libgraal** was introduced -- a shared library, produced using [Native Image](../native-image/README.md) to ahead-of-time compile the compiler itself.
-That means the GraalVM Enterprise compiler is deployed as a native shared library.
+That means the Oracle GraalVM compiler is deployed as a native shared library.
 
 In this mode, the compiler uses memory separate from the HotSpot heap, and it runs compiled from the start.
 Therefore it has execution properties similar to other native HotSpot compilers such as C1 and C2.
@@ -23,7 +23,7 @@ It can be disabled with `-XX:-UseJVMCINativeLibrary`.
 
 ## Measuring Performance
 
-The first thing to be sure of when measuring performance is to ensure the JVM is using the GraalVM Enterprise compiler.
+The first thing to be sure of when measuring performance is to ensure the JVM is using the Oracle GraalVM compiler.
 In the GraalVM binary, the JVM is configured to use the Graal compiler as the top tier compiler by default.
 You can confirm this by adding `-Dgraal.ShowConfiguration=info` to the command line.
 It will produce a line of output similar to the one below when the compiler is initialized:
@@ -78,22 +78,22 @@ In most cases, there is a section in the file that shows the stack at the time o
 ```shell
 Stack: [0x00007000020b1000,0x00007000021b1000],  sp=0x00007000021af7a0,  free space=1017k
 Native frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)
-J 761 JVMCI org.graalvm.compiler.core.gen.NodeLIRBuilder.matchComplexExpressions(Ljava/util/List;)V (299 bytes) @ 0x0000000108a2fc01 [0x0000000108a2fac0+0x141] (null)
-j  org.graalvm.compiler.core.gen.NodeLIRBuilder.doBlock(Lorg/graalvm/compiler/nodes/cfg/Block;Lorg/graalvm/compiler/nodes/StructuredGraph;Lorg/graalvm/compiler/core/common/cfg/BlockMap;)V+211
-j  org.graalvm.compiler.core.LIRGenerationPhase.emitBlock(Lorg/graalvm/compiler/nodes/spi/NodeLIRBuilderTool;Lorg/graalvm/compiler/lir/gen/LIRGenerationResult;Lorg/graalvm/compiler/nodes/cfg/Block;Lorg/graalvm/compiler/nodes/StructuredGraph;Lorg/graalvm/compiler/core/common/cfg/BlockMap;)V+65
+J 761 JVMCI jdk.graal.compiler.core.gen.NodeLIRBuilder.matchComplexExpressions(Ljava/util/List;)V (299 bytes) @ 0x0000000108a2fc01 [0x0000000108a2fac0+0x141] (null)
+j  jdk.graal.compiler.core.gen.NodeLIRBuilder.doBlock(Ljdk.graal.compiler/nodes/cfg/Block;Ljdk.graal.compiler/nodes/StructuredGraph;Ljdk.graal.compiler/core/common/cfg/BlockMap;)V+211
+j  jdk.graal.compiler.core.LIRGenerationPhase.emitBlock(Ljdk.graal.compiler/nodes/spi/NodeLIRBuilderTool;Ljdk.graal.compiler/lir/gen/LIRGenerationResult;Ljdk.graal.compiler/nodes/cfg/Block;Ljdk.graal.compiler/nodes/StructuredGraph;Ljdk.graal.compiler/core/common/cfg/BlockMap;)V+65
 ```
 
 This example shows that the top frame was compiled (J) by the JVMCI compiler, which is the Graal compiler.
 The crash occurred at offset 0x141 in the machine code produced for:
 ```shell
-org.graalvm.compiler.core.gen.NodeLIRBuilder.matchComplexExpressions(Ljava/util/List;)V
+jdk.graal.compiler.core.gen.NodeLIRBuilder.matchComplexExpressions(Ljava/util/List;)V
 ```
 
 The next two frames in the stack were executed in the interpreter (`j`).
 The location of the crash is also often indicated near the top of the file with something like this:
 ```shell
 # Problematic frame:
-# J 761 JVMCI org.graalvm.compiler.core.gen.NodeLIRBuilder.matchComplexExpressions(Ljava/util/List;)V (299 bytes) @ 0x0000000108a2fc01 [0x0000000108a2fac0+0x141] (null)
+# J 761 JVMCI jdk.graal.compiler.core.gen.NodeLIRBuilder.matchComplexExpressions(Ljava/util/List;)V (299 bytes) @ 0x0000000108a2fc01 [0x0000000108a2fac0+0x141] (null)
 ```
 
 In this example, there is likely an error in the code produced by the Graal compiler for `NodeLIRBuilder.matchComplexExpressions`.
@@ -117,9 +117,9 @@ To guide this, add `-Dgraal.PrintCompilation=true` when trying to reproduce the 
 
 The following shows sample output from the console:
 ```shell
-HotSpotCompilation-1218        Lorg/graalvm/compiler/core/amd64/AMD64NodeLIRBuilder;                  peephole                                      (Lorg/graalvm/compiler/nodes/ValueNode;)Z           |   87ms   428B   447B  1834kB
-HotSpotCompilation-1212        Lorg/graalvm/compiler/lir/LIRInstructionClass;                         forEachState                                  (Lorg/graalvm/compiler/lir/LIRInstruction;Lorg/graalvm/compiler/lir/InstructionValueProcedure;)V  |  359ms    92B   309B  6609kB
-HotSpotCompilation-1221        Lorg/graalvm/compiler/hotspot/amd64/AMD64HotSpotLIRGenerator;          getResult                                     ()Lorg/graalvm/compiler/hotspot/HotSpotLIRGenerationResult;  |   54ms    18B   142B  1025kB
+HotSpotCompilation-1218        Ljdk.graal.compiler/core/amd64/AMD64NodeLIRBuilder;                  peephole                                      (Ljdk.graal.compiler/nodes/ValueNode;)Z           |   87ms   428B   447B  1834kB
+HotSpotCompilation-1212        Ljdk.graal.compiler/lir/LIRInstructionClass;                         forEachState                                  (Ljdk.graal.compiler/lir/LIRInstruction;Ljdk.graal.compiler/lir/InstructionValueProcedure;)V  |  359ms    92B   309B  6609kB
+HotSpotCompilation-1221        Ljdk.graal.compiler/hotspot/amd64/AMD64HotSpotLIRGenerator;          getResult                                     ()Ljdk.graal.compiler/hotspot/HotSpotLIRGenerationResult;  |   54ms    18B   142B  1025kB
 #
 # A fatal error has been detected by the Java Runtime Environment:
 #
@@ -128,7 +128,7 @@ HotSpotCompilation-1221        Lorg/graalvm/compiler/hotspot/amd64/AMD64HotSpotL
 # JRE version: OpenJDK Runtime Environment (8.0_121-b13) (build 1.8.0_121-graalvm-olabs-b13)
 # Java VM: OpenJDK 64-Bit GraalVM (25.71-b01-internal-jvmci-0.30 mixed mode bsd-amd64 compressed oops)
 # Problematic frame:
-# J 1221 JVMCI org.graalvm.compiler.hotspot.amd64.AMD64HotSpotLIRGenerator.getResult()Lorg/graalvm/compiler/hotspot/HotSpotLIRGenerationResult; (18 bytes) @ 0x000000010a6cafb1 [0x000000010a6caf60+0x51] (null)
+# J 1221 JVMCI jdk.graal.compiler.hotspot.amd64.AMD64HotSpotLIRGenerator.getResult()Ljdk.graal.compiler/hotspot/HotSpotLIRGenerationResult; (18 bytes) @ 0x000000010a6cafb1 [0x000000010a6caf60+0x51] (null)
 #
 # Failed to write core dump. Core dumps have been disabled. To enable core dumping, try "ulimit -c unlimited" before starting Java again
 ```
@@ -155,3 +155,8 @@ ls -l /Users/demo/graal-dumps/1499768882600
 -rw-r--r--  1 demo  staff   1727409 Jul 13 11:46 HotSpotCompilation-791[NodeLIRBuilder.matchComplexExpressions(List)].cfg
 ```
 You should attach a .zip of this directory to an issue on [GitHub](https://github.com/oracle/graal/issues).
+
+### Related Documentation
+
+- [Graal Compiler](compiler.md)
+- [Compiler Configuration on JVM](Options.md)

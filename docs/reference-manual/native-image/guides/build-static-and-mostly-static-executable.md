@@ -3,6 +3,7 @@ layout: ni-docs
 toc_group: how-to-guides
 link_title: Build a Statically Linked or Mostly-Statically Linked Native Executable
 permalink: /reference-manual/native-image/guides/build-static-executables/
+redirect_from: /reference-manual/native-image/StaticImages/
 ---
 
 # Build a Statically Linked or Mostly-Statically Linked Native Executable
@@ -26,7 +27,7 @@ This guide shows how you can take advantage of Native Image linking options incl
 
 - [Prerequisites](#prerequisites-and-preparation)
 - [Build a Static Binary](#build-a-static-native-executable)
-- [Build a Mostly Static Binary](#build-a-mostly-static-executable)
+- [Build a Mostly Static Binary](#build-a-mostly-static-native-executable)
 
 ## Prerequisites and Preparation
 
@@ -37,14 +38,14 @@ The following prerequisites should be met:
 - A 64-bit `musl` toolchain, `make`, and `configure`
 - The latest `zlib` library
 
-1. Download and install the latest GraalVM JDK with Native Image using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
-    ```bash
-    bash <(curl -sL https://get.graalvm.org/jdk)
-    ```
-    
-    Next, you should install the `musl` toolchain, compile and install `zlib` into the toolchain.
+1. Make sure you have installed a GraalVM JDK.
+The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
+For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
-2. Download the `musl` toolchain from [musl.cc](https://musl.cc/). (We recommend [this one](https://more.musl.cc/10/x86_64-linux-musl/x86_64-linux-musl-native.tgz)). Extract the toolchain to a directory of your choice. This directory will be referred as `$TOOLCHAIN_DIR`.
+2. Next, you should install the `musl` toolchain, compile and install `zlib` into the toolchain. 
+Download the `musl` toolchain from [musl.cc](https://musl.cc/). 
+(We recommend [this one](https://more.musl.cc/10/x86_64-linux-musl/x86_64-linux-musl-native.tgz)). 
+Extract the toolchain to a directory of your choice. This directory will be referred as `$TOOLCHAIN_DIR`.
 
 3. Download the latest `zlib` library sources from [zlib.net](https://zlib.net/) and extract them. (This documentation uses `zlib-1.2.11`.)
 

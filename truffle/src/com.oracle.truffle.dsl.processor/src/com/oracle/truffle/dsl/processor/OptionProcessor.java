@@ -460,9 +460,9 @@ public class OptionProcessor extends AbstractProcessor {
                 OptionInfo optionInfo = optionsIt.next();
                 if (optionInfo.optionMap) {
                     elseIf = builder.startIf(elseIf);
-                    builder.startCall(nameVariableName, "startsWith").doubleQuote(optionInfo.name + ".").end();
+                    builder.startCall("optionName", "startsWith").doubleQuote(optionInfo.name + ".").end();
                     builder.string(" || ");
-                    builder.startCall(nameVariableName, "equals").doubleQuote(optionInfo.name).end();
+                    builder.startCall("optionName", "equals").doubleQuote(optionInfo.name).end();
                     builder.end().startBlock();
                     builder.startReturn().type(types.SandboxPolicy).string(".", entry.getKey()).end();
                     builder.end();

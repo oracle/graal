@@ -106,11 +106,11 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements InternalFeature
         RuntimeJNIAccess.register(System.class);
         RuntimeJNIAccess.register(method(a, "java.lang.System", "getProperty", String.class));
         RuntimeJNIAccess.register(java.nio.charset.Charset.class);
-        RuntimeJNIAccess.register(method(a, "java.nio.charset.Charset", "isSupported", String.class));
         RuntimeJNIAccess.register(constructor(a, "java.lang.String", byte[].class));
-        RuntimeJNIAccess.register(constructor(a, "java.lang.String", byte[].class, String.class));
-        RuntimeJNIAccess.register(method(a, "java.lang.String", "getBytes", String.class));
         RuntimeJNIAccess.register(method(a, "java.lang.String", "getBytes"));
+        RuntimeJNIAccess.register(method(a, "java.nio.charset.Charset", "forName", String.class));
+        RuntimeJNIAccess.register(constructor(a, "java.lang.String", byte[].class, java.nio.charset.Charset.class));
+        RuntimeJNIAccess.register(method(a, "java.lang.String", "getBytes", java.nio.charset.Charset.class));
         RuntimeJNIAccess.register(method(a, "java.lang.String", "concat", String.class));
         RuntimeJNIAccess.register(fields(a, "java.lang.String", "coder", "value"));
 

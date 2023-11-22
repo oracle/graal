@@ -30,14 +30,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.compiler.options.Option;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -48,6 +47,7 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.util.VMError;
 
 public final class FileSystemProviderSupport {
 
@@ -182,11 +182,14 @@ final class Target_sun_nio_fs_UnixFileSystem {
      * at run time.
      */
 
-    @Alias @InjectAccessors(UnixFileSystemAccessors.class) //
+    @Alias //
+    @InjectAccessors(UnixFileSystemAccessors.class) //
     private byte[] defaultDirectory;
-    @Alias @InjectAccessors(UnixFileSystemAccessors.class) //
+    @Alias //
+    @InjectAccessors(UnixFileSystemAccessors.class) //
     private boolean needToResolveAgainstDefaultDirectory;
-    @Alias @InjectAccessors(UnixFileSystemAccessors.class) //
+    @Alias //
+    @InjectAccessors(UnixFileSystemAccessors.class) //
     private Target_sun_nio_fs_UnixPath rootDirectory;
 
     /**
@@ -197,16 +200,20 @@ final class Target_sun_nio_fs_UnixFileSystem {
      * not be allocated at run time, since only the singleton from the image heap should exist.
      * However, there were JDK bugs in various JDK versions where unwanted allocations happened.
      */
-    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = NeedsReinitializationProvider.class)//
+    @Inject //
+    @RecomputeFieldValue(kind = Kind.Custom, declClass = NeedsReinitializationProvider.class)//
     volatile int needsReinitialization;
 
     /* Replacement injected fields that store the state at run time. */
 
-    @Inject @RecomputeFieldValue(kind = Kind.Reset)//
+    @Inject //
+    @RecomputeFieldValue(kind = Kind.Reset)//
     byte[] injectedDefaultDirectory;
-    @Inject @RecomputeFieldValue(kind = Kind.Reset)//
+    @Inject //
+    @RecomputeFieldValue(kind = Kind.Reset)//
     boolean injectedNeedToResolveAgainstDefaultDirectory;
-    @Inject @RecomputeFieldValue(kind = Kind.Reset)//
+    @Inject //
+    @RecomputeFieldValue(kind = Kind.Reset)//
     Target_sun_nio_fs_UnixPath injectedRootDirectory;
 
     @Alias
@@ -327,17 +334,22 @@ final class Target_sun_nio_fs_WindowsFileSystem {
     @Alias //
     Target_sun_nio_fs_WindowsFileSystemProvider provider;
 
-    @Alias @InjectAccessors(WindowsFileSystemAccessors.class) //
+    @Alias //
+    @InjectAccessors(WindowsFileSystemAccessors.class) //
     private String defaultDirectory;
-    @Alias @InjectAccessors(WindowsFileSystemAccessors.class) //
+    @Alias //
+    @InjectAccessors(WindowsFileSystemAccessors.class) //
     private String defaultRoot;
 
-    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = NeedsReinitializationProvider.class)//
+    @Inject //
+    @RecomputeFieldValue(kind = Kind.Custom, declClass = NeedsReinitializationProvider.class)//
     volatile int needsReinitialization;
 
-    @Inject @RecomputeFieldValue(kind = Kind.Reset)//
+    @Inject //
+    @RecomputeFieldValue(kind = Kind.Reset)//
     String injectedDefaultDirectory;
-    @Inject @RecomputeFieldValue(kind = Kind.Reset)//
+    @Inject //
+    @RecomputeFieldValue(kind = Kind.Reset)//
     String injectedDefaultRoot;
 
     @Alias
@@ -388,37 +400,13 @@ class WindowsFileSystemAccessors {
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_io_UnixFileSystem {
 
-    @Alias @InjectAccessors(UserDirAccessors.class) //
+    @Alias //
+    @InjectAccessors(UserDirAccessors.class) //
     private String userDir;
-
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.io.ExpiringCache") //
-    private Target_java_io_ExpiringCache cache;
-
-    /*
-     * The prefix cache on Linux/MacOS only caches elements in the Java home directory, which does
-     * not exist at image runtime. So we disable that cache completely, which is done by
-     * substituting the value of FileSystem.useCanonPrefixCache to false in the substitution below.
-     */
-    @Delete //
-    private String javaHome;
-    /*
-     * Ideally, we would mark this field as @Delete too. However, the javaHomePrefixCache is cleared
-     * from various methods, and we do not want to change those methods.
-     */
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.io.ExpiringCache") //
-    private Target_java_io_ExpiringCache javaHomePrefixCache;
 }
 
 @TargetClass(className = "java.io.FileSystem")
 final class Target_java_io_FileSystem {
-
-    /*
-     * Linux/MacOS only: disable the usage of the javaHomePrefixCache. On Windows, the prefix cache
-     * is not specific to the Java home directory and therefore can remain enabled.
-     */
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class}) //
-    @Alias @RecomputeFieldValue(kind = Kind.FromAlias, isFinal = true) //
-    static boolean useCanonPrefixCache = false;
 
     @Alias
     native String normalize(String path);
@@ -435,22 +423,18 @@ class UserDirAccessors {
                         ? that.normalize(System.getProperty("user.dir"))
                         : SystemPropertiesSupport.singleton().userDir();
     }
+
+    @SuppressWarnings("unused")
+    static void setUserDir(Target_java_io_FileSystem that, String value) {
+        throw VMError.shouldNotReachHere("Field userDir is initialized at build time");
+    }
 }
 
 @TargetClass(className = "java.io.WinNTFileSystem")
 @Platforms(Platform.WINDOWS.class)
 final class Target_java_io_WinNTFileSystem {
 
-    @Alias @InjectAccessors(UserDirAccessors.class) //
+    @Alias //
+    @InjectAccessors(UserDirAccessors.class) //
     private String userDir;
-
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.io.ExpiringCache") //
-    private Target_java_io_ExpiringCache cache;
-
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.io.ExpiringCache") //
-    private Target_java_io_ExpiringCache prefixCache;
-}
-
-@TargetClass(className = "java.io.ExpiringCache")
-final class Target_java_io_ExpiringCache {
 }

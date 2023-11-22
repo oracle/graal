@@ -42,10 +42,6 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
-import com.oracle.svm.core.jdk.JDK11OrEarlier;
-import com.oracle.svm.core.jdk.JDK17OrEarlier;
-import com.oracle.svm.core.jdk.JDK17OrLater;
-import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.util.VMError;
 
 import sun.reflect.generics.repository.FieldRepository;
@@ -85,46 +81,18 @@ public final class Target_java_lang_reflect_Field {
     @Alias
     native Target_java_lang_reflect_Field copy();
 
-    @Alias
-    @TargetElement(onlyWith = JDK17OrEarlier.class)
-    native Target_jdk_internal_reflect_FieldAccessor acquireFieldAccessor(boolean overrideFinalCheck);
-
     @Alias//
-    @TargetElement(onlyWith = JDK19OrLater.class)
     native Target_jdk_internal_reflect_FieldAccessor acquireFieldAccessor();
 
     @Alias//
-    @TargetElement(onlyWith = JDK19OrLater.class)
     native Target_jdk_internal_reflect_FieldAccessor acquireOverrideFieldAccessor();
 
     @Alias
-    @TargetElement(name = CONSTRUCTOR_NAME, onlyWith = JDK17OrLater.class)
+    @TargetElement(name = CONSTRUCTOR_NAME)
     @SuppressWarnings("hiding")
-    native void constructorJDK17OrLater(Class<?> declaringClass, String name, Class<?> type, int modifiers, boolean trustedFinal, int slot, String signature, byte[] annotations);
-
-    @Alias
-    @TargetElement(name = CONSTRUCTOR_NAME, onlyWith = JDK11OrEarlier.class)
-    @SuppressWarnings("hiding")
-    native void constructorJDK11OrEarlier(Class<?> declaringClass, String name, Class<?> type, int modifiers, int slot, String signature, byte[] annotations);
+    native void constructor(Class<?> declaringClass, String name, Class<?> type, int modifiers, boolean trustedFinal, int slot, String signature, byte[] annotations);
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrEarlier.class)
-    Target_jdk_internal_reflect_FieldAccessor getFieldAccessor(@SuppressWarnings("unused") Object obj) {
-        boolean ov = override;
-        Target_jdk_internal_reflect_FieldAccessor accessor = (ov) ? overrideFieldAccessor : fieldAccessor;
-        if (accessor != null) {
-            return accessor;
-        }
-        if (deletedReason != null) {
-            Field field = SubstrateUtil.cast(this, Field.class);
-            throw VMError.unsupportedFeature("Unsupported field " + field.getDeclaringClass().getTypeName() +
-                            "." + field.getName() + " is reachable: " + deletedReason);
-        }
-        return acquireFieldAccessor(ov);
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class)
     Target_jdk_internal_reflect_FieldAccessor getFieldAccessor() {
         Target_jdk_internal_reflect_FieldAccessor accessor = fieldAccessor;
         if (accessor != null) {
@@ -139,7 +107,6 @@ public final class Target_java_lang_reflect_Field {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class)
     Target_jdk_internal_reflect_FieldAccessor getOverrideFieldAccessor() {
         Target_jdk_internal_reflect_FieldAccessor accessor = overrideFieldAccessor;
         if (accessor != null) {

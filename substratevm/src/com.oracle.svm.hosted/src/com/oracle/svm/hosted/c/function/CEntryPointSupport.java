@@ -24,20 +24,20 @@
  */
 package com.oracle.svm.hosted.c.function;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.IfNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.AddNode;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
-import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import org.graalvm.compiler.phases.util.Providers;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.IfNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.AddNode;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.extended.StateSplitProxyNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -49,6 +49,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
@@ -57,7 +58,6 @@ import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode.UtilityAction;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.ReadReservedRegister;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -124,9 +124,8 @@ public class CEntryPointSupport implements InternalFeature {
         r.register(new RequiredInvocationPlugin("leave") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                StateSplitProxyNode proxy = new StateSplitProxyNode(null);
-                b.add(proxy);
-                b.setStateAfter(proxy);
+                StateSplitProxyNode proxy = b.append(new StateSplitProxyNode(null));
+                proxy.setStateAfter(b.getInvocationPluginBeforeState());
                 b.addPush(JavaKind.Int, new CEntryPointLeaveNode(LeaveAction.Leave));
                 return true;
             }
@@ -134,9 +133,8 @@ public class CEntryPointSupport implements InternalFeature {
         r.register(new RequiredInvocationPlugin("leaveDetachThread") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                StateSplitProxyNode proxy = new StateSplitProxyNode(null);
-                b.add(proxy);
-                b.setStateAfter(proxy);
+                StateSplitProxyNode proxy = b.append(new StateSplitProxyNode(null));
+                proxy.setStateAfter(b.getInvocationPluginBeforeState());
                 b.addPush(JavaKind.Int, new CEntryPointLeaveNode(LeaveAction.DetachThread));
                 return true;
             }
@@ -144,9 +142,8 @@ public class CEntryPointSupport implements InternalFeature {
         r.register(new RequiredInvocationPlugin("leaveTearDownIsolate") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                StateSplitProxyNode proxy = new StateSplitProxyNode(null);
-                b.add(proxy);
-                b.setStateAfter(proxy);
+                StateSplitProxyNode proxy = b.append(new StateSplitProxyNode(null));
+                proxy.setStateAfter(b.getInvocationPluginBeforeState());
                 b.addPush(JavaKind.Int, new CEntryPointLeaveNode(LeaveAction.TearDownIsolate));
                 return true;
             }

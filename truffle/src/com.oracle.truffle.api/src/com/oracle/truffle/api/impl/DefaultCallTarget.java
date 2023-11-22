@@ -86,7 +86,7 @@ public final class DefaultCallTarget implements RootCallTarget {
             TruffleSafepoint.poll(rootNode);
             return toRet;
         } catch (Throwable t) {
-            DefaultRuntimeAccessor.LANGUAGE.onThrowable(callNode, this, t, frame);
+            DefaultRuntimeAccessor.LANGUAGE.addStackFrameInfo(callNode, this, t, frame);
             throw t;
         } finally {
             getRuntime().popFrame(callerFrame);

@@ -705,7 +705,7 @@ public class ContextExitTest {
                 private Object evalBoundary() {
                     if (spawnPolyglotThread) {
                         Context ctx = CONTEXT_REF.get(null);
-                        ctx.t = ctx.env.createThread(new Runnable() {
+                        ctx.t = ctx.env.newTruffleThreadBuilder(new Runnable() {
                             @Override
                             @CompilerDirectives.TruffleBoundary
                             public void run() {
@@ -717,7 +717,7 @@ public class ContextExitTest {
                                     }
                                 }
                             }
-                        });
+                        }).build();
                         ctx.t.start();
                     }
                     return NullObject.SINGLETON;
@@ -813,7 +813,7 @@ public class ContextExitTest {
                 @CompilerDirectives.TruffleBoundary
                 private Object evalBoundary() {
                     Context ctx = CONTEXT_REF.get(null);
-                    ctx.t = ctx.env.createThread(new Runnable() {
+                    ctx.t = ctx.env.newTruffleThreadBuilder(new Runnable() {
                         @Override
                         @CompilerDirectives.TruffleBoundary
                         public void run() {
@@ -827,7 +827,7 @@ public class ContextExitTest {
                             threadCtx.env.getContext().closeExited(null, 42);
 
                         }
-                    });
+                    }).build();
                     ctx.t.start();
                     return NullObject.SINGLETON;
                 }

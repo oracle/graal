@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import org.graalvm.compiler.core.common.spi.JavaConstantFieldProvider;
+import jdk.graal.compiler.core.common.spi.JavaConstantFieldProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -53,10 +53,8 @@ public abstract class SharedConstantFieldProvider extends JavaConstantFieldProvi
 
     @Override
     public <T> T readConstantField(ResolvedJavaField field, ConstantFieldTool<T> analysisTool) {
-        if (asAnalysisField(field).getWrapped() instanceof ReadableJavaField readableField) {
-            if (!readableField.isValueAvailable()) {
-                return null;
-            }
+        if (!ReadableJavaField.isValueAvailable(asAnalysisField(field))) {
+            return null;
         }
         return super.readConstantField(field, analysisTool);
     }
@@ -70,11 +68,22 @@ public abstract class SharedConstantFieldProvider extends JavaConstantFieldProvi
 
     @Override
     public boolean isStableField(ResolvedJavaField field, ConstantFieldTool<?> tool) {
-        return super.isStableField(field, tool) && allowConstantFolding(field);
+        boolean stable;
+        /*
+         * GR-46030: JVMCI does not provide access yet to the proper "stable" flag that also takes
+         * the class loader of the using class into account. So we look at the annotation directly
+         * for now.
+         */
+        if (field.isAnnotationPresent(jdk.internal.vm.annotation.Stable.class)) {
+            stable = true;
+        } else {
+            stable = super.isStableField(field, tool);
+        }
+        return stable && allowConstantFolding(field);
     }
 
     private boolean allowConstantFolding(ResolvedJavaField field) {
-        if (field.isStatic() && !field.getDeclaringClass().isInitialized() && !(asAnalysisField(field).getWrapped() instanceof ReadableJavaField)) {
+        if (field.isStatic() && !isClassInitialized(field) && !(asAnalysisField(field).getWrapped() instanceof ReadableJavaField)) {
             /*
              * The class is not initialized at image build time, so we do not have a static field
              * value to constant fold. Note that a ReadableJavaField is able to provide a field
@@ -83,6 +92,10 @@ public abstract class SharedConstantFieldProvider extends JavaConstantFieldProvi
             return false;
         }
         return hostVM.allowConstantFolding(field);
+    }
+
+    protected boolean isClassInitialized(ResolvedJavaField field) {
+        return field.getDeclaringClass().isInitialized();
     }
 
     @Override

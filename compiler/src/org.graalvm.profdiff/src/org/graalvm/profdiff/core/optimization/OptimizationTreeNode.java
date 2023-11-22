@@ -43,12 +43,6 @@ public abstract class OptimizationTreeNode extends TreeNode<OptimizationTreeNode
     }
 
     /**
-     * Compares {@link Optimization#getPosition() positions} of optimizations lexicographically.
-     */
-    private static final Comparator<UnmodifiableEconomicMap<String, Integer>> POSITION_COMPARATOR = EconomicMapUtil.lexicographicalComparator(
-                    Comparator.nullsFirst(String::compareTo), Comparator.nullsFirst(Integer::compareTo));
-
-    /**
      * Compares {@link Optimization#getProperties() properties} of optimizations lexicographically
      * by converting values to strings.
      */
@@ -91,7 +85,7 @@ public abstract class OptimizationTreeNode extends TreeNode<OptimizationTreeNode
                 if (order != 0) {
                     return order;
                 }
-                order = POSITION_COMPARATOR.compare(self.getPosition(), other.getPosition());
+                order = self.getPosition().compareTo(other.getPosition());
                 if (order != 0) {
                     return order;
                 }
@@ -104,7 +98,7 @@ public abstract class OptimizationTreeNode extends TreeNode<OptimizationTreeNode
      * Clones the optimization subtree for a given inlining path. The cloned subtree includes all
      * {@link OptimizationPhase phase nodes} and includes an optimization iff the given inlining
      * path is a prefix of the inlining path to the optimization's
-     * {@link InliningPath#ofEnclosingMethod(Optimization) enclosing method}.
+     * {@link Position#enclosingMethodPath() enclosing method}.
      *
      * @param prefix the inlining path which is tested as a prefix of an optimization's enclosing
      *            methods

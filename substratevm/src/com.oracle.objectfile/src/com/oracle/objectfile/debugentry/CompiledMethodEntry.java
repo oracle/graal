@@ -41,19 +41,19 @@ public class CompiledMethodEntry {
     /**
      * The primary range detailed by this object.
      */
-    private PrimaryRange primary;
+    private final PrimaryRange primary;
     /**
      * Details of the class owning this range.
      */
-    private ClassEntry classEntry;
+    private final ClassEntry classEntry;
     /**
      * Details of of compiled method frame size changes.
      */
-    private List<DebugFrameSizeChange> frameSizeInfos;
+    private final List<DebugFrameSizeChange> frameSizeInfos;
     /**
      * Size of compiled method frame.
      */
-    private int frameSize;
+    private final int frameSize;
 
     public CompiledMethodEntry(PrimaryRange primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize, ClassEntry classEntry) {
         this.primary = primary;

@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import org.graalvm.compiler.core.common.util.TypeWriter;
+import jdk.graal.compiler.core.common.util.TypeWriter;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.config.ConfigurationValues;

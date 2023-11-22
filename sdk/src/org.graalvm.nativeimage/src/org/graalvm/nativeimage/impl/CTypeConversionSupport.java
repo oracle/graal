@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import java.nio.charset.Charset;
 
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerPointerHolder;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
@@ -55,6 +56,8 @@ public interface CTypeConversionSupport {
     UnsignedWord toCString(CharSequence javaString, CCharPointer buffer, UnsignedWord bufferSize);
 
     UnsignedWord toCString(CharSequence javaString, Charset charset, CCharPointer buffer, UnsignedWord bufferSize);
+
+    CCharPointerPointerHolder toCStrings(CharSequence[] javaStrings);
 
     String toJavaString(CCharPointer cString);
 

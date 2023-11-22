@@ -66,12 +66,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.jar.JarFile;
-import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import com.oracle.truffle.api.test.ReflectionUtils;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.BeforeClass;
@@ -141,24 +140,13 @@ public class LanguageCacheTest {
     @SuppressWarnings("unchecked")
     private static Map<String, Object> invokeLanguageCacheCreateLanguages(ClassLoader... loaders) throws Throwable {
         try {
-            final Class<?> langCacheClz = Class.forName("com.oracle.truffle.polyglot.LanguageCache", true, LanguageCacheTest.class.getClassLoader());
-            final Method createLanguages = langCacheClz.getDeclaredMethod("createLanguages", List.class);
+            Class<?> strongClassLoaderSupplierClz = Class.forName("com.oracle.truffle.polyglot.EngineAccessor$StrongClassLoaderSupplier", true, LanguageCacheTest.class.getClassLoader());
+            Class<?> langCacheClz = Class.forName("com.oracle.truffle.polyglot.LanguageCache", true, LanguageCacheTest.class.getClassLoader());
+            Method createLanguages = langCacheClz.getDeclaredMethod("createLanguages", List.class);
             createLanguages.setAccessible(true);
-            class LoaderSupplier implements Supplier<ClassLoader> {
-
-                private final ClassLoader classLoader;
-
-                LoaderSupplier(ClassLoader classLoader) {
-                    this.classLoader = classLoader;
-                }
-
-                @Override
-                public ClassLoader get() {
-                    return classLoader;
-                }
-            }
-            return (Map<String, Object>) createLanguages.invoke(null,
-                            Arrays.stream(loaders).map(LoaderSupplier::new).collect(Collectors.toList()));
+            return (Map<String, Object>) createLanguages.invoke(null, Arrays.stream(loaders).//
+                            map((cl) -> ReflectionUtils.newInstance(strongClassLoaderSupplierClz, new Class<?>[]{ClassLoader.class}, cl)).//
+                            toList());
         } catch (InvocationTargetException ite) {
             throw ite.getCause();
         } catch (ReflectiveOperationException re) {

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.deopt;
 
-import org.graalvm.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.core.common.CompilationIdentifier;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
@@ -69,11 +69,12 @@ public interface SubstrateInstalledCode {
 
     /**
      * Called during code installation: initialize this instance with the given address where its
-     * instructions are, and the method it was compiled from. Afterwards, {@link #getAddress()} and
-     * {@link #getEntryPoint()} return the given address, and {@link #isValid()} and
-     * {@link #isAlive()} return {@code true}.
+     * instructions are, and the method it was compiled from. The entry point sets the address of
+     * the first instruction to be executed. Afterwards, {@link #getAddress()} returns the given
+     * address, and {@link #isAlive()} returns {@code true}. Also {@link #getEntryPoint()} returns
+     * the given address, and {@link #isValid()} returns true.
      */
-    void setAddress(long address, ResolvedJavaMethod method);
+    void setAddress(long address, long entryPoint, ResolvedJavaMethod method);
 
     /**
      * This method is called during code uninstallation. Consider {@link #invalidate()} instead.

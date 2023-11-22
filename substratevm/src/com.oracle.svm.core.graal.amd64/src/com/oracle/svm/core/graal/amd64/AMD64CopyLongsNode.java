@@ -25,13 +25,13 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.AbstractStateSplit;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.AbstractStateSplit;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.spi.LIRLowerable;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.svm.core.graal.amd64.SubstrateAMD64Backend.SubstrateAMD64LIRGenerator;
 
 @NodeInfo

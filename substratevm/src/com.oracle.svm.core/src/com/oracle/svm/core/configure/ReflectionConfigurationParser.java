@@ -34,9 +34,10 @@ import java.util.stream.Collectors;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.util.json.JSONParserException;
+import jdk.graal.compiler.util.json.JSONParserException;
 
 import com.oracle.svm.core.TypeResult;
+import com.oracle.svm.util.LogUtils;
 
 /**
  * Parses JSON describing classes, methods and fields and delegates their registration to a
@@ -51,13 +52,15 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
                     "allDeclaredClasses", "allRecordComponents", "allPermittedSubclasses", "allNestMembers", "allSigners",
                     "allPublicClasses", "methods", "queriedMethods", "fields", CONDITIONAL_KEY,
                     "queryAllDeclaredConstructors", "queryAllPublicConstructors", "queryAllDeclaredMethods", "queryAllPublicMethods", "unsafeAllocated");
+    private final boolean printMissingElements;
 
     public ReflectionConfigurationParser(ReflectionConfigurationParserDelegate<T> delegate) {
-        this(delegate, true);
+        this(delegate, true, false);
     }
 
-    public ReflectionConfigurationParser(ReflectionConfigurationParserDelegate<T> delegate, boolean strictConfiguration) {
+    public ReflectionConfigurationParser(ReflectionConfigurationParserDelegate<T> delegate, boolean strictConfiguration, boolean printMissingElements) {
         super(strictConfiguration);
+        this.printMissingElements = printMissingElements;
         this.delegate = delegate;
     }
 
@@ -84,9 +87,13 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         }
         ConfigurationCondition condition = conditionResult.get();
 
-        TypeResult<T> result = delegate.resolveType(condition, className, false);
+        /*
+         * Even if primitives cannot be queried through Class.forName, they can be registered to
+         * allow getDeclaredMethods() and similar bulk queries at run time.
+         */
+        TypeResult<T> result = delegate.resolveType(condition, className, true);
         if (!result.isPresent()) {
-            handleError("Could not resolve class " + className + " for reflection configuration.", result.getException());
+            handleMissingElement("Could not resolve class " + className + " for reflection configuration.", result.getException());
             return;
         }
         T clazz = result.get();
@@ -194,7 +201,7 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
                         break;
                 }
             } catch (LinkageError e) {
-                handleError("Could not register " + delegate.getTypeName(clazz) + ": " + name + " for reflection.", e);
+                handleMissingElement("Could not register " + delegate.getTypeName(clazz) + ": " + name + " for reflection.", e);
             }
         }
     }
@@ -213,9 +220,9 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         try {
             delegate.registerField(clazz, fieldName, allowWrite);
         } catch (NoSuchFieldException e) {
-            handleError("Field " + formatField(clazz, fieldName) + " not found.");
+            handleMissingElement("Field " + formatField(clazz, fieldName) + " not found.");
         } catch (LinkageError e) {
-            handleError("Could not register field " + formatField(clazz, fieldName) + " for reflection.", e);
+            handleMissingElement("Could not register field " + formatField(clazz, fieldName) + " for reflection.", e);
         }
     }
 
@@ -246,9 +253,9 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
                     delegate.registerMethod(queriedOnly, clazz, methodName, methodParameterTypes);
                 }
             } catch (NoSuchMethodException e) {
-                handleError("Method " + formatMethod(clazz, methodName, methodParameterTypes) + " not found.");
+                handleMissingElement("Method " + formatMethod(clazz, methodName, methodParameterTypes) + " not found.");
             } catch (LinkageError e) {
-                handleError("Could not register method " + formatMethod(clazz, methodName, methodParameterTypes) + " for reflection.", e);
+                handleMissingElement("Could not register method " + formatMethod(clazz, methodName, methodParameterTypes) + " for reflection.", e);
             }
         } else {
             try {
@@ -262,7 +269,7 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
                     throw new JSONParserException("Method " + formatMethod(clazz, methodName) + " not found");
                 }
             } catch (LinkageError e) {
-                handleError("Could not register method " + formatMethod(clazz, methodName) + " for reflection.", e);
+                handleMissingElement("Could not register method " + formatMethod(clazz, methodName) + " for reflection.", e);
             }
         }
     }
@@ -273,7 +280,7 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
             String typeName = asString(type, "types");
             TypeResult<T> typeResult = delegate.resolveType(ConfigurationCondition.alwaysTrue(), typeName, true);
             if (!typeResult.isPresent()) {
-                handleError("Could not register method " + formatMethod(clazz, methodName) + " for reflection.", typeResult.getException());
+                handleMissingElement("Could not register method " + formatMethod(clazz, methodName) + " for reflection.", typeResult.getException());
                 return null;
             }
             result.add(typeResult.get());
@@ -298,15 +305,17 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         return delegate.getTypeName(clazz) + '.' + methodName + '(' + parameterTypeNames + ')';
     }
 
-    private static void handleError(String message) {
-        handleError(message, null);
+    private void handleMissingElement(String message) {
+        handleMissingElement(message, null);
     }
 
-    private static void handleError(String msg, Throwable cause) {
-        String message = msg;
-        if (cause != null) {
-            message += " Reason: " + formatError(cause) + '.';
+    private void handleMissingElement(String msg, Throwable cause) {
+        if (printMissingElements) {
+            String message = msg;
+            if (cause != null) {
+                message += " Reason: " + formatError(cause) + '.';
+            }
+            LogUtils.warning(message);
         }
-        System.err.println("Warning: " + message);
     }
 }

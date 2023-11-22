@@ -32,9 +32,9 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugOptions;
-import org.graalvm.compiler.debug.MethodFilter;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugOptions;
+import jdk.graal.compiler.debug.MethodFilter;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -104,7 +104,9 @@ public class MethodConfigReader {
                         workWithMethod(method, bigbang, classLoader, actionForEachMethod);
                         validMethodsNum.incrementAndGet();
                     } catch (Throwable t) {
+                        // Checkstyle: Allow raw info or warning printing - begin
                         debug.log(DebugContext.VERBOSE_LEVEL, "Warning: Can't add method " + method + " as analysis root method. Reason: " + t.getMessage());
+                        // Checkstyle: Allow raw info or warning printing - end
                     }
                 }
             });

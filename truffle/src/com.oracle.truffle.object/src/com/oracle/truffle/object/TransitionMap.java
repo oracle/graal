@@ -92,7 +92,17 @@ final class TransitionMap<K, V> {
     private V putAnyKeyIfAbsent(Object key, V value) {
         synchronized (queue) {
             expungeStaleEntries();
-            return getValue(map.putIfAbsent(key, new StrongKeyWeakValueEntry<>(key, value, queue)));
+            /*
+             * Note: We need to also consider stale weak entries as absent, so we cannot use the
+             * map's own putIfAbsent here. The reference may have not been enqueued yet either.
+             */
+            var prevValue = getValue(map.get(key));
+            if (prevValue != null) {
+                return prevValue;
+            } else {
+                map.put(key, new StrongKeyWeakValueEntry<>(key, value, queue));
+                return null;
+            }
         }
     }
 

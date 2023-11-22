@@ -25,21 +25,41 @@
 package com.oracle.svm.core.heap;
 
 import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.core.heap.dump.HeapDumping;
 import com.oracle.svm.core.jdk.JDKUtils;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicBoolean;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 
+/**
+ * This class must be used for {@link OutOfMemoryError}s that are thrown because the VM is out of
+ * Java heap memory. Other {@link OutOfMemoryError}s (e.g., when we run out of native memory) can be
+ * thrown directly.
+ */
 public class OutOfMemoryUtil {
-    private static final OutOfMemoryError OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Garbage-collected heap size exceeded.");
+    private static final OutOfMemoryError OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Garbage-collected heap size exceeded. Consider increasing the maximum Java heap size, for example with '-Xmx'.");
+
+    /**
+     * Guard to ensure heap dump on OOME is performed at most once.
+     */
+    private static final AtomicBoolean HEAP_DUMPED = new AtomicBoolean(false);
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Can't allocate when out of memory.")
     public static OutOfMemoryError heapSizeExceeded() {
         return reportOutOfMemoryError(OUT_OF_MEMORY_ERROR);
     }
 
+    @Uninterruptible(reason = "Not uninterruptible but it doesn't matter for the callers.", calleeMustBe = false)
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Can't allocate while out of memory.")
     public static OutOfMemoryError reportOutOfMemoryError(OutOfMemoryError error) {
+        if (VMInspectionOptions.hasHeapDumpSupport() && SubstrateOptions.HeapDumpOnOutOfMemoryError.getValue() && HEAP_DUMPED.compareAndSet(false, true)) {
+            HeapDumping.singleton().dumpHeapOnOutOfMemoryError();
+        }
+
         if (SubstrateGCOptions.ExitOnOutOfMemoryError.getValue()) {
             if (LibC.isSupported()) {
                 Log.log().string("Terminating due to java.lang.OutOfMemoryError: ").string(JDKUtils.getRawMessage(error)).newline();

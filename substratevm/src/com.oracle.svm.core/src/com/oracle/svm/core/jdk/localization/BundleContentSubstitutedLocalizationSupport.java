@@ -30,14 +30,15 @@ import java.util.List;
 import java.util.ListResourceBundle;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -47,7 +48,9 @@ import com.oracle.svm.core.jdk.localization.bundles.StoredBundle;
 import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
 import com.oracle.svm.core.jdk.localization.compression.utils.BundleSerializationUtils;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.debug.GraalError;
 import sun.util.resources.OpenListResourceBundle;
 import sun.util.resources.ParallelListResourceBundle;
 
@@ -63,6 +66,8 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     private final ForkJoinPool pool;
 
     private final Map<Class<?>, StoredBundle> storedBundles = new ConcurrentHashMap<>();
+
+    private final Set<String> existingBundles = ConcurrentHashMap.newKeySet();
 
     public BundleContentSubstitutedLocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset, List<String> requestedPatterns, ForkJoinPool pool) {
         super(defaultLocale, locales, defaultCharset);
@@ -91,7 +96,11 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     @Platforms(Platform.HOSTED_ONLY.class)
     protected void onClassBundlePrepared(Class<?> bundleClass) {
         if (isBundleSupported(bundleClass)) {
-            prepareNonCompliant(bundleClass);
+            try {
+                prepareNonCompliant(bundleClass);
+            } catch (ReflectiveOperationException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
         }
     }
 
@@ -155,7 +164,26 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     }
 
     @Override
-    public void prepareNonCompliant(Class<?> clazz) {
+    public void prepareNonCompliant(Class<?> clazz) throws ReflectiveOperationException {
         storedBundles.put(clazz, new DelayedBundle(clazz));
+    }
+
+    @Override
+    public boolean isNotIncluded(String bundleName) {
+        return !existingBundles.contains(bundleName);
+    }
+
+    @Override
+    public void prepareBundle(String bundleName, ResourceBundle bundle, Function<String, Optional<Module>> findModule, Locale locale) {
+        super.prepareBundle(bundleName, bundle, findModule, locale);
+        /* Initialize ResourceBundle.keySet eagerly */
+        bundle.keySet();
+        this.existingBundles.add(control.toBundleName(bundleName, locale));
+    }
+
+    @Override
+    public void prepareClassResourceBundle(String basename, Class<?> bundleClass) {
+        super.prepareClassResourceBundle(basename, bundleClass);
+        this.existingBundles.add(bundleClass.getName());
     }
 }

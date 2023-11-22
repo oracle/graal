@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,8 +34,8 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.VMError;
 
 public abstract class PlatformNativeLibrarySupport {
@@ -65,10 +65,12 @@ public abstract class PlatformNativeLibrarySupport {
                     "javax_net",
                     "javax_script",
                     "javax_security",
-                    "jdk_internal_org",
-                    "jdk_internal_misc",
-                    "jdk_internal_util",
+                    "jdk_internal_io",
                     "jdk_internal_jimage",
+                    "jdk_internal_misc",
+                    "jdk_internal_org",
+                    "jdk_internal_platform",
+                    "jdk_internal_util",
                     "jdk_internal_vm",
                     "jdk_net",
                     "sun_invoke",
@@ -147,6 +149,8 @@ public abstract class PlatformNativeLibrarySupport {
         boolean isBuiltin();
 
         boolean load();
+
+        boolean unload();
 
         boolean isLoaded();
 

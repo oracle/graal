@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.graal.meta;
 
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -84,14 +84,6 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
         return readFieldValue((SubstrateField) field, receiver);
     }
 
-    @Override
-    public JavaConstant boxPrimitive(JavaConstant source) {
-        if (!canBoxPrimitive(source)) {
-            return null;
-        }
-        return super.boxPrimitive(source);
-    }
-
     protected boolean canBoxPrimitive(JavaConstant source) {
         boolean result = source.getJavaKind().isPrimitive() && isCachedPrimitive(source);
         assert !result || source.asBoxedPrimitive() == source.asBoxedPrimitive() : "value must be cached";
@@ -120,7 +112,7 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
             case Double:
                 return false;
             default:
-                throw new IllegalArgumentException("unexpected kind " + source.getJavaKind());
+                throw new IllegalArgumentException("Unexpected kind " + source.getJavaKind());
         }
     }
 

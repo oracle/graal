@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.meta;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
 
 import java.lang.reflect.Array;
 import java.util.function.ObjIntConsumer;
@@ -75,7 +75,7 @@ public abstract class SharedConstantReflectionProvider implements ConstantReflec
 
         if (a instanceof Object[]) {
             Object element = ((Object[]) a)[index];
-            return SubstrateObjectConstant.forObject(element);
+            return forObject(element);
         } else {
             return JavaConstant.forBoxedPrimitive(Array.get(a, index));
         }
@@ -92,10 +92,9 @@ public abstract class SharedConstantReflectionProvider implements ConstantReflec
             return;
         }
 
-        if (obj instanceof Object[]) {
-            Object[] a = (Object[]) obj;
+        if (obj instanceof Object[] a) {
             for (int index = 0; index < a.length; index++) {
-                consumer.accept((SubstrateObjectConstant.forObject(a[index])), index);
+                consumer.accept((forObject(a[index])), index);
             }
         } else {
             for (int index = 0; index < Array.getLength(obj); index++) {
@@ -106,11 +105,13 @@ public abstract class SharedConstantReflectionProvider implements ConstantReflec
     }
 
     @Override
-    public JavaConstant boxPrimitive(JavaConstant source) {
-        if (!source.getJavaKind().isPrimitive()) {
-            return null;
-        }
-        return SubstrateObjectConstant.forObject(source.asBoxedPrimitive());
+    public final JavaConstant boxPrimitive(JavaConstant source) {
+        /*
+         * This method is likely not going to do what you want: sub-integer constants in Graal IR
+         * are usually represented as constants with JavaKind.Integer, which means this method would
+         * give you an Integer box instead of a Byte, Short, ... box.
+         */
+        throw VMError.intentionallyUnimplemented();
     }
 
     @Override
@@ -126,9 +127,13 @@ public abstract class SharedConstantReflectionProvider implements ConstantReflec
         return SubstrateObjectConstant.forObject(value);
     }
 
+    protected JavaConstant forObject(Object object) {
+        return SubstrateObjectConstant.forObject(object);
+    }
+
     @Override
-    public final MethodHandleAccessProvider getMethodHandleAccess() {
-        throw shouldNotReachHere();
+    public MethodHandleAccessProvider getMethodHandleAccess() {
+        throw shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

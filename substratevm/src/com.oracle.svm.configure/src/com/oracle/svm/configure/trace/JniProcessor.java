@@ -29,10 +29,11 @@ import static com.oracle.svm.configure.trace.LazyValueUtils.lazyValue;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.phases.common.LazyValue;
+import jdk.graal.compiler.phases.common.LazyValue;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.config.TypeConfiguration;
@@ -67,7 +68,7 @@ class JniProcessor extends AbstractProcessor {
                 if (function.equals("FindClass")) {
                     configurationSet.getJniConfiguration().getOrCreateType(condition, forNameString);
                 } else if (!AccessAdvisor.PROXY_CLASS_NAME_PATTERN.matcher(lookupName).matches()) { // DefineClass
-                    logWarning("Unsupported JNI function DefineClass used to load class " + forNameString);
+                    LogUtils.warning("Unsupported JNI function DefineClass used to load class " + forNameString);
                 }
             }
             return;

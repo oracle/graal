@@ -39,6 +39,7 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -113,7 +114,7 @@ public final class ObjectGroupHistogram {
 
         try {
             Field field = Class.forName("com.oracle.svm.graal.SubstrateRuntimeProvider").getDeclaredField("graphObjects");
-            JavaConstant fieldValue = heap.getMetaAccess().lookupJavaField(field).readValue(null);
+            JavaConstant fieldValue = heap.hConstantReflection.readFieldValue(heap.hMetaAccess.lookupJavaField(field), null);
             processObject(heap.getConstantInfo(fieldValue), "CompressedGraphObjects", true, 1, null, ObjectGroupHistogram::filterObjectConstantField);
         } catch (LinkageError | ClassNotFoundException | NoSuchFieldException ex) {
             /* Ignore. When we build an image without Graal support, the class is not present. */
@@ -147,7 +148,7 @@ public final class ObjectGroupHistogram {
             Object graalSupport = ImageSingletons.lookup(graalSupportClass);
             return ReflectionUtil.readField(graalSupportClass, name, graalSupport);
         } catch (Throwable ex) {
-            System.out.println("Warning: cannot read field from GraalSupport: " + name);
+            LogUtils.warning("Cannot read field from GraalSupport: " + name);
             return null;
         }
     }
@@ -177,11 +178,11 @@ public final class ObjectGroupHistogram {
             }
         }
         if (info.getClazz().isInstanceClass()) {
-            JavaConstant con = SubstrateObjectConstant.forObject(info.getObject());
+            JavaConstant con = heap.hUniverse.getSnippetReflection().forObject(info.getObject());
             for (HostedField field : info.getClazz().getInstanceFields(true)) {
                 if (field.getType().getStorageKind() == JavaKind.Object && !HybridLayout.isHybridField(field) && field.isAccessed()) {
                     if (fieldFilter == null || fieldFilter.test(info, field)) {
-                        JavaConstant fieldValue = field.readStorageValue(con);
+                        JavaConstant fieldValue = heap.hConstantReflection.readFieldValue(field, con);
                         if (fieldValue.isNonNull()) {
                             processObject(heap.getConstantInfo(fieldValue), group, true, recursionLevel + 1, objectFilter, fieldFilter);
                         }
@@ -191,7 +192,7 @@ public final class ObjectGroupHistogram {
         } else if (info.getObject() instanceof Object[]) {
             for (Object element : (Object[]) info.getObject()) {
                 if (element != null) {
-                    ObjectInfo elementInfo = heap.getObjectInfo(heap.getAnalysisUniverse().replaceObject(element));
+                    ObjectInfo elementInfo = heap.getObjectInfo(heap.aUniverse.replaceObject(element));
                     processObject(elementInfo, group, true, recursionLevel + 1, objectFilter, fieldFilter);
                 }
             }

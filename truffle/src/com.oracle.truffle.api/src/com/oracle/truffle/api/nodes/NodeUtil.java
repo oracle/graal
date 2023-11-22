@@ -56,6 +56,7 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
@@ -85,7 +86,7 @@ public final class NodeUtil {
                             orig.getClass(), clone == null ? "null" : clone.getClass()));
         }
         NodeClass nodeClass = clone.getNodeClass();
-        clone.setParent(null);
+        clone.setParentForClone(null);
 
         for (Object field : nodeClass.getNodeFieldArray()) {
             if (nodeClass.isChildField(field)) {
@@ -146,6 +147,63 @@ public final class NodeUtil {
             return clone == orig;
         }
         return clone.getClass() == orig.getClass();
+    }
+
+    /**
+     * Asserts that a node is adopted by a {@link RootNode} and prints a formatted error message
+     * with the error path if it is not adopted. Provided node must be not <code>null</code>. Throws
+     * an {@link AssertionError} if it fails and always returns <code>true</code> otherwise for
+     * convenient usage with the <code>assert</code> statement.
+     *
+     * @since 23.1
+     */
+    @TruffleBoundary
+    public static boolean assertAdopted(Node node) {
+        Objects.requireNonNull(node, "The node must not be null for assertAdopted.");
+        if (!node.isAdoptable()) {
+            throw CompilerDirectives.shouldNotReachHere("The node is not adoptable.");
+        }
+        assert node != null;
+        Node current = node;
+        Node prev;
+        int parentsVisited = 0;
+        do {
+            if (parentsVisited++ > Node.PARENT_LIMIT) {
+                throw CompilerDirectives.shouldNotReachHere("walking to the root node did not terminate in " + Node.PARENT_LIMIT + " iterations.");
+            }
+            prev = current;
+            current = current.getParent();
+        } while (current != null);
+
+        if (!(prev instanceof ExecutableNode)) {
+            failNotAdopted(node, prev);
+        }
+        return true;
+    }
+
+    private static void failNotAdopted(Node node, Node prev) {
+        Node current;
+        StringBuilder b = new StringBuilder();
+        current = node;
+        do {
+            appendEnclosingSimpleName(b, current.getClass());
+            b.append(".parent -> ");
+            if (current == prev) {
+                break;
+            }
+            current = current.getParent();
+        } while (current != null);
+        b.append("null");
+        assert false : "Invalid node usage. Node must be adopted. Path to null parent: " + b.toString();
+    }
+
+    private static void appendEnclosingSimpleName(StringBuilder b, Class<?> c) {
+        Class<?> enclosing = c.getEnclosingClass();
+        if (enclosing != null) {
+            appendEnclosingSimpleName(b, enclosing);
+            b.append(".");
+        }
+        b.append(c.getSimpleName());
     }
 
     /** @since 0.8 or earlier */
@@ -381,7 +439,7 @@ public final class NodeUtil {
         NodeClass nodeClass = NodeClass.get(node);
         for (Object field : nodeClass.getNodeFieldArray()) {
             if (!nodeClass.isChildField(field) && !nodeClass.isChildrenField(field)) {
-                nodes.put(nodeClass.getFieldName(field), nodeClass.getFieldValue(field, node));
+                nodes.put("field." + nodeClass.getFieldName(field), nodeClass.getFieldValue(field, node));
             }
         }
         return Collections.unmodifiableMap(nodes);

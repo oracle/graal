@@ -382,6 +382,10 @@ public abstract class AbstractTruffleString {
         codePointLength = -1;
     }
 
+    final boolean isCodePointLengthKnown() {
+        return codePointLength >= 0;
+    }
+
     final void invalidateHashCode() {
         hashCode = 0;
     }
@@ -460,6 +464,22 @@ public abstract class AbstractTruffleString {
             throw InternalErrors.illegalArgument("misaligned byte index on UTF-32 string");
         }
         return byteIndex >> expectedEncoding.naturalStride;
+    }
+
+    static int rawIndexUTF16(int byteIndex) {
+        if ((byteIndex & 1) != 0) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw InternalErrors.illegalArgument("misaligned byte index on UTF-16 string");
+        }
+        return byteIndex >> Encoding.UTF_16.naturalStride;
+    }
+
+    static int rawIndexUTF32(int byteIndex) {
+        if ((byteIndex & 3) != 0) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw InternalErrors.illegalArgument("misaligned byte index on UTF-32 string");
+        }
+        return byteIndex >> Encoding.UTF_32.naturalStride;
     }
 
     static int byteIndex(int rawIndex, TruffleString.Encoding expectedEncoding) {
@@ -619,6 +639,16 @@ public abstract class AbstractTruffleString {
     @TruffleBoundary
     public final MutableTruffleString asManagedMutableTruffleStringUncached(TruffleString.Encoding expectedEncoding) {
         return MutableTruffleString.AsManagedNode.getUncached().execute(this, expectedEncoding);
+    }
+
+    /**
+     * Shorthand for calling the uncached version of {@link TruffleString.MaterializeNode}.
+     *
+     * @since 23.1
+     */
+    @TruffleBoundary
+    public void materializeUncached(AbstractTruffleString a, Encoding expectedEncoding) {
+        TruffleString.MaterializeNode.getUncached().execute(a, expectedEncoding);
     }
 
     /**
@@ -1182,6 +1212,16 @@ public abstract class AbstractTruffleString {
     }
 
     /**
+     * Shorthand for calling the uncached version of {@link TruffleString.ToValidStringNode}.
+     *
+     * @since 23.1
+     */
+    @TruffleBoundary
+    public TruffleString toValidStringUncached(Encoding expectedEncoding) {
+        return TruffleString.ToValidStringNode.getUncached().execute(this, expectedEncoding);
+    }
+
+    /**
      * Shorthand for calling the uncached version of {@link TruffleString.ToJavaStringNode}.
      *
      * @since 22.1
@@ -1199,6 +1239,16 @@ public abstract class AbstractTruffleString {
     @TruffleBoundary
     public final TruffleString switchEncodingUncached(TruffleString.Encoding targetEncoding) {
         return TruffleString.SwitchEncodingNode.getUncached().execute(this, targetEncoding);
+    }
+
+    /**
+     * Shorthand for calling the uncached version of {@link TruffleString.SwitchEncodingNode}.
+     *
+     * @since 23.1
+     */
+    @TruffleBoundary
+    public final TruffleString switchEncodingUncached(TruffleString.Encoding targetEncoding, TranscodingErrorHandler errorHandler) {
+        return TruffleString.SwitchEncodingNode.getUncached().execute(this, targetEncoding, errorHandler);
     }
 
     /**
@@ -1262,7 +1312,7 @@ public abstract class AbstractTruffleString {
                 return false;
             }
         }
-        return TruffleString.EqualNode.checkContentEquals(null, this, b,
+        return TruffleString.EqualNode.checkContentEquals(TruffleString.EqualNode.getUncached(), this, b,
                         ToIndexableNodeGen.getUncached(),
                         ToIndexableNodeGen.getUncached(),
                         InlinedConditionProfile.getUncached(),
@@ -1392,7 +1442,7 @@ public abstract class AbstractTruffleString {
 
         @TruffleBoundary
         private static void copy(Node location, TruffleString src, byte[] dst, int dstFrom, int dstStride) {
-            Object arrayA = ToIndexableNodeGen.getUncached().execute(null, src, src.data());
+            Object arrayA = ToIndexableNodeGen.getUncached().execute(location, src, src.data());
             TStringOps.arraycopyWithStride(location,
                             arrayA, src.offset(), src.stride(), 0,
                             dst, 0, dstStride, dstFrom, src.length());

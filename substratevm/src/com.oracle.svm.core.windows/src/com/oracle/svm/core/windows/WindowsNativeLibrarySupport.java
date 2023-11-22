@@ -26,7 +26,6 @@ package com.oracle.svm.core.windows;
 
 import java.io.FileDescriptor;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -56,9 +55,7 @@ import com.oracle.svm.core.windows.headers.WinSock;
 class WindowsNativeLibraryFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("extnet");
-        }
+        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("extnet");
     }
 }
 
@@ -100,10 +97,8 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
         } else {
             NativeLibrarySupport.singleton().registerInitializedBuiltinLibrary("net");
         }
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            NativeLibrarySupport.singleton().registerInitializedBuiltinLibrary("extnet");
-            System.loadLibrary("extnet");
-        }
+        NativeLibrarySupport.singleton().registerInitializedBuiltinLibrary("extnet");
+        System.loadLibrary("extnet");
     }
 
     @Override
@@ -146,6 +141,21 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
             assert !loaded;
             loaded = doLoad();
             return loaded;
+        }
+
+        @Override
+        public boolean unload() {
+            assert loaded;
+            if (builtin) {
+                return false;
+            }
+            assert dlhandle.isNonNull();
+            if (LibLoaderAPI.FreeLibrary(dlhandle) != 0) {
+                dlhandle = WordFactory.nullPointer();
+                return true;
+            } else {
+                return false;
+            }
         }
 
         private boolean doLoad() {

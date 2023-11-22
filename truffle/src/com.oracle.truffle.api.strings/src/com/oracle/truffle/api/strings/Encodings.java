@@ -53,8 +53,130 @@ final class Encodings {
 
     static final int SUPPORTED_ENCODINGS_MIN_NUM = 0;
     static final int SUPPORTED_ENCODINGS_MAX_NUM = 6;
+    /**
+     * Copyright (c) 2008-2010 Bjoern Hoehrmann <bjoern@hoehrmann.de> See
+     * http://bjoern.hoehrmann.de/utf-8/decoder/dfa/ for details.
+     *
+     * LICENCE: MIT
+     */
+    @CompilationFinal(dimensions = 1) static final byte[] UTF_8_STATE_MACHINE = {
+                    // The first part of the table maps bytes to character classes
+                    // to reduce the size of the transition table and create bitmasks.
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+                    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+                    8, 8, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                    10, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 3, 3, 11, 6, 6, 6, 5, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
 
-    @CompilationFinal(dimensions = 1) private static final int[] UTF_8_MIN_CODEPOINT = {0, 0, 0x80, 0x800, 0x10000};
+                    // The second part is a transition table that maps a combination
+                    // of a state of the automaton and a character class to a state.
+                    0, 12, 24, 36, 60, 96, 84, 12, 12, 12, 48, 72, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
+                    12, 0, 12, 12, 12, 12, 12, 0, 12, 0, 12, 12, 12, 24, 12, 12, 12, 12, 12, 24, 12, 24, 12, 12,
+                    12, 12, 12, 12, 12, 12, 12, 24, 12, 12, 12, 12, 12, 24, 12, 12, 12, 12, 12, 12, 12, 24, 12, 12,
+                    12, 12, 12, 12, 12, 12, 12, 36, 12, 36, 12, 12, 12, 36, 12, 12, 12, 12, 12, 36, 12, 36, 12, 12,
+                    12, 36, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
+    };
+
+    /**
+     * Variant of UTF_8_STATE_MACHINE that allows UTF-16 surrogate values, by changing the character
+     * class of 0xED to 3.
+     */
+    @CompilationFinal(dimensions = 1) static final byte[] UTF_8_STATE_MACHINE_ALLOW_UTF16_SURROGATES = {
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+                    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+                    8, 8, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                    10, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 11, 6, 6, 6, 5, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+
+                    0, 12, 24, 36, 60, 96, 84, 12, 12, 12, 48, 72, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
+                    12, 0, 12, 12, 12, 12, 12, 0, 12, 0, 12, 12, 12, 24, 12, 12, 12, 12, 12, 24, 12, 24, 12, 12,
+                    12, 12, 12, 12, 12, 12, 12, 24, 12, 12, 12, 12, 12, 24, 12, 12, 12, 12, 12, 12, 12, 24, 12, 12,
+                    12, 12, 12, 12, 12, 12, 12, 36, 12, 36, 12, 12, 12, 36, 12, 12, 12, 12, 12, 36, 12, 36, 12, 12,
+                    12, 36, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
+    };
+
+    /**
+     * Variant of UTF_8_STATE_MACHINE for backward string iteration. To achieve the exact same
+     * behavior on incomplete sequences in forward and backward iteration, this state machine has
+     * two error states: REJECT and INCOMPLETE_SEQUENCE, where REJECT means that only one byte
+     * should be consumed, and INCOMPLETE_SEQUENCE means that all bytes that were consumed until the
+     * INCOMPLETE_SEQUENCE state was reached should be consumed.
+     */
+    @CompilationFinal(dimensions = 1) static final byte[] UTF_8_STATE_MACHINE_REVERSE = {
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+                    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+                    8, 8, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                    10, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 3, 3, 11, 6, 6, 6, 5, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+
+                    0, 36, 12, 12, 12, 12, 12, 48, 12, 60, 12, 12,
+                    // REJECT state
+                    12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
+                    // INCOMPLETE_SEQUENCE state
+                    24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+                    12, 72, 0, 24, 24, 24, 24, 96, 12, 84, 12, 12,
+                    12, 72, 0, 24, 12, 12, 24, 96, 12, 84, 24, 24,
+                    12, 72, 0, 24, 24, 12, 24, 96, 12, 84, 12, 24,
+                    12, 108, 12, 0, 0, 24, 24, 120, 12, 120, 12, 12,
+                    12, 108, 12, 0, 0, 12, 24, 120, 12, 120, 12, 24,
+                    12, 108, 12, 0, 12, 12, 24, 120, 12, 120, 0, 24,
+                    12, 12, 12, 12, 12, 0, 0, 12, 12, 12, 12, 12,
+                    12, 12, 12, 12, 12, 12, 0, 12, 12, 12, 12, 0,
+
+    };
+    /**
+     * Variant of UTF_8_STATE_MACHINE_REVERSE that allows UTF-16 surrogate values, by changing the
+     * character class of 0xED to 3.
+     */
+    @CompilationFinal(dimensions = 1) static final byte[] UTF_8_STATE_MACHINE_REVERSE_ALLOW_UTF16_SURROGATES = {
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+                    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+                    8, 8, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                    10, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 11, 6, 6, 6, 5, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+
+                    0, 36, 12, 12, 12, 12, 12, 48, 12, 60, 12, 12,
+                    12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
+                    24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+                    12, 72, 0, 24, 24, 24, 24, 96, 12, 84, 12, 12,
+                    12, 72, 0, 24, 12, 12, 24, 96, 12, 84, 24, 24,
+                    12, 72, 0, 24, 24, 12, 24, 96, 12, 84, 12, 24,
+                    12, 108, 12, 0, 0, 24, 24, 120, 12, 120, 12, 12,
+                    12, 108, 12, 0, 0, 12, 24, 120, 12, 120, 12, 24,
+                    12, 108, 12, 0, 12, 12, 24, 120, 12, 120, 0, 24,
+                    12, 12, 12, 12, 12, 0, 0, 12, 12, 12, 12, 12,
+                    12, 12, 12, 12, 12, 12, 0, 12, 12, 12, 12, 0,
+
+    };
+    static final byte UTF8_ACCEPT = 0;
+    static final byte UTF8_REJECT = 12;
+    static final byte UTF8_REVERSE_INCOMPLETE_SEQ = 24;
+    /**
+     * UTF-8 encoded 0xfffd.
+     */
+    static final byte[] CONVERSION_REPLACEMENT_UTF_8 = {(byte) 0xEF, (byte) 0xBF, (byte) 0xBD};
+
+    static byte[] getUTF8DecodingStateMachine(DecodingErrorHandler errorHandler) {
+        return errorHandler == DecodingErrorHandler.DEFAULT_KEEP_SURROGATES_IN_UTF8 ? Encodings.UTF_8_STATE_MACHINE_ALLOW_UTF16_SURROGATES : Encodings.UTF_8_STATE_MACHINE;
+    }
+
+    static byte[] getUTF8DecodingStateMachineReverse(DecodingErrorHandler errorHandler) {
+        return errorHandler == DecodingErrorHandler.DEFAULT_KEEP_SURROGATES_IN_UTF8 ? Encodings.UTF_8_STATE_MACHINE_REVERSE_ALLOW_UTF16_SURROGATES : Encodings.UTF_8_STATE_MACHINE_REVERSE;
+    }
+
+    @CompilationFinal(dimensions = 1) static final int[] UTF_8_MIN_CODEPOINT = {0, 0, 0x80, 0x800, 0x10000};
 
     static boolean isUTF16Surrogate(int c) {
         return (c >> 11) == 0x1b;
@@ -241,76 +363,54 @@ final class Encodings {
         return codepoint;
     }
 
-    static int utf8GetCodePointLength(AbstractTruffleString a, Object arrayA, int i, ErrorHandling errorHandling) {
-        return utf8GetCodePointLength(arrayA, a.offset(), a.length(), i, errorHandling);
+    static int utf8GetCodePointLength(AbstractTruffleString a, Object arrayA, int i, DecodingErrorHandler errorHandler) {
+        return utf8GetCodePointLength(arrayA, a.offset(), a.length(), i, errorHandler);
     }
 
     /**
      * Try to decode a codepoint at byte index {@code i}, and return the number of bytes consumed if
      * the codepoint is valid, otherwise return {@code 1}.
      */
-    @SuppressWarnings("fallthrough")
-    static int utf8GetCodePointLength(Object arrayA, int offset, int length, int i, ErrorHandling errorHandling) {
+    static int utf8GetCodePointLength(Object arrayA, int offset, int length, int i, DecodingErrorHandler errorHandler) {
+        assert TStringGuards.isBuiltin(errorHandler);
         int b = readS0(arrayA, offset, length, i);
         if (b < 0x80) {
             return 1;
         }
         int nBytes = utf8CodePointLength(b);
-        int codepoint = b & (0xff >>> nBytes);
-        int continuationByte;
+        /*
+         * Copyright (c) 2008-2010 Bjoern Hoehrmann <bjoern@hoehrmann.de> See
+         * http://bjoern.hoehrmann.de/utf-8/decoder/dfa/ for details.
+         */
+        byte[] stateMachine = getUTF8DecodingStateMachine(errorHandler);
+        int type = stateMachine[b];
+        int state = stateMachine[256 + type];
         int j = i + 1;
-        if (i + nBytes > length) {
-            if (errorHandling == ErrorHandling.BEST_EFFORT) {
+        if (state != UTF8_REJECT) {
+            for (; j < Math.min(length, i + nBytes); j++) {
+                b = readS0(arrayA, offset, length, j);
+                type = stateMachine[b];
+                state = stateMachine[256 + state + type];
+                if (state == UTF8_REJECT) {
+                    break;
+                }
+            }
+        }
+        if (state == UTF8_ACCEPT) {
+            return nBytes;
+        } else if (TStringGuards.isDefaultVariant(errorHandler)) {
+            if (errorHandler == DecodingErrorHandler.DEFAULT) {
                 return 1;
             }
-            assert errorHandling == ErrorHandling.RETURN_NEGATIVE;
-            if (nBytes < 2 || nBytes > 4) {
+            return j - i;
+        } else {
+            assert TStringGuards.isReturnNegative(errorHandler);
+            if (j == length && state != UTF8_REJECT) {
+                return length - (i + nBytes) - 1;
+            } else {
                 return -1;
             }
-            if (j == length && codepoint == 0) {
-                return nBytes == 2 ? -1 : -nBytes;
-            }
-            for (; j < i + nBytes; j++) {
-                codepoint = codepoint << 6;
-                if (j < length) {
-                    continuationByte = readS0(arrayA, offset, length, j);
-                    if (!isUTF8ContinuationByte(continuationByte)) {
-                        return -1;
-                    }
-                    codepoint |= continuationByte & 0x3f;
-                }
-            }
-            return utf8IsInvalidCodePoint(codepoint, nBytes) ? -1 : length - (i + nBytes) - 1;
         }
-        // Checkstyle: stop
-        switch (nBytes) {
-            case 4:
-                continuationByte = readS0(arrayA, offset, length, j++);
-                if (!isUTF8ContinuationByte(continuationByte)) {
-                    return invalidCodepointReturnValue(1, errorHandling);
-                }
-                codepoint = codepoint << 6 | (continuationByte & 0x3f);
-            case 3:
-                continuationByte = readS0(arrayA, offset, length, j++);
-                if (!isUTF8ContinuationByte(continuationByte)) {
-                    return invalidCodepointReturnValue(1, errorHandling);
-                }
-                codepoint = codepoint << 6 | (continuationByte & 0x3f);
-            case 2:
-                continuationByte = readS0(arrayA, offset, length, j);
-                if (!isUTF8ContinuationByte(continuationByte)) {
-                    return invalidCodepointReturnValue(1, errorHandling);
-                }
-                codepoint = codepoint << 6 | (continuationByte & 0x3f);
-                break;
-            default:
-                return invalidCodepointReturnValue(1, errorHandling);
-        }
-        // Checkstyle: resume
-        if (utf8IsInvalidCodePoint(codepoint, nBytes)) {
-            return invalidCodepointReturnValue(1, errorHandling);
-        }
-        return nBytes;
     }
 
     static boolean utf8IsInvalidCodePoint(int codepoint, int nBytes) {
@@ -462,5 +562,44 @@ final class Encodings {
 
     static boolean isValidUnicodeCodepoint(int codepoint) {
         return !isUTF16Surrogate(codepoint) && Integer.toUnsignedLong(codepoint) <= Character.MAX_CODE_POINT;
+    }
+
+    static boolean isValidUnicodeCodepoint(int codepoint, boolean allowUTF16Surrogates) {
+        return (allowUTF16Surrogates || !isUTF16Surrogate(codepoint)) && Integer.toUnsignedLong(codepoint) <= Character.MAX_CODE_POINT;
+    }
+
+    static int maxCodePoint(TruffleString.Encoding encoding) {
+        switch (encoding) {
+            case US_ASCII:
+                return 0x7f;
+            case ISO_8859_1:
+            case BYTES:
+                return 0xff;
+            case UTF_8:
+            case UTF_16BE:
+            case UTF_16LE:
+            case UTF_32BE:
+            case UTF_32LE:
+                return Character.MAX_CODE_POINT;
+            default:
+                return Integer.MAX_VALUE;
+        }
+    }
+
+    static final class BuiltinDecodingErrorHandler implements DecodingErrorHandler {
+
+        @Override
+        public Result apply(AbstractTruffleString string, int bytePosition, int estimatedByteLength) {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
+    }
+
+    static final class BuiltinTranscodingErrorHandler implements TranscodingErrorHandler {
+
+        @Override
+        public TranscodingErrorHandler.ReplacementString apply(AbstractTruffleString sourceString, int byteIndex, int estimatedByteLength, TruffleString.Encoding sourceEncoding,
+                        TruffleString.Encoding targetEncoding) {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
     }
 }

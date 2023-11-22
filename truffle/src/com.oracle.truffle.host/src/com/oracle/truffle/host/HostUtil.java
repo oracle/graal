@@ -99,6 +99,22 @@ final class HostUtil {
     @InliningCutoff
     static Object convertToNumber(Object value, InteropLibrary interop) {
         try {
+            /*
+             * Even primitive values are scoped in certain cases. For example, when passed as Object
+             * parameter, or gotten as a member of another scoped object. The reason is that the
+             * guest may choose to box the primitive types by TruffleObject at any time which would
+             * change which objects are scoped if primitive values were not scoped. However, we
+             * should preserve the particular primitive type where we can, hence the following
+             * special ScopedObject unwrapping.
+             *
+             * TODO GR-44457 When resolved then the special handling should not be needed.
+             */
+            if (value instanceof HostMethodScope.ScopedObject s) {
+                Object delegate = s.delegate;
+                if (delegate instanceof Number) {
+                    return delegate;
+                }
+            }
             if (value instanceof Number) {
                 return value;
             } else if (interop.fitsInByte(value)) {

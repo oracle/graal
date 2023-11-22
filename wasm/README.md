@@ -60,7 +60,7 @@ which contains the GraalWasm implementation.
 
 ## Tests and Benchmarks
 
-### Test setup
+### Test Setup
 
 The `build` command will also create the `wasm-tests.jar`, which contains the main test cases. To run these tests, the
 WebAssembly binary toolkit is needed.
@@ -72,7 +72,7 @@ WebAssembly binary toolkit is needed.
 $ export WABT_DIR=[path to wabt]/bin
 ```
 
-### Run basic tests
+### Run Basic Tests
 
 After building GraalWasm, the `WasmTestSuite` can be run as follows:
 
@@ -99,7 +99,7 @@ This command results in the following output:
 --------------------------------------------------------------------------------
 Running: BranchBlockSuite (4/16 tests - you have enabled filters)
 --------------------------------------------------------------------------------
-Using runtime: org.graalvm.compiler.truffle.runtime.hotspot.java.HotSpotTruffleRuntime@7b1d7fff
+Using runtime: com.oracle.truffle.runtime.hotspot.HotSpotTruffleRuntime@7b1d7fff
 😍😍😍😍
 Finished running: BranchBlockSuite
 🍀 4/4 Wasm tests passed.
@@ -107,7 +107,7 @@ Finished running: BranchBlockSuite
 
 The `WasmTestSuite` is the aggregation of all basic tests.
 
-### Test setup for additional tests and benchmarks
+### Test Setup for Additional Tests and Benchmarks
 
 The GraalWasm repository includes a set of additional tests and benchmarks
 that are written in C, and are not part of the default build.
@@ -162,7 +162,7 @@ This will build several additional JARs in `mxbuild/dists/jdk<version>`:
 These JAR files contain `.wasm` files that correspond to the tests and the benchmarks
 whose source code is in C.
 
-### Run additional tests
+### Run Additional Tests
 
 You can run the additional tests as follows:
 
@@ -179,7 +179,7 @@ This will result in the following output:
 --------------------------------------------------------------------------------
 Running: CSuite (1 tests)
 --------------------------------------------------------------------------------
-Using runtime: org.graalvm.compiler.truffle.runtime.hotspot.java.HotSpotTruffleRuntime@368239c8
+Using runtime: com.oracle.truffle.runtime.hotspot.HotSpotTruffleRuntime@368239c8
 😍
 Finished running: CSuite
 🍀 1/1 Wasm tests passed.
@@ -190,7 +190,7 @@ We currently have the following extra test suites:
 - `CSuite` -- set of programs written in the C language
 - `WatSuite` -- set of programs written in textual WebAssembly
 
-### Run benchmarks
+### Run Benchmarks
 
 The GraalWasm project includes a custom JMH-based benchmark suite,
 which is capable of running WebAssembly benchmark programs.
@@ -250,7 +250,7 @@ We currently have the following benchmark suites:
 - `CMicroBenchmarkSuite` -- set of programs written in C
 - `WatBenchmarkSuite` -- set of programs written in textual WebAssembly
 
-## Extracting the internal GraalWasm Memory Layout based on a given WebAssembly program
+## Extracting the Internal GraalWasm Memory Layout Based on a Given WebAssembly Program
 
 GraalWasm contains a tool for extracting the internal memory layout for a given WebAssembly application. This is useful
 for detecting the causes of memory overhead.
@@ -305,18 +305,31 @@ The **values** next to the names represent the absolute amount of memory in byte
 the relative contribution to the overall memory overhead.
 **Names** with indices represent array entries such as `table[0]`.
 
-## Running WebAssembly programs using a launcher
+## Running WebAssembly Programs Using a Native Launcher
 
-For the latest GraalWasm release, see
-[the GraalVM dev builds page](https://github.com/graalvm/graalvm-ce-dev-builds/releases).
-If downloading GraalWasm as a separate GraalVM component,
-you can download it as follows (replace JDK and GraalVM versions with appropriate values):
+As of GraalVM for JDK 21, GraalWasm is available as a standalone distribution. 
+You can download a standalone based on Oracle GraalVM or GraalVM Community Edition. 
 
-```bash
-$ graalvm-ce-java8-21.2.0/bin/gu install --force -L wasm-installable-java8-linux-<version>.jar
-```
+1. Navigate to the [latest GraalVM release on GitHub](https://github.com/graalvm/graalvm-ce-builds/releases) and download the Wasm standalone for your operating system. 
 
-This will install a launcher, which runs WebAssembly modules.
+2. Unzip the archive:
+
+    > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute:
+    ```shell
+    sudo xattr -r -d com.apple.quarantine <archive>.tar.gz
+    ```
+
+    Extact:
+    ```shell
+    tar -xzf <archive>.tar.gz
+    ```
+   
+3. A standalone comes with a JVM in addition to its native launcher. Check the version to see GraalWasm is active:
+    ```bash
+    ./path/to/bin/wasm --version
+    ```
+
+Now you have the launcher which can run WebAssembly modules.
 For example, assuming that compiled the following C program with Emscripten:
 
 ```c
@@ -339,19 +352,46 @@ int main() {
 You can run the compiled WebAssembly binary as follows:
 
 ```bash
-$ graalvm/bin/wasm --Builtins=memory,env:emscripten floyd.wasm
+$ ./path/to/bin/wasm --Builtins=memory,env:emscripten floyd.wasm
 ```
 
-In this example, the flag `--Builtins` specifies built-in modules
-that the Emscripten toolchain assumes.
+In this example, the flag `--Builtins` specifies built-in modules that the Emscripten toolchain assumes.
 
-## Embedding GraalWasm inside other programs
+## Embedding GraalWasm Inside Other Programs
 
-GraalWasm can be accessed programmatically with the Polyglot API,
-which allows embedding GraalWasm into user programs.
+GraalWasm can be accessed programmatically with the Polyglot API, which allows embedding GraalWasm into user programs.
 
-Here is a simple example of how to run a WebAssembly program using GraalWasm
-from a Java application:
+The Polyglot API is not available by default, but can be easily added as a Maven dependency to your Java project.  
+The GraalWasm artifact should be on the Java module or class path too.
+
+Add the following set of dependencies to the project configuration file (_pom.xml_ in case of Maven).
+
+To enable the polyglot runtime:
+```xml
+<dependency>
+    <groupId>org.graalvm.polyglot</groupId>
+    <artifactId>polyglot</artifactId> 
+    <version>${graalvm.version}</version>
+</dependency>
+```
+To enable GraalWasm:
+```xml
+<dependency>
+    <groupId>org.graalvm.polyglot</groupId>
+    <artifactId>wasm</artifactId> 
+    <version>${graalvm.version}</version>
+</dependency>
+```
+To enable the Truffle tools:
+```xml
+<dependency>
+    <groupId>org.graalvm.polyglot</groupId>
+    <artifactId>tools</artifactId>
+    <version>${graalvm.version}</version>
+</dependency>
+```
+
+Now you can embed a WebAssembly program in a Java application, for example:
 
 ```java
 import org.graalvm.polyglot.*;
@@ -369,22 +409,21 @@ byte[]binary=readBytes("example.wasm"); // You need to load the .wasm contents i
         mainFunction.execute();
 ```
 
-For more polyglot-related examples, consult the documentation at the
-[GraalVM website](https://www.graalvm.org/reference-manual/polyglot-programming/).
+To learn more, see the [Embedding Languages documentation](https://www.graalvm.org/latest/reference-manual/embed-languages/).
 
-## Compiling C files with the wasi-sdk
+## Compiling C Files with WASI_SDK
 
-1. Download the [wasi-sdk](https://github.com/WebAssembly/wasi-sdk/releases) and unpack it.
+1. Download the [`wasi-sdk`](https://github.com/WebAssembly/wasi-sdk/releases) and unpack it.
 2. Set `WASI_SDK`:
    ```bash
    $ export WASI_SDK=[path to wasi-sdk]
    ```
-3. Compile the C files
+3. Compile the C files:
    ```bash
    $ $WASI_SDK/bin/clang -O3 -o test.wasm test.c
    ```
    To export a specific function use the linker flag `-Wl,--export="[function name]"`.
 4. Most applications compiled with the wasi-sdk require WASI. To run a file with WASI enabled use the following command:
    ```bash
-   $ graalvm/bin/wasm --Builtins=wasi_snapshot_preview1 test.wasm 
+   $ ./bin/wasm --Builtins=wasi_snapshot_preview1 test.wasm 
    ```

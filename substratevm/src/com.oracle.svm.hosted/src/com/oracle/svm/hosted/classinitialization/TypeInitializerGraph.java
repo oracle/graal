@@ -175,7 +175,7 @@ final class TypeInitializerGraph {
     }
 
     private boolean isSubstitutedMethod(AnalysisMethod m) {
-        return !classInitializationSupport.shouldInitializeAtRuntime(m.getDeclaringClass()) && m.getWrapped() instanceof SubstitutionMethod;
+        return classInitializationSupport.maybeInitializeAtBuildTime(m.getDeclaringClass()) && m.getWrapped() instanceof SubstitutionMethod;
     }
 
     /**

@@ -38,7 +38,7 @@ import java.util.Objects;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -158,7 +158,7 @@ public final class Pod<T> {
             guaranteeUnbuilt();
             Objects.requireNonNull(type);
             if (type == void.class) {
-                throw new IllegalArgumentException("void is an illegal field type");
+                throw new IllegalArgumentException("Fields cannot be of type void");
             }
 
             JavaKind kind = JavaKind.fromJavaClass(type);

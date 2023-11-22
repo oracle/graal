@@ -24,18 +24,20 @@
  */
 package com.oracle.svm.hosted.fieldfolding;
 
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeCycles;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.AbstractStateSplit;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.java.StoreIndexedNode;
-import org.graalvm.compiler.nodes.spi.Simplifiable;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeCycles;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodeinfo.NodeSize;
+import jdk.graal.compiler.nodes.AbstractStateSplit;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.java.StoreIndexedNode;
+import jdk.graal.compiler.nodes.spi.Simplifiable;
+import jdk.graal.compiler.nodes.spi.SimplifierTool;
 
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.svm.hosted.code.AnalysisToHostedGraphTransplanter;
+import com.oracle.svm.hosted.meta.HostedField;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -51,6 +53,10 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public final class MarkStaticFinalFieldInitializedNode extends AbstractStateSplit implements Simplifiable {
     public static final NodeClass<MarkStaticFinalFieldInitializedNode> TYPE = NodeClass.create(MarkStaticFinalFieldInitializedNode.class);
 
+    /**
+     * When the node is created, this is an {@link AnalysisField}. After analysis,
+     * {@link AnalysisToHostedGraphTransplanter} rewrites it to a {@link HostedField}.
+     */
     private final ResolvedJavaField field;
 
     protected MarkStaticFinalFieldInitializedNode(ResolvedJavaField field) {
@@ -58,18 +64,22 @@ public final class MarkStaticFinalFieldInitializedNode extends AbstractStateSpli
         this.field = field;
     }
 
+    public ResolvedJavaField getField() {
+        return field;
+    }
+
     @Override
     public void simplify(SimplifierTool tool) {
-        StaticFinalFieldFoldingFeature feature = StaticFinalFieldFoldingFeature.singleton();
-
-        if (feature.fieldInitializationStatus == null) {
+        if (field instanceof AnalysisField) {
             /* Static analysis is still running, we do not know yet which fields are optimized. */
             return;
         }
+        assert field instanceof HostedField;
 
+        StaticFinalFieldFoldingFeature feature = StaticFinalFieldFoldingFeature.singleton();
         Integer fieldCheckIndex = feature.fieldCheckIndexMap.get(StaticFinalFieldFoldingFeature.toAnalysisField(field));
         if (fieldCheckIndex != null) {
-            ConstantNode fieldInitializationStatusNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(feature.fieldInitializationStatus), tool.getMetaAccess(), graph());
+            ConstantNode fieldInitializationStatusNode = ConstantNode.forConstant(tool.getSnippetReflection().forObject(feature.fieldInitializationStatus), tool.getMetaAccess(), graph());
             ConstantNode fieldCheckIndexNode = ConstantNode.forInt(fieldCheckIndex, graph());
             ConstantNode trueNode = ConstantNode.forBoolean(true, graph());
             StoreIndexedNode replacementNode = graph().add(new StoreIndexedNode(fieldInitializationStatusNode, fieldCheckIndexNode, null, null, JavaKind.Boolean, trueNode));

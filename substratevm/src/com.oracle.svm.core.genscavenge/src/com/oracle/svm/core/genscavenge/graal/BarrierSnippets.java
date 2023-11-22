@@ -28,26 +28,26 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.BreakpointNode;
-import org.graalvm.compiler.nodes.NamedLocationIdentity;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
-import org.graalvm.compiler.nodes.extended.FixedValueAnchorNode;
-import org.graalvm.compiler.nodes.gc.SerialArrayRangeWriteBarrier;
-import org.graalvm.compiler.nodes.gc.SerialWriteBarrier;
-import org.graalvm.compiler.nodes.gc.WriteBarrier;
-import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.nodes.type.StampTool;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.SnippetTemplate;
-import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
-import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
-import org.graalvm.compiler.replacements.Snippets;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.BreakpointNode;
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
+import jdk.graal.compiler.nodes.gc.SerialArrayRangeWriteBarrier;
+import jdk.graal.compiler.nodes.gc.SerialWriteBarrier;
+import jdk.graal.compiler.nodes.gc.WriteBarrier;
+import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.nodes.type.StampTool;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.SnippetTemplate;
+import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
+import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
+import jdk.graal.compiler.replacements.Snippets;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.LocationIdentity;
@@ -61,6 +61,7 @@ import com.oracle.svm.core.genscavenge.SerialGCOptions;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
+import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.CounterFeature;
@@ -97,7 +98,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
         counters().postWriteBarrier.inc();
 
         Object fixedObject = FixedValueAnchorNode.getObject(object);
-        UnsignedWord objectHeader = ObjectHeaderImpl.readHeaderFromObject(fixedObject);
+        UnsignedWord objectHeader = ObjectHeader.readHeaderFromObject(fixedObject);
 
         if (SerialGCOptions.VerifyWriteBarriers.getValue() && alwaysAlignedChunk) {
             /*

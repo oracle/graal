@@ -29,8 +29,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfo;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.ExecuteVMOperationEvent;
@@ -43,6 +43,10 @@ import com.oracle.svm.core.util.VMError;
  * {@linkplain VMOperationControl}). While executing a VM operation, it is guaranteed that the
  * yellow zone is enabled and that recurring callbacks are paused. This is necessary to avoid
  * unexpected exceptions while executing critical code.
+ *
+ * No Java synchronization is allowed within a VMOperation. See
+ * {@link VMOperationControl#guaranteeOkayToBlock} for examples of how using synchronization within
+ * a VMOperation can cause a deadlock.
  */
 public abstract class VMOperation {
     private final VMOperationInfo info;

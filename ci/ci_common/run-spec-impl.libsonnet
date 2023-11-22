@@ -73,17 +73,29 @@ local std_get = (import "../../ci/ci_common/common-utils.libsonnet").std_get;
       std.objectFieldsAll(feature_map);
     assert std.assertEqual(std.set(feature_order), std.set(std.objectFieldsAll(feature_map)));
     assert std.assertEqual(std.length(std.set(feature_order)), std.length(feature_order));
+    assert std.length([x for x in feature_order if std.startsWith(x, "!")]) == 0 : "feature names must not start with '!': " + feature_order;
     local mergeArray(arr) = std.foldl( function(a, b) a + b, arr, {});
     local get_feature_value_pair(key) =
        local split = std.split(key, ":");
        {
          feature: split[0],
          values:
-           assert std.length(split) > 1 : "feature map keys must have the form 'feature_name:feature_value', got '%s'" % [key];
-           if std.length(split) == 2 && split[1] == "*" then
-             std.objectFieldsAll(feature_map[self.feature])
+           // gather specified feature values
+           local _values =
+             assert std.length(split) > 1 : "feature map keys must have the form 'feature_name:feature_value', got '%s'" % [key];
+             if std.length(split) == 2 && split[1] == "*" then
+               std.objectFieldsAll(feature_map[self.feature])
+             else
+               split[1:std.length(split)]
+             ;
+           local excluded = [x[1:] for x in _values if std.startsWith(x, "!")];
+           if std.length(excluded) == 0 then
+             // inclusion only
+             _values
            else
-             split[1:std.length(split)]
+             // exclusion
+             assert std.length(excluded) == std.length(_values) : "Cannot mix inclusion with exclusion (either all entries start with '!' or none): " + _values;
+             std.setDiff(std.objectFieldsAll(feature_map[self.feature]), excluded)
          }
        ;
     local is_feature_desc(key) = std.member(feature_order, get_feature_value_pair(key).feature);
@@ -471,8 +483,8 @@ local std_get = (import "../../ci/ci_common/common-utils.libsonnet").std_get;
   // Add properties that need to be evaluated late
   //
   // This works around ordering issues. For example, a platform needs to add a download, which depdends
-  // on the JDK version. However, the JDK definition might come after the platform defintion. To avoid this,
-  // the defintion can be added to the `evaluate_late` field. The content of the `evaluate_late` field
+  // on the JDK version. However, the JDK definition might come after the platform definition. To avoid this,
+  // the definition can be added to the `evaluate_late` field. The content of the `evaluate_late` field
   // (if it exists) will be added late when all other properties have been set.
   apply_evaluate_late(task_dict):: {
     local evaluate_late_impl(b) =

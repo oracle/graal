@@ -29,16 +29,16 @@ package com.oracle.objectfile.debugentry;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugPrimitiveTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
-import org.graalvm.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext;
 
 import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugPrimitiveTypeInfo.FLAG_INTEGRAL;
 import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugPrimitiveTypeInfo.FLAG_NUMERIC;
 import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugPrimitiveTypeInfo.FLAG_SIGNED;
 
 public class PrimitiveTypeEntry extends TypeEntry {
-    char typeChar;
-    int flags;
-    int bitCount;
+    private char typeChar;
+    private int flags;
+    private int bitCount;
 
     public PrimitiveTypeEntry(String typeName, int size) {
         super(typeName, size);
@@ -59,7 +59,9 @@ public class PrimitiveTypeEntry extends TypeEntry {
         flags = debugPrimitiveTypeInfo.flags();
         typeChar = debugPrimitiveTypeInfo.typeChar();
         bitCount = debugPrimitiveTypeInfo.bitCount();
-        debugContext.log("typename %s %s (%d bits)%n", typeName, decodeFlags(), bitCount);
+        if (debugContext.isLogEnabled()) {
+            debugContext.log("typename %s %s (%d bits)%n", typeName, decodeFlags(), bitCount);
+        }
     }
 
     private String decodeFlags() {

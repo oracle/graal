@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -52,7 +52,7 @@ public class LLVMSourceDecoratorType extends LLVMSourceType {
         this.size = size;
     }
 
-    private LLVMSourceDecoratorType(Supplier<String> nameSupplier, long size, long align, long offset, LLVMSourceType baseType, Function<String, String> nameDecorator, LLVMSourceLocation location) {
+    protected LLVMSourceDecoratorType(Supplier<String> nameSupplier, long size, long align, long offset, LLVMSourceType baseType, Function<String, String> nameDecorator, LLVMSourceLocation location) {
         super(nameSupplier, size, align, offset, location);
         this.baseType = baseType;
         this.nameDecorator = nameDecorator;

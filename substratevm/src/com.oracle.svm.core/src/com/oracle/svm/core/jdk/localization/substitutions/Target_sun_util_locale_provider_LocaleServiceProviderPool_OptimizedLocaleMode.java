@@ -32,8 +32,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import com.oracle.svm.core.jdk.localization.substitutions.modes.OptimizedLocaleMode;
 import com.oracle.svm.core.util.VMError;
@@ -82,10 +80,6 @@ public final class Target_sun_util_locale_provider_LocaleServiceProviderPool_Opt
                     Boolean isObjectProvider,
                     String key,
                     Object... params);
-
-    @KeepOriginal //
-    @TargetElement(onlyWith = JDK11OrEarlier.class) //
-    static native void config(Class<? extends Object> caller, String message);
 
     @Substitute
     private static Locale[] getAllAvailableLocales() {

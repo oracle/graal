@@ -29,8 +29,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import org.graalvm.collections.Pair;
-import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.profdiff.core.optimization.Optimization;
 
 /**
@@ -53,28 +51,17 @@ import org.graalvm.profdiff.core.optimization.Optimization;
  *
  * As an example, the right-most path in the inlining tree is
  * {@code a() at bci -1, c() at bci 1, e() at bci 2}.
+ *
+ * @param elements list of path elements which comprise this path
  */
-public final class InliningPath {
+public record InliningPath(List<PathElement> elements) {
     /**
-     * A single element of an inlining path. It is composed by a method name and the bci of the
-     * method's callsite.
+     * A single element of an inlining path.
+     *
+     * @param methodName the name of the method
+     * @param callsiteBCI the bci of the method's callsite
      */
-    public static final class PathElement {
-        /**
-         * The name of the method.
-         */
-        private final String methodName;
-
-        /**
-         * The bci of the method's callsite.
-         */
-        private final int callsiteBCI;
-
-        public PathElement(String methodName, int callsiteBCI) {
-            this.methodName = methodName;
-            this.callsiteBCI = callsiteBCI;
-        }
-
+    public record PathElement(String methodName, int callsiteBCI) {
         /**
          * Returns {@code true} iff the path element matches another path element. A path element
          * matches another element iff the method names are equals and the byte code indexes match
@@ -90,58 +77,57 @@ public final class InliningPath {
             }
             return callsiteBCI == Optimization.UNKNOWN_BCI || otherElement.callsiteBCI == Optimization.UNKNOWN_BCI || callsiteBCI == otherElement.callsiteBCI;
         }
-
-        /**
-         * Gets the method name.
-         */
-        public String getMethodName() {
-            return methodName;
-        }
-
-        /**
-         * Gets the bci of the method's callsite.
-         */
-        public int getCallsiteBCI() {
-            return callsiteBCI;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (!(o instanceof PathElement)) {
-                return false;
-            }
-            PathElement element = (PathElement) o;
-            return callsiteBCI == element.callsiteBCI && methodName.equals(element.methodName);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(callsiteBCI, methodName);
-        }
     }
-
-    /**
-     * A list of path elements which compose this path.
-     */
-    private final List<PathElement> path;
 
     /**
      * The empty path.
      */
     public static final InliningPath EMPTY = new InliningPath(List.of());
 
-    public InliningPath(List<PathElement> path) {
-        this.path = path;
+    /**
+     * Creates an inlining path from method names and callsite bcis.
+     *
+     * For example, the call:
+     *
+     * <pre>
+     * InliningPath.of("a()", -1, "b()", 2, "c()", 3)
+     * </pre>
+     *
+     * Creates the following inlining path:
+     *
+     * <pre>
+     * a() at bci -1, b() at bci 2, c() at bci 3
+     * </pre>
+     *
+     * @param pathElements alternating method names (strings) and bcis (integers)
+     * @return a new inlining path or the {@link #EMPTY} path
+     */
+    public static InliningPath of(Object... pathElements) {
+        if (pathElements.length == 0) {
+            return EMPTY;
+        }
+        if (pathElements.length % 2 != 0) {
+            throw new IllegalArgumentException("Expected an even number of arguments.");
+        }
+        List<PathElement> elements = new ArrayList<>();
+        for (int i = 0; i < pathElements.length; i += 2) {
+            elements.add(new PathElement((String) pathElements[i], (Integer) pathElements[i + 1]));
+        }
+        return new InliningPath(elements);
+    }
+
+    /**
+     * Returns {@code true} if the path is empty.
+     */
+    public boolean isEmpty() {
+        return elements.isEmpty();
     }
 
     /**
      * Gets the number of path elements which compose this path.
      */
     public int size() {
-        return path.size();
+        return elements.size();
     }
 
     /**
@@ -151,54 +137,7 @@ public final class InliningPath {
      * @return the path element at the index
      */
     public PathElement get(int index) {
-        return path.get(index);
-    }
-
-    /**
-     * Gets the path elements which compose this path.
-     */
-    public Iterable<PathElement> elements() {
-        return path;
-    }
-
-    /**
-     * Returns a path to the optimization's enclosing method, starting from the root method. If the
-     * given {@link Optimization} does not have {@link Optimization#getPosition() a position},
-     * {@link #EMPTY the empty path} is returned.
-     *
-     * For instance, if an optimization has the position:
-     *
-     * <pre>
-     * {c(): 4, b(): 3, a(): 2}
-     * </pre>
-     *
-     * Note that {@link Optimization#getPosition() positions} start with the innermost method. Then
-     * the path from root to the enclosing method is:
-     *
-     * <pre>
-     * a() at bci -1, b() at bci 2, c() at bci 3
-     * </pre>
-     *
-     * @param optimization the optimization to which the path is computed
-     * @return a path to the optimization's enclosing method
-     */
-    public static InliningPath ofEnclosingMethod(Optimization optimization) {
-        if (optimization.getPosition() == null) {
-            return EMPTY;
-        }
-        List<Pair<String, Integer>> pairs = new ArrayList<>();
-        UnmodifiableMapCursor<String, Integer> cursor = optimization.getPosition().getEntries();
-        while (cursor.advance()) {
-            pairs.add(Pair.create(cursor.getKey(), cursor.getValue()));
-        }
-        Collections.reverse(pairs);
-        List<PathElement> path = new ArrayList<>();
-        int previousBCI = Optimization.UNKNOWN_BCI;
-        for (Pair<String, Integer> pair : pairs) {
-            path.add(new PathElement(pair.getLeft(), previousBCI));
-            previousBCI = pair.getRight();
-        }
-        return new InliningPath(path);
+        return elements.get(index);
     }
 
     /**
@@ -222,18 +161,18 @@ public final class InliningPath {
 
     /**
      * Returns {@code true} if this path is a prefix of the other path. This path is a prefix of
-     * another path iff each path element in this path {@link PathElement#matches(InliningPath)
-     * matches} the corresponding path element (at the same index) from the other path.
+     * another path iff each path element in this path matches the corresponding path element (at
+     * the same index) from the other path.
      *
      * @param otherPath the other path
      * @return {@code true} iff this path is a prefix of the other path
      */
     public boolean isPrefixOf(InliningPath otherPath) {
-        if (path.size() > otherPath.path.size()) {
+        if (elements.size() > otherPath.elements.size()) {
             return false;
         }
-        for (int i = 0; i < path.size(); i++) {
-            if (!path.get(i).matches(otherPath.path.get(i))) {
+        for (int i = 0; i < elements.size(); i++) {
+            if (!elements.get(i).matches(otherPath.elements.get(i))) {
                 return false;
             }
         }
@@ -247,38 +186,10 @@ public final class InliningPath {
      * @return a path which represents the prefix of the given length
      */
     public InliningPath prefix(int prefixLength) {
-        assert prefixLength >= 0 && prefixLength <= path.size();
+        assert prefixLength >= 0 && prefixLength <= elements.size();
         if (prefixLength == 0) {
             return InliningPath.EMPTY;
         }
-        return new InliningPath(path.subList(0, prefixLength));
-    }
-
-    /**
-     * Returns {@code true} iff this path matches the other path. This path matches the other path
-     * iff this path is a prefix of the other path and the other path is a prefix of this path.
-     *
-     * @param otherPath the other path
-     * @return {@code true} iff this path matches the other path
-     */
-    public boolean matches(InliningPath otherPath) {
-        return path.size() == otherPath.size() && isPrefixOf(otherPath);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof InliningPath)) {
-            return false;
-        }
-        InliningPath path1 = (InliningPath) o;
-        return path.equals(path1.path);
-    }
-
-    @Override
-    public int hashCode() {
-        return path.hashCode();
+        return new InliningPath(elements.subList(0, prefixLength));
     }
 }

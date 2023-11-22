@@ -323,14 +323,14 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
             return object instanceof Long || object instanceof Double;
         }
 
-        @Specialization(guards = {"!isPrimitiveValue(object)", "foreigns.isForeign(object)"}, limit = "3")
+        @Specialization(guards = {"!isPrimitiveValue(object)", "foreigns.isForeign(object)"}, limit = "5")
         @GenerateAOT.Exclude
         static Object escapingForeignNonPointer(Object object, @SuppressWarnings("unused") LLVMInteropType.Structured type,
                         @CachedLibrary("object") LLVMAsForeignLibrary foreigns) {
             return foreigns.asForeign(object);
         }
 
-        @Specialization(guards = "!foreigns.isForeign(address)", limit = "3")
+        @Specialization(guards = "!foreigns.isForeign(address)", limit = "5")
         @GenerateAOT.Exclude
         static Object escapingManaged(LLVMPointer address, @SuppressWarnings("unused") LLVMInteropType.Structured type,
                         @SuppressWarnings("unused") @CachedLibrary("address") LLVMAsForeignLibrary foreigns,

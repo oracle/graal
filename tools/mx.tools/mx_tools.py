@@ -1,8 +1,6 @@
 #
 # mx_tools.py - the GraalVM specific commands
 #
-# ----------------------------------------------------------------------------------------------------
-#
 # Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
@@ -26,7 +24,6 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
-# ----------------------------------------------------------------------------------------------------
 
 import os
 from os.path import exists, join
@@ -39,7 +36,6 @@ import mx
 
 from mx_sigtest import sigtest
 from mx_unittest import unittest
-from mx_jackpot import jackpot
 from mx_gate import Task
 import mx_gate
 import mx_unittest
@@ -193,21 +189,16 @@ def _unittest_config_participant(config):
     # This is required to access jdk.internal.module.Modules which
     # in turn allows us to dynamically open fields/methods to reflection.
     vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
-
-    # This is required for the call to setAccessible in
-    # TruffleTCK.testValueWithSource to work.
-    vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.polyglot=ALL-UNNAMED', '--add-modules=ALL-MODULE-PATH']
+    vmArgs = vmArgs + ['--add-modules=ALL-MODULE-PATH']
     return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.add_config_participant(_unittest_config_participant)
 
 def _tools_gate_runner(args, tasks):
-    with Task('Jackpot check', tasks) as t:
-        if t: jackpot(['--fail-on-warnings'], suite=None, nonZeroIsFatal=True)
     with Task('Tools Signature Tests', tasks) as t:
         if t: sigtest(['--check', 'binary'])
     with Task('Tools UnitTests', tasks) as t:
-        if t: unittest(['--suite', 'tools', '--enable-timing', '--verbose', '--fail-fast'])
+        if t: unittest(['--suite', 'tools', '--enable-timing', '--verbose', '--max-class-failures=25'])
 
 mx_gate.add_gate_runner(_suite, _tools_gate_runner)
 
@@ -218,6 +209,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     dir_name='lsp',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['Truffle JSON Library'],
     truffle_jars=['tools:LSP_API', 'tools:LSP'],
     support_distributions=['tools:LSP_GRAALVM_SUPPORT'],
     include_by_default=True,
@@ -230,7 +222,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     dir_name='dap',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle'],
+    dependencies=['Truffle JSON Library'],
     truffle_jars=['tools:DAP'],
     support_distributions=['tools:DAP_GRAALVM_SUPPORT'],
     include_by_default=True,
@@ -243,7 +235,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     dir_name='chromeinspector',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle'],
+    dependencies=['Truffle JSON Library'],
     truffle_jars=['tools:CHROMEINSPECTOR'],
     support_distributions=['tools:CHROMEINSPECTOR_GRAALVM_SUPPORT'],
     include_by_default=True,
@@ -284,7 +276,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     dir_name='profiler',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle'],
+    dependencies=['Truffle JSON Library'],
     truffle_jars=['tools:TRUFFLE_PROFILER'],
     support_distributions=['tools:TRUFFLE_PROFILER_GRAALVM_SUPPORT'],
     include_by_default=True,
@@ -297,7 +289,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     dir_name='coverage',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle'],
+    dependencies=['Truffle JSON Library'],
     truffle_jars=['tools:TRUFFLE_COVERAGE'],
     support_distributions=['tools:TRUFFLE_COVERAGE_GRAALVM_SUPPORT'],
     include_by_default=True,

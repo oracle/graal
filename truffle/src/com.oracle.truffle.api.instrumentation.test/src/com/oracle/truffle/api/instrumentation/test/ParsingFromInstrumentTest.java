@@ -82,7 +82,7 @@ public class ParsingFromInstrumentTest {
             }
 
             @Override
-            public Object execute(VirtualFrame locals) {
+            public Object execute(VirtualFrame frame) {
                 executingCounter++;
                 return executingCounter;
             }
@@ -148,7 +148,7 @@ public class ParsingFromInstrumentTest {
     @TruffleInstrument.Registration(id = ParsingInstrument.ID, services = Function.class)
     public static final class ParsingInstrument extends TruffleInstrument {
         public static final String ID = "com-oracle-truffle-api-instrumentation-test-ParsingFromInstrumentTest-ParsingInstrument";
-        private final ContextLocal<Object[]> parsedTargets = createContextLocal((c) -> new Object[1]);
+        private final ContextLocal<Object[]> parsedTargets = locals.createContextLocal((c) -> new Object[1]);
 
         @Override
         protected void onCreate(Env env) {

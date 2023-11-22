@@ -39,10 +39,10 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.15.3",
+  "mxversion": "6.41.0",
   "name" : "wasm",
   "groupId" : "org.graalvm.wasm",
-  "version" : "23.0.0",
+  "version" : "24.0.0",
   "versionConflictResolution" : "latest",
   "url" : "http://graalvm.org/",
   "developer" : {
@@ -63,9 +63,6 @@ suite = {
       {
         "name" : "truffle",
         "subdir" : True,
-        "urls": [
-          {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-        ],
       },
     ],
   },
@@ -85,7 +82,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "truffle:TRUFFLE_API",
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
       ],
       "requires": [
         "jdk.unsupported", # sun.misc.Unsafe
@@ -237,21 +234,49 @@ suite = {
 
   "distributions" : {
     "WASM" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.wasm",
+      },
       "subDir" : "src",
       "dependencies" : [
         "org.graalvm.wasm",
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
       ],
       "description" : "GraalWasm, an engine for the WebAssembly language in GraalVM.",
       "allowsJavadocWarnings": True,
       "license" : "UPL",
-      "maven" : False,
+      "maven" : {
+        "artifactId" : "wasm-language",
+        "tag": ["default", "public"],
+      },
+      "noMavenJavadoc": True,
+    },
+
+    "WASM_COMMUNITY": {
+      "type": "pom",
+      "runtimeDependencies": [
+        "WASM",
+        "truffle:TRUFFLE_RUNTIME",
+      ],
+      "maven": {
+        "groupId": "org.graalvm.polyglot",
+        "artifactId": "wasm-community",
+        "tag": ["default", "public"],
+      },
+      "description": "Graal WASM engine.",
+      "license": "UPL",
     },
 
     "WASM_LAUNCHER" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.wasm.launcher",
+        "exports" : [
+          "org.graalvm.wasm.launcher to org.graalvm.launcher",
+        ],
+      },
       "subDir" : "src",
       "dependencies" : [
         "org.graalvm.wasm.launcher",
@@ -259,6 +284,7 @@ suite = {
       "distDependencies" : [
         "sdk:LAUNCHER_COMMON",
       ],
+      "mainClass" : "org.graalvm.wasm.WasmLauncher",
       "license" : "UPL",
       "maven" : False,
     },
@@ -337,9 +363,18 @@ suite = {
     "WASM_GRAALVM_SUPPORT": {
       "native": True,
       "platformDependent": False,
-      "description": "Wasm support distribution for the GraalVM license files",
+      "description": "Wasm support distribution",
       "layout": {
         "./": "file:mx.wasm/native-image.properties",
+      },
+      "maven": False,
+    },
+
+    "WASM_GRAALVM_LICENSES": {
+      "native": True,
+      "platformDependent": False,
+      "description": "Wasm support distribution for the GraalVM license files",
+      "layout": {
         "LICENSE_WASM.txt": "file:LICENSE",
       },
       "maven": False,

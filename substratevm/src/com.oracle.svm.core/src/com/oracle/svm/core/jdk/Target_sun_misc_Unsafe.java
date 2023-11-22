@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.util.function.BooleanSupplier;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
@@ -34,7 +36,7 @@ import com.oracle.svm.core.annotate.TargetClass;
  * of the corresponding (recomputed) fields of {@link jdk.internal.misc.Unsafe}. But copying a
  * recomputed value during image building does not recompute the value. See GR-12640.
  */
-@TargetClass(value = sun.misc.Unsafe.class)
+@TargetClass(className = "sun.misc.Unsafe", onlyWith = JdkUnsupportedIsEnabled.class)
 final class Target_sun_misc_Unsafe {
 
     /* { Checkstyle: stop */
@@ -94,5 +96,11 @@ final class Target_sun_misc_Unsafe {
     private static int ARRAY_OBJECT_INDEX_SCALE;
 
     /* } Checkstyle: resume */
+}
 
+class JdkUnsupportedIsEnabled implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return ModuleLayer.boot().findModule("jdk.unsupported").isPresent();
+    }
 }

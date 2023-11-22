@@ -27,17 +27,16 @@ package com.oracle.svm.hosted.substitute;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.java.FrameStateBuilder;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.UnwindNode;
-import org.graalvm.compiler.nodes.ValueNode;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.java.FrameStateBuilder;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.UnwindNode;
+import jdk.graal.compiler.nodes.ValueNode;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.AnnotationValue;
@@ -98,7 +97,7 @@ public class DeletedMethod extends CustomSubstitutionMethod {
         graph.start().setStateAfter(state.create(bci++, graph.start()));
 
         String msg = AnnotationSubstitutionProcessor.deleteErrorMessage(method, message, false);
-        ValueNode msgNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(msg), providers.getMetaAccess(), graph);
+        ValueNode msgNode = ConstantNode.forConstant(providers.getConstantReflection().forString(msg), providers.getMetaAccess(), graph);
         ValueNode exceptionNode = kit.createInvokeWithExceptionAndUnwind(providers.getMetaAccess().lookupJavaMethod(reportErrorMethod), InvokeKind.Static, state, bci++, msgNode);
         kit.append(new UnwindNode(exceptionNode));
 

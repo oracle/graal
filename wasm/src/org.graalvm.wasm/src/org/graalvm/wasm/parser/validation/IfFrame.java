@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,7 @@ import java.util.Arrays;
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.parser.bytecode.BytecodeGen;
+import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
 
 /**
  * Representation of a wasm if and else block during module validation.
@@ -70,7 +70,7 @@ class IfFrame extends ControlFrame {
     }
 
     @Override
-    void enterElse(ParserState state, BytecodeGen bytecode) {
+    void enterElse(ParserState state, RuntimeBytecodeGen bytecode) {
         final int location = bytecode.addBranchLocation();
         bytecode.patchLocation(falseJumpLocation, bytecode.location());
         falseJumpLocation = location;
@@ -81,7 +81,7 @@ class IfFrame extends ControlFrame {
     }
 
     @Override
-    void exit(BytecodeGen bytecode) {
+    void exit(RuntimeBytecodeGen bytecode) {
         if (!elseBranch && !Arrays.equals(paramTypes(), resultTypes())) {
             throw WasmException.create(Failure.TYPE_MISMATCH, "Expected else branch. If with incompatible param and result types requires else branch.");
         }
@@ -97,17 +97,17 @@ class IfFrame extends ControlFrame {
     }
 
     @Override
-    void addBranch(BytecodeGen bytecode) {
+    void addBranch(RuntimeBytecodeGen bytecode) {
         branchTargets.add(bytecode.addBranchLocation());
     }
 
     @Override
-    void addBranchIf(BytecodeGen bytecode) {
+    void addBranchIf(RuntimeBytecodeGen bytecode) {
         branchTargets.add(bytecode.addBranchIfLocation());
     }
 
     @Override
-    void addBranchTableItem(BytecodeGen bytecode) {
+    void addBranchTableItem(RuntimeBytecodeGen bytecode) {
         branchTargets.add(bytecode.addBranchTableItemLocation());
     }
 }

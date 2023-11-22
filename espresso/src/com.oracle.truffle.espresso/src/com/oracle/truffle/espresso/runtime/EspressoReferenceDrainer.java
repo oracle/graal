@@ -36,6 +36,7 @@ import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.ref.EspressoReference;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -103,7 +104,7 @@ final class EspressoReferenceDrainer extends ContextAccessImpl {
             throw EspressoError.shouldNotReachHere();
         }
         if (getContext().multiThreadingEnabled()) {
-            hostToGuestReferenceDrainThread = env.createThread(drain);
+            hostToGuestReferenceDrainThread = env.newTruffleThreadBuilder(drain).build();
             hostToGuestReferenceDrainThread.setName("Reference Drain");
         }
     }
@@ -115,12 +116,16 @@ final class EspressoReferenceDrainer extends ContextAccessImpl {
         }
     }
 
-    void shutdownAndWaitReferenceDrain() throws InterruptedException {
+    void shutdownAndWaitReferenceDrain() {
         if (hostToGuestReferenceDrainThread != null) {
             while (hostToGuestReferenceDrainThread.isAlive()) {
                 getContext().getEnv().submitThreadLocal(new Thread[]{hostToGuestReferenceDrainThread}, new ExitTLA());
                 hostToGuestReferenceDrainThread.interrupt();
-                hostToGuestReferenceDrainThread.join(10);
+                try {
+                    hostToGuestReferenceDrainThread.join(10);
+                } catch (InterruptedException e) {
+                    // ignore
+                }
             }
         }
     }
@@ -226,7 +231,7 @@ final class EspressoReferenceDrainer extends ContextAccessImpl {
                     drain(meta, lock, true);
                 }
             } finally {
-                getContext().getThreadAccess().terminate(getContext().getCurrentThread());
+                getContext().getThreadAccess().terminate(getContext().getCurrentPlatformThread());
                 if (getContext().isClosing()) {
                     // Ignore exceptions that arise during closing.
                     return;

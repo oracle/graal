@@ -24,15 +24,17 @@
  */
 package com.oracle.svm.core.deopt;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
+
 import java.util.Objects;
 
-import com.oracle.svm.core.SubstrateOptions;
-import org.graalvm.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.graph.NodeSourcePosition;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.DeoptimizationSourcePositionDecoder;
 import com.oracle.svm.core.log.Log;
@@ -48,7 +50,7 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
 public class DeoptimizationRuntime {
 
-    public static final SubstrateForeignCallDescriptor DEOPTIMIZE = SnippetRuntime.findForeignCall(DeoptimizationRuntime.class, "deoptimize", true, LocationIdentity.any());
+    public static final SubstrateForeignCallDescriptor DEOPTIMIZE = SnippetRuntime.findForeignCall(DeoptimizationRuntime.class, "deoptimize", NO_SIDE_EFFECT, LocationIdentity.any());
 
     /** Foreign call: {@link #DEOPTIMIZE}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,22 +32,16 @@ package com.oracle.truffle.llvm.runtime.debug.type;
 import java.util.List;
 
 public final class LLVMSourceMethodType extends LLVMSourceFunctionType {
-    private final String name;
+
     private final String linkageName;
     private final LLVMSourceClassLikeType clazz;
     private final long virtualIndex;
 
     public LLVMSourceMethodType(List<LLVMSourceType> types, String name, String linkageName, LLVMSourceClassLikeType clazz, long virtualIndex) {
-        super(types);
-        this.name = name;
+        super(types, () -> name);
         this.linkageName = linkageName;
         this.clazz = clazz;
         this.virtualIndex = virtualIndex;
-    }
-
-    @Override
-    public String getName() {
-        return name;
     }
 
     public String getLinkageName() {

@@ -109,6 +109,10 @@ public abstract class DepthFirstTraversalRegexASTVisitor extends RegexASTVisitor
         return reverse;
     }
 
+    protected void done() {
+        done = true;
+    }
+
     private void run(RegexASTNode runRoot, boolean runReverse) {
         reverse = runReverse;
         root = runRoot;

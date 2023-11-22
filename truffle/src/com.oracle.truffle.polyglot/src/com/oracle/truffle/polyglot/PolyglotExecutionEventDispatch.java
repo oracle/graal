@@ -43,9 +43,7 @@ package com.oracle.truffle.polyglot;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.polyglot.PolyglotExecutionListenerDispatch.Event;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.SourceSection;
-import org.graalvm.polyglot.Value;
+
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExecutionEventDispatch;
 
 import java.util.List;
@@ -57,7 +55,7 @@ final class PolyglotExecutionEventDispatch extends AbstractExecutionEventDispatc
     }
 
     @Override
-    public SourceSection getExecutionEventLocation(Object impl) {
+    public Object getExecutionEventLocation(Object impl) {
         try {
             return ((Event) impl).getLocation();
         } catch (Throwable t) {
@@ -66,7 +64,7 @@ final class PolyglotExecutionEventDispatch extends AbstractExecutionEventDispatc
     }
 
     @Override
-    public PolyglotException getExecutionEventException(Object impl) {
+    public RuntimeException getExecutionEventException(Object impl) {
         try {
             return ((Event) impl).getException();
         } catch (Throwable t) {
@@ -90,7 +88,7 @@ final class PolyglotExecutionEventDispatch extends AbstractExecutionEventDispatc
     }
 
     @Override
-    public List<Value> getExecutionEventInputValues(Object impl) {
+    public List<Object> getExecutionEventInputValues(Object impl) {
         try {
             return ((Event) impl).getInputValues();
         } catch (Throwable t) {
@@ -108,7 +106,7 @@ final class PolyglotExecutionEventDispatch extends AbstractExecutionEventDispatc
     }
 
     @Override
-    public Value getExecutionEventReturnValue(Object impl) {
+    public Object getExecutionEventReturnValue(Object impl) {
         try {
             return ((Event) impl).getReturnValue();
         } catch (Throwable t) {

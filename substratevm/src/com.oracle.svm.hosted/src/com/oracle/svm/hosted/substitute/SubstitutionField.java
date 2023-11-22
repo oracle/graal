@@ -135,4 +135,9 @@ public class SubstitutionField implements ReadableJavaField, OriginalFieldProvid
     public Field getJavaField() {
         return OriginalFieldProvider.getJavaField(original);
     }
+
+    @Override
+    public JavaConstant getConstantValue() {
+        return original.getConstantValue();
+    }
 }

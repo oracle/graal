@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,26 +45,23 @@ import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.util.VMError;
 
-@AutomaticallyRegisteredImageSingleton(StackOverflowCheck.OSSupport.class)
-final class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+@AutomaticallyRegisteredImageSingleton(StackOverflowCheck.PlatformSupport.class)
+final class DarwinStackOverflowSupport implements StackOverflowCheck.PlatformSupport {
     @Override
-    public UnsignedWord lookupStackBase() {
-        WordPointer stackBasePtr = StackValue.get(WordPointer.class);
-        WordPointer stackEndPtr = StackValue.get(WordPointer.class);
-        lookupStack(stackBasePtr, stackEndPtr, WordFactory.zero());
-        return stackBasePtr.read();
-    }
-
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    @Override
-    public UnsignedWord lookupStackEnd() {
-        return lookupStackEnd(WordFactory.zero());
-    }
+    public boolean lookupStack(WordPointer stackBasePtr, WordPointer stackEndPtr) {
+        Pthread.pthread_t self = Pthread.pthread_self();
+        UnsignedWord stackaddr = DarwinPthread.pthread_get_stackaddr_np(self);
+        UnsignedWord stacksize = DarwinPthread.pthread_get_stacksize_np(self);
+        stackBasePtr.write(stackaddr);
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static boolean isProtected(int prot) {
-        return (prot & (VM_PROT_READ() | VM_PROT_WRITE())) == 0;
+        UnsignedWord guardsize = vmComputeStackGuardSize(stackaddr.subtract(stacksize));
+        VMError.guarantee(guardsize.belowThan(100 * 1024));
+        VMError.guarantee(stacksize.aboveThan(guardsize));
+
+        stacksize = stacksize.subtract(guardsize);
+        stackEndPtr.write(stackaddr.subtract(stacksize));
+        return true;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -84,8 +81,9 @@ final class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
             CIntPointer count = StackValue.get(CIntPointer.class);
             count.write(VM_REGION_SUBMAP_INFO_COUNT_64());
 
-            if (mach_vm_region(task, address, size, VM_REGION_BASIC_INFO_64(), info, count, dummyobject) != 0) {
-                throw VMError.shouldNotReachHere();
+            int machVMRegion = mach_vm_region(task, address, size, VM_REGION_BASIC_INFO_64(), info, count, dummyobject);
+            if (machVMRegion != 0) {
+                throw VMError.shouldNotReachHereUnexpectedInput(machVMRegion); // ExcludeFromJacocoGeneratedReport
             }
 
             if (isProtected(info.protection())) {
@@ -100,37 +98,7 @@ final class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    @Override
-    public UnsignedWord lookupStackEnd(UnsignedWord requestedStackSize) {
-        WordPointer stackBasePtr = StackValue.get(WordPointer.class);
-        WordPointer stackEndPtr = StackValue.get(WordPointer.class);
-        lookupStack(stackBasePtr, stackEndPtr, requestedStackSize);
-        return stackEndPtr.read();
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void lookupStack(WordPointer stackBasePtr, WordPointer stackEndPtr, UnsignedWord requestedStackSize) {
-        Pthread.pthread_t self = Pthread.pthread_self();
-        UnsignedWord stackaddr = DarwinPthread.pthread_get_stackaddr_np(self);
-        UnsignedWord stacksize = DarwinPthread.pthread_get_stacksize_np(self);
-        stackBasePtr.write(stackaddr);
-
-        UnsignedWord guardsize = vmComputeStackGuardSize(stackaddr.subtract(stacksize));
-        VMError.guarantee(guardsize.belowThan(100 * 1024));
-        VMError.guarantee(stacksize.aboveThan(guardsize));
-
-        stacksize = stacksize.subtract(guardsize);
-        stackEndPtr.write(stackaddr.subtract(stacksize));
-
-        if (requestedStackSize.notEqual(WordFactory.zero())) {
-            /*
-             * if stackSize > requestedStackSize, then artificially limit stack end to match
-             * requested stack size.
-             */
-            if (stacksize.aboveThan(requestedStackSize)) {
-                stackEndPtr.write(stackaddr.subtract(requestedStackSize));
-            }
-        }
+    private static boolean isProtected(int prot) {
+        return (prot & (VM_PROT_READ() | VM_PROT_WRITE())) == 0;
     }
 }

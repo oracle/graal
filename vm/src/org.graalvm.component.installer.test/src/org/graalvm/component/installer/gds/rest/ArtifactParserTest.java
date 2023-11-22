@@ -25,9 +25,6 @@
 
 package org.graalvm.component.installer.gds.rest;
 
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONException;
-import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Arrays;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.TestBase;
@@ -40,6 +37,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONException;
+import org.graalvm.shadowed.org.json.JSONObject;
 import org.junit.Test;
 import java.util.Collections;
 import java.util.Locale;
@@ -94,7 +95,7 @@ public class ArtifactParserTest extends TestBase {
     static final String JSON_META_KEY_WORK_DIR = "workingDirectories";
     static final String JSON_META_VAL_WORK_DIR = "languages/python";
 
-    GDSRESTConnector conn = new GDSRESTConnector(MOCK_URL, this, JSON_VAL_ID, Version.fromString(JSON_META_VAL_VERSION));
+    @SuppressWarnings("this-escape") GDSRESTConnector conn = new GDSRESTConnector(MOCK_URL, this, JSON_VAL_ID, Version.fromString(JSON_META_VAL_VERSION));
 
     @Test
     public void testConstruct() {

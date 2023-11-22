@@ -20,7 +20,7 @@ configuration with the highest auto-selection priority is used. To see the set
 of available configurations, supply the value help to this option.
 
     The current configurations and their semantics are:
-    * `enterprise`: To produce highly optimized code with a possible trade-off to compilation time. <a href="https://www.oracle.com/downloads/graalvm-downloads.html" class="enterprise">[GraalVM Enterprise]</a>
+    * `enterprise`: To produce highly optimized code with a possible trade-off to compilation time. <a href="https://www.oracle.com/downloads/graalvm-downloads.html" class="enterprise">[Oracle GraalVM]</a>
     * `community`: To produce reasonably optimized code with a faster compilation time.
     * `economy`: To compile as fast as possible with less optimal throughput of the generated code.
 
@@ -50,17 +50,17 @@ of available configurations, supply the value help to this option.
 ### Performance Tuning Options
 
 * `-Dgraal.UsePriorityInlining=true`: This can be used to disable use of the advanced inlining
-algorithm that favours throughput over compilation speed. <a href="https://www.oracle.com/downloads/graalvm-downloads.html" class="enterprise">[GraalVM Enterprise]</a>
+algorithm that favours throughput over compilation speed. <a href="https://www.oracle.com/downloads/graalvm-downloads.html" class="enterprise">[Oracle GraalVM]</a>
 * `-Dgraal.Vectorization=true`: This can be used to disable the auto vectorization optimization.
-<a href="https://www.oracle.com/downloads/graalvm-downloads.html" class="enterprise">[GraalVM Enterprise]</a>
-* `-Dgraal.OptDuplication=true`: This can be used to disable the [path duplication optimization](http://ssw.jku.at/General/Staff/Leopoldseder/DBDS_CGO18_Preprint.pdf). <a href="https://www.oracle.com/downloads/graalvm-downloads.html" class="enterprise">[GraalVM Enterprise]</a>
+<a href="https://www.oracle.com/downloads/graalvm-downloads.html" class="enterprise">[Oracle GraalVM]</a>
+* `-Dgraal.OptDuplication=true`: This can be used to disable the [path duplication optimization](http://ssw.jku.at/General/Staff/Leopoldseder/DBDS_CGO18_Preprint.pdf). <a href="https://www.oracle.com/downloads/graalvm-downloads.html" class="enterprise">[Oracle GraalVM]</a>
 * `-Dgraal.TuneInlinerExploration=0`: This can be used to try tune for better peak performance or faster warmup.
 It automatically adjusts values governing the effort spent during inlining. The value of the option is
 a float clamped between `-1` and `1` inclusive. Anything below
 `0` reduces inlining effort and anything above `0` increases
 inlining effort. In general, peak performance is improved with more inlining effort
 while less inlining effort improves warmup (albeit to a lower peak). Note that this
-option is only a heuristic and the optimal value can differ from application to application. <a href="https://www.oracle.com/downloads/graalvm-downloads.html" class="enterprise">[GraalVM Enterprise]</a>
+option is only a heuristic and the optimal value can differ from application to application. <a href="https://www.oracle.com/downloads/graalvm-downloads.html" class="enterprise">[Oracle GraalVM]</a>
 * `-Dgraal.TraceInlining=false`: Enables tracing of inlining decisions. This can be used
     for advanced tuning where it may be possible to change the source code of the program.
     The output format is shown below:
@@ -113,16 +113,16 @@ Graal diagnostic output saved in /Users/graal/graal_dumps/1549459528316/graal_di
 * `-Dgraal.PrintCompilation=false`: Prints an informational line to the console for each completed compilation.
   For example:
   ```shell
-HotSpotCompilation-11  Ljava/lang/Object;                            wait          ()V       |  591ms    12B    92B  4371kB
-HotSpotCompilation-175 Ljava/lang/String;                            lastIndexOf   (II)I     |  590ms   126B   309B  4076kB
-HotSpotCompilation-184 Ljava/util/concurrent/ConcurrentHashMap;      setTabAt      ([Ljava/util/concurrent/ConcurrentHashMap$Node;ILjava/util/concurrent/ConcurrentHashMap$Node;)V  |  591ms    38B    67B  3411kB
-HotSpotCompilation-136 Lsun/nio/cs/UTF_8$Encoder;                    encode        ([CII[B)I |  591ms   740B   418B  4921
+  HotSpotCompilation-11  Ljava/lang/Object;                            wait          ()V       |  591ms    12B    92B  4371kB
+  HotSpotCompilation-175 Ljava/lang/String;                            lastIndexOf   (II)I     |  590ms   126B   309B  4076kB
+  HotSpotCompilation-184 Ljava/util/concurrent/ConcurrentHashMap;      setTabAt      ([Ljava/util/concurrent/ConcurrentHashMap$Node;ILjava/util/concurrent/ConcurrentHashMap$Node;)V  |  591ms    38B    67B  3411kB
+  HotSpotCompilation-136 Lsun/nio/cs/UTF_8$Encoder;                    encode        ([CII[B)I |  591ms   740B   418B  4921
   ```
 
 ## Setting Compiler Options with Language Launchers
 
-The Graal compiler properties above are usable with some other GraalVM launchers such as
-`node`, `js` and `lli`. The prefix for specifying the properties is slightly different.
+The Graal compiler properties above are usable with some other GraalVM launchers such as `node`, `js` and `lli`. 
+The prefix for specifying the properties is slightly different.
 For example:
 ```shell
 java -XX:+EagerJVMCI -Dgraal.ShowConfiguration=info -version
@@ -130,7 +130,12 @@ java -XX:+EagerJVMCI -Dgraal.ShowConfiguration=info -version
 
 Becomes:
 ```shell
-js --jvm --vm.Dgraal.ShowConfiguration=info -version
+js --vm.Dgraal.ShowConfiguration=info -version
 ```
 
 > Note the `-D` prefix is replaced by `--vm.D`.
+
+### Related Documentation
+
+- [Graal Compiler](compiler.md)
+- [JVM Operations Manual](Operations.md)

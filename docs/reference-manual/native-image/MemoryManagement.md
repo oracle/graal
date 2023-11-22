@@ -1,9 +1,9 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: optimizations-and-performance
 link_title: Memory Management
 permalink: /reference-manual/native-image/optimizations-and-performance/MemoryManagement/
-redirect_from: /$version/reference-manual/native-image/MemoryManagement/
+redirect_from: /reference-manual/native-image/MemoryManagement/
 ---
 
 # Memory Management
@@ -16,11 +16,11 @@ The Java heap is created when the native image starts up, and may increase or de
 When the heap becomes full, a garbage collection is triggered to reclaim memory of objects that are no longer used.
 
 For managing the Java heap, Native Image provides different garbage collector (GC) implementations:
-* The **Serial GC** is the default GC in both GraalVM Community and Enterprise Edition.
+* The **Serial GC** is the default GC in GraalVM.
 It is optimized for low memory footprint and small Java heap sizes.
-* The **G1 GC** (only available with GraalVM Enterprise Edition) is a multi-threaded GC that is optimized to reduce stop-the-world pauses and therefore improve latency, while achieving high throughput.
-To enable G1, specify the option `--gc=G1` at image build time.
-Currently, G1 can only be used in native images that are built on Linux for AMD64.
+* The **G1 GC** is a multi-threaded GC that is optimized to reduce stop-the-world pauses and therefore improve latency, while achieving high throughput.
+To enable it, pass the option `--gc=G1` to the `native-image` builder.
+Currently, G1 Garbage Collector can be used with Native Image on the Linux AMD64 and AArch64 architectures. (Not available in GraalVM Community Edition.)
 * The **Epsilon GC** (available with GraalVM 21.2 or later) is a no-op garbage collector that does not do any garbage collection and therefore never frees any allocated memory.
 The primary use case for this GC are very short running applications that only allocate a small amount of memory.
 To enable the Epsilon GC, specify the option `--gc=epsilon` at image build time.
@@ -49,7 +49,7 @@ Note: The maximum heap size is only the upper limit for the Java heap and not ne
 ## Serial Garbage Collector
 
 The *Serial GC* is optimized for low footprint and small Java heap sizes.
-If no other GC is specified, the Serial GC will be used implicitly as the default on both GraalVM Community and Enterprise Edition.
+If no other GC is specified, the Serial GC will be used implicitly as the default on GraalVM.
 It is also possible to explicitly enable the Serial GC by passing the option `--gc=serial` to the native image builder.
 
 ```shell
@@ -118,10 +118,10 @@ The following options are available with `-H:InitialCollectionPolicy=BySpaceAndT
 
 ## G1 Garbage Collector
 
-GraalVM Enterprise Edition also provides the Garbage-First (G1) garbage collector, which is based on the G1 GC from the Java HotSpot VM.
-Currently, G1 can only be used in native images that are built on Linux for AMD64.
-To enable it, pass the option `--gc=G1` to the native image builder.
+Oracle GraalVM also provides the Garbage-First (G1) garbage collector, which is based on the G1 GC from the Java HotSpot VM.
+Currently, G1 Garbage Collector can be used with Native Image on the Linux AMD64 and AArch64 architectures. (Not available in GraalVM Community Edition.)
 
+To enable it, pass the option `--gc=G1` to the `native-image` builder.
 ```shell
 # Build a native image that uses the G1 GC with default settings
 native-image --gc=G1 HelloWorld
@@ -203,7 +203,7 @@ native-image -R:MinHeapSize=2m -R:MaxHeapSize=10m -R:MaxNewSize=1m HelloWorld
 
 ## Compressed References
 
-GraalVM Enterprise Edition supports compressed references to Java objects that use 32-bit instead of 64-bit.
+Oracle GraalVM supports compressed references to Java objects that use 32-bit instead of 64-bit.
 Compressed references are enabled by default and can have a large impact on the memory footprint.
 However, they limit the maximum Java heap size to 32 GB of memory.
 If more than 32 GB are needed, compressed references need to be disabled.

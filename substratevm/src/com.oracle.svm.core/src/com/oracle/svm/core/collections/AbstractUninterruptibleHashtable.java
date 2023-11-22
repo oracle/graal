@@ -50,6 +50,7 @@ public abstract class AbstractUninterruptibleHashtable implements Uninterruptibl
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    @SuppressWarnings("this-escape")
     public AbstractUninterruptibleHashtable(int primeLength) {
         this.table = createTable(primeLength);
         this.size = 0;

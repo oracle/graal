@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
@@ -36,8 +36,10 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -78,6 +80,7 @@ final class ReferenceObjectProcessing {
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void discoverIfReference(Object object, ObjectReferenceVisitor refVisitor) {
         assert object != null;
         DynamicHub hub = KnownIntrinsics.readHub(object);
@@ -86,6 +89,8 @@ final class ReferenceObjectProcessing {
         }
     }
 
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void discover(Object obj, ObjectReferenceVisitor refVisitor) {
         Reference<?> dr = (Reference<?>) obj;
         // The discovered field might contain an object with a forwarding header
@@ -217,9 +222,10 @@ final class ReferenceObjectProcessing {
         return false;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean maybeUpdateForwardedReference(Reference<?> dr, Pointer referentAddr) {
         ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
-        UnsignedWord header = ohi.readHeaderFromPointer(referentAddr);
+        UnsignedWord header = ObjectHeader.readHeaderFromPointer(referentAddr);
         if (ObjectHeaderImpl.isForwardedHeader(header)) {
             Object forwardedObj = ohi.getForwardedObject(referentAddr);
             ReferenceInternals.setReferent(dr, forwardedObj);
@@ -228,6 +234,7 @@ final class ReferenceObjectProcessing {
         return false;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean willSurviveThisCollection(Object obj) {
         HeapChunk.Header<?> chunk = HeapChunk.getEnclosingHeapChunk(obj);
         Space space = HeapChunk.getSpace(chunk);

@@ -44,8 +44,6 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.Arrays;
 
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
@@ -53,6 +51,8 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public abstract class RegexTestBase {
@@ -143,8 +143,12 @@ public abstract class RegexTestBase {
         }
     }
 
-    void testUnsupported(String pattern, String flags) {
-        Assert.assertTrue(compileRegex(pattern, flags).isNull());
+    void expectUnsupported(String pattern, String flags) {
+        expectUnsupported(pattern, flags, "");
+    }
+
+    void expectUnsupported(String pattern, String flags, String options) {
+        Assert.assertTrue(compileRegex(pattern, flags, options).isNull());
     }
 
     void expectSyntaxError(String pattern, String flags, String expectedMessage) {

@@ -59,8 +59,8 @@ final class Target_jdk_internal_misc_Signal {
 
     @Substitute
     private static long handle0(int sig, long nativeH) {
-        if (!SubstrateOptions.EnableSignalAPI.getValue()) {
-            throw new IllegalArgumentException("Installing signal handlers is not enabled");
+        if (!SubstrateOptions.EnableSignalHandling.getValue()) {
+            throw new IllegalArgumentException("Signal handlers can't be installed if signal handling is disabled, see option '" + SubstrateOptions.EnableSignalHandling.getName() + "'.");
         }
         if (!Isolates.isCurrentFirst()) {
             throw new IllegalArgumentException("Only the first isolate can install signal handlers, as signal handling is global for the process.");

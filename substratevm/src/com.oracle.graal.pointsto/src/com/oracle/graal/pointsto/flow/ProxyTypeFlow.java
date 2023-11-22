@@ -45,7 +45,7 @@ public class ProxyTypeFlow extends TypeFlow<BytecodePosition> {
 
     public ProxyTypeFlow(BytecodePosition source, TypeFlow<?> input) {
         super(source, null);
-        assert input instanceof AllInstantiatedTypeFlow;
+        assert input instanceof AllInstantiatedTypeFlow : input;
         this.input = input;
     }
 
@@ -60,17 +60,17 @@ public class ProxyTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     public boolean addState(PointsToAnalysis bb, TypeState add) {
-        throw AnalysisError.shouldNotReachHere();
+        throw AnalysisError.shouldNotReachHere("should not be reached during analysis");
     }
 
     @Override
     public void update(PointsToAnalysis bb) {
-        throw AnalysisError.shouldNotReachHere();
+        throw AnalysisError.shouldNotReachHere("should not be reached during analysis");
     }
 
     @Override
     public TypeState getState() {
-        throw AnalysisError.shouldNotReachHere();
+        throw AnalysisError.shouldNotReachHere("should not be reached during analysis");
     }
 
     @Override

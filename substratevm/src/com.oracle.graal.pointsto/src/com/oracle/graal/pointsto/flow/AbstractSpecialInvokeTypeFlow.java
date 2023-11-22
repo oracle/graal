@@ -34,6 +34,7 @@ import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
 import jdk.vm.ci.code.BytecodePosition;
 
 public abstract class AbstractSpecialInvokeTypeFlow extends DirectInvokeTypeFlow {
+    protected TypeState seenReceiverTypes = TypeState.forEmpty();
 
     protected AbstractSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {

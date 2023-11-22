@@ -30,15 +30,17 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.compiler.nodes.OptimizationLogImpl;
+import jdk.graal.compiler.nodes.OptimizationLogImpl;
 import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.ExperimentId;
+import org.graalvm.profdiff.core.Method;
 import org.graalvm.profdiff.core.inlining.InliningTree;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.inlining.ReceiverTypeProfile;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.graalvm.profdiff.core.optimization.OptimizationTree;
+import org.graalvm.profdiff.core.optimization.Position;
 
 /**
  * Parses the trees of a compilation unit from its source file.
@@ -75,6 +77,9 @@ public class CompilationUnitTreeParser implements CompilationUnit.TreeLoader {
 
     private static InliningTreeNode parseInliningTreeNode(ExperimentJSONParser.JSONMap map) throws ExperimentParserTypeError {
         String methodName = map.property(OptimizationLogImpl.METHOD_NAME_PROPERTY).asNullableString();
+        if (methodName != null) {
+            methodName = Method.removeMultiMethodKey(methodName);
+        }
         int bci = map.property(OptimizationLogImpl.CALLSITE_BCI_PROPERTY).asInt();
         boolean positive = map.property(OptimizationLogImpl.INLINED_PROPERTY).asBoolean();
         List<String> reason = new ArrayList<>();
@@ -142,16 +147,19 @@ public class CompilationUnitTreeParser implements CompilationUnit.TreeLoader {
         String optimizationName = optimization.property(OptimizationLogImpl.OPTIMIZATION_NAME_PROPERTY).asString();
         String eventName = optimization.property(OptimizationLogImpl.EVENT_NAME_PROPERTY).asString();
         ExperimentJSONParser.JSONLiteral positionObject = optimization.property(OptimizationLogImpl.POSITION_PROPERTY);
-        EconomicMap<String, Integer> position = null;
+        Position position = Position.EMPTY;
         if (!positionObject.isNull()) {
             MapCursor<String, Object> cursor = positionObject.asMap().getInnerMap().getEntries();
-            position = EconomicMap.create();
+            List<String> methodNames = new ArrayList<>();
+            List<Integer> bcis = new ArrayList<>();
             while (cursor.advance()) {
                 if (!(cursor.getValue() instanceof Integer)) {
                     throw new ExperimentParserTypeError(experimentId, fileView.getSymbolicPath(), OptimizationLogImpl.POSITION_PROPERTY, Integer.class, cursor.getValue());
                 }
-                position.put(cursor.getKey(), (Integer) cursor.getValue());
+                methodNames.add(Method.removeMultiMethodKey(cursor.getKey()));
+                bcis.add((Integer) cursor.getValue());
             }
+            position = Position.create(methodNames, bcis);
         }
         EconomicMap<String, Object> properties = optimization.getInnerMap();
         properties.removeKey(OptimizationLogImpl.OPTIMIZATION_NAME_PROPERTY);

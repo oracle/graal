@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -81,6 +81,7 @@ import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.CustomInline2No
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.ErrorRuntimeUsageNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.InlineReplaceNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.InlineRewriteOnNodeGen;
+import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.InlinedByDefaultCachedNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.InlinedUsageNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.MultiInstanceInlineWithGenericNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.MultiInstanceInliningNodeGen;
@@ -101,9 +102,17 @@ import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseBindInInline
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseCustomInlineNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseDoNotInlineInlinableNodeNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseFailEarlyNodeGen;
+import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseInheritedInlinedByDefaultInCachedNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseInlineInlineCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseInlineSharedWithSpecializationClassNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseInlinedAdoptNodeGen;
+import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseInlinedByDefaultAndForceCachedVersionNodeGen;
+import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseInlinedByDefaultAndForceInlineVersionNodeGen;
+import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseInlinedByDefaultInCachedNodeGen;
+import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseInlinedByDefaultInCachedWithAlwaysInlineCachedAndGenerateInlineNodeGen;
+import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseInlinedByDefaultInCachedWithAlwaysInlineCachedAndGenerateInlineUserNodeGen;
+import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseInlinedByDefaultInCachedWithAlwaysInlineCachedNodeGen;
+import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseInlinedByDefaultInInlineOnlyUserNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseInlinedNodeInGuardNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseIntrospectionNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseMixedAndInlinedNodeGen;
@@ -125,7 +134,7 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString.CompactionLevel;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
-@SuppressWarnings({"truffle-neverdefault", "truffle-sharing"})
+@SuppressWarnings({"truffle-neverdefault", "truffle-sharing", "truffle-interpreted-performance"})
 public class GenerateInlineTest extends AbstractPolyglotTest {
 
     @GenerateInline
@@ -438,7 +447,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
     @Test
     public void testErrorRuntimeUsage() {
         assertFails(() -> ErrorRuntimeUsageNodeGen.create().execute(), ClassCastException.class, (e) -> {
-            assertEquals("Invalid parameter type passed to updater. Instance of type 'GenerateInlineTestFactory.ErrorRuntimeUsageNodeGen' expected but was 'GenerateInlineTestFactory.ErrorRuntimeNodeGen.Inlined'. " +
+            assertEquals("Invalid inline context node passed to an inlined field. A receiver of type 'GenerateInlineTestFactory.ErrorRuntimeUsageNodeGen' was expected but is 'GenerateInlineTestFactory.ErrorRuntimeNodeGen.Inlined'. " +
                             "Did you pass the wrong node to an execute method of an inlined cached node?",
                             e.getMessage());
         });
@@ -1191,7 +1200,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
         @Specialization
         static Object doInt(@Cached FailEarlyNode node) {
             assertFails(() -> node.execute(node), ClassCastException.class, (e) -> {
-                assertTrue(e.getMessage(), e.getMessage().contains("Invalid parameter type passed to updater."));
+                assertTrue(e.getMessage(), e.getMessage().contains("Invalid inline context node passed to an inlined field"));
             });
             return "doInt";
         }
@@ -1631,7 +1640,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         public abstract Object execute(Object arg0);
 
-        @Specialization(guards = "sharedNode.execute(this, arg0)", limit = "3")
+        @Specialization(guards = "sharedNode.execute(this, arg0)")
         @SuppressWarnings("unused")
         static String s0(Object arg0,
                         @Bind("this") Node inliningTarget,
@@ -2467,4 +2476,166 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
     }
 
+    @GenerateCached(inherit = true)
+    @GenerateInline(inlineByDefault = true, inherit = true)
+    public abstract static class InlinedByDefaultCachedNode extends Node {
+        abstract String execute(Node n, Object arg);
+
+        @Specialization
+        String doInt(@SuppressWarnings("unused") int i) {
+            return "int";
+        }
+
+        @Specialization
+        String doDouble(@SuppressWarnings("unused") double i) {
+            return "double";
+        }
+    }
+
+    public abstract static class UseInlinedByDefaultInlineUser extends UseInlinedByDefaultUser {
+        abstract String execute(Node inliningTarget, Object arg, boolean useCorrectNode);
+
+        @Override
+        final String execute(Object arg, boolean useCorrectNode) {
+            // Shortcut for when the node is not inlined, but invalid operation if the node is
+            // inlined!
+            return execute(null, arg, useCorrectNode);
+        }
+    }
+
+    public abstract static class UseInlinedByDefaultUser extends Node {
+        abstract String execute(Object arg, boolean useCorrectNode);
+    }
+
+    @GenerateCached
+    @GenerateInline(false)
+    public abstract static class UseInlinedByDefaultInCached extends UseInlinedByDefaultUser {
+        @Specialization
+        String doInt(Object arg, boolean useCorrectNode,
+                        @Cached InlinedByDefaultCachedNode node) {
+            return node.execute(useCorrectNode ? this : node, arg);
+        }
+    }
+
+    @GenerateCached(alwaysInlineCached = true)
+    @GenerateInline(false)
+    public abstract static class UseInlinedByDefaultInCachedWithAlwaysInlineCached extends UseInlinedByDefaultUser {
+        @Specialization
+        String doInt(Object arg, boolean useCorrectNode,
+                        @Cached InlinedByDefaultCachedNode node) {
+            return node.execute(useCorrectNode ? this : node, arg);
+        }
+    }
+
+    @GenerateInline
+    @GenerateCached(alwaysInlineCached = true)
+    public abstract static class UseInlinedByDefaultInCachedWithAlwaysInlineCachedAndGenerateInline extends UseInlinedByDefaultInlineUser {
+        @Specialization
+        static String doInt(Node inlineTarget, Object arg, boolean useCorrectNode,
+                        @Cached InlinedByDefaultCachedNode node) {
+            return node.execute(useCorrectNode ? inlineTarget : node, arg);
+        }
+    }
+
+    @GenerateInline(false)
+    public abstract static class UseInlinedByDefaultInCachedWithAlwaysInlineCachedAndGenerateInlineUser extends UseInlinedByDefaultUser {
+        @Specialization
+        String doInt(Object arg, boolean useCorrectNode,
+                        @Cached(inline = true) UseInlinedByDefaultInCachedWithAlwaysInlineCachedAndGenerateInline node) {
+            return node.execute(this, arg, useCorrectNode);
+        }
+    }
+
+    @GenerateInline
+    @GenerateCached(false)
+    public abstract static class UseInlinedByDefaultInInlineOnly extends UseInlinedByDefaultInlineUser {
+        @Specialization
+        static String doInt(Node inlineTarget, Object arg, boolean useCorrectNode,
+                        @Cached InlinedByDefaultCachedNode node) {
+            return node.execute(useCorrectNode ? inlineTarget : node, arg);
+        }
+    }
+
+    @GenerateInline(false)
+    public abstract static class UseInlinedByDefaultInInlineOnlyUser extends UseInlinedByDefaultUser {
+        @Specialization
+        String doInt(Object arg, boolean useCorrectNode,
+                        @Cached UseInlinedByDefaultInInlineOnly node) {
+            return node.execute(this, arg, useCorrectNode);
+        }
+    }
+
+    @GenerateInline(false)
+    public abstract static class UseInlinedByDefaultAndForceInlineVersion extends UseInlinedByDefaultUser {
+        @Specialization
+        String doInt(Object arg, boolean useCorrectNode,
+                        @SuppressWarnings("truffle-unused") // forcing inline is redundant
+                        @Cached(inline = true) InlinedByDefaultCachedNode node) {
+            return node.execute(useCorrectNode ? this : node, arg);
+        }
+    }
+
+    @GenerateInline(false)
+    public abstract static class UseInlinedByDefaultAndForceCachedVersion extends Node {
+        abstract String execute(Object arg);
+
+        @Specialization
+        String doInt(Object arg,
+                        @Cached(inline = false) InlinedByDefaultCachedNode node) {
+            // If 'node' were wrongly inlined, this would have to fail,
+            // because it does not get any inlining target argument
+            return node.execute(null, arg);
+        }
+    }
+
+    public abstract static class InheritedInlinedByDefaultCachedNode extends InlinedByDefaultCachedNode {
+        @Specialization
+        String doString(@SuppressWarnings("unused") String s) {
+            return "string";
+        }
+    }
+
+    @GenerateCached
+    @GenerateInline(false)
+    public abstract static class UseInheritedInlinedByDefaultInCached extends UseInlinedByDefaultUser {
+        @Specialization
+        String doInt(Object arg, boolean useCorrectNode,
+                        @Cached InheritedInlinedByDefaultCachedNode node) {
+            return node.execute(useCorrectNode ? this : node, arg);
+        }
+    }
+
+    @Test
+    public void testInlineByDefaultInCached() {
+        testInlineByDefaultCachedUser(UseInlinedByDefaultInCachedNodeGen.create());
+        testInlineByDefaultCachedUser(UseInlinedByDefaultInCachedWithAlwaysInlineCachedNodeGen.create());
+        testInlineByDefaultCachedUser(UseInlinedByDefaultInCachedWithAlwaysInlineCachedAndGenerateInlineNodeGen.create());
+        testInlineByDefaultCachedUser(UseInlinedByDefaultAndForceInlineVersionNodeGen.create());
+        testInlineByDefaultCachedUser(UseInheritedInlinedByDefaultInCachedNodeGen.create());
+        // inline users are tested through another cached entry point:
+        testInlineByDefaultCachedUser(UseInlinedByDefaultInCachedWithAlwaysInlineCachedAndGenerateInlineUserNodeGen.create());
+        testInlineByDefaultCachedUser(UseInlinedByDefaultInInlineOnlyUserNodeGen.create());
+
+        var forceCached = UseInlinedByDefaultAndForceCachedVersionNodeGen.create();
+        assertEquals("int", forceCached.execute(42));
+        assertEquals("double", forceCached.execute(3.14));
+
+        var manuallyCreatedCachedVersion = InlinedByDefaultCachedNodeGen.create();
+        assertEquals("int", manuallyCreatedCachedVersion.execute(null, 42));
+        assertEquals("double", manuallyCreatedCachedVersion.execute(null, 3.14));
+    }
+
+    private static void testInlineByDefaultCachedUser(UseInlinedByDefaultUser userNode) {
+        String testCaseName = userNode.getClass().getSimpleName();
+        assertEquals(testCaseName, "int", userNode.execute(42, true));
+        assertEquals(testCaseName, "double", userNode.execute(3.14, true));
+        boolean thrown = false;
+        try {
+            userNode.execute(1, false);
+        } catch (ClassCastException e) {
+            assertTrue(e.getMessage(), e.getMessage().contains("Invalid inline context node passed to an inlined field"));
+            thrown = true;
+        }
+        assertTrue(String.format("Node %s did not throw when it used wrong inlineTarget. Is the UseInlinedByDefault really inlined?", testCaseName), thrown);
+    }
 }

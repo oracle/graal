@@ -28,7 +28,7 @@ package com.oracle.objectfile.debugentry;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFieldInfo;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -43,7 +43,7 @@ public abstract class StructureTypeEntry extends TypeEntry {
     /**
      * Details of fields located in this instance.
      */
-    protected List<FieldEntry> fields;
+    protected final List<FieldEntry> fields;
 
     public StructureTypeEntry(String typeName, int size) {
         super(typeName, size);
@@ -52,6 +52,10 @@ public abstract class StructureTypeEntry extends TypeEntry {
 
     public Stream<FieldEntry> fields() {
         return fields.stream();
+    }
+
+    public int fieldCount() {
+        return fields.size();
     }
 
     protected void processField(DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
@@ -65,16 +69,19 @@ public abstract class StructureTypeEntry extends TypeEntry {
         String valueTypeName = valueType.toJavaName();
         int fieldSize = debugFieldInfo.size();
         int fieldoffset = debugFieldInfo.offset();
+        boolean fieldIsEmbedded = debugFieldInfo.isEmbedded();
         int fieldModifiers = debugFieldInfo.modifiers();
-        debugContext.log("typename %s adding %s field %s type %s size %s at offset 0x%x%n",
-                        typeName, memberModifiers(fieldModifiers), fieldName, valueTypeName, fieldSize, fieldoffset);
+        if (debugContext.isLogEnabled()) {
+            debugContext.log("typename %s adding %s field %s type %s%s size %s at offset 0x%x%n",
+                            typeName, memberModifiers(fieldModifiers), fieldName, valueTypeName, (fieldIsEmbedded ? "(embedded)" : ""), fieldSize, fieldoffset);
+        }
         TypeEntry valueTypeEntry = debugInfoBase.lookupTypeEntry(valueType);
         /*
          * n.b. the field file may differ from the owning class file when the field is a
          * substitution
          */
         FileEntry fileEntry = debugInfoBase.ensureFileEntry(debugFieldInfo);
-        FieldEntry fieldEntry = new FieldEntry(fileEntry, fieldName, this, valueTypeEntry, fieldSize, fieldoffset, fieldModifiers);
+        FieldEntry fieldEntry = new FieldEntry(fileEntry, fieldName, this, valueTypeEntry, fieldSize, fieldoffset, fieldIsEmbedded, fieldModifiers);
         fields.add(fieldEntry);
         return fieldEntry;
     }

@@ -32,7 +32,7 @@ package com.oracle.objectfile.debugentry;
  * need to be embedded in debug info that identifies class and method names.
  */
 public class LoaderEntry {
-    String loaderId;
+    private final String loaderId;
 
     public LoaderEntry(String id) {
         loaderId = id;

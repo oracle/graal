@@ -24,29 +24,28 @@
  */
 package com.oracle.svm.core.graal.stackvalue;
 
-import static org.graalvm.compiler.nodeinfo.InputType.Memory;
+import static jdk.graal.compiler.nodeinfo.InputType.Memory;
 
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.common.PermanentBailoutException;
-import org.graalvm.compiler.core.common.calc.UnsignedMath;
-import org.graalvm.compiler.graph.IterableNodeType;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeCycles;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.AbstractStateSplit;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.memory.MemoryAccess;
-import org.graalvm.compiler.nodes.memory.MemoryKill;
-import org.graalvm.compiler.nodes.spi.Lowerable;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.PermanentBailoutException;
+import jdk.graal.compiler.core.common.calc.UnsignedMath;
+import jdk.graal.compiler.graph.IterableNodeType;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeCycles;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodeinfo.NodeSize;
+import jdk.graal.compiler.nodes.AbstractStateSplit;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.memory.MemoryAccess;
+import jdk.graal.compiler.nodes.memory.MemoryKill;
+import jdk.graal.compiler.nodes.spi.Lowerable;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.thread.VirtualThreads;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -136,7 +135,7 @@ public class StackValueNode extends AbstractStateSplit implements MemoryAccess, 
          * small value that seems to be in range.
          */
         if (UnsignedMath.aboveOrEqual(numElements, MAX_SIZE) || UnsignedMath.aboveOrEqual(elementSize, MAX_SIZE) || UnsignedMath.aboveOrEqual(numElements * elementSize, MAX_SIZE)) {
-            throw new PermanentBailoutException("stack value has illegal size " + numElements + " * " + elementSize);
+            throw new PermanentBailoutException("Stack value has illegal size " + numElements + " * " + elementSize);
         }
 
         int sizeInBytes = NumUtil.safeToInt(numElements * elementSize);
@@ -153,13 +152,13 @@ public class StackValueNode extends AbstractStateSplit implements MemoryAccess, 
          * around in a caller, but these are difficult to ensure across multiple callers and
          * callees.
          */
-        boolean checkVirtualThread = disallowVirtualThread && VirtualThreads.isSupported() && !Uninterruptible.Utils.isUninterruptible(method);
+        boolean checkVirtualThread = disallowVirtualThread && !Uninterruptible.Utils.isUninterruptible(method);
         return create(sizeInBytes, slotIdentity, checkVirtualThread);
     }
 
     public static StackValueNode create(int sizeInBytes, StackSlotIdentity slotIdentity, boolean checkVirtualThread) {
         if (UnsignedMath.aboveOrEqual(sizeInBytes, MAX_SIZE)) {
-            throw new PermanentBailoutException("stack value has illegal size " + sizeInBytes + ": " + slotIdentity.name);
+            throw new PermanentBailoutException("Stack value has illegal size " + sizeInBytes + ": " + slotIdentity.name);
         }
 
         /* Alignment is specified by StackValue API methods as "alignment used for stack frames". */

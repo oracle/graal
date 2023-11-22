@@ -44,6 +44,7 @@ import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.backend.libffi.ClosureArgumentNode.InjectedClosureArgumentNode;
 import com.oracle.truffle.nfi.backend.libffi.ClosureArgumentNodeFactory.BufferClosureArgumentNodeGen;
@@ -134,9 +135,10 @@ final class LibFFIType {
     }
 
     protected final long type; // native pointer
-    protected final CachedTypeInfo typeInfo;
+    @NeverDefault protected final CachedTypeInfo typeInfo;
 
     protected LibFFIType(CachedTypeInfo typeInfo, long type) {
+        assert typeInfo != null;
         this.typeInfo = typeInfo;
         this.type = type;
     }
@@ -208,8 +210,10 @@ final class LibFFIType {
             this.injectedArgument = injectedArgument;
         }
 
+        @NeverDefault
         public abstract SerializeArgumentNode createSerializeArgumentNode();
 
+        @NeverDefault
         public abstract ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg);
 
         public abstract Object deserializeRet(Node node, NativeArgumentBuffer buffer);
@@ -342,6 +346,7 @@ final class LibFFIType {
         }
 
         @Override
+        @NeverDefault
         public SerializeArgumentNode createSerializeArgumentNode() {
             return sharedArgumentNode;
         }
@@ -387,6 +392,7 @@ final class LibFFIType {
         }
 
         @Override
+        @NeverDefault
         public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
             return BufferClosureArgumentNodeGen.create(this, arg);
         }
@@ -399,11 +405,13 @@ final class LibFFIType {
         }
 
         @Override
+        @NeverDefault
         public SerializeArgumentNode createSerializeArgumentNode() {
             return SerializeSerializableNodeGen.create(this);
         }
 
         @Override
+        @NeverDefault
         public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
             return BufferClosureArgumentNodeGen.create(this, arg);
         }
@@ -433,11 +441,13 @@ final class LibFFIType {
         }
 
         @Override
+        @NeverDefault
         public SerializeArgumentNode createSerializeArgumentNode() {
             throw new AssertionError("invalid argument type VOID");
         }
 
         @Override
+        @NeverDefault
         public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
             throw new AssertionError("invalid argument type VOID");
         }
@@ -455,11 +465,13 @@ final class LibFFIType {
         }
 
         @Override
+        @NeverDefault
         public SerializeArgumentNode createSerializeArgumentNode() {
             return SerializePointerNodeGen.create(this);
         }
 
         @Override
+        @NeverDefault
         public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
             return BufferClosureArgumentNodeGen.create(this, arg);
         }
@@ -472,11 +484,13 @@ final class LibFFIType {
         }
 
         @Override
+        @NeverDefault
         public SerializeArgumentNode createSerializeArgumentNode() {
             return SerializeStringNodeGen.create(this);
         }
 
         @Override
+        @NeverDefault
         public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
             return StringClosureArgumentNodeGen.create(arg);
         }
@@ -493,11 +507,13 @@ final class LibFFIType {
         }
 
         @Override
+        @NeverDefault
         public SerializeArgumentNode createSerializeArgumentNode() {
             return sharedArgumentNode;
         }
 
         @Override
+        @NeverDefault
         public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
             return ObjectClosureArgumentNodeGen.create(arg);
         }
@@ -510,11 +526,13 @@ final class LibFFIType {
         }
 
         @Override
+        @NeverDefault
         public SerializeArgumentNode createSerializeArgumentNode() {
             return SerializeNullableNodeGen.create(this);
         }
 
         @Override
+        @NeverDefault
         public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
             return ObjectClosureArgumentNodeGen.create(arg);
         }
@@ -552,6 +570,7 @@ final class LibFFIType {
         }
 
         @Override
+        @NeverDefault
         public SerializeArgumentNode createSerializeArgumentNode() {
             return SerializeArrayNodeGen.create(this);
         }
@@ -563,6 +582,7 @@ final class LibFFIType {
         }
 
         @Override
+        @NeverDefault
         public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
             throw new AssertionError("Arrays can only be passed from Java to native");
         }
@@ -584,6 +604,7 @@ final class LibFFIType {
         }
 
         @Override
+        @NeverDefault
         public SerializeArgumentNode createSerializeArgumentNode() {
             return sharedArgumentNode;
         }
@@ -595,6 +616,7 @@ final class LibFFIType {
         }
 
         @Override
+        @NeverDefault
         public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
             return new InjectedClosureArgumentNode();
         }

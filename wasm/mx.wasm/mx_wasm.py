@@ -51,6 +51,7 @@ import mx_sdk_vm
 # noinspection PyUnresolvedReferences
 import mx_wasm_benchmark  # pylint: disable=unused-import
 from mx_gate import Task, add_gate_runner
+import mx_unittest
 from mx_unittest import unittest
 
 _suite = mx.suite("wasm")
@@ -75,6 +76,11 @@ microbenchmarks = [
     "strings",
 ]
 
+def get_jdk(forBuild=False):
+    if not forBuild and mx.suite('compiler', fatalIfMissing=False):
+        return mx.get_jdk(tag='jvmci')
+    else:
+        return mx.get_jdk()
 
 #
 # Gate runners.
@@ -93,6 +99,12 @@ class GraalWasmDefaultTags:
 def wat2wasm_binary():
     return mx.exe_suffix("wat2wasm")
 
+def wabt_test_args():
+    if not wabt_dir:
+        mx.warn("No WABT_DIR specified")
+        return []
+    return ["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, wat2wasm_binary())]
+
 
 def graal_wasm_gate_runner(args, tasks):
     with Task("BuildAll", tasks, tags=[GraalWasmDefaultTags.buildall]) as t:
@@ -101,11 +113,12 @@ def graal_wasm_gate_runner(args, tasks):
 
     with Task("UnitTests", tasks, tags=[GraalWasmDefaultTags.wasmtest, GraalWasmDefaultTags.coverage], report=True) as t:
         if t:
-            unittest(["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, wat2wasm_binary()), "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest([*wabt_test_args(), "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest([*wabt_test_args(), "-Dwasmtest.sharedEngine=true", "WasmTestSuite"], test_report_tags={'task': t.title})
+
     with Task("ConstantsPolicyUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmconstantspolicytest], report=True) as t:
         if t:
-            unittest(["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, wat2wasm_binary()),
-                      "-Dwasmtest.storeConstantsPolicy=LARGE_ONLY", "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest([*wabt_test_args(), "-Dwasmtest.storeConstantsPolicy=LARGE_ONLY", "WasmTestSuite"], test_report_tags={'task': t.title})
 
     with Task("ExtraUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmextratest, GraalWasmDefaultTags.coverage], report=True) as t:
         if t:
@@ -129,6 +142,15 @@ def graal_wasm_gate_runner(args, tasks):
 
 
 add_gate_runner(_suite, graal_wasm_gate_runner)
+
+def _unittest_config_participant(config):
+    (vmArgs, mainClass, mainClassArgs) = config
+    # limit heap memory to 2G, unless otherwise specified
+    if not any(a.startswith('-Xm') for a in vmArgs):
+        vmArgs += ['-Xmx2g']
+    return (vmArgs, mainClass, mainClassArgs)
+
+mx_unittest.add_config_participant(_unittest_config_participant)
 
 
 #
@@ -495,20 +517,47 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     name="GraalWasm",
     short_name="gwa",
     dir_name="wasm",
-    license_files=["LICENSE_WASM.txt"],
+    standalone_dir_name='graalwasm-community-<version>-<graalvm_os>-<arch>',
+    standalone_dir_name_enterprise='graalwasm-<version>-<graalvm_os>-<arch>',
+    standalone_dependencies={
+        'gwal': ('', []), # GraalWasm license files
+    },
+    standalone_dependencies_enterprise={
+        'gwal': ('', []), # GraalWasm license files
+        'GraalVM enterprise license files': ('LICENSE.txt', ['GRAALVM-README.md']),
+    },
+    license_files=[],
     third_party_license_files=[],
-    dependencies=["Truffle"],
+    dependencies=[
+        'gwal', # GraalWasm license files
+        "Truffle",
+    ],
     truffle_jars=["wasm:WASM"],
     support_distributions=["wasm:WASM_GRAALVM_SUPPORT"],
-    launcher_configs=[
-        mx_sdk_vm.LanguageLauncherConfig(
-            destination="bin/<exe:wasm>",
+    library_configs=[
+        mx_sdk_vm.LanguageLibraryConfig(
+            launchers=["bin/<exe:wasm>"],
             jar_distributions=["wasm:WASM_LAUNCHER"],
             main_class="org.graalvm.wasm.launcher.WasmLauncher",
             build_args=[],
             language="wasm",
         ),
     ],
+    installable=True,
+    stability="experimental",
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=_suite,
+    name='GraalWasm license files',
+    short_name='gwal',
+    dir_name='wasm',
+    license_files=["LICENSE_WASM.txt"],
+    third_party_license_files=[],
+    dependencies=[],
+    truffle_jars=[],
+    support_distributions=["wasm:WASM_GRAALVM_LICENSES"],
+    priority=5,
     installable=True,
     stability="experimental",
 ))
@@ -571,22 +620,20 @@ def emscripten_init(args):
 @mx.command(_suite.name, "wasm")
 def wasm(args, **kwargs):
     """Run a WebAssembly program."""
-    mx.get_opts().jdk = "jvmci"
-    vmArgs, wasmArgs = mx.extract_VM_args(args, True)
+    vmArgs, wasmArgs = mx.extract_VM_args(args, useDoubleDash=False, defaultAllVMArgs=False)
     path_args = mx.get_runtime_jvm_args([
         "TRUFFLE_API",
         "org.graalvm.wasm",
         "org.graalvm.wasm.launcher",
     ] + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
-    return mx.run_java(vmArgs + path_args + ["org.graalvm.wasm.launcher.WasmLauncher"] + wasmArgs, **kwargs)
+    return mx.run_java(vmArgs + path_args + ["org.graalvm.wasm.launcher.WasmLauncher"] + wasmArgs, jdk=get_jdk(), **kwargs)
 
 @mx.command(_suite.name, "wasm-memory-layout")
 def wasm_memory_layout(args, **kwargs):
     """Run WebAssembly memory layout extractor."""
-    mx.get_opts().jdk = "jvmci"
-    vmArgs, wasmArgs = mx.extract_VM_args(args, True)
+    vmArgs, wasmArgs = mx.extract_VM_args(args, useDoubleDash=False, defaultAllVMArgs=False)
     path_args = mx.get_runtime_jvm_args([
         "org.graalvm.wasm",
         "org.graalvm.wasm.memory",
     ])
-    return mx.run_java(vmArgs + path_args + ["org.graalvm.wasm.memory.MemoryLayoutRunner"] + wasmArgs, **kwargs)
+    return mx.run_java(vmArgs + path_args + ["org.graalvm.wasm.memory.MemoryLayoutRunner"] + wasmArgs, jdk=get_jdk(), **kwargs)

@@ -35,6 +35,7 @@ import org.junit.Test;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 
+import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
@@ -44,29 +45,11 @@ public class TestJavaMonitorInflateEvent extends JfrRecordingTest {
     private Thread firstThread;
     private Thread secondThread;
 
-    @Override
-    public String[] getTestedEvents() {
-        return new String[]{JfrEvent.JavaMonitorInflate.getName()};
-    }
-
-    @Override
-    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
-        boolean foundCauseEnter = false;
-        for (RecordedEvent event : events) {
-            String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
-            String monitorClass = event.<RecordedClass> getValue("monitorClass").getName();
-            String cause = event.getValue("cause");
-            if (monitorClass.equals(EnterHelper.class.getName()) &&
-                            cause.equals(MonitorInflationCause.MONITOR_ENTER.getText()) &&
-                            (eventThread.equals(firstThread.getName()) || eventThread.equals(secondThread.getName()))) {
-                foundCauseEnter = true;
-            }
-        }
-        assertTrue("Expected monitor inflate event not found.", foundCauseEnter);
-    }
-
     @Test
-    public void test() throws Exception {
+    public void test() throws Throwable {
+        String[] events = new String[]{JfrEvent.JavaMonitorInflate.getName()};
+        Recording recording = startRecording(events);
+
         Runnable first = () -> {
             try {
                 enterHelper.doWork();
@@ -92,6 +75,23 @@ public class TestJavaMonitorInflateEvent extends JfrRecordingTest {
 
         firstThread.join();
         secondThread.join();
+
+        stopRecording(recording, this::validateEvents);
+    }
+
+    private void validateEvents(List<RecordedEvent> events) {
+        boolean foundCauseEnter = false;
+        for (RecordedEvent event : events) {
+            String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
+            String monitorClass = event.<RecordedClass> getValue("monitorClass").getName();
+            String cause = event.getValue("cause");
+            if (monitorClass.equals(EnterHelper.class.getName()) &&
+                            cause.equals(MonitorInflationCause.MONITOR_ENTER.getText()) &&
+                            (eventThread.equals(firstThread.getName()) || eventThread.equals(secondThread.getName()))) {
+                foundCauseEnter = true;
+            }
+        }
+        assertTrue("Expected monitor inflate event not found.", foundCauseEnter);
     }
 
     private class EnterHelper {

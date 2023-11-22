@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,7 @@ package com.oracle.svm.core.util;
 
 import java.nio.ByteBuffer;
 
-import org.graalvm.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.ComparableWord;
@@ -101,7 +101,7 @@ public final class HostedByteBufferPointer implements Pointer {
     }
 
     private static RuntimeException unsupported() {
-        throw VMError.shouldNotReachHere();
+        throw VMError.intentionallyUnimplemented();
     }
 
     @Override
@@ -121,6 +121,11 @@ public final class HostedByteBufferPointer implements Pointer {
 
     @Override
     public Object toObject() {
+        throw unsupported();
+    }
+
+    @Override
+    public <T> T toObject(Class<T> clazz, boolean nonNull) {
         throw unsupported();
     }
 

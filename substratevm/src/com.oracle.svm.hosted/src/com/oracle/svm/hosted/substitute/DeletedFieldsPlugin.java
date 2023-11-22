@@ -24,15 +24,14 @@
  */
 package com.oracle.svm.hosted.substitute;
 
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.DeadEndNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.DeadEndNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -66,7 +65,7 @@ public final class DeletedFieldsPlugin implements NodePlugin {
         }
 
         String msg = AnnotationSubstitutionProcessor.deleteErrorMessage(field, deleteAnnotation, false);
-        ValueNode msgNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(msg), b.getMetaAccess(), b.getGraph());
+        ValueNode msgNode = ConstantNode.forConstant(b.getConstantReflection().forString(msg), b.getMetaAccess(), b.getGraph());
         ResolvedJavaMethod reportErrorMethod = b.getMetaAccess().lookupJavaMethod(DeletedMethod.reportErrorMethod);
         b.handleReplacedInvoke(InvokeKind.Static, reportErrorMethod, new ValueNode[]{msgNode}, false);
         // reportErrorMethod always throws an exception, e.g. never returns.

@@ -37,8 +37,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.options.Option;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -54,8 +54,11 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.util.VMError.HostedError;
 import com.oracle.svm.hosted.FeatureImpl.IsInConfigurationAccessImpl;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -83,7 +86,11 @@ public class FeatureHandler {
 
     public void forEachFeature(Consumer<Feature> consumer) {
         for (Feature feature : featureInstances) {
-            consumer.accept(feature);
+            try {
+                consumer.accept(feature);
+            } catch (Throwable t) {
+                throw handleFeatureError(feature, t);
+            }
         }
     }
 
@@ -125,7 +132,7 @@ public class FeatureHandler {
                             "Support for this annotation will be removed in a future version of GraalVM. " +
                             "Applications should register a feature using the option " + SubstrateOptionsParser.commandArgument(Options.Features, annotatedFeatureClass.getName());
             if (Options.AllowDeprecatedAutomaticFeature.getValue()) {
-                System.out.println("Warning: " + msg);
+                LogUtils.warning(msg);
             } else {
                 throw UserError.abort(msg);
             }
@@ -215,8 +222,12 @@ public class FeatureHandler {
             throw UserError.abort(ex.getCause(), "Error instantiating Feature class %s. Ensure the class is not abstract and has a no-argument constructor.", featureClass.getTypeName());
         }
 
-        if (!feature.isInConfiguration(access)) {
-            return;
+        try {
+            if (!feature.isInConfiguration(access)) {
+                return;
+            }
+        } catch (Throwable t) {
+            throw handleFeatureError(feature, t);
         }
 
         /*
@@ -228,7 +239,13 @@ public class FeatureHandler {
         /*
          * First add dependent features so that initializers are executed in order of dependencies.
          */
-        for (Class<? extends Feature> requiredFeatureClass : feature.getRequiredFeatures()) {
+        List<Class<? extends Feature>> requiredFeatures;
+        try {
+            requiredFeatures = feature.getRequiredFeatures();
+        } catch (Throwable t) {
+            throw handleFeatureError(feature, t);
+        }
+        for (Class<? extends Feature> requiredFeatureClass : requiredFeatures) {
             registerFeature(requiredFeatureClass, specificClassProvider, access);
         }
 
@@ -253,5 +270,23 @@ public class FeatureHandler {
             out.print(", ");
             out.println(requiredFeaturesString);
         });
+    }
+
+    private static UserException handleFeatureError(Feature feature, Throwable throwable) {
+        /* Avoid wrapping UserErrors and VMErrors. */
+        if (throwable instanceof UserException userError) {
+            throw userError;
+        }
+        if (throwable instanceof HostedError vmError) {
+            throw vmError;
+        }
+
+        String featureClassName = feature.getClass().getName();
+        String throwableClassName = throwable.getClass().getName();
+        if (InternalFeature.class.isAssignableFrom(feature.getClass())) {
+            throw VMError.shouldNotReachHere("InternalFeature defined by %s unexpectedly failed with a(n) %s".formatted(featureClassName, throwableClassName), throwable);
+        }
+        throw UserError.abort(throwable, "Feature defined by %s unexpectedly failed with a(n) %s. Please report this problem to the authors of %s.", featureClassName, throwableClassName,
+                        featureClassName);
     }
 }

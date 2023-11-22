@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,11 +86,23 @@ public @interface GenerateInline {
     boolean value() default true;
 
     /**
-     * If <code>true</code> enables inheritance of {@link #value()} to subclasses. It is
-     * <code>false</code> by default.
+     * If <code>true</code> enables inheritance of {@link #value()} and {@link #inlineByDefault()}
+     * to subclasses. It is <code>false</code> by default.
      *
      * @since 23.0
      */
     boolean inherit() default false;
 
+    /**
+     * If <code>true</code> the inlined version is used by default when the node is used as a
+     * {@link Cached cached} argument.
+     *
+     * Changing this value on an existing node class with existing and already compiled usages will
+     * not force the recompilation of the usages. One has to manually force recompilation of all the
+     * affected code. If the node class is part of supported public API, changing this value is a
+     * <b>source incompatible change</b>!
+     *
+     * @since 23.0
+     */
+    boolean inlineByDefault() default false;
 }

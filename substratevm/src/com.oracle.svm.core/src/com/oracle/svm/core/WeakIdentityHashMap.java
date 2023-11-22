@@ -28,7 +28,7 @@
 package com.oracle.svm.core;
 
 import com.oracle.svm.core.heap.ReferenceInternals;
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
 
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
@@ -298,6 +298,7 @@ public class WeakIdentityHashMap<K,V>
      * @throws  NullPointerException if the specified map is null
      * @since   1.3
      */
+    @SuppressWarnings("this-escape")
     public WeakIdentityHashMap(Map<? extends K, ? extends V> m) {
         this(Math.max((int) (m.size() / DEFAULT_LOAD_FACTOR) + 1,
                 DEFAULT_INITIAL_CAPACITY),

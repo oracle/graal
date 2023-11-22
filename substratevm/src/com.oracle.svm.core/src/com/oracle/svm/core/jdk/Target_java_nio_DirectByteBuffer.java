@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.io.FileDescriptor;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -50,7 +52,13 @@ public final class Target_java_nio_DirectByteBuffer {
 
     @Alias
     @SuppressWarnings("unused")
-    public Target_java_nio_DirectByteBuffer(long addr, int cap) {
+    Target_java_nio_DirectByteBuffer(long addr, long cap) {
+        throw VMError.shouldNotReachHere("This is an alias to the original constructor in the target class, so this code is unreachable");
+    }
+
+    @Alias
+    Target_java_nio_DirectByteBuffer(int cap, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync,
+                    Target_java_lang_foreign_MemorySegment segment) {
         throw VMError.shouldNotReachHere("This is an alias to the original constructor in the target class, so this code is unreachable");
     }
 }

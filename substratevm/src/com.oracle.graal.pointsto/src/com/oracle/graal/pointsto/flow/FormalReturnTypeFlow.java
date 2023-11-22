@@ -26,6 +26,7 @@ package com.oracle.graal.pointsto.flow;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.code.BytecodePosition;
 
@@ -36,6 +37,16 @@ public class FormalReturnTypeFlow extends TypeFlow<BytecodePosition> {
 
     public FormalReturnTypeFlow(FormalReturnTypeFlow original, MethodFlowsGraph methodFlows) {
         super(original, methodFlows);
+    }
+
+    @Override
+    public TypeState filter(PointsToAnalysis bb, TypeState newState) {
+        /*
+         * Always filter the formal return state with the declared type, even if the type flow
+         * constraints are not relaxed. This avoids imprecision caused by MethodHandle API methods
+         * which elude static type checks.
+         */
+        return declaredTypeFilter(bb, newState, false);
     }
 
     @Override

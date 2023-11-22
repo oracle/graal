@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.config;
 
-import static com.oracle.svm.common.option.CommonOptions.PrintFlags;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -33,6 +31,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.Spliterator;
 import java.util.Spliterators.AbstractSpliterator;
 import java.util.function.Consumer;
@@ -40,7 +39,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
-import org.graalvm.util.json.JSONParserException;
+import jdk.graal.compiler.util.json.JSONParserException;
 
 import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ConfigurationFiles;
@@ -48,7 +47,6 @@ import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
 
@@ -56,7 +54,8 @@ public final class ConfigurationParserUtils {
 
     public static ReflectionConfigurationParser<ConditionalElement<Class<?>>> create(ReflectionRegistry registry, ImageClassLoader imageClassLoader) {
         return new ReflectionConfigurationParser<>(RegistryAdapter.create(registry, imageClassLoader),
-                        ConfigurationFiles.Options.StrictConfiguration.getValue());
+                        ConfigurationFiles.Options.StrictConfiguration.getValue(),
+                        ConfigurationFiles.Options.WarnAboutMissingReflectionOrJNIMetadataElements.getValue());
     }
 
     /**
@@ -71,19 +70,27 @@ public final class ConfigurationParserUtils {
     public static int parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader, String featureName,
                     HostedOptionKey<LocatableMultiOptionValue.Paths> configFilesOption, HostedOptionKey<LocatableMultiOptionValue.Strings> configResourcesOption, String directoryFileName) {
 
-        int parsedCount = 0;
+        List<Path> paths = configFilesOption.getValue().values();
+        List<String> resourceValues = configResourcesOption.getValue().values();
+        return parseAndRegisterConfigurations(parser, classLoader, featureName, directoryFileName, paths, resourceValues);
+    }
 
-        Stream<Path> files = Stream.concat(configFilesOption.getValue().values().stream(),
+    public static int parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader,
+                    String featureName,
+                    String directoryFileName, List<Path> paths,
+                    List<String> resourceValues) {
+        int parsedCount = 0;
+        Stream<Path> files = Stream.concat(paths.stream(),
                         ConfigurationFiles.findConfigurationFiles(directoryFileName).stream());
         parsedCount += files.map(Path::toAbsolutePath).mapToInt(path -> {
             if (!Files.exists(path)) {
                 throw UserError.abort("The %s configuration file \"%s\" does not exist.", featureName, path);
             }
-            doParseAndRegister(parser, featureName, path, configFilesOption.getName());
+            doParseAndRegister(parser, featureName, path);
             return 1;
         }).sum();
 
-        Stream<URL> configResourcesFromOption = configResourcesOption.getValue().values().stream().flatMap(s -> {
+        Stream<URL> configResourcesFromOption = resourceValues.stream().flatMap(s -> {
             Enumeration<URL> urls;
             try {
                 urls = classLoader.findResourcesByName(s);
@@ -106,13 +113,13 @@ public final class ConfigurationParserUtils {
         });
         Stream<URL> resources = Stream.concat(configResourcesFromOption, ConfigurationFiles.findConfigurationResources(directoryFileName, classLoader.getClassLoader()).stream());
         parsedCount += resources.mapToInt(url -> {
-            doParseAndRegister(parser, featureName, url, configResourcesOption.getName());
+            doParseAndRegister(parser, featureName, url);
             return 1;
         }).sum();
         return parsedCount;
     }
 
-    private static void doParseAndRegister(ConfigurationParser parser, String featureName, Object location, String optionName) {
+    private static void doParseAndRegister(ConfigurationParser parser, String featureName, Object location) {
         try {
             URI uri;
             if (location instanceof Path) {
@@ -126,8 +133,10 @@ public final class ConfigurationParserUtils {
             if (errorMessage == null || errorMessage.isEmpty()) {
                 errorMessage = e.toString();
             }
-            throw UserError.abort("Error parsing %s configuration in %s:%n%s%nVerify that the configuration matches the schema described in the %s output for option %s.",
-                            featureName, location, errorMessage, SubstrateOptionsParser.commandArgument(PrintFlags, "+"), optionName);
+            throw UserError.abort(
+                            "Error parsing %s configuration in %s:%n%s%nVerify that the configuration matches the corresponding schema at " +
+                                            "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/",
+                            featureName, location, errorMessage);
         }
     }
 }

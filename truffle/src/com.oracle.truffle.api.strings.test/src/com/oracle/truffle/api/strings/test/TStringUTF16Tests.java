@@ -47,6 +47,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.api.strings.TruffleStringIterator;
 
 public class TStringUTF16Tests extends TStringTestBase {
@@ -131,5 +133,17 @@ public class TStringUTF16Tests extends TStringTestBase {
                         -112, -17, -73, -113, -17, -73, -81, -17, -73, -80, -17, -65, -66, -17, -65, -65};
         byte[] actualUTF8Bytes = utf8.copyToByteArrayUncached(TruffleString.Encoding.UTF_8);
         Assert.assertArrayEquals(Arrays.toString(actualUTF8Bytes), expectedUTF8Bytes, actualUTF8Bytes);
+    }
+
+    @Test(expected = OutOfMemoryError.class)
+    public void testStringBuilderAppendCodePoint() {
+        TruffleStringBuilderUTF16 sb = TruffleStringBuilder.createUTF16();
+        sb.appendCodePointUncached(Character.MAX_CODE_POINT, Integer.MAX_VALUE - 10, false);
+    }
+
+    @Test
+    public void testToJavaString() {
+        TruffleString a = TruffleString.fromCharArrayUTF16Uncached(new char[]{'a', 'b', 'c'});
+        Assert.assertEquals("abc", a.toJavaStringUncached());
     }
 }

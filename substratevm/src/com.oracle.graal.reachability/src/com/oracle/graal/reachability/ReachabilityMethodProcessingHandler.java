@@ -24,7 +24,7 @@
  */
 package com.oracle.graal.reachability;
 
-import org.graalvm.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.StructuredGraph;
 
 /**
  * A handler which is called when a given method or a structured graph should be analyzed. It

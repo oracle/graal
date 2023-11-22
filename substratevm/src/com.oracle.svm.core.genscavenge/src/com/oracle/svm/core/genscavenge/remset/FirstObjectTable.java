@@ -30,6 +30,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -163,6 +164,7 @@ final class FirstObjectTable {
     private FirstObjectTable() {
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void initializeTable(Pointer table, UnsignedWord size) {
         if (SubstrateUtil.HOSTED) {
             // Initialize this table unconditionally as this simplifies a few things.
@@ -173,12 +175,14 @@ final class FirstObjectTable {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean doInitializeTable(Pointer table, UnsignedWord size) {
         UnmanagedMemoryUtil.fill(table, size, (byte) UNINITIALIZED_ENTRY);
         return true;
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setTableForObject(Pointer table, UnsignedWord startOffset, UnsignedWord endOffset) {
         assert startOffset.belowThan(endOffset);
         UnsignedWord startIndex = memoryOffsetToIndex(startOffset);
@@ -232,6 +236,7 @@ final class FirstObjectTable {
      * outside the current card.
      */
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Pointer getFirstObjectImprecise(Pointer tableStart, Pointer objectsStart, UnsignedWord index) {
         Pointer result;
         Pointer firstObject = getFirstObject(tableStart, objectsStart, index);
@@ -249,6 +254,7 @@ final class FirstObjectTable {
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Pointer getFirstObject(Pointer tableStart, Pointer objectsStart, UnsignedWord index) {
         UnsignedWord currentIndex = index;
         int currentEntry = getEntryAtIndex(tableStart, currentIndex);
@@ -278,6 +284,8 @@ final class FirstObjectTable {
         return result;
     }
 
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord entryToMemoryOffset(UnsignedWord index, int entry) {
         assert isMemoryOffsetEntry(entry) : "Entry out of bounds.";
         UnsignedWord entryOffset = WordFactory.unsigned(-entry).multiply(memoryOffsetScale());
@@ -328,69 +336,83 @@ final class FirstObjectTable {
      * The multiplier from memory offsets to byte offsets into the previous card. This is the
      * granularity to which I can point to the start of an object.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int memoryOffsetScale() {
         return ConfigurationValues.getObjectLayout().getAlignment();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int getEntryAtIndex(Pointer table, UnsignedWord index) {
         return table.readByte(indexToTableOffset(index));
     }
 
     /** Set the table entry at a given index. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void setEntryAtIndex(Pointer table, UnsignedWord index, int value) {
         assert isValidEntry(value) : "Invalid entry";
         assert isUninitializedIndex(table, index) || getEntryAtIndex(table, index) == value : "Overwriting!";
         table.writeByte(indexToTableOffset(index), (byte) value);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean isUninitializedIndex(Pointer table, UnsignedWord index) {
         int entry = getEntryAtIndex(table, index);
         return isUninitializedEntry(entry);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean isValidEntry(int entry) {
         return ENTRY_MIN <= entry && entry <= ENTRY_MAX;
     }
 
     /** May only be used for assertions. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean isUninitializedEntry(int entry) {
         assert isValidEntry(entry) : "Invalid entry";
         return entry == UNINITIALIZED_ENTRY;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean isMemoryOffsetEntry(int entry) {
         assert isValidEntry(entry) : "Invalid entry";
         return MEMORY_OFFSET_MIN <= entry && entry <= MEMORY_OFFSET_MAX;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int biasExponent(int exponent) {
         assert EXPONENT_MIN <= exponent && exponent <= EXPONENT_MAX : "Exponent out of bounds.";
         return exponent + EXPONENT_BIAS;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int unbiasExponent(int entry) {
         int exponent = entry - EXPONENT_BIAS;
         assert EXPONENT_MIN <= exponent && exponent <= EXPONENT_MAX : "Exponent out of bounds.";
         return exponent;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord exponentToOffset(int n) {
         assert 0 <= n && n <= 63 : "Exponent out of bounds.";
         return WordFactory.unsigned(1L << n);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord indexToTableOffset(UnsignedWord index) {
         return index.multiply(ENTRY_SIZE_BYTES);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord indexToMemoryOffset(UnsignedWord index) {
         return index.multiply(BYTES_COVERED_BY_ENTRY);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord memoryOffsetToIndex(UnsignedWord offset) {
         return offset.unsignedDivide(BYTES_COVERED_BY_ENTRY);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int memoryOffsetToEntry(UnsignedWord memoryOffset) {
         assert memoryOffset.belowThan(BYTES_COVERED_BY_ENTRY) : "Offset out of bounds.";
         UnsignedWord scaledOffset = memoryOffset.unsignedDivide(memoryOffsetScale());

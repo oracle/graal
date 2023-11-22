@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -250,7 +250,7 @@ public final class DefaultHomeFinder extends HomeFinder {
                     if (enforcedHome == null) {
                         res.put(languageId, languagesFolder.resolve(languageId));
                     } else {
-                        res.put(languageId, Path.of(enforcedHome));
+                        res.put(languageId, toRealPath(Path.of(enforcedHome)));
                     }
                 }
             } else {
@@ -263,7 +263,7 @@ public final class DefaultHomeFinder extends HomeFinder {
                             if (after.length() > ".home".length()) {
                                 String languageId = after.substring(0, after.length() - ".home".length());
                                 if (!languageId.contains(".")) {
-                                    res.put(languageId, Paths.get(System.getProperty(name)));
+                                    res.put(languageId, toRealPath(Paths.get(System.getProperty(name))));
                                 }
                             }
                         }
@@ -276,6 +276,16 @@ public final class DefaultHomeFinder extends HomeFinder {
             }
         }
         return res;
+    }
+
+    private static Path toRealPath(Path p) {
+        try {
+            return p.toRealPath();
+        } catch (NoSuchFileException nsfe) {
+            return p;
+        } catch (IOException ioe) {
+            throw new RuntimeException(ioe);
+        }
     }
 
     @Override

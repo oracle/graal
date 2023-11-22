@@ -25,9 +25,9 @@
 package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionType;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionType;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -45,7 +45,7 @@ public final class SerialAndEpsilonGCOptions {
     public static final RuntimeOptionKey<Integer> MaximumYoungGenerationSizePercent = new NotifyGCRuntimeOptionKey<>(10, SerialAndEpsilonGCOptions::serialOrEpsilonGCOnly);
 
     @Option(help = "The size of an aligned chunk. Serial and epsilon GC only.", type = OptionType.Expert) //
-    public static final HostedOptionKey<Long> AlignedHeapChunkSize = new HostedOptionKey<>(1L * 1024L * 1024L, SerialAndEpsilonGCOptions::serialOrEpsilonGCOnly) {
+    public static final HostedOptionKey<Long> AlignedHeapChunkSize = new HostedOptionKey<>(512 * 1024L, SerialAndEpsilonGCOptions::serialOrEpsilonGCOnly) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             int multiple = 4096;
@@ -57,8 +57,8 @@ public final class SerialAndEpsilonGCOptions {
      * This should be a fraction of the size of an aligned chunk, else large small arrays will not
      * fit in an aligned chunk.
      */
-    @Option(help = "The size at or above which an array will be allocated in its own unaligned chunk. 0 implies (AlignedHeapChunkSize / 8). Serial and epsilon GC only.", type = OptionType.Expert) //
-    public static final HostedOptionKey<Long> LargeArrayThreshold = new HostedOptionKey<>(0L, SerialAndEpsilonGCOptions::serialOrEpsilonGCOnly);
+    @Option(help = "The size at or above which an array will be allocated in its own unaligned chunk. Serial and epsilon GC only.", type = OptionType.Expert) //
+    public static final HostedOptionKey<Long> LargeArrayThreshold = new HostedOptionKey<>(128 * 1024L, SerialAndEpsilonGCOptions::serialOrEpsilonGCOnly);
 
     @Option(help = "Fill unused memory chunks with a sentinel value. Serial and epsilon GC only.", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> ZapChunks = new HostedOptionKey<>(false, SerialAndEpsilonGCOptions::serialOrEpsilonGCOnly);
@@ -68,9 +68,6 @@ public final class SerialAndEpsilonGCOptions {
 
     @Option(help = "After use, Fill memory chunks with a sentinel value. Serial and epsilon GC only.", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> ZapConsumedHeapChunks = new HostedOptionKey<>(false, SerialAndEpsilonGCOptions::serialOrEpsilonGCOnly);
-
-    @Option(help = "Bytes that can be allocated before (re-)querying the physical memory size. Serial and epsilon GC only.", type = OptionType.Debug) //
-    public static final HostedOptionKey<Long> AllocationBeforePhysicalMemorySize = new HostedOptionKey<>(1L * 1024L * 1024L, SerialAndEpsilonGCOptions::serialOrEpsilonGCOnly);
 
     @Option(help = "Number of bytes at the beginning of each heap chunk that are not used for payload data, i.e., can be freely used as metadata by the heap chunk provider. Serial and epsilon GC only.", type = OptionType.Debug) //
     public static final HostedOptionKey<Integer> HeapChunkHeaderPadding = new HostedOptionKey<>(0, SerialAndEpsilonGCOptions::serialOrEpsilonGCOnly);

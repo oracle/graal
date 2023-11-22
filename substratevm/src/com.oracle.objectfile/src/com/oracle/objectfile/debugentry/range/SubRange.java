@@ -26,7 +26,6 @@
 
 package com.oracle.objectfile.debugentry.range;
 
-import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 
@@ -60,6 +59,7 @@ public abstract class SubRange extends Range {
      */
     private DebugInfoProvider.DebugLocalInfo[] localInfos;
 
+    @SuppressWarnings("this-escape")
     protected SubRange(MethodEntry methodEntry, int lo, int hi, int line, PrimaryRange primary, Range caller) {
         super(methodEntry, lo, hi, line, (caller == null ? 0 : caller.depth + 1));
         this.caller = caller;
@@ -72,13 +72,6 @@ public abstract class SubRange extends Range {
 
     public Range getPrimary() {
         return primary;
-    }
-
-    @Override
-    public int getFileIndex() {
-        // the primary range's class entry indexes all files defined by the compilation unit
-        ClassEntry owner = primary.methodEntry.ownerType();
-        return owner.localFilesIdx(getFileEntry());
     }
 
     @Override

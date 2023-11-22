@@ -48,14 +48,25 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Predicate;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
 
+import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -64,8 +75,10 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.test.option.OptionProcessorTest.OptionTestInstrument1;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
@@ -292,16 +305,217 @@ public class EngineAPITest {
 
     @Test
     public void testEngineName() {
-        Engine engine = Engine.create();
-        String implName = engine.getImplementationName();
-        String suffix = TruffleTestAssumptions.isWeakEncapsulation() ? "" : " Isolated";
-        assertEquals(Truffle.getRuntime().getName() + suffix, engine.getImplementationName());
-        String name = RootNode.createConstantNode(0).getCallTarget().getClass().getSimpleName();
-        if (name.equals("DefaultCallTarget")) {
-            assertEquals(implName, "Interpreted");
-        } else if (name.endsWith("OptimizedCallTarget")) {
-            assertTrue(implName, implName.equals("GraalVM EE" + suffix) || implName.equals("GraalVM CE"));
+        Set<String> names = Set.of("Interpreted", "Interpreted Isolated",
+                        "Oracle GraalVM", "Oracle GraalVM Isolated",
+                        "GraalVM CE", "GraalVM CE Isolated");
+        try (Engine engine = Engine.create()) {
+            assertTrue(engine.getImplementationName(), names.contains(engine.getImplementationName()));
         }
+    }
+
+    @Test
+    public void testDeprecatedLanguageOptionEngine() {
+        Engine.Builder b = Engine.newBuilder().option(DeprecatedOptionLanguage.ID + ".DeprecatedOption1", "true");
+        List<LogRecord> log = addTestLogHandler(b);
+        Engine e = b.build();
+        assertSingleRecordFound(log, (record) -> {
+            return record.getLoggerName().equals("engine") &&
+                            record.getLevel() == Level.WARNING &&
+                            record.getMessage().equals(
+                                            "Option 'EngineAPITest_DeprecatedOptionLanguage.DeprecatedOption1' is deprecated: Deprecation message. " +
+                                                            "Please update the option or suppress this warning using the option 'engine.WarnOptionDeprecation=false'.");
+        });
+        e.close();
+    }
+
+    @Test
+    public void testDeprecatedLanguageOptionEngineAndContext() {
+        Engine.Builder b = Engine.newBuilder().option("engine.WarnInterpreterOnly", "false").option(DeprecatedOptionLanguage.ID + ".DeprecatedOption1", "true");
+        List<LogRecord> log = addTestLogHandler(b);
+        Engine e = b.build();
+
+        assertSingleRecordFound(log, (record) -> {
+            return record.getLoggerName().equals("engine") &&
+                            record.getLevel() == Level.WARNING &&
+                            record.getMessage().equals(
+                                            "Option 'EngineAPITest_DeprecatedOptionLanguage.DeprecatedOption1' is deprecated: Deprecation message. " +
+                                                            "Please update the option or suppress this warning using the option 'engine.WarnOptionDeprecation=false'.");
+        });
+
+        log.clear();
+
+        Context c = Context.newBuilder().engine(e).build();
+
+        assertEquals(0, log.size());
+
+        c.close();
+        e.close();
+    }
+
+    @Test
+    public void testDeprecatedLanguageOptionContext() {
+
+        Context.Builder b = Context.newBuilder().option(DeprecatedOptionLanguage.ID + ".DeprecatedOption1", "true");
+        List<LogRecord> log = addTestLogHandler(b);
+        Context e = b.build();
+        assertSingleRecordFound(log, (record) -> {
+            return record.getLoggerName().equals("engine") &&
+                            record.getLevel() == Level.WARNING &&
+                            record.getMessage().equals(
+                                            "Option 'EngineAPITest_DeprecatedOptionLanguage.DeprecatedOption1' is deprecated: Deprecation message. " +
+                                                            "Please update the option or suppress this warning using the option 'engine.WarnOptionDeprecation=false'.");
+        });
+        e.close();
+    }
+
+    @Test
+    public void testDeprecatedInstrumentOptionEngine() {
+
+        Engine.Builder b = Engine.newBuilder().option(DeprecatedOptionInstrument.ID + ".DeprecatedOption1", "true");
+        List<LogRecord> log = addTestLogHandler(b);
+        Engine e = b.build();
+        assertSingleRecordFound(log, (record) -> {
+            return record.getLoggerName().equals("engine") &&
+                            record.getLevel() == Level.WARNING &&
+                            record.getMessage().equals(
+                                            "Option 'EngineAPITest_DeprecatedOptionInstrument.DeprecatedOption1' is deprecated: Deprecation message. " +
+                                                            "Please update the option or suppress this warning using the option 'engine.WarnOptionDeprecation=false'.");
+        });
+        e.close();
+    }
+
+    @Test
+    public void testDeprecatedInstrumentOptionEngineAndContext() {
+        Engine.Builder b = Engine.newBuilder().option("engine.WarnInterpreterOnly", "false").option(DeprecatedOptionInstrument.ID + ".DeprecatedOption1", "true");
+        List<LogRecord> log = addTestLogHandler(b);
+        Engine e = b.build();
+
+        assertSingleRecordFound(log, (record) -> {
+            return record.getLoggerName().equals("engine") &&
+                            record.getLevel() == Level.WARNING &&
+                            record.getMessage().equals(
+                                            "Option 'EngineAPITest_DeprecatedOptionInstrument.DeprecatedOption1' is deprecated: Deprecation message. " +
+                                                            "Please update the option or suppress this warning using the option 'engine.WarnOptionDeprecation=false'.");
+        });
+
+        log.clear();
+
+        Context c = Context.newBuilder().engine(e).build();
+
+        assertEquals(0, log.size());
+
+        c.close();
+        e.close();
+    }
+
+    @Test
+    public void testDeprecatedInstrumentOptionContext() {
+        Context.Builder b = Context.newBuilder().option(DeprecatedOptionInstrument.ID + ".DeprecatedOption1", "true");
+        List<LogRecord> log = addTestLogHandler(b);
+        Context e = b.build();
+        assertSingleRecordFound(log, (record) -> {
+            return record.getLoggerName().equals("engine") &&
+                            record.getLevel() == Level.WARNING &&
+                            record.getMessage().equals(
+                                            "Option 'EngineAPITest_DeprecatedOptionInstrument.DeprecatedOption1' is deprecated: Deprecation message. " +
+                                                            "Please update the option or suppress this warning using the option 'engine.WarnOptionDeprecation=false'.");
+        });
+        e.close();
+    }
+
+    private static void assertSingleRecordFound(List<LogRecord> log, Predicate<LogRecord> test) {
+        boolean found = false;
+        for (LogRecord record : log) {
+            if (test.test(record)) {
+                if (found) {
+                    throw new AssertionError("Duplicate log records found: " + record);
+                }
+                record.getMessage().contains("");
+                found = true;
+            }
+        }
+        if (!found) {
+            throw new AssertionError("No log record found. Other records found: " + log);
+        }
+    }
+
+    private static List<LogRecord> addTestLogHandler(Engine.Builder b) {
+        List<LogRecord> log = new ArrayList<>();
+        b.logHandler(new Handler() {
+            @Override
+            public synchronized void publish(LogRecord record) {
+                log.add(record);
+            }
+
+            @Override
+            public void flush() {
+            }
+
+            @Override
+            public void close() throws SecurityException {
+
+            }
+        });
+        return log;
+    }
+
+    private static List<LogRecord> addTestLogHandler(Context.Builder b) {
+        List<LogRecord> log = new ArrayList<>();
+        b.logHandler(new Handler() {
+            @Override
+            public synchronized void publish(LogRecord record) {
+                log.add(record);
+            }
+
+            @Override
+            public void flush() {
+            }
+
+            @Override
+            public void close() throws SecurityException {
+
+            }
+        });
+        return log;
+    }
+
+    @TruffleLanguage.Registration(id = DeprecatedOptionLanguage.ID, name = DeprecatedOptionLanguage.ID)
+    public static class DeprecatedOptionLanguage extends TruffleLanguage<Env> {
+
+        public static final String ID = "EngineAPITest_DeprecatedOptionLanguage";
+
+        @Option(help = "StringOption1 help", stability = OptionStability.STABLE, deprecated = true, deprecationMessage = "Deprecation message", category = OptionCategory.USER) //
+        static final OptionKey<String> DeprecatedOption1 = new OptionKey<>("defaultValue");
+
+        @Override
+        protected OptionDescriptors getOptionDescriptors() {
+            return new DeprecatedOptionLanguageOptionDescriptors();
+        }
+
+        @Override
+        protected Env createContext(Env env) {
+            return env;
+        }
+
+    }
+
+    @TruffleInstrument.Registration(id = DeprecatedOptionInstrument.ID, name = DeprecatedOptionInstrument.ID)
+    public static class DeprecatedOptionInstrument extends TruffleInstrument {
+
+        public static final String ID = "EngineAPITest_DeprecatedOptionInstrument";
+
+        @Option(help = "StringOption1 help", stability = OptionStability.STABLE, deprecated = true, deprecationMessage = "Deprecation message", category = OptionCategory.USER) //
+        static final OptionKey<String> DeprecatedOption1 = new OptionKey<>("defaultValue");
+
+        @Override
+        protected OptionDescriptors getOptionDescriptors() {
+            return new DeprecatedOptionInstrumentOptionDescriptors();
+        }
+
+        @Override
+        protected void onCreate(Env env) {
+        }
+
     }
 
 }

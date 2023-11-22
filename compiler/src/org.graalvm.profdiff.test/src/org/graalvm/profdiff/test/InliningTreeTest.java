@@ -28,12 +28,14 @@ import org.graalvm.profdiff.core.TreeNode;
 import org.graalvm.profdiff.core.inlining.InliningPath;
 import org.graalvm.profdiff.core.inlining.InliningTree;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
+import org.graalvm.profdiff.core.inlining.ReceiverTypeProfile;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 public class InliningTreeTest {
     /**
@@ -118,5 +120,25 @@ public class InliningTreeTest {
         inliningTree.sortInliningTree();
         List<InliningTreeNode> actual = treeInPreorder(inliningTree.getRoot());
         assertEquals(expected, actual);
+    }
+
+    @Test
+    public void inliningNodeEqualsAndHashCode() {
+        InliningTreeNode node = new InliningTreeNode("foo()", 0, true, null, false, null, false);
+        assertEquals(node, node);
+
+        List<InliningTreeNode> others = new ArrayList<>();
+        others.add(new InliningTreeNode("bar()", 0, true, null, false, null, false));
+        others.add(new InliningTreeNode("foo()", 1, true, null, false, null, false));
+        others.add(new InliningTreeNode("foo()", 0, false, null, false, null, false));
+        others.add(new InliningTreeNode("foo()", 0, true, List.of("nil"), false, null, false));
+        others.add(new InliningTreeNode("foo()", 0, true, null, true, null, false));
+        others.add(new InliningTreeNode("foo()", 0, true, null, false, new ReceiverTypeProfile(false, List.of()), false));
+        others.add(null);
+        others.forEach(other -> assertNotEquals(node, other));
+
+        InliningTreeNode node2 = new InliningTreeNode("foo()", 0, true, null, false, null, false);
+        assertEquals(node, node2);
+        assertEquals(node.hashCode(), node2.hashCode());
     }
 }

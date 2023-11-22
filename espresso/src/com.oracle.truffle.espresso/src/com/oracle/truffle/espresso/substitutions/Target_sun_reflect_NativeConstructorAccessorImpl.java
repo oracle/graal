@@ -31,7 +31,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 @EspressoSubstitutions(nameProvider = Target_sun_reflect_NativeConstructorAccessorImpl.SharedNativeConstructorAccessorImpl.class)
 public final class Target_sun_reflect_NativeConstructorAccessorImpl {
@@ -55,7 +55,7 @@ public final class Target_sun_reflect_NativeConstructorAccessorImpl {
                         @JavaType(Object[].class) StaticObject args0,
                         @Inject EspressoLanguage language,
                         @Inject Meta meta,
-                        @Cached ToEspressoNode toEspressoNode) {
+                        @Cached ToEspressoNode.DynamicToEspresso toEspressoNode) {
             Klass klass = meta.java_lang_reflect_Constructor_clazz.getObject(constructor).getMirrorKlass(meta);
             klass.safeInitialize();
             if (klass.isArray() || klass.isPrimitive() || klass.isInterface() || klass.isAbstract()) {

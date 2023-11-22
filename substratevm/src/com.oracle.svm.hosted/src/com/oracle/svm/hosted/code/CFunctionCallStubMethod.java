@@ -27,9 +27,9 @@ package com.oracle.svm.hosted.code;
 import java.util.Arrays;
 import java.util.List;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 import org.graalvm.nativeimage.c.function.CFunction;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;

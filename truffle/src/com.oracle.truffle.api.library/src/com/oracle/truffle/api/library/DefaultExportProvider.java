@@ -46,36 +46,8 @@ package com.oracle.truffle.api.library;
  * when needed.
  *
  * @since 20.0
+ * @deprecated Use {@link com.oracle.truffle.api.library.provider.DefaultExportProvider}.
  */
-public interface DefaultExportProvider {
-
-    /**
-     * Returns the {@link Class#getName() class name} of the library to be used. Uses a string to
-     * avoid triggering class loading for all libraries.
-     *
-     * @since 20.0
-     */
-    String getLibraryClassName();
-
-    /**
-     * Returns the default export class to be used for this provider.
-     *
-     * @since 20.0
-     */
-    Class<?> getDefaultExport();
-
-    /**
-     * Returns the receiver class of the default export.
-     *
-     * @since 20.0
-     */
-    Class<?> getReceiverClass();
-
-    /**
-     * Returns the priority used when multiple default exports would be applicable.
-     *
-     * @since 20.0
-     */
-    int getPriority();
-
+@Deprecated(since = "23.1")
+public interface DefaultExportProvider extends com.oracle.truffle.api.library.provider.DefaultExportProvider {
 }

@@ -91,9 +91,24 @@ public class WasmOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> Memory64 = new OptionKey<>(false);
 
+    @Option(help = "Enable support for multiple memories within a single module", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> MultiMemory = new OptionKey<>(false);
+
+    @Option(help = "Enable support for threads and atomics", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> Threads = new OptionKey<>(false);
+
+    @Option(help = "Enable support for extended const expressions", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> ExtendedConstExpressions = new OptionKey<>(false);
+
     @Option(help = "In this mode memories and tables are not initialized.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> MemoryOverheadMode = new OptionKey<>(false);
 
     @Option(help = "Make WASI random_get always return the same random numbers. For testing purpose only.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> WasiConstantRandomGet = new OptionKey<>(false);
+
+    @Option(help = "Test dir used for testing the debugger.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "<dir>") //
+    public static final OptionKey<String> DebugCompDirectory = new OptionKey<>("");
 }

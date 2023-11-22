@@ -70,6 +70,9 @@ public class Errno {
     @CConstant
     public static native int ENOMEM();
 
+    @CConstant
+    public static native int EEXIST();
+
     @CFunction
     public static native CCharPointer strerror(int errnum);
 }

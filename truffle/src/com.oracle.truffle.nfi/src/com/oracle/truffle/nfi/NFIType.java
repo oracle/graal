@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.NodeFactory;
-import com.oracle.truffle.nfi.ConvertTypeNode.OptimizedConvertTypeNode;
 
 final class NFIType {
 
-    final TypeCachedState cachedState;
+    @NeverDefault final TypeCachedState cachedState;
     final Object backendType;
 
     final Object runtimeData;
@@ -55,6 +55,7 @@ final class NFIType {
     }
 
     NFIType(TypeCachedState cachedState, Object backendType, Object runtimeData) {
+        assert cachedState != null;
         this.cachedState = cachedState;
         this.backendType = backendType;
         this.runtimeData = runtimeData;
@@ -73,12 +74,14 @@ final class NFIType {
             this.fromNativeFactory = fromNative;
         }
 
-        OptimizedConvertTypeNode createToNative() {
-            return new OptimizedConvertTypeNode(this, toNativeFactory.createNode());
+        @NeverDefault
+        ConvertTypeNode createToNative() {
+            return toNativeFactory.createNode();
         }
 
-        OptimizedConvertTypeNode createFromNative() {
-            return new OptimizedConvertTypeNode(this, fromNativeFactory.createNode());
+        @NeverDefault
+        ConvertTypeNode createFromNative() {
+            return fromNativeFactory.createNode();
         }
     }
 }

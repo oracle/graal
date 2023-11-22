@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
@@ -117,14 +118,44 @@ public final class WindowsPlatformThreads extends PlatformThreads {
         }
         // Since only an int is written, first clear word
         threadExitStatus.write(WordFactory.zero());
-        if (Process.NoTransitions.GetExitCodeThread((WinBase.HANDLE) threadHandle, (CIntPointer) threadExitStatus) == 0) {
-            return false;
-        }
-        return true;
+        return Process.NoTransitions.GetExitCodeThread((WinBase.HANDLE) threadHandle, (CIntPointer) threadExitStatus) != 0;
     }
 
     @Override
-    @SuppressWarnings("unused")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public ThreadLocalKey createUnmanagedThreadLocal() {
+        int result = Process.NoTransitions.TlsAlloc();
+        VMError.guarantee(result != Process.TLS_OUT_OF_INDEXES(), "TlsAlloc failed.");
+        return WordFactory.unsigned(result);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void deleteUnmanagedThreadLocal(ThreadLocalKey key) {
+        int dwTlsIndex = (int) key.rawValue();
+        int result = Process.NoTransitions.TlsFree(dwTlsIndex);
+        VMError.guarantee(result != 0, "TlsFree failed.");
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @SuppressWarnings("unchecked")
+    public <T extends WordBase> T getUnmanagedThreadLocalValue(ThreadLocalKey key) {
+        int dwTlsIndex = (int) key.rawValue();
+        VoidPointer result = Process.NoTransitions.TlsGetValue(dwTlsIndex);
+        assert result.isNonNull() || WinBase.GetLastError() == WinBase.ERROR_SUCCESS();
+        return (T) result;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void setUnmanagedThreadLocalValue(ThreadLocalKey key, WordBase value) {
+        int dwTlsIndex = (int) key.rawValue();
+        int result = Process.NoTransitions.TlsSetValue(dwTlsIndex, (VoidPointer) value);
+        VMError.guarantee(result != 0, "TlsSetValue failed.");
+    }
+
+    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void closeOSThreadHandle(OSThreadHandle threadHandle) {
         WinBase.CloseHandle((WinBase.HANDLE) threadHandle);

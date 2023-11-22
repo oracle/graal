@@ -414,7 +414,7 @@ public final class MachOObjectFile extends ObjectFile {
 
     public LoadCommand getLoadCommand(LoadCommandKind k) {
         if (k == LoadCommandKind.SEGMENT_64) {
-            throw new IllegalArgumentException("use getSegments() to get segments");
+            throw new IllegalArgumentException("Use getSegments() to get segments");
         }
         for (LoadCommand cmd : loadCommands) {
             if (cmd.cmdKind == k) {
@@ -919,6 +919,7 @@ public final class MachOObjectFile extends ObjectFile {
 
         LoadCommandKind cmdKind; // 'cmd' in the struct definition
 
+        @SuppressWarnings("this-escape")
         public LoadCommand(String name, LoadCommandKind k) {
             super(name);
             this.cmdKind = k;
@@ -1545,6 +1546,7 @@ public final class MachOObjectFile extends ObjectFile {
             return getImpl().isReferenceable();
         }
 
+        @SuppressWarnings("this-escape")
         public MachOSection(String name, int alignment, Segment64Command segment, SectionType t, EnumSet<SectionFlag> flags) {
             super(name, alignment);
             if (name.length() > 16) {

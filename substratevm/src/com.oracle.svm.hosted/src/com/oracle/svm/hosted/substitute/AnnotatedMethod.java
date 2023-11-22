@@ -30,8 +30,8 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
@@ -191,7 +191,7 @@ public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, Origi
 
     @Override
     public Annotation[][] getParameterAnnotations() {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

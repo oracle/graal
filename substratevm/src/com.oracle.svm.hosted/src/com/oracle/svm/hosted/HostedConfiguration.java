@@ -24,21 +24,19 @@
  */
 package com.oracle.svm.hosted;
 
-import java.lang.annotation.Annotation;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ForkJoinPool;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.options.OptionValues;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -53,6 +51,7 @@ import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.results.AbstractAnalysisResultsBuilder;
 import com.oracle.graal.pointsto.results.DefaultResultsBuilder;
 import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
+import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -70,20 +69,19 @@ import com.oracle.svm.hosted.image.LIRNativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
 import com.oracle.svm.hosted.image.NativeImageHeap;
+import com.oracle.svm.hosted.image.ObjectFileFactory;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
-import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.internal.ValueBased;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public class HostedConfiguration {
-    @SuppressWarnings("unchecked") private static final Class<? extends Annotation> VALUE_BASED_ANNOTATION = //
-                    (Class<? extends Annotation>) ReflectionUtil.lookupClass(false, "jdk.internal.ValueBased");
 
     public HostedConfiguration() {
     }
@@ -174,10 +172,10 @@ public class HostedConfiguration {
         return new SVMHost(options, classLoader, classInitializationSupport, automaticSubstitutions, platform);
     }
 
-    public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse,
-                    RuntimeConfiguration runtimeConfiguration, boolean deoptimizeAll, SnippetReflectionProvider aSnippetReflection, ForkJoinPool executor) {
+    public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse, RuntimeConfiguration runtimeConfiguration, boolean deoptimizeAll,
+                    SnippetReflectionProvider aSnippetReflection) {
 
-        return new CompileQueue(debug, featureHandler, hostedUniverse, runtimeConfiguration, deoptimizeAll, aSnippetReflection, executor);
+        return new CompileQueue(debug, featureHandler, hostedUniverse, runtimeConfiguration, deoptimizeAll, aSnippetReflection);
     }
 
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
@@ -269,7 +267,7 @@ public class HostedConfiguration {
      * Types that must be immutable cannot have a monitor field.
      */
     protected static void maybeSetMonitorField(HostedUniverse hUniverse, Set<AnalysisType> immutableTypes, AnalysisType type) {
-        if (!type.isArray() && !immutableTypes.contains(type) && !type.isAnnotationPresent(VALUE_BASED_ANNOTATION)) {
+        if (!type.isArray() && !immutableTypes.contains(type) && !type.isAnnotationPresent(ValueBased.class)) {
             setMonitorField(hUniverse, type);
         }
     }
@@ -284,6 +282,15 @@ public class HostedConfiguration {
             @Override
             public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform targetPlatform, Path tempDir) {
                 return new LIRNativeImageCodeCache(compileQueue.getCompilationResults(), heap);
+            }
+        };
+    }
+
+    public ObjectFileFactory newObjectFileFactory() {
+        return new ObjectFileFactory() {
+            @Override
+            public ObjectFile newObjectFile(int pageSize, Path tempDir, BigBang bb) {
+                return ObjectFile.getNativeObjectFile(pageSize);
             }
         };
     }

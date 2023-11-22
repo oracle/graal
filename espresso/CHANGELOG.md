@@ -1,8 +1,20 @@
 # Espresso Changelog
 
+## Version 23.1.0
+### User-visible changes
+* Add `java.EnablePreview` option (`--enable-preview` command line option).
+* Support JDK 21.
+  Note that virtual threads are implemented as bound thread, not through continuations.
+* Improved Management API implementation.
+* Added support for Language sharing.
+
 ## Version 23.0.0
 ### User-visible changes
 * The Truffle InteropLibrary has/getMetaParents API is now fully implemented.
+* Support JDK 20.
+* Support foreign `Instant`, `TimeZone`, `Time`, `Date`, `Duration` when calling espresso via interop.
+* Support calling overloaded and varargs methods through interop.
+* Improve interop with foreign exceptions. A stack trace is now available and type mapping can be used to explicitly map exceptions.
 
 ## Version 22.3.0
 ### User-visible changes

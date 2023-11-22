@@ -129,7 +129,7 @@ abstract class HostMethodDesc {
                 return false;
             }
             for (Class<?> unscopedType : UNSCOPED_TYPES) {
-                if (c.isAssignableFrom(unscopedType)) {
+                if (unscopedType.isAssignableFrom(c)) {
                     return false;
                 }
             }
@@ -199,21 +199,21 @@ abstract class HostMethodDesc {
             return getReflectionMethod() instanceof Constructor<?>;
         }
 
-        static SingleMethod unreflect(Method reflectionMethod, boolean scoped, boolean onlyVisibleFromJniName) {
+        static SingleMethod unreflect(MethodHandles.Lookup methodLookup, Method reflectionMethod, boolean scoped, boolean onlyVisibleFromJniName) {
             assert isAccessible(reflectionMethod);
             if (TruffleOptions.AOT || isCallerSensitive(reflectionMethod)) {
                 return new MethodReflectImpl(reflectionMethod, scoped, onlyVisibleFromJniName);
             } else {
-                return new MethodMHImpl(reflectionMethod, scoped, onlyVisibleFromJniName);
+                return new MethodMHImpl(methodLookup, reflectionMethod, scoped, onlyVisibleFromJniName);
             }
         }
 
-        static SingleMethod unreflect(Constructor<?> reflectionConstructor, boolean scoped) {
+        static SingleMethod unreflect(MethodHandles.Lookup methodLookup, Constructor<?> reflectionConstructor, boolean scoped) {
             assert isAccessible(reflectionConstructor);
             if (TruffleOptions.AOT || isCallerSensitive(reflectionConstructor)) {
                 return new ConstructorReflectImpl(reflectionConstructor, scoped);
             } else {
-                return new ConstructorMHImpl(reflectionConstructor, scoped);
+                return new ConstructorMHImpl(methodLookup, reflectionConstructor, scoped);
             }
         }
 
@@ -259,6 +259,15 @@ abstract class HostMethodDesc {
                 return GuestToHostRootNode.guestToHostCall(node, target, hostContext, receiver, this, arguments);
             }
 
+            /**
+             * Checks for the JDK-8304585: Duplicated InvocationTargetException when the invocation
+             * of a caller-sensitive method fails.
+             */
+            @TruffleBoundary
+            static boolean checkForDuplicateInvocationTargetException(Executable executable) {
+                return Runtime.version().feature() >= 19 && isCallerSensitive(executable);
+            }
+
         }
 
         private static final class MethodReflectImpl extends ReflectBase {
@@ -280,7 +289,13 @@ abstract class HostMethodDesc {
                 try {
                     return reflectInvoke(reflectionMethod, receiver, arguments);
                 } catch (InvocationTargetException e) {
-                    throw e.getCause();
+                    Throwable cause = e.getCause();
+                    if (cause instanceof InvocationTargetException && checkForDuplicateInvocationTargetException(reflectionMethod)) {
+                        // JDK-8304585: Duplicated InvocationTargetException when the invocation of
+                        // a caller-sensitive method fails.
+                        cause = cause.getCause();
+                    }
+                    throw cause;
                 }
             }
 
@@ -315,7 +330,13 @@ abstract class HostMethodDesc {
                 try {
                     return reflectNewInstance(reflectionConstructor, arguments);
                 } catch (InvocationTargetException e) {
-                    throw e.getCause();
+                    Throwable cause = e.getCause();
+                    if (cause instanceof InvocationTargetException && checkForDuplicateInvocationTargetException(reflectionConstructor)) {
+                        // JDK-8304585: Duplicated InvocationTargetException when the invocation of
+                        // a caller-sensitive method fails.
+                        cause = cause.getCause();
+                    }
+                    throw cause;
                 }
             }
 
@@ -389,10 +410,12 @@ abstract class HostMethodDesc {
         }
 
         private static final class MethodMHImpl extends MHBase {
+            private final MethodHandles.Lookup methodLookup;
             private final Method reflectionMethod;
 
-            MethodMHImpl(Method reflectionMethod, boolean scoped, boolean onlyVisibleFromJniName) {
+            MethodMHImpl(MethodHandles.Lookup methodLookup, Method reflectionMethod, boolean scoped, boolean onlyVisibleFromJniName) {
                 super(reflectionMethod, scoped, onlyVisibleFromJniName);
+                this.methodLookup = methodLookup;
                 this.reflectionMethod = reflectionMethod;
             }
 
@@ -412,7 +435,7 @@ abstract class HostMethodDesc {
             protected MethodHandle makeMethodHandle() {
                 try {
                     Method m = reflectionMethod;
-                    final MethodHandle methodHandle = MethodHandles.publicLookup().unreflect(m);
+                    final MethodHandle methodHandle = methodLookup.unreflect(m);
                     return adaptSignature(methodHandle, Modifier.isStatic(m.getModifiers()), m.getParameterCount());
                 } catch (IllegalAccessException e) {
                     throw new IllegalStateException(e);
@@ -421,10 +444,12 @@ abstract class HostMethodDesc {
         }
 
         private static final class ConstructorMHImpl extends MHBase {
+            private final MethodHandles.Lookup methodLookup;
             private final Constructor<?> reflectionConstructor;
 
-            ConstructorMHImpl(Constructor<?> reflectionConstructor, boolean scoped) {
+            ConstructorMHImpl(MethodHandles.Lookup methodLookup, Constructor<?> reflectionConstructor, boolean scoped) {
                 super(reflectionConstructor, scoped, false);
+                this.methodLookup = methodLookup;
                 this.reflectionConstructor = reflectionConstructor;
             }
 
@@ -439,7 +464,7 @@ abstract class HostMethodDesc {
             protected MethodHandle makeMethodHandle() {
                 CompilerAsserts.neverPartOfCompilation();
                 try {
-                    final MethodHandle methodHandle = MethodHandles.publicLookup().unreflectConstructor(reflectionConstructor);
+                    final MethodHandle methodHandle = methodLookup.unreflectConstructor(reflectionConstructor);
                     return adaptSignature(methodHandle, true, getParameterCount());
                 } catch (IllegalAccessException e) {
                     throw new IllegalStateException(e);

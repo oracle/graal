@@ -32,8 +32,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.graalvm.compiler.bytecode.BridgeMethodUtils;
-import org.graalvm.compiler.phases.util.Providers;
+import jdk.graal.compiler.bytecode.BridgeMethodUtils;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.constant.CEnumConstant;
@@ -59,6 +59,7 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.BuiltinDirectives;
 import com.oracle.svm.hosted.c.NativeCodeContext;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -155,7 +156,7 @@ public class InfoTreeBuilder {
         }
         List<AccessorInfo> accessorInfos = new ArrayList<>();
 
-        for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
+        for (ResolvedJavaMethod method : type.getDeclaredMethods(false)) {
             AccessorKind accessorKind = returnsDeclaringClass(method) ? AccessorKind.ADDRESS : getAccessorKind(method);
             boolean isIndexed = getParameterCount(method) > (accessorKind == AccessorKind.SETTER ? 1 : 0);
             AccessorInfo accessorInfo = new AccessorInfo(method, accessorKind, isIndexed, false, false);
@@ -179,7 +180,7 @@ public class InfoTreeBuilder {
         }
         List<AccessorInfo> accessorInfos = new ArrayList<>();
 
-        for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
+        for (ResolvedJavaMethod method : type.getDeclaredMethods(false)) {
             AccessorKind accessorKind = returnsDeclaringClass(method) ? AccessorKind.ADDRESS : getAccessorKind(method);
             boolean isIndexed = getParameterCount(method) > (accessorKind == AccessorKind.SETTER ? 1 : 0);
             AccessorInfo accessorInfo = new AccessorInfo(method, accessorKind, isIndexed, false, false);
@@ -222,7 +223,7 @@ public class InfoTreeBuilder {
         Map<String, List<AccessorInfo>> bitfieldAccessorInfos = new TreeMap<>();
         List<AccessorInfo> structAccessorInfos = new ArrayList<>();
 
-        for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
+        for (ResolvedJavaMethod method : type.getDeclaredMethods(false)) {
             final AccessorInfo accessorInfo;
             final String fieldName;
 
@@ -297,7 +298,7 @@ public class InfoTreeBuilder {
         Map<String, List<AccessorInfo>> fieldAccessorInfos = new TreeMap<>();
         List<AccessorInfo> structAccessorInfos = new ArrayList<>();
 
-        for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
+        for (ResolvedJavaMethod method : type.getDeclaredMethods(false)) {
             final AccessorInfo accessorInfo;
             final String fieldName;
 
@@ -345,10 +346,38 @@ public class InfoTreeBuilder {
             StructFieldInfo fieldInfo = new StructFieldInfo(entry.getKey(), elementKind(entry.getValue()));
             fieldInfo.adoptChildren(entry.getValue());
             structInfo.adoptChild(fieldInfo);
+            verifyRawStructFieldAccessors(fieldInfo);
         }
 
         nativeCodeInfo.adoptChild(structInfo);
         nativeLibs.registerElementInfo(type, structInfo);
+    }
+
+    private void verifyRawStructFieldAccessors(StructFieldInfo fieldInfo) {
+        boolean hasGetter = false;
+        boolean hasSetter = false;
+        for (ElementInfo child : fieldInfo.getChildren()) {
+            if (child instanceof AccessorInfo) {
+                AccessorKind kind = ((AccessorInfo) child).getAccessorKind();
+                if (kind == AccessorKind.GETTER) {
+                    hasGetter = true;
+                } else if (kind == AccessorKind.SETTER) {
+                    hasSetter = true;
+                } else if (kind == AccessorKind.ADDRESS || kind == AccessorKind.OFFSET) {
+                    hasGetter = true;
+                    hasSetter = true;
+                } else {
+                    throw VMError.shouldNotReachHere("Unexpected accessor kind: " + kind);
+                }
+            }
+        }
+
+        if (!hasSetter) {
+            nativeLibs.addError(String.format("%s.%s does not have a setter. @RawStructure fields need both a getter and a setter.", fieldInfo.getParent().getName(), fieldInfo.getName()));
+        }
+        if (!hasGetter) {
+            nativeLibs.addError(String.format("%s.%s does not have a getter. @RawStructure fields need both a getter and a setter.", fieldInfo.getParent().getName(), fieldInfo.getName()));
+        }
     }
 
     private boolean hasLocationIdentityParameter(ResolvedJavaMethod method) {
@@ -652,7 +681,7 @@ public class InfoTreeBuilder {
                 createEnumConstantInfo(enumInfo, field);
             }
         }
-        for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
+        for (ResolvedJavaMethod method : type.getDeclaredMethods(false)) {
             if (getMethodAnnotation(method, CEnumValue.class) != null) {
                 createEnumValueInfo(enumInfo, method);
             }

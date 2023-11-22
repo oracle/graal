@@ -41,12 +41,12 @@ import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.compiler.options.EnumMultiOptionKey;
-import org.graalvm.compiler.options.OptionDescriptor;
-import org.graalvm.compiler.options.OptionDescriptors;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionsParser;
+import jdk.graal.compiler.options.EnumMultiOptionKey;
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionDescriptors;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionType;
+import jdk.graal.compiler.options.OptionsParser;
 
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.StringUtil;
@@ -276,18 +276,8 @@ public class CommonOptionParser {
                         selectedOptionTypes.add(OptionType.valueOf(enumString));
                     }
                 } catch (IllegalArgumentException e) {
-                    StringBuilder sb = new StringBuilder();
-                    boolean firstValue = true;
-                    for (OptionType ot : OptionType.values()) {
-                        if (firstValue) {
-                            firstValue = false;
-                        } else {
-                            sb.append(", ");
-                        }
-                        sb.append(ot.name());
-                    }
-                    String possibleValues = sb.toString();
-                    return OptionParseResult.error("Invalid value for option " + current + ". '" + enumString + "' is not one of: " + possibleValues);
+                    String possibleValues = StringUtil.joinSingleQuoted(OptionType.values());
+                    return OptionParseResult.error("Invalid value for option " + current + ". '" + enumString + "' is not one of " + possibleValues + ".");
                 }
             }
             return OptionParseResult.printFlags(selectedOptionTypes);

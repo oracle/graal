@@ -77,7 +77,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 @EspressoSubstitutions
 public final class Target_java_lang_invoke_MethodHandleNatives {
@@ -657,6 +657,9 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         if (refKind == REF_invokeInterface) {
             if (target.isPrivate() || target.isFinalFlagSet() || target.getDeclaringKlass().isFinalFlagSet()) {
                 res |= MN_IS_METHOD | (REF_invokeSpecial << MN_REFERENCE_KIND_SHIFT);
+            } else if (target.getDeclaringKlass().isJavaLangObject()) {
+                assert target.getVTableIndex() >= 0;
+                res |= MN_IS_METHOD | (REF_invokeVirtual << MN_REFERENCE_KIND_SHIFT);
             } else {
                 assert target.getITableIndex() >= 0;
                 res |= MN_IS_METHOD | (REF_invokeInterface << MN_REFERENCE_KIND_SHIFT);

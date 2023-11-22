@@ -24,13 +24,16 @@
  */
 package com.oracle.graal.pointsto.phases;
 
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
+import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -38,21 +41,43 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * Provides the policy which methods are inlined by {@link InlineBeforeAnalysis}. If
  * {@link #shouldInlineInvoke} returns true for an invocation, the graph decoding goes into callees
  * and starts decoding. A new {@link #openCalleeScope scope is opened} for each callee so that the
- * policy implementation can track each inlined method. As long as {@link #processNode} returns
- * true, inlining is continued. If {@link #processNode} returns false, the inlining is
- * {@link #abortCalleeScope aborted}. If {@link #processNode} returns true for all nodes of the
- * callee, the inlining is {@link #commitCalleeScope committed}.
+ * policy implementation can track each inlined method. As long as
+ * {@link AbstractPolicyScope#processNode} returns true, inlining is continued. If
+ * {@link AbstractPolicyScope#processNode} returns false, the inlining is
+ * {@link AbstractPolicyScope#abortCalleeScope aborted}. If {@link AbstractPolicyScope#processNode}
+ * returns true for all nodes of the callee, the inlining is
+ * {@link AbstractPolicyScope#commitCalleeScope committed}.
  */
 @SuppressWarnings("unused")
-public class InlineBeforeAnalysisPolicy<S extends InlineBeforeAnalysisPolicy.Scope> {
-
-    public static final InlineBeforeAnalysisPolicy<Scope> NO_INLINING = new InlineBeforeAnalysisPolicy<>(new NodePlugin[0]);
+public abstract class InlineBeforeAnalysisPolicy {
 
     /**
      * A place for policy implementations to store per-callee information like the number of nodes
      * seen in the callee.
      */
-    public interface Scope {
+    public abstract static class AbstractPolicyScope {
+        public final int inliningDepth;
+
+        protected AbstractPolicyScope(int inliningDepth) {
+            this.inliningDepth = inliningDepth;
+        }
+
+        public abstract boolean allowAbort();
+
+        public abstract void commitCalleeScope(AbstractPolicyScope callee);
+
+        public abstract void abortCalleeScope(AbstractPolicyScope callee);
+
+        /**
+         * Invoked for each node of the callee during graph decoding. If the method returns true,
+         * inlining is continued. If the method returns false, inlining is aborted.
+         *
+         * This method is called during graph decoding. The provided node itself is already fully
+         * decoded and canonicalized, i.e., all properties and predecessors of the node are
+         * available. But usages have not been decoded yet, so the implementation must not base any
+         * decision on the current list of usages. The list of usages is often but not always empty.
+         */
+        public abstract boolean processNode(AnalysisMetaAccess metaAccess, ResolvedJavaMethod method, Node node);
     }
 
     protected final NodePlugin[] nodePlugins;
@@ -61,44 +86,67 @@ public class InlineBeforeAnalysisPolicy<S extends InlineBeforeAnalysisPolicy.Sco
         this.nodePlugins = nodePlugins;
     }
 
-    protected boolean shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+    protected abstract boolean shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args);
+
+    protected abstract InlineInfo createInvokeInfo(ResolvedJavaMethod method);
+
+    protected abstract boolean needsExplicitExceptions();
+
+    protected abstract boolean tryInvocationPlugins();
+
+    protected abstract FixedWithNextNode processInvokeArgs(ResolvedJavaMethod targetMethod, FixedWithNextNode insertionPoint, ValueNode[] arguments, NodeSourcePosition sourcePosition);
+
+    protected abstract AbstractPolicyScope createRootScope();
+
+    protected abstract AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMetaAccess metaAccess,
+                    ResolvedJavaMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle);
+
+    /** @see InlineBeforeAnalysisGraphDecoder#shouldOmitIntermediateMethodInStates */
+    protected boolean shouldOmitIntermediateMethodInState(ResolvedJavaMethod method) {
         return false;
     }
 
-    protected boolean tryInvocationPlugins() {
-        /*
-         * If an invocation plugin was unable to be used during bytecode parsing, then it will be
-         * retried during graph decoding. In the default case this should not happen.
-         */
-        return false;
-    }
+    public static final InlineBeforeAnalysisPolicy NO_INLINING = new InlineBeforeAnalysisPolicy(new NodePlugin[0]) {
 
-    protected S createRootScope() {
-        return null;
-    }
+        @Override
+        protected boolean shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+            return false;
+        }
 
-    protected S openCalleeScope(S outer) {
-        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
-    }
+        @Override
+        protected InlineInfo createInvokeInfo(ResolvedJavaMethod method) {
+            throw AnalysisError.shouldNotReachHere("NO_INLINING policy should not try to inline");
+        }
 
-    protected void commitCalleeScope(S outer, S callee) {
-        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
-    }
+        @Override
+        protected boolean needsExplicitExceptions() {
+            return true;
+        }
 
-    protected void abortCalleeScope(S outer, S callee) {
-        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
-    }
+        @Override
+        protected boolean tryInvocationPlugins() {
+            /*
+             * If an invocation plugin was unable to be used during bytecode parsing, then it will
+             * be retried during graph decoding. In the default case this should not happen.
+             */
+            return false;
+        }
 
-    /**
-     * Invoked for each node of the callee during graph decoding. If the method returns true,
-     * inlining is continued. If the method returns false, inlining is aborted.
-     * 
-     * This method is called during graph decoding. The provided node itself is already fully
-     * decoded and canonicalized, i.e., all properties and predecessors of the node are available.
-     * But usages have not been decoded yet, so the implementation must not base any decision on the
-     * current list of usages. The list of usages is often but not always empty.
-     */
-    protected boolean processNode(AnalysisMetaAccess metaAccess, ResolvedJavaMethod method, S scope, Node node) {
-        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
-    }
+        @Override
+        protected FixedWithNextNode processInvokeArgs(ResolvedJavaMethod targetMethod, FixedWithNextNode insertionPoint, ValueNode[] arguments, NodeSourcePosition sourcePosition) {
+            throw AnalysisError.shouldNotReachHere("NO_INLINING policy should not try to inline");
+        }
+
+        @Override
+        protected AbstractPolicyScope createRootScope() {
+            // No inlining is performed; nothing to keep track of
+            return null;
+        }
+
+        @Override
+        protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMetaAccess metaAccess,
+                        ResolvedJavaMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle) {
+            throw AnalysisError.shouldNotReachHere("NO_INLINING policy should not try to inline");
+        }
+    };
 }

@@ -25,7 +25,6 @@
 package com.oracle.svm.hosted.ameta;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.UninitializedStaticFieldValueReader;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability.ValueAvailability;
@@ -39,6 +38,13 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 
 public interface ReadableJavaField extends ResolvedJavaField {
 
+    static boolean isValueAvailable(AnalysisField field) {
+        if (field.wrapped instanceof ReadableJavaField readableField) {
+            return readableField.isValueAvailable();
+        }
+        return field.isValueAvailable();
+    }
+
     static JavaConstant readFieldValue(MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport, ResolvedJavaField field, JavaConstant receiver) {
         assert !(field instanceof AnalysisField) && !(field instanceof HostedField) : "must have been unwrapped";
 
@@ -51,7 +57,7 @@ public interface ReadableJavaField extends ResolvedJavaField {
             assert readableField.isValueAvailable() : "Field " + readableField.format("%H.%n") + " value not available for reading.";
             return readableField.readValue(metaAccess, classInitializationSupport, receiver);
 
-        } else if (classInitializationSupport.shouldInitializeAtRuntime(field.getDeclaringClass())) {
+        } else if (!classInitializationSupport.maybeInitializeAtBuildTime(field.getDeclaringClass())) {
             /*
              * The class is initialized at image run time. We must not use any field value from the
              * image builder VM, even if the class is already initialized there. We need to return
@@ -62,7 +68,17 @@ public interface ReadableJavaField extends ResolvedJavaField {
              * is initialized in the hosting HotSpot VM can still be initialized at run time.
              */
             if (field.isStatic()) {
-                return UninitializedStaticFieldValueReader.readUninitializedStaticValue(field, value -> GraalAccess.getOriginalSnippetReflection().forObject(value));
+                /*
+                 * Use the value from the constant pool attribute for the static field. That is the
+                 * value before the class initializer is executed.
+                 */
+                JavaConstant constantValue = field.getConstantValue();
+                if (constantValue != null) {
+                    return constantValue;
+                } else {
+                    return JavaConstant.defaultForKind(field.getJavaKind());
+                }
+
             } else {
                 /*
                  * Classes that are initialized at run time must not have instances in the image

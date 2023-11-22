@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,6 +44,7 @@ import com.oracle.truffle.espresso.vm.VM;
 @NodeInfo(language = EspressoLanguage.NAME, description = "The abstract base node for all " + EspressoLanguage.IMPLEMENTATION_NAME + " nodes")
 public abstract class EspressoNode extends Node implements ContextAccess {
     @Override
+    @Idempotent // NOTE: this only works as long as no EspressoNode is shared
     public final EspressoContext getContext() {
         return EspressoContext.get(this);
     }

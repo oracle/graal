@@ -22,13 +22,13 @@ form.
 There are several flags that control how branch instrumentation works. These flags are
 specified as system properties:
 
-- `--engine.InstrumentBranches` - controls whether instrumentation is on (`true`
+- `--compiler.InstrumentBranches` - controls whether instrumentation is on (`true`
   or `false`, default is `false`)
-- `--engine.InstrumentFilter` - filters methods in which instrumentation
+- `--compiler.InstrumentFilter` - filters methods in which instrumentation
   should be done (method filter syntax, essentially `<package>.<class>.<method>[.<signature>]`)
-- `--engine.InstrumentationTableSize` - controls the maximum number of
+- `--compiler.InstrumentationTableSize` - controls the maximum number of
   instrumented locations
-- `--engine.InstrumentBranchesPerInlineSite` - controls whether instrumentation
+- `--compiler.InstrumentBranchesPerInlineSite` - controls whether instrumentation
   provides separate branch profiles for each guest language function/compilation unit
   (default is `false`).
 
@@ -43,8 +43,8 @@ and instruments all the `if`-statements:
 
 ```shell
 mx --jdk jvmci sl --engine.BackgroundCompilation=false \
-  --engine.InstrumentBranches \
-  '--engine.InstrumentFilter=*.*.*' \
+  --compiler.InstrumentBranches \
+  '--compiler.InstrumentFilter=*.*.*' \
   ../truffle/truffle/com.oracle.truffle.sl.test/src/tests/LoopObjectDyn.sl
 ```
 
@@ -74,9 +74,9 @@ per-inline-site flag to `true`, and change the filter to focus only on
 
 ```shell
 mx --jdk jvmci sl -Dgraal.TruffleBackgroundCompilation=false \
-  --engine.InstrumentBranchesPerInlineSite \
-  --engine.InstrumentBranches \
-  '--engine.InstrumentFilter=*.SLPropertyCacheNode.*' \
+  --compiler.InstrumentBranchesPerInlineSite \
+  --compiler.InstrumentBranches \
+  '--compiler.InstrumentFilter=*.SLPropertyCacheNode.*' \
   ../truffle/truffle/com.oracle.truffle.sl.test/src/tests/LoopObjectDyn.sl
 ```
 
@@ -105,7 +105,7 @@ com.oracle.truffle.sl.nodes.expression.SLLessThanNodeGen.executeBoolean_long_lon
 com.oracle.truffle.sl.nodes.expression.SLLessThanNodeGen.executeBoolean(SLLessThanNodeGen.java:33) [bci: 14]
 com.oracle.truffle.sl.nodes.controlflow.SLWhileRepeatingNode.evaluateCondition(SLWhileRepeatingNode.java:133) [bci: 5]
 com.oracle.truffle.sl.nodes.controlflow.SLWhileRepeatingNode.executeRepeating(SLWhileRepeatingNode.java:102) [bci: 2]
-org.graalvm.compiler.truffle.OptimizedOSRLoopNode.executeLoop(OptimizedOSRLoopNode.java:113) [bci: 61]
+com.oracle.truffle.runtime.OptimizedOSRLoopNode.executeLoop(OptimizedOSRLoopNode.java:113) [bci: 61]
 com.oracle.truffle.sl.nodes.controlflow.SLWhileNode.executeVoid(SLWhileNode.java:69) [bci: 5]
 com.oracle.truffle.sl.nodes.controlflow.SLBlockNode.executeVoid(SLBlockNode.java:84) [bci: 37]
 com.oracle.truffle.sl.nodes.controlflow.SLFunctionBodyNode.executeGeneric(SLFunctionBodyNode.java:81) [bci: 5]
@@ -133,13 +133,13 @@ The Truffle Call Boundary Instrumentation tool instruments callsites to methods 
 have a `TruffleCallBoundary` annotation, and counts the calls to those methods. It is
 controlled by the following set of flags:
 
-- `--engine.InstrumentBoundaries` - controls whether instrumentation is on (`true`
+- `--compiler.InstrumentBoundaries` - controls whether instrumentation is on (`true`
   or `false`, default is `false`)
-- `--engine.InstrumentFilter` - filters methods in which instrumentation
+- `--compiler.InstrumentFilter` - filters methods in which instrumentation
   should be done (method filter syntax, essentially `<package>.<class>.<method>[.<signature>]`)
-- `--engine.InstrumentationTableSize` - controls the maximum number of
+- `--compiler.InstrumentationTableSize` - controls the maximum number of
   instrumented locations
-- `--engine.InstrumentBoundariesPerInlineSite` - controls whether instrumentation
+- `--compiler.InstrumentBoundariesPerInlineSite` - controls whether instrumentation
   is done per a declaration of an Truffle boundary call (`false`), or per every call
   stack where that callsite was inlined (`true`)
 

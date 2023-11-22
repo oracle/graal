@@ -88,6 +88,7 @@ public class RemoteSLTest {
         HostPolyglotDispatch dispatch = new HostPolyglotDispatch();
         dispatch.setConstructors(previousPolyglot.getAPIAccess());
         dispatch.setNext(previousPolyglot);
+        dispatch.setIO(previousPolyglot.getIO());
         setPolyglotImpl(dispatch);
     }
 

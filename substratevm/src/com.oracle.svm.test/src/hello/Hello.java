@@ -30,6 +30,7 @@ package hello;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.test.debug.CStructTests;
 
 public class Hello {
     public abstract static class Greeter {
@@ -70,32 +71,6 @@ public class Hello {
         public void greet() {
             System.out.println("Hello, " + name + "!");
         }
-    }
-
-    public static void main(String[] args) {
-        Greeter greeter = Greeter.greeter(args);
-        greeter.greet();
-        /*-
-         * Perform the following call chains
-         *
-         * main --no-inline--> noInlineFoo --inline--> inlineMee --inline--> inlineMoo
-         * main --inline--> inlineCallChain --inline--> inlineMee --inline--> inlineMoo
-         * main --no-inline--> noInlineThis --inline--> inlineIs --inline--> inlineA --no-inline--> noInlineTest
-         * main --inline--> inlineFrom --no-inline--> noInlineHere --inline--> inlineMixTo --no-inline--+
-         *                                                 ^                                            |
-         *                                                 +-------------(rec call n-times)-------------+
-         * main --inline--> inlineFrom --inline--> inlineHere --inline--> inlineTo --inline--+
-         *                                             ^                                     |
-         *                                             +---------(rec call n-times)----------+
-         */
-        noInlineFoo();
-        inlineCallChain();
-        noInlineThis();
-        inlineFrom();
-        noInlineManyArgs(0, 1, 2, 3, true, 5, 6, 7, 8, 9,
-                        0.0F, 1.125F, 2.25F, 3.375F, 4.5F, 5.625F, 6.75F, 7.875F, 9.0F, 10.125D, false, 12.375F);
-        noInlinePassConstants();
-        System.exit(0);
     }
 
     @NeverInline("For testing purposes")
@@ -183,12 +158,12 @@ public class Hello {
     }
 
     @NeverInline("For testing purposes")
-    private static void noInlineManyArgs(int i0, int i1, int i2, int i3, boolean b4, int i5, int i6, long l7, int i8, long l9,
+    private static void noInlineManyArgs(int i0, byte b1, short s2, char c3, boolean b4, int i5, int i6, long l7, int i8, long l9,
                     float f0, float f1, float f2, float f3, double d4, float f5, float f6, float f7, float f8, double d9, boolean b10, float f11) {
         System.out.println("i0 = " + i0);
-        System.out.println("i1 = " + i1);
-        System.out.println("i2 = " + i2);
-        System.out.println("i3 = " + i3);
+        System.out.println("b1 = " + b1);
+        System.out.println("s2 = " + s2);
+        System.out.println("c3 = " + c3);
         System.out.println("b4 = " + b4);
         System.out.println("i5 = " + i5);
         System.out.println("i6 = " + i6);
@@ -229,4 +204,46 @@ public class Hello {
         System.out.println(String.format("q = %g\n", q));
         System.out.println(String.format("t = %s\n", t));
     }
+
+    private static java.util.function.Supplier<String> lambda = () -> {
+        StringBuilder sb = new StringBuilder("lambda");
+        sb.append(System.getProperty("never_optimize_away", "Text"));
+        return sb.toString();
+    };
+
+    /* Add new methods above main */
+    public static void main(String[] args) {
+        Greeter greeter = Greeter.greeter(args);
+        greeter.greet();
+        /*-
+         * Perform the following call chains
+         *
+         * main --no-inline--> noInlineFoo --inline--> inlineMee --inline--> inlineMoo
+         * main --inline--> inlineCallChain --inline--> inlineMee --inline--> inlineMoo
+         * main --no-inline--> noInlineThis --inline--> inlineIs --inline--> inlineA --no-inline--> noInlineTest
+         * main --inline--> inlineFrom --no-inline--> noInlineHere --inline--> inlineMixTo --no-inline--+
+         *                                                 ^                                            |
+         *                                                 +-------------(rec call n-times)-------------+
+         * main --inline--> inlineFrom --inline--> inlineHere --inline--> inlineTo --inline--+
+         *                                             ^                                     |
+         *                                             +---------(rec call n-times)----------+
+         */
+        noInlineFoo();
+        inlineCallChain();
+        noInlineThis();
+        inlineFrom();
+        noInlineManyArgs(0, (byte) 1, (short) 2, '3', true, 5, 6, 7, 8, 9,
+                        0.0F, 1.125F, 2.25F, 3.375F, 4.5F, 5.625F, 6.75F, 7.875F, 9.0F, 10.125D, false, 12.375F);
+        noInlinePassConstants();
+        System.out.println(lambda.get());
+        // create and manipulate some foreign types
+        CStructTests tests = new CStructTests();
+        tests.composite();
+        tests.weird();
+        System.exit(0);
+    }
+    /*
+     * Keep main the last method in the file and add new methods right above it to avoid updating
+     * all line numbers in testhello.py each time new methods are added
+     */
 }

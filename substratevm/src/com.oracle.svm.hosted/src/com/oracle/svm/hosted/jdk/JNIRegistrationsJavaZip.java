@@ -46,10 +46,10 @@ class JNIRegistrationsJavaZip extends JNIRegistrationUtil implements InternalFea
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
-        a.registerReachabilityHandler(JNIRegistrationsJavaZip::registerJDK11InflaterInitIDs, method(a, "java.util.zip.Inflater", "initIDs"));
+        a.registerReachabilityHandler(JNIRegistrationsJavaZip::registerInflaterInitIDs, method(a, "java.util.zip.Inflater", "initIDs"));
     }
 
-    private static void registerJDK11InflaterInitIDs(DuringAnalysisAccess a) {
+    private static void registerInflaterInitIDs(DuringAnalysisAccess a) {
         RuntimeJNIAccess.register(fields(a, "java.util.zip.Inflater", "inputConsumed", "outputConsumed"));
     }
 }

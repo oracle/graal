@@ -31,6 +31,7 @@ import java.util.Objects;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Pair;
 
 /**
  * An experiment consisting of all graal-compiled methods and metadata. Additionally, this class
@@ -56,12 +57,13 @@ public class Experiment {
 
     /**
      * The kind of compilation of this experiment, i.e., whether it was compiled just-in-time or
-     * ahead-of-time.
+     * ahead-of-time. The field is {@code null} when it is unknown whether it is JIT or AOT. This
+     * information is unknown when we are reporting a single experiment without profiles.
      */
     private final CompilationKind compilationKind;
 
     /**
-     * The execution ID of this experiment.
+     * The execution ID of this experiment. {@code null} if unknown.
      */
     private final String executionId;
 
@@ -146,7 +148,7 @@ public class Experiment {
     }
 
     /**
-     * Gets the execution ID.
+     * Gets the execution ID or {@code null} if unknown.
      */
     public String getExecutionId() {
         return executionId;
@@ -298,15 +300,17 @@ public class Experiment {
      * Creates and adds a compilation unit to this experiment. Creates a {@link Method} (if
      * necessary) and adds the compilation unit to the method.
      *
-     * @param methodName the name of the root method of the compilation unit
+     * @param multiMethodName the name of the root method of the compilation unit (including a
+     *            multi-method key if applicable)
      * @param compilationId compilation ID of the compilation unit
      * @param period the number of cycles spent executing the method (collected by proftool)
      * @param treeLoader a loader of the compilation unit's optimization and inlining tree
      * @return the added compilation unit
      */
-    public CompilationUnit addCompilationUnit(String methodName, String compilationId, long period, CompilationUnit.TreeLoader treeLoader) {
+    public CompilationUnit addCompilationUnit(String multiMethodName, String compilationId, long period, CompilationUnit.TreeLoader treeLoader) {
         graalPeriod = null;
-        return getMethodOrCreate(methodName).addCompilationUnit(compilationId, period, treeLoader);
+        Pair<String, String> splitName = Method.splitMultiMethodName(multiMethodName);
+        return getMethodOrCreate(splitName.getLeft()).addCompilationUnit(compilationId, period, treeLoader, splitName.getRight());
     }
 
     /**
@@ -319,19 +323,20 @@ public class Experiment {
 
             @Override
             public boolean hasNext() {
-                return methodIterator.hasNext() || (compilationUnitIterator != null && compilationUnitIterator.hasNext());
+                skipMethodsWithoutCompilationUnits();
+                return compilationUnitIterator != null && compilationUnitIterator.hasNext();
             }
 
             @Override
             public CompilationUnit next() {
-                while (compilationUnitIterator == null || !compilationUnitIterator.hasNext()) {
-                    Method nextMethod = methodIterator.next();
-                    if (nextMethod == null) {
-                        return null;
-                    }
-                    compilationUnitIterator = nextMethod.getCompilationUnits().iterator();
-                }
+                skipMethodsWithoutCompilationUnits();
                 return compilationUnitIterator.next();
+            }
+
+            private void skipMethodsWithoutCompilationUnits() {
+                while (methodIterator.hasNext() && (compilationUnitIterator == null || !compilationUnitIterator.hasNext())) {
+                    compilationUnitIterator = methodIterator.next().getCompilationUnits().iterator();
+                }
             }
         };
     }

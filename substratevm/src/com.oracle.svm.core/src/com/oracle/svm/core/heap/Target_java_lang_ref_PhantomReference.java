@@ -29,13 +29,10 @@ import java.lang.ref.PhantomReference;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK17OrLater;
 
 @TargetClass(PhantomReference.class)
 public final class Target_java_lang_ref_PhantomReference<T> {
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     boolean refersTo0(Object obj) {
         return ReferenceInternals.refersTo(SubstrateUtil.cast(this, PhantomReference.class), obj);
     }

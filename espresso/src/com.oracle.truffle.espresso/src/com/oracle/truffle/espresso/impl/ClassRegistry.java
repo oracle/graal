@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,7 @@ import com.oracle.truffle.espresso.redefinition.DefineKlassListener;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
@@ -53,6 +53,8 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
  * This class is analogous to the ClassLoaderData C++ class in HotSpot.
  */
 public abstract class ClassRegistry {
+
+    private final DynamicModuleWrapper dynamicModuleWrapper = new DynamicModuleWrapper();
 
     /**
      * Storage class used to propagate information in the case of special kinds of class definition
@@ -441,12 +443,12 @@ public abstract class ClassRegistry {
             // FIXME(peterssen): Do NOT create a LinkedKlass every time, use a global cache.
             ContextDescription description = new ContextDescription(env.getLanguage(), env.getJavaVersion());
             LinkedKlass linkedSuperKlass = superKlass == null ? null : superKlass.getLinkedKlass();
-            LinkedKlass linkedKlass = env.getLanguage().getLanguageCache().getOrCreateLinkedKlass(description, parserKlass, linkedSuperKlass, linkedInterfaces, info);
+            LinkedKlass linkedKlass = env.getLanguage().getLanguageCache().getOrCreateLinkedKlass(env, description, getClassLoader(), parserKlass, linkedSuperKlass, linkedInterfaces, info);
             klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader(), info);
         }
 
         if (superKlass != null) {
-            if (!Klass.checkAccess(superKlass, klass)) {
+            if (!Klass.checkAccess(superKlass, klass, true)) {
                 throw EspressoClassLoadingException.illegalAccessError("class " + type + " cannot access its superclass " + superKlassType);
             }
             if (!superKlass.permittedSubclassCheck(klass)) {
@@ -456,7 +458,7 @@ public abstract class ClassRegistry {
 
         for (ObjectKlass interf : superInterfaces) {
             if (interf != null) {
-                if (!Klass.checkAccess(interf, klass)) {
+                if (!Klass.checkAccess(interf, klass, true)) {
                     throw EspressoClassLoadingException.illegalAccessError("class " + type + " cannot access its superinterface " + interf.getType());
                 }
                 if (!interf.permittedSubclassCheck(klass)) {
@@ -525,6 +527,22 @@ public abstract class ClassRegistry {
         // purge class loader constraint for this type
         if (removed != null && removed.klass() != null) {
             removed.klass().getRegistries().removeUnloadedKlassConstraint(removed.klass(), type);
+        }
+    }
+
+    public final DynamicModuleWrapper getProxyDynamicModuleWrapper() {
+        return dynamicModuleWrapper;
+    }
+
+    public final class DynamicModuleWrapper {
+        private ModuleEntry dynamicProxyModule;
+
+        public ModuleEntry getDynamicProxyModule() {
+            return dynamicProxyModule;
+        }
+
+        public void setDynamicProxyModule(ModuleEntry module) {
+            dynamicProxyModule = module;
         }
     }
 }

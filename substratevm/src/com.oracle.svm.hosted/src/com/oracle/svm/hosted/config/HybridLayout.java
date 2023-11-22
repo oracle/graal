@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.config;
 
-import org.graalvm.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.NumUtil;
 
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.hub.Hybrid;
@@ -70,6 +70,7 @@ public class HybridLayout<T> {
         this((HostedInstanceClass) metaAccess.lookupJavaType(hybridClass), layout, metaAccess);
     }
 
+    @SuppressWarnings("this-escape")
     public HybridLayout(HostedInstanceClass hybridClass, ObjectLayout layout, MetaAccessProvider metaAccess) {
         this.layout = layout;
         HybridLayoutSupport.HybridInfo hybridInfo = HybridLayoutSupport.singleton().inspectHybrid(hybridClass, metaAccess);

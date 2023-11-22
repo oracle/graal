@@ -61,11 +61,11 @@ public final class ModuleUtil {
 
     public static void checkFromModuleAndPackageNullability(Module from, String pn) {
         if (Objects.isNull(from)) {
-            throw new NullPointerException("from_module is null");
+            throw new NullPointerException("The from_module is null");
         }
 
         if (Objects.isNull(pn)) {
-            throw new NullPointerException("package is null");
+            throw new NullPointerException("The package is null");
         }
     }
 
@@ -143,7 +143,7 @@ public final class ModuleUtil {
 
         if (module.getName().equals("java.base")) {
             if (isOpen) {
-                throw new AssertionError("java.base module cannot be open");
+                throw new AssertionError("The java.base module cannot be open");
             }
 
             for (String pn : pns) {

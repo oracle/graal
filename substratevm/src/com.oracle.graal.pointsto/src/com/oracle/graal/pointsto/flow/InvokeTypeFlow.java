@@ -27,6 +27,7 @@ package com.oracle.graal.pointsto.flow;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -49,7 +50,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     /**
      * Result type flow returned by the callee.
      */
-    protected ActualReturnTypeFlow actualReturn;
+    protected volatile ActualReturnTypeFlow actualReturn;
 
     protected final InvokeTypeFlow originalInvoke;
 
@@ -63,11 +64,12 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     protected final MultiMethodKey callerMultiMethodKey;
 
     /**
-     * Flag to monitor whether all callees are original or not. This is used for to optimize
+     * Flag to monitor whether all callees are original or not. This is used to optimize
      * {@link #getOriginalCallees}.
      */
     protected volatile boolean allOriginalCallees = true;
 
+    @SuppressWarnings("this-escape")
     protected InvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
         super(invokeLocation, null);
@@ -97,6 +99,10 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
                 actualParameters[i] = methodFlows.lookupCloneOf(bb, original.getActualParameter(i));
             }
         }
+    }
+
+    public boolean linksOnlyOriginalCallees() {
+        return allOriginalCallees;
     }
 
     public void markAsContextInsensitive() {
@@ -147,6 +153,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     }
 
     public void setActualReturn(PointsToAnalysis bb, boolean isStatic, ActualReturnTypeFlow actualReturn) {
+        assert this.actualReturn == null;
         this.actualReturn = actualReturn;
         bb.analysisPolicy().linkActualReturn(bb, isStatic, this);
     }
@@ -158,12 +165,36 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     /**
      * When the type flow constraints are relaxed the receiver object state can contain types that
      * are not part of the receiver's type hierarchy. We filter those out.
+     *
+     * With saturation enabled, types not part of the hierarchy may always reach the receiver
+     * because:
+     * <ul>
+     * <li>{@link FilterTypeFlow}s saturate to the type of the filter.</li>
+     * <li>Instanceof checks can create {@link FilterTypeFlow}s which are not assignable to the
+     * receiver type.</li>
+     * <li>A receiver type can be attached to different inputs (and FilterTypeFlows) based on the
+     * optimizations performed on the graph.</li>
+     * </ul>
+     *
+     * Therefore, under no circumstances can this filtering be removed.
      */
-    protected TypeState filterReceiverState(PointsToAnalysis bb, TypeState invokeState) {
+    protected TypeState filterReceiverState(PointsToAnalysis bb, TypeState receiverState) {
         if (bb.analysisPolicy().relaxTypeFlowConstraints()) {
-            return TypeState.forIntersection(bb, invokeState, receiverType.getAssignableTypes(true));
+            return TypeState.forIntersection(bb, receiverState, receiverType.getAssignableTypes(true));
+        } else {
+            // when not filtering, all input types should be assignable
+            assert verifyAllAssignable(bb, receiverState) : receiverState;
         }
-        return invokeState;
+        return receiverState;
+    }
+
+    private boolean verifyAllAssignable(BigBang bb, TypeState receiverState) {
+        for (AnalysisType type : receiverState.types(bb)) {
+            if (!receiverType.isAssignableFrom(type)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     protected void updateReceiver(PointsToAnalysis bb, MethodFlowsGraphInfo calleeFlows, AnalysisObject receiverObject) {
@@ -172,14 +203,16 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     }
 
     protected void updateReceiver(PointsToAnalysis bb, MethodFlowsGraphInfo calleeFlows, TypeState receiverTypeState) {
-        if (bb.getHostVM().getMultiMethodAnalysisPolicy().performParameterLinking(callerMultiMethodKey, calleeFlows.getMethod().getMultiMethodKey())) {
+        var analysisPolicy = bb.getHostVM().getMultiMethodAnalysisPolicy();
+        var calleeKey = calleeFlows.getMethod().getMultiMethodKey();
+        if (analysisPolicy.performParameterLinking(callerMultiMethodKey, calleeKey)) {
             FormalReceiverTypeFlow formalReceiverFlow = calleeFlows.getFormalReceiver();
             if (formalReceiverFlow != null) {
                 formalReceiverFlow.addReceiverState(bb, receiverTypeState);
             }
         }
 
-        if (bb.getHostVM().getMultiMethodAnalysisPolicy().performReturnLinking(callerMultiMethodKey, calleeFlows.getMethod().getMultiMethodKey())) {
+        if (analysisPolicy.performReturnLinking(callerMultiMethodKey, calleeKey) && !analysisPolicy.unknownReturnValue(bb, callerMultiMethodKey, calleeFlows.getMethod())) {
             if (bb.optimizeReturnedParameter()) {
                 int paramIndex = calleeFlows.getMethod().getTypeFlow().getReturnedParameterIndex();
                 if (actualReturn != null && paramIndex == 0) {
@@ -208,13 +241,20 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
                  * a non-state-transfer link. The link only exists for a proper iteration of type
                  * flow graphs, but the state update of 'this' parameters is achieved through direct
                  * state update in VirtualInvokeTypeFlow.update and SpecialInvokeTypeFlow.update by
-                 * calling FormalReceiverTypeFlow.addReceiverState. This happens because the formal
-                 * receiver , i.e., 'this' parameter, state must ONLY reflect those objects of the
-                 * actual receiver that generated the context for the method clone which it belongs
-                 * to. A direct link would instead transfer all the objects of compatible type from
-                 * the actual receiver to the formal receiver.
+                 * calling FormalReceiverTypeFlow.addReceiverState.
+                 * 
+                 * In other words, while the receiver param (actualParameters[0] when !isStatic) is
+                 * linked to the FormalReceiverTypeFlow of the callee, type information is not
+                 * propagated along this edge. This is accomplished by overriding the addState
+                 * method within FormalReceiverTypeFlow.
+                 *
+                 * This action is taken because the formal receiver (i.e., 'this' parameter) state
+                 * must ONLY reflect those objects of the actual receiver that generated the context
+                 * for the method clone which it belongs to. A direct link would instead transfer
+                 * all the objects of compatible type from the actual receiver to the formal
+                 * receiver.
                  */
-                if (actualParam != null && formalParam != null /* && (i != 0 || isStatic) */) {
+                if (actualParam != null && formalParam != null) {
                     // create the use link:
                     // (formalParam, callerContext) -> (actualParam, calleeContext)
                     // Note: the callerContext is an implicit property of the current InvokeTypeFlow
@@ -236,38 +276,35 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     }
 
     public void linkReturn(PointsToAnalysis bb, boolean isStatic, MethodFlowsGraphInfo calleeFlows) {
-        if (bb.getHostVM().getMultiMethodAnalysisPolicy().performReturnLinking(callerMultiMethodKey, calleeFlows.getMethod().getMultiMethodKey())) {
-            if (actualReturn != null) {
-                if (bb.optimizeReturnedParameter()) {
-                    int paramNodeIndex = calleeFlows.getMethod().getTypeFlow().getReturnedParameterIndex();
-                    if (paramNodeIndex != -1) {
-                        if (isStatic || paramNodeIndex != 0) {
-                            TypeFlow<?> actualParam = actualParameters[paramNodeIndex];
-                            actualParam.addUse(bb, actualReturn);
-                        } else {
-                            /*
-                             * The callee returns `this`. The formal-receiver state is updated in
-                             * InvokeTypeFlow#updateReceiver() for each linked callee and every time
-                             * the formal-receiver is updated then the same update state is
-                             * propagated to the actual-return. One may think that we could simply
-                             * add a direct use link from the formal-receiver in the callee to the
-                             * actual-return in the caller to get the state propagation
-                             * automatically. But that would be wrong because then the actual-return
-                             * would get the state from *all* the other places that callee may be
-                             * called from, and that would defeat the purpose of this optimization:
-                             * we want just the receiver state from the caller of current invoke to
-                             * reach the actual-return.
-                             */
-                        }
+        /*
+         * If actualReturn is null, then there is no linking necessary. Later, if a typeflow is
+         * created for the return, then {@code setActualReturn} will perform all necessary linking.
+         */
+        if (actualReturn != null && bb.getHostVM().getMultiMethodAnalysisPolicy().performReturnLinking(callerMultiMethodKey, calleeFlows.getMethod().getMultiMethodKey())) {
+            if (bb.getHostVM().getMultiMethodAnalysisPolicy().unknownReturnValue(bb, callerMultiMethodKey, calleeFlows.getMethod())) {
+                /*
+                 * When there is an unknown return value we must be conservative.
+                 */
+                actualReturn.declaredType.getTypeFlow(bb, true).addUse(bb, actualReturn);
+            } else if (bb.optimizeReturnedParameter()) {
+                int paramNodeIndex = calleeFlows.getMethod().getTypeFlow().getReturnedParameterIndex();
+                if (paramNodeIndex != -1) {
+                    if (isStatic || paramNodeIndex != 0) {
+                        TypeFlow<?> actualParam = actualParameters[paramNodeIndex];
+                        actualParam.addUse(bb, actualReturn);
                     } else {
                         /*
-                         * The callee may have a return type, hence the actualReturn is non-null,
-                         * but it might throw an exception instead of returning, hence the formal
-                         * return is null.
+                         * The callee returns `this`. The formal-receiver state is updated in
+                         * InvokeTypeFlow#updateReceiver() for each linked callee and every time the
+                         * formal-receiver is updated then the same update state is propagated to
+                         * the actual-return. One may think that we could simply add a direct use
+                         * link from the formal-receiver in the callee to the actual-return in the
+                         * caller to get the state propagation automatically. But that would be
+                         * wrong because then the actual-return would get the state from *all* the
+                         * other places that callee may be called from, and that would defeat the
+                         * purpose of this optimization: we want just the receiver state from the
+                         * caller of current invoke to reach the actual-return.
                          */
-                        if (calleeFlows.getReturnFlow() != null) {
-                            calleeFlows.getReturnFlow().addUse(bb, actualReturn);
-                        }
                     }
                 } else {
                     /*
@@ -278,6 +315,14 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
                     if (calleeFlows.getReturnFlow() != null) {
                         calleeFlows.getReturnFlow().addUse(bb, actualReturn);
                     }
+                }
+            } else {
+                /*
+                 * The callee may have a return type, hence the actualReturn is non-null, but it
+                 * might throw an exception instead of returning, hence the formal return is null.
+                 */
+                if (calleeFlows.getReturnFlow() != null) {
+                    calleeFlows.getReturnFlow().addUse(bb, actualReturn);
                 }
             }
         }
@@ -301,13 +346,19 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
 
         return getAllCallees().stream().filter(callee -> {
             boolean originalMethod = callee.isOriginalMethod();
-            assert !originalMethod || callee.isImplementationInvoked();
+            assert !originalMethod || callee.isImplementationInvoked() : callee;
             return originalMethod;
         }).collect(Collectors.toUnmodifiableList());
     }
 
     @Override
     public abstract Collection<AnalysisMethod> getAllCallees();
+
+    /**
+     * Returns all callees which have been computed for this method which should be linked to the
+     * return. It is possible that these callees have yet to have their typeflow created.
+     */
+    public abstract Collection<AnalysisMethod> getCalleesForReturnLinking();
 
     @Override
     public BytecodePosition getPosition() {
@@ -346,33 +397,12 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     }
 
     /**
-     * Returns the context sensitive method flows for the callees resolved for the invoke type flow.
-     * That means that for each callee only those method flows corresponding to contexts reached
-     * from this invoke are returned. Note that callee flows in this list can have a MultiMethodKey
-     * different from {@link MultiMethod#ORIGINAL_METHOD} and also may not be
-     * {@link AnalysisMethod#isImplementationInvoked()}.
+     * Returns the context sensitive method flows for the callees resolved for the invoke type flow
+     * which are not still in stub form. That means that for each callee only those method flows
+     * corresponding to contexts reached from this invoke are returned. Note that callee flows in
+     * this list can have a MultiMethodKey different from {@link MultiMethod#ORIGINAL_METHOD}.
      */
-    protected abstract Collection<MethodFlowsGraph> getAllCalleesFlows(PointsToAnalysis bb);
-
-    /**
-     * Same as {@link #getAllCalleesFlows}, except that this method only returns calleesFlows whose
-     * multimethodkey is {@link MultiMethod#ORIGINAL_METHOD} and also are guaranteed to be
-     * {@link AnalysisMethod#isImplementationInvoked()}.
-     */
-    public final Collection<MethodFlowsGraph> getOriginalCalleesFlows(PointsToAnalysis bb) {
-        Collection<MethodFlowsGraph> allCalleesFlows = getAllCalleesFlows(bb);
-        assert allCalleesFlows != null;
-
-        if (allOriginalCallees) {
-            return allCalleesFlows;
-        }
-
-        return allCalleesFlows.stream().filter(flow -> {
-            boolean originalMethod = flow.getMethod().isOriginalMethod();
-            assert !(originalMethod && flow.isStub());
-            return originalMethod;
-        }).collect(Collectors.toUnmodifiableList());
-    }
+    public abstract Collection<MethodFlowsGraph> getAllNonStubCalleesFlows(PointsToAnalysis bb);
 
     public MultiMethodKey getCallerMultiMethodKey() {
         return callerMultiMethodKey;

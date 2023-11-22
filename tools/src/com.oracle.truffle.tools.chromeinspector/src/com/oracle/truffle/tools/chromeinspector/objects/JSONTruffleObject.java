@@ -31,8 +31,9 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
+import com.oracle.truffle.api.utilities.TriState;
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 /**
  * TruffleObject of a JSON object.
@@ -99,6 +100,21 @@ public final class JSONTruffleObject extends AbstractInspectorObject {
         }
     }
 
+    @Override
+    TriState isIdenticalOrUndefined(Object other) {
+        if (other instanceof JSONTruffleObject otherObject) {
+            return TriState.valueOf(json == otherObject.json);
+        } else {
+            return TriState.UNDEFINED;
+        }
+    }
+
+    @Override
+    @TruffleBoundary
+    int identityHashCode() {
+        return json.hashCode();
+    }
+
     static final class JSONKeys extends AbstractInspectorArray {
 
         private final JSONTruffleObject obj;
@@ -120,6 +136,21 @@ public final class JSONTruffleObject extends AbstractInspectorObject {
                 throw InvalidArrayIndexException.create(index);
             }
             return allNames[(int) index];
+        }
+
+        @Override
+        TriState isIdenticalOrUndefined(Object other) {
+            if (other instanceof JSONKeys otherKeys) {
+                return TriState.valueOf(obj == otherKeys.obj);
+            } else {
+                return TriState.UNDEFINED;
+            }
+        }
+
+        @Override
+        @TruffleBoundary
+        int identityHashCode() {
+            return obj.hashCode();
         }
     }
 

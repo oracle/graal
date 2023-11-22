@@ -1,9 +1,9 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: native-code-interoperability
 link_title: JNI Invocation API
 permalink: /reference-manual/native-image/native-code-interoperability/JNIInvocationAPI/
-redirect_from: /$version/reference-manual/native-image/ImplementingNativeMethodsInJavaWithSVM/
+redirect_from: /reference-manual/native-image/ImplementingNativeMethodsInJavaWithSVM/
 ---
 
 # JNI Invocation API

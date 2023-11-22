@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,15 +24,17 @@
  */
 package com.oracle.svm.core.aarch64;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.graal.nodes.aarch64.AArch64XPACNode;
 
 @AutomaticallyRegisteredImageSingleton(FrameAccess.class)
 @Platforms(Platform.AARCH64.class)
@@ -41,7 +43,12 @@ public class AArch64FrameAccess extends FrameAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public CodePointer readReturnAddress(Pointer sourceSp) {
         /* Read the return address, which is stored immediately below the stack pointer. */
-        return sourceSp.readWord(-returnAddressSize());
+        CodePointer returnAddress = sourceSp.readWord(-returnAddressSize());
+        /* Remove the pointer authentication code (PAC), if present. */
+        if (SubstrateControlFlowIntegrity.enabled()) {
+            return AArch64XPACNode.stripAddress(returnAddress);
+        }
+        return returnAddress;
     }
 
     @Override

@@ -2,7 +2,15 @@
 
 This changelog summarizes newly introduced optimizations and other compiler related changes.
 
-## Version 23.0.0
+## GraalVM for JDK 22 (Internal Version 24.0.0)
+* (GR-49610): The Graal module has been renamed from `jdk.internal.vm.compiler` to `jdk.graal.compiler`.
+  Likewise, the compiler packages moved into the `jdk.graal.compiler` namespace.
+  These renamings were done in preparation for [Project Galahad](https://openjdk.org/projects/galahad/).
+
+## GraalVM for JDK 21 (Internal Version 23.1.0)
+* (GR-43228): Enforce backward-edge control-flow integrity (CFI) on aarch64 based on the `UseBranchProtection` JVM flag.
+
+## GraalVM for JDK 17 and GraalVM for JDK 20 (Internal Version 23.0.0)
 * (GR-42212): Remove support for all JDKs earlier than JDK 17.
 * (GR-42044): Improved output of `-Dgraal.ShowConfiguration=info`. For example:
     `Using "Graal Community compiler" loaded from a Native Image shared library`

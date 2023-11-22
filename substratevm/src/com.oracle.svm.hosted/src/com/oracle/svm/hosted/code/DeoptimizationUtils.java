@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.code;
 
+import static com.oracle.svm.common.meta.MultiMethod.DEOPT_TARGET_METHOD;
+
 import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.HashMap;
@@ -31,38 +33,47 @@ import java.util.HashSet;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.lir.RedundantMoveElimination;
-import org.graalvm.compiler.lir.alloc.RegisterAllocationPhase;
-import org.graalvm.compiler.lir.phases.LIRPhase;
-import org.graalvm.compiler.lir.phases.LIRSuites;
-import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.InvokeNode;
-import org.graalvm.compiler.nodes.StartNode;
-import org.graalvm.compiler.nodes.StateSplit;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
-import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.PhaseSuite;
-import org.graalvm.compiler.phases.common.BoxNodeOptimizationPhase;
-import org.graalvm.compiler.phases.common.FixReadsPhase;
-import org.graalvm.compiler.phases.common.FloatingReadPhase;
-import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.phases.tiers.LowTierContext;
-import org.graalvm.compiler.phases.tiers.MidTierContext;
-import org.graalvm.compiler.phases.tiers.Suites;
-import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
-import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.iterators.NodePredicate;
+import jdk.graal.compiler.graph.iterators.NodePredicates;
+import jdk.graal.compiler.lir.RedundantMoveElimination;
+import jdk.graal.compiler.lir.alloc.RegisterAllocationPhase;
+import jdk.graal.compiler.lir.phases.LIRPhase;
+import jdk.graal.compiler.lir.phases.LIRSuites;
+import jdk.graal.compiler.lir.phases.PostAllocationOptimizationPhase;
+import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.InvokeNode;
+import jdk.graal.compiler.nodes.StartNode;
+import jdk.graal.compiler.nodes.StateSplit;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.extended.ForeignCallNode;
+import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.PhaseSuite;
+import jdk.graal.compiler.phases.common.BoxNodeOptimizationPhase;
+import jdk.graal.compiler.phases.common.FixReadsPhase;
+import jdk.graal.compiler.phases.common.FloatingReadPhase;
+import jdk.graal.compiler.phases.tiers.HighTierContext;
+import jdk.graal.compiler.phases.tiers.LowTierContext;
+import jdk.graal.compiler.phases.tiers.MidTierContext;
+import jdk.graal.compiler.phases.tiers.Suites;
+import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
+import jdk.graal.compiler.virtual.phases.ea.ReadEliminationPhase;
 
+import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.deopt.DeoptTest;
@@ -110,15 +121,17 @@ public class DeoptimizationUtils {
         }
     }
 
-    private static boolean containsStackValueNode(HostedUniverse universe, HostedMethod method) {
-        return universe.getBigBang().getHostVM().containsStackValueNode(method.wrapped);
-    }
-
     /**
      * Returns true if a method should be considered as deoptimization source. This is only a
      * feature for testing. Note that usually all image compiled methods cannot deoptimize.
+     *
+     * Note this should only be called within CompileQueue#parseAheadOfTimeCompiledMethods
      */
-    static boolean canDeoptForTesting(HostedUniverse universe, HostedMethod method, boolean deoptimizeAll) {
+    public static boolean canDeoptForTesting(AnalysisMethod method, boolean deoptimizeAll, Supplier<Boolean> graphInvalidator) {
+        if (SubstrateCompilationDirectives.singleton().isRegisteredForDeoptTesting(method)) {
+            return true;
+        }
+
         if (method.getName().equals("<clinit>")) {
             /* Cannot deoptimize into static initializers. */
             return false;
@@ -126,6 +139,15 @@ public class DeoptimizationUtils {
 
         if (method.getAnnotation(DeoptTest.class) != null) {
             return true;
+        }
+
+        if (!deoptimizeAll) {
+            /* When DeoptimizeAll is not set, then only methods marked via DeoptTest can deopt. */
+            return false;
+        }
+
+        if (graphInvalidator.get()) {
+            return false;
         }
 
         if (method.isEntryPoint()) {
@@ -142,7 +164,7 @@ public class DeoptimizationUtils {
              */
             return false;
         }
-        if (method.wrapped.isIntrinsicMethod()) {
+        if (method.isIntrinsicMethod()) {
             return false;
         }
         if (Uninterruptible.Utils.isUninterruptible(method)) {
@@ -155,47 +177,45 @@ public class DeoptimizationUtils {
             /* Deoptimization runtime cannot fill the callee saved registers. */
             return false;
         }
-        if (containsStackValueNode(universe, method)) {
-            /*
-             * Stack allocated memory is not seen by the deoptimization code, i.e., it is not copied
-             * in case of deoptimization. Also, pointers to it can be used for arbitrary address
-             * arithmetic, so we would not know how to update derived pointers into stack memory
-             * during deoptimization. Therefore, we cannot allow methods that allocate stack memory
-             * for runtime compilation. To remove this limitation, we would need to change how we
-             * handle stack allocated memory in Graal.
-             */
+
+        /*
+         * The DeoptimizeAll option is set. So we use all methods for deoptimization testing.
+         * Exclude some "runtime" methods, like the heap code, via this blacklist. Issue GR-1706
+         * tracks the bug in DebugValueMap.
+         */
+        String className = method.getDeclaringClass().getName();
+        if (className.contains("/svm/core/code/CodeInfoEncoder") ||
+                        className.contains("com/oracle/svm/core/thread/JavaThreads") ||
+                        className.contains("com/oracle/svm/core/thread/PlatformThreads") ||
+                        className.contains("com/oracle/svm/core/heap/") ||
+                        className.contains("com/oracle/svm/core/genscavenge/") ||
+                        className.contains("com/oracle/svm/core/thread/VMOperationControl") ||
+                        className.contains("debug/internal/DebugValueMap") && method.getName().equals("registerTopLevel")) {
+            return false;
+        }
+        /*
+         * Method without bytecodes, e.g., methods that have a manually constructed graph, are
+         * usually not deoptimizable. This needs to change as soon as we want to runtime compile our
+         * synthetic annotation methods.
+         */
+        if (method.getCode() == null) {
             return false;
         }
 
-        if (deoptimizeAll) {
-            /*
-             * The DeoptimizeAll option is set. So we use all methods for deoptimization testing.
-             * Exclude some "runtime" methods, like the heap code, via this blacklist. Issue GR-1706
-             * tracks the bug in DebugValueMap.
-             */
-            String className = method.getDeclaringClass().getName();
-            if (className.contains("/svm/core/code/CodeInfoEncoder") ||
-                            className.contains("com/oracle/svm/core/thread/JavaThreads") ||
-                            className.contains("com/oracle/svm/core/thread/PlatformThreads") ||
-                            className.contains("com/oracle/svm/core/heap/") ||
-                            className.contains("com/oracle/svm/core/genscavenge/") ||
-                            className.contains("com/oracle/svm/core/thread/VMOperationControl") ||
-                            className.contains("debug/internal/DebugValueMap") && method.getName().equals("registerTopLevel")) {
-                return false;
-            }
-            /*
-             * Method without bytecodes, e.g., methods that have a manually constructed graph, are
-             * usually not deoptimizable. This needs to change as soon as we want to runtime compile
-             * our synthetic annotation methods.
-             */
-            if (method.getCode() == null) {
-                return false;
-            }
+        return true;
 
-            return true;
-        } else {
-            return false;
-        }
+    }
+
+    private static boolean containsStackValueNode(HostedUniverse universe, HostedMethod method) {
+        return universe.getBigBang().getHostVM().containsStackValueNode(method.wrapped);
+    }
+
+    /**
+     * Returns true if a method should be considered as deoptimization source. This is only a
+     * feature for testing. Note that usually all image compiled methods cannot deoptimize.
+     */
+    static boolean canDeoptForTesting(HostedUniverse universe, HostedMethod method, boolean deoptimizeAll) {
+        return canDeoptForTesting(method.wrapped, deoptimizeAll, () -> containsStackValueNode(universe, method));
     }
 
     static void removeDeoptTargetOptimizations(Suites suites) {
@@ -233,7 +253,7 @@ public class DeoptimizationUtils {
         }
         assert rootFrame.getMethod().equals(method);
 
-        boolean isBciDeoptEntry = method.compilationInfo.isDeoptEntry(rootFrame.getBCI(), rootFrame.duringCall, rootFrame.rethrowException);
+        boolean isBciDeoptEntry = method.compilationInfo.isDeoptEntry(rootFrame.getBCI(), FrameState.StackState.of(rootFrame));
         if (isBciDeoptEntry) {
             /*
              * When an infopoint's bci corresponds to a deoptimization entrypoint, it does not
@@ -271,7 +291,7 @@ public class DeoptimizationUtils {
         /*
          * No deopt targets can have a StackValueNode in the graph.
          */
-        assert graph.getNodes(StackValueNode.TYPE).isEmpty() : "No stack value nodes must be present in deopt target.";
+        assert !createGraphInvalidator(graph).get() : "Invalid nodes in deopt target: " + graph;
 
         for (Infopoint infopoint : result.getInfopoints()) {
             if (infopoint.debugInfo != null) {
@@ -282,7 +302,7 @@ public class DeoptimizationUtils {
 
                 if (isDeoptEntry(method, result, infopoint)) {
                     BytecodeFrame frame = debugInfo.frame();
-                    long encodedBci = FrameInfoEncoder.encodeBci(frame.getBCI(), frame.duringCall, frame.rethrowException);
+                    long encodedBci = FrameInfoEncoder.encodeBci(frame.getBCI(), FrameState.StackState.of(frame));
 
                     BytecodeFrame previous = encodedBciMap.put(encodedBci, frame);
                     assert previous == null : "duplicate encoded bci " + encodedBci + " in deopt target " + method + " found.\n\n" + frame +
@@ -295,15 +315,17 @@ public class DeoptimizationUtils {
         return true;
     }
 
-    static boolean canBeUsedForInlining(HostedUniverse universe, HostedMethod caller, HostedMethod callee, int bci, boolean deoptimizeAll) {
-        if (DeoptimizationUtils.canDeoptForTesting(universe, caller, deoptimizeAll) && Modifier.isNative(callee.getModifiers())) {
+    static boolean canBeUsedForInlining(HostedUniverse universe, HostedMethod caller, HostedMethod callee, int bci) {
+
+        boolean callerDeoptForTesting = caller.compilationInfo.canDeoptForTesting();
+        if (callerDeoptForTesting && Modifier.isNative(callee.getModifiers())) {
             /*
              * We must not deoptimize in the stubs for native functions, since they don't have a
              * valid bytecode state.
              */
             return false;
         }
-        if (DeoptimizationUtils.canDeoptForTesting(universe, caller, deoptimizeAll) && DeoptimizationUtils.containsStackValueNode(universe, callee)) {
+        if (callerDeoptForTesting && DeoptimizationUtils.containsStackValueNode(universe, callee)) {
             /*
              * We must not inline a method that has stack values and can be deoptimized.
              *
@@ -317,8 +339,17 @@ public class DeoptimizationUtils {
             return false;
         }
 
+        if (callerDeoptForTesting != callee.compilationInfo.canDeoptForTesting()) {
+            /*
+             * We cannot inline a method into another with non-matching canDeoptForTesting settings.
+             * This would allow deoptimizations to occur in places where a deoptimization target
+             * will not exist.
+             */
+            return false;
+        }
+
         if (caller.isDeoptTarget()) {
-            if (caller.compilationInfo.isDeoptEntry(bci, true, false)) {
+            if (caller.compilationInfo.isDeoptEntry(bci, FrameState.StackState.AfterPop)) {
                 /*
                  * The call can be on the stack for a deoptimization, so we need an actual
                  * non-inlined invoke to deoptimize too.
@@ -348,6 +379,34 @@ public class DeoptimizationUtils {
 
     public interface DeoptTargetRetriever {
         ResolvedJavaMethod getDeoptTarget(ResolvedJavaMethod method);
+    }
+
+    public static void registerDeoptEntriesForDeoptTesting(PointsToAnalysis bb, StructuredGraph graph, PointsToAnalysisMethod aMethod) {
+        assert aMethod.isOriginalMethod();
+        /*
+         * Register all FrameStates as DeoptEntries.
+         *
+         * Because this graph will have its flowgraph immediately updated after registration, there
+         * is no reason to make this method's flowgraph a stub on creation.
+         */
+        Collection<ResolvedJavaMethod> recomputeMethods = DeoptimizationUtils.registerDeoptEntries(graph, true,
+                        (deoptEntryMethod -> ((PointsToAnalysisMethod) deoptEntryMethod).getOrCreateMultiMethod(DEOPT_TARGET_METHOD)));
+
+        AnalysisMethod deoptMethod = aMethod.getMultiMethod(DEOPT_TARGET_METHOD);
+        if (deoptMethod != null && SubstrateCompilationDirectives.singleton().isRegisteredDeoptTarget(deoptMethod)) {
+            /*
+             * If there exists a deopt target for this method, then it is allowed to deopt.
+             */
+            SubstrateCompilationDirectives.singleton().registerForDeoptTesting(aMethod);
+        }
+
+        /*
+         * If new frame states are found, then redo the type flow.
+         */
+        for (ResolvedJavaMethod method : recomputeMethods) {
+            assert MultiMethod.isDeoptTarget(method);
+            ((PointsToAnalysisMethod) method).getTypeFlow().updateFlowsGraph(bb, MethodFlowsGraph.GraphKind.FULL, null, true);
+        }
     }
 
     /**
@@ -399,9 +458,7 @@ public class DeoptimizationUtils {
              * graph.getInvokes() only iterates invokes that have a MethodCallTarget, so by using it
              * we would miss invocations that are already intrinsified to an indirect call.
              */
-            if (n instanceof Invoke) {
-                Invoke invoke = (Invoke) n;
-
+            if (n instanceof Invoke invoke) {
                 /*
                  * The FrameState for the invoke (which is visited by the above loop) is the state
                  * after the call (where deoptimization that happens after the call has returned
@@ -413,7 +470,7 @@ public class DeoptimizationUtils {
                  * the bci of the next bytecode after the invoke.
                  */
                 FrameState stateDuring = invoke.stateAfter().duplicateModifiedDuringCall(invoke.bci(), invoke.asNode().getStackKind());
-                assert stateDuring.duringCall() && !stateDuring.rethrowException();
+                assert stateDuring.getStackState() == FrameState.StackState.AfterPop : stateDuring;
                 ResolvedJavaMethod method = deoptRetriever.getDeoptTarget(stateDuring.getMethod());
                 if (SubstrateCompilationDirectives.singleton().registerDeoptEntry(stateDuring, method)) {
                     changedMethods.add(method);
@@ -422,5 +479,39 @@ public class DeoptimizationUtils {
         }
 
         return changedMethods;
+    }
+
+    /*
+     * Stack allocated memory is not seen by the deoptimization code, i.e., it is not copied in case
+     * of deoptimization. Also, pointers to it can be used for arbitrary address arithmetic, so we
+     * would not know how to update derived pointers into stack memory during deoptimization.
+     * Therefore, we cannot allow methods that allocate stack memory for runtime compilation. To
+     * remove this limitation, we would need to change how we handle stack allocated memory in
+     * Graal.
+     *
+     * We also do not allow class initialization at run time to ensure the partial evaluator does
+     * not constant fold uninitialized fields.
+     */
+    private static final NodePredicate invalidNodes = n -> NodePredicates.isA(StackValueNode.class).or(NodePredicates.isA(EnsureClassInitializedNode.class)).test(n);
+
+    /**
+     * @return Supplier which returns true if the graph contains invalid nodes.
+     */
+    public static Supplier<Boolean> createGraphInvalidator(StructuredGraph graph) {
+        return () -> {
+            if (!graph.method().getDeclaringClass().isInitialized()) {
+                /*
+                 * All types which are used at run time should build-time initialized. This ensures
+                 * the partial evaluator does not constant fold uninitialized fields.
+                 */
+                return true;
+            }
+
+            if (graph.getNodes().filter(invalidNodes).isNotEmpty()) {
+                return true;
+            }
+
+            return false;
+        };
     }
 }

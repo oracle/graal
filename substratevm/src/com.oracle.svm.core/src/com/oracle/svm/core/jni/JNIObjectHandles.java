@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.jni;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.ObjectHandle;

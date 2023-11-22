@@ -30,6 +30,8 @@ import java.lang.reflect.AnnotatedElement;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
+import com.oracle.svm.core.util.VMError;
+
 public interface AnnotationWrapper extends AnnotatedElement {
     AnnotatedElement getAnnotationRoot();
 
@@ -54,11 +56,11 @@ public interface AnnotationWrapper extends AnnotatedElement {
 
     @Override
     default Annotation[] getAnnotations() {
-        return ImageSingletons.lookup(AnnotationExtractor.class).extractAnnotations(this, false);
+        throw VMError.shouldNotReachHere("Getting all annotations is not supported because it initializes all annotation classes and their dependencies");
     }
 
     @Override
     default Annotation[] getDeclaredAnnotations() {
-        return ImageSingletons.lookup(AnnotationExtractor.class).extractAnnotations(this, true);
+        throw VMError.shouldNotReachHere("Getting all annotations is not supported because it initializes all annotation classes and their dependencies");
     }
 }

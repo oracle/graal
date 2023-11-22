@@ -52,6 +52,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 import java.util.logging.Level;
 
 import org.graalvm.options.OptionDescriptor;
@@ -151,17 +152,17 @@ final class LanguageAccessor extends Accessor {
             impl.languageInfo = language;
             impl.polyglotLanguageInstance = polyglotLanguageInstance;
             if (polyglotLanguageInstance != null) {
-                if (impl.contextLocals == null) {
-                    impl.contextLocals = Collections.emptyList();
+                if (impl.locals.contextLocals == null) {
+                    impl.locals.contextLocals = Collections.emptyList();
                 } else {
-                    ENGINE.initializeLanguageContextLocal(impl.contextLocals, polyglotLanguageInstance);
-                    impl.contextLocals = Collections.unmodifiableList(impl.contextLocals);
+                    ENGINE.initializeLanguageContextLocal(impl.locals.contextLocals, polyglotLanguageInstance);
+                    impl.locals.contextLocals = Collections.unmodifiableList(impl.locals.contextLocals);
                 }
-                if (impl.contextThreadLocals == null) {
-                    impl.contextThreadLocals = Collections.emptyList();
+                if (impl.locals.contextThreadLocals == null) {
+                    impl.locals.contextThreadLocals = Collections.emptyList();
                 } else {
-                    ENGINE.initializeLanguageContextThreadLocal(impl.contextThreadLocals, polyglotLanguageInstance);
-                    impl.contextThreadLocals = Collections.unmodifiableList(impl.contextThreadLocals);
+                    ENGINE.initializeLanguageContextThreadLocal(impl.locals.contextThreadLocals, polyglotLanguageInstance);
+                    impl.locals.contextThreadLocals = Collections.unmodifiableList(impl.locals.contextThreadLocals);
                 }
             }
         }
@@ -309,7 +310,7 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public void onThrowable(Node callNode, RootCallTarget root, Throwable e, Frame frame) {
+        public void addStackFrameInfo(Node callNode, RootCallTarget root, Throwable e, Frame frame) {
             TruffleStackTrace.addStackFrameInfo(callNode, root, e, frame);
         }
 
@@ -336,6 +337,11 @@ final class LanguageAccessor extends Accessor {
         @Override
         public void exitContext(Env env, TruffleLanguage.ExitMode exitMode, int exitCode) {
             env.getSpi().exitContext(env.context, exitMode, exitCode);
+        }
+
+        @Override
+        public void finalizeThread(TruffleLanguage.Env env, Thread current) {
+            env.getSpi().finalizeThread(env.context, current);
         }
 
         @Override
@@ -482,7 +488,13 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public TruffleFile getTruffleFile(Object fileSystemContext, URI uri) {
+        public TruffleFile getTruffleFile(Path path, Object fileSystemContext) {
+            TruffleFile.FileSystemContext ctx = (TruffleFile.FileSystemContext) fileSystemContext;
+            return new TruffleFile(ctx, path);
+        }
+
+        @Override
+        public TruffleFile getTruffleFile(URI uri, Object fileSystemContext) {
             TruffleFile.FileSystemContext ctx = (TruffleFile.FileSystemContext) fileSystemContext;
             return new TruffleFile(ctx, ctx.fileSystem.parsePath(uri));
         }
@@ -491,11 +503,6 @@ final class LanguageAccessor extends Accessor {
         public boolean isSocketIOAllowed(Object fileSystemContext) {
             TruffleFile.FileSystemContext ctx = (TruffleFile.FileSystemContext) fileSystemContext;
             return engineAccess().isSocketIOAllowed(ctx.engineObject);
-        }
-
-        @Override
-        public TruffleFile getTruffleFile(Object context, String path) {
-            return getTruffleFile(path, context);
         }
 
         @Override
@@ -577,6 +584,11 @@ final class LanguageAccessor extends Accessor {
                     yield singleNonEmpty != null ? singleNonEmpty : OptionDescriptors.EMPTY;
                 }
             };
+        }
+
+        @Override
+        public InternalResource.Env createInternalResourceEnv(InternalResource resource, BooleanSupplier contextPreinitializationCheck) {
+            return new InternalResource.Env(resource, contextPreinitializationCheck);
         }
     }
 

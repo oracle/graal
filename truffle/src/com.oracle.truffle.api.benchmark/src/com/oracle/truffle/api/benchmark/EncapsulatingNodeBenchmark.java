@@ -64,6 +64,7 @@ public class EncapsulatingNodeBenchmark extends TruffleBenchmark {
     static volatile long sideEffect = 0;
 
     @State(Scope.Thread)
+    @SuppressWarnings("this-escape")
     public static class PushPopNewCompiled {
         final Source source = Source.create(TEST_LANGUAGE, "");
         final Context context = Context.newBuilder(TEST_LANGUAGE).allowExperimentalOptions(true).build();

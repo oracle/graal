@@ -44,7 +44,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Map;
 
-import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.io.MessageTransport;
@@ -61,10 +60,9 @@ public class HostPolyglotDispatch extends AbstractPolyglotImpl {
     }
 
     @Override
-    public Engine buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties,
-                    boolean allowExperimentalOptions, boolean boundEngine,
-                    MessageTransport messageInterceptor, LogHandler logHandler, Object hostLanguage, boolean hostLanguageOnly, boolean registerInActiveEngines,
-                    AbstractPolyglotHostService polyglotHostService) {
+    public Object buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> options,
+                    boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, Object logHandler, Object hostLanguage,
+                    boolean hostLanguageOnly, boolean registerInActiveEngines, Object polyglotHostService) {
         String option = options.get("engine.SpawnRemote");
         if (option != null && Boolean.parseBoolean(option)) {
             options.remove("engine.SpawnRemote");
@@ -72,7 +70,7 @@ public class HostPolyglotDispatch extends AbstractPolyglotImpl {
              * indicates that the local engine ignores languages potentially on the class path.
              */
             boolean onlyHostLanguage = true;
-            Engine localEngine = getNext().buildEngine(permittedLanguages, sandboxPolicy, out, err, in, options, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor,
+            Object localEngine = getNext().buildEngine(permittedLanguages, sandboxPolicy, out, err, in, options, allowExperimentalOptions, boundEngine, messageInterceptor,
                             logHandler,
                             hostLanguage,
                             onlyHostLanguage, false, polyglotHostService);
@@ -80,7 +78,7 @@ public class HostPolyglotDispatch extends AbstractPolyglotImpl {
             HostEngine engine = new HostEngine(remoteEngine, localEngine);
             return getAPIAccess().newEngine(new HostEngineDispatch(this), engine, registerInActiveEngines);
         } else {
-            return getNext().buildEngine(permittedLanguages, sandboxPolicy, out, err, in, options, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor, logHandler,
+            return getNext().buildEngine(permittedLanguages, sandboxPolicy, out, err, in, options, allowExperimentalOptions, boundEngine, messageInterceptor, logHandler,
                             hostLanguage,
                             false, registerInActiveEngines, polyglotHostService);
         }

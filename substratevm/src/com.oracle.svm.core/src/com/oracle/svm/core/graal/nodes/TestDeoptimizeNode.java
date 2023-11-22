@@ -24,21 +24,20 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeCycles;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.DeoptimizeNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeCycles;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodeinfo.NodeSize;
+import jdk.graal.compiler.nodes.DeoptimizeNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.spi.Canonicalizable;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -61,7 +60,13 @@ public class TestDeoptimizeNode extends FixedWithNextNode implements Canonicaliz
         ResolvedJavaMethod method = graph().method();
 
         if (SubstrateOptions.parseOnce()) {
-            throw VMError.unimplemented("Deopt Testing does not yet work.");
+            if (MultiMethod.isDeoptTarget(method)) {
+                /* no-op for deoptimization target methods. */
+                return null;
+            } else {
+                /* deoptimization for all other methods. */
+                return new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter);
+            }
         } else {
             if (method instanceof SharedMethod) {
                 if (MultiMethod.isDeoptTarget(method)) {

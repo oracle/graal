@@ -29,8 +29,8 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.profdiff.core.ExperimentId;
-import org.graalvm.util.json.JSONParser;
-import org.graalvm.util.json.JSONParserException;
+import jdk.graal.compiler.util.json.JSONParser;
+import jdk.graal.compiler.util.json.JSONParserException;
 
 /**
  * A wrapper around {@link JSONParser}, which aids the parsing of the Java representation of a JSON
@@ -120,10 +120,6 @@ public class ExperimentJSONParser {
         public Integer asNullableInteger() throws ExperimentParserTypeError {
             return asNullableInstanceOf(Integer.class);
         }
-
-        public Boolean asNullableBoolean() throws ExperimentParserTypeError {
-            return asNullableInstanceOf(Boolean.class);
-        }
     }
 
     /**
@@ -177,9 +173,26 @@ public class ExperimentJSONParser {
      * @throws ExperimentParserError failed to parse the experiment
      */
     public JSONLiteral parse() throws ExperimentParserError, IOException {
-        JSONParser jsonParser = new JSONParser(file.readFully());
         try {
-            return new JSONLiteral(jsonParser.parse(), null);
+            return new JSONLiteral(new JSONParser(file.readFully()).parse(), null);
+        } catch (JSONParserException parserException) {
+            throw new ExperimentParserError(experimentId, file.getSymbolicPath(), parserException.getMessage());
+        }
+    }
+
+    /**
+     * Parses the source string as a JSON map using a list of allowed keys. It is assumed that the
+     * source string comes from the assigned file view.
+     *
+     * @param allowedKeys the list of allowed keys
+     * @param source the source string containing the JSON map
+     * @return the parsed JSON map containing only values for (not necessarily all) allowed keys
+     * @throws ExperimentParserError failed to parse the experiment
+     * @see JSONParser#parseAllowedKeys(List)
+     */
+    public JSONMap parseAllowedKeys(List<String> allowedKeys, String source) throws ExperimentParserError {
+        try {
+            return new JSONMap(new JSONParser(source).parseAllowedKeys(allowedKeys));
         } catch (JSONParserException parserException) {
             throw new ExperimentParserError(experimentId, file.getSymbolicPath(), parserException.getMessage());
         }

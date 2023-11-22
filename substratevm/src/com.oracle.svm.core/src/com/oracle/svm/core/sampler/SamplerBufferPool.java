@@ -95,6 +95,7 @@ public class SamplerBufferPool {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void pushFullBuffer(SamplerBuffer buffer) {
         fullBuffers.pushBuffer(buffer);
+        SubstrateJVM.getRecorderThread().signal();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -123,6 +124,14 @@ public class SamplerBufferPool {
         } finally {
             mutex.unlock();
         }
+    }
+
+    public int getBufferCount() {
+        /*
+         * Buffer count can change at any time when a thread starts/exits, so querying the count is
+         * racy.
+         */
+        return bufferCount;
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,12 +36,33 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin.TypedBuiltinFactory;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI16NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI16VectorNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI32NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI32VectorNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI64NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI64VectorNodeGen;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 
 public abstract class LLVMByteSwap {
+
+    public static TypedBuiltinFactory getFactory(PrimitiveKind type) {
+        switch (type) {
+            case I16:
+                return TypedBuiltinFactory.vector1(LLVMByteSwapI16NodeGen::create, LLVMByteSwapI16VectorNodeGen::create);
+            case I32:
+                return TypedBuiltinFactory.vector1(LLVMByteSwapI32NodeGen::create, LLVMByteSwapI32VectorNodeGen::create);
+            case I64:
+                return TypedBuiltinFactory.vector1(LLVMByteSwapI64NodeGen::create, LLVMByteSwapI64VectorNodeGen::create);
+            default:
+                return null;
+        }
+    }
 
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMByteSwapI16 extends LLVMBuiltin {

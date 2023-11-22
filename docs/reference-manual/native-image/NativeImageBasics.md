@@ -1,5 +1,5 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: native-image
 link_title: Native Image Basics
 permalink: /reference-manual/native-image/basics/

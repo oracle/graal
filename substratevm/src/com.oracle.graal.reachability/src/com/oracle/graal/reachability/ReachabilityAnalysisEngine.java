@@ -30,12 +30,6 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.ForkJoinPool;
-
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.api.HostVM;
@@ -50,7 +44,14 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
+import com.oracle.svm.common.meta.MultiMethod;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.type.TypedConstant;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -76,11 +77,11 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
 
     private final ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler;
 
+    @SuppressWarnings("this-escape")
     public ReachabilityAnalysisEngine(OptionValues options, AnalysisUniverse universe, HostVM hostVM, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
-                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, ForkJoinPool executorService, Runnable heartbeatCallback,
-                    UnsupportedFeatures unsupportedFeatures, TimerCollection timerCollection,
+                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, UnsupportedFeatures unsupportedFeatures, DebugContext debugContext, TimerCollection timerCollection,
                     ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler) {
-        super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, executorService, heartbeatCallback, unsupportedFeatures, timerCollection);
+        super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, unsupportedFeatures, debugContext, timerCollection);
         this.executor.init(getTiming());
         this.reachabilityTimer = timerCollection.createTimer("(reachability)");
 
@@ -104,8 +105,8 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     }
 
     @Override
-    public AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial) {
-        return addRootMethod(metaAccess.lookupJavaMethod(method), invokeSpecial);
+    public AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
+        return addRootMethod(metaAccess.lookupJavaMethod(method), invokeSpecial, reason, otherRoots);
     }
 
     @SuppressWarnings("try")
@@ -143,24 +144,28 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     }
 
     @Override
-    public AnalysisMethod addRootMethod(AnalysisMethod m, boolean invokeSpecial) {
+    public AnalysisMethod addRootMethod(AnalysisMethod m, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
+        assert otherRoots.length == 0 : otherRoots;
         ReachabilityAnalysisMethod method = (ReachabilityAnalysisMethod) m;
         if (m.isStatic()) {
-            if (!method.registerAsDirectRootMethod()) {
-                return method;
-            }
-            markMethodImplementationInvoked(method, "root method");
+            postTask(() -> {
+                if (method.registerAsDirectRootMethod(reason)) {
+                    markMethodImplementationInvoked(method, reason);
+                }
+            });
         } else if (invokeSpecial) {
             AnalysisError.guarantee(!method.isAbstract(), "Abstract methods cannot be registered as special invoke entry point.");
-            if (!method.registerAsDirectRootMethod()) {
-                return method;
-            }
-            markMethodImplementationInvoked(method, "root method");
+            postTask(() -> {
+                if (method.registerAsDirectRootMethod(reason)) {
+                    markMethodImplementationInvoked(method, reason);
+                }
+            });
         } else {
-            if (!method.registerAsVirtualRootMethod()) {
-                return method;
-            }
-            markMethodInvoked(method, "root method");
+            postTask(() -> {
+                if (method.registerAsVirtualRootMethod(reason)) {
+                    markMethodInvoked(method, reason);
+                }
+            });
         }
         return method;
     }
@@ -182,6 +187,14 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
             reachabilityMethodProcessingHandler.onMethodReachable(this, method);
         } catch (Throwable ex) {
             getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, ex.getLocalizedMessage(), null, ex);
+        }
+    }
+
+    public void markMethodSpecialInvoked(ReachabilityAnalysisMethod targetMethod, Object reason) {
+        ReachabilityAnalysisType declaringClass = targetMethod.getDeclaringClass();
+        declaringClass.addSpecialInvokedMethod(targetMethod);
+        if (!declaringClass.getInstantiatedSubtypes().isEmpty()) {
+            markMethodImplementationInvoked(targetMethod, reason);
         }
     }
 
@@ -214,14 +227,11 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
      */
     public void handleEmbeddedConstant(ReachabilityAnalysisMethod method, JavaConstant constant, Object reason) {
         if (constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
-            if (scanningPolicy().trackConstant(this, constant)) {
-                BytecodePosition position = new BytecodePosition(null, method, 0);
-                getUniverse().registerEmbeddedRoot(constant, position);
+            BytecodePosition position = new BytecodePosition(null, method, 0);
+            getUniverse().registerEmbeddedRoot(constant, position);
 
-                Object obj = getSnippetReflectionProvider().asObject(Object.class, constant);
-                AnalysisType type = getMetaAccess().lookupJavaType(obj.getClass());
-                registerTypeAsInHeap(type, reason);
-            }
+            AnalysisType type = (AnalysisType) ((TypedConstant) constant).getType(getMetaAccess());
+            registerTypeAsInHeap(type, reason);
         }
     }
 
@@ -266,6 +276,10 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
                     markMethodImplementationInvoked(method, reason);
                 }
             }
+
+            for (ReachabilityAnalysisMethod method : ((ReachabilityAnalysisType) current).getInvokedSpecialMethods()) {
+                markMethodImplementationInvoked(method, reason);
+            }
         });
     }
 
@@ -280,7 +294,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     public boolean finish() throws InterruptedException {
         universe.setAnalysisDataValid(false);
         runReachability();
-        assert executor.getPostedOperations() == 0;
+        assert executor.getPostedOperations() == 0 : executor.getPostedOperations();
         universe.setAnalysisDataValid(true);
         return true;
     }

@@ -150,6 +150,10 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     public FrameWithoutBoxing(FrameDescriptor descriptor, Object[] arguments) {
+        // Make sure the state of ASSERTIONS_ENABLED matches with
+        // the state of assertions at runtime
+        // This can be an issue since this class is initialized at build time in native-image
+        assert ASSERTIONS_ENABLED;
         /*
          * Important note: Make sure this frame reference does not escape to any other method in
          * this constructor, otherwise the immutable invariant for frame final fields may not hold.

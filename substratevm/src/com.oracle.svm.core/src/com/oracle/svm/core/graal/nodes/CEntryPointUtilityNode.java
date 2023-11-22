@@ -24,18 +24,18 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_2;
 
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.InputType;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.DeoptimizingFixedWithNextNode;
-import org.graalvm.compiler.nodes.DeoptimizingNode.DeoptBefore;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
-import org.graalvm.compiler.nodes.spi.Lowerable;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.InputType;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.DeoptimizingFixedWithNextNode;
+import jdk.graal.compiler.nodes.DeoptimizingNode.DeoptBefore;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
+import jdk.graal.compiler.nodes.spi.Lowerable;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.word.LocationIdentity;
 

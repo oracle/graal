@@ -30,6 +30,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import com.oracle.svm.configure.filters.ConfigurationFilter.Inclusion;
+import com.oracle.svm.util.LogUtils;
 
 public class ModuleFilterTools {
 
@@ -58,7 +59,7 @@ public class ModuleFilterTools {
     private static void checkDependencies(Module module, Set<String> includedModuleNames) {
         for (ModuleDescriptor.Requires require : module.getDescriptor().requires()) {
             if (!includedModuleNames.contains(require.name())) {
-                System.err.println("Warning: dependency missing from input set of modules: " + module.getName() + " -> " + require.name());
+                LogUtils.warning("Dependency missing from input set of modules: " + module.getName() + " -> " + require.name());
                 checkDependencies(module.getLayer().findModule(require.name()).get(), includedModuleNames);
             }
         }

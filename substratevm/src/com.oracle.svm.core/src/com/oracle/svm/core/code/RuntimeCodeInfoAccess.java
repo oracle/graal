@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,11 +66,12 @@ public final class RuntimeCodeInfoAccess {
         return cast(info).getCodeObserverHandles();
     }
 
-    public static void initialize(CodeInfo info, Pointer codeStart, int codeSize, int dataOffset, int dataSize, int codeAndDataMemorySize,
+    public static void initialize(CodeInfo info, Pointer codeStart, int entryPointOffset, int codeSize, int dataOffset, int dataSize, int codeAndDataMemorySize,
                     int tier, NonmovableArray<InstalledCodeObserverHandle> observerHandles, boolean allObjectsAreInImageHeap) {
 
         CodeInfoImpl impl = cast(info);
         impl.setCodeStart((CodePointer) codeStart);
+        impl.setCodeEntryPointOffset(WordFactory.unsigned(entryPointOffset));
         impl.setCodeSize(WordFactory.unsigned(codeSize));
         impl.setDataOffset(WordFactory.unsigned(dataOffset));
         impl.setDataSize(WordFactory.unsigned(dataSize));
@@ -82,7 +83,7 @@ public final class RuntimeCodeInfoAccess {
 
     public static void setCodeObjectConstantsInfo(CodeInfo info, NonmovableArray<Byte> refMapEncoding, long refMapIndex) {
         CodeInfoImpl impl = cast(info);
-        assert impl.getCodeStart().isNonNull();
+        assert impl.getCodeStart().isNonNull() : "null";
         impl.setCodeConstantsReferenceMapEncoding(refMapEncoding);
         impl.setCodeConstantsReferenceMapIndex(refMapIndex);
     }
@@ -152,6 +153,7 @@ public final class RuntimeCodeInfoAccess {
     /**
      * Walks all strong references in a {@link CodeInfo} object.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean walkStrongReferences(CodeInfo info, ObjectReferenceVisitor visitor) {
         return NonmovableArrays.walkUnmanagedObjectArray(cast(info).getObjectFields(), visitor, CodeInfoImpl.FIRST_STRONGLY_REFERENCED_OBJFIELD, CodeInfoImpl.STRONGLY_REFERENCED_OBJFIELD_COUNT);
     }
@@ -160,6 +162,7 @@ public final class RuntimeCodeInfoAccess {
      * Walks all weak references in a {@link CodeInfo} object.
      */
     @DuplicatedInNativeCode
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean walkWeakReferences(CodeInfo info, ObjectReferenceVisitor visitor) {
         CodeInfoImpl impl = cast(info);
         boolean continueVisiting = true;

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.thread;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -54,10 +54,6 @@ public abstract class Parker {
     public interface ParkerFactory {
         @Fold
         static ParkerFactory singleton() {
-            /* Needed until ParkEvent is removed, see GR-44513. */
-            if (ImageSingletons.contains(ParkEvent.ParkEventFactory.class)) {
-                return ImageSingletons.lookup(ParkEvent.ParkEventFactory.class);
-            }
             return ImageSingletons.lookup(ParkerFactory.class);
         }
 

@@ -112,4 +112,12 @@ public class PythonByteTests extends RegexTestBase {
         test("\u00fd", "iL", "PythonLocale=tr_TR.ISO-8859-9", "\u00dd", 0, false);
         test("\u00fd", "iL", "PythonLocale=tr_TR.ISO-8859-9", "I", 0, true, 0, 1, -1);
     }
+
+    @Test
+    public void unsupportedLocale() {
+        expectUnsupported("foo", "iL", "PythonLocale=foo");
+        expectUnsupported("foo", "iL", "PythonLocale=foo.");
+        expectUnsupported("foo", "iL", "PythonLocale=foo.!");
+        expectUnsupported("foo", "iL", "PythonLocale=ab_XY.ISO-8859-42");
+    }
 }

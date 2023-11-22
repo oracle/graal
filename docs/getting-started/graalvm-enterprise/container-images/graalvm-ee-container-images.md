@@ -1,144 +1,120 @@
 ---
 layout: docs
 toc_group: container-images
-link_title: Get Started with GraalVM Enterprise Container Images
+link_title: Oracle GraalVM Container Images
 permalink: /getting-started/container-images/
 ---
 
-## Get Started with GraalVM Enterprise Container Images
+## Oracle GraalVM Container Images
 
-Oracle GraalVM Enterprise container images are published in the [Oracle Container Registry](https://container-registry.oracle.com).
+Oracle GraalVM container images are available in [Oracle Container Registry (OCR)](https://container-registry.oracle.com/ords/ocr/ba/graalvm) under the [GraalVM Free Terms and Conditions (GFTC) license](https://www.oracle.com/downloads/licenses/graal-free-license.html).
 
-The following images are available:
+## Repositories
 
-| Image Name      | Description                                        
-------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
-| **jdk-ee**          | A compact image containing the GraalVM Enterprise JDK. |
-| **native-image-ee** | A compact image containing the GraalVM Enterprise `native-image` utility and JDK |
-| **enterprise**      | Provides the GraalVM Enterprise JDK along with the `gu` (Graal Updater) utility to enable installation of additional features. |
-| **nodejs-ee**       | Includes the Node.js runtime and the GraalVM Enterprise JDK. |
+Oracle GraalVM container images are published in two OCR repositories: **jdk** and **native-image**. 
 
-## Images Tagging Structure and Availability
+| Repository       | Description |
+|------------------|-------------|
+| **jdk**          | Provides container images with Oracle GraalVM JDK which can be used to both compile and deploy Java applications. Image tags let you select the Java version and Oracle Linux version. |
+| **native-image** | Provides Oracle GraalVM container images with the `native-image` utility along with all tools required to compile applications into native Linux executables. These images are commonly used in multi-stage builds to compile applications into executables that are then packaged in a lightweight container image. Image tags let you select the Java version and Oracle Linux version as well as variants that include the musl toolchain for the creation of fully statically linked executables. |
 
-Images are multi-arch (`amd64`, `aarch64` for Java 11 or later, depending on Docker host architecture), and tagged with the format:
+Both repositories provide container images for AMD64 and AArch64 processor architectures, with a choice of Oracle Linux versions 7, 8, or 9.
 
-```
-container-registry.oracle.com/graalvm/{IMAGE_NAME}:{IMAGE_TAG}.
-```
+Oracle GraalVM is installed in `/usr/lib64/graalvm/graalvm-java<$FeatureVersion>` where `<$FeatureVersion>` is `17`, `20`, etc. 
+For instance, Oracle GraalVM for JDK 17 is installed in `/usr/lib64/graalvm/graalvm-java17`. 
+All binaries, including `java`, `javac`, `native-image`, and other binaries are available as global commands via the `alternatives` command.
 
-Image tag structure is:
+## Tags
 
-```
-{OS_VERSION}-java{JAVA_VERSION}-{MAJOR_RELEASE}.{MINOR_RELEASE}.{PATCH_RELEASE}-b{BUILD_NUMBER}
-```
+Each repository provides multiple tags that let you choose the level of stability you need including the Java version, build number, and the Oracle Linux version. 
+Oracle GraalVM image tags use the following naming convention:
 
-The structure is designed to allow references with different levels of specificity. 
-The minimum valid tag is `java{JAVA_VERSION}-{MAJOR_RELEASE}`. For example, the following are all valid tags:
-
-```
-java17-21
-java17-21.3
-java17-21.3.0
-java17-21.3.0-b1
-ol8-java17-21.3.1-b2
+```bash
+$version[-muslib(for native image only)][-$platform][-$buildnumber]
 ```
 
-It is recommended that the most specific tag be used, e.g., `ol8-java17-21.3.1` or `ol8-java17-21.3.1-b1`, where `-b1` indicates that the image required a patch and this specific build will never change.
+The following tags are listed from the most-specific tag (at the top) to the least-specific tag (at the bottom). 
+The most-specific tag is unique and always points to the same image, while the less-specific tags point to newer image variants over time.
 
-Tags that are not fully specified, e.g., `java17-21`, are not stable and will change over time to refer to the latest available GraalVM 21 release. Using `latest` (or no tag) will always get the latest release available for a given image, the latest OS, the latest Java version, and the latest GraalVM version.
+```
+17.0.8-ol9-20230904
+17.0.8-ol9
+17.0.8
+17-ol9
+17
+```
 
-## Get Started
+## Pulling Images
 
-To pull a GraalVM Enterprise image from the Oracle Container Registry, you will be required to accept the license agreement. 
+1. To pull the container image for Oracle GraalVM JDK for a specific JDK feature version, e.g., _17_, run:
 
-1. Go to [Oracle Container Registry](https://container-registry.oracle.com/) and click on “GraalVM”. You will be redirected to the GraalVM repositories page.
-
-    ![](../img/ocr.png)
-
-2. Click on an image repository. For example, if you need a compact container image with the JDK click the **jdk-ee** link.
-
-    ![](../img/graalvm_repositories.png)
-
-3. Click on **Sign In**. This will take you to the Oracle Single Sign-on page.
-
-    ![](../img/sign-in.png)
-
-4. Sign in with an Oracle account. If you do not have an existing Oracle account you can create one.
-
-5. Once you have signed in you will see the following screen:
-
-    ![](../img/license_review.png)
-
-    Click **Continue** to accept the license and proceed ahead.
-
-6. Check and accept the license.
-
-    ![](../img/licence_accepted.png)
-
-7. Open a terminal window and `docker login` to Oracle Container Registry using your Oracle account.
-
-    ```shell
-    docker login container-registry.oracle.com
-    Username: user.name@email.com
-    Password: 
-    Login Succeeded
+    ```bash
+    docker pull container-registry.oracle.com/graalvm/jdk:17
+    ```
+    
+    Alternatively, to use the container image as the base image in your Dockerfile, use:
+    
+    ```bash
+    FROM container-registry.oracle.com/graalvm/jdk:17
     ```
 
-8. Pull the image with the `docker pull` command.  Use the latest tag or a specific tag from the list of tags displayed on the page. For example:
-
-    ```shell
-    docker pull container-registry.oracle.com/graalvm/jdk-ee:latest
-    latest: Pulling from graalvm/jdk-ee
-    58c4eaffce77: Pull complete 
-    8800a93aa49d: Pull complete 
-    da2734fc865b: Pull complete 
-    Digest: sha256:ccde822a1119da5f95e97b331632e6219b0ae29f81f516d1c0b9787
-    Status: Downloaded newer image for container-registry.oracle.com/graalvm/jdk-ee:latest
-    container-registry.oracle.com/graalvm/jdk-ee:latest
+2.  To pull the container image for Oracle GraalVM `native-image` utility for a specific JDK feature version, e.g., _17_, run: 
+    
+    ```bash
+    docker pull container-registry.oracle.com/graalvm/native-image:17
     ```
 
-9. Start a container from the `jdk-ee` image and enter the bash session with the following `run` command:
+	Alternatively, to pull the container image for Oracle GraalVM `native-image` utility with the `musl libc` toolchain to create fully statically linked executables, run:
+    
+    ```bash
+    docker pull container-registry.oracle.com/graalvm/native-image:17-muslib
+    ```
+    
+    Alternatively, to use the container image as the base image in your Dockerfile, use:
+    
+    ```bash
+    FROM container-registry.oracle.com/graalvm/native-image:17-muslib
+    ```
+    
+3. To verify, start the container and enter the Bash session:
 
-    ```shell
-    docker run -it --rm container-registry.oracle.com/graalvm/jdk-ee:latest bash
+    ```bash
+    docker run -it --rm --entrypoint /bin/bash container-registry.oracle.com/graalvm/native-image:17
     ```
 
-10. Check the GraalVM Enterprise version, storage location by running the `env` command:
+	To check the version of Oracle GraalVM and its installed location, run the `env` command from the Bash prompt:
 
-    ```shell
-    bash-4.4# env
+    ```bash
+    env
     ```
-    The output message will print the `GRAALVM_VERSION` and `JAVA_HOME` values showing the version of the installed GraalVM Enterprise and the location where it is installed.
+    
+    The output shows the environment variable `JAVA_HOME` pointing to the installed Oracle GraalVM version and location.
 
-11. Check the contents of the GraalVM Enterprise `bin` directory containing `java`, which is the GraalVM Enterprise JDK:
-
-    ```shell
-    bash-4.4# ls /usr/lib64/graalvm/graalvm21-ee-java17/bin
+	To check the Java version, run the following command from the Bash prompt:
+    
+    ```bash
+    java -version
     ```
-
-12. Check the Java version by running the following command:
- 
-    ```shell
-    bash-4.4# java -version
+    
+    The output shows the installed Oracle GraalVM Java runtime environment and version information.
+    
+    To check the `native-image` version, run the following command from the Bash prompt:
+    
+    ```bash
+    native-image --version
     ```
-    The output printed contains the information about the runtime environment and the version number.
+    
+    The output shows the installed Oracle GraalVM `native-image` utility version information.
+    
+4. Calling `docker pull` without specifying a processor architecture pulls container images for the processor architecture that matches your Docker client. 
+To pull container images for a different platform architecture, specify the desired platform architecture with the `--platform` option and either `linux/amd64` or `linux/aarch64` as follows:
 
-If you pull the `native-image-ee` image, you can start a container and enter the session from the `native-image-ee` image immediately:
-
-```shell
-docker run -it --rm container-registry.oracle.com/graalvm/native-image-ee:latest bash
-```
-
-Follow steps 10-12 above to check the installed version and the location of GraalVM Enterprise. The `bin` directory, in this case, includes `java` and `native-image` launchers. Check the versions:
-
-```shell
-native-image --version
-```
-
-```shell
-java -version
-```
+    ```bash
+    docker pull --platform linux/aarch64 container-registry.oracle.com/graalvm/native-image:17
+    ```
 
 ### Learn More
 
-- [GraalVM Native Image, Spring and Containerisation](https://luna.oracle.com/lab/fdfd090d-e52c-4481-a8de-dccecdca7d68): Learn how GraalVM Native Image ahead-of-time compilation generates native executables ideal for containerization. 
+- [GraalVM Native Image, Spring and Containerisation](https://luna.oracle.com/lab/fdfd090d-e52c-4481-a8de-dccecdca7d68): Learn how GraalVM Native Image can generate native executables ideal for containerization.
+- [Announcement Blog: New Oracle GraalVM Container Images](https://blogs.oracle.com/java/post/new-oracle-graalvm-container-images)
+

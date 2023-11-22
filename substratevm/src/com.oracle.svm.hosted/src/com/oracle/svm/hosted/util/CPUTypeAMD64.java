@@ -40,11 +40,13 @@ import static jdk.vm.ci.amd64.AMD64.CPUFeature.CLMUL;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.CLWB;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.CMOV;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.CX8;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.F16C;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.FLUSHOPT;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.FMA;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.FXSR;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.LZCNT;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.MMX;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.PKU;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.POPCNT;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE2;
@@ -62,10 +64,11 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.util.GraalAccess;
-import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.util.StringUtil;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
@@ -88,22 +91,13 @@ public enum CPUTypeAMD64 implements CPUType {
     X86_64("x86-64", CMOV, CX8, FXSR, MMX, SSE, SSE2),
     X86_64_V1("x86-64-v1", X86_64),
     X86_64_V2("x86-64-v2", X86_64_V1, POPCNT, SSE3, SSE4_1, SSE4_2, SSSE3),
-    /**
-     * <code>F16C</code> are not in {@link JDK17OrEarlier}. Leaving link here for cleanup purposes.
-     */
-    X86_64_V3("x86-64-v3", X86_64_V2, AVX, AVX2, BMI1, BMI2, /* F16C, */ FMA, LZCNT),
+    X86_64_V3("x86-64-v3", X86_64_V2, AVX, AVX2, BMI1, BMI2, F16C, FMA, LZCNT),
     X86_64_V4("x86-64-v4", X86_64_V3, AVX512F, AVX512BW, AVX512CD, AVX512DQ, AVX512VL),
 
     // Intel selection
-    /**
-     * <code>F16C</code> are not in {@link JDK17OrEarlier}. Leaving link here for cleanup purposes.
-     */
-    HASWELL("haswell", X86_64, AES, SSE3, SSSE3, SSE4_1, SSE4_2, POPCNT, CLMUL, AVX, /* F16C, */ AVX2, BMI1, BMI2, LZCNT, FMA),
+    HASWELL("haswell", X86_64, AES, SSE3, SSSE3, SSE4_1, SSE4_2, POPCNT, CLMUL, AVX, F16C, AVX2, BMI1, BMI2, LZCNT, FMA),
     SKYLAKE("skylake", HASWELL, ADX, AMD_3DNOW_PREFETCH, FLUSHOPT),
-    /**
-     * <code>PKU</code> are not in {@link JDK17OrEarlier}. Leaving link here for cleanup purposes.
-     */
-    SKYLAKE_AVX512("skylake-avx512", SKYLAKE, /* PKU, */ AVX512F, AVX512CD, AVX512VL, AVX512BW, AVX512DQ, CLWB),
+    SKYLAKE_AVX512("skylake-avx512", SKYLAKE, PKU, AVX512F, AVX512CD, AVX512VL, AVX512BW, AVX512DQ, CLWB),
 
     // Special symbols
     COMPATIBILITY(NativeImageOptions.MICRO_ARCHITECTURE_COMPATIBILITY, X86_64),
@@ -161,7 +155,7 @@ public enum CPUTypeAMD64 implements CPUType {
             return X86_64_V3.getName();
         } else {
             if (printFallbackWarning) {
-                System.out.printf("Warning: The host machine does not support all features of '%s'. Falling back to '%s' for best compatibility.%n",
+                LogUtils.warning("The host machine does not support all features of '%s'. Falling back to '%s' for best compatibility.",
                                 X86_64_V3.getName(), SubstrateOptionsParser.commandArgument(NativeImageOptions.MicroArchitecture, COMPATIBILITY.getName()));
             }
             return COMPATIBILITY.getName();
@@ -183,7 +177,7 @@ public enum CPUTypeAMD64 implements CPUType {
             throw UserError.abort("Unsupported architecture '%s'. Please adjust '%s'. On AMD64, only %s are available.",
                             marchValue,
                             SubstrateOptionsParser.commandArgument(NativeImageOptions.MicroArchitecture, marchValue),
-                            List.of(values()).stream().map(v -> v.name).collect(Collectors.joining(", ")));
+                            StringUtil.joinSingleQuoted(values()));
         }
         return value.getFeatures();
     }

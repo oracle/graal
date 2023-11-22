@@ -48,8 +48,9 @@ public class MultiTypeState extends TypeState {
     protected boolean merged;
 
     /** Creates a new type state using the provided types bit set and objects. */
+    @SuppressWarnings("this-escape")
     public MultiTypeState(PointsToAnalysis bb, boolean canBeNull, BitSet typesBitSet, int typesCount) {
-        assert !TypeStateUtils.needsTrim(typesBitSet);
+        assert !TypeStateUtils.needsTrim(typesBitSet) : typesBitSet;
         this.typesBitSet = typesBitSet;
         this.typesCount = typesCount;
         this.canBeNull = canBeNull;
@@ -59,6 +60,7 @@ public class MultiTypeState extends TypeState {
     }
 
     /** Create a type state with the same content and a reversed canBeNull value. */
+    @SuppressWarnings("this-escape")
     protected MultiTypeState(PointsToAnalysis bb, boolean canBeNull, MultiTypeState other) {
         this.typesBitSet = other.typesBitSet;
         this.typesCount = other.typesCount;
@@ -151,7 +153,7 @@ public class MultiTypeState extends TypeState {
     /** Note that the objects of this type state have been merged. */
     @Override
     public void noteMerge(PointsToAnalysis bb) {
-        assert bb.analysisPolicy().isMergingEnabled();
+        assert bb.analysisPolicy().isMergingEnabled() : "policy mismatch";
 
         if (!merged) {
             for (AnalysisType type : types(bb)) {

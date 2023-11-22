@@ -42,24 +42,32 @@ package com.oracle.truffle.regex.tregex.parser;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.RegexFlags;
+import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.errors.JsErrorMessages;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 
 public class JSRegexValidator implements RegexValidator {
 
+    private final RegexLanguage language;
     private final RegexSource source;
     private final RegexFlags flags;
+    private final CompilationBuffer compilationBuffer;
     private final JSRegexLexer lexer;
 
-    public JSRegexValidator(RegexSource source) {
+    public JSRegexValidator(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
+        this.language = language;
         this.source = source;
         this.flags = RegexFlags.parseFlags(source);
-        this.lexer = new JSRegexLexer(source, flags);
+        this.compilationBuffer = compilationBuffer;
+        this.lexer = new JSRegexLexer(source, flags, compilationBuffer);
     }
 
     @Override
@@ -115,7 +123,12 @@ public class JSRegexValidator implements RegexValidator {
                 case wordBoundary:
                 case nonWordBoundary:
                 case backReference:
+                case literalChar:
                 case charClass:
+                case charClassBegin:
+                case charClassAtom:
+                case charClassEnd:
+                case classSet:
                     curTermState = CurTermState.Other;
                     break;
                 case quantifier:
@@ -123,7 +136,7 @@ public class JSRegexValidator implements RegexValidator {
                         case Null:
                             throw syntaxError(JsErrorMessages.QUANTIFIER_WITHOUT_TARGET);
                         case LookAheadAssertion:
-                            if (flags.isUnicode()) {
+                            if (flags.isEitherUnicode()) {
                                 throw syntaxError(JsErrorMessages.QUANTIFIER_ON_LOOKAHEAD_ASSERTION);
                             }
                             break;
@@ -167,10 +180,30 @@ public class JSRegexValidator implements RegexValidator {
                             break;
                     }
                     break;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere();
             }
+        }
+        if (lexer.inCharacterClass()) {
+            throw syntaxError(JsErrorMessages.UNMATCHED_LEFT_BRACKET);
         }
         if (!syntaxStack.isEmpty()) {
             throw syntaxError(JsErrorMessages.UNTERMINATED_GROUP);
+        }
+        checkNamedCaptureGroups();
+    }
+
+    private void checkNamedCaptureGroups() {
+        if (lexer.getNamedCaptureGroups() != null) {
+            for (Map.Entry<String, List<Integer>> entry : lexer.getNamedCaptureGroups().entrySet()) {
+                if (entry.getValue().size() > 1) {
+                    // if the regexp contains duplicate names of capture groups, we need to parse
+                    // with an actual AST to check whether the two duplicate capture groups can
+                    // participate in the same match
+                    new JSRegexParser(language, source, compilationBuffer).parse();
+                    break;
+                }
+            }
         }
     }
 

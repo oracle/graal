@@ -5,13 +5,13 @@
 
   # See definition of `gates` local variable in ../ci_common/gate.jsonnet
   local gates = {
-    "gate-compiler-bootstrap-labsjdk-20-linux-amd64": g.many_cores + c.mach5_target,
-    "gate-compiler-bootstrap_economy-labsjdk-20-linux-amd64": g.many_cores + c.mach5_target,
+    "gate-compiler-bootstrap-labsjdk-latest-linux-amd64": g.many_cores + c.mach5_target,
+    "gate-compiler-bootstrap_economy-labsjdk-latest-linux-amd64": g.many_cores + c.mach5_target,
   },
 
-  # Builds run on only on linux-amd64-[jdk20]
+  # Builds run on only on linux-amd64-jdk21
   local linux_amd64_builds = [g.make_build(jdk, "linux-amd64", task, gates_manifest=gates).build
-    for jdk in ["17", "20"]
+    for jdk in [g.jdk_latest]
     for task in ["bootstrap", "bootstrap_economy"]
   ],
 

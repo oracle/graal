@@ -407,8 +407,8 @@ public class LockFreePrefixTree {
         }
     }
 
-    private Allocator allocator;
-    private Node root;
+    private final Allocator allocator;
+    private volatile Node root;
 
     /**
      * Create new {@link LockFreePrefixTree} with root being a Node with key 0.
@@ -433,6 +433,15 @@ public class LockFreePrefixTree {
      */
     public Node root() {
         return root;
+    }
+
+    /**
+     * Resets the tree.
+     *
+     * @since 23.0
+     */
+    public void reset() {
+        root = allocator.newNode(0);
     }
 
     /**
@@ -528,21 +537,33 @@ public class LockFreePrefixTree {
      * @since 23.0
      */
     public static class HeapAllocator extends Allocator {
+        /**
+         * @since 23.0
+         */
         @Override
         public Node newNode(long key) {
             return new Node(key);
         }
 
+        /**
+         * @since 23.0
+         */
         @Override
         public Node.LinearChildren newLinearChildren(int length) {
             return new Node.LinearChildren(length);
         }
 
+        /**
+         * @since 23.0
+         */
         @Override
         public Node.HashChildren newHashChildren(int length) {
             return new Node.HashChildren(length);
         }
 
+        /**
+         * @since 23.0
+         */
         @Override
         public void shutdown() {
         }
@@ -682,10 +703,16 @@ public class LockFreePrefixTree {
          */
         private final HousekeepingThread housekeepingThread;
 
+        /**
+         * @since 23.0
+         */
         public ObjectPoolingAllocator() {
             this(DEFAULT_HOUSEKEEPING_PERIOD_MILLIS);
         }
 
+        /**
+         * @since 23.0
+         */
         public ObjectPoolingAllocator(int housekeepingPeriodMillis) {
             this.nodePool = createNodePool();
             this.linearChildrenPool = createLinearChildrenPool();
@@ -735,6 +762,9 @@ public class LockFreePrefixTree {
             return pools;
         }
 
+        /**
+         * @since 23.0
+         */
         @Override
         public Node newNode(long key) {
             Node obj = nodePool.get();
@@ -747,6 +777,9 @@ public class LockFreePrefixTree {
             }
         }
 
+        /**
+         * @since 23.0
+         */
         @Override
         public Node.LinearChildren newLinearChildren(int length) {
             checkPowerOfTwo(length);
@@ -767,6 +800,9 @@ public class LockFreePrefixTree {
             }
         }
 
+        /**
+         * @since 23.0
+         */
         @Override
         public Node.HashChildren newHashChildren(int length) {
             checkPowerOfTwo(length);
@@ -787,6 +823,9 @@ public class LockFreePrefixTree {
             }
         }
 
+        /**
+         * @since 23.0
+         */
         @Override
         public void shutdown() {
             housekeepingThread.isEnabled.set(false);

@@ -41,17 +41,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Stream;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugContext.Activation;
-import org.graalvm.compiler.debug.DebugContext.Scope;
-import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.phases.util.Providers;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext.Activation;
+import jdk.graal.compiler.debug.DebugContext.Scope;
+import jdk.graal.compiler.debug.Indent;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -63,7 +63,6 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
@@ -74,6 +73,7 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.util.FileUtils;
 
+import jdk.internal.loader.BootLoader;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /** Registration of native JDK libraries. */
@@ -102,16 +102,18 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         if (isWindows()) {
-            isSunMSCAPIProviderReachable = access.isReachable(clazz(access, "sun.security.mscapi.SunMSCAPI"));
+            var optSunMSCAPIClass = optionalClazz(access, "sun.security.mscapi.SunMSCAPI");
+            isSunMSCAPIProviderReachable = optSunMSCAPIClass.isPresent() && access.isReachable(optSunMSCAPIClass.get());
         }
     }
 
     @Override
     public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
-        registerLoadLibraryPlugin(plugins, System.class);
+        registerLoadLibraryPlugin(providers, plugins, System.class);
+        registerLoadLibraryPlugin(providers, plugins, BootLoader.class);
     }
 
-    public void registerLoadLibraryPlugin(Plugins plugins, Class<?> clazz) {
+    public void registerLoadLibraryPlugin(Providers providers, Plugins plugins, Class<?> clazz) {
         Registration r = new Registration(plugins.getInvocationPlugins(), clazz);
         r.register(new RequiredInvocationPlugin("loadLibrary", String.class) {
             @Override
@@ -122,7 +124,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
                  * String arguments.
                  */
                 if (libnameNode.isConstant()) {
-                    registerLibrary((String) SubstrateObjectConstant.asObject(libnameNode.asConstant()));
+                    registerLibrary(providers.getSnippetReflection().asObject(String.class, libnameNode.asJavaConstant()));
                 }
                 /* We never want to do any actual intrinsification, process the original invoke. */
                 return false;
@@ -171,6 +173,8 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         return Stream.empty();
     }
 
+    private String imageName;
+
     @Override
     public void beforeImageWrite(BeforeImageWriteAccess access) {
         if (SubstrateOptions.StaticExecutable.getValue() || isDarwin()) {
@@ -188,6 +192,8 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
                             .forEach(linkerInvocation::addNativeLinkerOption);
             return linkerInvocation;
         });
+
+        imageName = ((BeforeImageWriteAccessImpl) access).getImageName();
     }
 
     private Stream<String> getShimExports() {
@@ -309,8 +315,9 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         DebugContext debug = accessImpl.getDebugContext();
         try (Scope s = debug.scope("link");
                         Activation a = debug.activate()) {
-            if (FileUtils.executeCommand(linkerCommand) != 0) {
-                VMError.shouldNotReachHere();
+            int cmdResult = FileUtils.executeCommand(linkerCommand);
+            if (cmdResult != 0) {
+                VMError.shouldNotReachHereUnexpectedInput(cmdResult); // ExcludeFromJacocoGeneratedReport
             }
             BuildArtifacts.singleton().add(ArtifactType.JDK_LIBRARY_SHIM, shimLibrary);
             debug.log("%s: OK", shimLibrary.getFileName());
@@ -324,12 +331,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     /** Returns the import library of the native image. */
     private Path getImageImportLib() {
         assert isWindows();
-        Path image = accessImpl.getImagePath();
-        String imageName = String.valueOf(image.getFileName());
-        String importLibName = imageName.substring(0, imageName.lastIndexOf('.')) + ".lib";
-        Path importLib = accessImpl.getImageKind().isExecutable
-                        ? accessImpl.getTempDirectory().resolve(importLibName)
-                        : image.resolveSibling(importLibName);
+        Path importLib = accessImpl.getTempDirectory().resolve(imageName + ".lib");
         assert Files.exists(importLib);
         return importLib;
     }

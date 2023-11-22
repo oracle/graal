@@ -24,14 +24,13 @@
  */
 package com.oracle.svm.core.heap;
 
-import org.graalvm.compiler.nodes.gc.BarrierSet;
+import jdk.graal.compiler.nodes.gc.BarrierSet;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 public interface BarrierSetProvider {
     /**
-     * Returns a suitable {@link org.graalvm.compiler.nodes.gc.BarrierSet} for the used garbage
-     * collector.
+     * Returns a suitable {@link BarrierSet} for the used garbage collector.
      */
     BarrierSet createBarrierSet(MetaAccessProvider metaAccess);
 }

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.snippets;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
+
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
@@ -59,9 +61,9 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 public abstract class ExceptionUnwind {
 
     public static final SubstrateForeignCallDescriptor UNWIND_EXCEPTION_WITHOUT_CALLEE_SAVED_REGISTERS = SnippetRuntime.findForeignCall(ExceptionUnwind.class,
-                    "unwindExceptionWithoutCalleeSavedRegisters", true, LocationIdentity.any());
+                    "unwindExceptionWithoutCalleeSavedRegisters", NO_SIDE_EFFECT, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor UNWIND_EXCEPTION_WITH_CALLEE_SAVED_REGISTERS = SnippetRuntime.findForeignCall(ExceptionUnwind.class, "unwindExceptionWithCalleeSavedRegisters",
-                    true, LocationIdentity.any());
+                    NO_SIDE_EFFECT, LocationIdentity.any());
 
     public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{
                     UNWIND_EXCEPTION_WITHOUT_CALLEE_SAVED_REGISTERS,
@@ -157,7 +159,7 @@ public abstract class ExceptionUnwind {
      */
     private static void reportFatalUnwind(Throwable exception) {
         Log.log().string("Fatal error: exception unwind while thread is not in Java state: ");
-        Log.log().exception(exception);
+        Log.log().exception(exception).newline();
         ImageSingletons.lookup(LogHandler.class).fatalError();
     }
 
@@ -169,7 +171,7 @@ public abstract class ExceptionUnwind {
      */
     private static void reportUnhandledException(Throwable exception) {
         Log.log().string("Fatal error: unhandled exception in isolate ").hex(CurrentIsolate.getIsolate()).string(": ");
-        Log.log().exception(exception);
+        Log.log().exception(exception).newline();
         ImageSingletons.lookup(LogHandler.class).fatalError();
     }
 
@@ -206,7 +208,7 @@ public abstract class ExceptionUnwind {
                 try {
                     CodeInfo codeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
 
-                    lookupCodeInfoInterruptible(codeInfo, ip, codeInfoQueryResult);
+                    CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), codeInfoQueryResult);
                     /*
                      * Frame could have been deoptimized during interruptible lookup above, check
                      * again.
@@ -265,8 +267,4 @@ public abstract class ExceptionUnwind {
         deoptFrame.takeException();
     }
 
-    @Uninterruptible(reason = "Wrap call to interruptible code.", calleeMustBe = false)
-    private static void lookupCodeInfoInterruptible(CodeInfo codeInfo, CodePointer ip, SimpleCodeInfoQueryResult codeInfoQueryResult) {
-        CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), codeInfoQueryResult);
-    }
 }

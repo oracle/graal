@@ -52,7 +52,5 @@ public interface AnnotationExtractor {
 
     <T extends Annotation> T extractAnnotation(AnnotatedElement element, Class<T> annotationType, boolean declaredOnly);
 
-    Annotation[] extractAnnotations(AnnotatedElement element, boolean declaredOnly);
-
     Class<? extends Annotation>[] getAnnotationTypes(AnnotatedElement element);
 }

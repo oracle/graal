@@ -29,6 +29,8 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+
 import jdk.internal.reflect.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -75,7 +77,7 @@ public abstract class AnnotationMemberValue {
         return Collections.emptyList();
     }
 
-    public List<JavaConstant> getExceptionProxies() {
+    public List<JavaConstant> getExceptionProxies(@SuppressWarnings("unused") SnippetReflectionProvider snippetReflection) {
         return Collections.emptyList();
     }
 

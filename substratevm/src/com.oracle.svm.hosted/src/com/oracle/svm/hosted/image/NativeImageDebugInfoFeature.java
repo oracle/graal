@@ -27,8 +27,8 @@ package com.oracle.svm.hosted.image;
 import java.util.List;
 import java.util.function.Function;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -52,10 +52,11 @@ import com.oracle.svm.hosted.util.DiagnosticUtils;
 @AutomaticallyRegisteredFeature
 @SuppressWarnings("unused")
 class NativeImageDebugInfoFeature implements InternalFeature {
+    private NativeImageBFDNameProvider bfdNameProvider;
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.GenerateDebugInfo.getValue() > 0 && !SubstrateOptions.UseOldDebugInfo.getValue();
+        return SubstrateOptions.useDebugInfoGeneration();
     }
 
     @Override
@@ -80,8 +81,20 @@ class NativeImageDebugInfoFeature implements InternalFeature {
                 assert imageLoaderParent == appLoader.getParent();
                 // ensure the mangle ignores prefix generation for Graal loaders
                 List<ClassLoader> ignored = List.of(systemLoader, imageLoaderParent, appLoader, imageLoader);
-                ImageSingletons.add(UniqueShortNameProvider.class, new NativeImageBFDNameProvider(ignored));
+                bfdNameProvider = new NativeImageBFDNameProvider(ignored);
+                ImageSingletons.add(UniqueShortNameProvider.class, bfdNameProvider);
             }
+        }
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        /*
+         * Make the name provider aware of the native libs
+         */
+        if (bfdNameProvider != null) {
+            var accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+            bfdNameProvider.setNativeLibs(accessImpl.getNativeLibraries());
         }
     }
 
@@ -94,7 +107,7 @@ class NativeImageDebugInfoFeature implements InternalFeature {
             var accessImpl = (FeatureImpl.BeforeImageWriteAccessImpl) access;
             var image = accessImpl.getImage();
             var debugContext = new DebugContext.Builder(HostedOptionValues.singleton(), new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
-            DebugInfoProvider provider = new NativeImageDebugInfoProvider(debugContext, image.getCodeCache(), image.getHeap(), accessImpl.getHostedMetaAccess());
+            DebugInfoProvider provider = new NativeImageDebugInfoProvider(debugContext, image.getCodeCache(), image.getHeap(), image.getNativeLibs(), accessImpl.getHostedMetaAccess());
             var objectFile = image.getObjectFile();
             objectFile.installDebugInfo(provider);
 

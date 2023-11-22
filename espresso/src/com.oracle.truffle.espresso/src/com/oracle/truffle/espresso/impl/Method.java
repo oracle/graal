@@ -34,6 +34,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITI
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FORCE_INLINE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_HIDDEN;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_SCOPED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
@@ -100,7 +101,7 @@ import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 public final class Method extends Member<Signature> implements TruffleObject, ContextAccess {
@@ -206,6 +207,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     @Override
+    @Idempotent
     public ObjectKlass getDeclaringKlass() {
         return declaringKlass;
     }
@@ -256,7 +258,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public int[] getSOEHandlerInfo() {
         ArrayList<Integer> toArray = new ArrayList<>();
         for (ExceptionHandler handler : getExceptionHandlers()) {
-            if (handler.getCatchType() == Type.java_lang_StackOverflowError) {
+            if (handler.isCatchAll() //
+                            || handler.getCatchType() == Type.java_lang_StackOverflowError //
+                            || handler.getCatchType() == Type.java_lang_VirtualMachineError //
+                            || handler.getCatchType() == Type.java_lang_Error //
+                            || handler.getCatchType() == Type.java_lang_Throwable) {
                 toArray.add(handler.getStartBCI());
                 toArray.add(handler.getEndBCI());
                 toArray.add(handler.getHandlerBCI());
@@ -515,6 +521,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public boolean isHidden() {
         return (getModifiers() & ACC_HIDDEN) != 0;
+    }
+
+    public boolean isScoped() {
+        return (getModifiers() & ACC_SCOPED) != 0;
     }
 
     public int getMethodModifiers() {

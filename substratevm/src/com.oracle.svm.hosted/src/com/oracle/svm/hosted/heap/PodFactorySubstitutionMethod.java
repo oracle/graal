@@ -29,22 +29,22 @@ import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.PiNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.UnreachableBeginNode;
-import org.graalvm.compiler.nodes.UnwindNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.PiNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.UnreachableBeginNode;
+import jdk.graal.compiler.nodes.UnwindNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -53,12 +53,12 @@ import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.deopt.DeoptTest;
 import com.oracle.svm.core.graal.nodes.DeoptEntryBeginNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
+import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
 import com.oracle.svm.core.graal.nodes.TestDeoptimizeNode;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.heap.Pod.RuntimeSupport.PodFactory;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
@@ -99,8 +99,8 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
             this.method = method;
         }
 
-        boolean isDeoptEntry(int bci, boolean duringCall, boolean rethrowException) {
-            return SubstrateCompilationDirectives.singleton().isDeoptEntry(method, bci, duringCall, rethrowException);
+        boolean isDeoptEntry(int bci, FrameState.StackState stackState) {
+            return SubstrateCompilationDirectives.singleton().isDeoptEntry(method, bci, stackState);
         }
     }
 
@@ -155,7 +155,7 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
      * @throws GraalError if no matching constructor found
      */
     private ResolvedJavaMethod findMatchingConstructor(ResolvedJavaMethod method, ResolvedJavaType typeToSearch) {
-        for (ResolvedJavaMethod ctor : typeToSearch.getDeclaredConstructors()) {
+        for (ResolvedJavaMethod ctor : typeToSearch.getDeclaredConstructors(false)) {
             if (parameterTypesMatch(method, ctor)) {
                 return ctor;
             }
@@ -163,9 +163,9 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
         throw new GraalError("Matching constructor not found: %s", getSignature());
     }
 
-    private static boolean shouldInsertDeoptEntry(DeoptInfoProvider deoptInfo, int bci, boolean duringCall, boolean rethrowException) {
+    private static boolean shouldInsertDeoptEntry(DeoptInfoProvider deoptInfo, int bci, FrameState.StackState stackState) {
         if (deoptInfo != null) {
-            return deoptInfo.isDeoptEntry(bci, duringCall, rethrowException);
+            return deoptInfo.isDeoptEntry(bci, stackState);
         }
         return false;
     }
@@ -173,8 +173,8 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
     private static int startMethod(HostedGraphKit kit, DeoptInfoProvider deoptInfo, int nextDeoptIndex) {
         if (deoptInfo != null) {
             FrameState initialState = kit.getGraph().start().stateAfter();
-            if (shouldInsertDeoptEntry(deoptInfo, initialState.bci, false, false)) {
-                return appendDeoptWithExceptionUnwind(kit, initialState, initialState.bci, nextDeoptIndex);
+            if (shouldInsertDeoptEntry(deoptInfo, initialState.bci, FrameState.StackState.BeforePop)) {
+                return appendDeoptWithExceptionUnwind(kit, initialState, initialState.bci, nextDeoptIndex, DeoptEntryNode.create());
             }
         }
         return nextDeoptIndex;
@@ -220,10 +220,10 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
 
         int nextDeoptIndex = initialNextDeoptIndex;
 
-        if (shouldInsertDeoptEntry(deoptInfo, bci, false, true)) {
+        if (shouldInsertDeoptEntry(deoptInfo, bci, FrameState.StackState.Rethrow)) {
             // Exception during invoke
 
-            var exceptionDeopt = kit.add(new DeoptEntryNode());
+            var exceptionDeopt = kit.add(DeoptEntryNode.create(invoke.bci()));
             exceptionDeopt.setStateAfter(exception.stateAfter().duplicate());
             var exceptionDeoptBegin = kit.add(new DeoptEntryBeginNode());
             int exceptionDeoptIndex = nextDeoptIndex++;
@@ -240,13 +240,17 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
             kit.append(new UnwindNode(exception));
         }
 
-        if (shouldInsertDeoptEntry(deoptInfo, invoke.stateAfter().bci, false, false)) {
-            // Deopt entry after invoke without exception
-
+        boolean needDeoptEntry = shouldInsertDeoptEntry(deoptInfo, invoke.stateAfter().bci, FrameState.StackState.BeforePop);
+        boolean needDeoptProxy = shouldInsertDeoptEntry(deoptInfo, bci, FrameState.StackState.AfterPop);
+        if (needDeoptEntry || needDeoptProxy) {
             kit.noExceptionPart();
-            nextDeoptIndex = appendDeoptWithExceptionUnwind(kit, invoke.stateAfter(), invoke.stateAfter().bci, nextDeoptIndex);
-        } else {
-            VMError.guarantee(!shouldInsertDeoptEntry(deoptInfo, bci, true, false), "need to add support for inserting DeoptProxyAnchorNode");
+            if (needDeoptEntry) {
+                // Deopt entry after invoke without exception
+                nextDeoptIndex = appendDeoptWithExceptionUnwind(kit, invoke.stateAfter(), invoke.stateAfter().bci, nextDeoptIndex, DeoptEntryNode.create(invoke.bci()));
+            } else {
+                // Only a proxy is needed
+                nextDeoptIndex = appendDeoptProxyAnchorNode(kit, invoke.stateAfter(), nextDeoptIndex, invoke.bci());
+            }
         }
         kit.endInvokeWithException();
 
@@ -254,8 +258,8 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
     }
 
     /** @see com.oracle.svm.hosted.phases.SharedGraphBuilderPhase */
-    private static int appendDeoptWithExceptionUnwind(HostedGraphKit kit, FrameState state, int exceptionBci, int nextDeoptIndex) {
-        var entry = kit.add(new DeoptEntryNode());
+    private static int appendDeoptWithExceptionUnwind(HostedGraphKit kit, FrameState state, int exceptionBci, int nextDeoptIndex, DeoptEntryNode deoptEntryNode) {
+        var entry = kit.add(deoptEntryNode);
         entry.setStateAfter(state.duplicate());
         var begin = kit.append(new DeoptEntryBeginNode());
         ((FixedWithNextNode) begin.predecessor()).setNext(entry);
@@ -272,6 +276,16 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
 
         // Ensure later nodes see values from potential deoptimization
         kit.getFrameState().insertProxies(value -> createDeoptProxy(kit, nextDeoptIndex, entry, value));
+        return nextDeoptIndex + 1;
+    }
+
+    /** @see com.oracle.svm.hosted.phases.SharedGraphBuilderPhase */
+    private static int appendDeoptProxyAnchorNode(HostedGraphKit kit, FrameState state, int nextDeoptIndex, int invokeBci) {
+        var anchor = kit.append(new DeoptProxyAnchorNode(invokeBci));
+        anchor.setStateAfter(state.duplicate());
+
+        // Ensure later nodes see values from potential deoptimization
+        kit.getFrameState().insertProxies(value -> createDeoptProxy(kit, nextDeoptIndex, anchor, value));
         return nextDeoptIndex + 1;
     }
 

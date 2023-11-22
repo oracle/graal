@@ -24,14 +24,23 @@
  */
 package com.oracle.svm.hosted.analysis;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.StructuredGraph;
+import java.util.function.Function;
+
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils;
+
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * {@link com.oracle.graal.pointsto.api.HostVM} methods which may be overwritten by substratevm
@@ -41,9 +50,19 @@ public interface SVMParsingSupport {
 
     Object parseGraph(BigBang bb, DebugContext debug, AnalysisMethod method);
 
+    GraphBuilderConfiguration updateGraphBuilderConfiguration(GraphBuilderConfiguration config, AnalysisMethod method);
+
     boolean validateGraph(PointsToAnalysis bb, StructuredGraph graph);
 
     boolean allowAssumptions(AnalysisMethod method);
 
+    boolean recordInlinedMethods(AnalysisMethod method);
+
     HostedProviders getHostedProviders(MultiMethod.MultiMethodKey key);
+
+    void initializeInlineBeforeAnalysisPolicy(SVMHost svmHost, InlineBeforeAnalysisPolicyUtils inliningUtils);
+
+    InlineBeforeAnalysisPolicy inlineBeforeAnalysisPolicy(MultiMethod.MultiMethodKey multiMethodKey, InlineBeforeAnalysisPolicy defaultPolicy);
+
+    Function<AnalysisType, ResolvedJavaType> getStrengthenGraphsToTargetFunction(MultiMethod.MultiMethodKey key);
 }

@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.reflect;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.RecordComponent;
 import java.util.Map;
 import java.util.Set;
 
@@ -55,7 +56,7 @@ public interface ReflectionHostedSupport {
      */
     Set<?> getHidingReflectionMethods();
 
-    Object[] getRecordComponents(Class<?> type);
+    RecordComponent[] getRecordComponents(Class<?> type);
 
     void registerHeapDynamicHub(Object hub, ScanReason reason);
 

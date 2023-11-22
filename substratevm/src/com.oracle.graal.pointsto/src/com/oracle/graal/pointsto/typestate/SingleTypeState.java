@@ -40,6 +40,7 @@ public class SingleTypeState extends TypeState {
     protected boolean merged;
 
     /** Creates a new type state from incoming objects. */
+    @SuppressWarnings("this-escape")
     public SingleTypeState(PointsToAnalysis bb, boolean canBeNull, AnalysisType type) {
         this.type = type;
         this.canBeNull = canBeNull;
@@ -49,6 +50,7 @@ public class SingleTypeState extends TypeState {
     }
 
     /** Create a type state with the same content and a reversed canBeNull value. */
+    @SuppressWarnings("this-escape")
     protected SingleTypeState(PointsToAnalysis bb, boolean canBeNull, SingleTypeState other) {
         this.type = other.type;
         this.canBeNull = canBeNull;
@@ -126,7 +128,7 @@ public class SingleTypeState extends TypeState {
     /** Note that the objects of this type state have been merged. */
     @Override
     public void noteMerge(PointsToAnalysis bb) {
-        assert bb.analysisPolicy().isMergingEnabled();
+        assert bb.analysisPolicy().isMergingEnabled() : "policy mismatch";
 
         if (!merged) {
             type.getContextInsensitiveAnalysisObject().noteMerge(bb);

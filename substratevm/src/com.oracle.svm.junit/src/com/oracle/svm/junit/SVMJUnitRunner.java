@@ -28,7 +28,7 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.util.List;
 
-import org.graalvm.compiler.options.Option;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -46,6 +46,7 @@ import com.oracle.mxtool.junit.MxJUnitWrapper.MxJUnitConfig;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.LogUtils;
 
 import junit.runner.Version;
 
@@ -86,11 +87,8 @@ public class SVMJUnitRunner {
 
         missingClassesStr = getMissingClasses();
         if (missingClassesStr != null) {
-            String testFileOption = SubstrateOptionsParser.commandArgument(Options.TestFile, Options.TestFile.getValue());
-            StringBuilder msg = new StringBuilder("Warning: The test configuration file specified via ").append(testFileOption)
-                            .append(" contains missing classes. Test execution will fail at run time. ")
-                            .append("Missing classes in configuration file: ").append(missingClassesStr);
-            System.out.println(msg);
+            LogUtils.warning("The test configuration file specified via %s contains missing classes. Test execution will fail at run time. Missing classes in configuration file: %s.",
+                            SubstrateOptionsParser.commandArgument(Options.TestFile, Options.TestFile.getValue()), missingClassesStr);
         }
     }
 

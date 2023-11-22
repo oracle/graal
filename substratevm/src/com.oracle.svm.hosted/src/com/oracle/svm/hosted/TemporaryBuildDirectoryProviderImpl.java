@@ -25,12 +25,12 @@
 package com.oracle.svm.hosted;
 
 import java.io.IOException;
-import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Optional;
 
 import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
 import com.oracle.svm.core.util.VMError;
@@ -44,12 +44,12 @@ public class TemporaryBuildDirectoryProviderImpl implements TemporaryBuildDirect
     public synchronized Path getTemporaryBuildDirectory() {
         if (tempDirectory == null) {
             try {
-                String tempName = NativeImageOptions.TempDirectory.getValue();
-                if (tempName == null || tempName.isEmpty()) {
+                Optional<Path> tempName = NativeImageOptions.TempDirectory.getValue().lastValue();
+                if (tempName.isEmpty()) {
                     tempDirectory = Files.createTempDirectory("SVM-");
                     deleteTempDirectory = true;
                 } else {
-                    tempDirectory = FileSystems.getDefault().getPath(tempName).resolve("SVM-" + System.currentTimeMillis());
+                    tempDirectory = tempName.get().resolve("SVM-" + System.currentTimeMillis());
                     assert !Files.exists(tempDirectory);
                     Files.createDirectories(tempDirectory);
                 }

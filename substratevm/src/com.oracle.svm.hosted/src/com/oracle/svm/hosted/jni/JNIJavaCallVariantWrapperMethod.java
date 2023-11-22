@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,28 +27,28 @@ package com.oracle.svm.hosted.jni;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.compiler.core.common.calc.FloatConvert;
-import org.graalvm.compiler.core.common.memory.BarrierType;
-import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.StampPair;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.AbstractMergeNode;
-import org.graalvm.compiler.nodes.CallTargetNode;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.IndirectCallTargetNode;
-import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValuePhiNode;
-import org.graalvm.compiler.nodes.calc.FloatConvertNode;
-import org.graalvm.compiler.nodes.calc.ReinterpretNode;
-import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
-import org.graalvm.compiler.word.WordTypes;
+import jdk.graal.compiler.core.common.calc.FloatConvert;
+import jdk.graal.compiler.core.common.memory.BarrierType;
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.AbstractMergeNode;
+import jdk.graal.compiler.nodes.CallTargetNode;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.IndirectCallTargetNode;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.ValuePhiNode;
+import jdk.graal.compiler.nodes.calc.FloatConvertNode;
+import jdk.graal.compiler.nodes.calc.ReinterpretNode;
+import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
+import jdk.graal.compiler.word.WordTypes;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.word.LocationIdentity;
 
@@ -130,7 +130,7 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
         } else if (callVariant == CallVariant.VA_LIST) {
             args.add(wordKind); // va_list (a pointer of some kind)
         } else {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereUnexpectedInput(callVariant); // ExcludeFromJacocoGeneratedReport
         }
         JavaKind returnType = callWrapperSignature.getReturnKind();
         if (returnType.isObject()) {

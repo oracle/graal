@@ -27,13 +27,13 @@ package com.oracle.svm.core.code;
 import java.lang.module.ModuleDescriptor;
 import java.util.Optional;
 
+import jdk.graal.compiler.nodes.FrameState;
 import org.graalvm.nativeimage.c.function.CodePointer;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.jdk.JavaLangSubstitutions;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 
@@ -175,6 +175,7 @@ public class FrameInfoQueryResult {
     // Index of sourceMethodName in CodeInfoDecoder.frameInfoSourceMethodNames
     protected int sourceMethodNameIndex;
 
+    @SuppressWarnings("this-escape")
     public FrameInfoQueryResult() {
         init();
     }
@@ -184,7 +185,7 @@ public class FrameInfoQueryResult {
         caller = null;
         deoptMethod = null;
         deoptMethodOffset = 0;
-        encodedBci = 0;
+        encodedBci = -1;
         isDeoptEntry = false;
         numLocals = 0;
         numStack = 0;
@@ -248,17 +249,10 @@ public class FrameInfoQueryResult {
     }
 
     /**
-     * Returns whether the duringCall is set.
+     * Returns the state of expression stack in the FrameState.
      */
-    public boolean duringCall() {
-        return FrameInfoDecoder.decodeDuringCall(encodedBci);
-    }
-
-    /**
-     * Returns whether the rethrowException is set.
-     */
-    public boolean rethrowException() {
-        return FrameInfoDecoder.decodeRethrowException(encodedBci);
+    public FrameState.StackState getStackState() {
+        return FrameState.StackState.of(FrameInfoDecoder.decodeDuringCall(encodedBci), FrameInfoDecoder.decodeRethrowException(encodedBci));
     }
 
     /**
@@ -353,6 +347,10 @@ public class FrameInfoQueryResult {
      * Returns the name and source code location of the method.
      */
     public StackTraceElement getSourceReference() {
+        return getSourceReference(sourceClass, sourceMethodName, sourceLineNumber);
+    }
+
+    public static StackTraceElement getSourceReference(Class<?> sourceClass, String sourceMethodName, int sourceLineNumber) {
         if (sourceClass == null) {
             return new StackTraceElement("", sourceMethodName, null, sourceLineNumber);
         }
@@ -375,15 +373,6 @@ public class FrameInfoQueryResult {
 
     public boolean isNativeMethod() {
         return sourceLineNumber == -2;
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int hashCode() {
-        int result = 31 * sourceClass.hashCode() + JavaLangSubstitutions.StringUtil.hashCode(sourceMethodName);
-        result = 31 * result + JavaLangSubstitutions.StringUtil.hashCode(getSourceFileName());
-        result = 31 * result + sourceLineNumber;
-        return result;
     }
 
     public Log log(Log log) {

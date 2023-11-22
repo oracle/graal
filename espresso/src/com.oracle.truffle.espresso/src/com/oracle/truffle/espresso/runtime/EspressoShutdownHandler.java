@@ -27,12 +27,14 @@ import java.util.Iterator;
 import java.util.function.Consumer;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
 
@@ -116,7 +118,7 @@ final class EspressoShutdownHandler extends ContextAccessImpl {
             return;
         }
         getContext().getLogger().fine(() -> {
-            StaticObject currentThread = getContext().getCurrentThread();
+            StaticObject currentThread = getContext().getCurrentPlatformThread();
             String guestName = getThreadAccess().getThreadName(currentThread);
             return "doExit(" + code + ") from " + guestName;
         });
@@ -205,6 +207,34 @@ final class EspressoShutdownHandler extends ContextAccessImpl {
         return false;
     }
 
+    public void ensureThreadsJoined() {
+        // wait indefinitely
+        ensureThreadsJoined(Thread.currentThread(), 0L);
+    }
+
+    private boolean ensureThreadsJoined(Thread initiatingThread, long maxWaitMillis) {
+        // Unconditionally kill
+        getContext().getLogger().finer("Teardown: Phase 3: Force kill with host EspressoExitExceptions");
+        teardownPhase3(initiatingThread);
+        boolean success = joinThreads(initiatingThread, true, maxWaitMillis);
+
+        // Special handling of the reference drainer
+        referenceDrainer.shutdownAndWaitReferenceDrain();
+
+        if (!success) {
+            getContext().getLogger().severe("Could not gracefully stop executing threads in context closing.");
+            getContext().getLogger().severe(() -> {
+                StringBuilder str = new StringBuilder("Threads still alive: ");
+                for (StaticObject guest : getManagedThreads()) {
+                    str.append(getThreadAccess().getHost(guest));
+                }
+                return str.toString();
+            });
+        }
+
+        return success;
+    }
+
     @SuppressWarnings("try")
     private void teardown() {
         assert isClosing();
@@ -216,7 +246,7 @@ final class EspressoShutdownHandler extends ContextAccessImpl {
             Thread initiatingThread = Thread.currentThread();
 
             getContext().getLogger().finer("Teardown: Phase 0: wait");
-            boolean nextPhase = !waitSpin(initiatingThread, false);
+            boolean nextPhase = !joinNonDaemonThreads(initiatingThread);
 
             if (softExit) {
                 // These phases give to running java thread a small window in which they can
@@ -225,39 +255,21 @@ final class EspressoShutdownHandler extends ContextAccessImpl {
                     // Send guest interruptions
                     getContext().getLogger().finer("Teardown: Phase 1: Interrupt threads.");
                     teardownPhase1(initiatingThread);
-                    nextPhase = !waitSpin(initiatingThread, false);
+                    nextPhase = !joinNonDaemonThreads(initiatingThread);
                 }
 
                 if (nextPhase) {
                     // Send guest ThreadDeaths
                     getContext().getLogger().finer("Teardown: Phase 2: Stop all threads.");
                     teardownPhase2(initiatingThread);
-                    nextPhase = !waitSpin(initiatingThread, false);
+                    nextPhase = !joinNonDaemonThreads(initiatingThread);
                 }
             }
 
-            // Unconditionally kill
-            getContext().getLogger().finer("Teardown: Phase 3: Force kill with host EspressoExitExceptions");
-            teardownPhase3(initiatingThread);
-            nextPhase = !waitSpin(initiatingThread, true);
-
-            // Special handling of the reference drainer
-            try {
-                referenceDrainer.shutdownAndWaitReferenceDrain();
-            } catch (InterruptedException e) {
-                // ignore
-            }
-
-            if (nextPhase) {
-                getContext().getLogger().severe("Could not gracefully stop executing threads in context closing.");
-                getContext().getLogger().severe(() -> {
-                    StringBuilder str = new StringBuilder("Threads still alive: ");
-                    for (StaticObject guest : getManagedThreads()) {
-                        str.append(getThreadAccess().getHost(guest));
-                    }
-                    return str.toString();
-                });
-                if (getContext().getEspressoEnv().AllowHostExit) {
+            boolean allowHostExit = getContext().getEspressoEnv().AllowHostExit;
+            // wait indefinitely if we can't kill the host
+            if (!ensureThreadsJoined(initiatingThread, allowHostExit ? MAX_KILL_PHASE_WAIT : 0L)) {
+                if (allowHostExit) {
                     // Needed until we can release rogue threads from Truffle (GR-28701).
                     getContext().getLogger().severe("Calling Host System.exit()...");
                     System.exit(getExitStatus());
@@ -306,31 +318,32 @@ final class EspressoShutdownHandler extends ContextAccessImpl {
         }
     }
 
+    private boolean joinNonDaemonThreads(Thread initiatingThread) {
+        return joinThreads(initiatingThread, false, MAX_KILL_PHASE_WAIT);
+    }
+
     /**
      * Waits for some time for all non-disposed threads to terminate.
      *
+     * @param maxWaitMillis the timeout for join operations, 0 for unlimited
+     *
      * @return true if all threads are completed, false otherwise.
      */
-    private boolean waitSpin(Thread initiatingThread, boolean waitForDaemon) {
-        long tick = System.currentTimeMillis();
-        spinLoop: //
-        while (true) {
-            long time = System.currentTimeMillis() - tick;
-            if (time > MAX_KILL_PHASE_WAIT) {
-                return false;
-            }
-            for (StaticObject guest : getManagedThreads()) {
-                Thread t = getThreadAccess().getHost(guest);
-                if (waitForDaemon || !t.isDaemon()) {
-                    if (t != initiatingThread && t != referenceDrainer.drainHostThread() /*- drain thread gets a custom shutdown */) {
+    private boolean joinThreads(Thread initiatingThread, boolean waitForDaemon, long maxWaitMillis) {
+        for (StaticObject guest : getManagedThreads()) {
+            Thread t = getThreadAccess().getHost(guest);
+            if (waitForDaemon || !t.isDaemon()) {
+                if (t != initiatingThread && t != referenceDrainer.drainHostThread() /*- drain thread gets a custom shutdown */) {
+                    if (t.isAlive()) {
+                        TruffleSafepoint.setBlockedThreadInterruptible(null, o -> t.join(maxWaitMillis), null);
                         if (t.isAlive()) {
-                            continue spinLoop;
+                            return false;
                         }
                     }
                 }
             }
-            return true;
         }
+        return true;
     }
 
     private Iterable<StaticObject> getManagedThreads() {

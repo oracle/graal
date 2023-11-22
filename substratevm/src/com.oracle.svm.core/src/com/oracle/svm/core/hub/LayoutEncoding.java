@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.hub;
 
-import org.graalvm.compiler.core.common.calc.UnsignedMath;
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.core.common.calc.UnsignedMath;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -329,16 +329,19 @@ public class LayoutEncoding {
         return getSizeFromObject(obj);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getSizeFromObjectInGC(Object obj) {
         return getSizeFromObjectInlineInGC(obj);
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getSizeFromObjectInlineInGC(Object obj) {
         return getSizeFromObjectInlineInGC(obj, false);
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getSizeFromObjectInlineInGC(Object obj, boolean addOptionalIdHashField) {
         boolean withOptionalIdHashField = addOptionalIdHashField ||
                         (!ConfigurationValues.getObjectLayout().hasFixedIdentityHashField() && checkOptionalIdentityHashField(obj));
@@ -361,15 +364,17 @@ public class LayoutEncoding {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean checkOptionalIdentityHashField(Object obj) {
         ObjectHeader oh = Heap.getHeap().getObjectHeader();
-        Word header = oh.readHeaderFromPointer(Word.objectToUntrackedPointer(obj));
+        Word header = ObjectHeader.readHeaderFromPointer(Word.objectToUntrackedPointer(obj));
         return oh.hasOptionalIdentityHashField(header);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Pointer getObjectEndInGC(Object obj) {
         return getObjectEndInlineInGC(obj);
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Pointer getObjectEndInlineInGC(Object obj) {
         UnsignedWord size = getSizeFromObjectInlineInGC(obj, false);
         return Word.objectToUntrackedPointer(obj).add(size);

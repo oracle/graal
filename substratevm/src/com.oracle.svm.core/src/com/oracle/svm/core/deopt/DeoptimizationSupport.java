@@ -24,19 +24,20 @@
  */
 package com.oracle.svm.core.deopt;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 
 public class DeoptimizationSupport {
 
-    @UnknownPrimitiveField private CFunctionPointer deoptStubPointer;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) private CFunctionPointer deoptStubPointer;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DeoptimizationSupport() {

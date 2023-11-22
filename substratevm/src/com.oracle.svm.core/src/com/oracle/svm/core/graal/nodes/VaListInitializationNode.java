@@ -24,16 +24,16 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_4;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_4;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_8;
 
-import org.graalvm.compiler.graph.IterableNodeType;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
-import org.graalvm.compiler.nodes.spi.Lowerable;
+import jdk.graal.compiler.graph.IterableNodeType;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
+import jdk.graal.compiler.nodes.spi.Lowerable;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.FrameAccess;

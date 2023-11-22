@@ -27,11 +27,11 @@ package com.oracle.svm.core.graal.meta;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateMethodPointerStamp;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
-import org.graalvm.compiler.core.common.type.ObjectStamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.TypeReference;
-import org.graalvm.compiler.nodes.spi.StampProvider;
+import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
+import jdk.graal.compiler.core.common.type.ObjectStamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.nodes.spi.StampProvider;
 
 public class SubstrateStampProvider implements StampProvider {
 

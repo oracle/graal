@@ -24,14 +24,13 @@
  */
 package com.oracle.svm.truffle.api;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.graal.meta.SubstrateCodeCacheProvider;
+import com.oracle.truffle.compiler.TruffleCompilable;
 
 import jdk.vm.ci.code.InstalledCode;
 
-public interface SubstrateCompilableTruffleAST extends CompilableTruffleAST, SubstrateInstalledCode.Factory {
+public interface SubstrateCompilableTruffleAST extends TruffleCompilable, SubstrateInstalledCode.Factory {
     /**
      * Create a provisional {@link InstalledCode} object for code installation, as required by
      * infrastructure, but this object does not need to be the same {@link SubstrateInstalledCode}

@@ -52,6 +52,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -66,6 +67,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
 import com.oracle.truffle.api.test.common.TestUtils;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class LanguageFinalizationFailureTest {
     private static final Node DUMMY_NODE = new Node() {
@@ -84,6 +86,12 @@ public class LanguageFinalizationFailureTest {
         ExceptionType getExceptionType() {
             return ExceptionType.RUNTIME_ERROR;
         }
+    }
+
+    @BeforeClass
+    public static void beforeClass() {
+        // shared static state
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
     }
 
     private static final AtomicBoolean disposeCalled = new AtomicBoolean();
@@ -229,8 +237,8 @@ public class LanguageFinalizationFailureTest {
         @Override
         protected void disposeContext(ExecutableContext context) {
             AtomicReference<Throwable> throwableRef = new AtomicReference<>();
-            Thread t = context.env.createThread(() -> {
-            });
+            Thread t = context.env.newTruffleThreadBuilder(() -> {
+            }).build();
             t.setUncaughtExceptionHandler((t1, e) -> throwableRef.set(e));
             t.start();
             try {

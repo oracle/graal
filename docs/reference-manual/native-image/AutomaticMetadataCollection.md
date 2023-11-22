@@ -1,9 +1,9 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: metadata
 link_title: Collect Metadata with the Tracing Agent
 permalink: /reference-manual/native-image/metadata/AutomaticMetadataCollection/
-redirect_from: /$version/reference-manual/native-image/Agent/
+redirect_from: /reference-manual/native-image/Agent/
 ---
 
 # Collect Metadata with the Tracing Agent
@@ -182,13 +182,7 @@ See the [ExperimentalAgentOptions.md](ExperimentalAgentOptions.md) guide.
 ## Native Image Configure Tool
 
 When using the agent in multiple processes at the same time as described in the previous section, `config-output-dir` is a safe option, but it results in multiple sets of configuration files.
-The `native-image-configure` tool can be used to merge these configuration files.
-This tool must first be built with:
-```shell
-native-image --macro:native-image-configure-launcher
-```
-
-Then, the tool can be used to merge sets of configuration files as follows:
+The `native-image-configure` tool can be used to merge these configuration files:
 ```shell
 native-image-configure generate --input-dir=/path/to/config-dir-0/ --input-dir=/path/to/config-dir-1/ --output-dir=/path/to/merged-config-dir/
 ```

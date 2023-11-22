@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -238,13 +238,24 @@ public final class LLVMStack {
             noBasePointerAssumption.invalidate();
         }
 
-        protected void ensureBasePointerSlot(LLVMStack llvmStack) {
-            // whenever we access the base pointer, we ensure that the stack was allocated
+        protected void ensureStackAllocated(LLVMStack llvmStack) {
             if (!llvmStack.isAllocated()) {
+                /*
+                 * Setting hasAllocatedStack to true means we include a check in the method prologue
+                 * that allocates the stack eagerly. That means we can keep the deopt here. It will
+                 * not lead to a deopt loop except possibly as a race condition. That is, in the
+                 * worst case, we deopt once for every thread that's currently in this method if
+                 * they all enter this branch concurrently.
+                 */
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 hasAllocatedStack = true;
                 llvmStack.allocate(this, memory);
             }
+        }
+
+        protected void ensureBasePointerSlot(LLVMStack llvmStack) {
+            // whenever we access the base pointer, we ensure that the stack was allocated
+            ensureStackAllocated(llvmStack);
             if (noBasePointerAssumption.isValid()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 noBasePointerAssumption.invalidate();
@@ -262,10 +273,9 @@ public final class LLVMStack {
             if (hasAllocatedStack && !llvmStack.isAllocated()) {
                 /*
                  * If we've ever seen a stack being allocated in this method, then we do an explicit
-                 * check on entry. This way, all other checks can remain
-                 * transferToInterpreterAndInvalidate.
+                 * check on entry, and allocate the stack behind a TruffleBoundary. This way, all
+                 * other checks can remain deopts without creating a deopt loop.
                  */
-                CompilerDirectives.transferToInterpreter();
                 llvmStack.allocate(this, memory);
             }
             if (noBasePointerAssumption.isValid()) {
@@ -304,11 +314,7 @@ public final class LLVMStack {
         private LLVMStack getStack(VirtualFrame frame) {
             try {
                 LLVMStack llvmStack = (LLVMStack) frame.getObject(STACK_ID);
-                if (!llvmStack.isAllocated()) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    hasAllocatedStack = true;
-                    llvmStack.allocate(this, memory);
-                }
+                ensureStackAllocated(llvmStack);
                 return llvmStack;
             } catch (FrameSlotTypeException e) {
                 throw new LLVMMemoryException(this, e);

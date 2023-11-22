@@ -34,6 +34,7 @@ public class HostedArrayClass extends HostedClass {
     private final HostedType baseType;
     private final int arrayDepth;
 
+    @SuppressWarnings("this-escape")
     public HostedArrayClass(HostedUniverse universe, AnalysisType wrapped, JavaKind kind, JavaKind storageKind, HostedClass superClass, HostedInterface[] interfaces, HostedType componentType) {
         super(universe, wrapped, kind, storageKind, superClass, interfaces);
         this.componentType = componentType;

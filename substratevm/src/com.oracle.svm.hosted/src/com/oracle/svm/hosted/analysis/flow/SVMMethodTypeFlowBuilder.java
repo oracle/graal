@@ -25,16 +25,17 @@
 
 package com.oracle.svm.hosted.analysis.flow;
 
-import org.graalvm.compiler.core.common.type.ObjectStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.core.common.type.ObjectStamp;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -46,12 +47,13 @@ import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.svm.core.graal.nodes.InlinedInvokeArgumentsNode;
 import com.oracle.svm.core.graal.thread.CompareAndSetVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.StoreVMThreadLocalNode;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -60,8 +62,15 @@ import jdk.vm.ci.meta.JavaKind;
 
 public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
 
+    private final boolean addImplicitNullCheckFilters;
+
     public SVMMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
         super(bb, method, flowsGraph, graphKind);
+        /*
+         * We only add these filters for runtime compiled methods, as other multi-method variants
+         * require explicit null checks.
+         */
+        addImplicitNullCheckFilters = SubstrateCompilationDirectives.isRuntimeCompiledMethod(method);
     }
 
     protected SVMHost getHostVM() {
@@ -91,7 +100,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
                          * object replacers really see all objects that are embedded into compiled
                          * code.
                          */
-                        Object value = SubstrateObjectConstant.asObject(constant);
+                        Object value = bb.getSnippetReflectionProvider().asObject(Object.class, constant);
                         Object replaced = bb.getUniverse().replaceObject(value);
                         if (value != replaced) {
                             throw GraalError.shouldNotReachHere("Missed object replacement during graph building: " +
@@ -148,7 +157,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
             LoadFieldNode offsetLoadNode = (LoadFieldNode) offsetNode;
             AnalysisField field = (AnalysisField) offsetLoadNode.field();
             if (field.isStatic() &&
-                            !getHostVM().getClassInitializationSupport().shouldInitializeAtRuntime(field.getDeclaringClass()) &&
+                            getHostVM().getClassInitializationSupport().maybeInitializeAtBuildTime(field.getDeclaringClass()) &&
                             !field.getDeclaringClass().unsafeFieldsRecomputed() &&
                             !(field.wrapped instanceof ComputedValueField) &&
                             !(base.isConstant() && base.asConstant().isDefaultForKind())) {
@@ -177,13 +186,14 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
          * the node has an exact type. This works with allocation site sensitivity because the
          * StoreVMThreadLocal is modeled by writing the objects to the all-instantiated.
          */
-        if (n instanceof StoreVMThreadLocalNode) {
-            StoreVMThreadLocalNode node = (StoreVMThreadLocalNode) n;
+        if (n instanceof StoreVMThreadLocalNode node) {
             storeVMThreadLocal(state, node, node.getValue());
             return true;
-        } else if (n instanceof CompareAndSetVMThreadLocalNode) {
-            CompareAndSetVMThreadLocalNode node = (CompareAndSetVMThreadLocalNode) n;
+        } else if (n instanceof CompareAndSetVMThreadLocalNode node) {
             storeVMThreadLocal(state, node, node.getUpdate());
+            return true;
+        } else if (n instanceof InlinedInvokeArgumentsNode node) {
+            processInlinedInvokeArgumentsNode(state, node);
             return true;
         }
         return super.delegateNodeProcessing(n, state);
@@ -204,6 +214,23 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
             });
             storeBuilder.addUseDependency(valueBuilder);
             typeFlowGraphBuilder.registerSinkBuilder(storeBuilder);
+        }
+    }
+
+    private void processInlinedInvokeArgumentsNode(TypeFlowsOfNodes state, InlinedInvokeArgumentsNode node) {
+        /*
+         * Create a proxy invoke type flow for the inlined method.
+         */
+        PointsToAnalysisMethod targetMethod = (PointsToAnalysisMethod) node.getInvokeTarget();
+        InvokeKind invokeKind = targetMethod.isStatic() ? InvokeKind.Static : InvokeKind.Special;
+        processMethodInvocation(state, node, invokeKind, targetMethod, node.getArguments(), true, getInvokePosition(node), true);
+    }
+
+    @Override
+    protected void processImplicitNonNull(ValueNode node, ValueNode source, TypeFlowsOfNodes state) {
+        // GR-49362 - remove after improving non-runtime graphs
+        if (addImplicitNullCheckFilters) {
+            super.processImplicitNonNull(node, source, state);
         }
     }
 }

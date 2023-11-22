@@ -31,33 +31,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
 
-@TargetClass(className = "java.nio.channels.spi.SelectorProvider", onlyWith = JDK11OrEarlier.class)
-final class Target_java_nio_channels_spi_SelectorProvider {
-
-    @Alias//
-    static SelectorProvider provider;
-
-    @Substitute
-    static SelectorProvider provider() {
-        VMError.guarantee(provider != null, "java.nio.channels.spi.SelectorProvider.provider must be initialized during image generation");
-        return provider;
-    }
-
-    static {
-        /*
-         * Calling the method during image generation triggers initialization. This ensures that we
-         * have a correctly initialized provider available at run time. It also means that the
-         * system property and service loader configuration that allow influencing the
-         * SelectorProvider implementation are accessed during image generation, i.e., it is not
-         * possible to overwrite the implementation class at run time anymore by changing the system
-         * property at run time.
-         */
-        SelectorProvider result = java.nio.channels.spi.SelectorProvider.provider();
-        assert result != null;
-    }
-}
-
-@TargetClass(className = "java.nio.channels.spi.SelectorProvider", innerClass = "Holder", onlyWith = JDK17OrLater.class)
+@TargetClass(className = "java.nio.channels.spi.SelectorProvider", innerClass = "Holder")
 final class Target_java_nio_channels_spi_SelectorProvider_Holder {
 
     @Alias//

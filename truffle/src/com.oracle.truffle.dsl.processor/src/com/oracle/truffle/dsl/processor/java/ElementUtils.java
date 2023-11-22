@@ -84,8 +84,8 @@ import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
-import com.oracle.truffle.dsl.processor.model.SpecializationData.Idempotence;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
+import com.oracle.truffle.dsl.processor.model.SpecializationData.Idempotence;
 
 /**
  * THIS IS NOT PUBLIC API.
@@ -553,7 +553,7 @@ public class ElementUtils {
         return new LinkedHashSet<>(Arrays.asList(modifier));
     }
 
-    public static String getTypeId(TypeMirror mirror) {
+    public static String getTypeSimpleId(TypeMirror mirror) {
         switch (mirror.getKind()) {
             case BOOLEAN:
                 return "Boolean";
@@ -574,7 +574,7 @@ public class ElementUtils {
             case DECLARED:
                 return fixECJBinaryNameIssue(((DeclaredType) mirror).asElement().getSimpleName().toString());
             case ARRAY:
-                return getTypeId(((ArrayType) mirror).getComponentType()) + "Array";
+                return getTypeSimpleId(((ArrayType) mirror).getComponentType()) + "Array";
             case VOID:
                 return "Void";
             case NULL:
@@ -583,9 +583,9 @@ public class ElementUtils {
                 StringBuilder b = new StringBuilder();
                 WildcardType type = (WildcardType) mirror;
                 if (type.getExtendsBound() != null) {
-                    b.append("Extends").append(getTypeId(type.getExtendsBound()));
+                    b.append("Extends").append(getTypeSimpleId(type.getExtendsBound()));
                 } else if (type.getSuperBound() != null) {
-                    b.append("Super").append(getTypeId(type.getExtendsBound()));
+                    b.append("Super").append(getTypeSimpleId(type.getExtendsBound()));
                 }
                 return b.toString();
             case TYPEVAR:

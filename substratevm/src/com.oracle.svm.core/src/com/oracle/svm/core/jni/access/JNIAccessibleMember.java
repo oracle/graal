@@ -28,12 +28,13 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.heap.UnknownObjectField;
 
 abstract class JNIAccessibleMember {
     private final JNIAccessibleClass declaringClass;
 
-    @UnknownObjectField(fullyQualifiedTypes = "org.graalvm.collections.EconomicMapImpl", canBeNull = true) //
+    @UnknownObjectField(fullyQualifiedTypes = "org.graalvm.collections.EconomicMapImpl", canBeNull = true, availability = ReadyForCompilation.class) //
     private EconomicSet<Class<?>> hidingSubclasses;
 
     JNIAccessibleMember(JNIAccessibleClass declaringClass) {

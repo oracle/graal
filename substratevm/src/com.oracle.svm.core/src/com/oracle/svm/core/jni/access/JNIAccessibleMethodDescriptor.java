@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,7 +64,7 @@ public final class JNIAccessibleMethodDescriptor {
         } else if (method instanceof Method) {
             returnType = ((Method) method).getReturnType();
         } else {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereUnexpectedInput(method); // ExcludeFromJacocoGeneratedReport
         }
         sb.append(')').append(MetaUtil.toInternalName(returnType.getName()));
         assert sb.indexOf(".") == -1 : "Malformed signature (needs to use '/' as package separator)";

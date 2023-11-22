@@ -40,7 +40,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import org.graalvm.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.word.WordBase;
 
@@ -60,6 +60,7 @@ import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashMap;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -182,10 +183,13 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     private final AnalysisFuture<Void> onTypeReachableTask;
+    private final AnalysisFuture<Void> initializeMetaDataTask;
+
     /**
-     * Additional information that is only available for types that are marked as reachable.
+     * Additional information that is only available for types that are marked as reachable. It is
+     * preserved after analysis.
      */
-    private AnalysisFuture<TypeData> typeData;
+    private final AnalysisFuture<TypeData> typeData;
 
     /**
      * Contains reachability handlers that are notified when any of the subtypes are marked as
@@ -208,8 +212,13 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      */
     List<AnalysisFuture<Void>> scheduledTypeReachableNotifications;
 
+    /**
+     * Contains callbacks that are notified when this type is marked as instantiated. Each callback
+     * is called at least once, but there are no guarantees that it will be called exactly once.
+     */
     @SuppressWarnings("unused") private volatile Object typeInstantiatedNotifications;
 
+    @SuppressWarnings("this-escape")
     public AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
         this.universe = universe;
         this.wrapped = javaType;
@@ -300,6 +309,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
         /* The registration task initializes the type. */
         this.onTypeReachableTask = new AnalysisFuture<>(() -> universe.onTypeReachable(this), null);
+        this.initializeMetaDataTask = new AnalysisFuture<>(() -> universe.initializeMetaData(this), null);
         this.typeData = new AnalysisFuture<>(() -> {
             AnalysisError.guarantee(universe.getHeapScanner() != null, "Heap scanner is not available.");
             return universe.getHeapScanner().computeTypeData(this);
@@ -338,7 +348,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         constantObjectsCache = null;
         uniqueConstant = null;
         unsafeAccessedFields = null;
-        typeData = null;
         scheduledTypeReachableNotifications = null;
     }
 
@@ -361,7 +370,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
          * cache in the policy, but it is simpler to store the cache for each type.
          */
         assert bb.analysisPolicy().needsConstantCache() : "The analysis policy doesn't specify the need for a constants cache.";
-        assert bb.trackConcreteAnalysisObjects(this);
+        assert bb.trackConcreteAnalysisObjects(this) : this;
         assert !(constant instanceof PrimitiveConstant) : "The analysis should not model PrimitiveConstant.";
 
         if (uniqueConstant != null) {
@@ -586,7 +595,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     public void registerOverrideReachabilityNotification(AnalysisMethod declaredMethod, MethodOverrideReachableNotification notification) {
-        assert declaredMethod.getDeclaringClass() == this;
+        assert declaredMethod.getDeclaringClass() == this : declaredMethod;
         Set<MethodOverrideReachableNotification> overrideNotifications = ConcurrentLightHashMap.computeIfAbsent(this,
                         overrideReachableNotificationsUpdater, declaredMethod, m -> ConcurrentHashMap.newKeySet());
         overrideNotifications.add(notification);
@@ -685,6 +694,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public void ensureOnTypeReachableTaskDone() {
         /* Run the registration and wait for it to complete, if necessary. */
         onTypeReachableTask.ensureDone();
+    }
+
+    public AnalysisFuture<Void> getInitializeMetaDataTask() {
+        return initializeMetaDataTask;
     }
 
     public boolean getReachabilityListenerNotified() {
@@ -794,7 +807,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     public boolean isInstantiated() {
         boolean instantiated = isInHeap() || isAllocated();
-        assert !instantiated || isReachable();
+        assert !instantiated || isReachable() : this;
         return instantiated;
     }
 
@@ -815,6 +828,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @Override
     public boolean isReachable() {
         return AtomicUtils.isSet(this, isReachableUpdater);
+    }
+
+    public Object getReachableReason() {
+        return isReachable;
     }
 
     /**
@@ -1043,7 +1060,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
          * available to implement it for JIT compilation at image run time. So we want to make sure
          * that Graal is not using this method, and only resolveConcreteMethod instead.
          */
-        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -1192,7 +1209,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         try {
             return wrapped.isLocal();
         } catch (InternalError e) {
-            System.err.println("warning: unknown locality of class " + wrapped.getName() + ", assuming class is not local. To remove the warning report an issue " +
+            LogUtils.warning("Unknown locality of class " + wrapped.getName() + ", assuming class is not local. To remove the warning report an issue " +
                             "to the library or language author. The issue is caused by " + wrapped.getName() + " which is not following the naming convention.");
             return false;
         }
@@ -1209,18 +1226,30 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     @Override
-    public AnalysisMethod[] getDeclaredConstructors() {
-        return universe.lookup(wrapped.getDeclaredConstructors());
+    public ResolvedJavaMethod[] getDeclaredMethods() {
+        return getDeclaredMethods(true);
     }
 
     @Override
-    public AnalysisMethod[] getDeclaredMethods() {
-        return universe.lookup(wrapped.getDeclaredMethods());
+    public AnalysisMethod[] getDeclaredMethods(boolean forceLink) {
+        GraalError.guarantee(forceLink == false, "only use getDeclaredMethods without forcing to link, because linking can throw LinkageError");
+        return universe.lookup(wrapped.getDeclaredMethods(forceLink));
+    }
+
+    @Override
+    public ResolvedJavaMethod[] getDeclaredConstructors() {
+        return getDeclaredConstructors(true);
+    }
+
+    @Override
+    public AnalysisMethod[] getDeclaredConstructors(boolean forceLink) {
+        GraalError.guarantee(forceLink == false, "only use getDeclaredConstructors without forcing to link, because linking can throw LinkageError");
+        return universe.lookup(wrapped.getDeclaredConstructors(forceLink));
     }
 
     @Override
     public AnalysisMethod findMethod(String name, Signature signature) {
-        for (AnalysisMethod method : getDeclaredMethods()) {
+        for (AnalysisMethod method : getDeclaredMethods(false)) {
             if (method.getName().equals(name) && method.getSignature().equals(signature)) {
                 return method;
             }
@@ -1246,8 +1275,16 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return AtomicUtils.isSet(this, isInHeapUpdater);
     }
 
+    public Object getInHeapReason() {
+        return isInHeap;
+    }
+
     public boolean isAllocated() {
         return AtomicUtils.isSet(this, isAllocatedUpdater);
+    }
+
+    public Object getAllocatedReason() {
+        return isAllocated;
     }
 
     @Override

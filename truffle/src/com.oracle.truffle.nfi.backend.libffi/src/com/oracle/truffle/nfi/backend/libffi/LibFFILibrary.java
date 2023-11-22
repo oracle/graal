@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,21 +42,23 @@ package com.oracle.truffle.nfi.backend.libffi;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 
-//TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
+import java.io.PrintStream;
+
 @ExportLibrary(InteropLibrary.class)
 final class LibFFILibrary implements TruffleObject {
 
+    private static final boolean LOG_UNLOAD = Boolean.getBoolean("trufflenfi.log.Unload");
     private static final EmptyKeysArray KEYS = new EmptyKeysArray();
 
     protected final long handle;
@@ -65,10 +67,10 @@ final class LibFFILibrary implements TruffleObject {
         return new LibFFILibrary(0);
     }
 
-    static LibFFILibrary create(long handle) {
+    static LibFFILibrary create(long handle, String name) {
         assert handle != 0;
         LibFFILibrary ret = new LibFFILibrary(handle);
-        NativeAllocation.getGlobalQueue().registerNativeAllocation(ret, new Destructor(handle));
+        NativeAllocation.getGlobalQueue().registerNativeAllocation(ret, new Destructor(handle, name));
         return ret;
     }
 
@@ -110,12 +112,12 @@ final class LibFFILibrary implements TruffleObject {
 
     @ExportMessage
     Object readMember(String symbol,
-                    @Cached BranchProfile exception,
-                    @CachedLibrary("this") InteropLibrary node) throws UnknownIdentifierException {
+                    @Cached InlinedBranchProfile exception,
+                    @Bind("$node") Node node) throws UnknownIdentifierException {
         try {
             return LibFFIContext.get(node).lookupSymbol(this, symbol);
         } catch (NFIUnsatisfiedLinkError ex) {
-            exception.enter();
+            exception.enter(node);
             throw UnknownIdentifierException.create(symbol);
         }
     }
@@ -141,13 +143,19 @@ final class LibFFILibrary implements TruffleObject {
     private static final class Destructor extends NativeAllocation.Destructor {
 
         private final long handle;
+        private final String name;
 
-        private Destructor(long handle) {
+        private Destructor(long handle, String name) {
             this.handle = handle;
+            this.name = name;
         }
 
         @Override
         protected void destroy() {
+            if (LOG_UNLOAD) {
+                PrintStream stream = System.err; // For CheckStyle
+                stream.println("[nfi] Unloading library " + name);
+            }
             LibFFIContext.freeLibrary(handle);
         }
     }

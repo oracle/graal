@@ -3,6 +3,7 @@ layout: ni-docs
 toc_group: how-to-guides
 link_title: Optimize a Native Executable with PGO
 permalink: /reference-manual/native-image/guides/optimize-native-executable-with-pgo/
+redirect_from: /reference-manual/native-image/PGO/
 ---
 
 # Optimize a Native Executable with Profile-Guided Optimizations
@@ -12,7 +13,7 @@ You can optimize this native executable even more for additional performance gai
 
 With PGO you can collect the profiling data in advance and then feed it to the `native-image` tool, which will use this information to optimize the performance of the resulting binary.
 
-> Note: PGO is available with GraalVM Enterprise Edition only.
+> Note: PGO is not available in GraalVM Community Edition.
 
 This guide shows how to apply PGO and transform your Java application into an optimized native executable.
 
@@ -33,6 +34,8 @@ Arrays.stream(persons)
 ```
 
 Follow these steps to build an optimized native executable using PGO.
+
+> Note: Make sure you have installed a GraalVM JDK. The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal). For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
 1.  Save [the following code](https://github.com/graalvm/graalvm-demos/blob/master/streams/Streams.java) to the file named _Streams.java_:
 
@@ -181,9 +184,9 @@ Follow these steps to build an optimized native executable using PGO.
     You should get the performance comparable to, or faster, than the Java version of the program. For example, on a machine with 16 GB of memory and 8 cores, the `TOTAL time` for 10 iterations reduced from ~2200 to ~270 milliseconds.
 
 This guide showed how you can optimize native executables for additional performance gain and higher throughput.
-GraalVM Enterprise Edition offers extra benefits for building native executables, such as  Profile-Guided Optimizations (PGO). 
+Oracle GraalVM offers extra benefits for building native executables, such as Profile-Guided Optimizations (PGO). 
 With PGO you "train" your application for specific workloads and significantly improve the performance.
 
 ### Related Documentation
 
-- [Optimize Cloud Native Java Apps with GraalVM Enterprise PGO](https://luna.oracle.com/lab/3f0b7c86-6105-4b7a-9a3b-eb73b251a1aa)
+- [Optimize Cloud Native Java Apps with Oracle GraalVM PGO](https://luna.oracle.com/lab/3f0b7c86-6105-4b7a-9a3b-eb73b251a1aa)

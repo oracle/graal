@@ -24,29 +24,33 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import com.oracle.graal.pointsto.infrastructure.GraphProvider;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.StampPair;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.AbstractMergeNode;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.IfNode;
-import org.graalvm.compiler.nodes.LogicNode;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.PiNode;
-import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
-import org.graalvm.compiler.nodes.UnwindNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.WithExceptionNode;
-import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
-import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
-import org.graalvm.compiler.nodes.extended.GuardingNode;
-import org.graalvm.compiler.nodes.java.LoadFieldNode;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.type.StampTool;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.AbstractMergeNode;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.IfNode;
+import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.PiNode;
+import jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData;
+import jdk.graal.compiler.nodes.UnwindNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.WithExceptionNode;
+import jdk.graal.compiler.nodes.calc.IsNullNode;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
+import jdk.graal.compiler.nodes.extended.GuardingNode;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.type.StampTool;
+
+import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.results.StaticAnalysisResults;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
@@ -55,6 +59,7 @@ import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
 import com.oracle.svm.core.graal.replacements.SubstrateGraphKit;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -65,10 +70,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class HostedGraphKit extends SubstrateGraphKit {
 
     public HostedGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method, GraphProvider.Purpose purpose) {
-        // Needed to match type flows to invokes so invoked methods can be inlined in runtime
-        // compilations, see GraalFeature.processMethod() and MethodTypeFlowBuilder.uniqueKey()
-        super(debug, method, providers, providers.getWordTypes(), providers.getGraphBuilderPlugins(), new SubstrateCompilationIdentifier(), purpose == GraphProvider.Purpose.ANALYSIS);
-        graph.getGraphState().configureExplicitExceptionsNoDeopt();
+        super(debug, method, providers, providers.getWordTypes(), providers.getGraphBuilderPlugins(), new SubstrateCompilationIdentifier(), purpose == GraphProvider.Purpose.ANALYSIS,
+                        SubstrateCompilationDirectives.isRuntimeCompiledMethod(method));
     }
 
     @Override
@@ -135,5 +138,30 @@ public class HostedGraphKit extends SubstrateGraphKit {
         }
         createCheckThrowingBytecodeException(IsNullNode.create(object), true, BytecodeExceptionNode.BytecodeExceptionKind.NULL_POINTER);
         return append(PiNode.create(object, StampFactory.objectNonNull()));
+    }
+
+    /**
+     * Lift a node representing an array into a list of nodes representing the values in that array.
+     * 
+     * @param array The array to lift
+     * @param elementKinds The kinds of the elements in the array
+     * @param length The length of the array
+     */
+    public List<ValueNode> loadArrayElements(ValueNode array, JavaKind[] elementKinds, int length) {
+        assert elementKinds.length == length;
+
+        List<ValueNode> result = new ArrayList<>();
+        for (int i = 0; i < length; ++i) {
+            ValueNode load = createLoadIndexed(array, i, elementKinds[i], null);
+            append(load);
+            result.add(load);
+        }
+        return result;
+    }
+
+    public List<ValueNode> loadArrayElements(ValueNode array, JavaKind elementKind, int length) {
+        JavaKind[] elementKinds = new JavaKind[length];
+        Arrays.fill(elementKinds, elementKind);
+        return loadArrayElements(array, elementKinds, length);
     }
 }

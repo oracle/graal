@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,8 @@
 
 #include <stdlib.h>
 #include <graalvm/llvm/handles.h>
+
+int __cxa_atexit(void (*)(void *), void *arg, void *dso);
 
 void testExitHook(void *cb) {
     void (*callback)() = (void *) (void *) cb;

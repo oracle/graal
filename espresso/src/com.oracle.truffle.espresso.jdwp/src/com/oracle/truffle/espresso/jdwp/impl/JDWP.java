@@ -2499,6 +2499,25 @@ public final class JDWP {
                 return new CommandResult(reply);
             }
         }
+
+        static class IS_VIRTUAL {
+            public static final int ID = 15;
+
+            static CommandResult createReply(Packet packet, DebuggerController controller) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                long threadId = input.readLong();
+                Object thread = verifyThread(threadId, reply, controller.getContext(), false);
+
+                if (thread == null) {
+                    return new CommandResult(reply);
+                }
+
+                reply.writeBoolean(controller.getContext().isVirtualThread(thread));
+                return new CommandResult(reply);
+            }
+        }
     }
 
     static class ThreadGroupReference {
@@ -3268,6 +3287,10 @@ public final class JDWP {
     private static Object verifyThread(long threadId, PacketStream reply, JDWPContext context, boolean checkTerminated) {
         Object thread = context.getIds().fromId((int) threadId);
 
+        if (thread == null) {
+            reply.errorCode(ErrorCodes.INVALID_OBJECT);
+            return null;
+        }
         if (thread == context.getNullObject() || !context.isValidThread(thread, checkTerminated)) {
             reply.errorCode(ErrorCodes.INVALID_THREAD);
             return null;
@@ -3278,7 +3301,7 @@ public final class JDWP {
     private static Object verifyThreadGroup(long threadGroupId, PacketStream reply, JDWPContext context) {
         Object threadGroup = context.getIds().fromId((int) threadGroupId);
 
-        if (threadGroup == context.getNullObject()) {
+        if (threadGroup == null || threadGroup == context.getNullObject()) {
             reply.errorCode(ErrorCodes.INVALID_OBJECT);
             return null;
         }

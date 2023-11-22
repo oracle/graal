@@ -76,6 +76,7 @@ public class InspectWSClient extends WebSocketClient implements InspectorWSConne
         }
     }
 
+    @SuppressWarnings("this-escape")
     public InspectWSClient(InetSocketAddress isa, String wsspath, InspectorExecutionContext executionContext, boolean debugBreak, boolean secure, KeyStoreOptions keyStoreOptions,
                     ConnectionWatcher connectionWatcher, PrintWriter info) throws IOException {
         super(getURI(isa, wsspath));

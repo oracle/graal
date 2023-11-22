@@ -107,7 +107,7 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
         @Override
         public long getDefinedOffset() {
             if (!isDefined() || isAbsolute()) {
-                throw new IllegalStateException("queried offset of an undefined or absolute symbol");
+                throw new IllegalStateException("Queried offset of an undefined or absolute symbol");
             } else {
                 return value;
             }
@@ -126,7 +126,7 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
         @Override
         public long getDefinedAbsoluteValue() {
             if (!isAbsolute()) {
-                throw new IllegalStateException("queried absolute value of a non-absolute symbol");
+                throw new IllegalStateException("Queried absolute value of a non-absolute symbol");
             } else {
                 return value;
             }

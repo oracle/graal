@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.graalvm.compiler.options.OptionValues;
+import jdk.graal.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -72,6 +72,15 @@ public class CallSiteSensitiveMethodTypeFlow extends MethodTypeFlow {
                     MethodFlowsGraphClone newFlows = new MethodFlowsGraphClone(method, flowsGraph, newContext);
                     newFlows.cloneOriginalFlows(bb);
                     newFlows.linkCloneFlows(bb);
+                    /*
+                     * If this method returns all instantiated types, then it will not be linked to
+                     * any internal flows. Instead, it needs to be linked to its declared type's
+                     * flow.
+                     */
+                    if (flowsGraph.method.getReturnsAllInstantiatedTypes()) {
+                        var newReturnFlow = newFlows.getReturnFlow();
+                        newReturnFlow.getDeclaredType().getTypeFlow(bb, true).addUse(bb, newReturnFlow);
+                    }
 
                     return newFlows;
                 });

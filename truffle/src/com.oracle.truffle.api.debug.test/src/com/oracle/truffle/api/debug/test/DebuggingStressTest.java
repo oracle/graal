@@ -57,6 +57,7 @@ import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 
+@SuppressWarnings("this-escape")
 public class DebuggingStressTest extends AbstractDebugTest {
 
     private final Source source = testSource("ROOT(\n" +

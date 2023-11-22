@@ -29,6 +29,8 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -44,7 +46,7 @@ import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.stream.StreamSupport;
 
-import org.graalvm.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.elf.ELFObjectFile;
@@ -61,6 +63,7 @@ import sun.nio.ch.DirectBuffer;
  * contents; layout decisions (offsets, ordering) are modelled separately (see
  * {@link LayoutDecision}), being computed on write-out (see {@link WriteLayout}).
  */
+@SuppressWarnings("this-escape")
 public abstract class ObjectFile {
 
     /*
@@ -103,7 +106,8 @@ public abstract class ObjectFile {
     public enum Format {
         ELF,
         MACH_O,
-        PECOFF
+        PECOFF,
+        LLVM
     }
 
     public abstract Format getFormat();
@@ -121,7 +125,7 @@ public abstract class ObjectFile {
     private final int pageSize;
 
     public ObjectFile(int pageSize) {
-        assert pageSize > 0 : "invalid page size";
+        assert pageSize > 0 : "Invalid page size";
         this.pageSize = pageSize;
     }
 
@@ -177,7 +181,7 @@ public abstract class ObjectFile {
         } else if (osName.startsWith("Windows")) {
             return "Windows";
         } else {
-            throw new IllegalStateException("unsupported OS: " + osName);
+            throw new IllegalStateException("Unsupported OS: " + osName);
         }
     }
 
@@ -191,15 +195,15 @@ public abstract class ObjectFile {
     }
 
     public static String getFilenameSuffix() {
-        switch (ObjectFile.getNativeFormat()) {
-            case ELF:
-            case MACH_O:
-                return ".o";
-            case PECOFF:
-                return ".obj";
-            default:
-                throw new AssertionError("unreachable");
-        }
+        return getFilenameSuffix(getNativeFormat());
+    }
+
+    public static String getFilenameSuffix(Format format) {
+        return switch (format) {
+            case ELF, MACH_O -> ".o";
+            case PECOFF -> ".obj";
+            case LLVM -> ".bc";
+        };
     }
 
     public static Format getNativeFormat() {
@@ -211,7 +215,7 @@ public abstract class ObjectFile {
             case "Windows":
                 return Format.PECOFF;
             default:
-                throw new AssertionError("unreachable"); // we must handle any output of getHostOS()
+                throw new AssertionError("Unreachable"); // we must handle any output of getHostOS()
         }
     }
 
@@ -224,7 +228,7 @@ public abstract class ObjectFile {
             case PECOFF:
                 return new PECoffObjectFile(pageSize);
             default:
-                throw new AssertionError("unreachable");
+                throw new AssertionError("Unreachable");
         }
     }
 
@@ -324,6 +328,33 @@ public abstract class ObjectFile {
                 case PC_RELATIVE_2:
                 case PC_RELATIVE_4:
                 case PC_RELATIVE_8:
+                case AARCH64_R_AARCH64_ADR_PREL_PG_HI21:
+                case AARCH64_R_AARCH64_ADD_ABS_LO12_NC:
+                case AARCH64_R_LD_PREL_LO19:
+                case AARCH64_R_GOT_LD_PREL19:
+                case AARCH64_R_AARCH64_LDST128_ABS_LO12_NC:
+                case AARCH64_R_AARCH64_LDST64_ABS_LO12_NC:
+                case AARCH64_R_AARCH64_LDST32_ABS_LO12_NC:
+                case AARCH64_R_AARCH64_LDST16_ABS_LO12_NC:
+                case AARCH64_R_AARCH64_LDST8_ABS_LO12_NC:
+                    return true;
+            }
+            return false;
+        }
+
+        public static boolean isDirect(RelocationKind kind) {
+            switch (kind) {
+                case DIRECT_1:
+                case DIRECT_2:
+                case DIRECT_4:
+                case DIRECT_8:
+                case AARCH64_R_MOVW_UABS_G0:
+                case AARCH64_R_MOVW_UABS_G0_NC:
+                case AARCH64_R_MOVW_UABS_G1:
+                case AARCH64_R_MOVW_UABS_G1_NC:
+                case AARCH64_R_MOVW_UABS_G2:
+                case AARCH64_R_MOVW_UABS_G2_NC:
+                case AARCH64_R_MOVW_UABS_G3:
                     return true;
             }
             return false;
@@ -1236,9 +1267,9 @@ public abstract class ObjectFile {
             }
         }
         if (headers.size() == 0) {
-            throw new IllegalStateException("file has no header");
+            throw new IllegalStateException("File has no header");
         } else if (headers.size() > 1) {
-            throw new IllegalStateException("file has multiple headers");
+            throw new IllegalStateException("File has multiple headers");
         } else {
             assert headers.size() == 1;
         }
@@ -1262,6 +1293,14 @@ public abstract class ObjectFile {
 
     private final Map<Element, List<BuildDependency>> dependenciesByDependingElement = new IdentityHashMap<>();
     private final Map<Element, List<BuildDependency>> dependenciesByDependedOnElement = new IdentityHashMap<>();
+
+    public void write(DebugContext context, Path outputFile) throws IOException {
+        try (FileChannel channel = FileChannel.open(outputFile, StandardOpenOption.WRITE, StandardOpenOption.READ, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
+            withDebugContext(context, "ObjectFile.write", () -> {
+                write(channel);
+            });
+        }
+    }
 
     @SuppressWarnings("try")
     public final void write(FileChannel outputChannel) {
@@ -1558,7 +1597,7 @@ public abstract class ObjectFile {
             Set<LayoutDecision> remainingDecisions = new HashSet<>();
             remainingDecisions.addAll(allDecisions);
             remainingDecisions.removeAll(reverseBuildOrder);
-            throw new IllegalStateException("cyclic build dependencies: " + dependencyGraphAsDotString(remainingDecisions));
+            throw new IllegalStateException("Cyclic build dependencies: " + dependencyGraphAsDotString(remainingDecisions));
         }
         assert reverseBuildOrder.get(0) == dummyFinalDecision; // it's the final one, innit
 
@@ -1631,7 +1670,7 @@ public abstract class ObjectFile {
                         assert valueDecided != null;
                         break;
                     default:
-                        throw new AssertionError("unreachable");
+                        throw new AssertionError("Unreachable");
                 }
                 d.setValue(valueDecided); // sets decision to "taken"
             }
@@ -1683,7 +1722,7 @@ public abstract class ObjectFile {
     protected abstract int getMinimumFileSize();
 
     public int getPageSize() {
-        assert pageSize > 0 : "must be initialized";
+        assert pageSize > 0 : "Must be initialized";
         return pageSize;
     }
 

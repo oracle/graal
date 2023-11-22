@@ -30,6 +30,39 @@
     </module>
 
     <module name="RegexpSinglelineJava">
+      <property name="id" value="exceptionsAndErrors"/>
+      <metadata name="net.sf.eclipsecs.core.comment" value="Consistent exception and error messages."/>
+      <property name="severity" value="error"/> 
+      <property name="format" value=" [A-Z][a-zA-Z0-9]*(Error|Exception)\(&quot;[a-z]"/>
+      <property name="message" value="Exception and error messages must not start with a lowercase letter"/>
+      <property name="ignoreComments" value="true"/>
+    </module>
+
+    <module name="RegexpSinglelineJava">
+      <property name="id" value="infoAndWarnings"/>
+      <metadata name="net.sf.eclipsecs.core.comment" value="Raw info or warning printing."/>
+      <property name="severity" value="error"/> 
+      <property name="format" value="(?i)&quot;(Info|Warning):"/>
+      <property name="message" value="Raw info or warning printing detected. Please use LogUtils#info or #LogUtils#warning"/>
+      <property name="ignoreComments" value="true"/>
+    </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="Checkstyle: Allow raw info or warning printing - begin"/>
+      <property name="onCommentFormat" value="Checkstyle: Allow raw info or warning printing - end"/>
+      <property name="idFormat" value="infoAndWarnings"/>
+      <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Tolerate raw info or warning printing"/>
+    </module>
+
+    <module name="RegexpSinglelineJava">
+      <property name="id" value="infoAndWarningMessages"/>
+      <metadata name="net.sf.eclipsecs.core.comment" value="Consistent info and warning messages."/>
+      <property name="severity" value="error"/> 
+      <property name="format" value="LogUtils\.(info|warning)\(&quot;[a-z]"/>
+      <property name="message" value="Info and warning messages must not start with a lowercase letter"/>
+      <property name="ignoreComments" value="true"/>
+    </module>
+
+    <module name="RegexpSinglelineJava">
       <property name="id" value="newLinesFormatStrings"/>
       <metadata name="net.sf.eclipsecs.core.comment" value="Proper new lines in format strings"/>
       <property name="severity" value="error"/> 

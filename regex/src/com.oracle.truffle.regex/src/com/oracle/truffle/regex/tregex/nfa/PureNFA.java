@@ -254,6 +254,7 @@ public final class PureNFA implements StateIndex<PureNFAState> {
         return Json.obj(Json.prop("states",
                         Arrays.stream(states).map(x -> x == null || x == getDummyInitialState() || (x.isAnchoredFinalState() && !x.hasPredecessors()) ? Json.nullValue() : x.toJson(ast))),
                         Json.prop("transitions", Arrays.stream(transitions).map(x -> x == null || x.getSource() == getDummyInitialState() ? Json.nullValue() : x.toJson(ast))),
+                        Json.prop("subtrees", Arrays.stream(subtrees).map(x -> x == null ? Json.nullValue() : x.toJson(ast))),
                         Json.prop("anchoredEntry", Json.array(Json.val(getAnchoredInitialState().getId()))),
                         Json.prop("unAnchoredEntry", Json.array(Json.val(getUnAnchoredInitialState().getId()))));
     }

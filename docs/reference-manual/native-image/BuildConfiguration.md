@@ -1,9 +1,9 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: build-overview
 link_title: Build Configuration
 permalink: /reference-manual/native-image/overview/BuildConfiguration/
-redirect_from: /$version/reference-manual/native-image/BuildConfiguration/
+redirect_from: /reference-manual/native-image/BuildConfiguration/
 ---
 
 # Native Image Build Configuration
@@ -121,14 +121,18 @@ During the creation of a native executable, the representation of the whole appl
 It is a computationally intensive process that uses the following default values for memory usage:
 ```
 -Xss10M \
--Xms1G \
+-XX:MaxRAMPercentage=<percentage based on available memory> \
+-XX:GCTimeRatio=19 \
+-XX:+ExitOnOutOfMemoryError \
 ```
 These defaults can be changed by passing `-J + <jvm option for memory>` to the `native-image` tool.
 
-The `-Xmx` value is computed by using 80% of the physical memory size, but no more than 14G per host.
-You can provide a larger value for `-Xmx` on the command line, for example, `-J-Xmx26G`.
+The `-XX:MaxRAMPercentage` value determines the maximum heap size of the builder and is computed based on available memory of the system.
+It maxes out at 32GB by default and can be overwritten with, for example, `-J-XX:MaxRAMPercentage=90.0` for 90% of physical memory or `-Xmx4g` for 4GB.
+`-XX:GCTimeRatio=19` increases the goal of the total time for garbage collection to 5%, which is more throughput-oriented and reduces peak RSS.
+The build process also exits on the first `OutOfMemoryError` (`-XX:+ExitOnOutOfMemoryError`) to provide faster feedback in environments under a lot of memory pressure.
 
-By default, the `native-image` tool uses up to 32 threads (but not more than the number of processors available). For custom values, use the option `-H:NumberOfThreads=...`.
+By default, the `native-image` tool uses up to 32 threads (but not more than the number of processors available). For custom values, use the `--parallelism=...` option.
 
 For other related options available to the `native-image` tool, see the output from the command `native-image --expert-options-all`.
 

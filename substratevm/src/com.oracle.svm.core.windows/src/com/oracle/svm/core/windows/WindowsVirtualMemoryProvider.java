@@ -228,11 +228,11 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
          * the memory layout that the native code expects, it is sufficient to ensure the correct
          * order of the fields, which is easily done by prefixing the field names.
          */
-        extendedParameter.f1Type(MemExtendedParameterAddressRequirements);
-        extendedParameter.f2Pointer(addressRequirements.rawValue());
-        addressRequirements.f1LowestStartingAddress(WordFactory.nullPointer());
-        addressRequirements.f2HighestEndingAddress(WordFactory.nullPointer());
-        addressRequirements.f3Alignment(alignment);
+        extendedParameter.setF1Type(MemExtendedParameterAddressRequirements);
+        extendedParameter.setF2Pointer(addressRequirements.rawValue());
+        addressRequirements.setF1LowestStartingAddress(WordFactory.nullPointer());
+        addressRequirements.setF2HighestEndingAddress(WordFactory.nullPointer());
+        addressRequirements.setF3Alignment(alignment);
     }
 
     /** Represents an extended parameter for a function that manages virtual memory. */
@@ -240,10 +240,16 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     private interface MEM_EXTENDED_PARAMETER extends PointerBase {
         /* This structure must exactly match the memory layout expected by the native code. */
         @RawField
-        void f1Type(long value);
+        void setF1Type(long value);
 
         @RawField
-        void f2Pointer(long value);
+        long getF1Type();
+
+        @RawField
+        void setF2Pointer(long value);
+
+        @RawField
+        long getF2Pointer();
     }
 
     /** MEM_EXTENDED_PARAMETER_TYPE enumeration Constants. */
@@ -257,13 +263,22 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     private interface MEM_ADDRESS_REQUIREMENTS extends PointerBase {
         /* This structure must exactly match the memory layout expected by the native code. */
         @RawField
-        void f1LowestStartingAddress(PointerBase value);
+        void setF1LowestStartingAddress(PointerBase value);
 
         @RawField
-        void f2HighestEndingAddress(PointerBase value);
+        PointerBase getF1LowestStartingAddress();
 
         @RawField
-        void f3Alignment(UnsignedWord value);
+        void setF2HighestEndingAddress(PointerBase value);
+
+        @RawField
+        PointerBase getF2HighestEndingAddress();
+
+        @RawField
+        void setF3Alignment(UnsignedWord value);
+
+        @RawField
+        UnsignedWord getF3Alignment();
     }
 
     @Override

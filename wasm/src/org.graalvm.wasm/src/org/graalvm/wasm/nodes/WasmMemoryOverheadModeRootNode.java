@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,17 +45,25 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.WasmOptions;
 
+/**
+ * WebAssembly root node when {@link WasmOptions#MemoryOverheadMode} is enabled. The execution of
+ * this root node always throws an {@link WasmException}. This is to prevent executing code when in
+ * {@link WasmOptions#MemoryOverheadMode}, since memories, tables, etc. are not initialized and code
+ * execution would lead to unexpected results.
+ */
 public class WasmMemoryOverheadModeRootNode extends WasmRootNode {
 
-    public WasmMemoryOverheadModeRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmFunctionNode function) {
-        super(language, frameDescriptor, function);
+    public WasmMemoryOverheadModeRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmInstrumentableFunctionNode functionNode) {
+        super(language, frameDescriptor, functionNode);
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         throw WasmException.create(Failure.MEMORY_OVERHEAD_MODE, this, "WebAssembly functions cannot be executed with memory overhead mode enabled, since this can lead to unexpected behavior.");
     }
 }

@@ -24,27 +24,27 @@
  */
 package com.oracle.svm.core.classinitialization;
 
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.InputType;
-import org.graalvm.compiler.nodeinfo.NodeCycles;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.StateSplit;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.WithExceptionNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.type.StampTool;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.Node.NodeIntrinsicFactory;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.InputType;
+import jdk.graal.compiler.nodeinfo.NodeCycles;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodeinfo.NodeSize;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.StateSplit;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.WithExceptionNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
+import jdk.graal.compiler.nodes.spi.Canonicalizable;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
+import jdk.graal.compiler.nodes.spi.Lowerable;
+import jdk.graal.compiler.nodes.type.StampTool;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo(size = NodeSize.SIZE_16, cycles = NodeCycles.CYCLES_2, cyclesRationale = "Class initialization only runs at most once at run time, so the amortized cost is only the is-initialized check")
@@ -97,9 +97,9 @@ public class EnsureClassInitializedNode extends WithExceptionNode implements Can
         return true;
     }
 
-    public ResolvedJavaType constantTypeOrNull(CoreProviders providers) {
+    public ResolvedJavaType constantTypeOrNull(ConstantReflectionProvider constantReflection) {
         if (hub.isConstant()) {
-            return providers.getConstantReflection().asJavaType(hub.asConstant());
+            return constantReflection.asJavaType(hub.asConstant());
         } else {
             return null;
         }
@@ -107,7 +107,7 @@ public class EnsureClassInitializedNode extends WithExceptionNode implements Can
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        ResolvedJavaType type = constantTypeOrNull(tool);
+        ResolvedJavaType type = constantTypeOrNull(tool.getConstantReflection());
         if (type != null) {
             for (FrameState cur = stateAfter; cur != null; cur = cur.outerFrameState()) {
                 if (!needsRuntimeInitialization(cur.getMethod().getDeclaringClass(), type)) {

@@ -49,9 +49,9 @@ import static com.oracle.truffle.api.LanguageAccessor.ENGINE;
  * {@link #get(TruffleContext)}. Context locals can be created for languages and instruments. See
  * links below for usage examples.
  *
- * @see TruffleLanguage#createContextLocal(com.oracle.truffle.api.TruffleLanguage.ContextLocalFactory)
+ * @see TruffleLanguage.ContextLocalProvider#createContextLocal(com.oracle.truffle.api.TruffleLanguage.ContextLocalFactory)
  *      Usage with languages.
- * @see com.oracle.truffle.api.instrumentation.TruffleInstrument#createContextLocal(com.oracle.truffle.api.instrumentation.TruffleInstrument.ContextLocalFactory)
+ * @see com.oracle.truffle.api.instrumentation.TruffleInstrument.ContextLocalProvider#createContextLocal(com.oracle.truffle.api.instrumentation.TruffleInstrument.ContextLocalFactory)
  *      Usage with instruments.
  * @since 20.3
  */
@@ -63,7 +63,7 @@ public abstract class ContextLocal<T> {
      * @since 20.3
      */
     protected ContextLocal(Object polyglotObject) {
-        if (!ENGINE.isPolyglotObject(polyglotObject)) {
+        if (!ENGINE.isPolyglotSecret(polyglotObject)) {
             throw new IllegalStateException("No custom subclasses of ContextLocal allowed.");
         }
     }

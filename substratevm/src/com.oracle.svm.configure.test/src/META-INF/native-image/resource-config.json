@@ -1,0 +1,9 @@
+{
+  "resources": {
+    "includes": [
+      {
+        "pattern": "com/oracle/svm/configure/test/config/.*\\.json"
+      }
+    ]
+  }
+}

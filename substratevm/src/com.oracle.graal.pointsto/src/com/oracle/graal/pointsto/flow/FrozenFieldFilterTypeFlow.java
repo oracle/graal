@@ -44,6 +44,7 @@ public class FrozenFieldFilterTypeFlow extends TypeFlow<AnalysisField> {
 
     private final UnsafeWriteSinkTypeFlow unsafeSink;
 
+    @SuppressWarnings("this-escape")
     public FrozenFieldFilterTypeFlow(PointsToAnalysis bb, AnalysisField field, UnsafeWriteSinkTypeFlow unsafeSink) {
         super(field, field.getType());
         this.unsafeSink = unsafeSink;

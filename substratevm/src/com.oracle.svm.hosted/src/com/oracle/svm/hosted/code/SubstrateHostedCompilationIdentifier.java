@@ -26,8 +26,8 @@ package com.oracle.svm.hosted.code;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.debug.GraalError;
+import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.debug.GraalError;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -70,7 +70,7 @@ public class SubstrateHostedCompilationIdentifier implements CompilationIdentifi
                 sb.append(']');
                 break;
             default:
-                throw new GraalError("unknown verbosity: " + verbosity);
+                throw new GraalError("Unknown verbosity: " + verbosity);
         }
         return sb;
     }

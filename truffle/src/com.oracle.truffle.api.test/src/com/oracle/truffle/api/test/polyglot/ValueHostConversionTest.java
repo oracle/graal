@@ -76,17 +76,24 @@ import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.test.examples.TargetMappings;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 
 /**
  * Tests class for {@link Context#asValue(Object)}.
  */
 public class ValueHostConversionTest extends AbstractPolyglotTest {
+
+    @BeforeClass
+    public static void beforeClass() {
+        // TruffleObject
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
+    }
 
     @Before
     public void setUp() {
@@ -1181,7 +1188,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     private interface TestExceptionFrames3 {
 
@@ -1319,7 +1326,6 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
     // Methods annotated with @CallerSensitive use reflection, even on JVM, so we test that case.
     @Test
     public void testExceptionFramesCallerSensitive() throws NoSuchFieldException {
-        Assume.assumeTrue("GR-40767", Runtime.version().feature() < 19);
         // We cannot easily mark a method as @CallerSensitive (the annotation moved between JDK 8
         // and 9), so we use an existing method marked as @CallerSensitive, Field#get().
         Field field = TestExceptionFramesCallerSensitive.class.getField("testField");
@@ -1339,6 +1345,11 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
             assertTrue(frame.isHostFrame());
             assertEquals("get", frame.toHostFrame().getMethodName());
             frame = frameIterator.next();
+            if (Runtime.version().feature() >= 19 && frame.toHostFrame().getMethodName().startsWith("invoke")) {
+                // Skip DirectMethodHandleAccessor.invoke used by Method.invoke on JDK 19+
+                frame = frameIterator.next();
+                assertTrue(frame.isHostFrame());
+            }
             assertTrue(frame.isHostFrame());
             assertEquals("execute", frame.toHostFrame().getMethodName());
             frame = frameIterator.next();

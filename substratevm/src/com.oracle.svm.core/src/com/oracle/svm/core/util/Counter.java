@@ -48,8 +48,8 @@ import com.oracle.svm.core.util.Counter.Group;
  * option is enabled. Counters are {@link Group grouped} for printing.
  *
  * Currently there is no shutdown hook in Substrate VM that is invoked automatically, so
- * {@link Counter#logValues} needs to be called manually at the end of the application to print
- * counter values.
+ * {@link CounterSupport#logValues} needs to be called manually at the end of the application to
+ * print counter values.
  *
  * Use this class in the following way:
  *
@@ -206,15 +206,6 @@ public final class Counter {
     public void reset() {
         value = 0;
     }
-
-    /**
-     * Prints all counters of all enabled groups to the {@link Log}.
-     */
-    public static void logValues(Log log) {
-        for (Counter.Group group : ImageSingletons.lookup(CounterSupport.class).enabledGroups) {
-            group.logValues(log);
-        }
-    }
 }
 
 @TargetClass(com.oracle.svm.core.util.Counter.class)
@@ -242,14 +233,4 @@ class CounterGroupList {
         VMError.guarantee(!frozen);
         value.add(group);
     }
-}
-
-class CounterSupport {
-
-    final Counter.Group[] enabledGroups;
-
-    CounterSupport(Counter.Group[] enabledGroups) {
-        this.enabledGroups = enabledGroups;
-    }
-
 }

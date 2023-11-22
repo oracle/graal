@@ -26,12 +26,12 @@ package com.oracle.svm.core.identityhashcode;
 
 import java.util.SplittableRandom;
 
-import org.graalvm.compiler.nodes.NamedLocationIdentity;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.IdentityHashCodeSnippets;
-import org.graalvm.compiler.word.ObjectAccess;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.IdentityHashCodeSnippets;
+import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordFactory;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,8 +41,6 @@
 package org.graalvm.wasm.test;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.function.Predicate;
 
@@ -65,11 +63,6 @@ public abstract class AbstractWasmSuite {
         } else {
             return name -> true;
         }
-    }
-
-    public static String readFileToString(Path path, Charset charset) throws IOException {
-        byte[] rawBytes = Files.readAllBytes(path);
-        return new String(rawBytes, charset);
     }
 
     @Test

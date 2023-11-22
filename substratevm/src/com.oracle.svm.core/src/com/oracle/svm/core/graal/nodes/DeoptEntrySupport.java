@@ -24,10 +24,18 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import org.graalvm.compiler.nodes.FixedNodeInterface;
-import org.graalvm.compiler.nodes.StateSplit;
-import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
+import jdk.graal.compiler.nodes.FixedNodeInterface;
+import jdk.graal.compiler.nodes.StateSplit;
+import jdk.graal.compiler.nodes.debug.ControlFlowAnchored;
+import jdk.graal.compiler.nodes.spi.LIRLowerable;
 
 public interface DeoptEntrySupport extends LIRLowerable, ControlFlowAnchored, FixedNodeInterface, StateSplit {
+
+    /**
+     * Returns the invoke bci this deopt is serving as a proxy anchor for or
+     * {@link jdk.vm.ci.code.BytecodeFrame#UNKNOWN_BCI} if it is not serving as a proxy anchor for
+     * an invoke. Note this will be different than the entry's stateafter bci since this node will
+     * be after the invoke it is "proxifying".
+     */
+    int getProxifiedInvokeBci();
 }

@@ -27,6 +27,7 @@
 package com.oracle.svm.test.jfr;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.Test;
@@ -36,6 +37,7 @@ import com.oracle.svm.test.jfr.events.IntegerEvent;
 import com.oracle.svm.test.jfr.events.StringEvent;
 
 import jdk.jfr.consumer.RecordedEvent;
+import jdk.jfr.consumer.RecordingStream;
 
 /**
  * Check to make sure 1. All events are accounted for when using streaming (even when there are very
@@ -48,33 +50,19 @@ public class TestJfrStreamingCount extends JfrStreamingTest {
     private static final int EXPECTED_EVENTS_PER_TYPE = THREADS * COUNT;
     private static final int EXPECTED_TOTAL_EVENTS = EXPECTED_EVENTS_PER_TYPE * 3;
 
+    private final AtomicInteger emittedEventsPerType = new AtomicInteger(0);
     private final AtomicLong classEvents = new AtomicLong(0);
     private final AtomicLong integerEvents = new AtomicLong(0);
     private final AtomicLong stringEvents = new AtomicLong(0);
 
-    @Override
-    public String[] getTestedEvents() {
-        return new String[]{"com.jfr.String", "com.jfr.Integer", "com.jfr.Class"};
-    }
-
-    @Override
-    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
-        if (events.size() != EXPECTED_TOTAL_EVENTS) {
-            throw new Exception("Not all expected events were found in the JFR file");
-        }
-    }
-
     @Test
-    public void test() throws Exception {
-        stream.onEvent("com.jfr.Class", event -> {
-            classEvents.incrementAndGet();
-        });
-        stream.onEvent("com.jfr.Integer", event -> {
-            integerEvents.incrementAndGet();
-        });
-        stream.onEvent("com.jfr.String", event -> {
-            stringEvents.incrementAndGet();
-        });
+    public void test() throws Throwable {
+        String[] events = new String[]{"com.jfr.String", "com.jfr.Integer", "com.jfr.Class"};
+        RecordingStream stream = startStream(events);
+
+        stream.onEvent("com.jfr.Class", event -> classEvents.incrementAndGet());
+        stream.onEvent("com.jfr.Integer", event -> integerEvents.incrementAndGet());
+        stream.onEvent("com.jfr.String", event -> stringEvents.incrementAndGet());
 
         Runnable eventEmitter = () -> {
             for (int i = 0; i < COUNT; i++) {
@@ -97,5 +85,13 @@ public class TestJfrStreamingCount extends JfrStreamingTest {
 
         waitUntilTrue(() -> emittedEventsPerType.get() == EXPECTED_EVENTS_PER_TYPE);
         waitUntilTrue(() -> classEvents.get() == EXPECTED_EVENTS_PER_TYPE && integerEvents.get() == EXPECTED_EVENTS_PER_TYPE && stringEvents.get() == EXPECTED_EVENTS_PER_TYPE);
+
+        stopStream(stream, TestJfrStreamingCount::validateEvents);
+    }
+
+    private static void validateEvents(List<RecordedEvent> events) throws Throwable {
+        if (events.size() != EXPECTED_TOTAL_EVENTS) {
+            throw new Exception("Not all expected events were found in the JFR file");
+        }
     }
 }

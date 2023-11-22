@@ -39,12 +39,18 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import jdk.graal.compiler.options.Option;
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.util.LogUtils;
 
 /**
  * An abstract cache manager for some subspace of the JDK, GraalVM or application source file space.
@@ -57,196 +63,177 @@ import com.oracle.svm.hosted.ImageClassLoader;
 
 public class SourceCache {
 
-    /**
-     * A list of all entries in the classpath used by the native image classloader.
-     */
-    protected static final List<Path> classPathEntries = new ArrayList<>();
-    /**
-     * A list of all entries in the module path used by the native image classloader.
-     */
-    protected static final List<Path> modulePathEntries = new ArrayList<>();
-    /**
-     * A list of all entries in the source search path specified by the user on the command line.
-     */
-    protected static final List<Path> sourcePathEntries = new ArrayList<>();
+    private static class SourceRoots {
+        /**
+         * A list of root directories which may contain source files from which this cache can be
+         * populated.
+         */
+        private static final List<SourceRoot> srcRoots = new ArrayList<>();
 
-    /**
-     * A list of root directories which may contain source files from which this cache can be
-     * populated.
-     */
-    protected List<SourceRoot> srcRoots;
+        /**
+         * Modules needing special case root processing.
+         */
+        private static final String[] specialRootModules = {
+                        "jdk.internal.vm.ci",
+                        "jdk.graal.compiler",
+        };
 
-    /**
-     * Modules needing special case root processing.
-     */
-    private static final String[] specialRootModules = {
-                    "jdk.internal.vm.ci",
-                    "jdk.internal.vm.compiler",
-    };
+        /**
+         * Extra root directories for files in the jdk.internal.vm.ci/compiler modules.
+         */
+        private static final HashMap<String, List<Path>> specialSrcRoots = new HashMap<>();
 
-    /**
-     * Extra root directories for files in the jdk.internal.vm.ci/compiler modules.
-     */
-    private HashMap<String, List<Path>> specialSrcRoots;
-
-    /**
-     * Create the source cache.
-     */
-    protected SourceCache() {
-        basePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
-        srcRoots = new ArrayList<>();
-        specialSrcRoots = new HashMap<>();
-        addJDKSources();
-        addGraalSources();
-        addApplicationSources();
-    }
-
-    private void addJDKSources() {
-        String javaHome = System.getProperty("java.home");
-        assert javaHome != null;
-        Path javaHomePath = Paths.get("", javaHome);
-        Path srcZipPath = javaHomePath.resolve("lib").resolve("src.zip");
-        if (!srcZipPath.toFile().exists()) {
-            return;
+        static {
+            addJDKSources();
+            addGraalSources();
+            addApplicationSources();
         }
-        try {
-            FileSystem srcFileSystem = FileSystems.newFileSystem(srcZipPath, (ClassLoader) null);
-            for (Path root : srcFileSystem.getRootDirectories()) {
-                srcRoots.add(new SourceRoot(root, true));
-                // add dirs named "src" as extra roots for special modules
-                for (String specialRootModule : specialRootModules) {
-                    ArrayList<Path> rootsList = new ArrayList<>();
-                    specialSrcRoots.put(specialRootModule, rootsList);
-                    Path specialModuleRoot = root.resolve(specialRootModule);
-                    Files.find(specialModuleRoot, 2, (path, attributes) -> path.endsWith("src")).forEach(rootsList::add);
-                }
+
+        private static void addJDKSources() {
+            String javaHome = System.getProperty("java.home");
+            assert javaHome != null;
+            Path javaHomePath = Paths.get("", javaHome);
+            Path srcZipPath = javaHomePath.resolve("lib").resolve("src.zip");
+            if (!srcZipPath.toFile().exists()) {
+                LogUtils.warning("Unable to locate JDK sources file '%s'. Source line debug will not be available for JDK classes.", srcZipPath);
+                return;
             }
-        } catch (IOException | FileSystemNotFoundException ioe) {
-            /* ignore this entry */
-        }
-    }
-
-    private void addGraalSources() {
-        classPathEntries.stream()
-                        .forEach(classPathEntry -> addGraalSourceRoot(classPathEntry, true));
-        modulePathEntries.stream()
-                        .forEach(modulePathEntry -> addGraalSourceRoot(modulePathEntry, true));
-        sourcePathEntries.stream()
-                        .forEach(sourcePathEntry -> addGraalSourceRoot(sourcePathEntry, false));
-    }
-
-    private void addGraalSourceRoot(Path sourcePath, boolean fromClassPath) {
-        try {
-            String fileNameString = sourcePath.getFileName().toString();
-            if (fileNameString.endsWith(".jar") || fileNameString.endsWith(".src.zip")) {
-                if (fromClassPath && fileNameString.endsWith(".jar")) {
-                    /*
-                     * GraalVM jar /path/to/xxx.jar in classpath should have sources
-                     * /path/to/xxx.src.zip
-                     */
-                    int length = fileNameString.length();
-                    fileNameString = fileNameString.substring(0, length - 3) + "src.zip";
+            try {
+                FileSystem srcFileSystem = FileSystems.newFileSystem(srcZipPath, (ClassLoader) null);
+                for (Path root : srcFileSystem.getRootDirectories()) {
+                    srcRoots.add(new SourceRoot(root, true));
+                    // add dirs named "src" as extra roots for special modules
+                    for (String specialRootModule : specialRootModules) {
+                        ArrayList<Path> rootsList = new ArrayList<>();
+                        specialSrcRoots.put(specialRootModule, rootsList);
+                        Path specialModuleRoot = root.resolve(specialRootModule);
+                        Files.find(specialModuleRoot, 2, (path, attributes) -> path.endsWith("src")).forEach(rootsList::add);
+                    }
                 }
-                Path srcPath = sourcePath.getParent().resolve(fileNameString);
-                File srcFile = srcPath.toFile();
-                if (srcFile.exists()) {
-                    if (srcFile.isFile()) {
+            } catch (IOException | FileSystemNotFoundException ioe) {
+                /* ignore this entry */
+            }
+        }
+
+        private static void addGraalSources() {
+            SourceCacheFeature.getClassPath().forEach(classPathEntry -> addGraalSourceRoot(classPathEntry, true));
+            SourceCacheFeature.getModulePath().forEach(modulePathEntry -> addGraalSourceRoot(modulePathEntry, true));
+            SourceCacheFeature.getSourceSearchPath().forEach(sourcePathEntry -> addGraalSourceRoot(sourcePathEntry, false));
+        }
+
+        private static void addGraalSourceRoot(Path sourcePath, boolean fromClassPath) {
+            try {
+                String fileNameString = sourcePath.getFileName().toString();
+                if (fileNameString.endsWith(".jar") || fileNameString.endsWith(".src.zip")) {
+                    if (fromClassPath && fileNameString.endsWith(".jar")) {
+                        /*
+                         * GraalVM jar /path/to/xxx.jar in classpath should have sources
+                         * /path/to/xxx.src.zip
+                         */
+                        int length = fileNameString.length();
+                        fileNameString = fileNameString.substring(0, length - 3) + "src.zip";
+                    }
+                    Path srcPath = sourcePath.getParent().resolve(fileNameString);
+                    File srcFile = srcPath.toFile();
+                    if (srcFile.exists()) {
+                        if (srcFile.isFile()) {
+                            try {
+                                FileSystem fileSystem = FileSystems.newFileSystem(srcPath, (ClassLoader) null);
+                                for (Path root : fileSystem.getRootDirectories()) {
+                                    srcRoots.add(new SourceRoot(root));
+                                }
+                            } catch (IOException | FileSystemNotFoundException ioe) {
+                                /* ignore this entry */
+                            }
+                        } else if (srcFile.isDirectory()) { // Support for `MX_BUILD_EXPLODED=true`
+                            srcRoots.add(new SourceRoot(srcPath));
+                        } else {
+                            throw VMError.shouldNotReachHereUnexpectedInput(srcFile);
+                        }
+                    }
+                } else {
+                    if (fromClassPath) {
+                        /*
+                         * graal classpath dir entries should have a src and/or src_gen subdirectory
+                         */
+                        Path srcPath = sourcePath.resolve("src");
+                        srcRoots.add(new SourceRoot(srcPath));
+                        srcPath = sourcePath.resolve("src_gen");
+                        srcRoots.add(new SourceRoot(srcPath));
+                    } else {
+                        srcRoots.add(new SourceRoot(sourcePath));
+                    }
+                }
+            } catch (NullPointerException npe) {
+                // do nothing
+            }
+        }
+
+        private static void addApplicationSources() {
+            SourceCacheFeature.getClassPath().forEach(classPathEntry -> addApplicationSourceRoot(classPathEntry, true));
+            SourceCacheFeature.getModulePath().forEach(modulePathEntry -> addApplicationSourceRoot(modulePathEntry, true));
+            SourceCacheFeature.getSourceSearchPath().forEach(sourcePathEntry -> addApplicationSourceRoot(sourcePathEntry, false));
+        }
+
+        private static void addApplicationSourceRoot(Path sourceRoot, boolean fromClassPath) {
+            try {
+                Path sourcePath = sourceRoot;
+                String fileNameString = sourcePath.getFileName().toString();
+                if (fileNameString.endsWith(".jar") || fileNameString.endsWith(".zip")) {
+                    if (fromClassPath && fileNameString.endsWith(".jar")) {
+                        /*
+                         * application jar /path/to/xxx.jar should have sources
+                         * /path/to/xxx-sources.jar
+                         */
+                        int length = fileNameString.length();
+                        fileNameString = fileNameString.substring(0, length - 4) + "-sources.jar";
+                    }
+                    sourcePath = sourcePath.getParent().resolve(fileNameString);
+                    if (sourcePath.toFile().exists()) {
                         try {
-                            FileSystem fileSystem = FileSystems.newFileSystem(srcPath, (ClassLoader) null);
+                            FileSystem fileSystem = FileSystems.newFileSystem(sourcePath, (ClassLoader) null);
                             for (Path root : fileSystem.getRootDirectories()) {
                                 srcRoots.add(new SourceRoot(root));
                             }
                         } catch (IOException | FileSystemNotFoundException ioe) {
                             /* ignore this entry */
                         }
-                    } else if (srcFile.isDirectory()) { /* Support for `MX_BUILD_EXPLODED=true` */
-                        srcRoots.add(new SourceRoot(srcPath));
-                    } else {
-                        throw VMError.shouldNotReachHere();
                     }
-                }
-            } else {
-                if (fromClassPath) {
-                    /* graal classpath dir entries should have a src and/or src_gen subdirectory */
-                    Path srcPath = sourcePath.resolve("src");
-                    srcRoots.add(new SourceRoot(srcPath));
-                    srcPath = sourcePath.resolve("src_gen");
-                    srcRoots.add(new SourceRoot(srcPath));
                 } else {
-                    srcRoots.add(new SourceRoot(sourcePath));
-                }
-            }
-        } catch (NullPointerException npe) {
-            // do nothing
-        }
-    }
-
-    private void addApplicationSources() {
-        classPathEntries.stream()
-                        .forEach(classPathEntry -> addApplicationSourceRoot(classPathEntry, true));
-        modulePathEntries.stream()
-                        .forEach(modulePathEntry -> addApplicationSourceRoot(modulePathEntry, true));
-        sourcePathEntries.stream()
-                        .forEach(sourcePathEntry -> addApplicationSourceRoot(sourcePathEntry, false));
-    }
-
-    protected void addApplicationSourceRoot(Path sourceRoot, boolean fromClassPath) {
-        try {
-            Path sourcePath = sourceRoot;
-            String fileNameString = sourcePath.getFileName().toString();
-            if (fileNameString.endsWith(".jar") || fileNameString.endsWith(".zip")) {
-                if (fromClassPath && fileNameString.endsWith(".jar")) {
-                    /*
-                     * application jar /path/to/xxx.jar should have sources /path/to/xxx-sources.jar
-                     */
-                    int length = fileNameString.length();
-                    fileNameString = fileNameString.substring(0, length - 4) + "-sources.jar";
-                }
-                sourcePath = sourcePath.getParent().resolve(fileNameString);
-                if (sourcePath.toFile().exists()) {
-                    try {
-                        FileSystem fileSystem = FileSystems.newFileSystem(sourcePath, (ClassLoader) null);
-                        for (Path root : fileSystem.getRootDirectories()) {
-                            srcRoots.add(new SourceRoot(root));
+                    if (fromClassPath) {
+                        /*
+                         * for dir entries ending in classes or target/classes translate to a
+                         * parallel src tree
+                         */
+                        if (sourcePath.endsWith("classes")) {
+                            Path parent = sourcePath.getParent();
+                            if (parent.endsWith("target")) {
+                                parent = parent.getParent();
+                            }
+                            sourcePath = (parent.resolve("src"));
                         }
-                    } catch (IOException | FileSystemNotFoundException ioe) {
-                        /* ignore this entry */
                     }
-                }
-            } else {
-                if (fromClassPath) {
-                    /*
-                     * for dir entries ending in classes or target/classes translate to a parallel
-                     * src tree
-                     */
-                    if (sourcePath.endsWith("classes")) {
-                        Path parent = sourcePath.getParent();
-                        if (parent.endsWith("target")) {
-                            parent = parent.getParent();
-                        }
-                        sourcePath = (parent.resolve("src"));
-                    }
-                }
-                // try the path as provided
-                File file = sourcePath.toFile();
-                if (file.exists() && file.isDirectory()) {
-                    // see if we have src/main/java or src/java
-                    Path subPath = sourcePath.resolve("main").resolve("java");
-                    file = subPath.toFile();
+                    // try the path as provided
+                    File file = sourcePath.toFile();
                     if (file.exists() && file.isDirectory()) {
-                        sourcePath = subPath;
-                    } else {
-                        subPath = sourcePath.resolve("java");
+                        // see if we have src/main/java or src/java
+                        Path subPath = sourcePath.resolve("main").resolve("java");
                         file = subPath.toFile();
                         if (file.exists() && file.isDirectory()) {
                             sourcePath = subPath;
+                        } else {
+                            subPath = sourcePath.resolve("java");
+                            file = subPath.toFile();
+                            if (file.exists() && file.isDirectory()) {
+                                sourcePath = subPath;
+                            }
                         }
+                        srcRoots.add(new SourceRoot(sourcePath));
                     }
-                    srcRoots.add(new SourceRoot(sourcePath));
                 }
+            } catch (NullPointerException npe) {
+                // do nothing
             }
-        } catch (NullPointerException npe) {
-            // do nothing
         }
     }
 
@@ -254,7 +241,7 @@ public class SourceCache {
      * The top level path relative to the root directory under which files belonging to this
      * specific cache are located.
      */
-    private final Path basePath;
+    private final Path basePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
 
     /**
      * Cache the source file identified by the supplied prototype path if a legitimate candidate for
@@ -313,9 +300,15 @@ public class SourceCache {
         }
 
         if (moduleName != null) {
-            for (String specialRootModule : specialRootModules) {
+            for (String specialRootModule : SourceRoots.specialRootModules) {
                 if (moduleName.equals(specialRootModule)) {
-                    for (Path srcRoot : specialSrcRoots.get(specialRootModule)) {
+                    // handle this module specially as it has intermediate dirs
+                    List<Path> specialModulePathList = SourceRoots.specialSrcRoots.get(specialRootModule);
+                    // if we have no src.zip then there will be no entry in the hash table
+                    if (specialModulePathList == null) {
+                        break;
+                    }
+                    for (Path srcRoot : specialModulePathList) {
                         String srcRootGroup = srcRoot.subpath(1, 2).toString().replace(".", filePath.getFileSystem().getSeparator());
                         if (filePath.toString().startsWith(srcRootGroup)) {
                             Path sourcePath = extendPath(srcRoot, filePath);
@@ -329,7 +322,7 @@ public class SourceCache {
             }
         }
 
-        for (SourceRoot root : srcRoots) {
+        for (SourceRoot root : SourceRoots.srcRoots) {
             final Path scopedFilePath;
             if (moduleName != null && root.isJDK) {
                 scopedFilePath = Paths.get(moduleName, filePath.toString());
@@ -377,10 +370,15 @@ public class SourceCache {
         }
 
         if (moduleName != null) {
-            for (String specialRootModule : specialRootModules) {
+            for (String specialRootModule : SourceRoots.specialRootModules) {
                 if (moduleName.equals(specialRootModule)) {
                     // handle this module specially as it has intermediate dirs
-                    for (Path srcRoot : specialSrcRoots.get(specialRootModule)) {
+                    List<Path> specialModulePathList = SourceRoots.specialSrcRoots.get(specialRootModule);
+                    // if we have no src.zip then there will be no entry in the hash table
+                    if (specialModulePathList == null) {
+                        break;
+                    }
+                    for (Path srcRoot : specialModulePathList) {
                         String srcRootGroup = srcRoot.subpath(1, 2).toString().replace(".", filePath.getFileSystem().getSeparator());
                         if (filePath.toString().startsWith(srcRootGroup)) {
                             Path sourcePath = extendPath(srcRoot, filePath);
@@ -401,7 +399,7 @@ public class SourceCache {
             }
         }
 
-        for (SourceRoot root : srcRoots) {
+        for (SourceRoot root : SourceRoots.srcRoots) {
             final Path scopedFilePath;
             if (moduleName != null && root.isJDK) {
                 scopedFilePath = Paths.get(moduleName, filePath.toString());
@@ -500,33 +498,6 @@ public class SourceCache {
             }
         }
     }
-
-    /**
-     * Add a path to the list of classpath entries.
-     *
-     * @param path The path to add.
-     */
-    static void addClassPathEntry(Path path) {
-        classPathEntries.add(path);
-    }
-
-    /**
-     * Add a path to the list of module path entries.
-     *
-     * @param path The path to add.
-     */
-    static void addModulePathEntry(Path path) {
-        modulePathEntries.add(path);
-    }
-
-    /**
-     * Add a path to the list of source path entries.
-     *
-     * @param path The path to add.
-     */
-    static void addSourcePathEntry(Path path) {
-        sourcePathEntries.add(path);
-    }
 }
 
 /**
@@ -536,22 +507,29 @@ public class SourceCache {
 @AutomaticallyRegisteredFeature
 @SuppressWarnings("unused")
 class SourceCacheFeature implements InternalFeature {
+
+    public static class Options {
+        @Option(help = "Search path for source files for application or GraalVM classes (list of comma-separated directories or jar files)")//
+        static final HostedOptionKey<LocatableMultiOptionValue.Paths> DebugInfoSourceSearchPath = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
+    }
+
+    ImageClassLoader imageClassLoader;
+
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
-        ImageClassLoader loader = accessImpl.getImageClassLoader();
-        for (Path entry : loader.classpath()) {
-            SourceCache.addClassPathEntry(entry);
-        }
-        for (Path entry : loader.modulepath()) {
-            SourceCache.addModulePathEntry(entry);
-        }
-        // also add any necessary source path entries
-        if (SubstrateOptions.DebugInfoSourceSearchPath.getValue() != null) {
-            for (Path searchPathEntry : SubstrateOptions.DebugInfoSourceSearchPath.getValue().values()) {
-                SourceCache.addSourcePathEntry(searchPathEntry);
-            }
-        }
+        imageClassLoader = ((FeatureImpl.AfterAnalysisAccessImpl) access).getImageClassLoader();
+    }
+
+    static List<Path> getClassPath() {
+        return ImageSingletons.lookup(SourceCacheFeature.class).imageClassLoader.classpath();
+    }
+
+    static List<Path> getModulePath() {
+        return ImageSingletons.lookup(SourceCacheFeature.class).imageClassLoader.modulepath();
+    }
+
+    static List<Path> getSourceSearchPath() {
+        return Options.DebugInfoSourceSearchPath.getValue().values();
     }
 }
 

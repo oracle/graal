@@ -35,46 +35,37 @@ import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
-import org.graalvm.compiler.core.target.Backend;
-import org.graalvm.compiler.debug.GlobalMetrics;
-import org.graalvm.compiler.hotspot.CompilationContext;
-import org.graalvm.compiler.hotspot.CompilationTask;
-import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkageImpl.CodeInfo;
-import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
-import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
-import org.graalvm.compiler.hotspot.HotSpotGraalServices;
-import org.graalvm.compiler.hotspot.ProfileReplaySupport;
-import org.graalvm.compiler.hotspot.stubs.Stub;
-import org.graalvm.compiler.options.OptionDescriptors;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.options.OptionsParser;
-import org.graalvm.compiler.serviceprovider.IsolateUtil;
+import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
+import jdk.graal.compiler.core.target.Backend;
+import jdk.graal.compiler.debug.GlobalMetrics;
+import jdk.graal.compiler.hotspot.CompilationContext;
+import jdk.graal.compiler.hotspot.CompilationTask;
+import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkageImpl.CodeInfo;
+import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
+import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
+import jdk.graal.compiler.hotspot.HotSpotGraalServices;
+import jdk.graal.compiler.hotspot.ProfileReplaySupport;
+import jdk.graal.compiler.hotspot.stubs.Stub;
+import jdk.graal.compiler.options.OptionDescriptors;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.options.OptionsParser;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNIMethodScope;
-import org.graalvm.libgraal.LibGraal;
-import org.graalvm.libgraal.LibGraalScope;
-import org.graalvm.nativeimage.Isolate;
-import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CEntryPoint.Builtin;
-import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateContext;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawFieldAddress;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.util.OptionsEncoder;
+import jdk.graal.compiler.util.OptionsEncoder;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.heap.Heap;
 import com.sun.management.ThreadMXBean;
 
@@ -95,17 +86,10 @@ import jdk.vm.ci.runtime.JVMCIBackend;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
 /**
- * Entry points in libgraal corresponding to native methods in {@link LibGraalScope} and
+ * Entry points in libgraal corresponding to native methods in the scope and
  * {@code CompileTheWorld}.
  */
 public final class LibGraalEntryPoints {
-
-    /**
-     * @see org.graalvm.compiler.hotspot.HotSpotTTYStreamProvider#execute
-     */
-    static final CGlobalData<Pointer> LOG_FILE_BARRIER = CGlobalDataFactory.createWord((Pointer) WordFactory.zero());
-
-    static final CGlobalData<Pointer> GLOBAL_TIMESTAMP = CGlobalDataFactory.createBytes(() -> 8);
 
     /**
      * Map from a foreign call signature to a C global word that is the address of a pointer to a
@@ -218,15 +202,6 @@ public final class LibGraalEntryPoints {
         }
     }
 
-    @CEntryPoint(builtin = Builtin.GET_CURRENT_THREAD, name = "Java_org_graalvm_libgraal_LibGraalScope_getIsolateThreadIn")
-    private static native IsolateThread getIsolateThreadIn(PointerBase env, PointerBase hsClazz, @IsolateContext Isolate isolate);
-
-    @CEntryPoint(name = "Java_org_graalvm_libgraal_LibGraalScope_attachThreadTo", builtin = CEntryPoint.Builtin.ATTACH_THREAD)
-    static native long attachThreadTo(PointerBase env, PointerBase hsClazz, @CEntryPoint.IsolateContext long isolate);
-
-    @CEntryPoint(name = "Java_org_graalvm_libgraal_LibGraalScope_detachThreadFrom", builtin = CEntryPoint.Builtin.DETACH_THREAD)
-    static native void detachThreadFrom(PointerBase env, PointerBase hsClazz, @CEntryPoint.IsolateThreadContext long isolateThread);
-
     static class CachedOptions {
         final OptionValues options;
         final long hash;
@@ -238,16 +213,6 @@ public final class LibGraalEntryPoints {
     }
 
     private static final ThreadLocal<CachedOptions> cachedOptions = new ThreadLocal<>();
-
-    public static boolean hasLibGraalIsolatePeer() {
-        return hasLibGraalIsolatePeer;
-    }
-
-    /**
-     * Indicates whether this runtime has an associated peer runtime that it must be unregistered
-     * from during shutdown.
-     */
-    private static boolean hasLibGraalIsolatePeer;
 
     private static OptionValues decodeOptions(long address, int size, int hash) {
         CachedOptions options = cachedOptions.get();
@@ -273,35 +238,8 @@ public final class LibGraalEntryPoints {
         return options.options;
     }
 
-    @SuppressWarnings({"unused"})
-    @CEntryPoint(name = "Java_org_graalvm_libgraal_LibGraalObject_releaseHandle")
-    public static boolean releaseHandle(PointerBase jniEnv,
-                    PointerBase jclass,
-                    @CEntryPoint.IsolateThreadContext long isolateThreadId,
-                    long handle) {
-        try {
-            ObjectHandles.getGlobal().destroy(WordFactory.pointer(handle));
-            return true;
-        } catch (Throwable t) {
-            return false;
-        }
-    }
-
-    @SuppressWarnings({"unused"})
-    @CEntryPoint(name = "Java_org_graalvm_libgraal_LibGraalScope_getIsolateId")
-    public static long getIsolateId(PointerBase jniEnv,
-                    PointerBase jclass,
-                    @CEntryPoint.IsolateThreadContext long isolateThreadId) {
-        try {
-            hasLibGraalIsolatePeer = true;
-            return IsolateUtil.getIsolateID();
-        } catch (Throwable t) {
-            return 0L;
-        }
-    }
-
     @SuppressWarnings({"unused", "try"})
-    @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_test_LibGraalCompilerTest_hashConstantOopFields", include = LibGraalFeature.IsEnabled.class)
+    @CEntryPoint(name = "Java_jdk_graal_compiler_hotspot_test_LibGraalCompilerTest_hashConstantOopFields", include = LibGraalFeature.IsEnabled.class)
     private static long hashConstantOopFields(JNIEnv jniEnv,
                     PointerBase jclass,
                     @CEntryPoint.IsolateThreadContext long isolateThread,
@@ -362,7 +300,7 @@ public final class LibGraalEntryPoints {
 
     /**
      * The implementation of
-     * {@code org.graalvm.compiler.hotspot.test.CompileTheWorld.compileMethodInLibgraal()}.
+     * {@code jdk.graal.compiler.hotspot.test.CompileTheWorld.compileMethodInLibgraal()}.
      *
      * @param methodHandle the method to be compiled. This is a handle to a
      *            {@link HotSpotResolvedJavaMethod} in HotSpot's heap. A value of 0L can be passed
@@ -393,12 +331,11 @@ public final class LibGraalEntryPoints {
      * @param timeAndMemBufferAddress 16-byte native buffer to store result of time and memory
      *            measurements of the compilation
      * @param profilePathBufferAddress native buffer containing a 0-terminated C string representing
-     *            {@link org.graalvm.compiler.hotspot.ProfileReplaySupport.Options#LoadProfiles}
-     *            path.
+     *            {@link ProfileReplaySupport.Options#LoadProfiles} path.
      * @return a handle to a {@link InstalledCode} in HotSpot's heap or 0 if compilation failed
      */
     @SuppressWarnings({"unused", "try"})
-    @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_test_CompileTheWorld_compileMethodInLibgraal", include = LibGraalFeature.IsEnabled.class)
+    @CEntryPoint(name = "Java_jdk_graal_compiler_hotspot_test_CompileTheWorld_compileMethodInLibgraal", include = LibGraalFeature.IsEnabled.class)
     private static long compileMethod(JNIEnv jniEnv,
                     PointerBase jclass,
                     @CEntryPoint.IsolateThreadContext long isolateThread,

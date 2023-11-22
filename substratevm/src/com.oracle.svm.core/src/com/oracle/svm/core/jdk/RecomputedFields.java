@@ -29,7 +29,6 @@ package com.oracle.svm.core.jdk;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.AtomicFieldUpdaterOffset;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
 
-import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -40,7 +39,6 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -51,13 +49,10 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.VMError;
@@ -237,9 +232,9 @@ final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_LockedUpda
 }
 
 /**
- * The atomic field updaters access fields using {@link sun.misc.Unsafe}. The static analysis needs
- * to know about all these fields, so we need to find the original field (the updater only stores
- * the field offset) and mark it as unsafe accessed.
+ * The atomic field updaters access fields using {@code Unsafe}. The static analysis needs to know
+ * about all these fields, so we need to find the original field (the updater only stores the field
+ * offset) and mark it as unsafe accessed.
  */
 @AutomaticallyRegisteredFeature
 class AtomicFieldUpdaterFeature implements InternalFeature {
@@ -330,19 +325,13 @@ final class Target_java_util_concurrent_ForkJoinPool {
         return ForkJoinPoolCommonAccessor.get().getParallelism();
     }
 
-    /* Delete the original static field for common parallelism. */
-    @Delete //
-    @TargetElement(onlyWith = JDK17OrEarlier.class)//
-    static int COMMON_PARALLELISM;
-
-    @Alias @TargetElement(onlyWith = JDK19OrLater.class) //
+    @Alias //
     private static Unsafe U;
 
-    @Alias @TargetElement(onlyWith = JDK19OrLater.class) //
+    @Alias //
     private static long POOLIDS;
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class) //
     private static int getAndAddPoolIds(int x) {
         // Original method wrongly uses ForkJoinPool.class instead of calling U.staticFieldBase()
         return U.getAndAddInt(StaticFieldsSupport.getStaticPrimitiveFields(), POOLIDS, x);
@@ -387,31 +376,6 @@ class ForkJoinPoolCommonAccessor {
         }
         return result;
     }
-}
-
-@TargetClass(value = java.util.concurrent.ForkJoinTask.class, onlyWith = JDK11OrEarlier.class)
-@SuppressWarnings("static-method")
-final class Target_java_util_concurrent_ForkJoinTask_JDK11OrEarlier {
-    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
-    private static Target_java_util_concurrent_ForkJoinTask_ExceptionNode[] exceptionTable;
-    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
-    private static ReentrantLock exceptionTableLock;
-    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
-    private static ReferenceQueue<Object> exceptionTableRefQueue;
-
-    static {
-        exceptionTableLock = new ReentrantLock();
-        exceptionTableRefQueue = new ReferenceQueue<>();
-        /*
-         * JDK 8 has a static final field EXCEPTION_MAP_CAPACITY with value 32, later versions just
-         * use 32 hardcoded. To be JDK version independent, we duplicate the hardcoded value.
-         */
-        exceptionTable = new Target_java_util_concurrent_ForkJoinTask_ExceptionNode[32];
-    }
-}
-
-@TargetClass(value = java.util.concurrent.ForkJoinTask.class, innerClass = "ExceptionNode", onlyWith = JDK11OrEarlier.class)
-final class Target_java_util_concurrent_ForkJoinTask_ExceptionNode {
 }
 
 /** Dummy class to have a class with the file's name. */

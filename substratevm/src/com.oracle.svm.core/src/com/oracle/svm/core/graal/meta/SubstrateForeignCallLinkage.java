@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.meta;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
+import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -68,7 +68,7 @@ public class SubstrateForeignCallLinkage implements ForeignCallLinkage {
 
     @Override
     public CallingConvention getIncomingCallingConvention() {
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

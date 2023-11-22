@@ -1,25 +1,25 @@
-From e378a00f5e2cc321a5aaf84b2e8cedb8c4e76733 Mon Sep 17 00:00:00 2001
+From 43be41a70be498a42eab1569782deb50e35facf2 Mon Sep 17 00:00:00 2001
 From: Sacha Coppey <sacha.coppey@oracle.com>
 Date: Fri, 3 Jun 2022 11:41:20 +0200
 Subject: [PATCH 3/4] [GR-36952][RISCV] Add support for RISC-V
  Stackmaps/Statepoints/Patchpoints
 
 ---
- llvm/lib/Target/RISCV/RISCVAsmPrinter.cpp     | 188 ++++++++-
+ llvm/lib/Target/RISCV/RISCVAsmPrinter.cpp     | 181 ++++++++-
  llvm/lib/Target/RISCV/RISCVISelLowering.cpp   |  13 +
  llvm/lib/Target/RISCV/RISCVInstrInfo.cpp      |  21 +-
  llvm/test/CodeGen/RISCV/rv64-patchpoint.ll    |  68 ++++
  .../RISCV/rv64-stackmap-frame-setup.ll        |  22 +
  llvm/test/CodeGen/RISCV/rv64-stackmap-nops.ll |  18 +
  llvm/test/CodeGen/RISCV/rv64-stackmap.ll      | 384 ++++++++++++++++++
- 7 files changed, 710 insertions(+), 4 deletions(-)
+ 7 files changed, 704 insertions(+), 3 deletions(-)
  create mode 100644 llvm/test/CodeGen/RISCV/rv64-patchpoint.ll
  create mode 100644 llvm/test/CodeGen/RISCV/rv64-stackmap-frame-setup.ll
  create mode 100644 llvm/test/CodeGen/RISCV/rv64-stackmap-nops.ll
  create mode 100644 llvm/test/CodeGen/RISCV/rv64-stackmap.ll
 
 diff --git a/llvm/lib/Target/RISCV/RISCVAsmPrinter.cpp b/llvm/lib/Target/RISCV/RISCVAsmPrinter.cpp
-index edd39f6547ed..b415d10e2045 100644
+index a4b999e6aa3b..a473c12c8709 100644
 --- a/llvm/lib/Target/RISCV/RISCVAsmPrinter.cpp
 +++ b/llvm/lib/Target/RISCV/RISCVAsmPrinter.cpp
 @@ -13,6 +13,7 @@
@@ -29,32 +29,16 @@ index edd39f6547ed..b415d10e2045 100644
 +#include "MCTargetDesc/RISCVMatInt.h"
  #include "MCTargetDesc/RISCVTargetStreamer.h"
  #include "RISCV.h"
- #include "RISCVTargetMachine.h"
-@@ -23,8 +24,10 @@
+ #include "RISCVMachineFunctionInfo.h"
+@@ -25,6 +26,7 @@
  #include "llvm/CodeGen/MachineFunctionPass.h"
  #include "llvm/CodeGen/MachineInstr.h"
  #include "llvm/CodeGen/MachineModuleInfo.h"
 +#include "llvm/CodeGen/StackMaps.h"
  #include "llvm/MC/MCAsmInfo.h"
+ #include "llvm/MC/MCContext.h"
  #include "llvm/MC/MCInst.h"
-+#include "llvm/MC/MCInstBuilder.h"
- #include "llvm/MC/MCStreamer.h"
- #include "llvm/MC/MCSymbol.h"
- #include "llvm/MC/TargetRegistry.h"
-@@ -38,16 +41,27 @@ STATISTIC(RISCVNumInstrsCompressed,
- 
- namespace {
- class RISCVAsmPrinter : public AsmPrinter {
-+  StackMaps SM;
-   const MCSubtargetInfo *MCSTI;
-   const RISCVSubtarget *STI;
- 
- public:
-   explicit RISCVAsmPrinter(TargetMachine &TM,
-                            std::unique_ptr<MCStreamer> Streamer)
--      : AsmPrinter(TM, std::move(Streamer)), MCSTI(TM.getMCSubtargetInfo()) {}
-+      : AsmPrinter(TM, std::move(Streamer)), SM(*this),
-+        MCSTI(TM.getMCSubtargetInfo()) {}
+@@ -55,6 +57,15 @@ public:
  
    StringRef getPassName() const override { return "RISCV Assembly Printer"; }
  
@@ -70,7 +54,7 @@ index edd39f6547ed..b415d10e2045 100644
    bool runOnMachineFunction(MachineFunction &MF) override;
  
    void emitInstruction(const MachineInstr *MI) override;
-@@ -76,6 +90,160 @@ private:
+@@ -88,6 +99,160 @@ private:
  };
  }
  
@@ -97,7 +81,7 @@ index edd39f6547ed..b415d10e2045 100644
 +        MII->getOpcode() == TargetOpcode::STACKMAP)
 +      break;
 +    ++MII;
-+    NumNOPBytes -= 4;
++    NumNOPBytes -= NOPBytes;
 +  }
 +
 +  // Emit nops.
@@ -134,26 +118,26 @@ index edd39f6547ed..b415d10e2045 100644
 +      Register SrcReg = RISCV::X0;
 +      Register DstReg = RISCV::X1;
 +      for (RISCVMatInt::Inst &Inst : Seq) {
-+        if (Inst.Opc == RISCV::LUI) {
++        if (Inst.getOpcode() == RISCV::LUI) {
 +          EmitToStreamer(
 +              OutStreamer,
-+              MCInstBuilder(RISCV::LUI).addReg(DstReg).addImm(Inst.Imm));
-+        } else if (Inst.Opc == RISCV::ADD_UW) {
++              MCInstBuilder(RISCV::LUI).addReg(DstReg).addImm(Inst.getImm()));
++        } else if (Inst.getOpcode() == RISCV::ADD_UW) {
 +          EmitToStreamer(OutStreamer, MCInstBuilder(RISCV::ADD_UW)
 +                                          .addReg(DstReg)
 +                                          .addReg(SrcReg)
 +                                          .addReg(RISCV::X0));
-+        } else if (Inst.Opc == RISCV::SH1ADD || Inst.Opc == RISCV::SH2ADD ||
-+                   Inst.Opc == RISCV::SH3ADD) {
++        } else if (Inst.getOpcode() == RISCV::SH1ADD || Inst.getOpcode() == RISCV::SH2ADD ||
++                   Inst.getOpcode() == RISCV::SH3ADD) {
 +          EmitToStreamer(
 +              OutStreamer,
-+              MCInstBuilder(Inst.Opc).addReg(DstReg).addReg(SrcReg).addReg(
++              MCInstBuilder(Inst.getOpcode()).addReg(DstReg).addReg(SrcReg).addReg(
 +                  SrcReg));
 +        } else {
 +          EmitToStreamer(
 +              OutStreamer,
-+              MCInstBuilder(Inst.Opc).addReg(DstReg).addReg(SrcReg).addImm(
-+                  Inst.Imm));
++              MCInstBuilder(Inst.getOpcode()).addReg(DstReg).addReg(SrcReg).addImm(
++                  Inst.getImm()));
 +        }
 +        EncodedBytes += 4;
 +        // Only the first instruction has X0 as its source.
@@ -228,11 +212,11 @@ index edd39f6547ed..b415d10e2045 100644
 +  SM.recordStatepoint(*MILabel, MI);
 +}
 +
- #define GEN_COMPRESS_INSTR
- #include "RISCVGenCompressInstEmitter.inc"
  void RISCVAsmPrinter::EmitToStreamer(MCStreamer &S, const MCInst &Inst) {
-@@ -99,8 +267,20 @@ void RISCVAsmPrinter::emitInstruction(const MachineInstr *MI) {
-     return;
+   MCInst CInst;
+   bool Res = RISCVRVC::compress(CInst, Inst, *STI);
+@@ -116,8 +281,20 @@ void RISCVAsmPrinter::emitInstruction(const MachineInstr *MI) {
+   }
  
    MCInst TmpInst;
 -  if (!lowerRISCVMachineInstrToMCInst(MI, TmpInst, *this))
@@ -254,23 +238,14 @@ index edd39f6547ed..b415d10e2045 100644
  }
  
  bool RISCVAsmPrinter::PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
-@@ -195,6 +375,8 @@ void RISCVAsmPrinter::emitEndOfAsmFile(Module &M) {
- 
-   if (TM.getTargetTriple().isOSBinFormatELF())
-     RTS.finishAttributeSection();
-+
-+  emitStackMaps(SM);
- }
- 
- void RISCVAsmPrinter::emitAttributes() {
 diff --git a/llvm/lib/Target/RISCV/RISCVISelLowering.cpp b/llvm/lib/Target/RISCV/RISCVISelLowering.cpp
-index d0ca325e9c14..f85508970d64 100644
+index a1dc6a0cd2c1..9765128e5daa 100644
 --- a/llvm/lib/Target/RISCV/RISCVISelLowering.cpp
 +++ b/llvm/lib/Target/RISCV/RISCVISelLowering.cpp
-@@ -10209,6 +10209,19 @@ RISCVTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
-     return emitQuietFCMP(MI, BB, RISCV::FLE_D, RISCV::FEQ_D, Subtarget);
-   case RISCV::PseudoQuietFLT_D:
-     return emitQuietFCMP(MI, BB, RISCV::FLT_D, RISCV::FEQ_D, Subtarget);
+@@ -11846,6 +11846,19 @@ RISCVTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
+   case RISCV::PseudoFROUND_S:
+   case RISCV::PseudoFROUND_D:
+     return emitFROUND(MI, BB, Subtarget);
 +  case TargetOpcode::STATEPOINT:
 +    // STATEPOINT is a pseudo instruction which has no implicit defs/uses
 +    // while jal call instruction (where statepoint will be lowered at the end)
@@ -288,19 +263,19 @@ index d0ca325e9c14..f85508970d64 100644
  }
  
 diff --git a/llvm/lib/Target/RISCV/RISCVInstrInfo.cpp b/llvm/lib/Target/RISCV/RISCVInstrInfo.cpp
-index 75a79895330f..f5c6b486af87 100644
+index 6494c9a2cd9d..42a0025e6d8e 100644
 --- a/llvm/lib/Target/RISCV/RISCVInstrInfo.cpp
 +++ b/llvm/lib/Target/RISCV/RISCVInstrInfo.cpp
-@@ -25,6 +25,7 @@
+@@ -26,6 +26,7 @@
  #include "llvm/CodeGen/MachineInstrBuilder.h"
  #include "llvm/CodeGen/MachineRegisterInfo.h"
  #include "llvm/CodeGen/RegisterScavenging.h"
 +#include "llvm/CodeGen/StackMaps.h"
+ #include "llvm/IR/DebugInfoMetadata.h"
  #include "llvm/MC/MCInstBuilder.h"
  #include "llvm/MC/TargetRegistry.h"
- #include "llvm/Support/ErrorHandling.h"
-@@ -1051,7 +1052,25 @@ unsigned RISCVInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
-     if (isCompressibleInst(MI, &ST, MRI, STI))
+@@ -1208,7 +1209,25 @@ unsigned RISCVInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
+     if (isCompressibleInst(MI, STI))
        return 2;
    }
 -  return get(Opcode).getSize();
@@ -843,5 +818,5 @@ index 000000000000..e1dde9733731
 +declare void @llvm.experimental.patchpoint.void(i64, i32, i8*, i32, ...)
 +declare i64 @llvm.experimental.patchpoint.i64(i64, i32, i8*, i32, ...)
 -- 
-2.36.2
+2.38.4
 

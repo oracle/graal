@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.heap;
 
-import org.graalvm.compiler.core.common.util.AbstractTypeReader;
-import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
+import jdk.graal.compiler.core.common.util.AbstractTypeReader;
+import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -186,7 +186,7 @@ public class CodeReferenceMapDecoder {
     }
 
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true, calleeMustBe = false)
+    @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
     private static boolean callVisitObjectReferenceInline(ObjectReferenceVisitor visitor, Pointer derivedRef, int innerOffset, boolean compressed, Object holderObject) {
         return visitor.visitObjectReferenceInline(derivedRef, innerOffset, compressed, holderObject);
     }

@@ -25,14 +25,13 @@
  */
 package com.oracle.svm.core.graal.aarch64;
 
-import org.graalvm.compiler.core.aarch64.AArch64SuitesCreator;
-import org.graalvm.compiler.core.phases.EconomyCompilerConfiguration;
+import jdk.graal.compiler.core.phases.EconomyCompilerConfiguration;
 
 import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
 
 public class SubstrateAArch64SuitesCreatorProvider extends SubstrateSuitesCreatorProvider {
     public SubstrateAArch64SuitesCreatorProvider() {
-        super(new AArch64SuitesCreator(getHostedCompilerConfiguration()),
-                        new AArch64SuitesCreator(new EconomyCompilerConfiguration()));
+        super(new AArch64SubstrateSuitesCreator(getHostedCompilerConfiguration()),
+                        new AArch64SubstrateSuitesCreator(new EconomyCompilerConfiguration()));
     }
 }

@@ -46,16 +46,16 @@ import static com.oracle.truffle.polyglot.EngineAccessor.NODES;
 
 import java.util.Set;
 
+import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.SandboxPolicy;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
-import org.graalvm.home.Version;
-import org.graalvm.polyglot.SandboxPolicy;
 
 final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -63,7 +63,7 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
     final LanguageCache cache;
     final LanguageInfo info;
 
-    Language api; // effectively final
+    Object api; // effectively final
     final int engineIndex;
     final RuntimeException initError;
 
@@ -181,6 +181,16 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
         return engine;
     }
 
+    @Override
+    public APIAccess getAPIAccess() {
+        return engine.apiAccess;
+    }
+
+    @Override
+    public PolyglotImpl getImpl() {
+        return engine.impl;
+    }
+
     private void ensureInitialized(PolyglotLanguageInstance instance) {
         if (!initialized) {
             synchronized (engine.lock) {
@@ -201,7 +211,7 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
         if (optionValues == null) {
             synchronized (engine.lock) {
                 if (optionValues == null) {
-                    optionValues = new OptionValuesImpl(getOptionsInternal(), engine.sandboxPolicy, false);
+                    optionValues = new OptionValuesImpl(getOptionsInternal(), engine.sandboxPolicy, false, false);
                 }
             }
         }

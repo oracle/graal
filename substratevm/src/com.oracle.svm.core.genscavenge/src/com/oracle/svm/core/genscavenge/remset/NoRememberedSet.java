@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,7 @@ package com.oracle.svm.core.genscavenge.remset;
 
 import java.util.List;
 
-import org.graalvm.compiler.nodes.gc.BarrierSet;
+import jdk.graal.compiler.nodes.gc.BarrierSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -34,6 +34,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
@@ -85,65 +86,76 @@ public final class NoRememberedSet implements RememberedSet {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void enableRememberedSetForChunk(AlignedHeader chunk) {
         // Nothing to do.
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void enableRememberedSetForChunk(UnalignedHeader chunk) {
         // Nothing to do.
     }
 
     @Override
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void enableRememberedSetForObject(AlignedHeader chunk, Object obj) {
         // Nothing to do.
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void clearRememberedSet(AlignedHeader chunk) {
         // Nothing to do.
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void clearRememberedSet(UnalignedHeader chunk) {
         // Nothing to do.
     }
 
     @Override
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean hasRememberedSet(UnsignedWord header) {
         return false;
     }
 
     @Override
     public void dirtyCardForAlignedObject(Object object, boolean verifyOnly) {
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public void dirtyCardForUnalignedObject(Object object, boolean verifyOnly) {
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void dirtyCardIfNecessary(Object holderObject, Object object) {
         // Nothing to do.
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean) {
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void walkDirtyObjects(UnalignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean) {
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void walkDirtyObjects(Space space, GreyToBlackObjectVisitor visitor, boolean clean) {
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

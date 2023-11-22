@@ -1,11 +1,11 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: native-image
-link_title: Native Image
+link_title: Getting Started with Native Image
 permalink: /reference-manual/native-image/
 ---
 
-# Getting Started
+# Native Image
 
 Native Image is a technology to compile Java code ahead-of-time to a binary -- a **native executable**. 
 A native executable includes only the code required at run time, that is the application classes, standard-library classes, the language runtime, and statically-linked native code from the JDK. 
@@ -31,7 +31,6 @@ To get used to Native Image terminology and get better understanding of the tech
 
 * [Build a Native Executable](#build-a-native-executable)
 * [Configuring Native Image with Third-Party Libraries](#configuring-native-image-with-third-party-libraries)
-* [License](#license)
 * [Further Reading](#further-reading)
 
 ### Prerequisites
@@ -54,9 +53,9 @@ On Oracle Linux use the `yum` package manager:
 sudo yum install gcc glibc-devel zlib-devel
 ```
 Some Linux distributions may additionally require `libstdc++-static`.
-You can install `libstdc++-static` if the optional repositories are enabled (_ol7_optional_latest_ on Oracle Linux 7 and _ol8_codeready_builder_ on Oracle Linux 8).
+You can install `libstdc++-static` if the optional repositories are enabled (_ol7_optional_latest_ on Oracle Linux 7, _ol8_codeready_builder_ on Oracle Linux 8, and _ol9_codeready_builder_ on Oracle Linux 9).
 
-On  Ubuntu Linux use the `apt-get` package manager:
+On Ubuntu Linux use the `apt-get` package manager:
 ```shell
 sudo apt-get install build-essential libz-dev zlib1g-dev
 ```
@@ -74,13 +73,11 @@ xcode-select --install
 
 #### Windows
 
-To use Native Image on Windows, install [Visual Studio](https://visualstudio.microsoft.com/vs/) and Microsoft Visual C++ (MSVC).
-There are two installation options:
+To use Native Image on Windows, install [Visual Studio 2022](https://visualstudio.microsoft.com/vs/) version 17.1.0 or later, and Microsoft Visual C++ (MSVC). There are two installation options:
+* Install the Visual Studio Build Tools with the Windows 10 or later SDK
+* Install Visual Studio with the Windows 10 or later SDK
 
-* Install the Visual Studio Build Tools with the Windows 10 SDK
-* Install Visual Studio with the Windows 10 SDK
-
-You can use Visual Studio 2022 version 17.1.0 or later.
+Native Image runs in both a PowerShell or Command Prompt and will automatically set up build environments on Windows, given that it can find a suitable Visual Studio installation.
 
 For more information, see [Using GraalVM and Native Image on Windows 10](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311). -->
 
@@ -175,15 +172,15 @@ native-image -jar App.jar ... ; say "GraalVM Native Image build completed"
 ```
 
 #### Windows
-```bat
-REM Ring the terminal bell (press Ctrl+G to enter ^G)
+```bash
+# Ring the terminal bell (press Ctrl+G to enter ^G)
 native-image.exe -jar App.jar & echo ^G
 
-REM Open an info dialog box with text
+# Open an info dialog box with text
 native-image.exe -jar App.jar & msg "%username%" GraalVM Native Image build completed
 ```
 
-## Build Overview
+## Build Configuration
 
 There many options you can pass to the `native-image` builder to configure the build process. Run `native-image --help` to see the full list.
 The options passed to `native-image` are evaluated left-to-right.
@@ -192,7 +189,7 @@ For different build tweaks and to learn more about build time configuration, see
 
 Native Image will output the progress and various statistics during the build. To learn more about the output and the different build phases, see [Build Output](BuildOutput.md).
 
-## Configuring Native Image with Third-Party Libraries
+## Native Image and Third-Party Libraries
 
 For more complex applications that use external libraries, you must provide the `native-image` builder with metadata.
 
@@ -210,19 +207,12 @@ To automatically collect metadata for your application, see [Automatic Collectio
 
 There are also Maven and Gradle plugins for Native Image to automate building, testing and configuring native executables. Learn more [here](https://graalvm.github.io/native-build-tools/latest/index.html).
 
-Lastly, not all applications may be compatible with Native Image. 
+Some applications may need additional configuration to be compiled with GraalVM Native Image.
 For more details, see [Native Image Compatibility Guide](Compatibility.md).
 
 Native Image can also interop with native languages through a custom API.
 Using this API, you can specify custom native entry points into your Java application and build it into a nativw shared library.
 To learn more, see [Interoperability with Native Code](InteropWithNativeCode.md).
- 
-## License
-
-The Native Image technology is distributed as a separate installable to GraalVM.
-Native Image for GraalVM Community Edition is licensed under the [GPL 2 with Classpath Exception](https://github.com/oracle/graal/blob/master/substratevm/LICENSE).
-
-Native Image for GraalVM Enterprise Edition is licensed under the [Oracle Technology Network License Agreement for GraalVM Enterprise Edition](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html).
 
 ### Further Reading
 

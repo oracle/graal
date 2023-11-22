@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2021, 2021, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -27,6 +27,8 @@
 package com.oracle.svm.util;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 public class StringUtil {
 
@@ -68,5 +70,39 @@ public class StringUtil {
         list.add(value.substring(offset));
 
         return list.toArray(new String[list.size()]);
+    }
+
+    /**
+     * Joins an array of strings using single quotes, and `, ` as a delimiter. Useful to print
+     * possible values for options.
+     */
+    public static final String joinSingleQuoted(String... values) {
+        return "'" + String.join("', '", values) + "'";
+    }
+
+    /**
+     * See {@link #joinSingleQuoted(String...)}.
+     */
+    public static final String joinSingleQuoted(Object[] values) {
+        String[] strings = new String[values.length];
+        for (int i = 0; i < strings.length; i++) {
+            strings[i] = Objects.toString(values[i]);
+        }
+        return joinSingleQuoted(strings);
+    }
+
+    /**
+     * See {@link #joinSingleQuoted(String...)}.
+     */
+    public static final String joinSingleQuoted(List<String> strings) {
+        return joinSingleQuoted(strings.toArray(new String[strings.size()]));
+    }
+
+    public static String toSlashSeparated(String string) {
+        return string.replace('.', '/');
+    }
+
+    public static String toDotSeparated(String string) {
+        return string.replace('/', '.');
     }
 }

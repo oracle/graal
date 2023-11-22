@@ -46,9 +46,9 @@ public final class TypeData {
      * The raw values of all static fields, regardless of field reachability status. The stored
      * value is either an {@link AnalysisFuture} of {@link JavaConstant} or its result, a
      * {@link JavaConstant}.
-     * 
+     * <p>
      * Evaluating the {@link AnalysisFuture} runs
-     * {@link ImageHeapScanner#onFieldValueReachable(AnalysisField, ValueSupplier, ObjectScanner.ScanReason)}
+     * {@link ImageHeapScanner#createFieldValue(AnalysisField, ValueSupplier, ObjectScanner.ScanReason)}
      * which adds the result to the image heap.
      */
     private final Object[] values;
@@ -76,11 +76,21 @@ public final class TypeData {
 
     /**
      * Return a task for transforming and snapshotting the field value, effectively a future for
-     * {@link ImageHeapScanner#onFieldValueReachable(AnalysisField, ValueSupplier, ObjectScanner.ScanReason)},
+     * {@link ImageHeapScanner#createFieldValue(AnalysisField, ValueSupplier, ObjectScanner.ScanReason)},
      * or its result, a {@link JavaConstant}.
      */
     public Object getFieldValue(AnalysisField field) {
         return arrayHandle.getVolatile(this.values, field.getPosition());
+    }
+
+    /**
+     * Returns the field value, i.e., a {@link JavaConstant}. If the value is not yet materialized
+     * then the future is executed on the current thread.
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public JavaConstant readFieldValue(AnalysisField field) {
+        Object value = getFieldValue(field);
+        return value instanceof JavaConstant ? (JavaConstant) value : ((AnalysisFuture<ImageHeapConstant>) value).ensureDone();
     }
 
 }

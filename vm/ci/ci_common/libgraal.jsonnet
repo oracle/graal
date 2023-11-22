@@ -10,9 +10,12 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   local underscore(s) = std.strReplace(s, "-", "_"),
   local os(os_arch) = std.split(os_arch, "-")[0],
   local arch(os_arch) = std.split(os_arch, "-")[1],
+  local t(limit) = {timelimit: limit},
 
   libgraal_build(build_args):: {
-    local build_command = if repo_config.graalvm_edition == 'ce' then 'build' else 'build-libgraal-pgo',
+    local usePGO = std.length(std.find('-Ob', build_args)) == 0,
+    local ee_build_version = if usePGO == false then 'build' else 'build-libgraal-pgo',
+    local build_command = if repo_config.graalvm_edition == 'ce' then 'build' else ee_build_version,
     run+: [
       ['mx', '--env', vm.libgraal_env] + ['--extra-image-builder-argument=%s' % arg for arg in build_args] + [build_command]
     ]
@@ -31,7 +34,10 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   },
 
   # enable asserts in the JVM building the image and enable asserts in the resulting native image
-  libgraal_compiler:: self.libgraal_compiler_base(),
+  libgraal_compiler:: self.libgraal_compiler_base() {
+    # Tests that dropping libgraal into OracleJDK works (see mx_vm_gate.py)
+    downloads +: if utils.contains(self.name, 'labsjdk-21') then {"ORACLEJDK_JAVA_HOME" : graal_common.jdks_data["oraclejdk21"]} else {}
+  },
   libgraal_compiler_zgc:: self.libgraal_compiler_base(extra_vm_args=['-XX:+UseZGC']),
   # enable economy mode building with the -Ob flag
   libgraal_compiler_quickbuild:: self.libgraal_compiler_base(quickbuild_args=['-Ob']),
@@ -66,22 +72,23 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
   # See definition of `gates` local variable in ../../compiler/ci_common/gate.jsonnet
   local gates = {
-    "gate-vm-libgraal_compiler-labsjdk-20-linux-amd64": {},
-    "gate-vm-libgraal_truffle-labsjdk-20-linux-amd64": {},
-    "gate-vm-libgraal_compiler_zgc-labsjdk-20-linux-amd64": {},
-    "gate-vm-libgraal_compiler_quickbuild-labsjdk-20-linux-amd64": {},
-    "gate-vm-libgraal_truffle_quickbuild-labsjdk-20-linux-amd64": {},
+    "gate-vm-libgraal_compiler-labsjdk-latest-linux-amd64": {},
+    "gate-vm-libgraal_truffle-labsjdk-latest-linux-amd64": {},
+    "gate-vm-libgraal_compiler_zgc-labsjdk-latest-linux-amd64": {},
+    "gate-vm-libgraal_compiler_quickbuild-labsjdk-latest-linux-amd64": {},
+    "gate-vm-libgraal_truffle_quickbuild-labsjdk-latest-linux-amd64": t("1:10:00"),
+
+    "gate-vm-libgraal_compiler-labsjdk-21-linux-amd64": {} + graal_common.mach5_target,
+    "gate-vm-libgraal_truffle-labsjdk-21-linux-amd64": {},
   },
 
   # See definition of `dailies` local variable in ../../compiler/ci_common/gate.jsonnet
   local dailies = {
-    "daily-vm-libgraal_compiler-labsjdk-17-linux-amd64": {},
-    "daily-vm-libgraal_truffle-labsjdk-17-linux-amd64": {},
-    "daily-vm-libgraal_compiler_zgc-labsjdk-17-linux-amd64": {},
-    "daily-vm-libgraal_truffle_zgc-labsjdk-17-linux-amd64": {},
-    "daily-vm-libgraal_truffle_zgc-labsjdk-20-linux-amd64": {},
-    "daily-vm-libgraal_compiler_quickbuild-labsjdk-17-linux-amd64": {},
-    "daily-vm-libgraal_truffle_quickbuild-labsjdk-17-linux-amd64": {},
+    "daily-vm-libgraal_truffle_zgc-labsjdk-latest-linux-amd64": {},
+
+    "daily-vm-libgraal_compiler_zgc-labsjdk-21-linux-amd64": {},
+    "daily-vm-libgraal_compiler_quickbuild-labsjdk-21-linux-amd64": {},
+    "daily-vm-libgraal_truffle_quickbuild-labsjdk-21-linux-amd64": t("1:10:00"),
   },
 
   # See definition of `weeklies` local variable in ../../compiler/ci_common/gate.jsonnet
@@ -96,6 +103,14 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     local obj = c["svm_common_" + underscore(os_arch)];
     if std.type(obj) == "function" then obj(jdk) else obj,
 
+  local all_os_arches = [
+    "linux-amd64",
+    "linux-aarch64",
+    "darwin-amd64",
+    "darwin-aarch64",
+    "windows-amd64"
+  ],
+
   # Builds run on all platforms (platform = JDK + OS + ARCH)
   local all_platforms_builds = [
     c["gate_vm_" + underscore(os_arch)] +
@@ -103,34 +118,54 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     vm["custom_vm_" + os(os_arch)] +
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
                  include_common_os_arch=false,
+                 jdk_name = "labsjdk",
                  gates_manifest=gates,
                  dailies_manifest=dailies,
                  weeklies_manifest=weeklies,
                  monthlies_manifest=monthlies).build +
     vm["vm_java_" + jdk]
     for jdk in [
-      "17",
-      "20"
+      "21",
+      "Latest"
     ]
-    for os_arch in [
-      "linux-amd64",
-      "linux-aarch64",
-      "darwin-amd64",
-      "darwin-aarch64"
-    ]
+    for os_arch in all_os_arches
     for task in [
       "libgraal_compiler",
       "libgraal_truffle",
-      "libgraal_compiler_zgc",
-      "libgraal_truffle_zgc",
       "libgraal_compiler_quickbuild",
       "libgraal_truffle_quickbuild"
     ]
   ],
 
+  local adjust_windows_version(gate) = (
+      # replace 2016 with 2019
+     gate + { capabilities: [ if x == "windows_server_2016" then "windows_server_2019" else x for x in gate.capabilities ] }
+  ),
 
-  # Builds run on only on linux-amd64-jdk20
-  local linux_amd64_jdk20_builds = [
+  # Builds run on all platforms (platform = JDK + OS + ARCH) but Windows currently requires Windows server 2019
+  local all_platforms_zgc_builds = [
+    adjust_windows_version(c["gate_vm_" + underscore(os_arch)]) +
+    svm_common(os_arch, jdk) +
+    vm["custom_vm_" + os(os_arch)] +
+    g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
+                 include_common_os_arch=false,
+                 gates_manifest=gates,
+                 dailies_manifest=dailies,
+                 weeklies_manifest=weeklies,
+                 monthlies_manifest=monthlies).build +
+    vm["vm_java_" + jdk]
+    for jdk in [
+      "Latest",
+    ]
+    for os_arch in all_os_arches
+    for task in [
+      "libgraal_compiler_zgc",
+      "libgraal_truffle_zgc",
+    ]
+  ],
+
+  # Coverage builds only on jdk21 (GR-46676)
+  local coverage_jdk21_builds = [
     c["gate_vm_" + underscore(os_arch)] +
     svm_common(os_arch, jdk) +
     vm["custom_vm_" + os(os_arch)] +
@@ -142,7 +177,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
                  monthlies_manifest=monthlies).build +
     vm["vm_java_" + jdk]
     for jdk in [
-      "20"
+      "21"
     ]
     for os_arch in [
       "linux-amd64",
@@ -157,7 +192,8 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   # Complete set of builds defined in this file
   local all_builds =
     all_platforms_builds +
-    linux_amd64_jdk20_builds,
+    all_platforms_zgc_builds +
+    coverage_jdk21_builds,
 
   builds: if
       g.check_manifest(gates, all_builds, std.thisFile, "gates").result

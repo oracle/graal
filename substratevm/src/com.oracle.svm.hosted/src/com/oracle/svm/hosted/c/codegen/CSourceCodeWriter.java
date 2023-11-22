@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.c.codegen;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 import static com.oracle.svm.hosted.NativeImageOptions.CStandards.C11;
 import static com.oracle.svm.hosted.NativeImageOptions.CStandards.C99;
 
@@ -41,7 +42,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.word.SignedWord;
@@ -83,13 +83,7 @@ public class CSourceCodeWriter {
 
     public void writeCStandardHeaders() {
         if (NativeImageOptions.getCStandard().compatibleWith(C99)) {
-            if (!Platform.includedIn(Platform.WINDOWS.class)) {
-                /*
-                 * CStandard says we are C99 compatible yet we cannot include stdbool.h because old
-                 * Windows native compilers do not support it. This should be fixed.
-                 */
-                includeFiles(Collections.singletonList("<stdbool.h>"));
-            }
+            includeFiles(Collections.singletonList("<stdbool.h>"));
         }
         if (NativeImageOptions.getCStandard().compatibleWith(C11)) {
             includeFiles(Collections.singletonList("<stdint.h>"));
@@ -222,7 +216,7 @@ public class CSourceCodeWriter {
                 case Void:
                     return "void";
                 default:
-                    throw shouldNotReachHere();
+                    throw shouldNotReachHereUnexpectedInput(type.getJavaKind()); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -272,7 +266,7 @@ public class CSourceCodeWriter {
     private static boolean isFunctionPointer(MetaAccessProvider metaAccess, ResolvedJavaType type) {
         boolean functionPointer = metaAccess.lookupJavaType(CFunctionPointer.class).isAssignableFrom(type);
         return functionPointer &&
-                        Arrays.stream(type.getDeclaredMethods()).anyMatch(v -> v.getDeclaredAnnotation(InvokeCFunctionPointer.class) != null);
+                        Arrays.stream(type.getDeclaredMethods(false)).anyMatch(v -> v.getDeclaredAnnotation(InvokeCFunctionPointer.class) != null);
     }
 
     /**

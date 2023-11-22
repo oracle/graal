@@ -48,12 +48,14 @@ public class InspectorDnsRebindAttackTest {
 
     private Context context;
     private ByteArrayOutputStream errorOutput;
+    private int port;
 
     @Before
     public void setUp() {
         errorOutput = new ByteArrayOutputStream();
         final String testPath = "testPath-" + SecureInspectorPathGenerator.getToken();
-        context = Context.newBuilder().option("inspect.Path", testPath).err(errorOutput).build();
+        context = Context.newBuilder().option("inspect", "0").option("inspect.Path", testPath).err(errorOutput).build();
+        port = InspectorAddressTest.parseWSPort(errorOutput.toString());
     }
 
     @After
@@ -152,7 +154,7 @@ public class InspectorDnsRebindAttackTest {
         // We try to connect localhost with various Host headers. If the DNS rebind protection works
         // properly, foreign domains are rejected.
         try (
-                        Socket socket = new Socket("127.0.0.1", 9229);
+                        Socket socket = new Socket("127.0.0.1", port);
                         OutputStreamWriter out = new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.US_ASCII);
                         InputStream in = socket.getInputStream();) {
             // We cannot easily use HttpUrlConnection, because it does not allow overriding the Host

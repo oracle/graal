@@ -28,10 +28,11 @@ package com.oracle.objectfile.debugentry;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
-import org.graalvm.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext;
 
 import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.ARRAY;
 import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.ENUM;
+import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.FOREIGN;
 import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.HEADER;
 import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.INSTANCE;
 import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.INTERFACE;
@@ -41,7 +42,7 @@ public abstract class TypeEntry {
     /**
      * The name of this type.
      */
-    protected String typeName;
+    protected final String typeName;
 
     /**
      * The offset of the java.lang.Class instance for this class in the image heap or -1 if no such
@@ -52,7 +53,7 @@ public abstract class TypeEntry {
     /**
      * The size of an occurrence of this type in bytes.
      */
-    protected int size;
+    protected final int size;
 
     protected TypeEntry(String typeName, int size) {
         this.typeName = typeName;
@@ -98,8 +99,25 @@ public abstract class TypeEntry {
         return typeKind() == ENUM;
     }
 
+    public boolean isForeign() {
+        return typeKind() == FOREIGN;
+    }
+
+    /**
+     * Test whether this entry is a class type, either an instance class, an interface type, an enum
+     * type or a foreign type. The test excludes primitive and array types and the header type.
+     *
+     * n.b. Foreign types are considered to be class types because they appear like interfaces or
+     * classes in the Java source and hence need to be modeled by a ClassEntry which can track
+     * properties of the java type. This also allows them to be decorated with properties that
+     * record details of the generated debug info. When it comes to encoding the model type as DWARF
+     * or PECOFF method {@link #isForeign()} may need to be called in order to allow foreign types
+     * ot be special cased.
+     *
+     * @return true if this entry is a class type otherwise false.
+     */
     public boolean isClass() {
-        return isInstance() | isInterface() || isEnum();
+        return isInstance() || isInterface() || isEnum() || isForeign();
     }
 
     public boolean isStructure() {

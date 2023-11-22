@@ -1,0 +1,144 @@
+{
+  "resources":[
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.util.UResourceBundle" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/[^/]*\\.(res|lst)$"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.charset.CharsetMBCS" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/.*\\.cnv$"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.impl.UCaseProps" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/ucase\\.icu$"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.impl.UCharacterName" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/unames\\.icu$"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.impl.UCharacterProperty" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/uprops\\.icu$"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.impl.UCharacterProperty$LayoutProps" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/ulayout\\.icu$"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.impl.UPropertyAliases" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/pnames\\.icu$"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.impl.EmojiProps" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/uemoji\\.icu$"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.impl.UBiDiProps" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/ubidi\\.icu$"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.impl.coll.CollationRoot" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/coll/ucadata\\.icu$"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.impl.coll.CollationLoader" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/coll/.*"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.text.Collator" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/coll/.*"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.charset.UConverterAlias" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/cnvalias\\.icu$"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.impl.TimeZoneNames" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/zone/.*"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.impl.TimeZoneGenericNames" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/zone/.*"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.text.TimeZoneFormat" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/zone/.*"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.impl.ICURegionDataTables" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/region/.*"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.impl.ICULangDataTables" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/lang/.*"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.util.LocaleData" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/lang/.*"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.impl.ICUCurrencyDisplayInfoProvider" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/curr/.*"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.impl.ICUCurrencyMetaInfo" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/curr/.*"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.util.MeasureUnit" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/unit/.*"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.text.MeasureFormat" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/unit/.*"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.text.TimeUnitFormat" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/unit/.*"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.impl.number.LongNameHandler" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/unit/.*"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.text.TransliteratorRegistry" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/translit/.*"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.text.Transliterator" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/translit/.*"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.text.RuleBasedNumberFormat" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/rbnf/.*"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.text.BreakIteratorFactory" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/brkitr/.*"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.impl.breakiter.DictionaryBreakEngine" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/brkitr/.*"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.impl.SimpleFilteredSentenceBreakIterator$Builder" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/brkitr/.*"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.text.SpoofChecker.SpoofData.DefaultData" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/confusables\\.cfu"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.text.StringPrep" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/[^/]*\\.spp"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.impl.Normalizer2Impl" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/[^/]*\\.nrm"
+    },
+    {
+      "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.impl.duration.impl.ResourceBasedPeriodFormatterDataService" },
+      "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/duration/impl/data/.*"
+    }
+  ]
+}

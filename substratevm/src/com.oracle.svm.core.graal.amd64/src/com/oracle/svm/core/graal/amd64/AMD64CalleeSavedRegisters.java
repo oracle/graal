@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
+import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -34,15 +34,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.asm.Label;
-import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.asm.amd64.AMD64Assembler;
-import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler;
-import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
-import org.graalvm.compiler.core.common.Stride;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.asm.Label;
+import jdk.graal.compiler.asm.amd64.AMD64Address;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler;
+import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
+import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.Stride;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -64,7 +67,6 @@ import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedField;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -72,6 +74,7 @@ import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.Register.RegisterCategory;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
@@ -103,7 +106,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         int offset = 0;
         Map<Register, Integer> calleeSavedRegisterOffsets = new HashMap<>();
         for (Register register : calleeSavedRegisters) {
-            calleeSavedRegisterOffsets.put(register, offset);
+            int reservedSize = 0;
             RegisterCategory category = register.getRegisterCategory();
             boolean isXMM = category.equals(AMD64.XMM);
             if (isXMM) {
@@ -117,13 +120,28 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
             }
             if (isXMM && isRuntimeCompilationEnabled && AMD64CPUFeatureAccess.canUpdateCPUFeatures()) {
                 // we might need to save the full 512 bit vector register
-                offset += AMD64Kind.V512_QWORD.getSizeInBytes();
+                reservedSize = AMD64Kind.V512_QWORD.getSizeInBytes();
             } else if (isMask && isRuntimeCompilationEnabled && AMD64CPUFeatureAccess.canUpdateCPUFeatures()) {
                 // we might need to save the full 64 bit mask register
-                offset += AMD64Kind.MASK64.getSizeInBytes();
+                reservedSize = AMD64Kind.MASK64.getSizeInBytes();
+            } else if (target.arch.getLargestStorableKind(category) != null) {
+                reservedSize = target.arch.getLargestStorableKind(category).getSizeInBytes();
             } else {
-                offset += target.arch.getLargestStorableKind(category).getSizeInBytes();
+                // Mask registers are not present without AVX512
+                VMError.guarantee(
+                                isMask && !target.arch.getFeatures().contains(CPUFeature.AVX512F) &&
+                                                !(isRuntimeCompilationEnabled && AMD64CPUFeatureAccess.canUpdateCPUFeatures()),
+                                "unexpected register without largest storable kind: %s", register);
             }
+            /*
+             * Make sure this register's offset is aligned to its size. When using only AVX512F, its
+             * 16-bit mask registers would otherwise mess up the alignment for larger registers.
+             */
+            if (reservedSize > 0) {
+                offset = NumUtil.roundUp(offset, reservedSize);
+            }
+            calleeSavedRegisterOffsets.put(register, offset);
+            offset += reservedSize;
         }
         int calleeSavedRegistersSizeInBytes = offset;
 
@@ -159,7 +177,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
      */
     public void emitSave(AMD64MacroAssembler asm, int frameSize, CompilationResultBuilder crb) {
         if (!SubstrateUtil.HOSTED) {
-            GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            GraalError.shouldNotReachHere("hosted mode expected"); // ExcludeFromJacocoGeneratedReport
             return;
         }
         for (Register register : calleeSavedRegisters) {
@@ -174,7 +192,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
                 // handled later by emitXMM
                 continue;
             } else {
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(category); // ExcludeFromJacocoGeneratedReport
             }
         }
         emitXMM(asm, crb, frameSize, Mode.SAVE);
@@ -182,7 +200,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
 
     public void emitRestore(AMD64MacroAssembler asm, int frameSize, Register excludedRegister, CompilationResultBuilder crb) {
         if (!SubstrateUtil.HOSTED) {
-            GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            GraalError.shouldNotReachHere("hosted mode expected"); // ExcludeFromJacocoGeneratedReport
             return;
         }
         for (Register register : calleeSavedRegisters) {
@@ -201,7 +219,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
                 // handled later by emitXMM
                 continue;
             } else {
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(category); // ExcludeFromJacocoGeneratedReport
             }
         }
         emitXMM(asm, crb, frameSize, Mode.RESTORE);
@@ -431,7 +449,8 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         private AMD64Address getFeatureMapAddress() {
-            SubstrateObjectConstant object = (SubstrateObjectConstant) SubstrateObjectConstant.forObject(RuntimeCPUFeatureCheckImpl.instance());
+            SnippetReflectionProvider snippetReflection = ((Providers) crb.providers).getSnippetReflection();
+            JavaConstant object = snippetReflection.forObject(RuntimeCPUFeatureCheckImpl.instance());
             int fieldOffset = fieldOffset(RuntimeCPUFeatureCheckImpl.getMaskField(crb.providers.getMetaAccess()));
             GraalError.guarantee(ConfigurationValues.getTarget().inlineObjects, "Dynamic feature check for callee saved registers requires inlined objects");
             Register heapBase = ReservedRegisters.singleton().getHeapBaseRegister();
@@ -448,7 +467,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         }
 
         @Platforms(Platform.HOSTED_ONLY.class)
-        private Object displacementAnnotation(SubstrateObjectConstant constant) {
+        private Object displacementAnnotation(JavaConstant constant) {
             if (SubstrateUtil.HOSTED) {
                 /*
                  * AOT compilation during image generation happens before the image heap objects are
@@ -463,7 +482,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         }
 
         @Platforms(Platform.HOSTED_ONLY.class)
-        private int displacement(SubstrateObjectConstant constant, SharedConstantReflectionProvider constantReflection) {
+        private int displacement(JavaConstant constant, SharedConstantReflectionProvider constantReflection) {
             if (SubstrateUtil.HOSTED) {
                 return 0;
             } else {

@@ -26,7 +26,7 @@
 
 package com.oracle.svm.core.jfr.events;
 
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -47,7 +47,8 @@ public class ThreadParkEvent {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     private static void emit0(long startTicks, Object obj, boolean isAbsolute, long time) {
-        if (JfrEvent.ThreadPark.shouldEmit()) {
+        long duration = JfrTicks.duration(startTicks);
+        if (JfrEvent.ThreadPark.shouldEmit(duration)) {
             Class<?> parkedClass = null;
             if (obj != null) {
                 parkedClass = obj.getClass();
@@ -65,7 +66,7 @@ public class ThreadParkEvent {
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ThreadPark);
             JfrNativeEventWriter.putLong(data, startTicks);
-            JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks() - startTicks);
+            JfrNativeEventWriter.putLong(data, duration);
             JfrNativeEventWriter.putEventThread(data);
             JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ThreadPark, 0));
             JfrNativeEventWriter.putClass(data, parkedClass);

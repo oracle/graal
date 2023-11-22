@@ -88,6 +88,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
+@SuppressWarnings("this-escape")
 public class ContextLocalTest extends AbstractPolyglotTest {
 
     private static final int PARALLELISM = 32;
@@ -713,11 +714,11 @@ public class ContextLocalTest extends AbstractPolyglotTest {
     @TruffleLanguage.Registration(id = VALID_EXCLUSIVE_LANGUAGE, name = VALID_EXCLUSIVE_LANGUAGE)
     public static class ValidExclusiveLanguage extends TruffleLanguage<TruffleLanguage.Env> {
 
-        final ContextLocal<Env> contextLocal0 = createContextLocal((e) -> e);
-        final ContextLocal<Env> contextLocal1 = createContextLocal((e) -> e);
+        final ContextLocal<Env> contextLocal0 = locals.createContextLocal((e) -> e);
+        final ContextLocal<Env> contextLocal1 = locals.createContextLocal((e) -> e);
 
-        final ContextThreadLocal<LanguageThreadLocalValue> contextThreadLocal0 = createContextThreadLocal(LanguageThreadLocalValue::new);
-        final ContextThreadLocal<LanguageThreadLocalValue> contextThreadLocal1 = createContextThreadLocal(LanguageThreadLocalValue::new);
+        final ContextThreadLocal<LanguageThreadLocalValue> contextThreadLocal0 = locals.createContextThreadLocal(LanguageThreadLocalValue::new);
+        final ContextThreadLocal<LanguageThreadLocalValue> contextThreadLocal1 = locals.createContextThreadLocal(LanguageThreadLocalValue::new);
 
         @Override
         protected TruffleLanguage.Env createContext(TruffleLanguage.Env env) {
@@ -786,13 +787,13 @@ public class ContextLocalTest extends AbstractPolyglotTest {
     @TruffleLanguage.Registration(id = VALID_SHARED_LANGUAGE, name = VALID_SHARED_LANGUAGE, contextPolicy = TruffleLanguage.ContextPolicy.SHARED)
     public static class ValidSharedLanguage extends TruffleLanguage<TruffleLanguage.Env> {
 
-        final ContextLocal<Env> local0 = createContextLocal((e) -> e);
-        final ContextLocal<Env> local1 = createContextLocal((e) -> e);
-        final ContextLocal<Object> localDynamic = createContextLocal((e) -> contextLocalDynamicValue);
+        final ContextLocal<Env> local0 = locals.createContextLocal((e) -> e);
+        final ContextLocal<Env> local1 = locals.createContextLocal((e) -> e);
+        final ContextLocal<Object> localDynamic = locals.createContextLocal((e) -> contextLocalDynamicValue);
 
-        final ContextThreadLocal<LanguageThreadLocalValue> contextThreadLocal0 = createContextThreadLocal(LanguageThreadLocalValue::new);
-        final ContextThreadLocal<LanguageThreadLocalValue> contextThreadLocal1 = createContextThreadLocal(LanguageThreadLocalValue::new);
-        final ContextThreadLocal<Object> threadLocalDynamic = createContextThreadLocal((c, t) -> threadLocalDynamicValue);
+        final ContextThreadLocal<LanguageThreadLocalValue> contextThreadLocal0 = locals.createContextThreadLocal(LanguageThreadLocalValue::new);
+        final ContextThreadLocal<LanguageThreadLocalValue> contextThreadLocal1 = locals.createContextThreadLocal(LanguageThreadLocalValue::new);
+        final ContextThreadLocal<Object> threadLocalDynamic = locals.createContextThreadLocal((c, t) -> threadLocalDynamicValue);
 
         @Override
         protected TruffleLanguage.Env createContext(TruffleLanguage.Env env) {
@@ -805,11 +806,11 @@ public class ContextLocalTest extends AbstractPolyglotTest {
         }
 
         public ContextLocal<String> createContextLocal0(String value) {
-            return createContextLocal((e) -> value);
+            return locals.createContextLocal((e) -> value);
         }
 
         public ContextThreadLocal<String> createContextThreadLocal0(String value) {
-            return createContextThreadLocal((e, t) -> value);
+            return locals.createContextThreadLocal((e, t) -> value);
         }
 
         @Override
@@ -880,11 +881,11 @@ public class ContextLocalTest extends AbstractPolyglotTest {
     @TruffleInstrument.Registration(id = VALID_INSTRUMENT, name = VALID_INSTRUMENT, services = ValidInstrument.class)
     public static class ValidInstrument extends TruffleInstrument {
 
-        final ContextLocal<TruffleContext> local0 = createContextLocal(this::createInstrumentContextLocal);
-        final ContextLocal<Object> localDynamic = createContextLocal((e) -> contextLocalDynamicValue);
+        final ContextLocal<TruffleContext> local0 = locals.createContextLocal(this::createInstrumentContextLocal);
+        final ContextLocal<Object> localDynamic = locals.createContextLocal((e) -> contextLocalDynamicValue);
 
-        final ContextThreadLocal<InstrumentThreadLocalValue> threadLocal0 = createContextThreadLocal(this::newInstrumentThreadLocal);
-        final ContextThreadLocal<Object> threadLocalDynamic = createContextThreadLocal((c, t) -> threadLocalDynamicValue);
+        final ContextThreadLocal<InstrumentThreadLocalValue> threadLocal0 = locals.createContextThreadLocal(this::newInstrumentThreadLocal);
+        final ContextThreadLocal<Object> threadLocalDynamic = locals.createContextThreadLocal((c, t) -> threadLocalDynamicValue);
 
         private Env environment;
 
@@ -933,13 +934,13 @@ public class ContextLocalTest extends AbstractPolyglotTest {
         }
 
         public ContextLocal<String> createContextLocal0() {
-            return createContextLocal((e) -> {
+            return locals.createContextLocal((e) -> {
                 throw new AssertionError();
             });
         }
 
         public ContextThreadLocal<String> createContextThreadLocal0() {
-            return createContextThreadLocal((e, t) -> {
+            return locals.createContextThreadLocal((e, t) -> {
                 throw new AssertionError();
             });
         }
@@ -950,8 +951,8 @@ public class ContextLocalTest extends AbstractPolyglotTest {
 
         static int effect = 0;
 
-        final ContextLocal<Env> local0 = createContextLocal((e) -> e);
-        final ContextLocal<Env> local1 = (effect++) % 2 == 0 ? createContextLocal((e) -> e) : null;
+        final ContextLocal<Env> local0 = locals.createContextLocal((e) -> e);
+        final ContextLocal<Env> local1 = (effect++) % 2 == 0 ? locals.createContextLocal((e) -> e) : null;
 
         @Override
         protected TruffleLanguage.Env createContext(TruffleLanguage.Env env) {
@@ -965,8 +966,8 @@ public class ContextLocalTest extends AbstractPolyglotTest {
 
         static int effect = 0;
 
-        final ContextThreadLocal<Env> local0 = createContextThreadLocal((e, t) -> e);
-        final ContextThreadLocal<Env> local1 = (effect++) % 2 == 0 ? createContextThreadLocal((e, t) -> e) : null;
+        final ContextThreadLocal<Env> local0 = locals.createContextThreadLocal((e, t) -> e);
+        final ContextThreadLocal<Env> local1 = (effect++) % 2 == 0 ? locals.createContextThreadLocal((e, t) -> e) : null;
 
         @Override
         protected TruffleLanguage.Env createContext(TruffleLanguage.Env env) {
@@ -978,7 +979,7 @@ public class ContextLocalTest extends AbstractPolyglotTest {
     @TruffleInstrument.Registration(id = "example", name = "Example Instrument")
     public static class ExampleInstrument extends TruffleInstrument {
 
-        final ContextThreadLocal<ExampleLocal> local = createContextThreadLocal(ExampleLocal::new);
+        final ContextThreadLocal<ExampleLocal> local = locals.createContextThreadLocal(ExampleLocal::new);
 
         @Override
         protected void onCreate(Env env) {

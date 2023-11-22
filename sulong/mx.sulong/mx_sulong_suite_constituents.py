@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2023, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -447,9 +447,9 @@ CXX = {CXX}
 AR = {AR}
 
 """.format(gcc_toolchain=_ninja_escape_string(os.path.join(gcc_ninja_toolchain.get_output(), 'toolchain.ninja')),
-           CC=_ninja_escape_string(self.subject.suite.toolchain.get_toolchain_tool('CC')),
-           CXX=_ninja_escape_string(self.subject.suite.toolchain.get_toolchain_tool('CXX')),
-           AR=_ninja_escape_string(self.subject.suite.toolchain.get_toolchain_tool('AR')))
+           CC=_ninja_escape_string(self.subject.suite.toolchain.get_toolchain_tool('CC', allow_bootstrap=True)),
+           CXX=_ninja_escape_string(self.subject.suite.toolchain.get_toolchain_tool('CXX', allow_bootstrap=True)),
+           AR=_ninja_escape_string(self.subject.suite.toolchain.get_toolchain_tool('AR', allow_bootstrap=True)))
 
 
 class AbstractSulongNativeProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
@@ -518,7 +518,6 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  #
                 This mode supports appending a "-<post-opt>" specifier to the variant string,
                 to post-process the result using the `opt` tool from LLVM. The following post-opt specifiers are
                 supported:
-                    - MISC_OPTS: run a selection of common optimizations
                     - MEM2REG: run the -mem2reg optimization
                 See tests/com.oracle.truffle.llvm.tests.cmake/SulongTestSuiteVariantBitcode.cmake for more details.
             - "executable"

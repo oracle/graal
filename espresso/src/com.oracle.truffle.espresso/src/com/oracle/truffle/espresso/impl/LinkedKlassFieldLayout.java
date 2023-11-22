@@ -34,8 +34,8 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject.StaticObjectFactory;
 
 final class LinkedKlassFieldLayout {
     final StaticShape<StaticObjectFactory> instanceShape;
@@ -264,11 +264,14 @@ final class LinkedKlassFieldLayout {
                                 new HiddenField(Name.HIDDEN_DEPRECATION_SUPPORT),
                                 new HiddenField(Name.HIDDEN_THREAD_UNPARK_SIGNALS, Type._int, VersionRange.ALL, Constants.ACC_VOLATILE),
                                 new HiddenField(Name.HIDDEN_THREAD_PARK_LOCK, Type.java_lang_Object, VersionRange.ALL, Constants.ACC_FINAL),
+                                new HiddenField(Name.HIDDEN_THREAD_SCOPED_VALUE_CACHE),
 
                                 // Only used for j.l.management bookkeeping.
-                                new HiddenField(Name.HIDDEN_THREAD_BLOCKED_OBJECT),
+                                new HiddenField(Name.HIDDEN_THREAD_PENDING_MONITOR),
+                                new HiddenField(Name.HIDDEN_THREAD_WAITING_MONITOR),
                                 new HiddenField(Name.HIDDEN_THREAD_BLOCKED_COUNT),
-                                new HiddenField(Name.HIDDEN_THREAD_WAITED_COUNT)
+                                new HiddenField(Name.HIDDEN_THREAD_WAITED_COUNT),
+                                new HiddenField(Name.HIDDEN_THREAD_DEPTH_FIRST_NUMBER),
                 };
             }
             if (holder == Type.java_lang_Class) {

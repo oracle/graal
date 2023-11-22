@@ -38,9 +38,10 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.svm.configure.config.ResourceConfiguration;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.util.json.JsonWriter;
 
 public class ResourceConfigurationTest {
 
@@ -91,6 +92,11 @@ public class ResourceConfigurationTest {
                 @Override
                 public void addResources(ConfigurationCondition condition, String pattern) {
                     addedResources.add(pattern);
+                }
+
+                @Override
+                public void addResource(Module module, String resourcePath) {
+                    throw VMError.shouldNotReachHere("Unused function.");
                 }
 
                 @Override

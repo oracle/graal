@@ -122,6 +122,7 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         return naturalOrder;
     }
 
+    @SuppressWarnings("this-escape")
     public TemplateMethod(TemplateMethod method) {
         this(method.id, method.naturalOrder, method.template, method.specification, method.method, method.markerAnnotation, method.returnType, method.parameters);
         if (!method.getMessages().isEmpty()) {
@@ -129,6 +130,7 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         }
     }
 
+    @SuppressWarnings("this-escape")
     public TemplateMethod(TemplateMethod method, ExecutableElement executable) {
         this(method.id, method.naturalOrder, method.template, method.specification, executable, method.markerAnnotation, method.returnType, method.parameters);
         if (!method.getMessages().isEmpty()) {

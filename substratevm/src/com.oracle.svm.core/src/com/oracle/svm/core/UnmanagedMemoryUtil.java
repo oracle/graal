@@ -51,7 +51,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
  * </ul>
  * <p>
  * In some situations (e.g., during a serial GC or if it is guaranteed that all involved objects are
- * not yet visible to other threads), the methods in this class may also be used for objects the
+ * not yet visible to other threads), the methods in this class may also be used for objects that
  * live in the Java heap. However, those usages should be kept to a minimum.
  */
 public final class UnmanagedMemoryUtil {
@@ -214,6 +214,43 @@ public final class UnmanagedMemoryUtil {
             offset = offset.subtract(8);
             to.writeLong(offset, from.readLong(offset));
         }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static UnsignedWord compareLongs(Pointer x, Pointer y, UnsignedWord size) {
+        assert size.unsignedRemainder(8).equal(0);
+        UnsignedWord offset = WordFactory.zero();
+        while (offset.belowThan(size)) {
+            if (x.readLong(offset) != y.readLong(offset)) {
+                return offset;
+            }
+            offset = offset.add(Long.BYTES);
+        }
+        return offset;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static UnsignedWord compareBytes(Pointer x, Pointer y, UnsignedWord size) {
+        UnsignedWord offset = WordFactory.zero();
+        while (offset.belowThan(size)) {
+            if (x.readByte(offset) != y.readByte(offset)) {
+                return offset;
+            }
+            offset = offset.add(1);
+        }
+        return offset;
+    }
+
+    /**
+     * Compares two memory areas. Returns the number of bytes from the beginning which are
+     * equivalent, which, if a difference is found, is the offset of the first different byte.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord compare(Pointer x, Pointer y, UnsignedWord size) {
+        UnsignedWord alignBits = WordFactory.unsigned(0x7);
+        UnsignedWord alignedSize = size.and(alignBits.not());
+        UnsignedWord offset = compareLongs(x, y, alignedSize);
+        return offset.add(compareBytes(x.add(offset), y.add(offset), size.subtract(offset)));
     }
 
     /**

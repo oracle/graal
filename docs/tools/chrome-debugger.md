@@ -28,7 +28,7 @@ console.log("Server running at http://localhost:8000/");
 
 1. Save this program as `HelloWorld.js` and then run:
 ```shell
-$JAVA_HOME/bin/node --inspect --jvm HelloWorld.js
+$JAVA_HOME/bin/node --inspect HelloWorld.js
 Debugger listening on ws://127.0.0.1:9229/SBqxI5YIqtREaDrXkFr8hLE0HL1AfKx8TjkI8qPMq2s
 For help, see: https://www.graalvm.org/tools/chrome-debugger
 E.g. in Chrome open: devtools://devtools/bundled/js_app.html?ws=127.0.0.1:9229/SBqxI5YIqtREaDrXkFr8hLE0HL1AfKx8TjkI8qPMq2s
@@ -44,7 +44,7 @@ E.g. in Chrome open: devtools://devtools/bundled/js_app.html?ws=127.0.0.1:9229/S
 
 Now you can inspect the stack, variables, evaluate variables, and selected expressions in a tooltip, and so on. By hovering your cursor over the `response` variable, for instance, you can inspect its properties, as seen in the screenshot below:
 
-![](img/ChromeInspector.png)
+![Chrome Inspector](img/ChromeInspector.png)
 
 Consult the [JavaScript Debugging Reference](https://developers.google.com/web/tools/chrome-devtools/javascript/reference) for details on Chrome DevTools debugging features.
 

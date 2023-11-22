@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,7 +49,7 @@ import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.parser.bytecode.BytecodeGen;
+import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
 
 /**
  * Represents the values and stack frames of a Wasm code section during validation. Stores
@@ -61,11 +61,11 @@ public class ParserState {
 
     private final ByteArrayList valueStack;
     private final ControlStack controlStack;
-    private final BytecodeGen bytecode;
+    private final RuntimeBytecodeGen bytecode;
 
     private int maxStackSize;
 
-    public ParserState(BytecodeGen bytecode) {
+    public ParserState(RuntimeBytecodeGen bytecode) {
         this.valueStack = new ByteArrayList();
         this.controlStack = new ControlStack();
         this.bytecode = bytecode;
@@ -258,8 +258,8 @@ public class ParserState {
         }
     }
 
-    public void enterFunction(byte[] returnTypes) {
-        enterBlock(EMPTY_ARRAY, returnTypes);
+    public void enterFunction(byte[] resultTypes) {
+        enterBlock(EMPTY_ARRAY, resultTypes);
     }
 
     /**
@@ -409,6 +409,13 @@ public class ParserState {
     }
 
     /**
+     * Adds the atomic flag to the bytecode.
+     */
+    public void addAtomicFlag() {
+        bytecode.add(Bytecode.ATOMIC);
+    }
+
+    /**
      * Adds the given instruction and an i32 immediate value to the bytecode.
      * 
      * @param instruction The instruction
@@ -479,11 +486,24 @@ public class ParserState {
      * Adds a memory instruction based on the given values and index type.
      * 
      * @param baseInstruction The base version of the memory instruction
+     * @param memoryIndex The index of the memory being accessed
      * @param value The immediate value
      * @param indexType64 If the index type is 64 bit.
      */
-    public void addMemoryInstruction(int baseInstruction, long value, boolean indexType64) {
-        bytecode.addMemoryInstruction(baseInstruction, baseInstruction + 1, baseInstruction + 2, value, indexType64);
+    public void addMemoryInstruction(int baseInstruction, int memoryIndex, long value, boolean indexType64) {
+        bytecode.addMemoryInstruction(baseInstruction, baseInstruction + 1, baseInstruction + 2, memoryIndex, value, indexType64);
+    }
+
+    /**
+     * Adds an atomic memory instruction based on the given values and index type.
+     *
+     * @param instruction The atomic memory instruction
+     * @param memoryIndex The index of the memory being accessed
+     * @param value The immediate value
+     * @param indexType64 If the index type is 64 bit.
+     */
+    public void addAtomicMemoryInstruction(int instruction, int memoryIndex, long value, boolean indexType64) {
+        bytecode.addAtomicMemoryInstruction(instruction, memoryIndex, value, indexType64);
     }
 
     /**

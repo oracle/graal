@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,42 +42,31 @@ package com.oracle.truffle.nfi;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.NFIType.TypeCachedState;
 
-//TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
 @GenerateAOT
 abstract class ConvertTypeNode extends Node {
 
     abstract Object execute(NFIType type, Object value) throws UnsupportedTypeException;
 
-    static final class OptimizedConvertTypeNode extends ConvertTypeNode {
-
-        final TypeCachedState typeState;
-        @Child ConvertTypeNode convertImpl;
-
-        OptimizedConvertTypeNode(TypeCachedState typeState, ConvertTypeNode convertImpl) {
-            this.typeState = typeState;
-            this.convertImpl = convertImpl;
-        }
-
-        @Override
-        Object execute(NFIType type, Object value) throws UnsupportedTypeException {
-            assert type.cachedState == typeState;
-            return convertImpl.execute(type, value);
-        }
-    }
-
     @GenerateUncached
-    abstract static class ConvertToNativeNode extends ConvertTypeNode {
+    @GenerateInline(true)
+    @GenerateCached(false)
+    @GenerateAOT
+    abstract static class ConvertToNativeNode extends Node {
 
-        @Specialization(guards = "type.cachedState == convertImpl.typeState", limit = "3")
+        abstract Object executeInlined(Node node, NFIType type, Object value) throws UnsupportedTypeException;
+
+        @Specialization(guards = "type.cachedState == cachedState", limit = "3")
         Object doCached(NFIType type, Object value,
-                        @Cached("type.cachedState.createToNative()") OptimizedConvertTypeNode convertImpl) throws UnsupportedTypeException {
+                        @SuppressWarnings("unused") @Cached("type.cachedState") TypeCachedState cachedState,
+                        @Cached(value = "cachedState.createToNative()", inline = false) ConvertTypeNode convertImpl) throws UnsupportedTypeException {
             return convertImpl.execute(type, value);
         }
 
@@ -88,11 +77,17 @@ abstract class ConvertTypeNode extends Node {
     }
 
     @GenerateUncached
-    abstract static class ConvertFromNativeNode extends ConvertTypeNode {
+    @GenerateInline(true)
+    @GenerateCached(false)
+    @GenerateAOT
+    abstract static class ConvertFromNativeNode extends Node {
 
-        @Specialization(guards = "type.cachedState == convertImpl.typeState", limit = "3")
+        abstract Object executeInlined(Node node, NFIType type, Object value) throws UnsupportedTypeException;
+
+        @Specialization(guards = "type.cachedState == cachedState", limit = "3")
         Object doCached(NFIType type, Object value,
-                        @Cached("type.cachedState.createFromNative()") OptimizedConvertTypeNode convertImpl) throws UnsupportedTypeException {
+                        @SuppressWarnings("unused") @Cached("type.cachedState") TypeCachedState cachedState,
+                        @Cached(value = "cachedState.createFromNative()", inline = false) ConvertTypeNode convertImpl) throws UnsupportedTypeException {
             return convertImpl.execute(type, value);
         }
 

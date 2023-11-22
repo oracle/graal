@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,15 @@
  */
 package com.oracle.truffle.nfi.backend.libffi;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
@@ -198,7 +201,7 @@ class LibFFIContext {
 
     @TruffleBoundary
     LibFFILibrary loadLibrary(String name, int flags) {
-        return LibFFILibrary.create(loadLibrary(nativeContext, name, flags));
+        return LibFFILibrary.create(loadLibrary(nativeContext, name, flags), name);
     }
 
     Object lookupSymbol(LibFFILibrary library, String name) {
@@ -238,7 +241,9 @@ class LibFFIContext {
             }
         }
         simpleTypeMap[idx] = new LibFFIType(language.simpleTypeMap[idx], ffiType);
-        arrayTypeMap[idx] = new LibFFIType(language.arrayTypeMap[idx], simpleTypeMap[pointerIdx].type);
+        if (language.arrayTypeMap[idx] != null) {
+            arrayTypeMap[idx] = new LibFFIType(language.arrayTypeMap[idx], simpleTypeMap[pointerIdx].type);
+        }
         if (idx == pointerIdx) {
             cachedEnvType = new LibFFIType(language.cachedEnvType, simpleTypeMap[pointerIdx].type);
         }
@@ -264,13 +269,18 @@ class LibFFIContext {
 
     private static native long initializeNativeEnv(long context);
 
-    private static void loadNFILib() {
+    private void loadNFILib() {
         String nfiLib = System.getProperty("truffle.nfi.library");
         if (nfiLib == null) {
-            System.loadLibrary("trufflenfi");
-        } else {
-            System.load(nfiLib);
+            try {
+                TruffleFile libNFIResources = env.getInternalResource(LibNFIResource.class);
+                TruffleFile libNFI = libNFIResources.resolve("bin").resolve(System.mapLibraryName("trufflenfi"));
+                nfiLib = libNFI.getAbsoluteFile().getPath();
+            } catch (IOException ioe) {
+                throw CompilerDirectives.shouldNotReachHere(ioe);
+            }
         }
+        System.load(nfiLib);
     }
 
     ClosureNativePointer allocateClosureObjectRet(LibFFISignature signature, CallTarget callTarget, Object receiver) {

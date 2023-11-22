@@ -43,9 +43,28 @@ import com.oracle.svm.core.util.VMError;
 public class VMCondition {
     protected final VMMutex mutex;
 
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private final String name;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public VMCondition(VMMutex mutex) {
+        this(mutex, null);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public VMCondition(VMMutex mutex, String name) {
         this.mutex = mutex;
+        this.name = name;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public String getName() {
+        return name == null ? mutex.getName() : mutex.getName() + "_" + name;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public String getConditionName() {
+        return name;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -98,6 +117,7 @@ public class VMCondition {
     /**
      * Wakes up a single thread that is waiting on this condition.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void signal() {
         throw VMError.shouldNotReachHere("VMCondition cannot be used during native image generation");
     }

@@ -496,8 +496,8 @@ public class SpecializationUnrollingTest extends AbstractPolyglotTest {
         TruffleObject o = new TruffleObject() {
         };
 
-        assertSame(node, node.execute(s).getParent());
-        assertSame(node, node.execute(i).getParent());
+        assertSame(node, node.execute(s).getParent().getParent());
+        assertSame(node, node.execute(i).getParent().getParent());
         // switch to uncached -> replaces doDefault.
         assertNull(node.execute(o).getParent());
         assertNull(node.execute(i).getParent());

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package org.graalvm.polyglot.io;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
@@ -56,15 +55,16 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.EnumSet;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.io.MessageTransport.VetoException;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 
 final class IOHelper {
+
+    static final IOAccessorImpl ACCESS = new IOAccessorImpl();
 
     private IOHelper() {
         throw new IllegalStateException("No instance allowed.");
@@ -183,52 +183,57 @@ final class IOHelper {
         sourceFileSystem.delete(source);
     }
 
-    static final AbstractPolyglotImpl IMPL = initImpl();
+    /*
+     * ImplHolder is needed because at the time of initializing this Engine might not yet be fully
+     * initialized.
+     */
+    static class ImplHolder {
 
-    private static AbstractPolyglotImpl initImpl() {
-        try {
-            Method method = Engine.class.getDeclaredMethod("getImpl");
-            method.setAccessible(true);
-            AbstractPolyglotImpl polyglotImpl = (AbstractPolyglotImpl) method.invoke(null);
-            polyglotImpl.setIO(new IOAccessorImpl());
-            return polyglotImpl;
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to initialize execution listener class.", e);
+        static final AbstractPolyglotImpl IMPL = initImpl();
+
+        private static AbstractPolyglotImpl initImpl() {
+            try {
+                Method method = Engine.class.getDeclaredMethod("getImpl");
+                method.setAccessible(true);
+                AbstractPolyglotImpl polyglotImpl = (AbstractPolyglotImpl) method.invoke(null);
+                return polyglotImpl;
+            } catch (Exception e) {
+                throw new IllegalStateException("Failed to initialize execution listener class.", e);
+            }
         }
+
     }
 
     private static final class IOAccessorImpl extends AbstractPolyglotImpl.IOAccessor {
 
         @Override
-        public ProcessHandler.ProcessCommand newProcessCommand(List<String> cmd, String cwd, Map<String, String> environment, boolean redirectErrorStream,
-                        ProcessHandler.Redirect inputRedirect, ProcessHandler.Redirect outputRedirect, ProcessHandler.Redirect errorRedirect) {
-            return new ProcessHandler.ProcessCommand(cmd, cwd, environment, redirectErrorStream, inputRedirect, outputRedirect, errorRedirect);
+        public Object createIOAccess(String name, boolean allowHostFileAccess, boolean allowSocketAccess, FileSystem fileSystem) {
+            return new IOAccess(name, allowHostFileAccess, allowSocketAccess, fileSystem);
         }
 
         @Override
-        public ProcessHandler.Redirect createRedirectToStream(OutputStream stream) {
-            Objects.requireNonNull("Stream must be non null.");
-            return new ProcessHandler.Redirect(ProcessHandler.Redirect.Type.STREAM, stream);
+        public FileSystem getFileSystem(Object ioAccess) {
+            return ((IOAccess) ioAccess).getFileSystem();
         }
 
         @Override
-        public OutputStream getOutputStream(ProcessHandler.Redirect redirect) {
-            return redirect.getOutputStream();
+        public boolean hasHostFileAccess(Object ioAccess) {
+            return ((IOAccess) ioAccess).hasHostFileAccess();
         }
 
         @Override
-        public FileSystem getFileSystem(IOAccess ioAccess) {
-            return ioAccess.getFileSystem();
+        public boolean hasHostSocketAccess(Object ioAccess) {
+            return ((IOAccess) ioAccess).hasHostSocketAccess();
         }
 
         @Override
-        public boolean hasHostFileAccess(IOAccess ioAccess) {
-            return ioAccess.hasHostFileAccess();
+        public boolean isVetoException(Throwable exception) {
+            return exception instanceof VetoException;
         }
 
         @Override
-        public boolean hasHostSocketAccess(IOAccess ioaccess) {
-            return ioaccess.hasHostSocketAccess();
+        public Exception createVetoException(String message) {
+            return new VetoException(message);
         }
     }
 }

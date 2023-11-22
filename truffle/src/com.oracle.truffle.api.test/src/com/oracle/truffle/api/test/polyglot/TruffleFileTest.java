@@ -109,6 +109,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.api.test.TestAPIAccessor;
 import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
 import com.oracle.truffle.api.test.common.TestUtils;
@@ -132,6 +133,7 @@ import com.oracle.truffle.api.test.OSUtils;
 import com.oracle.truffle.api.test.polyglot.FileSystemsTest.ForwardingFileSystem;
 import com.oracle.truffle.api.test.polyglot.TruffleFileTest.DuplicateMimeTypeLanguage1.Language1Detector;
 import com.oracle.truffle.api.test.polyglot.TruffleFileTest.DuplicateMimeTypeLanguage2.Language2Detector;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class TruffleFileTest {
 
@@ -142,13 +144,13 @@ public class TruffleFileTest {
 
     @BeforeClass
     public static void setUpClass() throws Exception {
-        languageHome = Files.createTempDirectory(TruffleFileTest.class.getSimpleName());
+        languageHome = Files.createTempDirectory(TruffleFileTest.class.getSimpleName()).toRealPath();
         languageHomeFile = languageHome.resolve("homeFile");
         Files.write(languageHomeFile, Collections.singleton(languageHomeFile.getFileName().toString()));
         Path stdLib = Files.createDirectory(languageHome.resolve("stdlib"));
         stdLibFile = stdLib.resolve("stdLibFile");
         Files.write(stdLibFile, Collections.singleton(stdLibFile.getFileName().toString()));
-        nonLanguageHomeFile = Files.createTempFile(TruffleFileTest.class.getSimpleName(), "");
+        nonLanguageHomeFile = Files.createTempFile(TruffleFileTest.class.getSimpleName(), "").toRealPath();
         Files.write(nonLanguageHomeFile, Collections.singleton(nonLanguageHomeFile.getFileName().toString()));
     }
 
@@ -477,6 +479,8 @@ public class TruffleFileTest {
 
     @Test
     public void testRelativePathToLanguageHome() throws IOException {
+        // reflection access
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         Path cwdPath = new File("").toPath().toRealPath();
         Assume.assumeTrue(cwdPath.getNameCount() > 1);
         String langHomePath = cwdPath.getParent().resolve("home").toString();
@@ -718,6 +722,7 @@ public class TruffleFileTest {
 
     @Test
     public void testGetTruffleFileInternalAllowedIO() {
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         try (Context ctx = Context.newBuilder().allowIO(IOAccess.ALL).build()) {
             AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestGetTruffleFileInternalAllowedIOLanguage.class, "",
                             languageHome.toAbsolutePath().toString(), languageHomeFile.toAbsolutePath().toString(), languageHomeFile.toUri().toString(),
@@ -728,6 +733,8 @@ public class TruffleFileTest {
 
     @Test
     public void testGetTruffleFileInternalCustomFileSystem() {
+        // reflection access
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         IOAccess ioAccess = IOAccess.newBuilder().fileSystem(new ForwardingFileSystem(FileSystem.newDefaultFileSystem())).build();
         try (Context ctx = Context.newBuilder().allowIO(ioAccess).build()) {
             AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestGetTruffleFileInternalAllowedIOLanguage.class, "",
@@ -777,6 +784,7 @@ public class TruffleFileTest {
 
     @Test
     public void testGetTruffleFileInternalDeniedIO() {
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         try (Context ctx = Context.create()) {
             AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestGetTruffleFileInternalDeniedIOLanguage.class, "",
                             languageHome.toAbsolutePath().toString(), languageHomeFile.toAbsolutePath().toString(), languageHomeFile.toUri().toString(),
@@ -1201,7 +1209,7 @@ public class TruffleFileTest {
     private static void resetLanguageHomes() throws ReflectiveOperationException {
         Class<?> languageCache = Class.forName("com.oracle.truffle.polyglot.LanguageCache");
         Method reset = languageCache.getDeclaredMethod("resetNativeImageCacheLanguageHomes");
-        reset.setAccessible(true);
+        ReflectionUtils.setAccessible(reset, true);
         reset.invoke(null);
     }
 
@@ -1219,6 +1227,7 @@ public class TruffleFileTest {
         private Charset encoding;
         private Predicate<? super TruffleFile> recognizer;
 
+        @SuppressWarnings("this-escape")
         protected BaseDetector() {
             INSTANCES.put(getClass(), this);
         }

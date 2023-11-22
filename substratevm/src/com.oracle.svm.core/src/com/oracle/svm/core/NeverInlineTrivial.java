@@ -33,7 +33,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Every thus annotated method is never trivially inlined by the compiler. Specific inling to
+ * Every thus annotated method is never trivially inlined by the compiler. Specific inlining to
  * broaden the scope of the PartialEscapePhase is still possible.
  */
 @Retention(RetentionPolicy.RUNTIME)

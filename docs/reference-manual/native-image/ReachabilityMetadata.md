@@ -1,5 +1,5 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: metadata
 link_title: Reachability Metadata
 permalink: /reference-manual/native-image/metadata/
@@ -61,7 +61,7 @@ Computing metadata in code can be achieved in two ways:
             return aClass;
         }
     }
-  ```
+    ```
 
   When metadata is computed in code, the dynamically accessed elements will be included into the native executable's heap only if that part of the heap is reachable through an enclosing method (for example, `ReflectiveAccess#fetchFoo`) or a static field (for example, `InitializedAtBuildTime.aClass`).
 
@@ -88,6 +88,8 @@ A condition is specified in the following way:
 ```
 An entry with a `typeReachable` condition is considered only when the fully-qualified class is reachable.
 Currently, we support only `typeReachable` as a condition.
+
+Find more examples of the configuration files in the [GraalVM Reachability Metadata repository](https://github.com/oracle/graalvm-reachability-metadata).
 
 ## Metadata Types
 
@@ -144,8 +146,9 @@ Integer.class.getMethod("parseInt", params2);
 
 ### Specifying Reflection Metadata in JSON
 
-Reflection metadata can be specified in the `reflect-config.json` file.
-The JSON file is an array of reflection entries:
+Reflection metadata should be specified in a _reflect-config.json_ file and conform to the JSON schema defined in 
+[reflect-config-schema-v1.0.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reflect-config-schema-v1.0.0.json).
+The schema also includes further details and explanations how this configuration works. Here is the example of the reflect-config.json:
 ```json
 [
     {
@@ -162,12 +165,18 @@ The JSON file is an array of reflection entries:
         "fields": [
             {"name": "<fieldName>"}
         ],
+        "allDeclaredClasses": true,
         "allDeclaredMethods": true,
-        "allDeclaredFields": true,
+        "allDeclaredFields": true, 
         "allDeclaredConstructors": true,
+        "allPublicClasses": true,
         "allPublicMethods": true,
         "allPublicFields": true,
         "allPublicConstructors": true,
+        "allRecordComponents": true,
+        "allNestMembers": true,
+        "allSigners": true,
+        "allPermittedSubclasses": true,
         "queryAllDeclaredMethods": true,
         "queryAllDeclaredConstructors": true,
         "queryAllPublicMethods": true,
@@ -176,21 +185,6 @@ The JSON file is an array of reflection entries:
     }
 ]
 ```
-
-The fields in a reflection entry have the following meaning:
- - `condition`: See [Conditional Metadata Entries](#specifying-metadata-with-json)
- - `name`: Name of the class that will be reflectively looked up. This property is mandatory.
- - `methods`: List class methods that can be looked up and executed reflectively.
- Each method is described by its name and a list of parameter types.
- The parameter types are fully qualified Java class names.
- - `queriedMethods`: List of class methods that can only be looked up.
- The description of each method is identical to the `methods` list.
- - `fields`: List of class fields that can be looked up, read, or modified.
- - `all<access>(Methods/Fields/Constructors)`: Registers all methods/fields/constructors for lookup. Methods and constructors can also be invoked.
- `<access>` refers to different ways of querying these members in Java and can be either `Declared` or `Public`.
- For more information, see `java.lang.Class.getDeclaredMethods()` and `java.lang.Class.getPublicMethods()`.
- - `queryAll<access>(Methods/Constructors)`: Registers all methods/constructors for lookup only.
- - `unsafeAllocated`: Allows objects of this class to be allocated using `Unsafe.allocateInstance`.
 
 ## Java Native Interface
 
@@ -213,15 +207,26 @@ The generated metadata entry for the above call would look like:
 It is not possible to specify JNI metadata in code.
 
 ### JNI Metadata in JSON
-Metadata for JNI is provided in `jni-config.json` files.
-The JSON schema of JNI metadata is identical to the [Reflection metadata schema](#specifying-reflection-metadata-in-json).
+
+JNI metadata should be specified in a _jni-config.json_ file and conform to the JSON schema defined in
+[jni-config-schema-v1.0.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/jni-config-schema-v1.0.0.json).
+The schema also includes further details and explanations how this configuration works. The example of jni-config.json is the same
+as the example of reflect-config.json described above.
 
 ## Resources and Resource Bundles
 Java is capable of accessing any resource on the application class path, or the module path for which the requesting code has permission to access.
 Resource metadata instructs the `native-image` builder to include specified resources and resource bundles in the produced binary.
 A consequence of this approach is that some parts of the application that use resources for configuration (such as logging) are effectively configured at build time.
 
-The code below accesses a text file and requires providing resource metadata: 
+### Resource Metadata In Code
+Native Image will detect calls to `java.lang.Class#getResource` and `java.lang.Class#getResourceAsStream` in which:
+ - The class on which these methods are called is constant
+ - The first parameter, `name`, is a constant
+and automatically register such resources.
+
+The code below will work out of the box, because:
+ - We are using a class literal (`Example.class`)
+ - We are using a string literal as the `name` parameter
 ```java
 class Example {
     public void conquerTheWorld() {
@@ -232,18 +237,18 @@ class Example {
 }
 ```
 
-### Resource Metadata In Code
-It is not possible to specify used resources and resource bundles in code.
-
 ### Resource Metadata in JSON
-Metadata for resources is provided in `resource-config.json` files.
+
+Resource metadata should be specified in a _resource-config.json_ file and conform to the JSON schema defined in
+[resource-config-schema-v1.0.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/resource-config-schema-v1.0.0.json).
+The schema also includes further details and explanations how this configuration works. Here is the example of the resource-config.json:
 ```json
 {
   "resources": {
     "includes": [
       {
         "condition": {
-          "typeReachable": "<condition-class>" 
+          "typeReachable": "<condition-class>"
         },
         "pattern": ".*\\.txt"
       }
@@ -264,14 +269,20 @@ Metadata for resources is provided in `resource-config.json` files.
       },
       "name": "fully.qualified.bundle.name",
       "locales": ["en", "de", "sk"]
+    },
+    {
+      "condition": {
+        "typeReachable": "<condition-class>"
+      },
+      "name": "fully.qualified.bundle.name",
+      "classNames": [
+        "fully.qualified.bundle.name_en",
+        "fully.qualified.bundle.name_de"
+      ]
     }
   ]
 }
 ```
-
-Native Image will iterate over all resources and match their relative paths against the Java regex specified in `includes`.
-If the path matches the regex, the resource is included.
-The `excludes` statement instructs `native-image` to omit certain included resources that match the given `pattern`.
 
 ## Dynamic Proxy
 
@@ -311,7 +322,10 @@ The following methods are evaluated at build time when called with constant argu
  - `java.lang.reflect.Proxy.newProxyInstance`
 
 ### Dynamic Proxy Metadata in JSON
-Metadata for dynamic proxies is provided in `proxy-config.json` files.
+
+Dynamic proxy metadata should be specified in a _proxy-config.json_ file and conform to the JSON schema defined in
+[proxy-config-schema-v1.0.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/proxy-config-schema-v1.0.0.json).
+The schema also includes further details and explanations how this configuration works. Here is the example of the proxy-config.json:
 ```json
 [
   {
@@ -328,16 +342,43 @@ Metadata for dynamic proxies is provided in `proxy-config.json` files.
 
 ## Serialization
 Java can serialize any class that implements the `Serializable` interface.
-Serialization usually requires reflectively accessing the class of the object being serialized.
-The JDK also requires additional information about the class to serialize its object.
-Native Image supports serialization with proper metadata.
+Native Image supports serialization with proper serializaiton metadata registration. This is necessary as serialization usually
+requires reflectively accessing the class of the object that is being serialized.
 
-### Serialization Metadata In Code
+### Serialization Metadata Registration In Code
 
-It is not possible to register classes used for serialization in code.
+Native Image detects calls to `ObjectInputFilter.Config#createFilter(String pattern)` and if the `pattern` argument is constant, the exact classes mentioned in the pattern will be registered for serialization. 
+For example, the following pattern will register the class `pkg.SerializableClass` for serialization:
+```java
+  var filter = ObjectInputFilter.Config.createFilter("pkg.SerializableClass;!*;")
+  objectInputStream.setObjectInputFilter(proof);
+```
+Using this pattern has a positive side effect of improving security on the JVM as only `pkg.SerializableClass` can be received by the 
+`objectInputStream`.
+
+Wildcard patterns do the serialization registration only for lambda-proxy classes of an enclosing class. For example, to register lambda serialization in an enclosing class `pkg.LambdaHolder` use:
+```java
+  ObjectInputFilter.Config.createFilter("pkg.LambdaHolder$$Lambda*;")
+```
+
+Patterns like `"pkg.**"` and `"pkg.Prefix*"` will not perform serialization registration as they are too general and would increase image size significantly. 
+
+For calls to the `sun.reflect.ReflectionFactory#newConstructorForSerialization(java.lang.Class)` and `sun.reflect.ReflectionFactory#newConstructorForSerialization(java.lang.Class, )` native image detects calls to these functions when all arguments and the receiver are constant. For example, the following call will register `SerializlableClass` for serialization: 
+```java
+  ReflectionFactory.getReflectionFactory().newConstructorForSerialization(SerializableClass.class);
+```
+To create a custom constructor for serialization use:
+```java
+  var constructor = SuperSuperClass.class.getDeclaredConstructor();
+  var newConstructor = ReflectionFactory.getReflectionFactory().newConstructorForSerialization(BaseClass.class, constructor);
+```
+Proxy classes can only be registered for serialization via the JSON files. 
 
 ### Serialization Metadata in JSON
-Metadata for serialization is provided in `serialization-config.json` files.
+
+Serialization metadata should be specified in a _serialization-config.json_ file and conform to the JSON schema defined in
+[serialization-config-schema-v1.0.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/serialization-config-schema-v1.0.0.json).
+The schema also includes further details and explanations how this configuration works. Here is the example of the serialization-config.json:
 ```json
 {
   "types": [
@@ -354,16 +395,19 @@ Metadata for serialization is provided in `serialization-config.json` files.
       "condition": {
         "typeReachable": "<condition-class>"
       },
-      "name": "<fully-qualified-class-name>",
-      "customTargetConstructorClass": "<custom-target-constructor-class>"
+      "name": "<fully-qualified-class-name>"
     }
-  ]
+  ],
+ "proxies": [
+   {
+     "condition": {
+       "typeReachable": "<condition-class>"
+     },
+     "interfaces": ["<fully-qualified-interface-name-1>", "<fully-qualified-interface-name-n>"]
+   }
+ ]
 }
 ```
-
-Each entry in `types` enables serializing and deserializing objects of the class given by `name`.
-
-Lambda serialization is also supported: all lambdas declared in the methods of the class given by `name` can be serialized/deserialized.
 
 ## Predefined Classes
 
@@ -380,7 +424,10 @@ At runtime, if there is an attempt to load a class with the same name and byteco
 It is not possible to specify predefined classes in code.
 
 ### Predefined Classes Metadata in JSON
-Metadata for predefined classes is provided in `predefined-classes-config.json` files.
+
+Predefined classes metadata should be specified in a _predefined-classes-config.json_ file and conform to the JSON schema defined in
+[predefined-classes-config-schema-v1.0.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/predefined-classes-config-schema-v1.0.0.json).
+The schema also includes further details and explanations how this configuration works. Here is the example of the predefined-classes-config.json:
 ```json
 [
   {
@@ -394,8 +441,6 @@ Metadata for predefined classes is provided in `predefined-classes-config.json` 
   }
 ]
 ```
-
-The JSON schema is accompanied by the `agent-extracted-predefined-classes` directory that contains the bytecode of the listed classes.
 
 ### Further Reading
 

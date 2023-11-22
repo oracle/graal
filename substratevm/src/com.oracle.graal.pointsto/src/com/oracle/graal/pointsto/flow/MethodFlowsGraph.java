@@ -37,8 +37,8 @@ import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.EncodedGraph.EncodedNodeReference;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.EncodedGraph.EncodedNodeReference;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -111,7 +111,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
         return original;
     }
 
-    protected static boolean nonCloneableFlow(TypeFlow<?> flow) {
+    public static boolean nonCloneableFlow(TypeFlow<?> flow) {
         /*
          * References to field flows and to array elements flows are not part of the method itself;
          * field and indexed load and store flows will instead be cloned, and used to access the
@@ -120,7 +120,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
         return flow instanceof FieldTypeFlow || flow instanceof ArrayElementsTypeFlow;
     }
 
-    protected static boolean crossMethodUse(TypeFlow<?> flow, TypeFlow<?> use) {
+    public static boolean crossMethodUse(TypeFlow<?> flow, TypeFlow<?> use) {
         /*
          * Formal returns and unwinds are method exit points. Formal parameters are entry points
          * into callees.
@@ -128,7 +128,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
         return flow instanceof FormalReturnTypeFlow || use instanceof FormalParamTypeFlow;
     }
 
-    private static boolean nonMethodFlow(TypeFlow<?> flow) {
+    public static boolean nonMethodFlow(TypeFlow<?> flow) {
         /*
          * All-instantiated flow doesn't belong to any method, but it can be reachable from a use.
          */
@@ -157,8 +157,8 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
             for (TypeFlow<?> flow : flows()) {
                 int slotNum = flow.getSlot();
                 if (slotNum != -1) {
-                    assert flow instanceof FormalParamTypeFlow || flow instanceof FormalReturnTypeFlow : "Unexpected flow " + flow;
-                    AnalysisError.guarantee(isRedo && flow.getSlot() == resultFlows.size(), "Flow already discovered: %s", flow);
+                    assert flow.isClone() || flow instanceof FormalParamTypeFlow || flow instanceof FormalReturnTypeFlow : "Unexpected flow " + flow;
+                    AnalysisError.guarantee((isRedo || flow.isClone()) && flow.getSlot() == resultFlows.size(), "Flow already discovered: %s", flow);
                 } else {
                     flow.setSlot(resultFlows.size());
                 }
@@ -170,7 +170,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
     }
 
     /**
-     * creates an iterator containing all flows which are internal to this method. This does not
+     * Creates an iterator containing all flows which are internal to this method. This does not
      * include the following types of flows:
      * <ul>
      * <li>A cloned flow</li>
@@ -179,10 +179,10 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
      * </ul>
      */
     public final Iterable<TypeFlow<?>> flows() {
-        return () -> flowsIterator(false);
+        return this::flowsIterator;
     }
 
-    private Iterator<TypeFlow<?>> flowsIterator(boolean iterateClones) {
+    private Iterator<TypeFlow<?>> flowsIterator() {
         return new Iterator<>() {
             final Deque<TypeFlow<?>> worklist = new ArrayDeque<>();
             final Set<TypeFlow<?>> seen = new HashSet<>();
@@ -207,7 +207,12 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
                     }
                 }
                 if (miscEntryFlows != null) {
-                    worklist.addAll(miscEntryFlows);
+                    for (var value : miscEntryFlows) {
+                        /* Skip embedded AllInstantiatedTypeFlows. */
+                        if (!nonMethodFlow(value)) {
+                            worklist.add(value);
+                        }
+                    }
                 }
                 if (instanceOfFlows != null) {
                     for (var value : instanceOfFlows.getValues()) {
@@ -252,7 +257,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
 
             private void expand(TypeFlow<?> flow) {
                 for (TypeFlow<?> use : flow.getUses()) {
-                    if ((!iterateClones && use.isClone()) || crossMethodUse(flow, use) || nonCloneableFlow(use) || nonMethodFlow(use)) {
+                    if (use.isClone() || crossMethodUse(flow, use) || nonCloneableFlow(use) || nonMethodFlow(use)) {
                         continue;
                     }
                     worklist.add(use);
@@ -285,13 +290,11 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
     }
 
     public void setParameter(int index, FormalParamTypeFlow parameter) {
-        assert index >= 0 && index < this.parameters.length;
         parameters[index] = parameter;
     }
 
     @Override
     public FormalParamTypeFlow getParameter(int idx) {
-        assert idx >= 0 && idx < this.parameters.length;
         return parameters[idx];
     }
 
@@ -308,7 +311,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
     }
 
     public void addNodeFlow(EncodedNodeReference key, TypeFlow<?> flow) {
-        assert flow != null && !(flow instanceof AllInstantiatedTypeFlow);
+        assert flow != null && !(flow instanceof AllInstantiatedTypeFlow) : flow;
         if (nodeFlows == null) {
             nodeFlows = EconomicMap.create();
         }
@@ -402,7 +405,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
      *
      * @return a list containing all the callers for the given context sensitive method
      */
-    public List<MethodFlowsGraph> callers(PointsToAnalysis bb) {
+    public List<MethodFlowsGraph> allNonStubCallers(PointsToAnalysis bb) {
         /*
          * This list is seldom needed thus it is created lazily instead of storing a mapping from a
          * caller context to a caller graph for each method graph.
@@ -418,7 +421,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
                         /* The invoke has been replaced by the context insensitive one. */
                         invoke = callerInvoke.getTargetMethod().getContextInsensitiveVirtualInvoke(method.getMultiMethodKey());
                     }
-                    for (MethodFlowsGraph calleeFlowGraph : invoke.getOriginalCalleesFlows(bb)) {
+                    for (MethodFlowsGraph calleeFlowGraph : invoke.getAllNonStubCalleesFlows(bb)) {
                         // 'this' method graph was found among the callees of an invoke flow in one
                         // of the clones of the caller methods, hence we regiter that clone as a
                         // caller for 'this' method clone
@@ -434,14 +437,16 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
 
     /**
      * Given a context sensitive caller, i.e., another MethodFlowsGraph, identify the InvokeTypeFlow
-     * belonging to the caller that linked to this callee.
+     * belonging to the caller that linked to this callee. Note if multiple invokes within the
+     * caller target this method, then only the first found matching invoke typeflow will be
+     * returned.
      *
      * @param callerFlowGraph the context sensitive caller.
      * @return the InvokeTypeFlow object belonging to the caller that linked to this callee.
      */
     public InvokeTypeFlow invokeFlow(MethodFlowsGraph callerFlowGraph, PointsToAnalysis bb) {
         for (InvokeTypeFlow callerInvoke : callerFlowGraph.getInvokes().getValues()) {
-            for (MethodFlowsGraph calleeFlowGraph : callerInvoke.getOriginalCalleesFlows(bb)) {
+            for (MethodFlowsGraph calleeFlowGraph : callerInvoke.getAllNonStubCalleesFlows(bb)) {
                 // 'this' method graph was found among the callees of an invoke flow in the caller
                 // method clone, hence we register return it
                 if (calleeFlowGraph.equals(this)) {
@@ -462,6 +467,15 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
      * This is expected to only be used by {@link MethodTypeFlow#updateFlowsGraph}.
      */
     final void removeInternalFlows(PointsToAnalysis bb) {
+
+        // Invalidate internal flows which will be cleared
+        flowsIterator().forEachRemaining(typeFlow -> {
+            // param and return flows will not be cleared
+            boolean skipInvalidate = typeFlow instanceof FormalParamTypeFlow || typeFlow instanceof FormalReturnTypeFlow;
+            if (!skipInvalidate) {
+                typeFlow.invalidate();
+            }
+        });
 
         // Clear out the parameter uses and observers
         for (var param : getParameters()) {

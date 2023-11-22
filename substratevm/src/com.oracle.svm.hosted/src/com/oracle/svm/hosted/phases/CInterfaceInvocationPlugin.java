@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,42 +25,44 @@
 package com.oracle.svm.hosted.phases;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import java.util.Arrays;
 
-import org.graalvm.compiler.core.common.calc.FloatConvert;
-import org.graalvm.compiler.core.common.memory.BarrierType;
-import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
-import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.StampPair;
-import org.graalvm.compiler.nodes.CallTargetNode;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.IndirectCallTargetNode;
-import org.graalvm.compiler.nodes.LogicNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.AddNode;
-import org.graalvm.compiler.nodes.calc.AndNode;
-import org.graalvm.compiler.nodes.calc.ConditionalNode;
-import org.graalvm.compiler.nodes.calc.FloatConvertNode;
-import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
-import org.graalvm.compiler.nodes.calc.LeftShiftNode;
-import org.graalvm.compiler.nodes.calc.MulNode;
-import org.graalvm.compiler.nodes.calc.NarrowNode;
-import org.graalvm.compiler.nodes.calc.OrNode;
-import org.graalvm.compiler.nodes.calc.RightShiftNode;
-import org.graalvm.compiler.nodes.calc.SignExtendNode;
-import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
-import org.graalvm.compiler.nodes.extended.JavaReadNode;
-import org.graalvm.compiler.nodes.extended.JavaWriteNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
-import org.graalvm.compiler.nodes.memory.address.AddressNode;
-import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
-import org.graalvm.compiler.word.WordTypes;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.calc.FloatConvert;
+import jdk.graal.compiler.core.common.memory.BarrierType;
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.nodes.CallTargetNode;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.IndirectCallTargetNode;
+import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.AddNode;
+import jdk.graal.compiler.nodes.calc.AndNode;
+import jdk.graal.compiler.nodes.calc.ConditionalNode;
+import jdk.graal.compiler.nodes.calc.FloatConvertNode;
+import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
+import jdk.graal.compiler.nodes.calc.LeftShiftNode;
+import jdk.graal.compiler.nodes.calc.MulNode;
+import jdk.graal.compiler.nodes.calc.NarrowNode;
+import jdk.graal.compiler.nodes.calc.OrNode;
+import jdk.graal.compiler.nodes.calc.RightShiftNode;
+import jdk.graal.compiler.nodes.calc.SignExtendNode;
+import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
+import jdk.graal.compiler.nodes.extended.JavaReadNode;
+import jdk.graal.compiler.nodes.extended.JavaWriteNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.nodes.memory.address.AddressNode;
+import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
+import jdk.graal.compiler.word.WordTypes;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
@@ -73,7 +75,6 @@ import com.oracle.svm.core.c.struct.CInterfaceLocationIdentity;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
 import com.oracle.svm.core.graal.nodes.CInterfaceWriteNode;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.CInterfaceError;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -104,11 +105,13 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
     private final NativeLibraries nativeLibs;
 
     private final ResolvedJavaType functionPointerType;
+    private final SnippetReflectionProvider snippetReflection;
 
-    public CInterfaceInvocationPlugin(MetaAccessProvider metaAccess, WordTypes wordTypes, NativeLibraries nativeLibs) {
+    public CInterfaceInvocationPlugin(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, WordTypes wordTypes, NativeLibraries nativeLibs) {
         this.wordTypes = wordTypes;
         this.nativeLibs = nativeLibs;
         this.functionPointerType = metaAccess.lookupJavaType(CFunctionPointer.class);
+        this.snippetReflection = snippetReflection;
     }
 
     @Override
@@ -128,7 +131,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
             } else if (parentInfo instanceof StructInfo || parentInfo instanceof PointerToInfo) {
                 return replaceAccessor(b, method, args, (AccessorInfo) methodInfo, 0);
             } else {
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedInput(parentInfo); // ExcludeFromJacocoGeneratedReport
             }
         } else if (methodInfo instanceof ConstantInfo) {
             return replaceConstant(b, method, (ConstantInfo) methodInfo);
@@ -191,7 +194,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                     readKind = resultKind;
                 }
                 AddressNode offsetAddress = makeOffsetAddress(graph, args, accessorInfo, base, displacement, elementSize);
-                LocationIdentity locationIdentity = makeLocationIdentity(b, method, args, accessorInfo);
+                LocationIdentity locationIdentity = makeLocationIdentity(b, snippetReflection, method, args, accessorInfo);
                 final Stamp stamp;
                 if (readKind == JavaKind.Object) {
                     stamp = b.getInvokeReturnStamp(null).getTrustedStamp();
@@ -215,7 +218,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                 JavaKind valueKind = value.getStackKind();
                 JavaKind writeKind = kindFromSize(elementSize, valueKind);
                 AddressNode offsetAddress = makeOffsetAddress(graph, args, accessorInfo, base, displacement, elementSize);
-                LocationIdentity locationIdentity = makeLocationIdentity(b, method, args, accessorInfo);
+                LocationIdentity locationIdentity = makeLocationIdentity(b, snippetReflection, method, args, accessorInfo);
                 if (isPinnedObject) {
                     b.add(new JavaWriteNode(writeKind, offsetAddress, locationIdentity, value, BarrierType.NONE, true));
                 } else {
@@ -225,7 +228,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                 return true;
             }
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedInput(accessorInfo.getAccessorKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -290,7 +293,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
          * bits around the written bitfield unchanged.
          */
         AddressNode address = makeOffsetAddress(graph, args, accessorInfo, base, byteOffset, -1);
-        LocationIdentity locationIdentity = makeLocationIdentity(b, method, args, accessorInfo);
+        LocationIdentity locationIdentity = makeLocationIdentity(b, snippetReflection, method, args, accessorInfo);
         Stamp stamp = IntegerStamp.create(memoryKind.getBitCount());
         ValueNode cur = readPrimitive(b, address, locationIdentity, stamp, accessorInfo);
         cur = adaptPrimitiveType(graph, cur, memoryKind, computeKind, true);
@@ -341,7 +344,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                 return true;
             }
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedInput(accessorInfo.getAccessorKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -386,7 +389,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         return graph.addOrUniqueWithInputs(new OffsetAddressNode(base, makeOffset(graph, args, accessorInfo, displacement, indexScaling)));
     }
 
-    private static LocationIdentity makeLocationIdentity(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, AccessorInfo accessorInfo) {
+    private static LocationIdentity makeLocationIdentity(GraphBuilderContext b, SnippetReflectionProvider snippetReflection, ResolvedJavaMethod method, ValueNode[] args, AccessorInfo accessorInfo) {
         LocationIdentity locationIdentity;
         if (accessorInfo.hasLocationIdentityParameter()) {
             ValueNode locationIdentityNode = args[accessorInfo.locationIdentityParameterNumber(true)];
@@ -395,7 +398,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                                 "locationIdentity is not a compile time constant for call to " + method.format("%H.%n(%p)") + " in " + b.getMethod().asStackTraceElement(b.bci()),
                                 method).getMessage());
             }
-            locationIdentity = (LocationIdentity) SubstrateObjectConstant.asObject(locationIdentityNode.asConstant());
+            locationIdentity = snippetReflection.asObject(LocationIdentity.class, locationIdentityNode.asJavaConstant());
         } else if (accessorInfo.hasUniqueLocationIdentity()) {
             StructFieldInfo fieldInfo = (StructFieldInfo) accessorInfo.getParent();
             assert fieldInfo.getLocationIdentity() != null;
@@ -424,7 +427,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
             } else if (fromKind == JavaKind.Double && toKind == JavaKind.Float) {
                 op = FloatConvert.D2F;
             } else {
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedInput(fromKind); // ExcludeFromJacocoGeneratedReport
             }
             return graph.unique(new FloatConvertNode(op, value));
         } else if (toKind == JavaKind.Boolean) {
@@ -487,7 +490,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                 break;
             case STRING:
             case BYTEARRAY:
-                valueNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(value), b.getMetaAccess(), b.getGraph());
+                valueNode = ConstantNode.forConstant(snippetReflection.forObject(value), b.getMetaAccess(), b.getGraph());
                 break;
             default:
                 throw shouldNotReachHere("Unexpected constant kind " + constantInfo);

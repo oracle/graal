@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -453,6 +453,15 @@ public interface Feature {
     }
 
     /**
+     * Access methods available for {@link Feature#beforeHeapLayout}.
+     *
+     * @since 23.2
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    interface BeforeHeapLayoutAccess extends CompilationAccess {
+    }
+
+    /**
      * Access methods available for {@link Feature#afterHeapLayout}.
      *
      * @since 19.0
@@ -605,6 +614,16 @@ public interface Feature {
      * @since 19.0
      */
     default void afterCompilation(AfterCompilationAccess access) {
+    }
+
+    /**
+     * Handler for initializations before the native image heap and code layout.
+     *
+     * @param access The supported operations that the feature can perform at this time
+     *
+     * @since 23.2
+     */
+    default void beforeHeapLayout(BeforeHeapLayoutAccess access) {
     }
 
     /**

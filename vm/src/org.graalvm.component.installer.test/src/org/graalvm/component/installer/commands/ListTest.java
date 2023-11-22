@@ -24,9 +24,6 @@
  */
 package org.graalvm.component.installer.commands;
 
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
-import com.oracle.truffle.tools.utils.json.JSONTokener;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.InputStream;
@@ -53,6 +50,10 @@ import org.graalvm.component.installer.remote.RemotePropertiesStorage;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
+import org.graalvm.shadowed.org.json.JSONTokener;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;

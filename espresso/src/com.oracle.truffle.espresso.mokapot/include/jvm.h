@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,6 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 #ifndef _JAVASOFT_JVM_H_
 #define _JAVASOFT_JVM_H_
 
@@ -48,10 +49,10 @@ extern "C" {
  *
  * Second, this file contains the functions and constant definitions
  * needed by the byte code verifier and class file format checker.
- * These functions allow the verifier and format checker to be written
+ * These definitions allow the verifier and format checker to be written
  * in a VM-independent way.
  *
- * Third, this file contains various I/O and nerwork operations needed
+ * Third, this file contains various I/O and network operations needed
  * by the standard Java I/O and network APIs.
  */
 
@@ -212,6 +213,9 @@ JVM_IsPreviewEnabled(void);
 
 JNIEXPORT jboolean JNICALL
 JVM_IsContinuationsSupported(void);
+
+JNIEXPORT jboolean JNICALL
+JVM_IsForeignLinkerSupported(void);
 
 JNIEXPORT void JNICALL
 JVM_InitializeFromArchive(JNIEnv* env, jclass cls);
@@ -1853,6 +1857,18 @@ JNIEXPORT void JNICALL
 JVM_VirtualThreadUnmountEnd(JNIEnv* env, jobject vthread, jboolean last_unmount);
 
 JNIEXPORT void JNICALL
+JVM_VirtualThreadStart(JNIEnv* env, jobject vthread);
+
+JNIEXPORT void JNICALL
+JVM_VirtualThreadEnd(JNIEnv* env, jobject vthread);
+
+JNIEXPORT void JNICALL
+JVM_VirtualThreadMount(JNIEnv* env, jobject vthread, jboolean hide);
+
+JNIEXPORT void JNICALL
+JVM_VirtualThreadUnmount(JNIEnv* env, jobject vthread, jboolean hide);
+
+JNIEXPORT void JNICALL
 JVM_VirtualThreadHideFrames(JNIEnv* env, jobject vthread, jboolean hide);
 
 /*
@@ -1860,6 +1876,12 @@ JVM_VirtualThreadHideFrames(JNIEnv* env, jobject vthread, jboolean hide);
  */
 JNIEXPORT jint JNICALL
 JVM_GetClassFileVersion(JNIEnv *env, jclass current);
+
+/*
+ * Return JNI_TRUE if warnings are printed when agents are dynamically loaded.
+ */
+JNIEXPORT jboolean JNICALL
+JVM_PrintWarningAtDynamicAgentLoad(void);
 
 /*
  * Java thread state support

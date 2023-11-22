@@ -11,3 +11,13 @@ This repository is licensed under the permissive UPL licence. Fork it to begin
 your own Truffle language.
 
 For instructions on how to get started please refer to [our website](http://www.graalvm.org/docs/graalvm-as-a-platform/implement-language/)
+
+# Building for a JVM
+
+Build the project with `mvn package`.
+To run simple language using a JDK from JAVA_HOME run `./sl`.
+
+# Building native
+
+Build the project with `mvn package -Pnative`.
+To run simple language using a JDK from JAVA_HOME run `./slnative`.

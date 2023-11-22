@@ -24,19 +24,19 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
+import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
-import com.oracle.svm.core.posix.headers.Pthread;
-import com.oracle.svm.core.posix.headers.Pthread.pthread_t;
-import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
 import com.oracle.svm.core.posix.headers.darwin.DarwinThreadInfo;
 import com.oracle.svm.core.posix.headers.darwin.DarwinThreadInfo.thread_basic_info_data_t;
 import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
-import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
+import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.util.TimeUtils;
 
 @AutomaticallyRegisteredImageSingleton(ThreadCpuTimeSupport.class)
 final class DarwinThreadCpuTimeSupport implements ThreadCpuTimeSupport {
@@ -44,34 +44,37 @@ final class DarwinThreadCpuTimeSupport implements ThreadCpuTimeSupport {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getCurrentThreadCpuTime(boolean includeSystemTime) {
-        pthread_t pthread = Pthread.pthread_self();
-        return getThreadCpuTime(pthread, includeSystemTime);
+        return getThreadCpuTime(CurrentIsolate.getCurrentThread(), includeSystemTime);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public long getThreadCpuTime(IsolateThread isolateThread, boolean includeSystemTime) {
+        int machThread = (int) VMThreads.getOSThreadId(isolateThread).rawValue();
+        return getThreadCpuTime(machThread, includeSystemTime);
     }
 
     /**
-     * Returns the thread CPU time. Based on <link href=
-     * "https://github.com/openjdk/jdk/blob/612d8c6cb1d0861957d3f6af96556e2739283800/src/hotspot/os/bsd/os_bsd.cpp#L2344">os::thread_cpu_time</link>.
-     *
-     * @param osThreadHandle the pthread
-     * @param includeSystemTime if {@code true} includes both system and user time, if {@code false}
-     *            returns user time.
+     * Based on jdk-20-ga, see <a href=
+     * "https://github.com/openjdk/jdk20/blob/82749901b1497f524e53e47c45708c8e4a63c8b9/src/hotspot/os/bsd/os_bsd.cpp#L2314">os::thread_cpu_time</a>.
      */
-    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long getThreadCpuTime(OSThreadHandle osThreadHandle, boolean includeSystemTime) {
-        int threadsMachPort = DarwinPthread.pthread_mach_thread_np((pthread_t) osThreadHandle);
+    private static long getThreadCpuTime(int machThread, boolean includeSystemTime) {
         CIntPointer sizePointer = UnsafeStackValue.get(Integer.BYTES);
         sizePointer.write(DarwinThreadInfo.THREAD_INFO_MAX());
-        thread_basic_info_data_t basicThreadInfo = StackValue.get(thread_basic_info_data_t.class);
-        if (DarwinThreadInfo.thread_info(threadsMachPort, DarwinThreadInfo.THREAD_BASIC_INFO(), basicThreadInfo, sizePointer) != 0) {
+
+        thread_basic_info_data_t tinfo = StackValue.get(thread_basic_info_data_t.class);
+        int ret = DarwinThreadInfo.thread_info(machThread, DarwinThreadInfo.THREAD_BASIC_INFO(), tinfo, sizePointer);
+        if (ret != 0) {
             return -1;
         }
-        long seconds = basicThreadInfo.user_time().seconds();
-        long micros = basicThreadInfo.user_time().microseconds();
+
+        long seconds = tinfo.user_time().seconds();
+        long micros = tinfo.user_time().microseconds();
         if (includeSystemTime) {
-            seconds += basicThreadInfo.system_time().seconds();
-            micros += basicThreadInfo.system_time().microseconds();
+            seconds += tinfo.system_time().seconds();
+            micros += tinfo.system_time().microseconds();
         }
-        return seconds * 1_000_000_000 + micros * 1_000;
+        return seconds * TimeUtils.nanosPerSecond + micros * TimeUtils.nanosPerMicro;
     }
 }

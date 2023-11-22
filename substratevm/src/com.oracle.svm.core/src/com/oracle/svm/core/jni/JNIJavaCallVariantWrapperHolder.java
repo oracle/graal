@@ -37,7 +37,7 @@ public final class JNIJavaCallVariantWrapperHolder {
      * constructor.
      */
     public static ConstantPool getConstantPool(MetaAccessProvider metaAccess) {
-        return metaAccess.lookupJavaType(JNIJavaCallVariantWrapperHolder.class).getDeclaredConstructors()[0].getConstantPool();
+        return metaAccess.lookupJavaType(JNIJavaCallVariantWrapperHolder.class).getDeclaredConstructors(false)[0].getConstantPool();
     }
 
     private JNIJavaCallVariantWrapperHolder() {

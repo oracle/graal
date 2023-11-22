@@ -24,12 +24,6 @@
  */
 package com.oracle.svm.truffle.isolated;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
-import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.struct.RawField;
@@ -45,6 +39,11 @@ import com.oracle.svm.graal.isolated.CompilerHandle;
 import com.oracle.svm.graal.isolated.CompilerIsolateThread;
 import com.oracle.svm.graal.isolated.IsolatedCompileClient;
 import com.oracle.svm.graal.isolated.IsolatedCompileContext;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+import com.oracle.truffle.compiler.TruffleCompilerListener;
+import com.oracle.truffle.compiler.TruffleCompilerListener.CompilationResultInfo;
+import com.oracle.truffle.compiler.TruffleCompilerListener.GraphInfo;
 
 final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerListener {
     private final ClientHandle<IsolatedEventContext> contextHandle;
@@ -54,17 +53,17 @@ final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerList
     }
 
     @Override
-    public void onGraalTierFinished(CompilableTruffleAST compilable, GraphInfo graph) {
+    public void onGraalTierFinished(TruffleCompilable compilable, GraphInfo graph) {
         onGraalTierFinished0(IsolatedCompileContext.get().getClient(), contextHandle, IsolatedCompileContext.get().hand(graph), graph.getNodeCount());
     }
 
     @Override
-    public void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleInliningData inliningPlan, GraphInfo graph) {
+    public void onTruffleTierFinished(TruffleCompilable compilable, TruffleCompilationTask task, GraphInfo graph) {
         onTruffleTierFinished0(IsolatedCompileContext.get().getClient(), contextHandle, IsolatedCompileContext.get().hand(graph), graph.getNodeCount());
     }
 
     @Override
-    public void onSuccess(CompilableTruffleAST compilable, TruffleInliningData inliningPlan, GraphInfo graph, CompilationResultInfo info, int tier) {
+    public void onSuccess(TruffleCompilable compilable, TruffleCompilationTask task, GraphInfo graph, CompilationResultInfo info, int tier) {
         IsolatedCompilationResultData data = StackValue.get(IsolatedCompilationResultData.class);
         data.setOriginalObjectHandle(IsolatedCompileContext.get().hand(info));
         data.setTargetCodeSize(info.getTargetCodeSize());
@@ -77,14 +76,14 @@ final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerList
     }
 
     @Override
-    public void onFailure(CompilableTruffleAST compilable, String reason, boolean bailout, boolean permanentBailout, int tier) {
+    public void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier) {
         try (CCharPointerHolder reasonCstr = CTypeConversion.toCString(reason)) {
             onFailure0(IsolatedCompileContext.get().getClient(), contextHandle, reasonCstr.get(), bailout, permanentBailout, tier);
         }
     }
 
     @Override
-    public void onCompilationRetry(CompilableTruffleAST compilable, TruffleCompilationTask task) {
+    public void onCompilationRetry(TruffleCompilable compilable, TruffleCompilationTask task) {
         onCompilationRetry0(IsolatedCompileContext.get().getClient(), contextHandle, IsolatedCompileClient.get().hand(task));
     }
 
@@ -99,7 +98,7 @@ final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerList
     private static void onTruffleTierFinished0(@SuppressWarnings("unused") ClientIsolateThread client,
                     ClientHandle<IsolatedEventContext> contextHandle, CompilerHandle<GraphInfo> graphInfo, int nodeCount) {
         IsolatedEventContext context = IsolatedCompileClient.get().unhand(contextHandle);
-        context.listener.onTruffleTierFinished(context.compilable, context.task.inliningData(), new IsolatedGraphInfo(graphInfo, nodeCount));
+        context.listener.onTruffleTierFinished(context.compilable, context.task, new IsolatedGraphInfo(graphInfo, nodeCount));
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
@@ -107,7 +106,7 @@ final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerList
                     CompilerHandle<GraphInfo> graphInfo, int nodeCount, IsolatedCompilationResultData resultData, int tier) {
 
         IsolatedEventContext context = IsolatedCompileClient.get().unhand(contextHandle);
-        context.listener.onSuccess(context.compilable, context.task.inliningData(), new IsolatedGraphInfo(graphInfo, nodeCount), new IsolatedCompilationResultInfo(resultData), tier);
+        context.listener.onSuccess(context.compilable, context.task, new IsolatedGraphInfo(graphInfo, nodeCount), new IsolatedCompilationResultInfo(resultData), tier);
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
@@ -128,10 +127,10 @@ final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerList
 /** Objects commonly needed for events, gathered for quick access in the client isolate. */
 final class IsolatedEventContext {
     final TruffleCompilerListener listener;
-    final CompilableTruffleAST compilable;
+    final TruffleCompilable compilable;
     final TruffleCompilationTask task;
 
-    IsolatedEventContext(TruffleCompilerListener listener, CompilableTruffleAST compilable, TruffleCompilationTask task) {
+    IsolatedEventContext(TruffleCompilerListener listener, TruffleCompilable compilable, TruffleCompilationTask task) {
         this.listener = listener;
         this.compilable = compilable;
         this.task = task;

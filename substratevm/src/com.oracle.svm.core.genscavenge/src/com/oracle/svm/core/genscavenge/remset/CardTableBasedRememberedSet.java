@@ -26,12 +26,13 @@ package com.oracle.svm.core.genscavenge.remset;
 
 import java.util.List;
 
-import org.graalvm.compiler.nodes.gc.BarrierSet;
+import jdk.graal.compiler.nodes.gc.BarrierSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
@@ -42,6 +43,7 @@ import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.graal.SubstrateCardTableBarrierSet;
+import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
 
@@ -86,33 +88,39 @@ public class CardTableBasedRememberedSet implements RememberedSet {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void enableRememberedSetForChunk(AlignedHeader chunk) {
         AlignedChunkRememberedSet.enableRememberedSet(chunk);
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void enableRememberedSetForChunk(UnalignedHeader chunk) {
         UnalignedChunkRememberedSet.enableRememberedSet(chunk);
     }
 
     @Override
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void enableRememberedSetForObject(AlignedHeader chunk, Object obj) {
         AlignedChunkRememberedSet.enableRememberedSetForObject(chunk, obj);
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void clearRememberedSet(AlignedHeader chunk) {
         AlignedChunkRememberedSet.clearRememberedSet(chunk);
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void clearRememberedSet(UnalignedHeader chunk) {
         UnalignedChunkRememberedSet.clearRememberedSet(chunk);
     }
 
     @Override
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean hasRememberedSet(UnsignedWord header) {
         return ObjectHeaderImpl.hasRememberedSet(header);
     }
@@ -131,6 +139,7 @@ public class CardTableBasedRememberedSet implements RememberedSet {
 
     @Override
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void dirtyCardIfNecessary(Object holderObject, Object object) {
         if (holderObject == null || object == null) {
             return;
@@ -151,7 +160,7 @@ public class CardTableBasedRememberedSet implements RememberedSet {
             return;
         }
 
-        UnsignedWord objectHeader = ObjectHeaderImpl.readHeaderFromObject(holderObject);
+        UnsignedWord objectHeader = ObjectHeader.readHeaderFromObject(holderObject);
         if (hasRememberedSet(objectHeader)) {
             if (ObjectHeaderImpl.isAlignedObject(holderObject)) {
                 AlignedChunkRememberedSet.dirtyCardForObject(holderObject, false);
@@ -163,16 +172,19 @@ public class CardTableBasedRememberedSet implements RememberedSet {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean) {
         AlignedChunkRememberedSet.walkDirtyObjects(chunk, visitor, clean);
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void walkDirtyObjects(UnalignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean) {
         UnalignedChunkRememberedSet.walkDirtyObjects(chunk, visitor, clean);
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void walkDirtyObjects(Space space, GreyToBlackObjectVisitor visitor, boolean clean) {
         AlignedHeader aChunk = space.getFirstAlignedHeapChunk();
         while (aChunk.isNonNull()) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -99,8 +99,14 @@ static TruffleObject getClosureObject(TruffleEnv *tenv, void *closure) {
     return (TruffleObject) global;
 }
 
-const struct __TruffleNativeAPI truffleNativeAPI = { getTruffleContext, newObjectRef,  releaseObjectRef,  releaseAndReturn,
-                                                     isSameObject,      newClosureRef, releaseClosureRef, getClosureObject };
+static bool exceptionCheck(TruffleEnv *tenv) {
+    struct __TruffleEnvInternal *ienv = (struct __TruffleEnvInternal *) tenv;
+    JNIEnv *env = ienv->jniEnv;
+    return (*env)->ExceptionCheck(env);
+}
+
+const struct __TruffleNativeAPI truffleNativeAPI = { getTruffleContext, newObjectRef,      releaseObjectRef, releaseAndReturn, isSameObject,
+                                                     newClosureRef,     releaseClosureRef, getClosureObject, exceptionCheck };
 
 static TruffleEnv *lookupTruffleEnvOrError(int status, JNIEnv *env, struct __TruffleContextInternal *ctx) {
     if (status == JNI_OK) {

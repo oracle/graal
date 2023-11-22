@@ -122,13 +122,6 @@ public final class TruffleOptions {
     }
 
     static {
-        /*
-         * Ensure TruffleRuntime gets initialized before TruffleOptions are set. This allows a
-         * specific TruffleRuntime to effect the system properties that are used to determine the
-         * values for the TruffleOptions below.
-         */
-        Truffle.getRuntime();
-
         class GetOptions implements PrivilegedAction<Void> {
             boolean aot;
             boolean traceRewrites;

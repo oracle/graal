@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,8 @@ import static com.oracle.svm.common.meta.MultiMethod.ORIGINAL_METHOD;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -36,13 +38,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
@@ -64,7 +67,6 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.code.CompilationInfo;
 import com.oracle.svm.hosted.code.FactoryMethod;
@@ -435,9 +437,9 @@ public class HostedUniverse implements Universe {
     }
 
     @Override
-    public JavaConstant lookup(JavaConstant constant) {
-        // There should not be any conversion necessary for constants.
-        return constant;
+    public JavaConstant lookup(JavaConstant c) {
+        VMError.guarantee(c == null || c.isNull() || c.getJavaKind().isPrimitive() || c instanceof ImageHeapConstant);
+        return c;
     }
 
     public Collection<HostedType> getTypes() {
@@ -456,10 +458,6 @@ public class HostedUniverse implements Universe {
         return bb;
     }
 
-    public AnalysisConstantReflectionProvider getConstantReflectionProvider() {
-        return (AnalysisConstantReflectionProvider) bb.getConstantReflectionProvider();
-    }
-
     @Override
     public ResolvedJavaMethod resolveSubstitution(ResolvedJavaMethod method) {
         return method;
@@ -474,10 +472,50 @@ public class HostedUniverse implements Universe {
 
     private static final class TypeComparator implements Comparator<HostedType> {
 
+        private static Optional<HostedType[]> proxyType(HostedType type) {
+            HostedType baseType = type.getBaseType();
+            boolean isProxy = Proxy.isProxyClass(baseType.getJavaClass());
+            assert isProxy == baseType.toJavaName(false).startsWith("$Proxy");
+            if (isProxy) {
+                return Optional.of(baseType.getInterfaces());
+            } else {
+                return Optional.empty();
+            }
+        }
+
         @Override
         public int compare(HostedType o1, HostedType o2) {
             if (o1.equals(o2)) {
                 return 0;
+            }
+
+            /*
+             * Due to the unstable names of proxies (the name will be $ProxyN where N is an
+             * undeterministic Integer), when comparing proxies, we sort based on the interfaces the
+             * proxy implements. According to {@code Proxy.getProxyClass}, the proxy class is based
+             * on the interfaces the proxy implements. Note the proxy class is also tied to the
+             * order of the interfaces implemented, so {@code getInterfaces} should not be sorted.
+             */
+            Optional<HostedType[]> o1ProxyType = proxyType(o1);
+            Optional<HostedType[]> o2ProxyType = proxyType(o2);
+            if (o1ProxyType.isPresent() || o2ProxyType.isPresent()) {
+                HostedType[] array1 = o1ProxyType.orElseGet(() -> new HostedType[]{o1});
+                HostedType[] array2 = o2ProxyType.orElseGet(() -> new HostedType[]{o2});
+                int result = Arrays.compare(array1, array2, HostedUniverse.TYPE_COMPARATOR);
+                if (result == 0) {
+                    // proxy can match the interface it implements
+                    result = Boolean.compare(o1ProxyType.isPresent(), o2ProxyType.isPresent());
+                }
+                if (result == 0) {
+                    /*
+                     * Can be same proxy with different array dimension, such as $ProxyXX,
+                     * $ProxyXX[], and $ProxyXX[][].
+                     */
+                    assert o1.isArray() || o2.isArray();
+                    result = Integer.compare(o1.getArrayDimension(), o2.getArrayDimension());
+                }
+                VMError.guarantee(result != 0, "HostedType proxies not distinguishable: %s, %s", o1, o2);
+                return result;
             }
 
             if (!o1.getClass().equals(o2.getClass())) {
@@ -522,7 +560,7 @@ public class HostedUniverse implements Universe {
             } else if (type.getJavaKind() != JavaKind.Object) {
                 return 1;
             } else {
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(type); // ExcludeFromJacocoGeneratedReport
             }
         }
     }

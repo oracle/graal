@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,77 +28,224 @@ package org.graalvm.profdiff.core;
  * An output writer that manages indentation and optional string prefixes that are prepended to each
  * written line. The writer holds the current {@link OptionValues} for convenience.
  */
-public interface Writer {
+public abstract class Writer {
     /**
-     * Write a string to the output with the current indentation level without a linefeed at the
+     * The current level of indentation.
+     */
+    private int indentLevel;
+
+    /**
+     * Whether the indentation string has already been written for the current line.
+     */
+    private boolean indentWritten;
+
+    /**
+     * The prefix to be written in front of each line after the indentation.
+     */
+    private String prefix;
+
+    /**
+     * The current option values.
+     */
+    private final OptionValues optionValues;
+
+    private Writer(OptionValues optionValues) {
+        this.indentLevel = 0;
+        this.indentWritten = false;
+        this.prefix = null;
+        this.optionValues = optionValues;
+    }
+
+    /**
+     * Writes the given string to the output.
+     *
+     * @param output the string to be written
+     */
+    protected abstract void writeImpl(String output);
+
+    /**
+     * Writes a line separator to the output.
+     */
+    protected abstract void writelnImpl();
+
+    /**
+     * Creates and returns a writer that writes to the standard output. Uses the system-dependent
+     * line separator.
+     *
+     * @param optionValues the current option values
+     * @return a writer to the standard output
+     */
+    public static Writer standardOutput(OptionValues optionValues) {
+        return new Writer(optionValues) {
+            @Override
+            protected void writeImpl(String output) {
+                System.out.print(output);
+            }
+
+            @Override
+            protected void writelnImpl() {
+                System.out.println();
+            }
+        };
+    }
+
+    /**
+     * A writer that appends all written output to a string builder. Uses {@code '\n'} as the line
+     * separator to match the behavior of Java text blocks.
+     */
+    public static final class StringBuilderWriter extends Writer {
+
+        private final StringBuilder stringBuilder;
+
+        public StringBuilderWriter(OptionValues optionValues) {
+            super(optionValues);
+            this.stringBuilder = new StringBuilder();
+        }
+
+        @Override
+        protected void writeImpl(String output) {
+            stringBuilder.append(output);
+        }
+
+        @Override
+        protected void writelnImpl() {
+            stringBuilder.append('\n');
+        }
+
+        /**
+         * Returns all written output as a string.
+         */
+        public String getOutput() {
+            return stringBuilder.toString();
+        }
+    }
+
+    /**
+     * Creates and returns a writer that appends all output to a string builder.
+     *
+     * @param optionValues the current option values
+     * @return a writer that writes to a string builder
+     */
+    public static StringBuilderWriter stringBuilder(OptionValues optionValues) {
+        return new StringBuilderWriter(optionValues);
+    }
+
+    /**
+     * Write a string to the output with the current indentation level without a line separator at
+     * the end.
+     *
+     * @param output the string to be written
+     */
+    public void write(String output) {
+        printIndentIfNeeded();
+        writeImpl(output);
+    }
+
+    /**
+     * Writes a string to the output with the current indentation level with a line separator at the
      * end.
      *
      * @param output the string to be written
      */
-    void write(String output);
+    public void writeln(String output) {
+        printIndentIfNeeded();
+        writeImpl(output);
+        writeln();
+    }
 
     /**
-     * Writes a string to the output with the current indentation level with a linefeed at the end.
-     *
-     * @param output the string to be written
+     * Writes a line separator to the output.
      */
-    void writeln(String output);
-
-    /**
-     * Writes a linefeed to the output.
-     */
-    void writeln();
+    public void writeln() {
+        writelnImpl();
+        indentWritten = false;
+    }
 
     /**
      * Gets the current indentation level.
      */
-    int getIndentLevel();
+    public int getIndentLevel() {
+        return indentLevel;
+    }
 
     /**
      * Sets the current indentation level to the provided value.
      *
      * @param newIndentLevel the new indentation level
      */
-    void setIndentLevel(int newIndentLevel);
+    public void setIndentLevel(int newIndentLevel) {
+        assert newIndentLevel >= 0 : "the indent level must be non-negative";
+        indentLevel = newIndentLevel;
+    }
 
     /**
      * Increases the current indentation level by one.
      */
-    void increaseIndent();
+    public void increaseIndent() {
+        ++indentLevel;
+    }
 
     /**
      * Increases the indentation level by a non-negative delta.
      *
      * @param delta the values that is added to the current indentation level
      */
-    void increaseIndent(int delta);
+    public void increaseIndent(int delta) {
+        assert delta >= 0;
+        indentLevel += delta;
+    }
 
     /**
      * Decreases the current indentation level by one.
      */
-    void decreaseIndent();
+    public void decreaseIndent() {
+        assert indentLevel > 0;
+        --indentLevel;
+    }
 
     /**
      * Decreases the indentation level by a non-negative delta.
      *
      * @param delta the value that is subtracted from the current indentation level
      */
-    void decreaseIndent(int delta);
+    public void decreaseIndent(int delta) {
+        assert delta >= 0 && indentLevel - delta >= 0;
+        indentLevel -= delta;
+    }
 
     /**
      * Sets a string prefix that is prepended to each written line after the indentation.
      *
      * @param prefix the string prefix that will be prepended to each written line
      */
-    void setPrefixAfterIndent(String prefix);
+    public void setPrefixAfterIndent(String prefix) {
+        this.prefix = prefix;
+    }
 
     /**
      * Clears the set prefix that is prepended to each written line after the indentation.
      */
-    void clearPrefixAfterIndent();
+    public void clearPrefixAfterIndent() {
+        prefix = null;
+    }
 
     /**
      * Gets the current option values.
      */
-    OptionValues getOptionValues();
+    public OptionValues getOptionValues() {
+        return optionValues;
+    }
+
+    private void printIndentIfNeeded() {
+        if (indentWritten) {
+            return;
+        }
+        for (int i = 0; i < indentLevel; ++i) {
+            writeImpl("    ");
+        }
+        if (prefix != null) {
+            writeImpl(prefix);
+        }
+        indentWritten = true;
+    }
 }

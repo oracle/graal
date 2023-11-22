@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -48,7 +49,7 @@ final class DarwinVMSemaphoreFeature implements InternalFeature {
     private final ClassInstanceReplacer<VMSemaphore, VMSemaphore> semaphoreReplacer = new ClassInstanceReplacer<>(VMSemaphore.class) {
         @Override
         protected VMSemaphore createReplacement(VMSemaphore source) {
-            return new DarwinVMSemaphore();
+            return new DarwinVMSemaphore(source.getName());
         }
     };
 
@@ -73,8 +74,7 @@ final class DarwinVMSemaphoreFeature implements InternalFeature {
 final class DarwinVMSemaphoreSupport extends PosixVMSemaphoreSupport {
 
     /** All semaphores, so that we can initialize them at run time when the VM starts. */
-    @UnknownObjectField(types = DarwinVMSemaphore[].class)//
-    DarwinVMSemaphore[] semaphores;
+    @UnknownObjectField(availability = ReadyForCompilation.class) DarwinVMSemaphore[] semaphores;
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
@@ -105,7 +105,8 @@ final class DarwinVMSemaphoreSupport extends PosixVMSemaphoreSupport {
 final class DarwinVMSemaphore extends VMSemaphore {
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    DarwinVMSemaphore() {
+    DarwinVMSemaphore(String name) {
+        super(name);
     }
 
     @Override

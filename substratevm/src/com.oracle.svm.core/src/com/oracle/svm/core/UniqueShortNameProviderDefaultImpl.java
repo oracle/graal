@@ -24,15 +24,16 @@
  */
 package com.oracle.svm.core;
 
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Signature;
-
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.function.BooleanSupplier;
+
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
 
 /**
  * Default implementation for unique method and field short names which concatenates the
@@ -44,20 +45,7 @@ import java.util.function.BooleanSupplier;
 public class UniqueShortNameProviderDefaultImpl implements UniqueShortNameProvider {
     @Override
     public String uniqueShortName(ClassLoader loader, ResolvedJavaType declaringClass, String methodName, Signature methodSignature, boolean isConstructor) {
-        String loaderName = SubstrateUtil.classLoaderNameAndId(loader);
-        StringBuilder sb = new StringBuilder(loaderName);
-        sb.append(declaringClass.toClassName()).append(".").append(methodName).append("(");
-        for (int i = 0; i < methodSignature.getParameterCount(false); i++) {
-            sb.append(methodSignature.getParameterType(i, null).toClassName()).append(",");
-        }
-        sb.append(')');
-        if (!isConstructor) {
-            sb.append(methodSignature.getReturnType(null).toClassName());
-        }
-
-        return SubstrateUtil.stripPackage(declaringClass.toJavaName()) + "_" +
-                        (isConstructor ? "constructor" : methodName) + "_" +
-                        SubstrateUtil.digest(sb.toString());
+        return SubstrateUtil.uniqueShortName(SubstrateUtil.classLoaderNameAndId(loader), declaringClass, methodName, methodSignature, isConstructor);
     }
 
     @Override
@@ -93,7 +81,7 @@ public class UniqueShortNameProviderDefaultImpl implements UniqueShortNameProvid
     public static class UseDefault implements BooleanSupplier {
 
         public static boolean useDefaultProvider() {
-            return !(OS.LINUX.isCurrent() && SubstrateOptions.GenerateDebugInfo.getValue() > 0 && !SubstrateOptions.UseOldDebugInfo.getValue());
+            return !OS.LINUX.isCurrent() || !SubstrateOptions.useDebugInfoGeneration();
         }
 
         @Override

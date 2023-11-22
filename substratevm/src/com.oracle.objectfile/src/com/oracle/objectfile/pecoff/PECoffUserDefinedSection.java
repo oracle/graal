@@ -121,7 +121,7 @@ public class PECoffUserDefinedSection extends PECoffSection implements ObjectFil
     public Element getOrCreateRelocationElement(long addend) {
         PECoffSymtab syms = (PECoffSymtab) getOwner().elementForName(".symtab");
         if (syms == null) {
-            throw new IllegalStateException("cannot create a relocation section without corresponding symtab");
+            throw new IllegalStateException("Cannot create a relocation section without corresponding symtab");
         }
 
         if (rel == null) {
@@ -185,6 +185,8 @@ public class PECoffUserDefinedSection extends PECoffSection implements ObjectFil
      * @param msg warning message that is printed.
      */
     private static void warn(String msg) {
-        System.err.println("Warning: " + msg);
+        // Checkstyle: Allow raw info or warning printing - begin
+        System.out.println("Warning: " + msg);
+        // Checkstyle: Allow raw info or warning printing - end
     }
 }

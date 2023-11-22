@@ -29,15 +29,13 @@ package com.oracle.svm.test.jfr.utils.poolparsers;
 import java.io.IOException;
 
 import com.oracle.svm.core.jfr.JfrType;
+import com.oracle.svm.test.jfr.utils.JfrFileParser;
 import com.oracle.svm.test.jfr.utils.RecordingInput;
 
 public class ThreadGroupConstantPoolParser extends AbstractRepositoryParser {
-
-    @Override
-    public void reset() {
+    public ThreadGroupConstantPoolParser(JfrFileParser parser) {
         /* 0 is the null thread group, 1 is the virtual thread group. */
-        foundIds.add(0L);
-        foundIds.add(1L);
+        super(parser, 0L, 1L);
     }
 
     @Override

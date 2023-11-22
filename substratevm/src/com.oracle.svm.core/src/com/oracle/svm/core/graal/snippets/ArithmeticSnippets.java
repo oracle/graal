@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,37 +24,37 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.DeoptimizeNode;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.UnreachableNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
-import org.graalvm.compiler.nodes.calc.SignedDivNode;
-import org.graalvm.compiler.nodes.calc.SignedRemNode;
-import org.graalvm.compiler.nodes.calc.UnsignedDivNode;
-import org.graalvm.compiler.nodes.calc.UnsignedRemNode;
-import org.graalvm.compiler.nodes.extended.GuardingNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.SnippetTemplate;
-import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
-import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
-import org.graalvm.compiler.replacements.Snippets;
+import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
+import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.DeoptimizeNode;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.UnreachableNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.IntegerDivRemNode;
+import jdk.graal.compiler.nodes.calc.SignedDivNode;
+import jdk.graal.compiler.nodes.calc.SignedRemNode;
+import jdk.graal.compiler.nodes.calc.UnsignedDivNode;
+import jdk.graal.compiler.nodes.calc.UnsignedRemNode;
+import jdk.graal.compiler.nodes.extended.GuardingNode;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.SnippetTemplate;
+import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
+import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
+import jdk.graal.compiler.replacements.Snippets;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
@@ -209,6 +209,7 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
     private final SnippetInfo uirem;
     private final SnippetInfo ulrem;
 
+    @SuppressWarnings("this-escape")
     protected ArithmeticSnippets(OptionValues options, Providers providers,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean divRemNeedsSignedBoundsCheck) {
         super(options, providers);
@@ -257,7 +258,7 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
             } else if (node instanceof UnsignedRemNode) {
                 snippet = node.getStackKind() == JavaKind.Int ? uirem : ulrem;
             } else {
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedInput(node); // ExcludeFromJacocoGeneratedReport
             }
             Arguments args = new Arguments(snippet, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("x", node.getX());

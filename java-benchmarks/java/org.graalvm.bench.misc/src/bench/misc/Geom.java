@@ -30,8 +30,7 @@ import java.util.Random;
 
 @State(Scope.Benchmark)
 public class Geom {
-    @Param("1000")
-    static int geomCnt;
+    @Param("1000") static int geomCnt;
     private static Geobject[] samples;
 
     @Setup

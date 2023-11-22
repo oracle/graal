@@ -24,34 +24,33 @@
  */
 package com.oracle.svm.core;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import java.util.Objects;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.phases.util.Providers;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.calc.FloatingNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import jdk.graal.compiler.nodes.spi.Lowerable;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
 
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.meta.SharedField;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -159,8 +158,8 @@ public final class StaticFieldsSupport {
                 return;
             }
 
-            JavaConstant constant = SubstrateObjectConstant.forObject(primitive ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields());
-            assert constant.isNonNull();
+            JavaConstant constant = tool.getSnippetReflection().forObject(primitive ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields());
+            assert constant.isNonNull() : constant;
             replaceAndDelete(ConstantNode.forConstant(constant, tool.getMetaAccess(), graph()));
         }
     }

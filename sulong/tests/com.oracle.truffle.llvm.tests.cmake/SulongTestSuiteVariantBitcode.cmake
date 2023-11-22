@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2023, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -63,8 +63,7 @@ macro(setupOptions)
 
     # set optimization levels
     set(OPT_LEVELS "O0;O1;O2;O3;Os")
-    set(MISC_OPTS "-functionattrs;-instcombine;-always-inline;-jump-threading;-simplifycfg;-mem2reg")
-    set(MEM2REG "-mem2reg")
+    set(MEM2REG "-passes=mem2reg")
 
     if(SULONG_CURRENT_OPT_LEVEL IN_LIST OPT_LEVELS)
         string(APPEND CMAKE_C_FLAGS " -${SULONG_CURRENT_OPT_LEVEL}")
@@ -81,9 +80,7 @@ macro(setupOptions)
 
     # set post-opt
     if(SULONG_CURRENT_POST_OPT)
-        if(SULONG_CURRENT_POST_OPT STREQUAL "MISC_OPTS")
-            set(TARGET_OPT_FLAGS ${MISC_OPTS})
-        elseif(SULONG_CURRENT_POST_OPT STREQUAL "MEM2REG")
+        if(SULONG_CURRENT_POST_OPT STREQUAL "MEM2REG")
             set(TARGET_OPT_FLAGS ${MEM2REG})
         else()
             message(FATAL_ERROR "Unknown opt sub-variant ${SULONG_CURRENT_POST_OPT}")

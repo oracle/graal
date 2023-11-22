@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -60,6 +60,11 @@ from argparse import ArgumentParser
 
 from mx_javamodules import as_java_module, JavaModuleDescriptor
 
+# This can be incremented if a new GraalVM release needs to be built on exactly the same JDK as a previous GraalVM release.
+# It will be appended after a dot to the JDK build number an appear in the java.vendor.version.
+# This should be brought back down to 1 when the JDK version is updated (feature, interim, patch, or even build, see java.lang.Runtime.Version).
+release_build = '1'
+
 _suite = mx.suite('sdk')
 _graalvm_components = dict()  # By short_name
 _graalvm_components_by_name = dict()
@@ -72,7 +77,6 @@ _graalvm_hostvm_configs = [
     ('jvm-3-compiler-threads', [], ['--jvm', '--engine.CompilerThreads=3'], 50),
     ('native-3-compiler-threads', [], ['--native', '--engine.CompilerThreads=3'], 100)
 ]
-_known_vms = set()
 _base_jdk = None
 
 
@@ -101,6 +105,7 @@ class AbstractNativeImageConfig(object, metaclass=ABCMeta):
         self.build_time = build_time
         self.build_args_enterprise = build_args_enterprise or []
         self.relative_home_paths = {}
+        self.relative_extracted_lib_paths = {}
 
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.build_args, (list, types.GeneratorType))
@@ -137,6 +142,12 @@ class AbstractNativeImageConfig(object, metaclass=ABCMeta):
                 language, self.relative_home_paths[language], path, self.destination))
         self.relative_home_paths[language] = path
 
+    def add_relative_extracted_lib_path(self, name, path):
+        if name in self.relative_extracted_lib_paths and self.relative_extracted_lib_paths[name] != path:
+            raise Exception('the relative extracted lib path of {} is already set to {} and cannot also be set to {} for {}'.format(
+                name, self.relative_extracted_lib_paths[name], path, self.destination))
+        self.relative_extracted_lib_paths[name] = path
+
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, is_main_launcher=True,
                  default_symlinks=True, is_sdk_launcher=False, custom_launcher_script=None, extra_jvm_args=None,
@@ -149,6 +160,7 @@ class LauncherConfig(AbstractNativeImageConfig):
         :param str custom_launcher_script: Custom launcher script, to be used when not compiled as a native image
         :param list[str] | None extra_jvm_args
         :param str main_module: Specifies the main module. Mandatory if use_modules is not None
+        :param bool link_at_build_time
         :param list[str] | None option_vars
         """
         super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, use_modules=use_modules, home_finder=home_finder, **kwargs)
@@ -192,10 +204,11 @@ class LibraryConfig(AbstractNativeImageConfig):
 
 
 class LanguageLibraryConfig(LibraryConfig):
-    def __init__(self, jar_distributions, build_args, language, main_class=None, is_sdk_launcher=True, launchers=None, option_vars=None, headers=False, **kwargs):
+    def __init__(self, jar_distributions, build_args, language, main_class=None, is_sdk_launcher=True, launchers=None, option_vars=None, default_vm_args=None, headers=False, set_default_relative_home_path=True, isolate_library_layout_distribution=None, **kwargs):
         """
         :param str language
         :param str main_class
+        :param isolate_library_layout_distribution dict
         """
         kwargs.pop('destination', None)
         super(LanguageLibraryConfig, self).__init__('lib/<lib:' + language + 'vm>', jar_distributions, build_args, home_finder=True, headers=headers, **kwargs)
@@ -208,9 +221,13 @@ class LanguageLibraryConfig(LibraryConfig):
         self.relative_home_paths = {}
         self.launchers = [mx_subst.path_substitutions.substitute(l) for l in launchers] if launchers else []
         self.option_vars = [] if option_vars is None else option_vars
+        self.default_vm_args = [] if default_vm_args is None else default_vm_args
+        assert all(arg.startswith("--vm.") for arg in self.default_vm_args)
 
-        # Ensure the language launcher can always find the language home
-        self.add_relative_home_path(language, relpath('.', dirname(self.destination)))
+        if set_default_relative_home_path:
+            # Ensure the language launcher can always find the language home
+            self.add_relative_home_path(language, relpath('.', dirname(self.destination)))
+        self.isolate_library_layout_distribution = isolate_library_layout_distribution
 
 class GraalVmComponent(object):
     def __init__(self,
@@ -244,7 +261,9 @@ class GraalVmComponent(object):
                  supported=None,
                  early_adopter=False,
                  stability=None,
-                 extra_installable_qualifiers=None):
+                 extra_installable_qualifiers=None,
+                 has_relative_home=True,
+                 jvm_configs=None):
         """
         :param suite mx.Suite: the suite this component belongs to
         :type name: str
@@ -256,6 +275,11 @@ class GraalVmComponent(object):
         :param list[str | (str, str)] provided_executables: executables to be placed in the appropriate `bin` directory.
             In the list, strings represent a path inside the component (e.g., inside a support distribution).
             Tuples `(dist, exec)` represent an executable to be copied found in `dist`, at path `exec` (the same basename will be used).
+        :param jvm_configs: list of dicts that describe changes to the `lib/jvm.cfg` file. Example:
+            {
+                'configs': ['-truffle KNOWN'],
+                'priority': -1,  # 0 is invalid; < 0 prepends to the default configs; > 0 appends
+            }
         :type license_files: list[str]
         :type third_party_license_files: list[str]
         :type polyglot_lib_build_args: list[str]
@@ -278,6 +302,8 @@ class GraalVmComponent(object):
         :type post_install_msg: str
         :type stability: str | None
         :type extra_installable_qualifiers: list[str] | None
+        :type has_relative_home: bool
+        :type jvm_configs: list[dict] or None
         """
         if dependencies is None:
             mx.logv('Component {} does not specify dependencies'.format(name))
@@ -313,6 +339,8 @@ class GraalVmComponent(object):
         self.post_install_msg = post_install_msg
         self.installable_id = installable_id or self.dir_name
         self.extra_installable_qualifiers = extra_installable_qualifiers or []
+        self.has_relative_home = has_relative_home
+        self.jvm_configs = jvm_configs or []
 
         if supported is not None or early_adopter:
             if stability is not None:
@@ -365,20 +393,26 @@ class GraalVmComponent(object):
 
 class GraalVmTruffleComponent(GraalVmComponent):
     def __init__(self, suite, name, short_name, license_files, third_party_license_files, truffle_jars,
-                 include_in_polyglot=None, standalone_dir_name=None, standalone_dependencies=None, **kwargs):
+                 include_in_polyglot=None, standalone_dir_name=None, standalone_dir_name_enterprise=None,
+                 standalone_dependencies=None, standalone_dependencies_enterprise=None, **kwargs):
         """
         :param list[str] truffle_jars: JAR distributions that should be on the classpath for the language implementation.
         :param bool include_in_polyglot: whether this component is included in `--language:all` or `--tool:all` and should be part of polyglot images (deprecated).
         :param str standalone_dir_name: name for the standalone archive and directory inside
-        :param dict[str, (str, list[str])] standalone_dependencies: dict of dependent components to include in the standalone in the form {component name: (relative path, excluded_paths)}.
+        :param str standalone_dir_name_enterprise: like `standalone_dir_name`, but for the EE standalone. Defaults to `standalone_dir_name` if not set.
+        :param dict[str, (str, list[str])] standalone_dependencies: dict of dependent components to include in the CE standalone in the form {component name: (relative path, excluded_paths)}.
+        :param dict[str, (str, list[str])] standalone_dependencies_enterprise: like `standalone_dependencies`, but for the EE standalone. Defaults to `standalone_dependencies` if not set.
         """
         super(GraalVmTruffleComponent, self).__init__(suite, name, short_name, license_files, third_party_license_files,
                                                       jar_distributions=truffle_jars, **kwargs)
         if include_in_polyglot is not None:
             mx.warn('"include_in_polyglot" is deprecated. Please drop all uses.')
         self.standalone_dir_name = standalone_dir_name or '{}-<version>-<graalvm_os>-<arch>'.format(self.dir_name)
+        self.standalone_dir_name_enterprise = standalone_dir_name_enterprise or self.standalone_dir_name
         self.standalone_dependencies = standalone_dependencies or {}
+        self.standalone_dependencies_enterprise = standalone_dependencies_enterprise or self.standalone_dependencies
         assert isinstance(self.standalone_dependencies, dict)
+        assert isinstance(self.standalone_dependencies_enterprise, dict)
 
 
 class GraalVmLanguage(GraalVmTruffleComponent):
@@ -412,6 +446,8 @@ class GraalVmJdkComponent(GraalVmComponent):
 class GraalVmJreComponent(GraalVmComponent):
     pass
 
+class GraalVmTruffleLibrary(GraalVmJreComponent):
+    pass
 
 class GraalVmJvmciComponent(GraalVmJreComponent):
     def __init__(self, suite, name, short_name, license_files, third_party_license_files, jvmci_jars, **kwargs):
@@ -510,12 +546,6 @@ def register_vm_config(config_name, components, suite, dist_name=None, env_file=
 
 def get_graalvm_hostvm_configs():
     return _graalvm_hostvm_configs
-
-
-def register_known_vm(name):
-    if name in _known_vms:
-        raise mx.abort("VM '{}' already registered".format(name))
-    _known_vms.add(name)
 
 
 def base_jdk():
@@ -654,11 +684,21 @@ def _patch_default_security_policy(build_dir, jmods_dir, dst_jdk_dir):
         grant codeBase "jrt:/org.graalvm.truffle" {
             permission java.security.AllPermission;
         };
-
         grant codeBase "jrt:/org.graalvm.sdk" {
             permission java.security.AllPermission;
         };
-
+        grant codeBase "jrt:/org.graalvm.truffle.runtime" {
+            permission java.security.AllPermission;
+        };
+        grant codeBase "jrt:/org.graalvm.truffle.compiler" {
+            permission java.security.AllPermission;
+        };
+        grant codeBase "jrt:/org.graalvm.nativebridge" {
+            permission java.security.AllPermission;
+        };
+        grant codeBase "jrt:/org.graalvm.jniutils" {
+            permission java.security.AllPermission;
+        };
         grant codeBase "jrt:/org.graalvm.locator" {
           permission java.io.FilePermission "<<ALL FILES>>", "read";
           permission java.util.PropertyPermission "*", "read,write";
@@ -751,14 +791,28 @@ def _get_image_root_modules(root_module_names, module_names, jdk_module_names, u
         else:
             return all_names
 
-def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modules):
+def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modules, default_to_jvmci=False):
     """
     Gets the argument for the jlink ``--add-options`` flag.
 
+    :param bool | str default_to_jvmci: default to using JVMCI as JIT, without looking at the included modules
+                    When set to 'lib' ensure the JVMCI compiler library is used.
     :return list: the list of VM options to cook into the image
     """
     vm_options = []
     if jlink_supports_8232080(jdk):
+        if mx.get_env('CONTINUOUS_INTEGRATION', None) == 'true':
+            is_gate = mx.get_env('BUILD_TARGET', None) == 'gate'
+            is_bench = 'bench-' in mx.get_env('BUILD_NAME', '')
+            if is_gate or is_bench:
+                # For gate and benchmark jobs, we want to know about each compilation failure
+                # but only exit the VM on systemic compilation failure for gate jobs.
+                vm_options.append('-Dgraal.CompilationFailureAction=Diagnose')
+                mx.log('Adding -Dgraal.CompilationFailureAction=Diagnose VM option to image')
+                if is_gate:
+                    mx.log('Adding -Dgraal.SystemicCompilationFailureRate=-1 VM option to image')
+                    vm_options.append('-Dgraal.SystemicCompilationFailureRate=-1')
+
         if use_upgrade_module_path or _jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy(jdk):
             vm_options.append('-XX:ThreadPriorityPolicy=1')
         else:
@@ -766,11 +820,13 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
 
         if jdk_supports_enablejvmciproduct(jdk):
             non_synthetic_modules = [m.name for m in modules if m not in synthetic_modules]
-            if 'jdk.internal.vm.compiler' in non_synthetic_modules:
+            if default_to_jvmci or 'jdk.graal.compiler' in non_synthetic_modules:
                 threads = get_JVMCIThreadsPerNativeLibraryRuntime(jdk)
                 vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct'])
                 if threads is not None and threads != 1:
                     vm_options.append('-XX:JVMCIThreadsPerNativeLibraryRuntime=1')
+                if default_to_jvmci == 'lib':
+                    vm_options.append('-XX:+UseJVMCINativeLibrary')
                 vm_options.extend(['-XX:-UnlockExperimentalVMOptions'])
             else:
                 # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
@@ -834,7 +890,8 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                   with_source=lambda x: True,
                   vendor_info=None,
                   dedup_legal_notices=True,
-                  use_upgrade_module_path=False):
+                  use_upgrade_module_path=False,
+                  default_to_jvmci=False):
     """
     Uses jlink from `jdk` to create a new JDK image in `dst_jdk_dir` with `module_dists` and
     their dependencies added to the JDK image, replacing any existing modules of the same name.
@@ -851,11 +908,14 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                      The choices are:
                        "create" - an empty module is created
                         "error" - raise an error
+                         "warn" - raise a warning
                            None - do nothing
     :param lambda with_source: returns True if the sources of a module distribution must be included in the new JDK
     :param dict vendor_info: values for the jlink vendor options added by JDK-8232080
     :param bool use_upgrade_module_path: if True, then instead of linking `module_dists` into the image, resolve
                      them via --upgrade-module-path at image runtime
+    :param bool | str default_to_jvmci: default to using JVMCI as JIT, without looking at the included modules.
+                     When set to 'lib' ensure the JVMCI compiler library is used.
     :return bool: False if use_upgrade_module_path == True and the existing image is up to date otherwise True
     """
     assert callable(with_source)
@@ -901,9 +961,9 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                     if target not in all_module_names and target not in ignore_module_names and target not in hashes:
                         target_requires.setdefault(target, set()).add(jmd.name)
         if target_requires and missing_export_target_action is not None:
-            if missing_export_target_action == 'error':
-                mx.abort('Target(s) of qualified exports cannot be resolved: ' + '.'.join(target_requires.keys()))
-            assert missing_export_target_action == 'create', 'invalid value for missing_export_target_action: ' + str(missing_export_target_action)
+            if missing_export_target_action in ('error', 'warn'):
+                mx.abort_or_warn('Target(s) of qualified exports cannot be resolved:\n* ' + '\n* '.join(f"{k} required by {v}" for k, v in target_requires.items()), missing_export_target_action == 'abort')
+            assert missing_export_target_action in ('create', 'warn'), 'invalid value for missing_export_target_action: ' + str(missing_export_target_action)
 
             for name, requires in sorted(target_requires.items()):
                 module_jar = join(build_dir, name + '.jar')
@@ -956,49 +1016,99 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
         jlink_persist.append('--add-modules=jdk.internal.vm.ci')
 
         module_path = patched_java_base + os.pathsep + jmods_dir
-        if modules and not use_upgrade_module_path:
-            module_path = os.pathsep.join((m.get_jmod_path(respect_stripping=True) for m in modules)) + os.pathsep + module_path
-        jlink.append('--module-path=' + module_path)
-        jlink.append('--output=' + dst_jdk_dir)
 
-        if dedup_legal_notices:
-            jlink.append('--dedup-legal-notices=error-if-not-same-content')
-        jlink.append('--keep-packaged-modules=' + join(dst_jdk_dir, 'jmods'))
+        class TempJmods:
+            """
+            Utility to manage temporary .jmod files created for alternative moduleInfos.
+            The jmod file containing an alternative moduleInfo includes a qualifier in its name. For instance,
+            the closed truffle org.graalvm.truffle_closed.jmod file has the _closed qualifier. Prior to creating
+            a new JVM distribution, it is necessary to generate a temporary jmod file with the qualifier removed
+            from the name. In the given example, it would be the org.graalvm.truffle.jmod file. These temporary
+            files are deleted once the jlink execution is completed.
+            """
 
-        vm_options_path = join(upgrade_dir, 'vm_options')
-        vm_options = _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modules)
-        if vm_options:
-            jlink.append(f'--add-options={" ".join(vm_options)}')
-            jlink_persist.append(f'--add-options="{" ".join(vm_options)}"')
+            def __init__(self):
+                self._temp_folder = None
 
-        if jlink_supports_8232080(jdk) and vendor_info is not None:
-            for name, value in vendor_info.items():
-                jlink.append(f'--{name}={value}')
-                jlink_persist.append(f'--{name}="{value}"')
+            def __enter__(self):
+                return self
 
-        release_file = join(jdk.home, 'release')
-        if isfile(release_file):
-            jlink.append(f'--release-info={release_file}')
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                if self._temp_folder:
+                    shutil.rmtree(self._temp_folder, ignore_errors=True)
 
-        if jlink_has_save_jlink_argfiles(jdk):
-            jlink_persist_argfile = join(build_dir, 'jlink.persist.options')
-            with open(jlink_persist_argfile, 'w') as fp:
-                fp.write('\n'.join(jlink_persist))
-            jlink.append(f'--save-jlink-argfiles={jlink_persist_argfile}')
+            def get_jmod_path_with_specified_module_info(self, m):
+                """
+                Gets the path to the .jmod file corresponding to given module descriptor.
+                If the distribution requires an alternative moduleInfo, it creates a temporary .jmod file for
+                the alternative module whose name does not contain a qualifier.
 
-        if exists(dst_jdk_dir):
-            if use_upgrade_module_path and _vm_options_match(vm_options, vm_options_path):
-                mx.logv('[Existing JDK image {} is up to date]'.format(dst_jdk_dir))
-                return False
-            mx.rmtree(dst_jdk_dir)
+                :param m: JavaModuleDescriptor the module to return .jmod file for
+                """
+                alt_module_info_name = None
+                if m.dist and not use_upgrade_module_path:
+                    deploy = getattr(m.dist, 'graalvm', None)
+                    if deploy:
+                        module_info_name = deploy.get('moduleInfo')
+                        if module_info_name:
+                            if not m.alternatives or module_info_name not in m.alternatives:
+                                mx.abort(f"Distribution {m.dist.name} does not specify alternative moduleInfo {module_info_name}.")
+                            alt_module_info_name = module_info_name
+                jmod_file = m.get_jmod_path(respect_stripping=not alt_module_info_name, alt_module_info_name=alt_module_info_name)
+                if alt_module_info_name:
+                    if not self._temp_folder:
+                        self._temp_folder = tempfile.mkdtemp(prefix='alternative_module_info_jmod_files')
+                    tmp_jmod_file = os.path.join(self._temp_folder, m.name + '.jmod')
+                    if mx.can_symlink():
+                        os.symlink(jmod_file, tmp_jmod_file)
+                    else:
+                        shutil.copy(jmod_file, tmp_jmod_file)
+                    jmod_file = tmp_jmod_file
+                return jmod_file
 
-        # TODO: investigate the options below used by OpenJDK to see if they should be used:
-        # --order-resources: specifies order of resources in generated lib/modules file.
-        #       This is apparently not so important if a CDS archive is available.
-        # --generate-jli-classes: pre-generates a set of java.lang.invoke classes.
-        #       See https://github.com/openjdk/jdk/blob/master/make/GenerateLinkOptData.gmk
-        mx.logv(f'[Creating JDK image in {dst_jdk_dir}]')
-        mx.run(jlink)
+        with TempJmods() as temp_jmods:
+            module_path = os.pathsep.join((temp_jmods.get_jmod_path_with_specified_module_info(m) for m in modules)) + os.pathsep + module_path
+            jlink.append('--module-path=' + module_path)
+            jlink.append('--output=' + dst_jdk_dir)
+
+            if dedup_legal_notices:
+                jlink.append('--dedup-legal-notices=error-if-not-same-content')
+            jlink.append('--keep-packaged-modules=' + join(dst_jdk_dir, 'jmods'))
+
+            vm_options_path = join(upgrade_dir, 'vm_options')
+            vm_options = _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modules, default_to_jvmci=default_to_jvmci)
+            if vm_options:
+                jlink.append(f'--add-options={" ".join(vm_options)}')
+                jlink_persist.append(f'--add-options="{" ".join(vm_options)}"')
+
+            if jlink_supports_8232080(jdk) and vendor_info is not None:
+                for name, value in vendor_info.items():
+                    jlink.append(f'--{name}={value}')
+                    jlink_persist.append(f'--{name}="{value}"')
+
+            release_file = join(jdk.home, 'release')
+            if isfile(release_file):
+                jlink.append(f'--release-info={release_file}')
+
+            if jlink_has_save_jlink_argfiles(jdk):
+                jlink_persist_argfile = join(build_dir, 'jlink.persist.options')
+                with open(jlink_persist_argfile, 'w') as fp:
+                    fp.write('\n'.join(jlink_persist))
+                jlink.append(f'--save-jlink-argfiles={jlink_persist_argfile}')
+
+            if exists(dst_jdk_dir):
+                if use_upgrade_module_path and _vm_options_match(vm_options, vm_options_path):
+                    mx.logv('[Existing JDK image {} is up to date]'.format(dst_jdk_dir))
+                    return False
+                mx.rmtree(dst_jdk_dir)
+
+            # TODO: investigate the options below used by OpenJDK to see if they should be used:
+            # --order-resources: specifies order of resources in generated lib/modules file.
+            #       This is apparently not so important if a CDS archive is available.
+            # --generate-jli-classes: pre-generates a set of java.lang.invoke classes.
+            #       See https://github.com/openjdk/jdk/blob/master/make/GenerateLinkOptData.gmk
+            mx.logv(f'[Creating JDK image in {dst_jdk_dir}]')
+            mx.run(jlink)
 
         if use_upgrade_module_path:
             # Move synthetic upgrade modules into final location
@@ -1057,17 +1167,45 @@ def format_release_file(release_dict, skip_quoting=None):
     return '\n'.join(('{}={}' if k in skip_quoting else '{}="{}"').format(k, v) for k, v in release_dict.items())
 
 
+def ee_implementor(jdk_home=base_jdk().home):
+    """
+    Returns True if the value of the `IMPLEMENTOR` field of the `release` file of a given JDK is `Oracle Corporation`
+    :type jdk_home: str | None
+    :rtype bool
+    """
+    release_file_path = join(jdk_home, 'release')
+    release_dict = parse_release_file(release_file_path)
+    implementor = release_dict.get('IMPLEMENTOR')
+    if implementor is not None:
+        return implementor == 'Oracle Corporation'
+    else:
+        mx.warn(f"Release file for '{jdk_home}' ({release_file_path}) is missing the IMPLEMENTOR field")
+        return False
+
+
+def extra_installable_qualifiers(jdk_home, ce_edition, oracle_edition):
+    """
+    Returns the edition name depending on the value of the `IMPLEMENTOR` field of the `release` file of a given JDK.
+    :type jdk_home: str
+    :type ce_edition: list[str] | None
+    :type oracle_edition: list[str] | None
+    :rtype: list[str] | None
+    """
+    return oracle_edition if ee_implementor(jdk_home) else ce_edition
+
+
 @mx.command(_suite, 'verify-graalvm-configs')
 def _verify_graalvm_configs(args):
     parser = ArgumentParser(prog='mx verify-graalvm-configs', description='Verify registered GraalVM configs')
     parser.add_argument('--suites', help='comma-separated list of suites')
     parser.add_argument('--from', dest='start_from', help='start verification from the indicated env file')
+    parser.add_argument('--all', dest='all', help='verify all configs, otherwise exit on first error', action='store_true')
     args = parser.parse_args(args)
     suites = args.suites if args.suites is None else args.suites.split(',')
-    verify_graalvm_configs(suites=suites, start_from=args.start_from)
+    verify_graalvm_configs(suites=suites, start_from=args.start_from, check_all=args.all)
 
 
-def verify_graalvm_configs(suites=None, start_from=None):
+def verify_graalvm_configs(suites=None, start_from=None, check_all=False):
     """
     Check the consistency of registered GraalVM configs.
     :param suites: optionally restrict the check to the configs registered by this list of suites.
@@ -1080,12 +1218,19 @@ def verify_graalvm_configs(suites=None, start_from=None):
         if env_var in child_env:
             del child_env[env_var]
     started = start_from is None
+    on_error = mx.warn if check_all else mx.abort
+    has_errors = False
     for dist_name, _, components, suite, env_file in _vm_configs:
         if env_file is not False and (suites is None or suite.name in suites):
             _env_file = env_file or dist_name
             started = started or _env_file == start_from
 
-            graalvm_dist_name = '{base_name}_{dist_name}_JAVA{jdk_version}'.format(base_name=mx_sdk_vm_impl._graalvm_base_name, dist_name=dist_name, jdk_version=mx_sdk_vm_impl._src_jdk_version).upper().replace('-', '_')
+            graalvm_dist_name = '{base_name}{delimiter}{dist_name}_JAVA{jdk_version}'.format(
+                base_name=mx_sdk_vm_impl._graalvm_base_name,
+                delimiter='_' if dist_name else '',
+                dist_name=dist_name,
+                jdk_version=mx_sdk_vm_impl._src_jdk_version
+            ).upper().replace('-', '_')
             mx.log("{}Checking that the env file '{}' in suite '{}' produces a GraalVM distribution named '{}'".format('' if started else '[SKIPPED] ', _env_file, suite.name, graalvm_dist_name))
 
             if started:
@@ -1107,7 +1252,8 @@ def verify_graalvm_configs(suites=None, start_from=None):
                         added = list(got_components_set - components_set)
                         removed = list(components_set - got_components_set)
                         diff = ('Added:\n{}\n'.format(added) if added else '') + ('Removed:\n{}\n'.format(removed) if removed else '')
-                    mx.abort("""\
+                    has_errors = True
+                    on_error("""\
 Unexpected GraalVM dist name for env file '{}' in suite '{}'.
 Expected dist name: '{}'
 Actual dist name: '{}'.
@@ -1116,6 +1262,5 @@ Expected component list:
 Actual component list:
 {}
 {}Did you forget to update the registration of the GraalVM config?""".format(_env_file, suite.name, graalvm_dist_name, '\n'.join(out.lines + err.lines), sorted(components), got_components, diff))
-
-
-register_known_vm('truffle')
+    if has_errors:
+        mx.abort("Errors during verification")

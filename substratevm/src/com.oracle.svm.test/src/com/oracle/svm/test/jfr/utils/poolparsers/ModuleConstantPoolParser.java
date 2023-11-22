@@ -29,9 +29,13 @@ package com.oracle.svm.test.jfr.utils.poolparsers;
 import java.io.IOException;
 
 import com.oracle.svm.core.jfr.JfrType;
+import com.oracle.svm.test.jfr.utils.JfrFileParser;
 import com.oracle.svm.test.jfr.utils.RecordingInput;
 
 public class ModuleConstantPoolParser extends AbstractRepositoryParser {
+    public ModuleConstantPoolParser(JfrFileParser parser) {
+        super(parser);
+    }
 
     @Override
     public void parse(RecordingInput input) throws IOException {

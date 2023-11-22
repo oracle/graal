@@ -31,7 +31,7 @@ import java.lang.reflect.Field;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import org.graalvm.compiler.core.common.type.TypedConstant;
+import jdk.graal.compiler.core.common.type.TypedConstant;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 
@@ -55,7 +55,7 @@ public abstract class UniverseMetaAccess implements WrappedMetaAccess {
         }
     };
     protected final Universe universe;
-    private final MetaAccessProvider wrapped;
+    protected final MetaAccessProvider wrapped;
 
     public UniverseMetaAccess(Universe universe, MetaAccessProvider wrapped) {
         this.universe = universe;

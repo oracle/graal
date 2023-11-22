@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.nfi.backend.libffi;
 import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -53,11 +54,10 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.memory.ByteArraySupport;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.nfi.api.SerializableLibrary;
 
-//TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
 abstract class NativeBuffer implements TruffleObject {
 
     @ExportLibrary(value = SerializableLibrary.class, useForAOT = false)
@@ -101,18 +101,19 @@ abstract class NativeBuffer implements TruffleObject {
 
         @ExportMessage
         byte readBufferByte(long offset,
-                        @Shared("exception") @Cached BranchProfile exception) throws InvalidBufferOffsetException {
+                        @Bind("$node") Node node,
+                        @Shared("exception") @Cached InlinedBranchProfile exception) throws InvalidBufferOffsetException {
             if (Long.compareUnsigned(offset, content.length) >= 0) {
-                exception.enter();
+                exception.enter(node);
                 throw InvalidBufferOffsetException.create(offset, content.length);
             }
             return content[(int) offset];
         }
 
-        private int check(ByteArraySupport support, long offset, int len, BranchProfile exception) throws InvalidBufferOffsetException {
+        private int check(ByteArraySupport support, long offset, int len, InlinedBranchProfile exception, Node node) throws InvalidBufferOffsetException {
             int ret = (int) offset;
             if (ret != offset || !support.inBounds(content, ret, len)) {
-                exception.enter();
+                exception.enter(node);
                 throw InvalidBufferOffsetException.create(offset, content.length);
             }
             return ret;
@@ -128,37 +129,42 @@ abstract class NativeBuffer implements TruffleObject {
 
         @ExportMessage
         short readBufferShort(ByteOrder order, long offset,
-                        @Shared("exception") @Cached BranchProfile exception) throws InvalidBufferOffsetException {
+                        @Bind("$node") Node node,
+                        @Shared("exception") @Cached InlinedBranchProfile exception) throws InvalidBufferOffsetException {
             ByteArraySupport support = byteArraySupport(order);
-            return support.getShort(content, check(support, offset, Short.BYTES, exception));
+            return support.getShort(content, check(support, offset, Short.BYTES, exception, node));
         }
 
         @ExportMessage
         int readBufferInt(ByteOrder order, long offset,
-                        @Shared("exception") @Cached BranchProfile exception) throws InvalidBufferOffsetException {
+                        @Bind("$node") Node node,
+                        @Shared("exception") @Cached InlinedBranchProfile exception) throws InvalidBufferOffsetException {
             ByteArraySupport support = byteArraySupport(order);
-            return support.getInt(content, check(support, offset, Integer.BYTES, exception));
+            return support.getInt(content, check(support, offset, Integer.BYTES, exception, node));
         }
 
         @ExportMessage
         long readBufferLong(ByteOrder order, long offset,
-                        @Shared("exception") @Cached BranchProfile exception) throws InvalidBufferOffsetException {
+                        @Bind("$node") Node node,
+                        @Shared("exception") @Cached InlinedBranchProfile exception) throws InvalidBufferOffsetException {
             ByteArraySupport support = byteArraySupport(order);
-            return support.getLong(content, check(support, offset, Long.BYTES, exception));
+            return support.getLong(content, check(support, offset, Long.BYTES, exception, node));
         }
 
         @ExportMessage
         float readBufferFloat(ByteOrder order, long offset,
-                        @Shared("exception") @Cached BranchProfile exception) throws InvalidBufferOffsetException {
+                        @Bind("$node") Node node,
+                        @Shared("exception") @Cached InlinedBranchProfile exception) throws InvalidBufferOffsetException {
             ByteArraySupport support = byteArraySupport(order);
-            return support.getFloat(content, check(support, offset, Float.BYTES, exception));
+            return support.getFloat(content, check(support, offset, Float.BYTES, exception, node));
         }
 
         @ExportMessage
         double readBufferDouble(ByteOrder order, long offset,
-                        @Shared("exception") @Cached BranchProfile exception) throws InvalidBufferOffsetException {
+                        @Bind("$node") Node node,
+                        @Shared("exception") @Cached InlinedBranchProfile exception) throws InvalidBufferOffsetException {
             ByteArraySupport support = byteArraySupport(order);
-            return support.getDouble(content, check(support, offset, Double.BYTES, exception));
+            return support.getDouble(content, check(support, offset, Double.BYTES, exception, node));
         }
     }
 }

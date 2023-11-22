@@ -101,7 +101,7 @@ public final class CodeVariableElement extends CodeElement<Element> implements V
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, ElementUtils.getTypeId(type), constantValue, init, super.hashCode());
+        return Objects.hash(name, ElementUtils.getTypeSimpleId(type), constantValue, init, super.hashCode());
     }
 
     public void setInit(CodeTree init) {

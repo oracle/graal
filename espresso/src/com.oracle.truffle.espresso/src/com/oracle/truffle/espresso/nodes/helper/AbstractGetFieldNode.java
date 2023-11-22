@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,8 +42,9 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
-import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.nodes.interop.ToPrimitive;
+import com.oracle.truffle.espresso.nodes.interop.ToReference;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public abstract class AbstractGetFieldNode extends EspressoNode {
     final Field field;
@@ -134,11 +135,11 @@ abstract class IntGetFieldNode extends AbstractGetFieldNode {
                     @Bind("getLanguage()") EspressoLanguage language,
                     @Bind("getMeta()") Meta meta,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
-                    @Cached ToEspressoNode toEspressoNode,
+                    @Cached ToPrimitive.ToInt toInt,
                     @Cached BranchProfile error) {
         Object value = getForeignField(receiver, interopLibrary, language, meta, error);
         try {
-            return (int) toEspressoNode.execute(value, meta._int);
+            return (int) toInt.execute(value);
         } catch (UnsupportedTypeException e) {
             error.enter();
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field %s cannot be cast to int", fieldName);
@@ -189,11 +190,11 @@ abstract class BooleanGetFieldNode extends AbstractGetFieldNode {
                     @Bind("getLanguage()") EspressoLanguage language,
                     @Bind("getMeta()") Meta meta,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
-                    @Cached ToEspressoNode toEspressoNode,
+                    @Cached ToPrimitive.ToBoolean toBoolean,
                     @Cached BranchProfile error) {
         Object value = getForeignField(receiver, interopLibrary, language, meta, error);
         try {
-            return (boolean) toEspressoNode.execute(value, meta._boolean);
+            return (boolean) toBoolean.execute(value);
         } catch (UnsupportedTypeException e) {
             error.enter();
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field %s cannot be cast to boolean", fieldName);
@@ -249,11 +250,11 @@ abstract class CharGetFieldNode extends AbstractGetFieldNode {
                     @Bind("getLanguage()") EspressoLanguage language,
                     @Bind("getMeta()") Meta meta,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
-                    @Cached ToEspressoNode toEspressoNode,
+                    @Cached ToPrimitive.ToChar toChar,
                     @Cached BranchProfile error) {
         Object value = getForeignField(receiver, interopLibrary, language, meta, error);
         try {
-            return (char) toEspressoNode.execute(value, meta._char);
+            return (char) toChar.execute(value);
         } catch (UnsupportedTypeException e) {
             error.enter();
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field %s cannot be cast to char", fieldName);
@@ -304,11 +305,11 @@ abstract class ShortGetFieldNode extends AbstractGetFieldNode {
                     @Bind("getLanguage()") EspressoLanguage language,
                     @Bind("getMeta()") Meta meta,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
-                    @Cached ToEspressoNode toEspressoNode,
+                    @Cached ToPrimitive.ToShort toShort,
                     @Cached BranchProfile error) {
         Object value = getForeignField(receiver, interopLibrary, language, meta, error);
         try {
-            return (short) toEspressoNode.execute(value, meta._short);
+            return (short) toShort.execute(value);
         } catch (UnsupportedTypeException e) {
             error.enter();
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field %s cannot be cast to short", fieldName);
@@ -359,11 +360,11 @@ abstract class ByteGetFieldNode extends AbstractGetFieldNode {
                     @Bind("getLanguage()") EspressoLanguage language,
                     @Bind("getMeta()") Meta meta,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
-                    @Cached ToEspressoNode toEspressoNode,
+                    @Cached ToPrimitive.ToByte toByte,
                     @Cached BranchProfile error) {
         Object value = getForeignField(receiver, interopLibrary, language, meta, error);
         try {
-            return (byte) toEspressoNode.execute(value, meta._byte);
+            return (byte) toByte.execute(value);
         } catch (UnsupportedTypeException e) {
             error.enter();
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field %s cannot be cast to byte", fieldName);
@@ -414,11 +415,11 @@ abstract class LongGetFieldNode extends AbstractGetFieldNode {
                     @Bind("getLanguage()") EspressoLanguage language,
                     @Bind("getMeta()") Meta meta,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
-                    @Cached ToEspressoNode toEspressoNode,
+                    @Cached ToPrimitive.ToLong toLong,
                     @Cached BranchProfile error) {
         Object value = getForeignField(receiver, interopLibrary, language, meta, error);
         try {
-            return (long) toEspressoNode.execute(value, meta._long);
+            return (long) toLong.execute(value);
         } catch (UnsupportedTypeException e) {
             error.enter();
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field %s cannot be cast to long", fieldName);
@@ -469,11 +470,11 @@ abstract class FloatGetFieldNode extends AbstractGetFieldNode {
                     @Bind("getLanguage()") EspressoLanguage language,
                     @Bind("getMeta()") Meta meta,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
-                    @Cached ToEspressoNode toEspressoNode,
+                    @Cached ToPrimitive.ToFloat toFloat,
                     @Cached BranchProfile error) {
         Object value = getForeignField(receiver, interopLibrary, language, meta, error);
         try {
-            return (float) toEspressoNode.execute(value, meta._float);
+            return (float) toFloat.execute(value);
         } catch (UnsupportedTypeException e) {
             error.enter();
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field %s cannot be cast to float", fieldName);
@@ -524,11 +525,11 @@ abstract class DoubleGetFieldNode extends AbstractGetFieldNode {
                     @Bind("getLanguage()") EspressoLanguage language,
                     @Bind("getMeta()") Meta meta,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
-                    @Cached ToEspressoNode toEspressoNode,
+                    @Cached ToPrimitive.ToDouble toDouble,
                     @Cached BranchProfile error) {
         Object value = getForeignField(receiver, interopLibrary, language, meta, error);
         try {
-            return (double) toEspressoNode.execute(value, meta._double);
+            return (double) toDouble.execute(value);
         } catch (UnsupportedTypeException e) {
             error.enter();
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field %s cannot be cast to double", fieldName);
@@ -561,21 +562,25 @@ abstract class ObjectGetFieldNode extends AbstractGetFieldNode {
 
     abstract StaticObject executeGetField(StaticObject receiver);
 
+    ToReference createToEspressoNode() {
+        return ToReference.createToReference(typeKlass, typeKlass.getMeta());
+    }
+
     @Specialization(guards = "receiver.isEspressoObject()")
     StaticObject doEspresso(StaticObject receiver) {
         return field.getObject(receiver);
     }
 
-    @Specialization(guards = "receiver.isForeignObject()", limit = "CACHED_LIBRARY_LIMIT")
+    @Specialization(guards = "receiver.isForeignObject()")
     StaticObject doForeign(StaticObject receiver,
                     @Bind("getLanguage()") EspressoLanguage language,
-                    @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
-                    @Cached ToEspressoNode toEspressoNode,
+                    @CachedLibrary(limit = "CACHED_LIBRARY_LIMIT") InteropLibrary interopLibrary,
+                    @Cached("createToEspressoNode()") ToReference toEspressoNode,
                     @Cached BranchProfile error) {
         Meta meta = getMeta();
         Object value = getForeignField(receiver, interopLibrary, language, meta, error);
         try {
-            return (StaticObject) toEspressoNode.execute(value, typeKlass);
+            return toEspressoNode.execute(value);
         } catch (UnsupportedTypeException e) {
             error.enter();
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field %s cannot be cast to %s", fieldName, typeKlass.getName());

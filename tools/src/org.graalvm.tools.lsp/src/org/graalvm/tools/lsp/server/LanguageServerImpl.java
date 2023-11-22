@@ -93,7 +93,7 @@ import org.graalvm.tools.lsp.server.types.WorkspaceEdit;
 import org.graalvm.tools.lsp.server.types.WorkspaceSymbolParams;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.tools.utils.json.JSONObject;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 /**
  * A LSP4J {@link LanguageServer} implementation using TCP sockets as transportation layer for the

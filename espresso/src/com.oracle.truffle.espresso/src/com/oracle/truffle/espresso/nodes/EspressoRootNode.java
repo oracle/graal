@@ -42,7 +42,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.ForeignStackTraceElementObject;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.CallableFromNative;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.vm.FrameCookie;
@@ -368,7 +368,8 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
         @Override
         public Object execute(VirtualFrame frame) {
-            assert getMethod().getDeclaringKlass().isInitializedOrInitializing() || getContext().anyHierarchyChanged() : getMethod().getDeclaringKlass();
+            assert getMethod().getDeclaringKlass().isInitializedOrInitializing() || getContext().anyHierarchyChanged() : getMethod().toString() +
+                            (getMethod().isStatic() ? "" : " recv: " + frame.getArguments()[0].toString());
             if (usesMonitors()) {
                 initMonitorStack(frame, new MonitorStack());
             }

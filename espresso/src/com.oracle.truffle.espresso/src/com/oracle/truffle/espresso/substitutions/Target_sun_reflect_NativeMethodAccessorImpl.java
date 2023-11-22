@@ -41,7 +41,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 /**
  * This substitution is merely for performance reasons, to avoid the deep-dive to native. libjava
@@ -248,13 +248,13 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
                         @JavaType(Object[].class) StaticObject args,
                         @Inject EspressoLanguage language,
                         @Inject Meta meta,
-                        @Cached ToEspressoNode toEspressoNode) {
+                        @Cached ToEspressoNode.DynamicToEspresso toEspressoNode) {
             return invoke0(guestMethod, receiver, args, language, meta, toEspressoNode);
         }
     }
 
     static @JavaType(Object.class) StaticObject invoke0(@JavaType(java.lang.reflect.Method.class) StaticObject guestMethod, @JavaType(Object.class) StaticObject receiver,
-                    @JavaType(Object[].class) StaticObject args, @Inject EspressoLanguage language, @Inject Meta meta, ToEspressoNode toEspressoNode) {
+                    @JavaType(Object[].class) StaticObject args, @Inject EspressoLanguage language, @Inject Meta meta, ToEspressoNode.DynamicToEspresso toEspressoNode) {
         Method reflectedMethod = Method.getHostReflectiveMethodRoot(guestMethod, meta);
         Klass klass = meta.java_lang_reflect_Method_clazz.getObject(guestMethod).getMirrorKlass(meta);
 
@@ -270,7 +270,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
 
     public static @JavaType(Object.class) StaticObject callMethodReflectively(EspressoLanguage language, Meta meta, @JavaType(Object.class) StaticObject receiver,
                     @JavaType(Object[].class) StaticObject args, Method m,
-                    Klass klass, @JavaType(Class[].class) StaticObject parameterTypes, ToEspressoNode toEspressoNode) {
+                    Klass klass, @JavaType(Class[].class) StaticObject parameterTypes, ToEspressoNode.DynamicToEspresso toEspressoNode) {
         // Klass should be initialized if method is static, and could be delayed until method
         // invocation, according to specs. However, JCK tests that it is indeed always initialized
         // before doing anything, even if the method to be invoked is from another class.

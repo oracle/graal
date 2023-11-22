@@ -41,14 +41,16 @@ Create a `source-tracing.js` script with following content:
 
 ```js
 insight.on('source', function(ev) {
-    print(`Loading ${ev.characters.length} characters from ${ev.name}`);
+    if (ev.characters) {
+        print(`Loading ${ev.characters.length} characters from ${ev.name}`);
+    }
 });
 ```
 Run it with GraalVM's `node` launcher adding the `--insight` instrument option.
 Observe what scripts are being loaded and evaluated:
 
 ```bash
-graalvm/bin/node --js.print --insight=source-tracing.js -e "print('The result: ' + 6 * 7)" | tail -n 10
+./bin/node --js.print --experimental-options --insight=source-tracing.js -e "print('The result: ' + 6 * 7)" | tail -n 10
 Loading 29938 characters from url.js
 Loading 345 characters from internal/idna.js
 Loading 12642 characters from punycode.js
@@ -77,6 +79,7 @@ var map = new Map();
 
 function dumpHotness() {
     print("==== Hotness Top 10 ====");
+    var count = 10;
     var digits = 3;
     Array.from(map.entries()).sort((one, two) => two[1] - one[1]).forEach(function (entry) {
         var number = entry[1].toString();
@@ -85,7 +88,7 @@ function dumpHotness() {
         } else {
             number = Array(digits - number.length + 1).join(' ') + number;
         }
-        if (number > 10) print(`${number} calls to ${entry[0]}`);
+        if (count-- > 0) print(`${number} calls to ${entry[0]}`);
     });
     print("========================");
 }
@@ -110,26 +113,19 @@ The latter is executed when the `node` process execution is over (registered via
 Invoke the program:
 
 ```bash
-graalvm/bin/node --js.print --insight=function-hotness-tracing.js -e "print('The result: ' + 6 * 7)"
+./bin/node --js.print --experimental-options --insight=function-hotness-tracing.js -e "print('The result: ' + 6 * 7)"
 The result: 42
 ==== Hotness Top 10 ====
-543 calls to isPosixPathSeparator
-211 calls to E
-211 calls to makeNodeErrorWithCode
-205 calls to NativeModule
-198 calls to uncurryThis
-154 calls to :=>
-147 calls to nativeModuleRequire
-145 calls to NativeModule.compile
- 55 calls to internalBinding
- 53 calls to :anonymous
- 49 calls to :program
- 37 calls to getOptionValue
- 24 calls to copyProps
- 18 calls to validateString
- 13 calls to copyPrototype
- 13 calls to hideStackFrames
- 13 calls to addReadOnlyProcessAlias
+516 calls to isPosixPathSeparator
+311 calls to :=>
+269 calls to E
+263 calls to makeNodeErrorWithCode
+159 calls to :anonymous
+157 calls to :program
+ 58 calls to getOptionValue
+ 58 calls to getCLIOptionsFromBinding
+ 48 calls to validateString
+ 43 calls to hideStackFrames
 ========================
 ```
 
@@ -157,12 +153,12 @@ Prepare your Ruby program in the `helloworld.rb` file:
 puts 'Hello from GraalVM Ruby!'
 ```
 
-Note: Make sure the Ruby support is added to GraalVM with `gu install ruby`.
+Note: Make sure the Ruby support is enabled. See [Polyglot Programming guide](../../reference-manual/polyglot-programming.md).
 
 Apply the JavaScript instrument to the Ruby program. Here is what you should see:
 
 ```bash
-graalvm/bin/ruby --polyglot --insight=source-trace.js helloworld.rb
+./bin/ruby --polyglot --insight=source-trace.js helloworld.rb
 JavaScript instrument observed load of helloworld.rb
 Hello from GraalVM Ruby!
 ```
@@ -191,11 +187,11 @@ insight.on('enter', function(ev) {
 });
 ```
 
-Run it on top of [sieve.js](../../../vm/benchmarks/agentscript/sieve.js).
+Run it on top of [sieve.js](https://github.com/oracle/graal/blob/5ec71a206aa422078ac21be9949f8eb8918b3d3c/vm/benchmarks/agentscript/sieve.js){:target="_blank"}.
 It is a sample script which uses a variant of the Sieve of Erathostenes to compute one hundred thousand of prime numbers:
 
 ```bash
-graalvm/bin/js --insight=function-tracing.js sieve.js | grep -v Computed
+./bin/js --insight=function-tracing.js sieve.js | grep -v Computed
 Just called :program as 1 function invocation
 Just called Natural.next as 17 function invocation
 Just called Natural.next as 33 function invocation
@@ -248,20 +244,20 @@ class Roots:
 
 insight.on("enter", onEnter, Roots())
 ```
-Apply this script to [agent-fib.js](../../../vm/tests/all/agentscript/agent-fib.js) using the following command:
+Apply this script to [agent-fib.js](https://github.com/oracle/graal/blob/5ec71a206aa422078ac21be9949f8eb8918b3d3c/vm/tests/all/agentscript/agent-fib.js){:target="_blank"} using the following command:
 
 ```bash
-`js --polyglot --insight=agent.py agent-fib.js`
+`./bin/js --polyglot --insight=agent.py agent-fib.js`
 ```
 
-Note: Make sure the Python support is added to GraalVM with `gu install python`.
+Note: Make sure the Python support is enabled. See [Polyglot Programming guide](../../reference-manual/polyglot-programming.md).
 
 ## Insights with Ruby
 
 It is possible to write GraalVM Insight scripts in Ruby.
 Such insights can be applied to programs written in Ruby or any other language.
 
-Note: Make sure the Ruby support is added to GraalVM with `gu install ruby`.
+Note: Make sure the Ruby support is enabled. See [Polyglot Programming guide](../../reference-manual/polyglot-programming.md).
 
 Create the `source-tracing.rb` script:
 
@@ -277,7 +273,7 @@ puts("Ruby: Hooks are ready!")
 Launch a Node.js application and instrument it with the Ruby script:
 
 ```bash
-graalvm/bin/node --js.print --experimental-options --polyglot --insight=source-tracing.rb agent-fib.js
+./bin/node --js.print --experimental-options --polyglot --insight=source-tracing.rb agent-fib.js
 Ruby: Initializing GraalVM Insight script
 Ruby: Hooks are ready!
 Ruby: observed loading of node:internal/errors
@@ -314,9 +310,9 @@ insight.on("enter", -> (ctx, frame) {
 })
 ```
 
-The above Ruby script example prints out value of variable `n` when a function `minusOne` in the [agent-fib.js](../../../vm/tests/all/agentscript/agent-fib.js) program is called:
+The above Ruby script example prints out value of variable `n` when a function `minusOne` in the [agent-fib.js](https://github.com/oracle/graal/blob/5ec71a206aa422078ac21be9949f8eb8918b3d3c/vm/tests/all/agentscript/agent-fib.js){:target="_blank"} program is called:
 ```bash
-graalvm/bin/node --js.print --experimental-options --polyglot --insight=agent.rb agent-fib.js
+./bin/node --js.print --experimental-options --polyglot --insight=agent.rb agent-fib.js
 minusOne 4
 minusOne 3
 minusOne 2
@@ -343,7 +339,7 @@ cat("R: Hooks are ready!\n")
 Use it to trace a `test.R` program:
 
 ```bash
-graalvm/bin/Rscript --insight=agent-r.R test.R
+./bin/Rscript --insight=agent-r.R test.R
 R: Initializing GraalVM Insight script
 R: Hooks are ready!
 R: observed loading of test.R
@@ -360,14 +356,14 @@ Take, for examle, a long running program like [sieve.c](https://github.com/oracl
 First, execute the program on GraalVM:
 
 ```bash
-export TOOLCHAIN_PATH=`graalvm/bin/lli --print-toolchain-path`
+export TOOLCHAIN_PATH=`.../bin/lli --print-toolchain-path`
 ${TOOLCHAIN_PATH}/clang agent-sieve.c -lm -o sieve
-graalvm/bin/lli sieve
+./bin/lli sieve
 ```
 
 The GraalVM `clang` wrapper adds special options instructing the regular `clang` to keep the LLVM bitcode information in the `sieve` executable along the normal native code.
 The GraalVM's `lli` interpreter can then use the bitcode to interpret the program at full speed.
-By the way, compare the result of direct native execution via `./sieve` and interpreter speed of `graalvm/bin/lli sieve`.
+By the way, compare the result of direct native execution via `./sieve` and interpreter speed of `./bin/lli sieve`.
 It should show quite good results as for an interpreter.
 
 Now focus on breaking the endless loop. You can do it with this JavaScript `agent-limit.js` Insight script:
@@ -389,7 +385,7 @@ The script counts the number of invocations of the C `nextNatural` function and 
 Run the program as:
 
 ```bash
-graalvm/bin/lli --polyglot --insight=agent-limit.js sieve
+./bin/lli --polyglot --insight=agent-limit.js sieve
 Computed 97 primes in 181 ms. Last one is 509
 GraalVM Insight: nextNatural method called 1000 times. enough!
         at <js> :anonymous(<eval>:7:117-185)
@@ -414,7 +410,7 @@ insight.on('enter', function(ctx, frame) {
 Print out a message everytime a new prime is added into the filter list:
 
 ```bash
-graalvm/bin/lli --polyglot --insight=agent-limit.js sieve | head -n 3
+./bin/lli --polyglot --insight=agent-limit.js sieve | head -n 3
 found new prime number 2
 found new prime number 3
 found new prime number 5
@@ -451,7 +447,7 @@ print("Two is the result " + fib(3));
 When the instrument is stored in a `fib-trace.js` file and the actual code in `fib.js`, then invoking following command yields detailed information about the program execution and parameters passed between function invocations:
 
 ```bash
-graalvm/bin/node --js.print --insight=fib-trace.js fib.js
+./bin/node --js.print --experimental-options --insight=fib-trace.js fib.js
 fib for 3
 fib for 2
 fib for 1
@@ -539,7 +535,7 @@ insight.on('enter', function(ctx, frame) {
 ```
 That gives us:
 ```bash
-graalvm/bin/js --insight=distance-trace.js distance.js
+./bin/js --insight=distance-trace.js distance.js
 Squares: 9, 16
 Loop var i = 0
 Loop var i = 1
@@ -577,7 +573,7 @@ Then it removes the probes using `insight.off` and invokes the actual `initializ
 The script can be run with:
 
 ```js
-graalvm/bin/node --js.print --insight=agent-require.js yourScript.js
+./bin/node --js.print --experimental-options --insight=agent-require.js yourScript.js
 ```
 
 This initialization sequence is known to work on GraalVM's `node` version 12.10.0 launched with the main `yourScript.js` parameter.
@@ -615,7 +611,7 @@ The `term.js` instrument waits for a call to `log` function with message `are` a
 As a result one gets:
 
 ```bash
-graalvm/bin/js --polyglot --insight=term.js seq.js
+./bin/js --polyglot --insight=term.js seq.js
 Hello GraalVM Insight!
 How
 great you are!
@@ -695,12 +691,12 @@ insight.on('enter', function(ev) {
 insight.on('close', dumpCount);
 ```
 
-Use the script on fifty iterations of the [sieve.js](../../../vm/benchmarks/agentscript/sieve.js) sample which uses a variant of the Sieve of Erathostenes to compute one hundred thousand of prime numbers.
+Use the script on fifty iterations of the [sieve.js](https://github.com/oracle/graal/blob/5ec71a206aa422078ac21be9949f8eb8918b3d3c/vm/benchmarks/agentscript/sieve.js){:target="_blank"} sample which uses a variant of the Sieve of Erathostenes to compute one hundred thousand of prime numbers.
 Repeating the computation fifty times gives the runtime a chance to warm up and properly optimize.
 Here is the optimal run:
 
 ```bash
-graalvm/bin/js sieve.js | grep -v Computed
+./bin/js sieve.js | grep -v Computed
 Hundred thousand prime numbers in 75 ms
 Hundred thousand prime numbers in 73 ms
 Hundred thousand prime numbers in 73 ms
@@ -709,7 +705,7 @@ Hundred thousand prime numbers in 73 ms
 Now compare it to execution time when running with the GraalVM Insight script enabled:
 
 ```bash
-graalvm/bin/js --insight=function-count.js sieve.js  | grep -v Computed
+./bin/js --insight=function-count.js sieve.js  | grep -v Computed
 Hundred thousand prime numbers in 74 ms
 Hundred thousand prime numbers in 74 ms
 Hundred thousand prime numbers in 75 ms
@@ -725,7 +721,7 @@ The `count++` invocation becomes a natural part of the application at all the pl
 GraalVM Insight is capable to access local variables, almost "for free".
 GraalVM Insight code, accessing local variables, blends with the actual function code defining them and there is no visible slowdown.
 
-This can be demonstrated with this [sieve.js](../../../vm/benchmarks/agentscript/sieve.js) algorithm to compute hundred thousand of prime numbers.
+This can be demonstrated with this [sieve.js](https://github.com/oracle/graal/blob/5ec71a206aa422078ac21be9949f8eb8918b3d3c/vm/benchmarks/agentscript/sieve.js){:target="_blank"} algorithm to compute hundred thousand of prime numbers.
 It keeps the found prime numbers in a linked list constructed via following function:
 
 ```js
@@ -739,7 +735,7 @@ function Filter(number) {
 First, test the behavior by invoking the computation fifty times and measuring time it takes to finish the last round:
 
 ```bash
-graalvm/bin/js -e "var count=50" --file sieve.js | grep Hundred | tail -n 1
+./bin/js -e "var count=50" --file sieve.js | grep Hundred | tail -n 1
 Hundred thousand prime numbers in 73 ms
 ```
 
@@ -775,7 +771,7 @@ When the main loop in `measure` is over, e.g., there are hundred thousand prime 
 Now try the following:
 
 ```bash
-graalvm/bin/js  -e "var count=50" --insight=sieve-filter1.js --file sieve.js | grep Hundred | tail -n 2
+./bin/js  -e "var count=50" --insight=sieve-filter1.js --file sieve.js | grep Hundred | tail -n 2
 Hundred thousand prime numbers from 2 to 1299709 has sum 62260698721
 Hundred thousand prime numbers in 74 ms
 ```
@@ -844,10 +840,10 @@ insight.on('return', (ctx, frame) => {
 ```
 
 Save the code snippet as a `dump.js` file.
-Get the [sieve.js](../../../vm/benchmarks/agentscript/sieve.js) file and launch it as:
+Get the [sieve.js](https://github.com/oracle/graal/blob/5ec71a206aa422078ac21be9949f8eb8918b3d3c/vm/benchmarks/agentscript/sieve.js){:target="_blank"} file and launch it as:
 
 ```bash
-graalvm/bin/js --insight=dump.js --heap.dump=dump.hprof --file sieve.js
+./bin/js --insight=dump.js --heap.dump=dump.hprof --file sieve.js
 ```
 
 ![Heap Stack](img/Insight-HeapStack.png)
@@ -857,7 +853,7 @@ Inspect the generated `.hprof` file with regular tools like [VisualVM](https://w
 
 ![Heap Inspect](img/Insight-HeapInspect.png)
 
-The previous picture shows the heap dump taken at the end of the `measure` function in the [sieve.js](../../../vm/benchmarks/agentscript/sieve.js) script.
+The previous picture shows the heap dump taken at the end of the `measure` function in the [sieve.js](https://github.com/oracle/graal/blob/5ec71a206aa422078ac21be9949f8eb8918b3d3c/vm/benchmarks/agentscript/sieve.js) script.
 The function has just computed one hundred thousand (count available in variable `cnt`) prime numbers.
 The picture shows a linked list `Filter` holding prime numbers from `2` to `17`.
 The rest of the linked list is hidden (only references up to depth `10` were requested) behind `unreachable` object.

@@ -38,21 +38,19 @@ import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import jdk.graal.compiler.debug.GraalError;
 
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
-import com.oracle.svm.core.jdk.JDK11OrEarlier;
-import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Field;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -108,7 +106,7 @@ final class Target_java_lang_invoke_MethodHandleNatives {
             flags = Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_CONSTRUCTOR | constructor.getModifiers();
             refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_newInvokeSpecial;
         } else {
-            throw new InternalError("unknown member type: " + member.getClass());
+            throw new InternalError("Unknown member type: " + member.getClass());
         }
         flags |= refKind << Target_java_lang_invoke_MethodHandleNatives_Constants.MN_REFERENCE_KIND_SHIFT;
 
@@ -121,16 +119,13 @@ final class Target_java_lang_invoke_MethodHandleNatives {
         throw unsupportedFeature("MethodHandleNatives.expand()");
     }
 
-    @Delete
-    private static native int getMembers(Class<?> defc, String matchName, String matchSig, int matchFlags, Class<?> caller, int skip, Target_java_lang_invoke_MemberName[] results);
-
     @Substitute
     private static long objectFieldOffset(Target_java_lang_invoke_MemberName self) {
         if (self.reflectAccess == null && self.intrinsic == null) {
-            throw new InternalError("unresolved field");
+            throw new InternalError("Unresolved field");
         }
         if (!self.isField() || self.isStatic()) {
-            throw new InternalError("non-static field required");
+            throw new InternalError("Non-static field required");
         }
 
         /* Intrinsic arguments are not accessed through their offset. */
@@ -147,10 +142,10 @@ final class Target_java_lang_invoke_MethodHandleNatives {
     @Substitute
     private static long staticFieldOffset(Target_java_lang_invoke_MemberName self) {
         if (self.reflectAccess == null && self.intrinsic == null) {
-            throw new InternalError("unresolved field");
+            throw new InternalError("Unresolved field");
         }
         if (!self.isField() || !self.isStatic()) {
-            throw new InternalError("static field required");
+            throw new InternalError("Static field required");
         }
         /* Intrinsic arguments are not accessed through their offset. */
         if (self.intrinsic != null) {
@@ -166,10 +161,10 @@ final class Target_java_lang_invoke_MethodHandleNatives {
     @Substitute
     private static Object staticFieldBase(Target_java_lang_invoke_MemberName self) {
         if (self.reflectAccess == null) {
-            throw new InternalError("unresolved field");
+            throw new InternalError("Unresolved field");
         }
         if (!self.isField() || !self.isStatic()) {
-            throw new InternalError("static field required");
+            throw new InternalError("Static field required");
         }
         return ((Field) self.reflectAccess).getType().isPrimitive() ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields();
     }
@@ -191,14 +186,6 @@ final class Target_java_lang_invoke_MethodHandleNatives {
     @Delete
     private static native int getNamedCon(int which, Object[] name);
 
-    // JDK 11
-
-    @Substitute
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    static Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, boolean speculativeResolve) throws LinkageError, ClassNotFoundException {
-        return Util_java_lang_invoke_MethodHandleNatives.resolve(self, caller, speculativeResolve);
-    }
-
     @Delete
     private static native void copyOutBootstrapArguments(Class<?> caller, int[] indexInfo, int start, int end, Object[] buf, int pos, boolean resolve, Object ifNotAvailable);
 
@@ -213,10 +200,7 @@ final class Target_java_lang_invoke_MethodHandleNatives {
     @AnnotateOriginal
     static native String refKindName(byte refKind);
 
-    // JDK 17
-
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     static Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, int lookupMode, boolean speculativeResolve)
                     throws LinkageError, ClassNotFoundException {
         Class<?> declaringClass = self.getDeclaringClass();
@@ -229,6 +213,9 @@ final class Target_java_lang_invoke_MethodHandleNatives {
         }
         return resolved;
     }
+
+    @Delete
+    static native MethodHandle linkMethodHandleConstant(Class<?> callerClass, int refKind, Class<?> defc, String name, Object type);
 }
 
 /**
@@ -297,7 +284,7 @@ final class Util_java_lang_invoke_MethodHandleNatives {
     @SuppressWarnings("unused")
     public static Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, boolean speculativeResolve)
                     throws LinkageError, ClassNotFoundException {
-        if (self.reflectAccess != null) {
+        if (self.reflectAccess != null || self.intrinsic != null) {
             return self;
         }
         Class<?> declaringClass = self.getDeclaringClass();
@@ -356,12 +343,11 @@ final class Util_java_lang_invoke_MethodHandleNatives {
     private static Method verifyAccess;
 
     static boolean verifyAccess(Class<?> refc, Class<?> defc, int mods, Class<?> lookupClass, int allowedModes) {
-        assert JavaVersionUtil.JAVA_SPEC >= 17;
         if (verifyAccess == null) {
             try {
                 verifyAccess = VerifyAccess.class.getDeclaredMethod("isMemberAccessible", Class.class, Class.class, int.class, Class.class, Class.class, int.class);
             } catch (NoSuchMethodException e) {
-                throw shouldNotReachHere();
+                throw shouldNotReachHere(e);
             }
         }
         try {
@@ -375,31 +361,27 @@ final class Util_java_lang_invoke_MethodHandleNatives {
 @TargetClass(className = "java.lang.invoke.MethodHandleNatives", innerClass = "Constants")
 final class Target_java_lang_invoke_MethodHandleNatives_Constants {
     // Checkstyle: stop
-    @Alias static int MN_IS_METHOD;
-    @Alias static int MN_IS_CONSTRUCTOR;
-    @Alias static int MN_IS_FIELD;
-    @Alias static int MN_IS_TYPE;
-    @Alias static int MN_CALLER_SENSITIVE;
-    @Alias static int MN_REFERENCE_KIND_SHIFT;
-    @Alias static int MN_REFERENCE_KIND_MASK;
-    // The SEARCH_* bits are not for MN.flags but for the matchFlags argument of MHN.getMembers:
-    @Alias static int MN_SEARCH_SUPERCLASSES;
-    @Alias static int MN_SEARCH_INTERFACES;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static int MN_IS_METHOD;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static int MN_IS_CONSTRUCTOR;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static int MN_IS_FIELD;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static int MN_IS_TYPE;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static int MN_CALLER_SENSITIVE;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static int MN_REFERENCE_KIND_SHIFT;
 
     /**
      * Constant pool reference-kind codes, as used by CONSTANT_MethodHandle CP entries.
      */
-    @Alias static byte REF_NONE;  // null value
-    @Alias static byte REF_getField;
-    @Alias static byte REF_getStatic;
-    @Alias static byte REF_putField;
-    @Alias static byte REF_putStatic;
-    @Alias static byte REF_invokeVirtual;
-    @Alias static byte REF_invokeStatic;
-    @Alias static byte REF_invokeSpecial;
-    @Alias static byte REF_newInvokeSpecial;
-    @Alias static byte REF_invokeInterface;
-    @Alias static byte REF_LIMIT;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static byte REF_NONE;  // null
+    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static byte REF_getField;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static byte REF_getStatic;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static byte REF_putField;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static byte REF_putStatic;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static byte REF_invokeVirtual;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static byte REF_invokeStatic;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static byte REF_invokeSpecial;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static byte REF_newInvokeSpecial;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static byte REF_invokeInterface;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static byte REF_LIMIT;
     // Checkstyle: resume
 }
 

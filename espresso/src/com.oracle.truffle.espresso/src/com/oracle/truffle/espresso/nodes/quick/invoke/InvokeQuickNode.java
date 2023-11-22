@@ -28,7 +28,7 @@ import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public abstract class InvokeQuickNode extends QuickNode {
     private static final Object[] EMPTY_ARGS = new Object[0];
@@ -110,7 +110,7 @@ public abstract class InvokeQuickNode extends QuickNode {
     }
 
     @Override
-    public final boolean removedByRedefintion() {
+    public final boolean removedByRedefinition() {
         if (method.getRedefineAssumption().isValid()) {
             return false;
         } else {

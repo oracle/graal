@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -94,11 +94,32 @@ public final class ByteArrayList {
         return size;
     }
 
+    public void addRange(byte[] src, int srcOffset, int length) {
+        ensureSize(size + length);
+        System.arraycopy(src, srcOffset, array, size, length);
+        size += length;
+    }
+
+    public void allocate(int length) {
+        ensureSize(size + length);
+        size += length;
+    }
+
     private void ensureSize() {
         if (array == null) {
             array = new byte[4];
         } else if (size == array.length) {
             byte[] narray = new byte[array.length * 2];
+            System.arraycopy(array, 0, narray, 0, size);
+            array = narray;
+        }
+    }
+
+    private void ensureSize(int newSize) {
+        if (array == null) {
+            array = new byte[2 * Integer.highestOneBit(newSize)];
+        } else if (newSize > array.length) {
+            byte[] narray = new byte[2 * Integer.highestOneBit(newSize)];
             System.arraycopy(array, 0, narray, 0, size);
             array = narray;
         }

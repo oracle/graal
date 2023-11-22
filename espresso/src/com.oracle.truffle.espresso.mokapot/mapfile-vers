@@ -33,6 +33,7 @@ SUNWprivate_1.1 {
                 mokapotAttachThread;
                 mokapotGetRTLD_DEFAULT;
                 mokapotGetProcessHandle;
+                mokapotCaptureState;
                 getPackageAt;
 
                 # Espresso management native API
@@ -351,6 +352,14 @@ SUNWprivate_1.1 {
                 JVM_SetScopedValueCache;
                 JVM_FindScopedValueBindings;
                 JVM_EnsureMaterializedForStackWalk_func;
+
+                # JDK 21
+                JVM_IsForeignLinkerSupported;
+                JVM_VirtualThreadStart;
+                JVM_VirtualThreadEnd;
+                JVM_VirtualThreadMount;
+                JVM_VirtualThreadUnmount;
+                JVM_PrintWarningAtDynamicAgentLoad;
 
                 # miscellaneous functions
                 jio_fprintf;

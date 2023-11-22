@@ -604,8 +604,8 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if and only if the receiver is not a
      *             {@link #isNumber(Object)} or it does not fit without loss of precision.
      * @see #isNumber(Object)
-     * @see #fitsInLong(Object)
-     * @since 19.0
+     * @see #fitsInBigInteger(Object)
+     * @since 23.0
      */
     @Abstract(ifExportedAsWarning = "isNumber")
     public BigInteger asBigInteger(Object receiver) throws UnsupportedMessageException {
@@ -3877,7 +3877,6 @@ public abstract class InteropLibrary extends Library {
                 assert wasWritable || isMultiThreaded(receiver) : violationInvariant(receiver, key);
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException || e instanceof UnknownKeyException || e instanceof UnsupportedTypeException : violationPost(receiver, e);
-                assert !(e instanceof UnsupportedMessageException) || !wasWritable : violationInvariant(receiver, key);
                 throw e;
             }
         }
@@ -3907,7 +3906,6 @@ public abstract class InteropLibrary extends Library {
                 assert wasRemovable || isMultiThreaded(receiver) : violationInvariant(receiver, key);
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException || e instanceof UnknownKeyException : violationPost(receiver, e);
-                assert !(e instanceof UnsupportedMessageException) || !wasRemovable : violationInvariant(receiver, key);
                 throw e;
             }
         }

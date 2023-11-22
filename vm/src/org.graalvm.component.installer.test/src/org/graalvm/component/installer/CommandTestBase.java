@@ -82,6 +82,7 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     URL clu;
     ComponentInfo info;
 
+    @SuppressWarnings("this-escape")
     public CommandTestBase() {
         fileOps = SystemUtils.isWindows() ? new WindowsFileOperations() : new DefaultFileOperations();
         fileOps.init(this);

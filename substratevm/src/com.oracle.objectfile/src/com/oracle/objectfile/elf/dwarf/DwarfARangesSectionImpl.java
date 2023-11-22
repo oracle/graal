@@ -26,17 +26,16 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-import org.graalvm.compiler.debug.DebugContext;
+import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
+import jdk.graal.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
-import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.range.Range;
 
@@ -45,22 +44,17 @@ import com.oracle.objectfile.debugentry.range.Range;
  */
 public class DwarfARangesSectionImpl extends DwarfSectionImpl {
     /* Headers have a fixed size but must align up to 2 * address size. */
-    private static final int DW_AR_HEADER_SIZE = 12;
-    private static final int DW_AR_HEADER_PAD_SIZE = 4;
+    private static final int AR_HEADER_SIZE = 12;
+    private static final int AR_HEADER_PAD_SIZE = 4;
 
     public DwarfARangesSectionImpl(DwarfDebugInfo dwarfSections) {
-        super(dwarfSections);
-    }
-
-    @Override
-    public String getSectionName() {
-        return DwarfDebugInfo.DW_ARANGES_SECTION_NAME;
+        super(dwarfSections, DwarfSectionName.DW_ARANGES_SECTION, DwarfSectionName.DW_FRAME_SECTION);
     }
 
     @Override
     public void createContent() {
         /*
-         * We need an entry for each compilation unit.
+         * We need an entry for each compilation unit that has compiled methods
          *
          * <ul>
          *
@@ -68,7 +62,8 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
          *
          * <li><code>uint16 dwarf_version ..... always 2</code>
          *
-         * <li><code>uint32 info_offset ....... offset of compilation unit on debug_info</code>
+         * <li><code>uint32 info_offset ....... offset of compilation unit in debug_info -- always
+         * 0</code>
          *
          * <li><code>uint8 address_size ....... always 8</code>
          *
@@ -92,44 +87,28 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
          *
          * </ul>
          *
-         * Where N is the number of ranges belonging to the compilation unit and the last range
-         * contains two zeroes.
+         * Where N is the number of compiled methods.
          */
         assert !contentByteArrayCreated();
-        Cursor cursor = new Cursor();
-        // size arange entries for normal compiled methods
-        instanceClassStream().filter(ClassEntry::hasCompiledEntries).forEach(classEntry -> {
-            cursor.add(normalEntrySize(classEntry));
+        Cursor byteCount = new Cursor();
+        instanceClassStream().filter(ClassEntry::hasCompiledEntries).forEachOrdered(classEntry -> {
+            byteCount.add(entrySize(classEntry.compiledEntryCount()));
         });
-        // size arange entries for deopt compiled methods
-        instanceClassStream().filter(ClassEntry::hasDeoptCompiledEntries).forEach(classEntry -> {
-            cursor.add(deoptEntrySize(classEntry));
-        });
-        byte[] buffer = new byte[cursor.get()];
+        byte[] buffer = new byte[byteCount.get()];
         super.setContent(buffer);
     }
 
-    private static int normalEntrySize(ClassEntry classEntry) {
-        assert classEntry.hasCompiledEntries();
-        return entrySize(classEntry.normalCompiledEntries());
-    }
-
-    private static int deoptEntrySize(ClassEntry classEntry) {
-        assert classEntry.hasDeoptCompiledEntries();
-        return entrySize(classEntry.deoptCompiledEntries());
-    }
-
-    private static int entrySize(Stream<CompiledMethodEntry> compiledEntries) {
-        long size = 0;
+    private static int entrySize(int methodCount) {
+        int size = 0;
         // allow for header data
-        size += DW_AR_HEADER_SIZE;
+        size += AR_HEADER_SIZE;
         // align to 2 * address size.
-        size += DW_AR_HEADER_PAD_SIZE;
+        size += AR_HEADER_PAD_SIZE;
         // count 16 bytes for each deopt compiled method
-        size += compiledEntries.count() * (2 * 8);
+        size += methodCount * (2 * 8);
         // allow for two trailing zeroes to terminate
         size += 2 * 8;
-        return Math.toIntExact(size);
+        return size;
     }
 
     @Override
@@ -154,44 +133,24 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
         assert contentByteArrayCreated();
         byte[] buffer = getContent();
         int size = buffer.length;
-        int pos = 0;
+        Cursor cursor = new Cursor();
 
-        enableLog(context, pos);
+        enableLog(context, cursor.get());
 
-        // write normal entry aranges
-        List<ClassEntry> classEntries = instanceClassStream().filter(ClassEntry::hasCompiledEntries).collect(Collectors.toList());
-        classEntries.sort(this::sortByLowPC);
-
-        log(context, "  [0x%08x] DEBUG_ARANGES", pos);
-        for (ClassEntry classEntry : classEntries) {
-            int lengthPos = pos;
-            int cuIndex = getCUIndex(classEntry);
-            log(context, "  [0x%08x] %s CU %d ", pos, classEntry.getFileName(), cuIndex);
-            pos = writeHeader(cuIndex, buffer, pos);
-            pos = writeARanges(context, classEntry.normalCompiledEntries(), buffer, pos);
+        log(context, "  [0x%08x] DEBUG_ARANGES", cursor.get());
+        instanceClassStream().filter(ClassEntry::hasCompiledEntries).forEachOrdered(classEntry -> {
+            int lengthPos = cursor.get();
+            log(context, "  [0x%08x] class %s CU 0x%x", lengthPos, classEntry.getTypeName(), getCUIndex(classEntry));
+            cursor.set(writeHeader(getCUIndex(classEntry), buffer, cursor.get()));
+            classEntry.compiledEntries().forEachOrdered(compiledMethodEntry -> {
+                cursor.set(writeARange(context, compiledMethodEntry, buffer, cursor.get()));
+            });
             // write two terminating zeroes
-            pos = writeLong(0, buffer, pos);
-            pos = writeLong(0, buffer, pos);
-            // backpatch the length field
-            patchLength(lengthPos, buffer, pos);
-        }
-        // now write the deopt entry aranges
-        classEntries = instanceClassStream().filter(ClassEntry::hasDeoptCompiledEntries).collect(Collectors.toList());
-        classEntries.sort(this::sortByLowPCDeopt);
-
-        for (ClassEntry classEntry : classEntries) {
-            int lengthPos = pos;
-            int cuIndex = getDeoptCUIndex(classEntry);
-            log(context, "  [0x%08x] %s CU (deopt) %d ", pos, classEntry.getFileName(), cuIndex);
-            pos = writeHeader(cuIndex, buffer, pos);
-            pos = writeARanges(context, classEntry.deoptCompiledEntries(), buffer, pos);
-            // write two terminating zeroes
-            pos = writeLong(0, buffer, pos);
-            pos = writeLong(0, buffer, pos);
-            // backpatch the length field
-            patchLength(lengthPos, buffer, pos);
-        }
-        assert pos == size;
+            cursor.set(writeLong(0, buffer, cursor.get()));
+            cursor.set(writeLong(0, buffer, cursor.get()));
+            patchLength(lengthPos, buffer, cursor.get());
+        });
+        assert cursor.get() == size;
     }
 
     private int writeHeader(int cuIndex, byte[] buffer, int p) {
@@ -199,60 +158,28 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
         // write dummy length for now
         pos = writeInt(0, buffer, pos);
         /* DWARF version is always 2. */
-        pos = writeShort(DwarfDebugInfo.DW_VERSION_2, buffer, pos);
+        pos = writeDwarfVersion(DwarfVersion.DW_VERSION_2, buffer, pos);
         pos = writeInfoSectionOffset(cuIndex, buffer, pos);
         /* Address size is always 8. */
         pos = writeByte((byte) 8, buffer, pos);
         /* Segment size is always 0. */
         pos = writeByte((byte) 0, buffer, pos);
-        assert (pos - p) == DW_AR_HEADER_SIZE;
+        assert (pos - p) == AR_HEADER_SIZE;
         /*
          * Align to 2 * address size.
          */
-        for (int i = 0; i < DW_AR_HEADER_PAD_SIZE; i++) {
+        for (int i = 0; i < AR_HEADER_PAD_SIZE; i++) {
             pos = writeByte((byte) 0, buffer, pos);
         }
         return pos;
     }
 
-    int writeARanges(DebugContext context, Stream<CompiledMethodEntry> compiledEntries, byte[] buffer, int p) {
-        return compiledEntries.reduce(p,
-                        (p1, compiledEntry) -> {
-                            int pos = p1;
-                            Range primary = compiledEntry.getPrimary();
-                            log(context, "  [0x%08x] %016x %016x %s", pos, debugTextBase + primary.getLo(), primary.getHi() - primary.getLo(), primary.getFullMethodNameWithParams());
-                            pos = writeRelocatableCodeOffset(primary.getLo(), buffer, pos);
-                            pos = writeLong(primary.getHi() - primary.getLo(), buffer, pos);
-                            return pos;
-                        },
-                        (oldpos, newpos) -> newpos);
-    }
-
-    private int sortByLowPC(ClassEntry classEntry1, ClassEntry classEntry2) {
-        return classEntry1.lowpc() - classEntry2.lowpc();
-    }
-
-    private int sortByLowPCDeopt(ClassEntry classEntry1, ClassEntry classEntry2) {
-        return classEntry1.lowpcDeopt() - classEntry2.lowpcDeopt();
-    }
-
-    /*
-     * The debug_aranges section depends on debug_frame section.
-     */
-    private static final String TARGET_SECTION_NAME = DwarfDebugInfo.DW_FRAME_SECTION_NAME;
-
-    @Override
-    public String targetSectionName() {
-        return TARGET_SECTION_NAME;
-    }
-
-    private final LayoutDecision.Kind[] targetSectionKinds = {
-                    LayoutDecision.Kind.CONTENT,
-                    LayoutDecision.Kind.SIZE
-    };
-
-    @Override
-    public LayoutDecision.Kind[] targetSectionKinds() {
-        return targetSectionKinds;
+    int writeARange(DebugContext context, CompiledMethodEntry compiledMethod, byte[] buffer, int p) {
+        int pos = p;
+        Range primary = compiledMethod.getPrimary();
+        log(context, "  [0x%08x] %016x %016x %s", pos, debugTextBase + primary.getLo(), primary.getHi() - primary.getLo(), primary.getFullMethodNameWithParams());
+        pos = writeRelocatableCodeOffset(primary.getLo(), buffer, pos);
+        pos = writeLong(primary.getHi() - primary.getLo(), buffer, pos);
+        return pos;
     }
 }

@@ -26,25 +26,28 @@
 
 package com.oracle.svm.hosted.jdk;
 
-import com.oracle.svm.core.feature.InternalFeature;
-
 import java.lang.management.PlatformManagedObject;
-
+import java.util.Map;
 import java.util.Set;
 
-import com.oracle.svm.core.jdk.NativeLibrarySupport;
-import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import javax.management.MBeanServer;
+import javax.management.remote.JMXServiceURL;
+
 import org.graalvm.nativeimage.ImageSingletons;
-import com.oracle.svm.core.configure.ResourcesRegistry;
-import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+
+import com.oracle.svm.core.VMInspectionOptions;
+import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.NativeLibrarySupport;
+import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jdk.management.ManagementAgentStartupHook;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
+import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 
 @AutomaticallyRegisteredFeature
 public class JmxServerFeature implements InternalFeature {
@@ -92,11 +95,18 @@ public class JmxServerFeature implements InternalFeature {
         dynamicProxySupport.addProxyClass(access.findClassByName("javax.management.remote.rmi.RMIServer"));
     }
 
+    /**
+     * This method configures reflection metadata only required by a JMX server.
+     * <ul>
+     * <li>Here we register all the custom MXBeans of Substrate VM. They will not be accounted for
+     * by the native image tracing agent so a user may not know they need to register them.</li>
+     * <li>We also register {@code com.sun.jmx.remote.protocol.rmi.ServerProvider} which can be
+     * reflectively looked up on a code path starting from
+     * {@link javax.management.remote.JMXConnectorServerFactory#newJMXConnectorServer(JMXServiceURL, Map, MBeanServer)}
+     * </li>
+     * </ul>
+     */
     private static void configureReflection(BeforeAnalysisAccess access) {
-        /*
-         * Register all the custom substrate MXBeans. They won't be accounted for by the native
-         * image tracing agent so a user may not know they need to register them.
-         */
         Set<PlatformManagedObject> platformManagedObjects = ManagementSupport.getSingleton().getPlatformManagedObjects();
         for (PlatformManagedObject p : platformManagedObjects) {
 
@@ -107,40 +117,9 @@ public class JmxServerFeature implements InternalFeature {
             }
             Class<?> clazz = p.getClass();
             RuntimeReflection.register(clazz);
-            RuntimeReflection.register(clazz.getDeclaredConstructors());
-            RuntimeReflection.register(clazz.getDeclaredMethods());
-            RuntimeReflection.register(clazz.getDeclaredFields());
-            RuntimeReflection.register(clazz.getInterfaces());
         }
 
-        // Only JmxServerFeature, not JmxClientFeature, has registrations for platform MBeans
-        String[] classes = {
-                        "com.sun.management.GarbageCollectorMXBean",
-                        "com.sun.management.OperatingSystemMXBean",
-                        "com.sun.management.ThreadMXBean",
-                        "com.sun.management.UnixOperatingSystemMXBean", "java.lang.management.CompilationMXBean",
-                        "java.lang.management.GarbageCollectorMXBean", "java.lang.management.MemoryMXBean",
-                        "java.lang.management.MemoryManagerMXBean", "java.lang.management.MemoryPoolMXBean",
-                        "java.lang.management.RuntimeMXBean", "java.lang.management.BufferPoolMXBean",
-                        "java.lang.management.ClassLoadingMXBean", "java.lang.management.PlatformLoggingMXBean"
-        };
-
-        String[] methods = {
-                        "com.sun.management.OperatingSystemMXBean",
-                        "com.sun.management.ThreadMXBean", "com.sun.management.UnixOperatingSystemMXBean",
-                        "java.lang.management.BufferPoolMXBean",
-                        "java.lang.management.ClassLoadingMXBean", "java.lang.management.CompilationMXBean",
-                        "java.lang.management.GarbageCollectorMXBean", "java.lang.management.MemoryMXBean",
-                        "java.lang.management.MemoryManagerMXBean", "java.lang.management.MemoryPoolMXBean",
-                        "java.lang.management.RuntimeMXBean",
-                        "java.lang.management.PlatformLoggingMXBean"
-        };
-
-        for (String clazz : classes) {
-            RuntimeReflection.register(access.findClassByName(clazz));
-        }
-        for (String clazz : methods) {
-            RuntimeReflection.register(access.findClassByName(clazz).getMethods());
-        }
+        RuntimeReflection.register(access.findClassByName("com.sun.jmx.remote.protocol.rmi.ServerProvider"));
+        RuntimeReflection.register(access.findClassByName("com.sun.jmx.remote.protocol.rmi.ServerProvider").getConstructors());
     }
 }

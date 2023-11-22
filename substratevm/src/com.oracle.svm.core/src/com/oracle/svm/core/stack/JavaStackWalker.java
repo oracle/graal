@@ -45,6 +45,7 @@ import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -134,6 +135,11 @@ public final class JavaStackWalker {
         assert thread.notEqual(CurrentIsolate.getCurrentThread()) : "Cannot walk the current stack with this method, it would miss all frames after the last frame anchor";
         assert VMOperation.isInProgressAtSafepoint() : "Walking the stack of another thread is only safe when that thread is stopped at a safepoint";
 
+        if (SafepointBehavior.isCrashedThread(thread)) {
+            /* Skip crashed threads because they may no longer have a stack. */
+            return false;
+        }
+
         JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor(thread);
         boolean result = anchor.isNonNull();
         Pointer sp = WordFactory.nullPointer();
@@ -176,15 +182,10 @@ public final class JavaStackWalker {
 
         DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sp);
         if (deoptFrame == null) {
-            lookupCodeInfoInterruptible(info, walk.getPossiblyStaleIP(), queryResult);
+            CodeInfoAccess.lookupCodeInfo(info, CodeInfoAccess.relativeIP(info, walk.getPossiblyStaleIP()), queryResult);
         }
 
         return continueWalk(walk, queryResult, deoptFrame);
-    }
-
-    @Uninterruptible(reason = "Wrap call to interruptible code.", calleeMustBe = false)
-    private static void lookupCodeInfoInterruptible(CodeInfo codeInfo, CodePointer ip, SimpleCodeInfoQueryResult queryResult) {
-        CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), queryResult);
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
@@ -298,6 +299,7 @@ public final class JavaStackWalker {
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
     public static boolean walkThread(IsolateThread thread, Pointer endSP, ParameterizedStackFrameVisitor visitor, Object data) {
+        assert thread.isNonNull();
         JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
         if (initWalk(walk, thread)) {
             walk.setEndSP(endSP);
@@ -324,8 +326,8 @@ public final class JavaStackWalker {
             }
 
             Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
-            CodeInfo tetheredInfo = CodeInfoAccess.convert(untetheredInfo, tether);
             try {
+                CodeInfo tetheredInfo = CodeInfoAccess.convert(untetheredInfo, tether);
                 // now the value in walk.getIPCodeInfo() can be passed to interruptible code
                 if (!callVisitor(walk, tetheredInfo, visitor, data)) {
                     return false;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.AbstractMap;
 import java.util.AbstractSet;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -426,9 +427,9 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
             }
             assert cache.receiverClass == receiverClass;
             assert cache.keyClass == keyClass;
-            assert cache.keyType == keyType;
+            assert Objects.equals(cache.keyType, keyType);
             assert cache.valueClass == valueClass;
-            assert cache.valueType == valueType;
+            assert Objects.equals(cache.valueType, valueType);
             return cache;
         }
 
@@ -959,6 +960,24 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
         @Override
         public Type getOwnerType() {
             return null;
+        }
+
+        @Override
+        public int hashCode() {
+            int res = rawType.hashCode();
+            res = res * 31 + Arrays.hashCode(typeParameters);
+            return res;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            } else if (obj == null || getClass() != obj.getClass()) {
+                return false;
+            }
+            ParameterizedTypeImpl other = (ParameterizedTypeImpl) obj;
+            return rawType == other.rawType && Arrays.equals(typeParameters, typeParameters);
         }
     }
 }

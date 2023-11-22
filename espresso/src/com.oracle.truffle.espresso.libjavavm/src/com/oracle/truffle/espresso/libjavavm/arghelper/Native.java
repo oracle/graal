@@ -24,16 +24,12 @@
 package com.oracle.truffle.espresso.libjavavm.arghelper;
 
 import static com.oracle.truffle.espresso.libjavavm.Arguments.abort;
-import static com.oracle.truffle.espresso.libjavavm.arghelper.ArgumentsHandler.isBooleanOption;
 
-import java.util.EnumSet;
-import java.util.Map;
+import java.util.Map.Entry;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
 import org.graalvm.nativeimage.RuntimeOptions;
-import org.graalvm.options.OptionDescriptor;
-import org.graalvm.options.OptionDescriptors;
 
 import com.oracle.truffle.espresso.libjavavm.Arguments;
 
@@ -49,23 +45,6 @@ class Native {
     private final ArgumentsHandler handler;
 
     private String argPrefix;
-
-    private OptionDescriptors compilerOptionDescriptors;
-    private OptionDescriptors vmOptionDescriptors;
-
-    private OptionDescriptors getCompilerOptions() {
-        if (compilerOptionDescriptors == null) {
-            compilerOptionDescriptors = RuntimeOptions.getOptions(EnumSet.of(RuntimeOptions.OptionClass.Compiler));
-        }
-        return compilerOptionDescriptors;
-    }
-
-    private OptionDescriptors getVMOptions() {
-        if (vmOptionDescriptors == null) {
-            vmOptionDescriptors = RuntimeOptions.getOptions(EnumSet.of(RuntimeOptions.OptionClass.VM));
-        }
-        return vmOptionDescriptors;
-    }
 
     void init(boolean fromXXHandling) {
         argPrefix = fromXXHandling ? "-" : "--vm.";
@@ -89,19 +68,19 @@ class Native {
         }
     }
 
-    void printNativeHelp() {
+    final void printNativeHelp() {
         handler.printRaw("Native VM options:");
-        SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
-        for (OptionDescriptor descriptor : getVMOptions()) {
-            if (!descriptor.isDeprecated()) {
-                sortedOptions.put(descriptor.getName(), descriptor);
+        SortedMap<String, RuntimeOptions.Descriptor> sortedOptions = new TreeMap<>();
+        for (RuntimeOptions.Descriptor descriptor : RuntimeOptions.listDescriptors()) {
+            if (!descriptor.deprecated()) {
+                sortedOptions.put(descriptor.name(), descriptor);
             }
         }
-        for (Map.Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
-            OptionDescriptor descriptor = entry.getValue();
-            String helpMsg = descriptor.getHelp();
+        for (Entry<String, RuntimeOptions.Descriptor> entry : sortedOptions.entrySet()) {
+            RuntimeOptions.Descriptor descriptor = entry.getValue();
+            String helpMsg = descriptor.help();
             if (isBooleanOption(descriptor)) {
-                Boolean val = (Boolean) descriptor.getKey().getDefaultValue();
+                Boolean val = (Boolean) descriptor.defaultValue();
                 if (helpMsg.length() != 0) {
                     helpMsg += ' ';
                 }
@@ -112,14 +91,13 @@ class Native {
                 }
                 launcherOption("--vm.XX:\u00b1" + entry.getKey(), helpMsg);
             } else {
-                Object def = descriptor.getKey().getDefaultValue();
+                Object def = descriptor.defaultValue();
                 if (def instanceof String) {
                     def = "\"" + def + "\"";
                 }
                 launcherOption("--vm.XX:" + entry.getKey() + "=" + def, helpMsg);
             }
         }
-        printCompilerOptions();
         printBasicNativeHelp();
     }
 
@@ -145,14 +123,14 @@ class Native {
             key = arg.substring(0, eqIdx);
             value = arg.substring(eqIdx + 1);
         }
-        OptionDescriptor descriptor = getCompilerOptions().get(key);
+        RuntimeOptions.Descriptor descriptor = RuntimeOptions.getDescriptor(key);
         if (descriptor == null) {
             throw unknownOption(key);
         }
         try {
-            RuntimeOptions.set(key, descriptor.getKey().getType().convert(value));
+            RuntimeOptions.set(key, descriptor.convertValue(value));
         } catch (IllegalArgumentException iae) {
-            throw abort("Invalid argument: " + formatArg(arg) + "': " + iae.getMessage());
+            throw abort("Invalid argument: " + formatArg(arg) + ": " + iae.getMessage());
         }
     }
 
@@ -170,62 +148,47 @@ class Native {
         System.setProperty(key, value);
     }
 
-    private void setRuntimeOption(String arg) {
+    public void setRuntimeOption(String arg) {
         int eqIdx = arg.indexOf('=');
         String key;
         Object value;
         if (arg.startsWith("+") || arg.startsWith("-")) {
             key = arg.substring(1);
             if (eqIdx >= 0) {
-                throw abort("Invalid argument: " + formatArg(arg) + "': Use either +/- or =, but not both");
+                throw abort("Invalid argument: '" + formatArg(arg) + "': Use either +/- or =, but not both");
             }
-            OptionDescriptor descriptor = getVMOptionDescriptor(key);
+            RuntimeOptions.Descriptor descriptor = getVMOptionDescriptor(key);
             if (!isBooleanOption(descriptor)) {
                 throw abort("Invalid argument: " + key + " is not a boolean option, set it with " + argPrefix + "XX:" + key + "=<value>.");
             }
             value = arg.startsWith("+");
         } else if (eqIdx > 0) {
             key = arg.substring(0, eqIdx);
-            OptionDescriptor descriptor = getVMOptionDescriptor(key);
+            RuntimeOptions.Descriptor descriptor = getVMOptionDescriptor(key);
             if (isBooleanOption(descriptor)) {
                 throw abort("Boolean option '" + key + "' must be set with +/- prefix, not <name>=<value> format.");
             }
             try {
-                value = descriptor.getKey().getType().convert(arg.substring(eqIdx + 1));
+                value = descriptor.convertValue(arg.substring(eqIdx + 1));
             } catch (IllegalArgumentException iae) {
-                throw abort("Invalid argument: " + formatArg(arg) + "': " + iae.getMessage());
+                throw abort("Invalid argument: '" + formatArg(arg) + "': " + iae.getMessage());
             }
         } else {
-            throw abort("Invalid argument: " + formatArg(arg) + "'. Prefix boolean options with + or -, suffix other options with <name>=<value>");
+            throw abort("Invalid argument: '" + formatArg(arg) + "'. Prefix boolean options with + or -, suffix other options with <name>=<value>");
         }
         RuntimeOptions.set(key, value);
     }
 
-    private OptionDescriptor getVMOptionDescriptor(String key) {
-        OptionDescriptor descriptor = getVMOptions().get(key);
+    private static boolean isBooleanOption(RuntimeOptions.Descriptor descriptor) {
+        return descriptor.valueType() == Boolean.class;
+    }
+
+    private static RuntimeOptions.Descriptor getVMOptionDescriptor(String key) {
+        RuntimeOptions.Descriptor descriptor = RuntimeOptions.getDescriptor(key);
         if (descriptor == null) {
             throw unknownOption(key);
         }
         return descriptor;
-    }
-
-    private void printCompilerOptions() {
-        handler.printRaw("Compiler options:");
-        SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
-        for (OptionDescriptor descriptor : getCompilerOptions()) {
-            if (!descriptor.isDeprecated()) {
-                sortedOptions.put(descriptor.getName(), descriptor);
-            }
-        }
-        for (Map.Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
-            OptionDescriptor descriptor = entry.getValue();
-            String helpMsg = descriptor.getHelp();
-            Object def = descriptor.getKey().getDefaultValue();
-            if (def instanceof String) {
-                def = '"' + (String) def + '"';
-            }
-            launcherOption("--vm.Dgraal." + entry.getKey() + "=" + def, helpMsg);
-        }
     }
 
     private void printBasicNativeHelp() {

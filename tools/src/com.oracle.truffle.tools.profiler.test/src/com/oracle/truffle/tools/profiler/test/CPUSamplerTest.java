@@ -52,6 +52,7 @@ import com.oracle.truffle.tools.profiler.CPUSampler.Payload;
 import com.oracle.truffle.tools.profiler.CPUSamplerData;
 import com.oracle.truffle.tools.profiler.ProfilerNode;
 
+@SuppressWarnings("this-escape")
 public class CPUSamplerTest extends AbstractProfilerTest {
 
     private CPUSampler sampler;

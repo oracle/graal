@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -216,6 +216,15 @@ public abstract class BinaryStreamParser {
         return data[initialOffset];
     }
 
+    public static short peek2(byte[] data, int initialOffset) {
+        int result = 0;
+        for (int i = 0; i != 2; ++i) {
+            int x = Byte.toUnsignedInt(peek1(data, initialOffset + i));
+            result |= x << 8 * i;
+        }
+        return (short) result;
+    }
+
     protected int read4() {
         int result = 0;
         for (int i = 0; i != 4; ++i) {
@@ -225,10 +234,28 @@ public abstract class BinaryStreamParser {
         return result;
     }
 
+    public static int peek4(byte[] data, int initialOffset) {
+        int result = 0;
+        for (int i = 0; i != 4; ++i) {
+            int x = Byte.toUnsignedInt(peek1(data, initialOffset + i));
+            result |= x << 8 * i;
+        }
+        return result;
+    }
+
     protected long read8() {
         long result = 0;
         for (int i = 0; i != 8; ++i) {
             long x = Byte.toUnsignedLong(read1());
+            result |= x << 8 * i;
+        }
+        return result;
+    }
+
+    public static long peek8(byte[] data, int initialOffset) {
+        long result = 0;
+        for (int i = 0; i != 8; ++i) {
+            long x = Byte.toUnsignedLong(peek1(data, initialOffset + i));
             result |= x << 8 * i;
         }
         return result;

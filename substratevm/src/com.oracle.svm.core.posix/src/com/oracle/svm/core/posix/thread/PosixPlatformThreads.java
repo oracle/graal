@@ -24,9 +24,10 @@
  */
 package com.oracle.svm.core.posix.thread;
 
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ObjectHandle;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -39,6 +40,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
@@ -59,7 +61,6 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
-import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Pthread;
@@ -160,7 +161,7 @@ public final class PosixPlatformThreads extends PlatformThreads {
             return;
         }
 
-        if (IsDefined.isDarwin() && thread != Thread.currentThread()) {
+        if (Platform.includedIn(Platform.DARWIN.class) && thread != Thread.currentThread()) {
             /* Darwin only allows setting the name of the current thread. */
             return;
         }
@@ -170,9 +171,9 @@ public final class PosixPlatformThreads extends PlatformThreads {
         final String pthreadName = name.substring(startIndex);
         assert pthreadName.length() < 16 : "thread name for pthread has a maximum length of 16 characters including the terminating 0";
         try (CCharPointerHolder threadNameHolder = CTypeConversion.toCString(pthreadName)) {
-            if (IsDefined.isLinux()) {
+            if (Platform.includedIn(Platform.LINUX.class)) {
                 LinuxPthread.pthread_setname_np(getPthreadIdentifier(thread), threadNameHolder.get());
-            } else if (IsDefined.isDarwin()) {
+            } else if (Platform.includedIn(Platform.DARWIN.class)) {
                 assert thread == Thread.currentThread() : "Darwin only allows setting the name of the current thread";
                 DarwinPthread.pthread_setname_np(threadNameHolder.get());
             } else {
@@ -265,6 +266,39 @@ public final class PosixPlatformThreads extends PlatformThreads {
     public boolean joinThreadUnmanaged(OSThreadHandle threadHandle, WordPointer threadExitStatus) {
         int status = Pthread.pthread_join_no_transition((Pthread.pthread_t) threadHandle, threadExitStatus);
         return status == 0;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public ThreadLocalKey createUnmanagedThreadLocal() {
+        Pthread.pthread_key_tPointer key = StackValue.get(Pthread.pthread_key_tPointer.class);
+        PosixUtils.checkStatusIs0(Pthread.pthread_key_create(key, WordFactory.nullPointer()), "pthread_key_create(key, keyDestructor): failed.");
+        return (ThreadLocalKey) key.read();
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void deleteUnmanagedThreadLocal(ThreadLocalKey key) {
+        int resultCode = Pthread.pthread_key_delete((Pthread.pthread_key_t) key);
+        PosixUtils.checkStatusIs0(resultCode, "pthread_key_delete(key): failed.");
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @SuppressWarnings("unchecked")
+    public <T extends WordBase> T getUnmanagedThreadLocalValue(ThreadLocalKey key) {
+        /*
+         * Although this method is not async-signal-safe in general we rely on
+         * implementation-specific behavior here.
+         */
+        return (T) Pthread.pthread_getspecific((Pthread.pthread_key_t) key);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void setUnmanagedThreadLocalValue(ThreadLocalKey key, WordBase value) {
+        int resultCode = Pthread.pthread_setspecific((Pthread.pthread_key_t) key, (VoidPointer) value);
+        PosixUtils.checkStatusIs0(resultCode, "pthread_setspecific(key, value): wrong arguments.");
     }
 
     @Override
@@ -404,7 +438,7 @@ final class PosixParker extends Parker {
                  * Signal without holding the mutex, which is safe and avoids futile wakeups if the
                  * platform does not implement wait morphing.
                  */
-                PosixUtils.checkStatusIs0(Pthread.pthread_cond_signal(currentCond), "PosixParker.unpark(): condition variable signal");
+                PosixUtils.checkStatusIs0(Pthread.pthread_cond_signal(p), "PosixParker.unpark(): condition variable signal");
             }
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();

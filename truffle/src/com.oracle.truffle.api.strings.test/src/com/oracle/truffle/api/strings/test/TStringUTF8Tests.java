@@ -41,6 +41,13 @@
 
 package com.oracle.truffle.api.strings.test;
 
+import static com.oracle.truffle.api.strings.TruffleString.Encoding.ISO_8859_1;
+import static com.oracle.truffle.api.strings.TruffleString.Encoding.ISO_8859_2;
+import static com.oracle.truffle.api.strings.TruffleString.Encoding.US_ASCII;
+import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_16;
+import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_16BE;
+import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_32;
+import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_32BE;
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_8;
 import static com.oracle.truffle.api.strings.test.TStringTestUtil.byteArray;
 
@@ -52,6 +59,8 @@ import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF8;
 import com.oracle.truffle.api.strings.TruffleStringIterator;
 
 public class TStringUTF8Tests extends TStringTestBase {
@@ -92,6 +101,8 @@ public class TStringUTF8Tests extends TStringTestBase {
                     byteArray(0xed, 0xa0, 0x80),
                     byteArray(0xed, 0xaf, 0xbf),
                     byteArray(0xc0, 0xbf),
+                    byteArray(0xf3, 0x90, 0x80),
+                    byteArray(0xf3, 0x90, 0x80, 0x7f),
     };
 
     private static byte[] utf8Encode(int codepoint) {
@@ -177,6 +188,124 @@ public class TStringUTF8Tests extends TStringTestBase {
     }
 
     @Test
+    public void testCodePointLength3() {
+        byte[] arr = byteArray(0xf3, 0x90, 0x80, 0x80, 0x7f, 0x7f);
+        TruffleString a = asTString(arr);
+        a.toString();
+        Assert.assertEquals(3, a.codePointLengthUncached(UTF_8));
+    }
+
+    @Test
+    public void testIncompleteSequence() {
+        byte[] arr = byteArray(0xf0, 0x90, 0x80);
+        TruffleString a = asTString(arr);
+        Assert.assertEquals(3, a.codePointLengthUncached(UTF_8));
+        switchIncompleteSequence(a, UTF_16, 0xfffd);
+        switchIncompleteSequence(a, UTF_32, 0xfffd);
+        switchIncompleteSequence(a, US_ASCII, '?');
+        switchIncompleteSequence(a, ISO_8859_1, '?');
+        switchIncompleteSequence(a, UTF_16BE, 0xfffd);
+        switchIncompleteSequence(a, UTF_32BE, 0xfffd);
+        switchIncompleteSequence(a, ISO_8859_2, '?');
+        for (TruffleString.ErrorHandling errorHandling : TruffleString.ErrorHandling.values()) {
+            int replacement = errorHandling == TruffleString.ErrorHandling.BEST_EFFORT ? 0xfffd : -1;
+            TruffleStringIterator it = TruffleString.CreateCodePointIteratorNode.getUncached().execute(a, UTF_8, errorHandling);
+            Assert.assertTrue(it.hasNext());
+            Assert.assertEquals(replacement, it.nextUncached());
+            Assert.assertEquals(replacement, it.nextUncached());
+            Assert.assertEquals(replacement, it.nextUncached());
+            Assert.assertFalse(it.hasNext());
+            TruffleStringIterator itBackwards = TruffleString.CreateBackwardCodePointIteratorNode.getUncached().execute(a, UTF_8, errorHandling);
+            Assert.assertTrue(itBackwards.hasPrevious());
+            Assert.assertEquals(replacement, itBackwards.previousUncached());
+            Assert.assertEquals(replacement, itBackwards.previousUncached());
+            Assert.assertEquals(replacement, itBackwards.previousUncached());
+            Assert.assertFalse(itBackwards.hasPrevious());
+        }
+    }
+
+    private static void switchIncompleteSequence(TruffleString a, TruffleString.Encoding enc, int replacement) {
+        TruffleString b = a.switchEncodingUncached(enc);
+        Assert.assertEquals(1, b.codePointLengthUncached(enc));
+        Assert.assertEquals(replacement, b.codePointAtByteIndexUncached(0, enc));
+    }
+
+    @Test
+    public void testBackwardIteratorExhaustive() {
+        StringBuilder sb = new StringBuilder(Character.MAX_CODE_POINT);
+        for (int i = 0; i < Character.MIN_SURROGATE; i++) {
+            sb.appendCodePoint(i);
+        }
+        for (int i = Character.MAX_SURROGATE + 1; i <= Character.MAX_CODE_POINT; i++) {
+            sb.appendCodePoint(i);
+        }
+        byte[] bytes = sb.toString().getBytes(StandardCharsets.UTF_8);
+        TruffleString a = TruffleString.fromByteArrayUncached(bytes, UTF_8, false);
+        Assert.assertTrue(a.isValidUncached(UTF_8));
+        for (TruffleString.ErrorHandling errorHandling : TruffleString.ErrorHandling.values()) {
+            TruffleStringIterator it = TruffleString.CreateBackwardCodePointIteratorNode.getUncached().execute(a, UTF_8, errorHandling);
+            for (int i = Character.MAX_CODE_POINT; i >= Character.MAX_SURROGATE + 1; i--) {
+                Assert.assertEquals(i, it.previousUncached());
+            }
+            for (int i = Character.MIN_SURROGATE - 1; i >= 0; i--) {
+                Assert.assertEquals(i, it.previousUncached());
+            }
+            Assert.assertFalse(it.hasPrevious());
+
+            TruffleString b = a.concatUncached(TruffleString.fromByteArrayUncached(byteArray(0xf0, 0x90, 0x80), UTF_8, false), UTF_8, false);
+            Assert.assertFalse(b.isValidUncached(UTF_8));
+            it = TruffleString.CreateBackwardCodePointIteratorNode.getUncached().execute(b, UTF_8, errorHandling);
+            int replacement = errorHandling == TruffleString.ErrorHandling.BEST_EFFORT ? 0xfffd : -1;
+            Assert.assertEquals(replacement, it.previousUncached());
+            Assert.assertEquals(replacement, it.previousUncached());
+            Assert.assertEquals(replacement, it.previousUncached());
+            for (int i = Character.MAX_CODE_POINT; i >= Character.MAX_SURROGATE + 1; i--) {
+                Assert.assertEquals(i, it.previousUncached());
+            }
+            for (int i = Character.MIN_SURROGATE - 1; i >= 0; i--) {
+                Assert.assertEquals(i, it.previousUncached());
+            }
+            Assert.assertFalse(it.hasPrevious());
+        }
+    }
+
+    @Test
+    public void testBackwardIteratorConsistencyExhaustive() {
+        // Disabled by default because this test takes almost 10 minutes.
+        Assume.assumeTrue(false);
+        byte[] arr = new byte[4];
+        int[] bytePositions = new int[4];
+        int[] codepoints = new int[4];
+        for (long i = 0; i <= 0xff_ff_ff_ffL; i++) {
+            arr[0] = (byte) (i & 0xff);
+            arr[1] = (byte) ((i >> 8) & 0xff);
+            arr[2] = (byte) ((i >> 16) & 0xff);
+            arr[3] = (byte) ((i >> 24) & 0xff);
+            int length = i <= 0xff ? 1 : i <= 0xff_ff ? 2 : i <= 0xff_ff_ff ? 3 : 4;
+            TruffleString a = TruffleString.fromByteArrayUncached(arr, 0, length, UTF_8, false);
+            int codepointLength = a.codePointLengthUncached(UTF_8);
+            TruffleStringIterator it = a.createCodePointIteratorUncached(UTF_8);
+            for (int j = 0; j < codepointLength; j++) {
+                Assert.assertTrue(it.hasNext());
+                bytePositions[j] = it.getByteIndex();
+                codepoints[j] = it.nextUncached();
+            }
+            Assert.assertFalse(it.hasNext());
+            Assert.assertEquals(length, it.getByteIndex());
+            for (int j = codepointLength - 1; j >= 0; j--) {
+                Assert.assertTrue(it.hasPrevious());
+                Assert.assertEquals(codepoints[j], it.previousUncached());
+                Assert.assertEquals(bytePositions[j], it.getByteIndex());
+            }
+            Assert.assertFalse(it.hasPrevious());
+            Assert.assertEquals(0, it.getByteIndex());
+            // if ((i & 0xffffff) == 0) {
+            // TTY.println("progress: " + Long.toHexString(i));
+            // }
+        }
+    }
+
+    @Test
     public void testIndexOf() {
         TruffleString s1 = TruffleString.fromJavaStringUncached("aaa", UTF_8);
         TruffleString s2 = TruffleString.fromJavaStringUncached("a", UTF_8);
@@ -227,5 +356,11 @@ public class TStringUTF8Tests extends TStringTestBase {
         TruffleStringIterator it = asTString(byteArray(' ', 'a', 'b', 'c', ' ', 0x80)).createBackwardCodePointIteratorUncached(UTF_8);
         it.previousUncached();
         Assert.assertEquals(5, it.getByteIndex());
+    }
+
+    @Test(expected = OutOfMemoryError.class)
+    public void testStringBuilderAppendCodePoint() {
+        TruffleStringBuilderUTF8 sb = TruffleStringBuilder.createUTF8();
+        sb.appendCodePointUncached(Character.MAX_CODE_POINT, Integer.MAX_VALUE - 10, false);
     }
 }

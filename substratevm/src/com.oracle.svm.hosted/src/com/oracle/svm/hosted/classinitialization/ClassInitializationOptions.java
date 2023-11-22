@@ -31,12 +31,13 @@ import static com.oracle.svm.hosted.classinitialization.InitKind.SEPARATOR;
 
 import java.util.function.Function;
 
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionType;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
 
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.util.LogUtils;
 
 public final class ClassInitializationOptions {
 
@@ -100,6 +101,27 @@ public final class ClassInitializationOptions {
     @Option(help = "Assert class initialization is specified for all classes.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> AssertInitializationSpecifiedForAllClasses = new HostedOptionKey<>(false);
 
-    @Option(help = "Use new class initialization strategy that allows all classes to be used at image build time.", type = OptionType.Expert)//
-    public static final HostedOptionKey<Boolean> UseNewExperimentalClassInitialization = new HostedOptionKey<>(false);
+    @APIOption(name = "strict-image-heap", deprecated = "'--strict-image-heap' is now the default. You can remove the option.") //
+    @Option(help = "Enable the strict image heap mode that allows all classes to be used at build-time but also requires types of all objects in the heap to be explicitly marked for build-time initialization.", //
+                    type = OptionType.User, deprecated = true, deprecationMessage = "The strict image heap mode is now the default. You can remove the option.") //
+    public static final HostedOptionKey<Boolean> StrictImageHeap = new HostedOptionKey<>(true, k -> {
+        if (k.hasBeenSet() && Boolean.FALSE.equals(k.getValue())) {
+            LogUtils.warning("The non-strict image heap mode should be avoided as it is deprecated and marked for removal.");
+        }
+    });
+
+    @Option(help = "Simulate the effects of class initializer at image build time, to avoid class initialization at run time.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> SimulateClassInitializer = new HostedOptionKey<>(true);
+
+    @Option(help = "Configuration for SimulateClassInitializer: Collect all reasons why a class initializer cannot be simulated.", type = OptionType.Expert)//
+    static final HostedOptionKey<Boolean> SimulateClassInitializerCollectAllReasons = new HostedOptionKey<>(false);
+
+    @Option(help = "Configuration for SimulateClassInitializer: Maximum inlining depth during simulation.", type = OptionType.Expert)//
+    static final HostedOptionKey<Integer> SimulateClassInitializerMaxInlineDepth = new HostedOptionKey<>(200);
+
+    @Option(help = "Configuration for SimulateClassInitializer: Maximum number of loop iterations that are unrolled during simulation.", type = OptionType.Expert)//
+    static final HostedOptionKey<Integer> SimulateClassInitializerMaxLoopIterations = new HostedOptionKey<>(2_000);
+
+    @Option(help = "Configuration for SimulateClassInitializer: Maximum number of bytes allocated in the image heap for each class initializer.", type = OptionType.Expert)//
+    static final HostedOptionKey<Integer> SimulateClassInitializerMaxAllocatedBytes = new HostedOptionKey<>(40_000);
 }

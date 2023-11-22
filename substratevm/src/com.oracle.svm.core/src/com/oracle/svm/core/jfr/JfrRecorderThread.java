@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.jfr;
 
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -62,13 +62,14 @@ public class JfrRecorderThread extends Thread {
     private volatile boolean stopped;
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    @SuppressWarnings("this-escape")
     public JfrRecorderThread(JfrGlobalMemory globalMemory, JfrUnlockedChunkWriter unlockedChunkWriter) {
         super("JFR recorder");
         this.globalMemory = globalMemory;
         this.unlockedChunkWriter = unlockedChunkWriter;
         this.mutex = new VMMutex("jfrRecorder");
         this.condition = new VMCondition(mutex);
-        this.semaphore = new VMSemaphore();
+        this.semaphore = new VMSemaphore("jfrRecorder");
         this.atomicNotify = new UninterruptibleUtils.AtomicBoolean(false);
         setDaemon(true);
     }

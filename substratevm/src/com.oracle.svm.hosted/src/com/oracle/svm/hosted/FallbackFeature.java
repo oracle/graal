@@ -43,8 +43,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.FallbackExecutor;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
@@ -283,6 +283,7 @@ public class FallbackFeature implements InternalFeature {
     }
 
     public FallbackImageRequest reflectionFallback = null;
+    public boolean ignoreReflectionFallback = false;
     public FallbackImageRequest resourceFallback = null;
     public FallbackImageRequest jniFallback = null;
     public FallbackImageRequest proxyFallback = null;
@@ -302,7 +303,8 @@ public class FallbackFeature implements InternalFeature {
         AfterAnalysisAccessImpl access = (AfterAnalysisAccessImpl) a;
         if (access.getBigBang().getUnsupportedFeatures().exist()) {
             /* If we detect use of unsupported features we trigger fallback image build. */
-            reportFallback(ABORT_MSG_PREFIX + " due to unsupported features");
+            reportFallback(ABORT_MSG_PREFIX + " due to unsupported features. " +
+                            "Use '--" + SubstrateOptions.OptionNameNoFallback + "' to show the underlying problem instead of building a fallback image.");
         }
 
         for (ReflectionInvocationCheck check : reflectionInvocationChecks) {
@@ -313,7 +315,9 @@ public class FallbackFeature implements InternalFeature {
 
         if (!reflectionCalls.isEmpty()) {
             reflectionCalls.add(ABORT_MSG_PREFIX + " due to reflection use without configuration.");
-            reflectionFallback = new FallbackImageRequest(reflectionCalls);
+            if (!ignoreReflectionFallback) {
+                reflectionFallback = new FallbackImageRequest(reflectionCalls);
+            }
         }
         if (!resourceCalls.isEmpty()) {
             resourceCalls.add(ABORT_MSG_PREFIX + " due to accessing resources without configuration.");

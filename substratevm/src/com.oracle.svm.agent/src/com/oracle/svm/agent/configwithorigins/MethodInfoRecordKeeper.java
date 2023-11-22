@@ -67,7 +67,7 @@ public class MethodInfoRecordKeeper {
                 methodInfoTrace[i] = getMethodInfo(stackTrace[i].rawValue());
             }
             return methodInfoTrace;
-        } catch (Support.WrongPhaseException e) {
+        } catch (Support.WrongPhaseError e) {
             return null;
         }
     }
@@ -78,7 +78,7 @@ public class MethodInfoRecordKeeper {
      * @param rawJMethodIdValue Raw jMethodId value.
      * @return MethodInfo object that uniquely describes the given method.
      */
-    private MethodInfo getMethodInfo(long rawJMethodIdValue) throws Support.WrongPhaseException {
+    private MethodInfo getMethodInfo(long rawJMethodIdValue) {
         assert shouldTrackMethodInfo;
         if (jMethodIdToMethodInfoMap.containsKey(rawJMethodIdValue)) {
             return jMethodIdToMethodInfoMap.get(rawJMethodIdValue);
@@ -96,7 +96,7 @@ public class MethodInfoRecordKeeper {
      * @param rawJMethodIdValue Raw jMethodId value.
      * @return MethodInfo object that uniquely describes the given method.
      */
-    private MethodInfo findOrCreateMethodInfo(long rawJMethodIdValue) throws Support.WrongPhaseException {
+    private MethodInfo findOrCreateMethodInfo(long rawJMethodIdValue) {
         String declaringClassSignature = getMethodDeclaringClassSignature(rawJMethodIdValue);
         ClassInfo classInfo = findOrCreateClassInfo(declaringClassSignature);
         MethodInfo methodInfo = classInfo.findOrCreateMethodInfo(rawJMethodIdValue);
@@ -110,7 +110,7 @@ public class MethodInfoRecordKeeper {
         return javaString;
     }
 
-    private static String getMethodDeclaringClassSignature(long rawJMethodIdValue) throws Support.WrongPhaseException {
+    private static String getMethodDeclaringClassSignature(long rawJMethodIdValue) {
         JNIMethodId jMethodId = WordFactory.pointer(rawJMethodIdValue);
 
         JNIObjectHandle declaringClass = Support.getMethodDeclaringClass(jMethodId);

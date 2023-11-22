@@ -31,13 +31,13 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
@@ -53,40 +53,46 @@ final class StackVerifier {
 
     @NeverInline("Starts a stack walk in the caller frame")
     public static boolean verifyAllThreads() {
-        STACK_FRAME_VISITOR.reset();
+        boolean result = true;
 
+        STACK_FRAME_VISITOR.initialize();
         JavaStackWalker.walkCurrentThread(KnownIntrinsics.readCallerStackPointer(), STACK_FRAME_VISITOR);
+        result &= STACK_FRAME_VISITOR.result;
+
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
-                if (vmThread == CurrentIsolate.getCurrentThread()) {
+            for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
+                if (thread == CurrentIsolate.getCurrentThread()) {
                     continue;
                 }
-                JavaStackWalker.walkThread(vmThread, STACK_FRAME_VISITOR);
+
+                STACK_FRAME_VISITOR.initialize();
+                JavaStackWalker.walkThread(thread, STACK_FRAME_VISITOR);
+                result &= STACK_FRAME_VISITOR.result;
             }
         }
-        return STACK_FRAME_VISITOR.getResult();
+        return result;
     }
 
     private static class StackFrameVerificationVisitor extends StackFrameVisitor {
         private final VerifyFrameReferencesVisitor verifyFrameReferencesVisitor;
+
+        private boolean result;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         StackFrameVerificationVisitor() {
             verifyFrameReferencesVisitor = new VerifyFrameReferencesVisitor();
         }
 
-        public void reset() {
-            verifyFrameReferencesVisitor.reset();
-        }
-
-        public boolean getResult() {
-            return verifyFrameReferencesVisitor.result;
+        public void initialize() {
+            this.result = true;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while verifying the stack.")
         public boolean visitFrame(Pointer currentSP, CodePointer currentIP, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
+            verifyFrameReferencesVisitor.initialize();
             CodeInfoTable.visitObjectReferences(currentSP, currentIP, codeInfo, deoptimizedFrame, verifyFrameReferencesVisitor);
+            result &= verifyFrameReferencesVisitor.result;
             return true;
         }
     }
@@ -98,8 +104,8 @@ final class StackVerifier {
         VerifyFrameReferencesVisitor() {
         }
 
-        public void reset() {
-            result = true;
+        public void initialize() {
+            this.result = true;
         }
 
         @Override

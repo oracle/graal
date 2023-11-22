@@ -29,13 +29,10 @@ import java.util.function.ObjIntConsumer;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -46,65 +43,88 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 @Platforms(Platform.HOSTED_ONLY.class)
 public class HostedConstantReflectionProvider extends SharedConstantReflectionProvider {
     private final SVMHost hostVM;
-    private final HostedUniverse universe;
-    private final UniverseMetaAccess metaAccess;
-    private final HostedMemoryAccessProvider memoryAccess;
+    private final AnalysisConstantReflectionProvider aConstantReflection;
+    private final HostedUniverse hUniverse;
+    private final HostedMetaAccess hMetaAccess;
+    private final HostedMemoryAccessProvider hMemoryAccess;
 
-    public HostedConstantReflectionProvider(SVMHost hostVM, HostedUniverse universe, UniverseMetaAccess metaAccess, HostedMemoryAccessProvider memoryAccess) {
+    @SuppressWarnings("this-escape")
+    public HostedConstantReflectionProvider(SVMHost hostVM, AnalysisConstantReflectionProvider aConstantReflection, HostedUniverse hUniverse, HostedMetaAccess hMetaAccess) {
         this.hostVM = hostVM;
-        this.universe = universe;
-        this.metaAccess = metaAccess;
-        this.memoryAccess = memoryAccess;
+        this.aConstantReflection = aConstantReflection;
+        this.hUniverse = hUniverse;
+        this.hMetaAccess = hMetaAccess;
+        this.hMemoryAccess = new HostedMemoryAccessProvider(hMetaAccess, this);
+    }
+
+    @Override
+    public Boolean constantEquals(Constant x, Constant y) {
+        /* Delegate to the AnalysisConstantReflectionProvider. */
+        return aConstantReflection.constantEquals(x, y);
     }
 
     @Override
     public MemoryAccessProvider getMemoryAccessProvider() {
-        return memoryAccess;
+        return hMemoryAccess;
+    }
+
+    @Override
+    public JavaConstant unboxPrimitive(JavaConstant source) {
+        /* Delegate to the AnalysisConstantReflectionProvider. */
+        return aConstantReflection.unboxPrimitive(source);
     }
 
     @Override
     public ResolvedJavaType asJavaType(Constant constant) {
-        if (constant instanceof SubstrateObjectConstant) {
-            Object obj = SubstrateObjectConstant.asObject(constant);
-            if (obj instanceof DynamicHub) {
-                return universe.lookup(hostVM.lookupType((DynamicHub) obj));
-            } else if (obj instanceof Class) {
-                throw VMError.shouldNotReachHere("Must not have java.lang.Class object: " + obj);
-            }
-        }
-        if (constant instanceof ImageHeapConstant) {
-            if (metaAccess.isInstanceOf((JavaConstant) constant, Class.class)) {
-                throw VMError.shouldNotReachHere("ConstantReflectionProvider.asJavaType(Constant) not yet implemented for ImageHeapObject");
-            }
-        }
-        return null;
+        /* Delegate to the AnalysisConstantReflectionProvider. */
+        return hUniverse.lookup(aConstantReflection.asJavaType(constant));
     }
 
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
-        return SubstrateObjectConstant.forObject(hostVM.dynamicHub(((HostedType) type).wrapped));
+        return aConstantReflection.asJavaClass(((HostedType) type).wrapped);
     }
 
     @Override
     public Integer readArrayLength(JavaConstant array) {
         /* Delegate to the AnalysisConstantReflectionProvider. */
-        return universe.getConstantReflectionProvider().readArrayLength(array);
+        return aConstantReflection.readArrayLength(array);
     }
 
     @Override
     public JavaConstant readArrayElement(JavaConstant array, int index) {
         /* Delegate to the AnalysisConstantReflectionProvider. */
-        return universe.getConstantReflectionProvider().readArrayElement(array, index);
+        return aConstantReflection.readArrayElement(array, index);
     }
 
     @Override
     public void forEachArrayElement(JavaConstant array, ObjIntConsumer<JavaConstant> consumer) {
         /* Delegate to the AnalysisConstantReflectionProvider. */
-        universe.getConstantReflectionProvider().forEachArrayElement(array, consumer);
+        aConstantReflection.forEachArrayElement(array, consumer);
     }
 
     @Override
     public JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
-        return ((HostedField) field).readValue(receiver);
+        var hField = (HostedField) field;
+        assert checkHub(receiver) : "Receiver " + receiver + " of field " + hField + " read should not be java.lang.Class. Expecting to see DynamicHub here.";
+        return aConstantReflection.readValue(hMetaAccess, hField.getWrapped(), receiver, true);
+    }
+
+    @Override
+    public JavaConstant forString(String value) {
+        return aConstantReflection.forString(value);
+    }
+
+    @Override
+    protected JavaConstant forObject(Object object) {
+        return aConstantReflection.forObject(object);
+    }
+
+    private boolean checkHub(JavaConstant constant) {
+        if (hMetaAccess.isInstanceOf(constant, Class.class)) {
+            Object classObject = hUniverse.getSnippetReflection().asObject(Object.class, constant);
+            return classObject instanceof DynamicHub;
+        }
+        return true;
     }
 }

@@ -46,8 +46,9 @@ import org.graalvm.component.installer.InstallerCommand;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
-import com.oracle.truffle.tools.utils.json.JSONObject;
-import com.oracle.truffle.tools.utils.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
+
 import static org.graalvm.component.installer.Commands.OPTION_JSON_OUTPUT;
 import static org.graalvm.component.installer.CommonConstants.JSON_KEY_COMPONENTS;
 import static org.graalvm.component.installer.CommonConstants.JSON_KEY_COMPONENT_GRAALVM;

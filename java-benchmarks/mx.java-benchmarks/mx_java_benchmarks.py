@@ -1,7 +1,5 @@
 #
-# ----------------------------------------------------------------------------------------------------
-#
-# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -24,7 +22,6 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
-# ----------------------------------------------------------------------------------------------------
 
 import sys
 import re
@@ -39,7 +36,8 @@ import mx
 import mx_benchmark
 from mx_benchmark import ParserEntry
 import mx_sdk_benchmark
-
+from mx_sdk_benchmark import NativeImageBundleBasedBenchmarkMixin
+import mx_sdk_vm_impl
 
 _suite = mx.suite('java-benchmarks')
 
@@ -228,24 +226,17 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.BenchmarkSuite):
         raise NotImplementedError()
 
 
-class BaseSpringBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
-    def mainClass(self):
-        raise NotImplementedError()
-
+class BaseSpringBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBundleBasedBenchmarkMixin):
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        lib = self.applicationDist()
-        classpath = os.path.join(lib, "BOOT-INF/classes")
-        classpath += ':' + os.path.join(lib, "classes")
-        for filename in os.listdir(os.path.join(lib, "BOOT-INF/lib")):
-            if filename.endswith(".jar"):
-                classpath = classpath + ":" + os.path.join(lib, "BOOT-INF/lib", filename)
-        mainclass = self.mainClass()
-        return self.vmArgs(bmSuiteArgs) + ["-cp", classpath, mainclass]
+        return self.create_bundle_command_line_args(benchmarks, bmSuiteArgs)
+
+    def extra_image_build_argument(self, _, args):
+        return super(BaseSpringBenchmarkSuite, self).extra_image_build_argument(_, args) + self.create_bundle_image_build_arguments()
 
     def get_application_startup_regex(self):
-        # Example of SpringBoot startup log:
-        # "2021-03-08 15:49:36.155  INFO 21174 --- [           main] o.s.s.petclinic.PetClinicApplication     : Started PetClinicApplication in 4.367 seconds (JVM running for 4.812)"
-        return r"Started [^ ]+ in (?P<appstartup>\d*[.,]?\d*) seconds \(JVM running for (?P<startup>\d*[.,]?\d*)\)$"
+        # Example of SpringBoot 3 startup log:
+        # 2023-05-16T14:08:54.033+02:00  INFO 24381 --- [           main] o.s.s.petclinic.PetClinicApplication     : Started PetClinicApplication in 3.774 seconds (process running for 4.1)
+        return r"Started [^ ]+ in (?P<appstartup>\d*[.,]?\d*) seconds \(process running for (?P<startup>\d*[.,]?\d*)\)$"
 
     def get_application_startup_units(self):
         return 's'
@@ -254,24 +245,19 @@ class BaseSpringBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
         # This method overrides NativeImageMixin.stages
         return ['instrument-image', 'instrument-run', 'image', 'run']
 
+    def uses_bundles(self):
+        return True
+
 
 class BasePetClinicBenchmarkSuite(BaseSpringBenchmarkSuite):
-    """
-    Version 0.1.7 MIGHT NOT be fully functional. So far, it was used only to collect image build time metrics.
-    """
     def availableSuiteVersions(self):
-        # 0.1.6 is still based on org.springframework.experimental
-        # 0.1.7 is based on Spring 3, hence with official GraalVM NI support, requires Java 17 or newer
-        return ["0.1.6", "0.1.7"]
+        return ["3.0.0"]
 
     def defaultSuiteVersion(self):
-        return self.availableSuiteVersions()[0]
+        return "3.0.0"
 
     def applicationDist(self):
         return mx.library("PETCLINIC_" + self.version(), True).get_path(True)
-
-    def mainClass(self):
-        return "org.springframework.samples.petclinic.PetClinicApplication"
 
 
 class PetClinicJMeterBenchmarkSuite(BasePetClinicBenchmarkSuite, mx_sdk_benchmark.BaseJMeterBenchmarkSuite):
@@ -309,14 +295,14 @@ mx_benchmark.add_bm_suite(PetClinicWrkBenchmarkSuite())
 
 
 class BaseSpringHelloWorldBenchmarkSuite(BaseSpringBenchmarkSuite):
-    def version(self):
-        return "1.0.1"
+    def availableSuiteVersions(self):
+        return ["3.0.5"]
+
+    def defaultSuiteVersion(self):
+        return "3.0.5"
 
     def applicationDist(self):
         return mx.library("SPRING_HW_" + self.version(), True).get_path(True)
-
-    def mainClass(self):
-        return "com.example.webmvc.WebmvcApplication"
 
 
 class SpringHelloWorldWrkBenchmarkSuite(BaseSpringHelloWorldBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenchmarkSuite):
@@ -365,20 +351,12 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                 '-J-Duser.language=en',
                 '-J-Duser.country=US',
                 '-J-Dfile.encoding=UTF-8',
-                '-H:-ParseOnce',
                 '-J--add-exports=java.security.jgss/sun.security.krb5=ALL-UNNAMED',
                 '-J--add-opens=java.base/java.text=ALL-UNNAMED',
-                '-H:+JNI',
-                '-H:+AllowFoldMethods',
                 '-J-Djava.awt.headless=true',
-                '-H:FallbackThreshold=0',
-                '-H:+ReportExceptionStackTraces',
-                '-H:+AddAllCharsets',
-                '-H:EnableURLProtocols=http',
-                '-H:NativeLinkerOption=-no-pie',
-                '-H:-UseServiceLoaderFeature',
-                '-H:+AllowDeprecatedBuilderClassesOnImageClasspath', # needs to be removed once GR-41746 is fixed
-                '--add-exports=org.graalvm.sdk/org.graalvm.nativeimage.impl=ALL-UNNAMED',
+                '--no-fallback',
+                '--enable-http',
+                '--add-exports=org.graalvm.nativeimage/org.graalvm.nativeimage.impl=ALL-UNNAMED',
                 '--add-exports=org.graalvm.nativeimage.base/com.oracle.svm.util=ALL-UNNAMED',
                 '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.configure=ALL-UNNAMED',
                 '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk.localization=ALL-UNNAMED',
@@ -386,7 +364,16 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                 '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jni=ALL-UNNAMED',
                 '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.threadlocal=ALL-UNNAMED',
                 '--initialize-at-run-time=io.netty.internal.tcnative.SSL,io.netty.handler.codec.compression.ZstdOptions',
-                '-H:+StackTrace'] + super(BaseQuarkusBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
+                '-H:NativeLinkerOption=-no-pie',
+                '-H:+AddAllCharsets',
+                '-H:+ReportExceptionStackTraces',
+        ] + mx_sdk_vm_impl.svm_experimental_options([
+                '-H:-ParseOnce',
+                '-H:+AllowFoldMethods',
+                '-H:-UseServiceLoaderFeature',
+                '-H:+AllowDeprecatedBuilderClassesOnImageClasspath', # needs to be removed once GR-41746 is fixed
+                '-H:+DisableSubstitutionReturnTypeCheck',  # remove once Quarkus fixed their substitutions (GR-48152)
+        ]) + super(BaseQuarkusBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
 
 class BaseTikaBenchmarkSuite(BaseQuarkusBenchmarkSuite):
@@ -408,7 +395,10 @@ class BaseTikaBenchmarkSuite(BaseQuarkusBenchmarkSuite):
         if mx.get_jdk().version < expectedJdkVersion:
             mx.abort(benchmark + " needs at least JDK version " + str(expectedJdkVersion))
 
-        return super(BaseTikaBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
+        return [
+                   # Workaround for wrong class initialization configuration in Quarkus Tika
+                   '--initialize-at-build-time=org.apache.pdfbox.rendering.ImageType,org.apache.pdfbox.rendering.ImageType$1,org.apache.pdfbox.rendering.ImageType$2,org.apache.pdfbox.rendering.ImageType$3,org.apache.pdfbox.rendering.ImageType$4',
+               ] + super(BaseTikaBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
 
 class TikaWrkBenchmarkSuite(BaseTikaBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenchmarkSuite):
@@ -462,7 +452,7 @@ class QuarkusHelloWorldWrkBenchmarkSuite(BaseQuarkusHelloWorldBenchmarkSuite, mx
 mx_benchmark.add_bm_suite(QuarkusHelloWorldWrkBenchmarkSuite())
 
 
-class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
+class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBundleBasedBenchmarkMixin):
     def get_application_startup_regex(self):
         # Example of Micronaut startup log (there can be some formatting in between):
         # "[main] INFO io.micronaut.runtime.Micronaut - Startup completed in 328ms. Server Running: <url>"
@@ -478,10 +468,22 @@ class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
     def extra_image_build_argument(self, benchmark, args):
         return [
                    '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
+                   # Workaround for wrong class initialization configuration in Micronaut 3.9
+                   '--initialize-at-build-time=io.netty.handler.codec.http.cookie.ServerCookieEncoder',
+                   '--initialize-at-build-time=org.xml.sax.helpers.AttributesImpl,org.xml.sax.helpers.LocatorImpl',
                ] + super(BaseMicronautBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
     def default_stages(self):
         return ['instrument-image', 'instrument-run', 'image', 'run']
+
+    def uses_bundles(self):
+        return True
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        return self.create_bundle_command_line_args(benchmarks, bmSuiteArgs)
+
+    def extra_image_build_argument(self, _, args):
+        return super(BaseMicronautBenchmarkSuite, self).extra_image_build_argument(_, args) + self.create_bundle_image_build_arguments()
 
 class BaseQuarkusRegistryBenchmark(BaseQuarkusBenchmarkSuite, mx_sdk_benchmark.BaseMicroserviceBenchmarkSuite):
     """
@@ -533,23 +535,23 @@ class BaseQuarkusRegistryBenchmark(BaseQuarkusBenchmarkSuite, mx_sdk_benchmark.B
                 '-J--add-opens=java.base/java.io=ALL-UNNAMED',
                 '-J--add-opens=java.base/java.lang.invoke=ALL-UNNAMED',
                 '-J--add-opens=java.base/java.util=ALL-UNNAMED',
-                '-H:+AllowFoldMethods',
                 '-J-Djava.awt.headless=true',
                 '--no-fallback',
-                '-H:+ReportExceptionStackTraces',
-                '-H:-AddAllCharsets',
                 '--enable-url-protocols=http,https',
-                '-H:-UseServiceLoaderFeature',
-                '-H:+StackTrace',
-                '-J--add-exports=org.graalvm.sdk/org.graalvm.nativeimage.impl=ALL-UNNAMED',
+                '-J--add-exports=org.graalvm.nativeimage/org.graalvm.nativeimage.impl=ALL-UNNAMED',
                 '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
                 '--exclude-config' ,
-                'io\.netty\.netty-codec',
-                '/META-INF/native-image/io\.netty/netty-codec/generated/handlers/reflect-config\.json',
+                'io\\.netty\\.netty-codec',
+                '/META-INF/native-image/io\\.netty/netty-codec/generated/handlers/reflect-config\\.json',
                 '--exclude-config',
-                'io\.netty\.netty-handler',
-                '/META-INF/native-image/io\.netty/netty-handler/generated/handlers/reflect-config\.json'
-                ] + super(BaseQuarkusBenchmarkSuite,self).extra_image_build_argument(benchmark, args)
+                'io\\.netty\\.netty-handler',
+                '/META-INF/native-image/io\\.netty/netty-handler/generated/handlers/reflect-config\\.json',
+                '-H:-AddAllCharsets',
+                '-H:+ReportExceptionStackTraces',
+            ] + mx_sdk_vm_impl.svm_experimental_options([
+                '-H:+AllowFoldMethods',
+                '-H:-UseServiceLoaderFeature',
+            ]) + super(BaseQuarkusBenchmarkSuite,self).extra_image_build_argument(benchmark, args)
 
 mx_benchmark.add_bm_suite(BaseQuarkusRegistryBenchmark())
 
@@ -584,14 +586,14 @@ class BaseMicronautMuShopBenchmark(BaseMicronautBenchmarkSuite, mx_sdk_benchmark
         return [
             '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
             '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.configure=ALL-UNNAMED',
-            '--add-exports=org.graalvm.sdk/org.graalvm.nativeimage.impl=ALL-UNNAMED'
+            '--add-exports=org.graalvm.nativeimage/org.graalvm.nativeimage.impl=ALL-UNNAMED'
         ] + super(BaseMicronautBenchmarkSuite,self).extra_image_build_argument(benchmark, args)
 
 mx_benchmark.add_bm_suite(BaseMicronautMuShopBenchmark())
 
 class BaseShopCartBenchmarkSuite(BaseMicronautBenchmarkSuite):
     def version(self):
-        return "0.3.6"
+        return "0.3.8"
 
     def applicationDist(self):
         return mx.library("SHOPCART_" + self.version(), True).get_path(True)
@@ -639,7 +641,7 @@ mx_benchmark.add_bm_suite(ShopCartWrkBenchmarkSuite())
 
 class BaseMicronautHelloWorldBenchmarkSuite(BaseMicronautBenchmarkSuite):
     def version(self):
-        return "1.0.3"
+        return "1.0.5"
 
     def applicationDist(self):
         return mx.library("MICRONAUT_HW_" + self.version(), True).get_path(True)
@@ -1011,13 +1013,17 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
             # Stopped working as of 8u92 on the initial release
             del iterations["tomcat"]
 
-        if mx.get_jdk().javaCompliance >= '9':
+        jdk = mx.get_jdk()
+        if jdk.javaCompliance >= '9':
             if "batik" in iterations:
                 # batik crashes on JDK9+. This is fixed on the dacapo chopin branch only
                 del iterations["batik"]
             if "tradesoap" in iterations:
                 # validation fails transiently but frequently in the first iteration in JDK9+
                 del iterations["tradesoap"]
+            if "avrora" in iterations and jdk.javaCompliance >= '21':
+                # avrora uses java.lang.Compiler which was removed in JDK 21 (JDK-8307125)
+                del iterations["avrora"]
         elif not _is_batik_supported(java_home_jdk()):
             del iterations["batik"]
 
@@ -1991,7 +1997,8 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             # benchmark was introduced in 0.10.0
             del benchmarks["scala-doku"]
 
-        if mx.get_jdk().javaCompliance >= '17' and self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0"]:
+        if  (mx.get_jdk().javaCompliance >= '17' and self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0"])\
+            or (mx.get_jdk().javaCompliance >= '21' and self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0", "0.14.0", "0.14.1"]):
             # JDK17 support for Spark benchmarks was added in 0.13.0
             # See: renaissance-benchmarks/renaissance #295
             del benchmarks["als"]
@@ -2003,9 +2010,11 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             del benchmarks["naive-bayes"]
             del benchmarks["page-rank"]
 
+        if mx.get_jdk().javaCompliance >= '21' and self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0", "0.14.0", "0.14.1"]:
+            del benchmarks["dotty"]
+
         if self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"] and mx.get_arch() != "amd64" or mx.get_jdk().javaCompliance > '11':
-            # GR-33879
-            # JNA libraries needed are currently limited to amd64: renaissance-benchmarks/renaissance #153
+            # JNA libraries were only available on amd64: renaissance-benchmarks/renaissance #153
             del benchmarks["db-shootout"]
 
         if self.version() in ["0.9.0", "0.10.0", "0.11.0"]:

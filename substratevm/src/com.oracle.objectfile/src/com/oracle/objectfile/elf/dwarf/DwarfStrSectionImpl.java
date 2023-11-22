@@ -26,21 +26,17 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
-import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.debugentry.StringEntry;
-import org.graalvm.compiler.debug.DebugContext;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
+import jdk.graal.compiler.debug.DebugContext;
 
 /**
  * Generator for debug_str section.
  */
 public class DwarfStrSectionImpl extends DwarfSectionImpl {
     public DwarfStrSectionImpl(DwarfDebugInfo dwarfSections) {
-        super(dwarfSections);
-    }
-
-    @Override
-    public String getSectionName() {
-        return DwarfDebugInfo.DW_STR_SECTION_NAME;
+        // debug_str section depends on info section
+        super(dwarfSections, DwarfSectionName.DW_STR_SECTION, DwarfSectionName.DW_INFO_SECTION);
     }
 
     @Override
@@ -79,25 +75,5 @@ public class DwarfStrSectionImpl extends DwarfSectionImpl {
             }
         }
         assert pos == size;
-    }
-
-    /**
-     * The debug_str section depends on info section.
-     */
-    private static final String TARGET_SECTION_NAME = DwarfDebugInfo.DW_INFO_SECTION_NAME;
-
-    @Override
-    public String targetSectionName() {
-        return TARGET_SECTION_NAME;
-    }
-
-    private final LayoutDecision.Kind[] targetSectionKinds = {
-                    LayoutDecision.Kind.CONTENT,
-                    LayoutDecision.Kind.SIZE,
-    };
-
-    @Override
-    public LayoutDecision.Kind[] targetSectionKinds() {
-        return targetSectionKinds;
     }
 }

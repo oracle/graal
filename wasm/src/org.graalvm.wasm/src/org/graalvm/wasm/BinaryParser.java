@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,7 +68,11 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Pair;
 import org.graalvm.wasm.collection.ByteArrayList;
+import org.graalvm.wasm.collection.LongArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.ExportIdentifier;
 import org.graalvm.wasm.constants.GlobalModifier;
@@ -77,14 +81,17 @@ import org.graalvm.wasm.constants.Instructions;
 import org.graalvm.wasm.constants.LimitsPrefix;
 import org.graalvm.wasm.constants.Section;
 import org.graalvm.wasm.constants.SegmentMode;
+import org.graalvm.wasm.debugging.parser.DebugUtil;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.parser.bytecode.BytecodeGen;
+import org.graalvm.wasm.parser.bytecode.BytecodeParser;
+import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 import org.graalvm.wasm.parser.validation.ParserState;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ExceptionType;
 
 /**
@@ -99,28 +106,33 @@ public class BinaryParser extends BinaryStreamParser {
     private final WasmContext wasmContext;
     private final int[] multiResult;
     private final long[] longMultiResult;
+    private final boolean[] booleanMultiResult;
 
     private final boolean multiValue;
-
     private final boolean bulkMemoryAndRefTypes;
     private final boolean memory64;
+    private final boolean multiMemory;
+    private final boolean threads;
 
     private final boolean unsafeMemory;
 
-    @CompilerDirectives.TruffleBoundary
-    public BinaryParser(WasmModule module, WasmContext context) {
-        super(module.data());
+    @TruffleBoundary
+    public BinaryParser(WasmModule module, WasmContext context, byte[] data) {
+        super(data);
         this.module = module;
         this.wasmContext = context;
         this.multiResult = new int[2];
         this.longMultiResult = new long[2];
+        this.booleanMultiResult = new boolean[2];
         this.multiValue = context.getContextOptions().supportMultiValue();
         this.bulkMemoryAndRefTypes = context.getContextOptions().supportBulkMemoryAndRefTypes();
         this.memory64 = context.getContextOptions().supportMemory64();
+        this.multiMemory = context.getContextOptions().supportMultiMemory();
+        this.threads = context.getContextOptions().supportThreads();
         this.unsafeMemory = context.getContextOptions().useUnsafeMemory();
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public void readModule() {
         module.limits().checkModuleSize(data.length);
         validateMagicNumberAndVersion();
@@ -134,8 +146,11 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void readSymbolSections() {
         int lastNonCustomSection = 0;
-        boolean hasCodeSection = false;
-        BytecodeGen bytecode = new BytecodeGen();
+        int codeSectionOffset = -1;
+        int codeSectionLength = 0;
+        final RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
+        final BytecodeGen customData = new BytecodeGen();
+        final BytecodeGen functionDebugData = new BytecodeGen();
         while (!isEOF()) {
             final byte sectionID = read1();
 
@@ -156,7 +171,7 @@ public class BinaryParser extends BinaryStreamParser {
             final int startOffset = offset;
             switch (sectionID) {
                 case Section.CUSTOM:
-                    readCustomSection(size);
+                    readCustomSection(size, customData);
                     break;
                 case Section.TYPE:
                     readTypeSection();
@@ -193,8 +208,9 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     break;
                 case Section.CODE:
-                    readCodeSection(bytecode);
-                    hasCodeSection = true;
+                    codeSectionOffset = offset;
+                    readCodeSection(bytecode, functionDebugData);
+                    codeSectionLength = size;
                     break;
                 case Section.DATA:
                     readDataSection(bytecode);
@@ -202,21 +218,31 @@ public class BinaryParser extends BinaryStreamParser {
             }
             assertIntEqual(offset - startOffset, size, String.format("Declared section (0x%02X) size is incorrect", sectionID), Failure.SECTION_SIZE_MISMATCH);
         }
-        if (!hasCodeSection) {
+        if (codeSectionOffset == -1) {
             assertIntEqual(module.numFunctions(), module.importedFunctions().size(), Failure.FUNCTIONS_CODE_INCONSISTENT_LENGTHS);
+            codeSectionOffset = 0;
         }
         module.setBytecode(bytecode.toArray());
         module.removeFunctionReferences();
+        module.setCustomData(customData.toArray());
+        if (module.hasDebugInfo()) {
+            functionDebugData.add(codeSectionLength);
+            final byte[] codeSection = new byte[codeSectionLength + functionDebugData.location()];
+            System.arraycopy(data, codeSectionOffset, codeSection, 0, codeSectionLength);
+            System.arraycopy(functionDebugData.toArray(), 0, codeSection, codeSectionLength, functionDebugData.location());
+            module.setCodeSection(codeSection);
+        }
     }
 
-    private void readCustomSection(int size) {
+    private void readCustomSection(int size, BytecodeGen customData) {
         final int sectionEndOffset = offset + size;
         final String name = readName();
         Assert.assertUnsignedIntLessOrEqual(sectionEndOffset, data.length, Failure.LENGTH_OUT_OF_BOUNDS);
         Assert.assertUnsignedIntLessOrEqual(offset, sectionEndOffset, Failure.UNEXPECTED_END);
-        final byte[] sectionData = new byte[sectionEndOffset - offset];
-        System.arraycopy(data, offset, sectionData, 0, sectionEndOffset - offset);
-        module.allocateCustomSection(name, sectionData);
+        final int customDataSection = customData.location();
+        final int sectionSize = sectionEndOffset - offset;
+        customData.addBytes(data, offset, sectionSize);
+        module.allocateCustomSection(name, customDataSection, sectionSize);
         if ("name".equals(name)) {
             try {
                 readNameSection();
@@ -224,8 +250,54 @@ public class BinaryParser extends BinaryStreamParser {
                 // Malformed name section should not result in invalidation of the module
                 assert ex.getExceptionType() == ExceptionType.PARSE_ERROR;
             }
+        } else {
+            readDebugSection(name, customDataSection, sectionSize, customData);
         }
         offset = sectionEndOffset;
+    }
+
+    /**
+     * Reads possible debug sections and stores their offset in the custom data array.
+     *
+     * @param name the name of the custom section
+     * @param size the size of the custom section excluding the name
+     * @param customData the custom data
+     */
+    private void readDebugSection(String name, int sectionOffset, int size, BytecodeGen customData) {
+        switch (name) {
+            case DebugUtil.ABBREV_NAME:
+                DebugUtil.setAbbrevOffset(customData, allocateDebugOffsets(customData), sectionOffset, size);
+                break;
+            case DebugUtil.INFO_NAME:
+                DebugUtil.setInfo(customData, allocateDebugOffsets(customData), sectionOffset, size);
+                break;
+            case DebugUtil.LINE_NAME:
+                DebugUtil.setLineOffset(customData, allocateDebugOffsets(customData), sectionOffset, size);
+                break;
+            case DebugUtil.LOC_NAME:
+                DebugUtil.setLocOffset(customData, allocateDebugOffsets(customData), sectionOffset, size);
+                break;
+            case DebugUtil.RANGES_NAME:
+                DebugUtil.setRangesOffset(customData, allocateDebugOffsets(customData), sectionOffset, size);
+                break;
+            case DebugUtil.STR_NAME:
+                DebugUtil.setStrOffset(customData, allocateDebugOffsets(customData), sectionOffset, size);
+                break;
+        }
+    }
+
+    /**
+     * Allocates space for the debug information in the custom data array.
+     */
+    private int allocateDebugOffsets(BytecodeGen customData) {
+        if (module.hasDebugInfo()) {
+            return module.debugInfoOffset();
+        }
+        final int location = customData.location();
+        customData.allocate(DebugUtil.CUSTOM_DATA_SIZE);
+        DebugUtil.initializeData(customData, location);
+        module.setDebugInfoOffset(location);
+        return location;
     }
 
     /**
@@ -337,8 +409,12 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case ImportIdentifier.MEMORY: {
-                    final boolean is64Bit = readMemoryLimits(longMultiResult);
-                    module.symbolTable().importMemory(moduleName, memberName, longMultiResult[0], longMultiResult[1], is64Bit);
+                    readMemoryLimits(longMultiResult, booleanMultiResult);
+                    final int memoryIndex = module.memoryCount();
+                    final boolean is64Bit = booleanMultiResult[0];
+                    final boolean isShared = booleanMultiResult[1];
+                    final boolean useUnsafeMemory = wasmContext.getContextOptions().useUnsafeMemory();
+                    module.symbolTable().importMemory(moduleName, memberName, memoryIndex, longMultiResult[0], longMultiResult[1], is64Bit, isShared, multiMemory, useUnsafeMemory);
                     break;
                 }
                 case ImportIdentifier.GLOBAL: {
@@ -379,17 +455,20 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void readMemorySection() {
         final int memoryCount = readLength();
-        // Since in the current version of WebAssembly supports at most one table instance per
-        // module, this loop should be executed at most once. `SymbolTable#allocateMemory` fails if
-        // it is not the case.
-        for (int memoryIndex = 0; memoryIndex != memoryCount; memoryIndex++) {
+        final int startingMemoryIndex = module.memoryCount();
+        module.limits().checkMemoryCount(startingMemoryIndex + memoryCount, multiMemory);
+        for (int memoryIndex = startingMemoryIndex; memoryIndex != startingMemoryIndex + memoryCount; memoryIndex++) {
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
-            final boolean is64Bit = readMemoryLimits(longMultiResult);
-            module.symbolTable().allocateMemory(longMultiResult[0], longMultiResult[1], is64Bit);
+            readMemoryLimits(longMultiResult, booleanMultiResult);
+            final boolean is64Bit = booleanMultiResult[0];
+            final boolean isShared = booleanMultiResult[1];
+            final boolean useUnsafeMemory = wasmContext.getContextOptions().useUnsafeMemory();
+            module.symbolTable().allocateMemory(memoryIndex, longMultiResult[0], longMultiResult[1], is64Bit, isShared, multiMemory, useUnsafeMemory);
         }
     }
 
-    private void readCodeSection(BytecodeGen bytecode) {
+    private void readCodeSection(RuntimeBytecodeGen bytecode, BytecodeGen functionDebugData) {
+        final int codeSectionOffset = offset;
         final int importedFunctionCount = module.importedFunctions().size();
         final int codeEntryCount = readLength();
         final int expectedCodeEntryCount = module.numFunctions() - importedFunctionCount;
@@ -403,13 +482,17 @@ public class BinaryParser extends BinaryStreamParser {
             final ByteArrayList locals = readCodeEntryLocals();
             final int localCount = locals.size() + module.function(importedFunctionCount + entryIndex).paramCount();
             module.limits().checkLocalCount(localCount);
+            // Store the function start offset, instruction start offset, and function end offset.
+            functionDebugData.add(startOffset - codeSectionOffset);
+            functionDebugData.add(offset - codeSectionOffset);
             codeEntries[entryIndex] = readCodeEntry(importedFunctionCount + entryIndex, locals, startOffset + codeEntrySize, entryIndex < codeEntryCount - 1, bytecode, entryIndex);
+            functionDebugData.add(offset - codeSectionOffset);
             assertIntEqual(offset - startOffset, codeEntrySize, String.format("Code entry %d size is incorrect", entryIndex), Failure.UNSPECIFIED_MALFORMED);
         }
         module.setCodeEntries(codeEntries);
     }
 
-    private CodeEntry readCodeEntry(int functionIndex, ByteArrayList locals, int endOffset, boolean hasNextFunction, BytecodeGen bytecode, int codeEntryIndex) {
+    private CodeEntry readCodeEntry(int functionIndex, ByteArrayList locals, int endOffset, boolean hasNextFunction, RuntimeBytecodeGen bytecode, int codeEntryIndex) {
         final WasmFunction function = module.symbolTable().function(functionIndex);
         int paramCount = function.paramCount();
         byte[] localTypes = new byte[function.paramCount() + locals.size()];
@@ -423,7 +506,7 @@ public class BinaryParser extends BinaryStreamParser {
         for (int index = 0; index != resultTypes.length; index++) {
             resultTypes[index] = function.resultTypeAt(index);
         }
-        return readFunction(functionIndex, localTypes, resultTypes, endOffset, hasNextFunction, bytecode, codeEntryIndex);
+        return readFunction(functionIndex, localTypes, resultTypes, endOffset, hasNextFunction, bytecode, codeEntryIndex, null);
     }
 
     private ByteArrayList readCodeEntryLocals() {
@@ -482,13 +565,22 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private CodeEntry readFunction(int functionIndex, byte[] locals, byte[] resultTypes, int sourceCodeEndOffset, boolean hasNextFunction, BytecodeGen bytecode, int codeEntryIndex) {
+    private CodeEntry readFunction(int functionIndex, byte[] locals, byte[] resultTypes, int sourceCodeEndOffset, boolean hasNextFunction, RuntimeBytecodeGen bytecode,
+                    int codeEntryIndex, EconomicMap<Integer, Integer> sourceLocationToLineMap) {
         final ParserState state = new ParserState(bytecode);
         final ArrayList<CallNode> callNodes = new ArrayList<>();
         final int bytecodeStartOffset = bytecode.location();
         state.enterFunction(resultTypes);
+
         int opcode;
         while (offset < sourceCodeEndOffset) {
+            // Insert a debug instruction if a line mapping exists.
+            if (sourceLocationToLineMap != null) {
+                if (sourceLocationToLineMap.containsKey(offset)) {
+                    bytecode.addNotify(sourceLocationToLineMap.get(offset), offset);
+                }
+            }
+
             opcode = read1() & 0xFF;
             switch (opcode) {
                 case Instructions.UNREACHABLE:
@@ -753,101 +845,134 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.F32_LOAD:
-                    state.addMemoryInstruction(Bytecode.F32_LOAD, load(state, F32_TYPE, 32), module.memoryHasIndexType64());
+                    load(state, F32_TYPE, 32, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.F32_LOAD, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.F64_LOAD:
-                    state.addMemoryInstruction(Bytecode.F64_LOAD, load(state, F64_TYPE, 64), module.memoryHasIndexType64());
+                    load(state, F64_TYPE, 64, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.F64_LOAD, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I32_LOAD:
-                    state.addMemoryInstruction(Bytecode.I32_LOAD, load(state, I32_TYPE, 32), module.memoryHasIndexType64());
+                    load(state, I32_TYPE, 32, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I32_LOAD, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I32_LOAD8_S:
-                    state.addMemoryInstruction(Bytecode.I32_LOAD8_S, load(state, I32_TYPE, 8), module.memoryHasIndexType64());
+                    load(state, I32_TYPE, 8, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I32_LOAD8_S, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I32_LOAD8_U:
-                    state.addMemoryInstruction(Bytecode.I32_LOAD8_U, load(state, I32_TYPE, 8), module.memoryHasIndexType64());
+                    load(state, I32_TYPE, 8, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I32_LOAD8_U, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I32_LOAD16_S:
-                    state.addMemoryInstruction(Bytecode.I32_LOAD16_S, load(state, I32_TYPE, 16), module.memoryHasIndexType64());
+                    load(state, I32_TYPE, 16, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I32_LOAD16_S, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I32_LOAD16_U:
-                    state.addMemoryInstruction(Bytecode.I32_LOAD16_U, load(state, I32_TYPE, 16), module.memoryHasIndexType64());
+                    load(state, I32_TYPE, 16, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I32_LOAD16_U, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I64_LOAD:
-                    state.addMemoryInstruction(Bytecode.I64_LOAD, load(state, I64_TYPE, 64), module.memoryHasIndexType64());
+                    load(state, I64_TYPE, 64, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I64_LOAD, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I64_LOAD8_S:
-                    state.addMemoryInstruction(Bytecode.I64_LOAD8_S, load(state, I64_TYPE, 8), module.memoryHasIndexType64());
+                    load(state, I64_TYPE, 8, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I64_LOAD8_S, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I64_LOAD8_U:
-                    state.addMemoryInstruction(Bytecode.I64_LOAD8_U, load(state, I64_TYPE, 8), module.memoryHasIndexType64());
+                    load(state, I64_TYPE, 8, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I64_LOAD8_U, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I64_LOAD16_S:
-                    state.addMemoryInstruction(Bytecode.I64_LOAD16_S, load(state, I64_TYPE, 16), module.memoryHasIndexType64());
+                    load(state, I64_TYPE, 16, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I64_LOAD16_S, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I64_LOAD16_U:
-                    state.addMemoryInstruction(Bytecode.I64_LOAD16_U, load(state, I64_TYPE, 16), module.memoryHasIndexType64());
+                    load(state, I64_TYPE, 16, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I64_LOAD16_U, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I64_LOAD32_S:
-                    state.addMemoryInstruction(Bytecode.I64_LOAD32_S, load(state, I64_TYPE, 32), module.memoryHasIndexType64());
+                    load(state, I64_TYPE, 32, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I64_LOAD32_S, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I64_LOAD32_U:
-                    state.addMemoryInstruction(Bytecode.I64_LOAD32_U, load(state, I64_TYPE, 32), module.memoryHasIndexType64());
+                    load(state, I64_TYPE, 32, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I64_LOAD32_U, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.F32_STORE:
-                    state.addMemoryInstruction(Bytecode.F32_STORE, store(state, F32_TYPE, 32), module.memoryHasIndexType64());
+                    store(state, F32_TYPE, 32, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.F32_STORE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.F64_STORE:
-                    state.addMemoryInstruction(Bytecode.F64_STORE, store(state, F64_TYPE, 64), module.memoryHasIndexType64());
+                    store(state, F64_TYPE, 64, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.F64_STORE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I32_STORE:
-                    state.addMemoryInstruction(Bytecode.I32_STORE, store(state, I32_TYPE, 32), module.memoryHasIndexType64());
+                    store(state, I32_TYPE, 32, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I32_STORE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I32_STORE_8:
-                    state.addMemoryInstruction(Bytecode.I32_STORE_8, store(state, I32_TYPE, 8), module.memoryHasIndexType64());
+                    store(state, I32_TYPE, 8, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I32_STORE_8, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I32_STORE_16:
-                    state.addMemoryInstruction(Bytecode.I32_STORE_16, store(state, I32_TYPE, 16), module.memoryHasIndexType64());
+                    store(state, I32_TYPE, 16, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I32_STORE_16, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I64_STORE:
-                    state.addMemoryInstruction(Bytecode.I64_STORE, store(state, I64_TYPE, 64), module.memoryHasIndexType64());
+                    store(state, I64_TYPE, 64, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I64_STORE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I64_STORE_8:
-                    state.addMemoryInstruction(Bytecode.I64_STORE_8, store(state, I64_TYPE, 8), module.memoryHasIndexType64());
+                    store(state, I64_TYPE, 8, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I64_STORE_8, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I64_STORE_16:
-                    state.addMemoryInstruction(Bytecode.I64_STORE_16, store(state, I64_TYPE, 16), module.memoryHasIndexType64());
+                    store(state, I64_TYPE, 16, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I64_STORE_16, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.I64_STORE_32:
-                    state.addMemoryInstruction(Bytecode.I64_STORE_32, store(state, I64_TYPE, 32), module.memoryHasIndexType64());
+                    store(state, I64_TYPE, 32, longMultiResult);
+                    state.addMemoryInstruction(Bytecode.I64_STORE_32, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                     break;
                 case Instructions.MEMORY_SIZE: {
-                    final int flag = read1();
-                    assertIntEqual(flag, 0, Failure.ZERO_BYTE_EXPECTED);
-                    checkMemoryIndex(0);
-                    if (module.memoryHasIndexType64() && memory64) {
+                    final int memoryIndex;
+                    if (multiMemory) {
+                        memoryIndex = readMemoryIndex();
+                    } else {
+                        memoryIndex = read1();
+                        assertIntEqual(memoryIndex, 0, Failure.ZERO_BYTE_EXPECTED);
+                        checkMemoryIndex(0);
+                    }
+                    if (module.memoryHasIndexType64(memoryIndex) && memory64) {
                         state.push(I64_TYPE);
                         state.addMiscFlag();
-                        state.addInstruction(Bytecode.MEMORY64_SIZE);
+                        state.addInstruction(Bytecode.MEMORY64_SIZE, memoryIndex);
                     } else {
                         state.push(I32_TYPE);
-                        state.addInstruction(Bytecode.MEMORY_SIZE);
+                        state.addInstruction(Bytecode.MEMORY_SIZE, memoryIndex);
                     }
                     break;
                 }
                 case Instructions.MEMORY_GROW: {
-                    final int flag = read1();
-                    assertIntEqual(flag, 0, Failure.ZERO_BYTE_EXPECTED);
-                    checkMemoryIndex(0);
-                    if (module.memoryHasIndexType64() && memory64) {
+                    final int memoryIndex;
+                    if (multiMemory) {
+                        memoryIndex = readMemoryIndex();
+                    } else {
+                        memoryIndex = read1();
+                        assertIntEqual(memoryIndex, 0, Failure.ZERO_BYTE_EXPECTED);
+                        checkMemoryIndex(0);
+                    }
+                    if (module.memoryHasIndexType64(memoryIndex) && memory64) {
                         state.popChecked(I64_TYPE);
                         state.push(I64_TYPE);
                         state.addMiscFlag();
-                        state.addInstruction(Bytecode.MEMORY64_GROW);
+                        state.addInstruction(Bytecode.MEMORY64_GROW, memoryIndex);
                     } else {
                         state.popChecked(I32_TYPE);
                         state.push(I32_TYPE);
-                        state.addInstruction(Bytecode.MEMORY_GROW);
+                        state.addInstruction(Bytecode.MEMORY_GROW, memoryIndex);
                     }
                     break;
                 }
@@ -882,7 +1007,10 @@ public class BinaryParser extends BinaryStreamParser {
         if (resultTypes.length != 0) {
             bytecode.addByte((byte) 0);
         }
-        module.setCodeEntryOffset(codeEntryIndex, bytecodeEndOffset);
+        if (sourceLocationToLineMap == null) {
+            // Do not override the code entry offset when rereading the function.
+            module.setCodeEntryOffset(codeEntryIndex, bytecodeEndOffset);
+        }
         return new CodeEntry(functionIndex, state.maxStackSize(), locals, resultTypes, callNodes, bytecodeStartOffset, bytecodeEndOffset);
     }
 
@@ -1180,25 +1308,32 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.MEMORY_INIT: {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
                         final int dataIndex = readUnsignedInt32();
-                        readMemoryIndex();
+                        final int memoryIndex;
+                        if (multiMemory) {
+                            memoryIndex = readMemoryIndex();
+                        } else {
+                            read1();
+                            memoryIndex = 0;
+                            checkMemoryIndex(0);
+                        }
                         module.checkDataSegmentIndex(dataIndex);
                         state.popChecked(I32_TYPE);
                         state.popChecked(I32_TYPE);
-                        if (module.memoryHasIndexType64() && memory64) {
+                        if (module.memoryHasIndexType64(memoryIndex) && memory64) {
                             state.popChecked(I64_TYPE);
                             state.addMiscFlag();
                             if (unsafeMemory) {
-                                state.addInstruction(Bytecode.MEMORY64_INIT_UNSAFE, dataIndex);
+                                state.addInstruction(Bytecode.MEMORY64_INIT_UNSAFE, dataIndex, memoryIndex);
                             } else {
-                                state.addInstruction(Bytecode.MEMORY64_INIT, dataIndex);
+                                state.addInstruction(Bytecode.MEMORY64_INIT, dataIndex, memoryIndex);
                             }
                         } else {
                             state.popChecked(I32_TYPE);
                             state.addMiscFlag();
                             if (unsafeMemory) {
-                                state.addInstruction(Bytecode.MEMORY_INIT_UNSAFE, dataIndex);
+                                state.addInstruction(Bytecode.MEMORY_INIT_UNSAFE, dataIndex, memoryIndex);
                             } else {
-                                state.addInstruction(Bytecode.MEMORY_INIT, dataIndex);
+                                state.addInstruction(Bytecode.MEMORY_INIT, dataIndex, memoryIndex);
                             }
                         }
                         break;
@@ -1217,38 +1352,67 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     case Instructions.MEMORY_COPY: {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
-                        readMemoryIndex();
-                        readMemoryIndex();
-                        if (module.memoryHasIndexType64() && memory64) {
+                        final int destMemoryIndex;
+                        final int srcMemoryIndex;
+                        if (multiMemory) {
+                            destMemoryIndex = readMemoryIndex();
+                            srcMemoryIndex = readMemoryIndex();
+                        } else {
+                            read1();
+                            read1();
+                            destMemoryIndex = 0;
+                            srcMemoryIndex = 0;
+                            checkMemoryIndex(0);
+                        }
+                        if (module.memoryHasIndexType64(destMemoryIndex) && module.memoryHasIndexType64(srcMemoryIndex) && memory64) {
                             state.popChecked(I64_TYPE);
                             state.popChecked(I64_TYPE);
                             state.popChecked(I64_TYPE);
                             state.addMiscFlag();
-                            state.addInstruction(Bytecode.MEMORY64_COPY);
+                            state.addInstruction(Bytecode.MEMORY64_COPY_D64_S64, destMemoryIndex, srcMemoryIndex);
+                        } else if (module.memoryHasIndexType64(destMemoryIndex) && !module.memoryHasIndexType64(srcMemoryIndex) && memory64) {
+                            state.popChecked(I32_TYPE);
+                            state.popChecked(I32_TYPE);
+                            state.popChecked(I64_TYPE);
+                            state.addMiscFlag();
+                            state.addInstruction(Bytecode.MEMORY64_COPY_D64_S32, destMemoryIndex, srcMemoryIndex);
+                        } else if (!module.memoryHasIndexType64(destMemoryIndex) && module.memoryHasIndexType64(srcMemoryIndex) && memory64) {
+                            state.popChecked(I32_TYPE);
+                            state.popChecked(I64_TYPE);
+                            state.popChecked(I32_TYPE);
+                            state.addMiscFlag();
+                            state.addInstruction(Bytecode.MEMORY64_COPY_D32_S64, destMemoryIndex, srcMemoryIndex);
                         } else {
                             state.popChecked(I32_TYPE);
                             state.popChecked(I32_TYPE);
                             state.popChecked(I32_TYPE);
                             state.addMiscFlag();
-                            state.addInstruction(Bytecode.MEMORY_COPY);
+                            state.addInstruction(Bytecode.MEMORY_COPY, destMemoryIndex, srcMemoryIndex);
                         }
                         break;
                     }
                     case Instructions.MEMORY_FILL: {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
-                        readMemoryIndex();
-                        if (module.memoryHasIndexType64() && memory64) {
+                        final int memoryIndex;
+                        if (multiMemory) {
+                            memoryIndex = readMemoryIndex();
+                        } else {
+                            read1();
+                            memoryIndex = 0;
+                            checkMemoryIndex(0);
+                        }
+                        if (module.memoryHasIndexType64(memoryIndex) && memory64) {
                             state.popChecked(I64_TYPE);
                             state.popChecked(I32_TYPE);
                             state.popChecked(I64_TYPE);
                             state.addMiscFlag();
-                            state.addInstruction(Bytecode.MEMORY64_FILL);
+                            state.addInstruction(Bytecode.MEMORY64_FILL, memoryIndex);
                         } else {
                             state.popChecked(I32_TYPE);
                             state.popChecked(I32_TYPE);
                             state.popChecked(I32_TYPE);
                             state.addMiscFlag();
-                            state.addInstruction(Bytecode.MEMORY_FILL);
+                            state.addInstruction(Bytecode.MEMORY_FILL, memoryIndex);
                         }
                         break;
                     }
@@ -1355,6 +1519,283 @@ public class BinaryParser extends BinaryStreamParser {
                 state.push(FUNCREF_TYPE);
                 state.addInstruction(Bytecode.REF_FUNC, functionIndex);
                 break;
+            case Instructions.ATOMIC:
+                checkThreadsSupport(opcode);
+                int atomicOpcode = read1() & 0xFF;
+                state.addAtomicFlag();
+                switch (atomicOpcode) {
+                    case Instructions.ATOMIC_NOTIFY:
+                        atomicNotify(state, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_NOTIFY, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_WAIT32:
+                        atomicWait(state, I32_TYPE, 32, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_WAIT32, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_WAIT64:
+                        atomicWait(state, I64_TYPE, 64, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_WAIT64, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_FENCE:
+                        read1();
+                        state.addInstruction(Bytecode.ATOMIC_FENCE);
+                        break;
+                    case Instructions.ATOMIC_I32_LOAD:
+                        atomicLoad(state, I32_TYPE, 32, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_LOAD, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_LOAD:
+                        atomicLoad(state, I64_TYPE, 64, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_LOAD, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_LOAD8_U:
+                        atomicLoad(state, I32_TYPE, 8, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_LOAD8_U, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_LOAD16_U:
+                        atomicLoad(state, I32_TYPE, 16, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_LOAD16_U, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_LOAD8_U:
+                        atomicLoad(state, I64_TYPE, 8, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_LOAD8_U, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_LOAD16_U:
+                        atomicLoad(state, I64_TYPE, 16, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_LOAD16_U, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_LOAD32_U:
+                        atomicLoad(state, I64_TYPE, 32, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_LOAD32_U, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_STORE:
+                        atomicStore(state, I32_TYPE, 32, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_STORE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_STORE:
+                        atomicStore(state, I64_TYPE, 64, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_STORE, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_STORE8:
+                        atomicStore(state, I32_TYPE, 8, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_STORE8, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_STORE16:
+                        atomicStore(state, I32_TYPE, 16, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_STORE16, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_STORE8:
+                        atomicStore(state, I64_TYPE, 8, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_STORE8, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_STORE16:
+                        atomicStore(state, I64_TYPE, 16, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_STORE16, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_STORE32:
+                        atomicStore(state, I64_TYPE, 32, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_STORE32, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_RMW_ADD:
+                        atomicReadModifyWrite(state, I32_TYPE, 32, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW_ADD, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW_ADD:
+                        atomicReadModifyWrite(state, I64_TYPE, 64, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW_ADD, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_RMW8_U_ADD:
+                        atomicReadModifyWrite(state, I32_TYPE, 8, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW8_U_ADD, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_RMW16_U_ADD:
+                        atomicReadModifyWrite(state, I32_TYPE, 16, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW16_U_ADD, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW8_U_ADD:
+                        atomicReadModifyWrite(state, I64_TYPE, 8, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW8_U_ADD, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW16_U_ADD:
+                        atomicReadModifyWrite(state, I64_TYPE, 16, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW16_U_ADD, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW32_U_ADD:
+                        atomicReadModifyWrite(state, I64_TYPE, 32, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW32_U_ADD, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_RMW_SUB:
+                        atomicReadModifyWrite(state, I32_TYPE, 32, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW_SUB, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW_SUB:
+                        atomicReadModifyWrite(state, I64_TYPE, 64, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW_SUB, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_RMW8_U_SUB:
+                        atomicReadModifyWrite(state, I32_TYPE, 8, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW8_U_SUB, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_RMW16_U_SUB:
+                        atomicReadModifyWrite(state, I32_TYPE, 16, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW16_U_SUB, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW8_U_SUB:
+                        atomicReadModifyWrite(state, I64_TYPE, 8, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW8_U_SUB, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW16_U_SUB:
+                        atomicReadModifyWrite(state, I64_TYPE, 16, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW16_U_SUB, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW32_U_SUB:
+                        atomicReadModifyWrite(state, I64_TYPE, 32, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW32_U_SUB, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_RMW_AND:
+                        atomicReadModifyWrite(state, I32_TYPE, 32, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW_AND, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW_AND:
+                        atomicReadModifyWrite(state, I64_TYPE, 64, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW_AND, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_RMW8_U_AND:
+                        atomicReadModifyWrite(state, I32_TYPE, 8, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW8_U_AND, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_RMW16_U_AND:
+                        atomicReadModifyWrite(state, I32_TYPE, 16, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW16_U_AND, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW8_U_AND:
+                        atomicReadModifyWrite(state, I64_TYPE, 8, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW8_U_AND, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW16_U_AND:
+                        atomicReadModifyWrite(state, I64_TYPE, 16, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW16_U_AND, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW32_U_AND:
+                        atomicReadModifyWrite(state, I64_TYPE, 32, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW32_U_AND, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_RMW_OR:
+                        atomicReadModifyWrite(state, I32_TYPE, 32, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW_OR, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW_OR:
+                        atomicReadModifyWrite(state, I64_TYPE, 64, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW_OR, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_RMW8_U_OR:
+                        atomicReadModifyWrite(state, I32_TYPE, 8, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW8_U_OR, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_RMW16_U_OR:
+                        atomicReadModifyWrite(state, I32_TYPE, 16, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW16_U_OR, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW8_U_OR:
+                        atomicReadModifyWrite(state, I64_TYPE, 8, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW8_U_OR, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW16_U_OR:
+                        atomicReadModifyWrite(state, I64_TYPE, 16, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW16_U_OR, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW32_U_OR:
+                        atomicReadModifyWrite(state, I64_TYPE, 32, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW32_U_OR, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_RMW_XOR:
+                        atomicReadModifyWrite(state, I32_TYPE, 32, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW_XOR, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW_XOR:
+                        atomicReadModifyWrite(state, I64_TYPE, 64, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW_XOR, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_RMW8_U_XOR:
+                        atomicReadModifyWrite(state, I32_TYPE, 8, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW8_U_XOR, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_RMW16_U_XOR:
+                        atomicReadModifyWrite(state, I32_TYPE, 16, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW16_U_XOR, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW8_U_XOR:
+                        atomicReadModifyWrite(state, I64_TYPE, 8, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW8_U_XOR, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW16_U_XOR:
+                        atomicReadModifyWrite(state, I64_TYPE, 16, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW16_U_XOR, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW32_U_XOR:
+                        atomicReadModifyWrite(state, I64_TYPE, 32, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW32_U_XOR, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_RMW_XCHG:
+                        atomicReadModifyWrite(state, I32_TYPE, 32, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW_XCHG, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW_XCHG:
+                        atomicReadModifyWrite(state, I64_TYPE, 64, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW_XCHG, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_RMW8_U_XCHG:
+                        atomicReadModifyWrite(state, I32_TYPE, 8, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW8_U_XCHG, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_RMW16_U_XCHG:
+                        atomicReadModifyWrite(state, I32_TYPE, 16, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW16_U_XCHG, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW8_U_XCHG:
+                        atomicReadModifyWrite(state, I64_TYPE, 8, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW8_U_XCHG, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW16_U_XCHG:
+                        atomicReadModifyWrite(state, I64_TYPE, 16, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW16_U_XCHG, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW32_U_XCHG:
+                        atomicReadModifyWrite(state, I64_TYPE, 32, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW32_U_XCHG, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_RMW_CMPXCHG:
+                        atomicCompareExchange(state, I32_TYPE, 32, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW_CMPXCHG, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW_CMPXCHG:
+                        atomicCompareExchange(state, I64_TYPE, 64, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW_CMPXCHG, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_RMW8_U_CMPXCHG:
+                        atomicCompareExchange(state, I32_TYPE, 8, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW8_U_CMPXCHG, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I32_RMW16_U_CMPXCHG:
+                        atomicCompareExchange(state, I32_TYPE, 16, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I32_RMW16_U_CMPXCHG, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW8_U_CMPXCHG:
+                        atomicCompareExchange(state, I64_TYPE, 8, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW8_U_CMPXCHG, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW16_U_CMPXCHG:
+                        atomicCompareExchange(state, I64_TYPE, 16, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW16_U_CMPXCHG, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_I64_RMW32_U_CMPXCHG:
+                        atomicCompareExchange(state, I64_TYPE, 32, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_I64_RMW32_U_CMPXCHG, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    default:
+                        fail(Failure.UNSPECIFIED_MALFORMED, "Unknown opcode: 0xFE 0x%02x", atomicOpcode);
+                }
+                break;
             default:
                 fail(Failure.UNSPECIFIED_MALFORMED, "Unknown opcode: 0x%02x", opcode);
                 break;
@@ -1379,88 +1820,278 @@ public class BinaryParser extends BinaryStreamParser {
         checkContextOption(wasmContext.getContextOptions().supportBulkMemoryAndRefTypes(), "Bulk memory operations and reference types are not enabled (opcode: 0x%02x)", opcode);
     }
 
-    private long store(ParserState state, byte type, int n) {
-        assertTrue(module.memoryExists(), Failure.UNKNOWN_MEMORY);
-        readAlignHint(n); // align hint
-        final long memoryOffset;
-        if (memory64) {
-            memoryOffset = readUnsignedInt64(); // 64-bit store offset
-        } else {
-            memoryOffset = Integer.toUnsignedLong(readUnsignedInt32()); // 32-bit store offset
-        }
+    private void checkThreadsSupport(int opcode) {
+        checkContextOption(wasmContext.getContextOptions().supportThreads(), "Threads and atomics are not enabled (opcode: 0x%02x)", opcode);
+    }
+
+    private void store(ParserState state, byte type, int n, long[] result) {
+        int alignHint = readAlignHint(n);
+        final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
+        final long memoryOffset = readBaseMemoryOffset();
         state.popChecked(type); // value to store
-        if (module.memoryHasIndexType64() && memory64) {
+        if (module.memoryHasIndexType64(memoryIndex) && memory64) {
             state.popChecked(I64_TYPE);
         } else {
             state.popChecked(I32_TYPE); // 32-bit base address
         }
-        return memoryOffset;
+        result[0] = memoryIndex;
+        result[1] = memoryOffset;
     }
 
-    private long load(ParserState state, byte type, int n) {
-        assertTrue(module.memoryExists(), Failure.UNKNOWN_MEMORY);
-        readAlignHint(n); // align hint
-        final long memoryOffset;
-        if (memory64) {
-            memoryOffset = readUnsignedInt64(); // 64-bit load offset
-        } else {
-            memoryOffset = Integer.toUnsignedLong(readUnsignedInt32()); // 32-bit load offset
-        }
-        if (module.memoryHasIndexType64() && memory64) {
+    private void load(ParserState state, byte type, int n, long[] result) {
+        final int alignHint = readAlignHint(n);
+        final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
+        final long memoryOffset = readBaseMemoryOffset();
+        if (module.memoryHasIndexType64(memoryIndex) && memory64) {
             state.popChecked(I64_TYPE); // 64-bit base address
         } else {
             state.popChecked(I32_TYPE); // 32-bit base address
         }
         state.push(type); // loaded value
-        return memoryOffset;
+        result[0] = memoryIndex;
+        result[1] = memoryOffset;
     }
 
-    private void readOffsetExpression(int[] result) {
+    private void atomicStore(ParserState state, byte type, int n, long[] result) {
+        int alignHint = readAtomicAlignHint(n);
+        final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
+        final long memoryOffset = readBaseMemoryOffset();
+        state.popChecked(type); // value to store
+        if (module.memoryHasIndexType64(memoryIndex) && memory64) {
+            state.popChecked(I64_TYPE);
+        } else {
+            state.popChecked(I32_TYPE); // 32-bit base address
+        }
+        result[0] = memoryIndex;
+        result[1] = memoryOffset;
+    }
+
+    private void atomicLoad(ParserState state, byte type, int n, long[] result) {
+        final int alignHint = readAtomicAlignHint(n);
+        final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
+        final long memoryOffset = readBaseMemoryOffset();
+        if (module.memoryHasIndexType64(memoryIndex) && memory64) {
+            state.popChecked(I64_TYPE); // 64-bit base address
+        } else {
+            state.popChecked(I32_TYPE); // 32-bit base address
+        }
+        state.push(type); // loaded value
+        result[0] = memoryIndex;
+        result[1] = memoryOffset;
+    }
+
+    private void atomicReadModifyWrite(ParserState state, byte type, int n, long[] result) {
+        final int alignHint = readAtomicAlignHint(n);
+        final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
+        final long memoryOffset = readBaseMemoryOffset();
+        state.popChecked(type); // RMW value
+        if (module.memoryHasIndexType64(memoryIndex) && memory64) {
+            state.popChecked(I64_TYPE); // 64-bit base address
+        } else {
+            state.popChecked(I32_TYPE); // 32-bit base address
+        }
+        state.push(type); // loaded value
+        result[0] = memoryIndex;
+        result[1] = memoryOffset;
+    }
+
+    private void atomicCompareExchange(ParserState state, byte type, int n, long[] result) {
+        final int alignHint = readAtomicAlignHint(n);
+        final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
+        final long memoryOffset = readBaseMemoryOffset();
+        state.popChecked(type); // replacement value
+        state.popChecked(type); // expected value
+        if (module.memoryHasIndexType64(memoryIndex) && memory64) {
+            state.popChecked(I64_TYPE); // 64-bit base address
+        } else {
+            state.popChecked(I32_TYPE); // 32-bit base address
+        }
+        state.push(type); // loaded value
+        result[0] = memoryIndex;
+        result[1] = memoryOffset;
+    }
+
+    private void atomicNotify(ParserState state, long[] result) {
+        final int alignHint = readAtomicAlignHint(32);
+        final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
+        final long memoryOffset = readBaseMemoryOffset();
+        state.popChecked(I32_TYPE); // 32-bit count (number of threads to notify)
+        if (module.memoryHasIndexType64(memoryIndex) && memory64) {
+            state.popChecked(I64_TYPE); // 64-bit base address
+        } else {
+            state.popChecked(I32_TYPE); // 32-bit base address
+        }
+        state.push(I32_TYPE); // 32-bit count (number of threads notified)
+        result[0] = memoryIndex;
+        result[1] = memoryOffset;
+    }
+
+    private void atomicWait(ParserState state, byte type, int n, long[] result) {
+        final int alignHint = readAtomicAlignHint(n);
+        final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
+        final long memoryOffset = readBaseMemoryOffset();
+        state.popChecked(I64_TYPE); // 64-bit relative timeout
+        state.popChecked(type); // expected value
+        if (module.memoryHasIndexType64(memoryIndex) && memory64) {
+            state.popChecked(I64_TYPE); // 64-bit base address
+        } else {
+            state.popChecked(I32_TYPE); // 32-bit base address
+        }
+        state.push(I32_TYPE); // 32-bit return value (0, 1, 2)
+        result[0] = memoryIndex;
+        result[1] = memoryOffset;
+    }
+
+    private Pair<Integer, byte[]> readOffsetExpression() {
         // Table offset expression must be a constant expression with result type i32.
         // https://webassembly.github.io/spec/core/syntax/modules.html#element-segments
         // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
-
-        // Read the offset expression.
-        byte instruction = read1();
-
-        // Read the offset expression.
-        int offsetAddress = -1;
-        int offsetGlobalIndex = -1;
-        switch (instruction) {
-            case Instructions.I32_CONST:
-                offsetAddress = readSignedInt32();
-                break;
-            case Instructions.GLOBAL_GET:
-                offsetGlobalIndex = readGlobalIndex();
-                assertIntEqual(module.globalMutability(offsetGlobalIndex), GlobalModifier.CONSTANT, Failure.CONSTANT_EXPRESSION_REQUIRED);
-                assertByteEqual(module.globalValueType(offsetGlobalIndex), I32_TYPE, Failure.TYPE_MISMATCH);
-                break;
-            default:
-                throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid instruction for offset expression: 0x%02X", instruction);
+        Pair<Long, byte[]> result = readConstantExpression(I32_TYPE, false);
+        if (result.getRight() == null) {
+            return Pair.create((int) (long) result.getLeft(), null);
+        } else {
+            return Pair.create(-1, result.getRight());
         }
-        result[0] = offsetAddress;
-        result[1] = offsetGlobalIndex;
-        readEnd();
     }
 
-    private void readLongOffsetExpression(long[] result) {
-        byte instruction = read1();
-        long offsetAddress = -1L;
-        int offsetGlobalIndex = -1;
-        switch (instruction) {
-            case Instructions.I64_CONST:
-                offsetAddress = readSignedInt64();
-                break;
-            case Instructions.GLOBAL_GET:
-                offsetGlobalIndex = readGlobalIndex();
-                assertIntEqual(module.globalMutability(offsetGlobalIndex), GlobalModifier.CONSTANT, Failure.CONSTANT_EXPRESSION_REQUIRED);
-                assertByteEqual(module.globalValueType(offsetGlobalIndex), I64_TYPE, Failure.TYPE_MISMATCH);
-                break;
-            default:
-                throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid instruction for offset expression: 0x%02X", instruction);
+    private Pair<Long, byte[]> readLongOffsetExpression() {
+        return readConstantExpression(I64_TYPE, false);
+    }
+
+    private Pair<Long, byte[]> readConstantExpression(byte resultType, boolean onlyImportedGlobals) {
+        // Read the constant expression.
+        // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
+        final RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
+        final ParserState state = new ParserState(bytecode);
+
+        final LongArrayList stack = new LongArrayList();
+        boolean calculable = true;
+
+        state.enterFunction(new byte[]{resultType});
+        int opcode;
+        while ((opcode = read1() & 0xFF) != Instructions.END) {
+            switch (opcode) {
+                case Instructions.I32_CONST: {
+                    final int value = readSignedInt32();
+                    state.push(I32_TYPE);
+                    state.addSignedInstruction(Bytecode.I32_CONST_I8, value);
+                    if (calculable) {
+                        stack.add(value);
+                    }
+                    break;
+                }
+                case Instructions.I64_CONST: {
+                    final long value = readSignedInt64();
+                    state.push(I64_TYPE);
+                    state.addSignedInstruction(Bytecode.I64_CONST_I8, value);
+                    if (calculable) {
+                        stack.add(value);
+                    }
+                    break;
+                }
+                case Instructions.F32_CONST: {
+                    final int value = readFloatAsInt32();
+                    state.push(F32_TYPE);
+                    state.addInstruction(Bytecode.F32_CONST, value);
+                    if (calculable) {
+                        stack.add(value);
+                    }
+                    break;
+                }
+                case Instructions.F64_CONST: {
+                    final long value = readFloatAsInt64();
+                    state.push(F64_TYPE);
+                    state.addInstruction(Bytecode.F64_CONST, value);
+                    if (calculable) {
+                        stack.add(value);
+                    }
+                    break;
+                }
+                case Instructions.REF_NULL:
+                    checkBulkMemoryAndRefTypesSupport(opcode);
+                    final byte type = readRefType();
+                    state.push(type);
+                    state.addInstruction(Bytecode.REF_NULL);
+                    if (calculable) {
+                        stack.add(0);
+                    }
+                    break;
+                case Instructions.REF_FUNC:
+                    checkBulkMemoryAndRefTypesSupport(opcode);
+                    final int functionIndex = readDeclaredFunctionIndex();
+                    module.addFunctionReference(functionIndex);
+                    state.push(FUNCREF_TYPE);
+                    state.addInstruction(Bytecode.REF_FUNC, functionIndex);
+                    calculable = false;
+                    break;
+                case Instructions.GLOBAL_GET: {
+                    final int index = readGlobalIndex();
+                    if (onlyImportedGlobals) {
+                        // The current WebAssembly spec says constant expressions can only refer to
+                        // imported globals. We can easily remove this restriction in the future.
+                        assertUnsignedIntLess(index, module.symbolTable().importedGlobals().size(), Failure.UNSPECIFIED_MALFORMED,
+                                        "The initializer for global " + index + " in module '" + module.name() + "' refers to a non-imported global.");
+                    }
+                    assertIntEqual(module.globalMutability(index), GlobalModifier.CONSTANT, Failure.CONSTANT_EXPRESSION_REQUIRED);
+                    state.push(module.symbolTable().globalValueType(index));
+                    state.addUnsignedInstruction(Bytecode.GLOBAL_GET_U8, index);
+                    calculable = false;
+                    break;
+                }
+                case Instructions.I32_ADD:
+                case Instructions.I32_SUB:
+                case Instructions.I32_MUL:
+                    if (!wasmContext.getContextOptions().supportExtendedConstExpressions()) {
+                        fail(Failure.TYPE_MISMATCH, "Invalid instruction for constant expression: 0x%02X", opcode);
+                    }
+                    state.popChecked(I32_TYPE);
+                    state.popChecked(I32_TYPE);
+                    state.push(I32_TYPE);
+                    state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
+                    if (calculable) {
+                        int x = (int) stack.popBack();
+                        int y = (int) stack.popBack();
+                        stack.add(switch (opcode) {
+                            case Instructions.I32_ADD -> y + x;
+                            case Instructions.I32_SUB -> y - x;
+                            case Instructions.I32_MUL -> y * x;
+                            default -> throw CompilerDirectives.shouldNotReachHere();
+                        });
+                    }
+                    break;
+                case Instructions.I64_ADD:
+                case Instructions.I64_SUB:
+                case Instructions.I64_MUL:
+                    if (!wasmContext.getContextOptions().supportExtendedConstExpressions()) {
+                        fail(Failure.TYPE_MISMATCH, "Invalid instruction for constant expression: 0x%02X", opcode);
+                    }
+                    state.popChecked(I64_TYPE);
+                    state.popChecked(I64_TYPE);
+                    state.push(I64_TYPE);
+                    state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
+                    if (calculable) {
+                        long x = stack.popBack();
+                        long y = stack.popBack();
+                        stack.add(switch (opcode) {
+                            case Instructions.I64_ADD -> y + x;
+                            case Instructions.I64_SUB -> y - x;
+                            case Instructions.I64_MUL -> y * x;
+                            default -> throw CompilerDirectives.shouldNotReachHere();
+                        });
+                    }
+                    break;
+                default:
+                    fail(Failure.TYPE_MISMATCH, "Invalid instruction for constant expression: 0x%02X", opcode);
+                    break;
+            }
         }
-        result[0] = offsetAddress;
-        result[1] = offsetGlobalIndex;
+        assertIntEqual(state.valueStackSize(), 1, "Multiple results on stack at constant expression end", Failure.TYPE_MISMATCH);
+        state.exit(multiValue);
+        if (calculable) {
+            return Pair.create(stack.popBack(), null);
+        } else {
+            return Pair.create(-1L, bytecode.toArray());
+        }
     }
 
     private long[] readFunctionIndices() {
@@ -1494,6 +2125,17 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.F32_CONST:
                 case Instructions.F64_CONST:
                     throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid constant expression for table elem expression: 0x%02X", opcode);
+                case Instructions.I32_ADD:
+                case Instructions.I32_SUB:
+                case Instructions.I32_MUL:
+                case Instructions.I64_ADD:
+                case Instructions.I64_SUB:
+                case Instructions.I64_MUL:
+                    if (wasmContext.getContextOptions().supportExtendedConstExpressions()) {
+                        throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid constant expression for table elem expression: 0x%02X", opcode);
+                    } else {
+                        throw WasmException.format(Failure.ILLEGAL_OPCODE, "Illegal opcode for constant expression: 0x%02X", opcode);
+                    }
                 case Instructions.REF_NULL:
                     final byte type = readRefType();
                     if (bulkMemoryAndRefTypes && type != elemType) {
@@ -1524,14 +2166,14 @@ public class BinaryParser extends BinaryStreamParser {
         return functionIndices;
     }
 
-    private void readElementSection(BytecodeGen bytecode) {
+    private void readElementSection(RuntimeBytecodeGen bytecode) {
         int elemSegmentCount = readLength();
         module.limits().checkElementSegmentCount(elemSegmentCount);
         for (int elemSegmentIndex = 0; elemSegmentIndex != elemSegmentCount; elemSegmentIndex++) {
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
             int mode;
             final int currentOffsetAddress;
-            final int currentOffsetGlobalIndex;
+            final byte[] currentOffsetBytecode;
             final long[] elements;
             final int tableIndex;
             final byte elemType;
@@ -1547,14 +2189,14 @@ public class BinaryParser extends BinaryStreamParser {
                     } else {
                         tableIndex = 0;
                     }
-                    readOffsetExpression(multiResult);
-                    currentOffsetAddress = multiResult[0];
-                    currentOffsetGlobalIndex = multiResult[1];
+                    Pair<Integer, byte[]> offsetExpression = readOffsetExpression();
+                    currentOffsetAddress = offsetExpression.getLeft();
+                    currentOffsetBytecode = offsetExpression.getRight();
                 } else {
                     mode = useTableIndex ? SegmentMode.DECLARATIVE : SegmentMode.PASSIVE;
                     tableIndex = 0;
                     currentOffsetAddress = -1;
-                    currentOffsetGlobalIndex = -1;
+                    currentOffsetBytecode = null;
                 }
                 if (useExpressions) {
                     if (useType) {
@@ -1573,9 +2215,9 @@ public class BinaryParser extends BinaryStreamParser {
             } else {
                 mode = SegmentMode.ACTIVE;
                 tableIndex = readTableIndex();
-                readOffsetExpression(multiResult);
-                currentOffsetAddress = multiResult[0];
-                currentOffsetGlobalIndex = multiResult[1];
+                Pair<Integer, byte[]> offsetExpression = readOffsetExpression();
+                currentOffsetAddress = offsetExpression.getLeft();
+                currentOffsetBytecode = offsetExpression.getRight();
                 elements = readFunctionIndices();
                 elemType = FUNCREF_TYPE;
             }
@@ -1584,12 +2226,12 @@ public class BinaryParser extends BinaryStreamParser {
             final int currentElemSegmentId = elemSegmentIndex;
             final int elementCount = elements.length;
             final int headerOffset = bytecode.location();
-            final int bytecodeOffset = bytecode.addElemHeader(mode, elementCount, elemType, tableIndex, currentOffsetGlobalIndex, currentOffsetAddress);
+            final int bytecodeOffset = bytecode.addElemHeader(mode, elementCount, elemType, tableIndex, currentOffsetBytecode, currentOffsetAddress);
             module.setElemInstance(currentElemSegmentId, headerOffset, elemType);
             if (mode == SegmentMode.ACTIVE) {
                 assertTrue(module.checkTableIndex(tableIndex), Failure.UNKNOWN_TABLE);
                 module.addLinkAction(((context, instance) -> context.linker().resolveElemSegment(context, instance, tableIndex, currentElemSegmentId, currentOffsetAddress,
-                                currentOffsetGlobalIndex, bytecodeOffset, elementCount)));
+                                currentOffsetBytecode, bytecodeOffset, elementCount)));
             } else if (mode == SegmentMode.PASSIVE) {
                 module.addLinkAction(((context, instance) -> context.linker().resolvePassiveElemSegment(context, instance, currentElemSegmentId, bytecodeOffset, elementCount)));
             }
@@ -1643,8 +2285,8 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case ExportIdentifier.MEMORY: {
-                    readMemoryIndex();
-                    module.symbolTable().exportMemory(exportName);
+                    final int memoryIndex = readMemoryIndex();
+                    module.symbolTable().exportMemory(memoryIndex, exportName);
                     break;
                 }
                 case ExportIdentifier.GLOBAL: {
@@ -1668,96 +2310,29 @@ public class BinaryParser extends BinaryStreamParser {
             final byte type = readValueType(bulkMemoryAndRefTypes);
             // 0x00 means const, 0x01 means var
             final byte mutability = readMutability();
-            long value = 0;
-            int existingIndex = -1;
-            final int instruction = read1() & 0xFF;
-            boolean isInitialized;
-            final boolean isFunctionOrNull;
             // Global initialization expressions must be constant expressions:
             // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
-            switch (instruction) {
-                case Instructions.I32_CONST:
-                    assertByteEqual(type, I32_TYPE, Failure.TYPE_MISMATCH);
-                    value = readSignedInt32();
-                    isInitialized = true;
-                    isFunctionOrNull = false;
-                    break;
-                case Instructions.I64_CONST:
-                    assertByteEqual(type, I64_TYPE, Failure.TYPE_MISMATCH);
-                    value = readSignedInt64();
-                    isInitialized = true;
-                    isFunctionOrNull = false;
-                    break;
-                case Instructions.F32_CONST:
-                    assertByteEqual(type, F32_TYPE, Failure.TYPE_MISMATCH);
-                    value = readFloatAsInt32();
-                    isInitialized = true;
-                    isFunctionOrNull = false;
-                    break;
-                case Instructions.F64_CONST:
-                    assertByteEqual(type, F64_TYPE, Failure.TYPE_MISMATCH);
-                    value = readFloatAsInt64();
-                    isInitialized = true;
-                    isFunctionOrNull = false;
-                    break;
-                case Instructions.REF_NULL:
-                    checkBulkMemoryAndRefTypesSupport(instruction);
-                    assertByteEqual(type, readRefType(), Failure.TYPE_MISMATCH);
-                    assertTrue(WasmType.isReferenceType(type), Failure.TYPE_MISMATCH);
-                    isInitialized = true;
-                    isFunctionOrNull = true;
-                    break;
-                case Instructions.REF_FUNC:
-                    checkBulkMemoryAndRefTypesSupport(instruction);
-                    assertByteEqual(type, FUNCREF_TYPE, Failure.TYPE_MISMATCH);
-                    final int functionIndex = readDeclaredFunctionIndex();
-                    module.addFunctionReference(functionIndex);
-                    value = functionIndex;
-                    isInitialized = false;
-                    isFunctionOrNull = true;
-                    break;
-                case Instructions.GLOBAL_GET:
-                    existingIndex = readGlobalIndex();
-                    assertUnsignedIntLess(existingIndex, module.symbolTable().importedGlobals().size(), Failure.UNKNOWN_GLOBAL);
-                    assertByteEqual(type, module.symbolTable().globalValueType(existingIndex), Failure.TYPE_MISMATCH);
-                    assertByteEqual(GlobalModifier.CONSTANT, module.globalMutability(existingIndex), Failure.CONSTANT_EXPRESSION_REQUIRED);
-                    isInitialized = false;
-                    isFunctionOrNull = false;
-                    break;
-                default:
-                    throw WasmException.create(Failure.TYPE_MISMATCH);
-            }
-            readEnd();
+            Pair<Long, byte[]> initExpression = readConstantExpression(type, true);
+            final long value = initExpression.getLeft();
+            final byte[] initBytecode = initExpression.getRight();
+            final boolean isInitialized = initBytecode == null;
+            final boolean isReference = WasmType.isReferenceType(type);
 
-            module.symbolTable().declareGlobal(globalIndex, type, mutability, isInitialized, isFunctionOrNull, existingIndex, value);
+            module.symbolTable().declareGlobal(globalIndex, type, mutability, isInitialized, isReference, initBytecode, value);
             final int currentGlobalIndex = globalIndex;
-            final int currentExistingIndex = existingIndex;
-            final long currentValue = value;
-            final int currentFunctionIndex = (int) value;
             module.addLinkAction((context, instance) -> {
                 final GlobalRegistry globals = context.globals();
                 final int address = instance.globalAddress(currentGlobalIndex);
                 if (isInitialized) {
-                    if (isFunctionOrNull) {
+                    if (isReference) {
                         // Only null is possible
                         globals.storeReference(address, WasmConstant.NULL);
                     } else {
-                        globals.storeLong(address, currentValue);
+                        globals.storeLong(address, value);
                     }
                     context.linker().resolveGlobalInitialization(instance, currentGlobalIndex);
                 } else {
-                    if (currentExistingIndex != -1 && !instance.symbolTable().importedGlobals().containsKey(currentExistingIndex)) {
-                        // The current WebAssembly spec says constant expressions can only refer to
-                        // imported globals. We can easily remove this restriction in the future.
-                        fail(Failure.UNSPECIFIED_MALFORMED, "The initializer for global " + currentGlobalIndex + " in module '" + instance.name() +
-                                        "' refers to a non-imported global.");
-                    }
-                    if (isFunctionOrNull) {
-                        // Has to be a function reference
-                        context.linker().resolveGlobalFunctionInitialization(context, instance, currentGlobalIndex, currentFunctionIndex);
-                    } else {
-                        context.linker().resolveGlobalInitialization(context, instance, currentGlobalIndex, currentExistingIndex);
-                    }
+                    context.linker().resolveGlobalInitialization(context, instance, currentGlobalIndex, initBytecode);
                 }
             });
         }
@@ -1771,7 +2346,7 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private void readDataSection(BytecodeGen bytecode) {
+    private void readDataSection(RuntimeBytecodeGen bytecode) {
         final int dataSegmentCount = readLength();
         module.limits().checkDataSegmentCount(dataSegmentCount);
         if (bulkMemoryAndRefTypes && dataSegmentCount != 0) {
@@ -1784,39 +2359,51 @@ public class BinaryParser extends BinaryStreamParser {
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
             final int mode;
             long offsetAddress;
-            final int offsetGlobalIndex;
+            final byte[] offsetBytecode;
+            final int memoryIndex;
             if (bulkMemoryAndRefTypes) {
                 final int sectionType = readUnsignedInt32();
                 mode = sectionType & 0b01;
                 final boolean useMemoryIndex = (sectionType & 0b10) != 0;
-                if (useMemoryIndex) {
+                if (useMemoryIndex && multiMemory) {
+                    memoryIndex = readMemoryIndex();
+                } else if (useMemoryIndex) {
                     readMemoryIndex();
+                    memoryIndex = 0;
+                } else {
+                    memoryIndex = 0;
                 }
                 if (mode == SegmentMode.ACTIVE) {
-                    if (module.memoryHasIndexType64()) {
-                        readLongOffsetExpression(longMultiResult);
-                        offsetAddress = longMultiResult[0];
-                        offsetGlobalIndex = (int) longMultiResult[1];
+                    checkMemoryIndex(memoryIndex);
+                    if (module.memoryHasIndexType64(memoryIndex)) {
+                        Pair<Long, byte[]> offsetExpression = readLongOffsetExpression();
+                        offsetAddress = offsetExpression.getLeft();
+                        offsetBytecode = offsetExpression.getRight();
                     } else {
-                        readOffsetExpression(multiResult);
-                        offsetAddress = multiResult[0];
-                        offsetGlobalIndex = multiResult[1];
+                        Pair<Integer, byte[]> offsetExpression = readOffsetExpression();
+                        offsetAddress = offsetExpression.getLeft();
+                        offsetBytecode = offsetExpression.getRight();
                     }
                 } else {
                     offsetAddress = 0;
-                    offsetGlobalIndex = 0;
+                    offsetBytecode = null;
                 }
             } else {
                 mode = SegmentMode.ACTIVE;
-                readMemoryIndex();
-                if (module.memoryHasIndexType64()) {
-                    readLongOffsetExpression(longMultiResult);
-                    offsetAddress = longMultiResult[0];
-                    offsetGlobalIndex = (int) longMultiResult[1];
+                if (multiMemory) {
+                    memoryIndex = readMemoryIndex();
                 } else {
-                    readOffsetExpression(multiResult);
-                    offsetAddress = multiResult[0];
-                    offsetGlobalIndex = multiResult[1];
+                    readMemoryIndex();
+                    memoryIndex = 0;
+                }
+                if (module.memoryHasIndexType64(memoryIndex)) {
+                    Pair<Long, byte[]> offsetExpression = readLongOffsetExpression();
+                    offsetAddress = offsetExpression.getLeft();
+                    offsetBytecode = offsetExpression.getRight();
+                } else {
+                    Pair<Integer, byte[]> offsetExpression = readOffsetExpression();
+                    offsetAddress = offsetExpression.getLeft();
+                    offsetBytecode = offsetExpression.getRight();
                 }
             }
 
@@ -1825,13 +2412,14 @@ public class BinaryParser extends BinaryStreamParser {
 
             final int headerOffset = bytecode.location();
             if (mode == SegmentMode.ACTIVE) {
-                assertTrue(module.memoryExists(), Failure.UNKNOWN_MEMORY);
+                checkMemoryIndex(memoryIndex);
                 final long currentOffsetAddress = offsetAddress;
-                bytecode.addDataHeader(byteLength, offsetGlobalIndex, currentOffsetAddress);
+                bytecode.addDataHeader(byteLength, offsetBytecode, currentOffsetAddress, memoryIndex);
                 final int bytecodeOffset = bytecode.location();
                 module.setDataInstance(currentDataSegmentId, headerOffset);
-                module.addLinkAction((context, instance) -> context.linker().resolveDataSegment(context, instance, currentDataSegmentId, currentOffsetAddress, offsetGlobalIndex, byteLength,
-                                bytecodeOffset, droppedDataInstanceOffset));
+                module.addLinkAction(
+                                (context, instance) -> context.linker().resolveDataSegment(context, instance, currentDataSegmentId, memoryIndex, currentOffsetAddress, offsetBytecode, byteLength,
+                                                bytecodeOffset, droppedDataInstanceOffset));
             } else {
                 bytecode.addDataHeader(mode, byteLength);
                 final int bytecodeOffset = bytecode.location();
@@ -1874,6 +2462,29 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
+    private int readMemoryIndexFromAlignHint(int alignHint) {
+        // if bit 6 (the MSB of the first LEB byte) is set, then an i32 memory index follows after
+        // the alignment bitfield
+        final int memoryIndex;
+        if (multiMemory && (alignHint & 0b0100_0000) != 0) {
+            memoryIndex = readMemoryIndex();
+        } else {
+            memoryIndex = 0;
+            checkMemoryIndex(0);
+        }
+        return memoryIndex;
+    }
+
+    private long readBaseMemoryOffset() {
+        final long memoryOffset;
+        if (memory64) {
+            memoryOffset = readUnsignedInt64(); // 64-bit store offset
+        } else {
+            memoryOffset = Integer.toUnsignedLong(readUnsignedInt32()); // 32-bit store offset
+        }
+        return memoryOffset;
+    }
+
     private boolean isEOF() {
         return offset == data.length;
     }
@@ -1905,8 +2516,7 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private int checkMemoryIndex(int index) {
-        assertTrue(module.symbolTable().memoryExists(), Failure.UNKNOWN_MEMORY);
-        assertIntEqual(index, 0, Failure.UNKNOWN_MEMORY);
+        assertUnsignedIntLess(index, module.symbolTable().memoryCount(), Failure.UNKNOWN_MEMORY);
         return index;
     }
 
@@ -1950,18 +2560,18 @@ public class BinaryParser extends BinaryStreamParser {
         assertUnsignedIntLessOrEqual(out[0], out[1], Failure.LIMIT_MINIMUM_GREATER_THAN_MAXIMUM);
     }
 
-    private boolean readMemoryLimits(long[] out) {
-        final boolean is64Bit = readLongLimits(out, MAX_MEMORY_DECLARATION_SIZE, MAX_MEMORY_64_DECLARATION_SIZE);
+    private void readMemoryLimits(long[] longOut, boolean[] boolOut) {
+        readLongLimits(longOut, boolOut, MAX_MEMORY_DECLARATION_SIZE, MAX_MEMORY_64_DECLARATION_SIZE);
+        final boolean is64Bit = boolOut[0];
         if (is64Bit) {
-            assertUnsignedLongLessOrEqual(out[0], MAX_MEMORY_64_DECLARATION_SIZE, Failure.MEMORY_64_SIZE_LIMIT_EXCEEDED);
-            assertUnsignedLongLessOrEqual(out[1], MAX_MEMORY_64_DECLARATION_SIZE, Failure.MEMORY_64_SIZE_LIMIT_EXCEEDED);
-            assertUnsignedLongLessOrEqual(out[0], out[1], Failure.LIMIT_MINIMUM_GREATER_THAN_MAXIMUM);
+            assertUnsignedLongLessOrEqual(longOut[0], MAX_MEMORY_64_DECLARATION_SIZE, Failure.MEMORY_64_SIZE_LIMIT_EXCEEDED);
+            assertUnsignedLongLessOrEqual(longOut[1], MAX_MEMORY_64_DECLARATION_SIZE, Failure.MEMORY_64_SIZE_LIMIT_EXCEEDED);
+            assertUnsignedLongLessOrEqual(longOut[0], longOut[1], Failure.LIMIT_MINIMUM_GREATER_THAN_MAXIMUM);
         } else {
-            assertUnsignedIntLessOrEqual((int) out[0], MAX_MEMORY_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
-            assertUnsignedIntLessOrEqual((int) out[1], MAX_MEMORY_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
-            assertUnsignedIntLessOrEqual((int) out[0], (int) out[1], Failure.LIMIT_MINIMUM_GREATER_THAN_MAXIMUM);
+            assertUnsignedIntLessOrEqual((int) longOut[0], MAX_MEMORY_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
+            assertUnsignedIntLessOrEqual((int) longOut[1], MAX_MEMORY_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
+            assertUnsignedIntLessOrEqual((int) longOut[0], (int) longOut[1], Failure.LIMIT_MINIMUM_GREATER_THAN_MAXIMUM);
         }
-        return is64Bit;
     }
 
     private void readLimits(int[] out, int max) {
@@ -1979,44 +2589,82 @@ public class BinaryParser extends BinaryStreamParser {
             }
             default:
                 if (limitsPrefix < 0) {
-                    fail(Failure.INTEGER_REPRESENTATION_TOO_LONG, String.format("Invalid limits prefix (expected 0x00 or 0x01, got 0x%02X", limitsPrefix));
+                    fail(Failure.INTEGER_REPRESENTATION_TOO_LONG, String.format("Invalid limits prefix (expected 0x00 or 0x01, got 0x%02X)", limitsPrefix));
                 } else {
-                    fail(Failure.INTEGER_TOO_LARGE, String.format("Invalid limits prefix (expected 0x00 or 0x01, got 0x%02X", limitsPrefix));
+                    fail(Failure.INTEGER_TOO_LARGE, String.format("Invalid limits prefix (expected 0x00 or 0x01, got 0x%02X)", limitsPrefix));
                 }
         }
     }
 
-    private boolean readLongLimits(long[] out, int max32Bit, long max64Bit) {
+    private void readLongLimits(long[] longOut, boolean[] boolOut, int max32Bit, long max64Bit) {
         final byte limitsPrefix = readLimitsPrefix();
         switch (limitsPrefix) {
             case 0x00: {
-                out[0] = readUnsignedInt32();
-                out[1] = max32Bit;
-                return false;
+                longOut[0] = readUnsignedInt32();
+                longOut[1] = max32Bit;
+                boolOut[0] = false; // not 64-bit
+                boolOut[1] = false; // not shared
+                break;
             }
             case 0x01: {
-                out[0] = readUnsignedInt32();
-                out[1] = readUnsignedInt32();
-                return false;
+                longOut[0] = readUnsignedInt32();
+                longOut[1] = readUnsignedInt32();
+                boolOut[0] = false;
+                boolOut[1] = false;
+                break;
             }
             case 0x04: {
-                out[0] = readUnsignedInt64();
-                out[1] = max64Bit;
-                return true;
+                longOut[0] = readUnsignedInt64();
+                longOut[1] = max64Bit;
+                boolOut[0] = true;
+                boolOut[1] = false;
+                break;
             }
             case 0x05: {
-                out[0] = readUnsignedInt64();
-                out[1] = readUnsignedInt64();
-                return true;
+                longOut[0] = readUnsignedInt64();
+                longOut[1] = readUnsignedInt64();
+                boolOut[0] = true;
+                boolOut[1] = false;
+                break;
             }
-            default:
-                if (limitsPrefix < 0) {
-                    fail(Failure.INTEGER_REPRESENTATION_TOO_LONG, String.format("Invalid limits prefix (expected 0x00, 0x01, 0x04, or 0x05, got 0x%02X", limitsPrefix));
+            default: {
+                if (!threads) {
+                    if (limitsPrefix < 0) {
+                        fail(Failure.INTEGER_REPRESENTATION_TOO_LONG, String.format("Invalid limits prefix (expected 0x00, 0x01, 0x04, or 0x05, got 0x%02X)", limitsPrefix));
+                    } else {
+                        fail(Failure.INTEGER_TOO_LARGE, String.format("Invalid limits prefix (expected 0x00, 0x01, 0x04, or 0x05, got 0x%02X)", limitsPrefix));
+                    }
                 } else {
-                    fail(Failure.INTEGER_TOO_LARGE, String.format("Invalid limits prefix (expected 0x00, 0x01, 0x04, or 0x05, got 0x%02X", limitsPrefix));
+                    switch (limitsPrefix) {
+                        case 0x02:
+                        case 0x06: {
+                            fail(Failure.SHARED_MEMORY_MUST_HAVE_MAXIMUM, String.format("Limits prefix implies shared memory without meximum (got 0x%02X)", limitsPrefix));
+                            break;
+                        }
+                        case 0x03: {
+                            longOut[0] = readUnsignedInt32();
+                            longOut[1] = readUnsignedInt32();
+                            boolOut[0] = false;
+                            boolOut[1] = true;
+                            break;
+                        }
+                        case 0x07: {
+                            longOut[0] = readUnsignedInt64();
+                            longOut[1] = readUnsignedInt64();
+                            boolOut[0] = true;
+                            boolOut[1] = true;
+                            break;
+                        }
+                        default:
+                            if (limitsPrefix < 0) {
+                                fail(Failure.INTEGER_REPRESENTATION_TOO_LONG, String.format("Invalid limits prefix (expected 0x00-0x07, got 0x%02X)", limitsPrefix));
+                            } else {
+                                fail(Failure.INTEGER_TOO_LARGE, String.format("Invalid limits prefix (expected 0x00-0x07, got 0x%02X)", limitsPrefix));
+                            }
+                    }
                 }
+            }
         }
-        return false;
     }
 
     private byte readLimitsPrefix() {
@@ -2053,6 +2701,12 @@ public class BinaryParser extends BinaryStreamParser {
         return value;
     }
 
+    protected int readAtomicAlignHint(int n) {
+        final int value = readUnsignedInt32();
+        assertIntEqual(1 << value, n / 8, Failure.ATOMIC_ALIGNMENT_NOT_NATURAL);
+        return value;
+    }
+
     protected int readUnsignedInt32() {
         final long valueLength = peekUnsignedInt32AndLength(data, offset);
         offset += length(valueLength);
@@ -2077,5 +2731,23 @@ public class BinaryParser extends BinaryStreamParser {
         final byte length = peekLeb128Length(data, offset);
         offset += length;
         return value;
+    }
+
+    /**
+     * Creates a runtime bytecode of a function with added debug opcodes.
+     *
+     * @param functionIndex the function index
+     * @param sourceLocationToLineMap a mapping from source code locations to source code lines
+     *            numbers (extracted from debugging information)
+     */
+    @TruffleBoundary
+    public byte[] createFunctionDebugBytecode(int functionIndex, EconomicMap<Integer, Integer> sourceLocationToLineMap) {
+        final RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
+        final int codeEntryIndex = functionIndex - module.numImportedFunctions();
+        final CodeEntry codeEntry = BytecodeParser.readCodeEntry(module, module.bytecode(), codeEntryIndex);
+        offset = module.functionSourceCodeInstructionOffset(functionIndex);
+        final int endOffset = module.functionSourceCodeEndOffset(functionIndex);
+        readFunction(functionIndex, codeEntry.localTypes(), codeEntry.resultTypes(), endOffset, true, bytecode, codeEntryIndex, sourceLocationToLineMap);
+        return bytecode.toArray();
     }
 }

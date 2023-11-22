@@ -29,12 +29,10 @@ import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeCh
 import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.EXTEND;
 
 import java.lang.reflect.Modifier;
-import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -44,13 +42,15 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.hosted.DeadlockWatchdog;
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.java.StableMethodNameFormatter;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.word.WordBase;
+import org.graalvm.nativeimage.c.struct.CPointerTo;
+import org.graalvm.nativeimage.c.struct.RawPointerTo;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
@@ -58,7 +58,6 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.svm.core.OS;
-import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.UniqueShortNameProvider;
 import com.oracle.svm.core.code.CompilationResultFrameTree.Builder;
@@ -66,15 +65,20 @@ import com.oracle.svm.core.code.CompilationResultFrameTree.CallNode;
 import com.oracle.svm.core.code.CompilationResultFrameTree.FrameNode;
 import com.oracle.svm.core.code.CompilationResultFrameTree.Visitor;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.image.ImageHeapPartition;
-import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
+import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.c.info.AccessorInfo;
+import com.oracle.svm.hosted.c.info.ElementInfo;
+import com.oracle.svm.hosted.c.info.PointerToInfo;
+import com.oracle.svm.hosted.c.info.PropertyInfo;
+import com.oracle.svm.hosted.c.info.RawStructureInfo;
+import com.oracle.svm.hosted.c.info.SizableInfo;
+import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
+import com.oracle.svm.hosted.c.info.StructFieldInfo;
+import com.oracle.svm.hosted.c.info.StructInfo;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.image.sources.SourceManager;
-import com.oracle.svm.hosted.lambda.LambdaSubstitutionType;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -84,10 +88,9 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedPrimitiveType;
 import com.oracle.svm.hosted.meta.HostedType;
-import com.oracle.svm.hosted.substitute.InjectedFieldsType;
 import com.oracle.svm.hosted.substitute.SubstitutionField;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
-import com.oracle.svm.hosted.substitute.SubstitutionType;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
@@ -99,7 +102,6 @@ import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaValue;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.Local;
@@ -115,111 +117,25 @@ import jdk.vm.ci.meta.Value;
  * Implementation of the DebugInfoProvider API interface that allows type, code and heap data info
  * to be passed to an ObjectFile when generation of debug info is enabled.
  */
-class NativeImageDebugInfoProvider implements DebugInfoProvider {
+class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase implements DebugInfoProvider {
     private final DebugContext debugContext;
-    private final NativeImageCodeCache codeCache;
-    private final NativeImageHeap heap;
-    boolean useHeapBase;
-    int compressShift;
-    int tagsMask;
-    int referenceSize;
-    int pointerSize;
-    int referenceAlignment;
-    int primitiveStartOffset;
-    int referenceStartOffset;
     private final Set<HostedMethod> allOverrides;
-    HostedType wordBaseType;
-    HostedType hubType;
-    HashMap<JavaKind, HostedType> javaKindToHostedType;
 
-    NativeImageDebugInfoProvider(DebugContext debugContext, NativeImageCodeCache codeCache, NativeImageHeap heap, HostedMetaAccess metaAccess) {
-        super();
+    NativeImageDebugInfoProvider(DebugContext debugContext, NativeImageCodeCache codeCache, NativeImageHeap heap, NativeLibraries nativeLibs, HostedMetaAccess metaAccess) {
+        super(codeCache, heap, nativeLibs, metaAccess);
         this.debugContext = debugContext;
-        this.codeCache = codeCache;
-        this.heap = heap;
-        ObjectHeader objectHeader = Heap.getHeap().getObjectHeader();
-        ObjectInfo primitiveFields = heap.getObjectInfo(StaticFieldsSupport.getStaticPrimitiveFields());
-        ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getStaticObjectFields());
-        this.tagsMask = objectHeader.getReservedBitsMask();
-        if (SubstrateOptions.SpawnIsolates.getValue()) {
-            CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
-            this.useHeapBase = compressEncoding.hasBase();
-            this.compressShift = (compressEncoding.hasShift() ? compressEncoding.getShift() : 0);
-        } else {
-            this.useHeapBase = false;
-            this.compressShift = 0;
-        }
-        this.referenceSize = getObjectLayout().getReferenceSize();
-        this.pointerSize = ConfigurationValues.getTarget().wordSize;
-        this.referenceAlignment = getObjectLayout().getAlignment();
-        /* Offsets need to be adjusted relative to the heap base plus partition-specific offset. */
-        primitiveStartOffset = (int) primitiveFields.getAddress();
-        referenceStartOffset = (int) objectFields.getAddress();
         /* Calculate the set of all HostedMethods that are overrides. */
-        allOverrides = heap.getUniverse().getMethods().stream()
+        allOverrides = heap.hUniverse.getMethods().stream()
                         .filter(HostedMethod::hasVTableIndex)
                         .flatMap(m -> Arrays.stream(m.getImplementations())
                                         .filter(Predicate.not(m::equals)))
                         .collect(Collectors.toSet());
-        wordBaseType = metaAccess.lookupJavaType(WordBase.class);
-        hubType = metaAccess.lookupJavaType(Class.class);
-        javaKindToHostedType = initJavaKindToHostedTypes(metaAccess);
-    }
-
-    private static HashMap<JavaKind, HostedType> initJavaKindToHostedTypes(HostedMetaAccess metaAccess) {
-        HashMap<JavaKind, HostedType> map = new HashMap<>();
-        for (JavaKind kind : JavaKind.values()) {
-            Class<?> clazz;
-            switch (kind) {
-                case Illegal:
-                    clazz = null;
-                    break;
-                case Object:
-                    clazz = java.lang.Object.class;
-                    break;
-                default:
-                    clazz = kind.toJavaClass();
-            }
-            HostedType javaType = clazz != null ? metaAccess.lookupJavaType(clazz) : null;
-            map.put(kind, javaType);
-        }
-        return map;
-    }
-
-    @Override
-    public boolean useHeapBase() {
-        return useHeapBase;
-    }
-
-    @Override
-    public int oopCompressShift() {
-        return compressShift;
-    }
-
-    @Override
-    public int oopReferenceSize() {
-        return referenceSize;
-    }
-
-    @Override
-    public int pointerSize() {
-        return pointerSize;
-    }
-
-    @Override
-    public int oopAlignment() {
-        return referenceAlignment;
-    }
-
-    @Override
-    public int oopTagsMask() {
-        return tagsMask;
     }
 
     @Override
     public Stream<DebugTypeInfo> typeInfoProvider() {
         Stream<DebugTypeInfo> headerTypeInfo = computeHeaderTypeInfo();
-        Stream<DebugTypeInfo> heapTypeInfo = heap.getUniverse().getTypes().stream().map(this::createDebugTypeInfo);
+        Stream<DebugTypeInfo> heapTypeInfo = heap.hUniverse.getTypes().stream().map(this::createDebugTypeInfo);
         return Stream.concat(headerTypeInfo, heapTypeInfo);
     }
 
@@ -231,119 +147,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     @Override
     public Stream<DebugDataInfo> dataInfoProvider() {
         return heap.getObjects().stream().filter(this::acceptObjectInfo).map(this::createDebugDataInfo);
-    }
-
-    static ObjectLayout getObjectLayout() {
-        return ConfigurationValues.getObjectLayout();
-    }
-
-    /**
-     * Return the offset into the initial heap at which the object identified by constant is located
-     * or -1 if the object is not present in the initial heap.
-     *
-     * @param constant must have JavaKind Object and must be non-null.
-     *
-     * @return the offset into the initial heap at which the object identified by constant is
-     *         located or -1 if the object is not present in the initial heap.
-     */
-    public long objectOffset(JavaConstant constant) {
-        assert constant.getJavaKind() == JavaKind.Object && !constant.isNull() : "invalid constant for object offset lookup";
-        ObjectInfo objectInfo = heap.getConstantInfo(constant);
-        if (objectInfo != null) {
-            return objectInfo.getAddress();
-        }
-        return -1;
-    }
-
-    /*
-     * HostedType wraps an AnalysisType and both HostedType and AnalysisType punt calls to
-     * getSourceFilename to the wrapped class so for consistency we need to do type names and path
-     * lookup relative to the doubly unwrapped HostedType.
-     *
-     * However, note that the result of the unwrap on the AnalysisType may be a SubstitutionType
-     * which wraps both an original type and the annotated type that substitutes it. Unwrapping
-     * normally returns the AnnotatedType which we need to use to resolve the file name. However, we
-     * need to use the original to name the owning type to ensure that names found in method param
-     * and return types resolve correctly.
-     */
-    protected static ResolvedJavaType getDeclaringClass(HostedType hostedType, boolean wantOriginal) {
-        // unwrap to the underlying class eihter the original or target class
-        if (wantOriginal) {
-            return getOriginal(hostedType);
-        }
-        // we want any substituted target if there is one. directly unwrapping will
-        // do what we want.
-        return hostedType.getWrapped().getWrapped();
-    }
-
-    protected static ResolvedJavaType getDeclaringClass(HostedMethod hostedMethod, boolean wantOriginal) {
-        if (wantOriginal) {
-            return getOriginal(hostedMethod.getDeclaringClass());
-        }
-        // we want a substituted target if there is one. if there is a substitution at the end of
-        // the method chain fetch the annotated target class
-        ResolvedJavaMethod javaMethod = getAnnotatedOrOriginal(hostedMethod);
-        return javaMethod.getDeclaringClass();
-    }
-
-    @SuppressWarnings("unused")
-    protected static ResolvedJavaType getDeclaringClass(HostedField hostedField, boolean wantOriginal) {
-        /* for now fields are always reported as belonging to the original class */
-        return getOriginal(hostedField.getDeclaringClass());
-    }
-
-    private static ResolvedJavaType getOriginal(HostedType hostedType) {
-        /* partially unwrap then traverse through substitutions to the original */
-        ResolvedJavaType javaType = hostedType.getWrapped().getWrapped();
-        if (javaType instanceof SubstitutionType) {
-            return ((SubstitutionType) javaType).getOriginal();
-        } else if (javaType instanceof CustomSubstitutionType<?, ?>) {
-            return ((CustomSubstitutionType<?, ?>) javaType).getOriginal();
-        } else if (javaType instanceof LambdaSubstitutionType) {
-            return ((LambdaSubstitutionType) javaType).getOriginal();
-        } else if (javaType instanceof InjectedFieldsType) {
-            return ((InjectedFieldsType) javaType).getOriginal();
-        }
-        return javaType;
-    }
-
-    private static ResolvedJavaMethod getAnnotatedOrOriginal(HostedMethod hostedMethod) {
-        ResolvedJavaMethod javaMethod = hostedMethod.getWrapped().getWrapped();
-        // This method is only used when identifying the modifiers or the declaring class
-        // of a HostedMethod. Normally the method unwraps to the underlying JVMCI method
-        // which is the one that provides bytecode to the compiler as well as, line numbers
-        // and local info. If we unwrap to a SubstitutionMethod then we use the annotated
-        // method, not the JVMCI method that the annotation refers to since that will be the
-        // one providing the bytecode etc used by the compiler. If we unwrap to any other,
-        // custom substitution method we simply use it rather than dereferencing to the
-        // original. The difference is that the annotated method's bytecode will be used to
-        // replace the original and the debugger needs to use it to identify the file and access
-        // permissions. A custom substitution may exist alongside the original, as is the case
-        // with some uses for reflection. So, we don't want to conflate the custom substituted
-        // method and the original. In this latter case the method code will be synthesized without
-        // reference to the bytecode of the original. Hence there is no associated file and the
-        // permissions need to be determined from the custom substitution method itself.
-
-        if (javaMethod instanceof SubstitutionMethod) {
-            SubstitutionMethod substitutionMethod = (SubstitutionMethod) javaMethod;
-            javaMethod = substitutionMethod.getAnnotated();
-        }
-        return javaMethod;
-    }
-
-    private static int getOriginalModifiers(HostedMethod hostedMethod) {
-        return getAnnotatedOrOriginal(hostedMethod).getModifiers();
-    }
-
-    private final Path cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
-
-    @Override
-    public Path getCachePath() {
-        return cachePath;
-    }
-
-    private HostedType hostedTypeForKind(JavaKind kind) {
-        return javaKindToHostedType.get(kind);
     }
 
     private abstract class NativeImageDebugFileInfo implements DebugFileInfo {
@@ -426,23 +229,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    private static Path fullFilePathFromClassName(HostedType hostedInstanceClass) {
-        String[] elements = hostedInstanceClass.toJavaName().split("\\.");
-        int count = elements.length;
-        String name = elements[count - 1];
-        while (name.startsWith("$")) {
-            name = name.substring(1);
-        }
-        if (name.contains("$")) {
-            name = name.substring(0, name.indexOf('$'));
-        }
-        if (name.equals("")) {
-            name = "_nofile_";
-        }
-        elements[count - 1] = name + ".java";
-        return FileSystems.getDefault().getPath("", elements);
-    }
-
     private abstract class NativeImageDebugTypeInfo extends NativeImageDebugFileInfo implements DebugTypeInfo {
         protected final HostedType hostedType;
 
@@ -479,9 +265,15 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public long classOffset() {
-            ObjectInfo objectInfo = heap.getObjectInfo(hostedType.getHub());
-            if (objectInfo != null) {
-                return objectInfo.getOffset();
+            /*
+             * Only query the heap for reachable types. These are guaranteed to have been seen by
+             * the analysis and to exist in the shadow heap.
+             */
+            if (hostedType.getWrapped().isReachable()) {
+                ObjectInfo objectInfo = heap.getObjectInfo(hostedType.getHub());
+                if (objectInfo != null) {
+                    return objectInfo.getOffset();
+                }
             }
             return -1;
         }
@@ -613,6 +405,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
+        public boolean isEmbedded() {
+            return false;
+        }
+
+        @Override
         public int modifiers() {
             return modifiers;
         }
@@ -673,11 +470,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public DebugTypeKind typeKind() {
             return DebugTypeKind.INSTANCE;
-        }
-
-        @Override
-        public int headerSize() {
-            return getObjectLayout().getFirstFieldOffset();
         }
 
         @Override
@@ -774,6 +566,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
 
             @Override
+            public boolean isEmbedded() {
+                return false;
+            }
+
+            @Override
             public int modifiers() {
                 ResolvedJavaField targetField = field.wrapped.wrapped;
                 if (targetField instanceof SubstitutionField) {
@@ -807,6 +604,199 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public DebugTypeKind typeKind() {
             return DebugTypeKind.INTERFACE;
+        }
+    }
+
+    private class NativeImageDebugForeignTypeInfo extends NativeImageDebugInstanceTypeInfo implements DebugForeignTypeInfo {
+
+        ElementInfo elementInfo;
+
+        NativeImageDebugForeignTypeInfo(HostedType hostedType) {
+            this(hostedType, nativeLibs.findElementInfo(hostedType));
+        }
+
+        NativeImageDebugForeignTypeInfo(HostedType hostedType, ElementInfo elementInfo) {
+            super(hostedType);
+            assert isForeignWordType(hostedType);
+            this.elementInfo = elementInfo;
+            assert verifyElementInfo() : "unexpected element info kind";
+        }
+
+        private boolean verifyElementInfo() {
+            // word types and some pointer types do not have element info
+            if (elementInfo == null || !(elementInfo instanceof SizableInfo)) {
+                return true;
+            }
+            switch (elementKind((SizableInfo) elementInfo)) {
+                // we may see these as the target kinds for foreign pointer types
+                case INTEGER:
+                case POINTER:
+                case FLOAT:
+                case UNKNOWN:
+                    return true;
+                // we may not see these as the target kinds for foreign pointer types
+                case STRING:
+                case BYTEARRAY:
+                case OBJECT:
+                default:
+                    return false;
+            }
+        }
+
+        @Override
+        public DebugTypeKind typeKind() {
+            return DebugTypeKind.FOREIGN;
+        }
+
+        @Override
+        public Stream<DebugFieldInfo> fieldInfoProvider() {
+            // TODO - generate fields for Struct and RawStruct types derived from element info
+            return orderedFieldsStream(elementInfo).map(this::createDebugForeignFieldInfo);
+        }
+
+        @Override
+        public int size() {
+            return elementSize(elementInfo);
+        }
+
+        DebugFieldInfo createDebugForeignFieldInfo(StructFieldInfo structFieldInfo) {
+            return new NativeImageDebugForeignFieldInfo(hostedType, structFieldInfo);
+        }
+
+        @Override
+        public String typedefName() {
+            String name = null;
+            if (elementInfo != null) {
+                if (elementInfo instanceof PointerToInfo) {
+                    name = ((PointerToInfo) elementInfo).getTypedefName();
+                } else if (elementInfo instanceof StructInfo) {
+                    name = ((StructInfo) elementInfo).getTypedefName();
+                }
+                if (name == null) {
+                    name = elementName(elementInfo);
+                }
+            }
+            return name;
+        }
+
+        @Override
+        public boolean isWord() {
+            return !isForeignPointerType(hostedType);
+        }
+
+        @Override
+        public boolean isStruct() {
+            return elementInfo instanceof StructInfo;
+        }
+
+        @Override
+        public boolean isPointer() {
+            if (elementInfo != null && elementInfo instanceof SizableInfo) {
+                return elementKind((SizableInfo) elementInfo) == ElementKind.POINTER;
+            } else {
+                return false;
+            }
+        }
+
+        @Override
+        public boolean isIntegral() {
+            if (elementInfo != null && elementInfo instanceof SizableInfo) {
+                return elementKind((SizableInfo) elementInfo) == ElementKind.INTEGER;
+            } else {
+                return false;
+            }
+        }
+
+        @Override
+        public boolean isFloat() {
+            if (elementInfo != null) {
+                return elementKind((SizableInfo) elementInfo) == ElementKind.FLOAT;
+            } else {
+                return false;
+            }
+        }
+
+        @Override
+        public boolean isSigned() {
+            // pretty much everything is unsigned by default
+            // special cases are SignedWord which, obviously, points to a signed word and
+            // anything pointing to an integral type that is not tagged as unsigned
+            return (nativeLibs.isSigned(hostedType.getWrapped()) || (isIntegral() && !((SizableInfo) elementInfo).isUnsigned()));
+        }
+
+        @Override
+        public ResolvedJavaType parent() {
+            if (isStruct()) {
+                // look for the first interface that also has an associated StructInfo
+                for (HostedInterface hostedInterface : hostedType.getInterfaces()) {
+                    ElementInfo otherInfo = nativeLibs.findElementInfo(hostedInterface);
+                    if (otherInfo instanceof StructInfo) {
+                        return getOriginal(hostedInterface);
+                    }
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public ResolvedJavaType pointerTo() {
+            if (isPointer()) {
+                // any target type for the pointer will be defined by a CPointerTo or RawPointerTo
+                // annotation
+                CPointerTo cPointerTo = hostedType.getAnnotation(CPointerTo.class);
+                if (cPointerTo != null) {
+                    HostedType pointerTo = heap.hMetaAccess.lookupJavaType(cPointerTo.value());
+                    return getOriginal(pointerTo);
+                }
+                RawPointerTo rawPointerTo = hostedType.getAnnotation(RawPointerTo.class);
+                if (rawPointerTo != null) {
+                    HostedType pointerTo = heap.hMetaAccess.lookupJavaType(rawPointerTo.value());
+                    return getOriginal(pointerTo);
+                }
+            }
+            return null;
+        }
+    }
+
+    private class NativeImageDebugForeignFieldInfo extends NativeImageDebugFileInfo implements DebugInfoProvider.DebugFieldInfo {
+        StructFieldInfo structFieldInfo;
+
+        NativeImageDebugForeignFieldInfo(HostedType hostedType, StructFieldInfo structFieldInfo) {
+            super(hostedType);
+            this.structFieldInfo = structFieldInfo;
+        }
+
+        @Override
+        public int size() {
+            return structFieldInfo.getSizeInfo().getProperty();
+        }
+
+        @Override
+        public int offset() {
+            return structFieldInfo.getOffsetInfo().getProperty();
+        }
+
+        @Override
+        public String name() {
+            return structFieldInfo.getName();
+        }
+
+        @Override
+        public ResolvedJavaType valueType() {
+            // we need to ensure the hosted type identified for the field value gets translated to
+            // an original in order to be consistent with id types for substitutions
+            return getOriginal(getFieldType(structFieldInfo));
+        }
+
+        @Override
+        public boolean isEmbedded() {
+            // this is true when the field has an ADDRESS accessor type
+            return fieldTypeIsEmbedded(structFieldInfo);
+        }
+
+        @Override
+        public int modifiers() {
+            return 0;
         }
     }
 
@@ -908,19 +898,170 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
+    @SuppressWarnings("try")
     private NativeImageDebugTypeInfo createDebugTypeInfo(HostedType hostedType) {
-        if (hostedType.isEnum()) {
-            return new NativeImageDebugEnumTypeInfo((HostedInstanceClass) hostedType);
-        } else if (hostedType.isInstanceClass()) {
-            return new NativeImageDebugInstanceTypeInfo(hostedType);
-        } else if (hostedType.isInterface()) {
-            return new NativeImageDebugInterfaceTypeInfo((HostedInterface) hostedType);
-        } else if (hostedType.isArray()) {
-            return new NativeImageDebugArrayTypeInfo((HostedArrayClass) hostedType);
-        } else if (hostedType.isPrimitive()) {
-            return new NativeImageDebugPrimitiveTypeInfo((HostedPrimitiveType) hostedType);
+        try (DebugContext.Scope s = debugContext.scope("DebugTypeInfo", hostedType.toJavaName())) {
+            if (isForeignWordType(hostedType)) {
+                assert hostedType.isInterface() || hostedType.isInstanceClass() : "foreign type must be instance class or interface!";
+                logForeignTypeInfo(hostedType);
+                return new NativeImageDebugForeignTypeInfo(hostedType);
+            } else if (hostedType.isEnum()) {
+                return new NativeImageDebugEnumTypeInfo((HostedInstanceClass) hostedType);
+            } else if (hostedType.isInstanceClass()) {
+                return new NativeImageDebugInstanceTypeInfo(hostedType);
+            } else if (hostedType.isInterface()) {
+                return new NativeImageDebugInterfaceTypeInfo((HostedInterface) hostedType);
+            } else if (hostedType.isArray()) {
+                return new NativeImageDebugArrayTypeInfo((HostedArrayClass) hostedType);
+            } else if (hostedType.isPrimitive()) {
+                return new NativeImageDebugPrimitiveTypeInfo((HostedPrimitiveType) hostedType);
+            } else {
+                throw new RuntimeException("Unknown type kind " + hostedType.getName());
+            }
+        } catch (Throwable e) {
+            throw debugContext.handle(e);
+        }
+    }
+
+    private void logForeignTypeInfo(HostedType hostedType) {
+        if (!isForeignPointerType(hostedType)) {
+            // non pointer type must be an interface because an instance needs to be pointed to
+            assert hostedType.isInterface();
+            // foreign word types never have element info
+            debugContext.log(DebugContext.VERBOSE_LEVEL, "Foreign word type %s", hostedType.toJavaName());
         } else {
-            throw new RuntimeException("Unknown type kind " + hostedType.getName());
+            ElementInfo elementInfo = nativeLibs.findElementInfo(hostedType);
+            logForeignPointerType(hostedType, elementInfo);
+        }
+    }
+
+    private void logForeignPointerType(HostedType hostedType, ElementInfo elementInfo) {
+        if (elementInfo == null) {
+            // can happen for a generic (void*) pointer or a class
+            if (hostedType.isInterface()) {
+                debugContext.log(DebugContext.VERBOSE_LEVEL, "Foreign pointer type %s", hostedType.toJavaName());
+            } else {
+                debugContext.log(DebugContext.VERBOSE_LEVEL, "Foreign pointer type %s (class)", hostedType.toJavaName());
+            }
+        } else if (elementInfo instanceof PointerToInfo) {
+            logPointerToInfo(hostedType, (PointerToInfo) elementInfo);
+        } else if (elementInfo instanceof StructInfo) {
+            if (elementInfo instanceof RawStructureInfo) {
+                logRawStructureInfo(hostedType, (RawStructureInfo) elementInfo);
+            } else {
+                logStructInfo(hostedType, (StructInfo) elementInfo);
+            }
+        }
+    }
+
+    private void logPointerToInfo(HostedType hostedType, PointerToInfo pointerToInfo) {
+        debugContext.log(DebugContext.VERBOSE_LEVEL, "Foreign pointer type %s %s", hostedType.toJavaName(), elementKind(pointerToInfo));
+        assert hostedType.isInterface();
+        int size = elementSize(pointerToInfo);
+        boolean isUnsigned = pointerToInfo.isUnsigned();
+        String typedefName = pointerToInfo.getTypedefName();
+        debugContext.log("element size = %d", size);
+        debugContext.log("%s", (isUnsigned ? "<unsigned>" : "<signed>"));
+        if (typedefName != null) {
+            debugContext.log("typedefname = %s", typedefName);
+        }
+        dumpElementInfo(pointerToInfo);
+    }
+
+    private void logStructInfo(HostedType hostedType, StructInfo structInfo) {
+        debugContext.log(DebugContext.VERBOSE_LEVEL, "Foreign struct type %s %s", hostedType.toJavaName(), elementKind(structInfo));
+        assert hostedType.isInterface();
+        boolean isIncomplete = structInfo.isIncomplete();
+        if (isIncomplete) {
+            debugContext.log("<incomplete>");
+        } else {
+            debugContext.log("complete : element size = %d", elementSize(structInfo));
+        }
+        String typedefName = structInfo.getTypedefName();
+        if (typedefName != null) {
+            debugContext.log("    typedefName = %s", typedefName);
+        }
+        dumpElementInfo(structInfo);
+    }
+
+    private void logRawStructureInfo(HostedType hostedType, RawStructureInfo rawStructureInfo) {
+        debugContext.log(DebugContext.VERBOSE_LEVEL, "Foreign raw struct type %s %s", hostedType.toJavaName(), elementKind(rawStructureInfo));
+        assert hostedType.isInterface();
+        debugContext.log("element size = %d", elementSize(rawStructureInfo));
+        String typedefName = rawStructureInfo.getTypedefName();
+        if (typedefName != null) {
+            debugContext.log("    typedefName = %s", typedefName);
+        }
+        dumpElementInfo(rawStructureInfo);
+    }
+
+    private int structFieldComparator(StructFieldInfo f1, StructFieldInfo f2) {
+        int offset1 = f1.getOffsetInfo().getProperty();
+        int offset2 = f2.getOffsetInfo().getProperty();
+        return offset1 - offset2;
+    }
+
+    private Stream<StructFieldInfo> orderedFieldsStream(ElementInfo elementInfo) {
+        if (elementInfo instanceof RawStructureInfo || elementInfo instanceof StructInfo) {
+            return elementInfo.getChildren().stream().filter(elt -> isTypedField(elt))
+                            .map(elt -> ((StructFieldInfo) elt))
+                            .sorted(this::structFieldComparator);
+        } else {
+            return Stream.empty();
+        }
+    }
+
+    private void dumpElementInfo(ElementInfo elementInfo) {
+        if (elementInfo != null) {
+            debugContext.log("Element Info {%n%s}", formatElementInfo(elementInfo));
+        } else {
+            debugContext.log("Element Info {}");
+        }
+    }
+
+    private static String formatElementInfo(ElementInfo elementInfo) {
+        StringBuilder stringBuilder = new StringBuilder();
+        formatElementInfo(elementInfo, stringBuilder, 0);
+        return stringBuilder.toString();
+    }
+
+    private static void formatElementInfo(ElementInfo elementInfo, StringBuilder stringBuilder, int indent) {
+        indentElementInfo(stringBuilder, indent);
+        formatSingleElement(elementInfo, stringBuilder);
+        List<ElementInfo> children = elementInfo.getChildren();
+        if (children == null || children.isEmpty()) {
+            stringBuilder.append("\n");
+        } else {
+            stringBuilder.append(" {\n");
+            for (ElementInfo child : children) {
+                formatElementInfo(child, stringBuilder, indent + 1);
+            }
+            indentElementInfo(stringBuilder, indent);
+            stringBuilder.append("}\n");
+        }
+    }
+
+    private static void formatSingleElement(ElementInfo elementInfo, StringBuilder stringBuilder) {
+        stringBuilder.append(ClassUtil.getUnqualifiedName(elementInfo.getClass()));
+        stringBuilder.append(" : ");
+        stringBuilder.append(elementName(elementInfo));
+        if (elementInfo instanceof PropertyInfo<?>) {
+            stringBuilder.append(" = ");
+            formatPropertyInfo((PropertyInfo<?>) elementInfo, stringBuilder);
+        }
+        if (elementInfo instanceof AccessorInfo) {
+            stringBuilder.append(" ");
+            stringBuilder.append(((AccessorInfo) elementInfo).getAccessorKind());
+        }
+    }
+
+    private static <T> void formatPropertyInfo(PropertyInfo<T> propertyInfo, StringBuilder stringBuilder) {
+        stringBuilder.append(propertyInfo.getProperty());
+    }
+
+    private static void indentElementInfo(StringBuilder stringBuilder, int indent) {
+        for (int i = 0; i <= indent; i++) {
+            stringBuilder.append("  ");
         }
     }
 
@@ -959,7 +1100,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         private ResolvedJavaMethod promoteAnalysisToHosted(ResolvedJavaMethod m) {
             if (m instanceof AnalysisMethod) {
-                return heap.getUniverse().lookup(m);
+                return heap.hUniverse.lookup(m);
             }
             if (!(m instanceof HostedMethod)) {
                 debugContext.log(DebugContext.DETAILED_LEVEL, "Method is neither Hosted nor Analysis : %s.%s%s", m.getDeclaringClass().getName(), m.getName(),
@@ -1091,7 +1232,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             if (method instanceof HostedMethod) {
                 return ((HostedMethod) method).isDeoptTarget();
             }
-            return name().endsWith(HostedMethod.MULTI_METHOD_KEY_SEPARATOR);
+            return name().endsWith(StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR);
         }
 
         @Override
@@ -1133,7 +1274,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         ResolvedJavaType ownerType = method.getDeclaringClass();
         if (!method.isStatic()) {
             JavaKind kind = ownerType.getJavaKind();
-            JavaKind storageKind = isPseudoObjectType(ownerType, ownerType) ? JavaKind.Long : kind;
+            JavaKind storageKind = isForeignWordType(ownerType, ownerType) ? JavaKind.Long : kind;
             assert kind == JavaKind.Object : "must be an object";
             paramInfos.add(new NativeImageDebugLocalInfo("this", storageKind, ownerType, slot, line));
             slot += kind.getSlotCount();
@@ -1143,24 +1284,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             String name = (local != null ? local.getName() : "__" + i);
             ResolvedJavaType paramType = (ResolvedJavaType) signature.getParameterType(i, null);
             JavaKind kind = paramType.getJavaKind();
-            JavaKind storageKind = isPseudoObjectType(paramType, ownerType) ? JavaKind.Long : kind;
+            JavaKind storageKind = isForeignWordType(paramType, ownerType) ? JavaKind.Long : kind;
             paramInfos.add(new NativeImageDebugLocalInfo(name, storageKind, paramType, slot, line));
             slot += kind.getSlotCount();
         }
         return paramInfos;
-    }
-
-    /**
-     * Identify a pseudo-object Java type which is used only to model a memory word, pointer or
-     * foreign opaque type.
-     * 
-     * @param type the type to be tested
-     * @param accessingType another type relative to which the first type may need to be resolved
-     * @return true if the type is a pseudo object type
-     */
-    private boolean isPseudoObjectType(JavaType type, ResolvedJavaType accessingType) {
-        ResolvedJavaType resolvedJavaType = type.resolve(accessingType);
-        return (wordBaseType.isAssignableFrom(resolvedJavaType));
     }
 
     private static boolean isIntegralKindPromotion(JavaKind promoted, JavaKind original) {
@@ -1244,12 +1372,24 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             if (fileName().length() == 0) {
                 return Stream.empty();
             }
-            final CallNode root = new Builder(debugContext, compilation.getTargetCodeSize(), true).build(compilation);
+            boolean omitInline = SubstrateOptions.OmitInlinedMethodDebugLineInfo.getValue();
+            int maxDepth = SubstrateOptions.DebugCodeInfoMaxDepth.getValue();
+            boolean useSourceMappings = SubstrateOptions.DebugCodeInfoUseSourceMappings.getValue();
+            if (omitInline) {
+                if (!SubstrateOptions.DebugCodeInfoMaxDepth.hasBeenSet()) {
+                    /* TopLevelVisitor will not go deeper than level 2 */
+                    maxDepth = 2;
+                }
+                if (!SubstrateOptions.DebugCodeInfoUseSourceMappings.hasBeenSet()) {
+                    /* Skip expensive CompilationResultFrameTree building with SourceMappings */
+                    useSourceMappings = false;
+                }
+            }
+            final CallNode root = new Builder(debugContext, compilation.getTargetCodeSize(), maxDepth, useSourceMappings, true).build(compilation);
             if (root == null) {
                 return Stream.empty();
             }
             final List<DebugLocationInfo> locationInfos = new ArrayList<>();
-            final boolean omitInline = SubstrateOptions.OmitInlinedMethodDebugLineInfo.getValue();
             int frameSize = getFrameSize();
             final Visitor visitor = (omitInline ? new TopLevelVisitor(locationInfos, frameSize) : new MultiLevelVisitor(locationInfos, frameSize));
             // arguments passed by visitor to apply are
@@ -1443,7 +1583,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         /**
          * Report whether a call node has any children.
-         * 
+         *
          * @param callNode the node to check
          * @return true if it has any children otherwise false.
          */
@@ -1460,7 +1600,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         /**
          * Create a location info record for a leaf subrange.
-         * 
+         *
          * @param node is a simple FrameNode
          * @return the newly created location info record
          */
@@ -1474,7 +1614,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         /**
          * Create a location info record for a subrange that encloses an inline call.
-         * 
+         *
          * @param callNode is the top level inlined call frame
          * @return the newly created location info record
          */
@@ -1490,7 +1630,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
          * Create a location info record for the initial range associated with a parent call node
          * whose position and start are defined by that call node and whose end is determined by the
          * first child of the call node.
-         * 
+         *
          * @param parentToEmbed a parent call node which has already been processed to create the
          *            caller location info
          * @param firstChild the first child of the call node
@@ -1542,7 +1682,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         /**
          * Test whether a bytecode position represents a bogus frame added by the compiler when a
          * substitution or snippet call is injected.
-         * 
+         *
          * @param pos the position to be tested
          * @return true if the frame is bogus otherwise false
          */
@@ -1554,7 +1694,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
          * Skip caller nodes with bogus positions, as determined by
          * {@link #skipPos(BytecodePosition)}, returning first caller node position that is not
          * bogus.
-         * 
+         *
          * @param node the node whose callers are to be traversed
          * @return the first non-bogus position in the caller chain.
          */
@@ -1570,7 +1710,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
          * Test whether the position associated with a child node should result in an entry in the
          * inline tree. The test is for a call node with a bogus position as determined by
          * {@link #skipPos(BytecodePosition)}.
-         * 
+         *
          * @param node A node associated with a child frame in the compilation result frame tree.
          * @return True an entry should be included or false if it should be omitted.
          */
@@ -1582,9 +1722,9 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
          * Test whether the position associated with a call node frame should be embedded along with
          * the locations generated for the node's children. This is needed because call frames
          * include a valid source position that precedes the first child position.
-         * 
+         *
          * @param node A node associated with a frame in the compilation result frame tree.
-         * 
+         *
          * @return True if an inline frame should be included or false if it should be omitted.
          */
 
@@ -1609,7 +1749,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         /**
          * Try merging a new location info for a leaf range into the location info for the last leaf
          * range added at this level.
-         * 
+         *
          * @param newLeaf the new leaf location info
          * @param args the visitor argument vector used to pass parameters from one child visit to
          *            the next possibly including the last leaf
@@ -1635,7 +1775,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         /**
          * Set the last leaf node at the current level to the supplied leaf node.
-         * 
+         *
          * @param lastLeaf the last leaf node created at this level
          * @param args the visitor argument vector used to pass parameters from one child visit to
          *            the next
@@ -1647,7 +1787,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         /**
          * Clear the last leaf node at the current level from the visitor arguments by setting the
          * arg vector entry to null.
-         * 
+         *
          * @param args the visitor argument vector used to pass parameters from one child visit to
          *            the next
          */
@@ -1798,7 +1938,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                     // only add the local if the kinds match
                     if ((storageKind == kind) ||
                                     isIntegralKindPromotion(storageKind, kind) ||
-                                    (isPseudoObjectType(type, ownerType) && kind == JavaKind.Object && storageKind == JavaKind.Long)) {
+                                    (isForeignWordType(type, ownerType) && kind == JavaKind.Object && storageKind == JavaKind.Long)) {
                         localInfos.add(new NativeImageDebugLocalValueInfo(name, value, framesize, storageKind, type, slot, firstLine));
                     } else if (storageKind != JavaKind.Illegal) {
                         debugContext.log(DebugContext.DETAILED_LEVEL, "  value kind incompatible with var kind %s!", type.getJavaKind());
@@ -1821,7 +1961,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             if (!method.isStatic()) {
                 String name = "this";
                 JavaKind kind = ownerType.getJavaKind();
-                JavaKind storageKind = isPseudoObjectType(ownerType, ownerType) ? JavaKind.Long : kind;
+                JavaKind storageKind = isForeignWordType(ownerType, ownerType) ? JavaKind.Long : kind;
                 assert kind == JavaKind.Object : "must be an object";
                 NativeImageDebugLocalValue value = locProducer.nextLocation(kind);
                 debugContext.log(DebugContext.DETAILED_LEVEL, "locals[%d] %s type %s slot %d", localIdx, name, ownerType.getName(), slot);
@@ -1835,7 +1975,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 String name = (local != null ? local.getName() : "__" + i);
                 ResolvedJavaType paramType = (ResolvedJavaType) signature.getParameterType(i, ownerType);
                 JavaKind kind = paramType.getJavaKind();
-                JavaKind storageKind = isPseudoObjectType(paramType, ownerType) ? JavaKind.Long : kind;
+                JavaKind storageKind = isForeignWordType(paramType, ownerType) ? JavaKind.Long : kind;
                 NativeImageDebugLocalValue value = locProducer.nextLocation(kind);
                 debugContext.log(DebugContext.DETAILED_LEVEL, "locals[%d] %s type %s slot %d", localIdx, name, ownerType.getName(), slot);
                 debugContext.log(DebugContext.DETAILED_LEVEL, "  =>  %s kind %s", value, storageKind);
@@ -1919,7 +2059,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
          * Merge the supplied leaf location info into this leaf location info if they have
          * contiguous ranges, the same method and line number and the same live local variables with
          * the same values.
-         * 
+         *
          * @param that a leaf location info to be merged into this one
          * @return this leaf location info if the merge was performed otherwise null
          */
@@ -2513,63 +2653,53 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     }
 
     private class NativeImageDebugDataInfo implements DebugDataInfo {
-        HostedClass hostedClass;
-        ImageHeapPartition partition;
-        long offset;
-        long address;
-        long size;
-        String typeName;
-        String provenance;
+        private final NativeImageHeap.ObjectInfo objectInfo;
 
         @SuppressWarnings("try")
         @Override
         public void debugContext(Consumer<DebugContext> action) {
-            try (DebugContext.Scope s = debugContext.scope("DebugDataInfo", provenance)) {
+            try (DebugContext.Scope s = debugContext.scope("DebugDataInfo")) {
                 action.accept(debugContext);
             } catch (Throwable e) {
                 throw debugContext.handle(e);
             }
         }
 
+        /* Accessors. */
+
         NativeImageDebugDataInfo(ObjectInfo objectInfo) {
-            hostedClass = objectInfo.getClazz();
-            partition = objectInfo.getPartition();
-            offset = objectInfo.getOffset();
-            address = objectInfo.getAddress();
-            size = objectInfo.getSize();
-            provenance = objectInfo.toString();
-            typeName = hostedClass.toJavaName();
+            this.objectInfo = objectInfo;
         }
 
-        /* Accessors. */
         @Override
         public String getProvenance() {
-            return provenance;
+            return objectInfo.toString();
         }
 
         @Override
         public String getTypeName() {
-            return typeName;
+            return objectInfo.getClazz().toJavaName();
         }
 
         @Override
         public String getPartition() {
+            ImageHeapPartition partition = objectInfo.getPartition();
             return partition.getName() + "{" + partition.getSize() + "}@" + partition.getStartOffset();
         }
 
         @Override
         public long getOffset() {
-            return offset;
+            return objectInfo.getOffset();
         }
 
         @Override
         public long getAddress() {
-            return address;
+            return objectInfo.getAddress();
         }
 
         @Override
         public long getSize() {
-            return size;
+            return objectInfo.getSize();
         }
     }
 
@@ -2580,5 +2710,10 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
     private DebugDataInfo createDebugDataInfo(ObjectInfo objectInfo) {
         return new NativeImageDebugDataInfo(objectInfo);
+    }
+
+    @Override
+    public void recordActivity() {
+        DeadlockWatchdog.singleton().recordActivity();
     }
 }

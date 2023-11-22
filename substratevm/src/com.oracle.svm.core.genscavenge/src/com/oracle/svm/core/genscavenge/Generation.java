@@ -27,6 +27,8 @@ package com.oracle.svm.core.genscavenge;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
 
@@ -51,8 +53,11 @@ abstract class Generation {
         return name;
     }
 
-    /** Report some statistics about the Generation to a Log. */
-    public abstract Log report(Log log, boolean traceHeapChunks);
+    /** Print some heap statistics to a log. */
+    public abstract void logUsage(Log log);
+
+    /** Print some information about the chunks to the log. */
+    public abstract void logChunks(Log log);
 
     /**
      * Promote an Object to this Generation, typically by copying and leaving a forwarding pointer
@@ -66,6 +71,8 @@ abstract class Generation {
      *         promotion was done by copying, or {@code null} if there was insufficient capacity in
      *         this generation.
      */
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected abstract Object promoteAlignedObject(Object original, AlignedHeapChunk.AlignedHeader originalChunk, Space originalSpace);
 
     /**
@@ -79,6 +86,8 @@ abstract class Generation {
      *         was promoted through HeapChunk motion, or {@code null} if there was insufficient
      *         capacity in this generation.
      */
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected abstract Object promoteUnalignedObject(Object original, UnalignedHeapChunk.UnalignedHeader originalChunk, Space originalSpace);
 
     /**

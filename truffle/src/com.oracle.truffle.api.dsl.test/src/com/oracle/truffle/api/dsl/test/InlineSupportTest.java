@@ -50,17 +50,18 @@ import java.lang.invoke.MethodHandles.Lookup;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.dsl.InlineSupport.InlinableField;
-import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
+import com.oracle.truffle.api.dsl.DSLSupport.SpecializationDataNode;
 import com.oracle.truffle.api.dsl.InlineSupport.BooleanField;
 import com.oracle.truffle.api.dsl.InlineSupport.ByteField;
 import com.oracle.truffle.api.dsl.InlineSupport.CharField;
 import com.oracle.truffle.api.dsl.InlineSupport.DoubleField;
 import com.oracle.truffle.api.dsl.InlineSupport.FloatField;
+import com.oracle.truffle.api.dsl.InlineSupport.InlinableField;
+import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
 import com.oracle.truffle.api.dsl.InlineSupport.IntField;
 import com.oracle.truffle.api.dsl.InlineSupport.LongField;
-import com.oracle.truffle.api.dsl.InlineSupport.ShortField;
 import com.oracle.truffle.api.dsl.InlineSupport.ReferenceField;
+import com.oracle.truffle.api.dsl.InlineSupport.ShortField;
 import com.oracle.truffle.api.dsl.InlineSupport.StateField;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -369,10 +370,35 @@ public class InlineSupportTest {
         assertFails(() -> referenceStringField.validate(node), ClassCastException.class);
     }
 
-    static class ParentUpdaterNode extends Node {
+    static class ParentUpdaterNode extends Node implements SpecializationDataNode {
+    }
+
+    static class ParentUpdaterNoSpecializationDataNode extends Node {
     }
 
     @Test
+    public void testSpecializationDataNodeValidation() {
+        TestNode node = new TestNode();
+        // parent lookup is fine for this one
+        ParentUpdaterNode specializationData = node.insert(new ParentUpdaterNode());
+
+        ParentUpdaterNoSpecializationDataNode noSpecializationDataBadNode = node.insert(new ParentUpdaterNoSpecializationDataNode());
+        // not fine for this one as the parent does not implement SpecializationDataNode
+        ParentUpdaterNode noSpecializationDataAsParent = noSpecializationDataBadNode.insert(new ParentUpdaterNode());
+
+        stateField.validate(node); // fine
+        stateField.validate(specializationData); // also fine uses parent lookup
+        stateField.validate(noSpecializationDataBadNode);
+
+        assertFails(() -> stateField.validate(noSpecializationDataAsParent), ClassCastException.class, (e) -> {
+            assertEquals(e.getMessage(),
+                            "Invalid inline context node passed to an inlined field. A receiver of type 'InlineSupportTest.TestNode' was expected but is 'InlineSupportTest.ParentUpdaterNode'. " +
+                                            "Did you pass the wrong node to an execute method of an inlined cached node?");
+        });
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
     public void testParentUpdater() {
         TestNode node = new TestNode();
         ParentUpdaterNode updater = node.insert(new ParentUpdaterNode());
@@ -384,51 +410,21 @@ public class InlineSupportTest {
         parentState.set(updater, 43);
         assertEquals(43, parentState.get(updater));
 
-        assertFails(() -> parentState.get(null), NullPointerException.class);
-        assertFails(() -> parentState.get(node), ClassCastException.class, (e) -> {
-            assertEquals("Invalid parameter type passed to updater. Instance of type 'InlineSupportTest.ParentUpdaterNode' expected but was 'InlineSupportTest.TestNode'. " +
-                            "Did you pass the wrong node to an execute method of an inlined cached node?", e.getMessage());
-        });
-        assertFails(() -> parentState.get(otherNode), ClassCastException.class);
+        parentState.set(node, 44);
+        assertEquals(44, parentState.get(node));
 
+        assertFails(() -> parentState.get(null), NullPointerException.class);
+        assertFails(() -> parentState.get(otherNode), ClassCastException.class);
         assertFails(() -> parentState.set(null, 42), NullPointerException.class);
-        assertFails(() -> parentState.set(node, 42), ClassCastException.class);
         assertFails(() -> parentState.set(otherNode, 42), ClassCastException.class);
-        assertEquals(43, parentState.get(updater));
+        assertEquals(44, parentState.get(updater));
 
         IntField parentInt = intField.createParentAccessor(ParentUpdaterNode.class);
-        assertEquals(42, parentInt.get(updater));
-        parentInt.set(updater, 43);
-        assertEquals(43, parentInt.get(updater));
-
-        assertFails(() -> parentInt.get(null), NullPointerException.class);
-        assertFails(() -> parentInt.get(node), ClassCastException.class, (e) -> {
-            assertEquals("Invalid parameter type passed to updater. Instance of type 'InlineSupportTest.ParentUpdaterNode' expected but was 'InlineSupportTest.TestNode'. " +
-                            "Did you pass the wrong node to an execute method of an inlined cached node?", e.getMessage());
-        });
-        assertFails(() -> parentInt.get(otherNode), ClassCastException.class);
-
-        assertFails(() -> parentInt.set(null, 42), NullPointerException.class);
-        assertFails(() -> parentInt.set(node, 42), ClassCastException.class);
-        assertFails(() -> parentInt.set(otherNode, 42), ClassCastException.class);
-        assertEquals(43, parentInt.get(updater));
+        // parent updater has no more effect.
+        assertSame(parentInt, intField);
 
         ReferenceField<String> parentString = referenceStringField.createParentAccessor(ParentUpdaterNode.class);
-        assertEquals("42", parentString.get(updater));
-        parentString.set(updater, "43");
-        assertEquals("43", parentString.get(updater));
-
-        assertFails(() -> parentString.get(null), NullPointerException.class);
-        assertFails(() -> parentString.get(node), ClassCastException.class, (e) -> {
-            assertEquals("Invalid parameter type passed to updater. Instance of type 'InlineSupportTest.ParentUpdaterNode' expected but was 'InlineSupportTest.TestNode'. " +
-                            "Did you pass the wrong node to an execute method of an inlined cached node?", e.getMessage());
-        });
-        assertFails(() -> parentString.get(otherNode), ClassCastException.class);
-
-        assertFails(() -> parentString.set(null, "42"), NullPointerException.class);
-        assertFails(() -> parentString.set(node, "42"), ClassCastException.class);
-        assertFails(() -> parentString.set(otherNode, "42"), ClassCastException.class);
-        assertEquals("43", parentString.get(updater));
+        assertSame(parentString, referenceStringField);
 
     }
 

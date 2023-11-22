@@ -72,6 +72,6 @@ final class ImageBuildTimeOptions {
     }
 
     private static String getPropertyName(String optionName) {
-        return OptionValuesImpl.SYSTEM_PROPERTY_PREFIX + PolyglotEngineImpl.OPTION_GROUP_IMAGE_BUILD_TIME + "." + optionName;
+        return "polyglot." + PolyglotEngineImpl.OPTION_GROUP_IMAGE_BUILD_TIME + "." + optionName;
     }
 }

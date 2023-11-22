@@ -28,11 +28,11 @@ package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertTrue;
 
-import java.io.IOException;
 import java.util.List;
 
 import org.junit.Test;
 
+import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
 
@@ -41,13 +41,18 @@ public class TestThreadSleepEvent extends JfrRecordingTest {
 
     private Thread sleepingThread;
 
-    @Override
-    public String[] getTestedEvents() {
-        return new String[]{"jdk.ThreadSleep"};
+    @Test
+    public void test() throws Throwable {
+        String[] events = new String[]{"jdk.ThreadSleep"};
+        Recording recording = startRecording(events);
+
+        sleepingThread = Thread.currentThread();
+        Thread.sleep(MILLIS);
+
+        stopRecording(recording, this::validateEvents);
     }
 
-    @Override
-    protected void validateEvents(List<RecordedEvent> events) throws IOException {
+    private void validateEvents(List<RecordedEvent> events) {
         boolean foundSleepEvent = false;
         for (RecordedEvent event : events) {
             String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
@@ -61,11 +66,5 @@ public class TestThreadSleepEvent extends JfrRecordingTest {
             break;
         }
         assertTrue("Sleep event not found.", foundSleepEvent);
-    }
-
-    @Test
-    public void test() throws Exception {
-        sleepingThread = Thread.currentThread();
-        Thread.sleep(MILLIS);
     }
 }

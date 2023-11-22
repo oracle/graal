@@ -64,16 +64,14 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.test.CompileImmediatelyCheck;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class RetainedSizeComputationTest {
     @Before
@@ -83,8 +81,8 @@ public class RetainedSizeComputationTest {
 
     @Test
     public void testRetainedSizeSingleThreaded() throws IOException {
-        Assume.assumeFalse(TruffleOptions.AOT);
-        Assume.assumeFalse(Truffle.getRuntime() instanceof DefaultTruffleRuntime);
+        TruffleTestAssumptions.assumeNotAOT();
+        TruffleTestAssumptions.assumeOptimizingRuntime();
         try (Context context = Context.create()) {
             TruffleInstrument.Env instrumentEnv = context.getEngine().getInstruments().get("InstrumentationUpdateInstrument").lookup(TruffleInstrument.Env.class);
             context.initialize(InstrumentationTestLanguage.ID);
@@ -104,8 +102,8 @@ public class RetainedSizeComputationTest {
 
     @Test
     public void testRetainedSizeWithStatementLimit() {
-        Assume.assumeFalse(TruffleOptions.AOT);
-        Assume.assumeFalse(Truffle.getRuntime() instanceof DefaultTruffleRuntime);
+        TruffleTestAssumptions.assumeNotAOT();
+        TruffleTestAssumptions.assumeOptimizingRuntime();
         try (Engine engine = Engine.create()) {
             Context.newBuilder().engine(engine).build().close();
             ResourceLimits resourceLimits = ResourceLimits.newBuilder().statementLimit(5, source -> true).build();
@@ -159,7 +157,7 @@ public class RetainedSizeComputationTest {
                 context.leave();
             }
         } catch (UnsupportedOperationException e) {
-            if (!TruffleOptions.AOT && !(Truffle.getRuntime() instanceof DefaultTruffleRuntime)) {
+            if (TruffleTestAssumptions.isNotAOT() && TruffleTestAssumptions.isOptimizingRuntime()) {
                 throw e;
             } else {
                 Assert.assertEquals("Polyglot context heap size calculation is not supported on this platform.", e.getMessage());
@@ -178,8 +176,8 @@ public class RetainedSizeComputationTest {
 
     @Test
     public void testRetainedSizeGradual() throws IOException, InterruptedException, ExecutionException {
-        Assume.assumeFalse(TruffleOptions.AOT);
-        Assume.assumeFalse(Truffle.getRuntime() instanceof DefaultTruffleRuntime);
+        TruffleTestAssumptions.assumeNotAOT();
+        TruffleTestAssumptions.assumeOptimizingRuntime();
         ExecutorService executor = Executors.newFixedThreadPool(1);
         List<Long> retainedSizesList = Collections.synchronizedList(new ArrayList<>());
         try (Context context = Context.create()) {
@@ -262,8 +260,8 @@ public class RetainedSizeComputationTest {
 
     @Test
     public void testRetainedSizeCanceledDuringCalculation() throws IOException, InterruptedException, ExecutionException {
-        Assume.assumeFalse(TruffleOptions.AOT);
-        Assume.assumeFalse(Truffle.getRuntime() instanceof DefaultTruffleRuntime);
+        TruffleTestAssumptions.assumeNotAOT();
+        TruffleTestAssumptions.assumeOptimizingRuntime();
         ExecutorService executor = Executors.newFixedThreadPool(1);
         List<Long> retainedSizesList = Collections.synchronizedList(new ArrayList<>());
         try (Context context = Context.create()) {
@@ -355,8 +353,8 @@ public class RetainedSizeComputationTest {
 
     @Test
     public void testRetainedSizeMultiThreaded() throws IOException, InterruptedException, ExecutionException {
-        Assume.assumeFalse(TruffleOptions.AOT);
-        Assume.assumeFalse(Truffle.getRuntime() instanceof DefaultTruffleRuntime);
+        TruffleTestAssumptions.assumeNotAOT();
+        TruffleTestAssumptions.assumeOptimizingRuntime();
         Random rnd = new Random();
         ExecutorService executor = Executors.newFixedThreadPool(10);
         List<Long> retainedSizesList = Collections.synchronizedList(new ArrayList<>());

@@ -32,17 +32,18 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
-import org.graalvm.compiler.core.common.calc.UnsignedMath;
+import jdk.graal.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHubSupport;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * This class assigns each type an id, determines stamp metadata, and generates the information
@@ -50,12 +51,12 @@ import com.oracle.svm.core.hub.DynamicHubSupport;
  * {@link com.oracle.svm.core.graal.snippets.TypeSnippets} for specific implementation details).
  *
  * <p>
- * For the class dependency hierarchy, assigning each type a unique id that can be used within a
- * range check can be accomplished by assigning ids via a preorder traversal of the hierarchy graph.
- * However, because classes/interfaces may implement multiple interfaces, there might not be a
- * single graph traversal which accurately encapsulates all needed range checks. Therefore, instead
- * of a type having a single id, each type has an array of ids, where each index represents the
- * type's id in the specific subset of range checks the index covers.
+ * For the class hierarchy, assigning each type a unique id compatible with a range check can be
+ * accomplished by assigning ids via a preorder traversal of the hierarchy graph. However, because
+ * classes/interfaces may implement multiple interfaces, there might not be a single graph traversal
+ * which accurately encapsulates all needed range checks. Therefore, instead of a type having a
+ * single id, each type has an array of ids, where each index represents the type's id in the
+ * specific subset of range checks the index covers.
  *
  * <p>
  * In our implementation, we separately handle type checks for class and interface types: class
@@ -65,11 +66,11 @@ import com.oracle.svm.core.hub.DynamicHubSupport;
  *
  * <p>
  * Given a matrix of boolean values, the consecutive ones property holds if the columns of the
- * matrix can be reordered so that, within each row, all of the set columns are contiguous. When
- * mapping type checks to a boolean matrix, the columns/rows are the types against which the check
- * will be performed. An row-column entry is true if row.isAssignableFrom(column) should be true. If
- * an ordering can be found which ensures all set columns are contiguous, then it is possible to
- * assign ids in a order which satisfies all encapsulated range checks.
+ * matrix can be reordered so that, within each row, all set columns are contiguous. When mapping
+ * type checks to a boolean matrix, the columns/rows are the types against which the check will be
+ * performed. A row-column entry is true if row.isAssignableFrom(column) should be true. If an
+ * ordering can be found which ensures all set columns are contiguous, then it is possible to assign
+ * ids in a way which satisfies all encapsulated range checks.
  *
  * <p>
  * For determining whether a given subset of the range checks satisfies C1P, we use the algorithm
@@ -93,8 +94,11 @@ public class TypeCheckBuilder {
     private final HostedType serializableType;
     private final Collection<HostedType> allTypes;
 
-    /** We only generate information for Types which are needed {@link #shouldIncludeType}. */
-    private final Set<HostedType> allIncludedTypes;
+    /**
+     * We only generate information for Types which are needed according to
+     * {@link #shouldIncludeType}.
+     */
+    private final LinkedHashSet<HostedType> allIncludedTypes;
 
     /**
      * Within the type graph, roots are types without a super type (i.e. {@link Object} and
@@ -114,20 +118,34 @@ public class TypeCheckBuilder {
      */
     private final Map<HostedType, List<HostedType>> subtypeMap;
 
+    /**
+     * We use a custom comparator which checks that there is never a match.
+     */
+    public static final Comparator<HostedType> TYPECHECK_COMPARATOR = (o1, o2) -> {
+        int result = HostedUniverse.TYPE_COMPARATOR.compare(o1, o2);
+        /*
+         * We should be only using this to compare unequal types.
+         */
+        VMError.guarantee(result != 0, "Unexpected match of types %s %s", o1, o2);
+        return result;
+    };
+
     public TypeCheckBuilder(Collection<HostedType> types, HostedType objectType, HostedType cloneableType, HostedType serializableType) {
         this.allTypes = types;
         this.objectType = objectType;
         this.cloneableType = cloneableType;
         this.serializableType = serializableType;
 
-        allIncludedTypes = allTypes.stream().filter(TypeCheckBuilder::shouldIncludeType).collect(Collectors.toSet());
+        allIncludedTypes = new LinkedHashSet<>();
+
+        allTypes.stream().filter(TypeCheckBuilder::shouldIncludeType).sorted(TYPECHECK_COMPARATOR).forEachOrdered(allIncludedTypes::add);
 
         subtypeMap = computeSubtypeInformation();
 
         /* Finding subtype graph roots. */
         HashSet<HostedType> hasParent = new HashSet<>();
         subtypeMap.forEach((type, subtypes) -> hasParent.addAll(subtypes));
-        allIncludedRoots = allIncludedTypes.stream().filter(t -> !hasParent.contains(t)).collect(Collectors.toList());
+        allIncludedRoots = allIncludedTypes.stream().filter(t -> !hasParent.contains(t)).toList();
 
         heightOrderedTypes = generateHeightOrder(allIncludedRoots, subtypeMap);
     }
@@ -135,6 +153,11 @@ public class TypeCheckBuilder {
     public int getNumTypeCheckSlots() {
         assert numTypeCheckSlots != -1;
         return numTypeCheckSlots;
+    }
+
+    private void setNumTypeCheckSlots(int num) {
+        assert numTypeCheckSlots == -1;
+        numTypeCheckSlots = num;
     }
 
     /**
@@ -174,7 +197,8 @@ public class TypeCheckBuilder {
 
     /**
      * Calculating a sorted list based on the height of each node. This allows one to compute many
-     * graph traits in one iteration of the nodes.
+     * graph traits in one iteration of the nodes. When height are same, elements of list are sorted
+     * by name.
      */
     private static List<HostedType> generateHeightOrder(List<HostedType> roots, Map<HostedType, List<HostedType>> subtypeMap) {
 
@@ -188,8 +212,9 @@ public class TypeCheckBuilder {
             generateHeightOrderHelper(0, root, subtypeMap, heightMap, allTypes);
         }
 
-        /* Now create a sorted array from this information. */
-        return allTypes.stream().sorted(Comparator.comparingInt(heightMap::get)).collect(Collectors.toList());
+        /* Create a sorted array from this information. */
+        Comparator<HostedType> comparator = Comparator.<HostedType> comparingInt(heightMap::get).thenComparing(TYPECHECK_COMPARATOR);
+        return allTypes.stream().sorted(comparator).toList();
     }
 
     /**
@@ -211,8 +236,8 @@ public class TypeCheckBuilder {
      * Generates a list of immediate subtypes for each included type.
      *
      * Because potentially not all parent array types are present, a type parent map is initially
-     * calculated for the element types. Then, for each dimension, the each present array type is
-     * linked to its nearest reachable parent.
+     * calculated for the element types. Then, for each dimension, each present array type is linked
+     * to its nearest reachable parent.
      *
      * This method assumes that the entire type hierarchy is included for element types, but not for
      * array types.
@@ -221,13 +246,13 @@ public class TypeCheckBuilder {
         Map<HostedType, Set<HostedType>> subtypes = new HashMap<>();
 
         /* Creating an element parent map, where each element type points to its parents. */
-        List<HostedType> allElementTypes = allTypes.stream().filter(t -> !t.isArray()).collect(Collectors.toList());
+        List<HostedType> allElementTypes = allTypes.stream().filter(t -> !t.isArray()).toList();
         Map<HostedType, List<HostedType>> elementParentMap = computeElementParentMap(allElementTypes);
 
         /* Finding the roots of the parent map. */
         Set<HostedType> hasSubtype = new HashSet<>();
         elementParentMap.forEach((child, parents) -> hasSubtype.addAll(parents));
-        List<HostedType> elementParentMapRoots = allElementTypes.stream().filter(t -> !hasSubtype.contains(t)).collect(Collectors.toList());
+        List<HostedType> elementParentMapRoots = allElementTypes.stream().filter(t -> !hasSubtype.contains(t)).toList();
 
         List<HostedType> heightOrderedElements = generateHeightOrder(elementParentMapRoots, elementParentMap);
 
@@ -242,7 +267,7 @@ public class TypeCheckBuilder {
 
         /* Convert values into a sorted list. */
         Map<HostedType, List<HostedType>> result = new HashMap<>();
-        subtypes.forEach((k, v) -> result.put(k, v.stream().sorted(HostedUniverse.TYPE_COMPARATOR).collect(Collectors.toList())));
+        subtypes.forEach((k, v) -> result.put(k, v.stream().sorted(TYPECHECK_COMPARATOR).toList()));
 
         return result;
     }
@@ -338,7 +363,7 @@ public class TypeCheckBuilder {
                 /* Getting filteredArraySubtypesMap roots. */
                 Set<HostedType> typesWithSubtypes = new HashSet<>();
                 filteredArraySubtypesMap.forEach((k, v) -> typesWithSubtypes.addAll(v));
-                List<HostedType> roots = filteredArraySubtypesMap.keySet().stream().filter(t -> !typesWithSubtypes.contains(t)).collect(Collectors.toList());
+                List<HostedType> roots = filteredArraySubtypesMap.keySet().stream().filter(t -> !typesWithSubtypes.contains(t)).toList();
 
                 HostedType parentObjectType = getHighestDimArrayType(objectType, dimension - 1);
                 HostedType parentCloneableType = getHighestDimArrayType(cloneableType, dimension - 1);
@@ -391,9 +416,10 @@ public class TypeCheckBuilder {
 
         for (int i = 0; i < heightOrderedTypes.size(); i++) {
             HostedType type = heightOrderedTypes.get(i);
+            boolean uninitialized = type.typeID == -1 && type.subTypes == null;
+            VMError.guarantee(uninitialized, "Type initialized multiple times: %s", type);
             type.typeID = i;
-            assert subtypeMap.containsKey(type);
-            type.subTypes = subtypeMap.get(type).toArray(new HostedType[0]);
+            type.subTypes = subtypeMap.get(type).toArray(HostedType.EMPTY_ARRAY);
         }
 
         /*
@@ -472,8 +498,8 @@ public class TypeCheckBuilder {
      */
     private void generateTypeCheckSlots(ClassIDBuilder classBuilder, InterfaceIDBuilder interfaceBuilder) {
         int numClassSlots = classBuilder.numClassSlots;
-        numTypeCheckSlots = numClassSlots + interfaceBuilder.numInterfaceSlots;
-        int numSlots = getNumTypeCheckSlots();
+        int numSlots = numClassSlots + interfaceBuilder.numInterfaceSlots;
+        setNumTypeCheckSlots(numSlots);
         for (HostedType type : allIncludedTypes) {
             short[] typeCheckSlots = new short[numSlots];
 
@@ -719,6 +745,12 @@ public class TypeCheckBuilder {
          * ({@link Graph}).
          */
         private static final class Node {
+            static final Node[] EMPTY_ARRAY = new Node[0];
+
+            /**
+             * A link to all interfaces a node implements, including itself if {@link #isInterface}.
+             * This information is used for identifying nodes which can be merged.
+             */
             Node[] sortedAncestors;
             Node[] sortedDescendants;
 
@@ -811,7 +843,7 @@ public class TypeCheckBuilder {
                             Node classNode = classes.get(i);
                             if (classNode == null) {
                                 /*
-                                 * It is possible for this class to have already be merged into
+                                 * It is possible for this class to have already been merged into
                                  * another interface.
                                  */
                                 continue;
@@ -861,7 +893,7 @@ public class TypeCheckBuilder {
                     node.id = compactedNodeArray.size();
                     compactedNodeArray.add(node);
                 }
-                nodes = compactedNodeArray.toArray(new Node[0]);
+                nodes = compactedNodeArray.toArray(Node.EMPTY_ARRAY);
             }
 
             /**
@@ -917,7 +949,7 @@ public class TypeCheckBuilder {
              */
             void generateDescendantIndex() {
                 Map<Node, Set<Node>> descendantMap = new HashMap<>();
-                Node[] emptyDescendant = new Node[0];
+                Node[] emptyDescendant = Node.EMPTY_ARRAY;
                 ArrayList<Node> interfaceList = new ArrayList<>();
 
                 // iterating through children before parents
@@ -927,7 +959,7 @@ public class TypeCheckBuilder {
                         // recording descendant information
                         Set<Node> descendants = descendantMap.computeIfAbsent(node, k -> new HashSet<>());
                         descendants.add(node);
-                        Node[] descendantArray = descendants.toArray(new Node[0]);
+                        Node[] descendantArray = descendants.toArray(Node.EMPTY_ARRAY);
                         Arrays.sort(descendantArray, Comparator.comparingInt(n -> n.id));
                         node.sortedDescendants = descendantArray;
                         interfaceList.add(node);
@@ -944,7 +976,7 @@ public class TypeCheckBuilder {
                         descendantMap.computeIfAbsent(ancestor, k -> new HashSet<>()).add(node);
                     }
                 }
-                this.interfaceNodes = interfaceList.toArray(new Node[0]);
+                this.interfaceNodes = interfaceList.toArray(Node.EMPTY_ARRAY);
             }
 
             /*
@@ -972,7 +1004,7 @@ public class TypeCheckBuilder {
                     if (isTypeInterface) {
                         ancestors.add(newNode);
                     }
-                    Node[] sortedAncestors = ancestors.toArray(new Node[0]);
+                    Node[] sortedAncestors = ancestors.toArray(Node.EMPTY_ARRAY);
                     Arrays.sort(sortedAncestors, Comparator.comparingInt(n -> n.id));
                     newNode.sortedAncestors = sortedAncestors;
 
@@ -982,13 +1014,7 @@ public class TypeCheckBuilder {
                     }
                 }
 
-                Node[] nodeArray = nodes.toArray(new Node[0]);
-                int maxAncestors = -1;
-                for (Node node : nodeArray) {
-                    maxAncestors = Math.max(maxAncestors, node.sortedAncestors.length);
-                }
-
-                return new Graph(nodeArray);
+                return new Graph(nodes.toArray(Node.EMPTY_ARRAY));
             }
 
         }
@@ -1011,7 +1037,7 @@ public class TypeCheckBuilder {
         }
 
         /**
-         * This class manages the a single slot and its constraints.
+         * This class manages a single slot and its constraints.
          */
         private static final class InterfaceSlot {
 
@@ -1190,11 +1216,30 @@ public class TypeCheckBuilder {
                  * 1. Non-intersecting with the previously added nodes. In this case the matrix's
                  * C1P ordering can be added to the end.
                  *
-                 * 2. A subset of one set previously added nodes contains the all of the matrix's
-                 * nodes. In this case, that set can be split and the new C1P ordering can be added
-                 * in this spot.
+                 * 2. A subset of one set previously added nodes contains all of the matrix's nodes.
+                 * In this case, that set can be split and the new C1P ordering can be added in this
+                 * spot.
+                 *
+                 * When there are an equal number of nodes then we order the matrices by the ids of
+                 * the contained nodes.
                  */
-                List<PrimeMatrix> sizeOrderedMatrices = matrices.stream().sorted(Comparator.comparingInt(n -> -(n.containedNodes.cardinality()))).collect(Collectors.toList());
+                Comparator<PrimeMatrix> comparator = Comparator.comparingInt((PrimeMatrix n) -> -1 * n.containedNodes.cardinality()).thenComparing((o1, o2) -> {
+                    BitSet bitSet1 = o1.containedNodes;
+                    BitSet bitSet2 = o2.containedNodes;
+                    assert bitSet1.cardinality() != 0 && bitSet1.cardinality() == bitSet2.cardinality();
+                    int idx1 = bitSet1.nextSetBit(0);
+                    int idx2 = bitSet2.nextSetBit(0);
+                    while (idx1 != -1 && idx2 != -1) {
+                        if (idx1 != idx2) {
+                            return Integer.compare(idx1, idx2);
+                        }
+                        idx1 = bitSet1.nextSetBit(idx1 + 1);
+                        idx2 = bitSet2.nextSetBit(idx2 + 1);
+                    }
+                    throw VMError.shouldNotReachHere("Unable to differentiate between two Prime Matrices.");
+                });
+
+                List<PrimeMatrix> sizeOrderedMatrices = matrices.stream().sorted(comparator).toList();
 
                 List<BitSet> c1POrdering = new ArrayList<>();
                 BitSet coveredNodes = new BitSet();
@@ -1267,8 +1312,8 @@ public class TypeCheckBuilder {
 
         /**
          * Within consecutive one property (C1P) testing literature, in a graph where each
-         * {@link ContiguousGroup} is a node and edges are between nodes that that "strictly
-         * overlap", the graph can be decomposed into connected subgraphs, known as prime matrices.
+         * {@link ContiguousGroup} is a node and edges are between nodes that "strictly overlap",
+         * the graph can be decomposed into connected subgraphs, known as prime matrices.
          * <p>
          * Once the graph's prime matrices have been identified, it is sufficient to test each prime
          * matrix individually for the C1P property.
@@ -1366,7 +1411,7 @@ public class TypeCheckBuilder {
                  * matrix.
                  */
 
-                /* Updating the contained groups and adding the connect prime matrix's edges. */
+                /* Updating the contained groups and adding the connected prime matrix's edges. */
                 for (PrimeMatrix matrix : matrices) {
                     List<ContiguousGroup> otherGroup = matrix.containedGroups;
                     assert otherGroup.stream().noneMatch(containedGroups::contains) : "the intersection between all prime matrices should be null";
@@ -1637,36 +1682,43 @@ public class TypeCheckBuilder {
             ArrayList<InterfaceSlot> slots = new ArrayList<>();
             slots.add(new InterfaceSlot(slots.size()));
 
-            // assigning interfaces to interface slots
-            for (Node node : graph.interfaceNodes) {
+            /*
+             * Assigning interfaces to interface slots.
+             *
+             * The assignment order is such that the interfaces with the most descendants will be
+             * assigned first. As they will have the most conflicts, it is better to assign them
+             * while the slots are more free.
+             */
+            Comparator<Node> comparator = Comparator.comparingInt((Node n) -> -1 * n.sortedDescendants.length).thenComparing((n) -> n.sortedAncestors.length).thenComparing((n1, n2) -> {
+                int result = Integer.compare(n1.id, n2.id);
+                VMError.guarantee(result != 0, "Cannot differentiate between two nodes: %s %s", n1, n2);
+                return result;
+            });
+            List<Node> iterationOrder = Arrays.stream(graph.interfaceNodes).sorted(comparator).toList();
+            for (Node node : iterationOrder) {
 
-                // first trying to adding grouping to existing slot
+                // first trying to add grouping to existing slot
                 boolean foundAssignment = false;
-                boolean redoSort = false;
                 for (InterfaceSlot slot : slots) {
                     InterfaceSlot.AddGroupingResult result = slot.tryAddGrouping(node);
                     if (result == InterfaceSlot.AddGroupingResult.SUCCESS) {
                         foundAssignment = true;
                         node.type.setTypeCheckSlot(getShortValue(slot.id + startingSlotNum));
                         break;
-                    } else if (result == InterfaceSlot.AddGroupingResult.CAPACITY_OVERFLOW) {
-                        /*
-                         * If running into capacity overflows, should try to sort slots so that
-                         * emptier slots are encountered first.
-                         */
-                        redoSort = true;
                     }
+                    /*
+                     * Note we can check for InterfaceSlot.AddGroupingResult.CAPACITY_OVERFLOW
+                     * events here and then move the full slots back to the end of the slot list.
+                     * However, this should be an extremely rare event.
+                     */
                 }
                 if (!foundAssignment) {
                     /* A new slot is needed to satisfy this grouping. */
                     InterfaceSlot newSlot = new InterfaceSlot(slots.size());
                     InterfaceSlot.AddGroupingResult result = newSlot.tryAddGrouping(node);
-                    assert result == InterfaceSlot.AddGroupingResult.SUCCESS : "must be able to add first node";
+                    VMError.guarantee(result == InterfaceSlot.AddGroupingResult.SUCCESS, "could not find a slot");
                     node.type.setTypeCheckSlot(getShortValue(newSlot.id + startingSlotNum));
                     slots.add(newSlot);
-                }
-                if (redoSort) {
-                    slots.sort(Comparator.comparingInt(slot -> slot.numReservedIDs));
                 }
             }
 

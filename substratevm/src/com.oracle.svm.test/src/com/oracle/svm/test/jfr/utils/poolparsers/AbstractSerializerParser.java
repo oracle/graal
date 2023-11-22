@@ -25,5 +25,10 @@
 
 package com.oracle.svm.test.jfr.utils.poolparsers;
 
+import com.oracle.svm.test.jfr.utils.JfrFileParser;
+
 public abstract class AbstractSerializerParser extends ConstantPoolParser {
+    public AbstractSerializerParser(JfrFileParser parser) {
+        super(parser);
+    }
 }

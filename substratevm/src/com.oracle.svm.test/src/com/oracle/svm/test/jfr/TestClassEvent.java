@@ -34,24 +34,23 @@ import org.junit.Test;
 
 import com.oracle.svm.test.jfr.events.ClassEvent;
 
+import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
 
 public class TestClassEvent extends JfrRecordingTest {
-
-    @Override
-    public String[] getTestedEvents() {
-        return new String[]{"com.jfr.Class"};
-    }
-
-    @Override
-    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
-        assertEquals(1, events.size());
-    }
-
     @Test
-    public void test() throws Exception {
+    public void test() throws Throwable {
+        String[] events = new String[]{"com.jfr.Class"};
+        Recording recording = startRecording(events);
+
         ClassEvent event = new ClassEvent();
         event.clazz = TestClassEvent.class;
         event.commit();
+
+        stopRecording(recording, TestClassEvent::validateEvents);
+    }
+
+    private static void validateEvents(List<RecordedEvent> events) {
+        assertEquals(1, events.size());
     }
 }

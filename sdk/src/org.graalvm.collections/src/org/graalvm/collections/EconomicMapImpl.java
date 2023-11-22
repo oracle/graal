@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -832,10 +832,13 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
 
     @Override
     public String toString() {
+        return toString(isSet, size(), getEntries());
+    }
+
+    static <K, V> String toString(boolean isSet, int size, MapCursor<K, V> cursor) {
         StringBuilder builder = new StringBuilder();
-        builder.append(isSet ? "set(size=" : "map(size=").append(size()).append(", {");
+        builder.append(isSet ? "set(size=" : "map(size=").append(size).append(", {");
         String sep = "";
-        MapCursor<K, V> cursor = getEntries();
         while (cursor.advance()) {
             builder.append(sep);
             if (isSet) {

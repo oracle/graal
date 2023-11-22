@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,12 +26,12 @@ package com.oracle.svm.hosted.cenum;
 
 import java.lang.reflect.Modifier;
 
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 import org.graalvm.nativeimage.c.constant.CEnumLookup;
 import org.graalvm.nativeimage.c.constant.CEnumValue;
 
@@ -97,7 +97,7 @@ public class CEnumCallWrapperMethod extends CustomSubstitutionMethod {
             Stamp originalStamp = StampFactory.forKind(returnType.getJavaKind());
             returnValue = CInterfaceInvocationPlugin.adaptPrimitiveType(graph, adapted, returnType.getJavaKind(), originalStamp.getStackKind(), false);
         } else {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereUnexpectedInput(method); // ExcludeFromJacocoGeneratedReport
         }
 
         kit.getFrameState().push(pushKind, returnValue);

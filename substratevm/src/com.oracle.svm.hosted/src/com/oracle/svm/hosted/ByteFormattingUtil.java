@@ -37,7 +37,7 @@ public class ByteFormattingUtil {
         if (bytes < BYTES_TO_KiB) {
             return String.format(format, (double) bytes) + "B";
         } else if (bytes < BYTES_TO_MiB) {
-            return String.format(format, bytesToKiB(bytes)) + "KB";
+            return String.format(format, bytesToKiB(bytes)) + "kB";
         } else if (bytes < BYTES_TO_GiB) {
             return String.format(format, bytesToMiB(bytes)) + "MB";
         } else {

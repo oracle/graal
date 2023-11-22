@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.c.function;
 
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -58,19 +58,6 @@ public class CEntryPointSetup {
         @Uninterruptible(reason = "prologue")
         static void enter(IsolateThread thread) {
             int code = CEntryPointActions.enter(thread);
-            if (code != CEntryPointErrors.NO_ERROR) {
-                CEntryPointActions.failFatally(code, errorMessage.get());
-            }
-        }
-    }
-
-    public static final class EnterByIsolatePrologue implements CEntryPointOptions.Prologue {
-        private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString(
-                        "Failed to enter the provided Isolate in the current thread. The thread might not have been attached to the Isolate first.");
-
-        @Uninterruptible(reason = "prologue")
-        static void enter(Isolate isolate) {
-            int code = CEntryPointActions.enterByIsolate(isolate);
             if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }

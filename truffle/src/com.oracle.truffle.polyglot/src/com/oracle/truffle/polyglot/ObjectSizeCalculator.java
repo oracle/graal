@@ -56,11 +56,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
 import org.graalvm.options.OptionValues;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.Instrument;
-import org.graalvm.polyglot.Language;
-import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -81,6 +77,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.provider.TruffleLanguageProvider;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -122,7 +119,7 @@ final class ObjectSizeCalculator {
     }
 
     private static ForcedStop enqueueOrStop(CalculationState calculationState, Object obj) {
-        ClassInfo classInfo = canProceed(calculationState.classInfos, obj);
+        ClassInfo classInfo = canProceed(calculationState.api, calculationState.classInfos, obj);
         if (classInfo != StopClassInfo.INSTANCE && calculationState.alreadyVisited.add(obj)) {
             classInfo.increaseByBaseSize(calculationState, obj);
             if (calculationState.dataSize > calculationState.stopAtBytes) {
@@ -166,6 +163,7 @@ final class ObjectSizeCalculator {
     }
 
     private static final class CalculationState {
+        private final APIAccess api;
         private final Map<Class<?>, ClassInfo> classInfos;
         private final QuickIdentitySet<Object> alreadyVisited;
         private final Deque<Object> pending = new ArrayDeque<>(16 * 1024);
@@ -174,7 +172,8 @@ final class ObjectSizeCalculator {
 
         private long dataSize;
 
-        CalculationState(Map<Class<?>, ClassInfo> classInfos, QuickIdentitySet<Object> alreadyVisited, long stopAtBytes, AtomicBoolean cancelled) {
+        CalculationState(APIAccess api, Map<Class<?>, ClassInfo> classInfos, QuickIdentitySet<Object> alreadyVisited, long stopAtBytes, AtomicBoolean cancelled) {
+            this.api = api;
             this.classInfos = classInfos;
             this.alreadyVisited = alreadyVisited;
             this.stopAtBytes = stopAtBytes;
@@ -204,7 +203,7 @@ final class ObjectSizeCalculator {
      *             message of the exception specifies the calculated size up to the cancellation.
      */
     @CompilerDirectives.TruffleBoundary
-    long calculateObjectSize(final Object obj, long stopAtBytes, AtomicBoolean cancelled) {
+    long calculateObjectSize(APIAccess api, final Object obj, long stopAtBytes, AtomicBoolean cancelled) {
         if (Truffle.getRuntime() instanceof DefaultTruffleRuntime) {
             throw new UnsupportedOperationException("Polyglot context heap size calculation is not supported on this platform.");
         }
@@ -234,7 +233,7 @@ final class ObjectSizeCalculator {
             } else {
                 classInfosToUse = new IdentityHashMap<>();
             }
-            calculationState = new CalculationState(classInfosToUse, new QuickIdentitySet<>(alreadyVisitedInitialCapacity), stopAtBytes, cancelled);
+            calculationState = new CalculationState(api, classInfosToUse, new QuickIdentitySet<>(alreadyVisitedInitialCapacity), stopAtBytes, cancelled);
         }
         try {
             if (cancelled.get()) {
@@ -290,24 +289,37 @@ final class ObjectSizeCalculator {
         increaseSize(calculationState, roundToObjectAlignment(layout.baseOffset + length * layout.indexScale, getObjectAlignment()));
     }
 
-    private static boolean isContextHeapBoundary(Object obj) {
+    @SuppressWarnings("deprecation")
+    private static boolean shouldBeReachable(APIAccess api, Object obj, boolean allowContext) {
+        if (obj instanceof PolyglotImpl.VMObject) {
+            // only these two vm objects are allowed
+            return allowContext && (obj instanceof PolyglotLanguageContext || obj instanceof PolyglotContextImpl);
+        }
+        if (obj instanceof PolyglotContextConfig ||
+                        obj instanceof TruffleLanguageProvider ||
+                        obj instanceof TruffleLanguage.Provider ||
+                        obj instanceof ExecutionEventListener ||
+                        obj instanceof ClassValue ||
+                        obj instanceof PolyglotWrapper ||
+                        api.isValue(obj) ||
+                        api.isContext(obj) ||
+                        api.isEngine(obj) ||
+                        api.isLanguage(obj) ||
+                        api.isInstrument(obj) ||
+                        api.isSource(obj) ||
+                        api.isSourceSection(obj)) {
+            return false;
+        }
+        return true;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static boolean isContextHeapBoundary(APIAccess api, Object obj) {
         if (obj == null) {
             return true;
         }
 
-        assert (!(obj instanceof PolyglotImpl.VMObject) || obj instanceof PolyglotLanguageContext || obj instanceof PolyglotContextImpl) &&
-                        !(obj instanceof PolyglotContextConfig) &&
-                        !(obj instanceof TruffleLanguage.Provider) &&
-                        !(obj instanceof ExecutionEventListener) &&
-                        !(obj instanceof ClassValue) &&
-                        !(obj instanceof PolyglotWrapper) &&
-                        !(obj instanceof Value) &&
-                        !(obj instanceof Context) &&
-                        !(obj instanceof Engine) &&
-                        !(obj instanceof Language) &&
-                        !(obj instanceof Instrument) &&
-                        !(obj instanceof org.graalvm.polyglot.Source) &&
-                        !(obj instanceof org.graalvm.polyglot.SourceSection) : obj.getClass().getName() + " should not be reachable";
+        assert shouldBeReachable(api, obj, true) : obj.getClass().getName() + " should not be reachable";
 
         return (obj instanceof Thread) ||
                         EngineAccessor.HOST.isHostBoundaryValue(obj) ||
@@ -339,26 +351,13 @@ final class ObjectSizeCalculator {
 
                         (obj instanceof ContextLocal) ||
                         (obj instanceof ContextThreadLocal) ||
-
                         /*
                          * For safety, copy the asserts here in case asserts are disabled.
                          */
-                        (obj instanceof PolyglotImpl.VMObject) ||
-                        (obj instanceof PolyglotContextConfig) ||
-                        (obj instanceof TruffleLanguage.Provider) ||
-                        (obj instanceof ExecutionEventListener) ||
-                        (obj instanceof ClassValue) ||
-                        (obj instanceof PolyglotWrapper) ||
-                        (obj instanceof Value) ||
-                        (obj instanceof Context) ||
-                        (obj instanceof Engine) ||
-                        (obj instanceof Language) ||
-                        (obj instanceof Instrument) ||
-                        (obj instanceof org.graalvm.polyglot.Source) ||
-                        (obj instanceof org.graalvm.polyglot.SourceSection);
+                        !shouldBeReachable(api, obj, false);
     }
 
-    private static ClassInfo canProceed(Map<Class<?>, ClassInfo> classInfos, Object obj) {
+    private static ClassInfo canProceed(APIAccess api, Map<Class<?>, ClassInfo> classInfos, Object obj) {
         if (obj == null) {
             return StopClassInfo.INSTANCE;
         }
@@ -368,7 +367,7 @@ final class ObjectSizeCalculator {
         if (classInfo != null) {
             return classInfo;
         } else {
-            boolean eligible = !isContextHeapBoundary(obj);
+            boolean eligible = !isContextHeapBoundary(api, obj);
             if (eligible) {
                 classInfo = getClassInfo(classInfos, clazz);
             } else {
@@ -389,7 +388,7 @@ final class ObjectSizeCalculator {
 
         public ForcedStop visit(CalculationState calculationState) {
             for (final Object elem : array) {
-                ClassInfo classInfo = canProceed(calculationState.classInfos, elem);
+                ClassInfo classInfo = canProceed(calculationState.api, calculationState.classInfos, elem);
                 if (classInfo != StopClassInfo.INSTANCE && alreadyVisited.add(elem)) {
                     classInfo.increaseByBaseSize(calculationState, elem);
                     if (calculationState.dataSize > calculationState.stopAtBytes) {

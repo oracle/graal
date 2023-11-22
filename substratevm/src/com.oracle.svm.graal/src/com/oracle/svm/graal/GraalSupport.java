@@ -27,7 +27,6 @@ package com.oracle.svm.graal;
 import static org.graalvm.word.LocationIdentity.ANY_LOCATION;
 
 import java.io.PrintStream;
-import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,42 +37,44 @@ import java.util.Map;
 import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.gen.NodeMatchRules;
-import org.graalvm.compiler.core.match.MatchStatement;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugContext.Builder;
-import org.graalvm.compiler.debug.DebugContext.Description;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
-import org.graalvm.compiler.debug.GlobalMetrics;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.lir.CompositeValueClass;
-import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.phases.LIRPhase;
-import org.graalvm.compiler.lir.phases.LIRSuites;
-import org.graalvm.compiler.nodes.EncodedGraph;
-import org.graalvm.compiler.nodes.GraphDecoder;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.FloatingGuardPhase;
-import org.graalvm.compiler.phases.Speculative;
-import org.graalvm.compiler.phases.tiers.Suites;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.core.CompilationWrapper.ExceptionAction;
+import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.core.gen.NodeMatchRules;
+import jdk.graal.compiler.core.match.MatchStatement;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext.Builder;
+import jdk.graal.compiler.debug.DebugContext.Description;
+import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.DiagnosticsOutputDirectory;
+import jdk.graal.compiler.debug.GlobalMetrics;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.CompositeValueClass;
+import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.phases.LIRPhase;
+import jdk.graal.compiler.lir.phases.LIRSuites;
+import jdk.graal.compiler.loop.phases.SpeculativeGuardMovementPhase;
+import jdk.graal.compiler.nodes.EncodedGraph;
+import jdk.graal.compiler.nodes.GraphDecoder;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.FloatingGuardPhase;
+import jdk.graal.compiler.phases.Speculative;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.tiers.Suites;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature.CompilationAccess;
+import org.graalvm.nativeimage.hosted.Feature.BeforeHeapLayoutAccess;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -87,7 +88,6 @@ import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
-import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * Holds data that is pre-computed during native image generation and accessed at run time during a
@@ -111,17 +111,10 @@ public class GraalSupport {
      * not prematurely constant folded we must mark them as unknown object fields.
      */
 
-    @UnknownObjectField(types = SubstrateMethod[].class) //
-    private SubstrateMethod[] methodsToCompile;
-
-    @UnknownObjectField(types = byte[].class) //
-    private byte[] graphEncoding;
-
-    @UnknownObjectField(types = Object[].class) //
-    private Object[] graphObjects;
-
-    @UnknownObjectField(types = NodeClass[].class) //
-    private NodeClass<?>[] graphNodeTypes;
+    @UnknownObjectField private SubstrateMethod[] methodsToCompile;
+    @UnknownObjectField private byte[] graphEncoding;
+    @UnknownObjectField private Object[] graphObjects;
+    @UnknownObjectField private NodeClass<?>[] graphNodeTypes;
 
     public final EconomicMap<Class<?>, NodeClass<?>> nodeClasses = ImageHeapMap.create();
     public final EconomicMap<Class<?>, LIRInstructionClass<?>> instructionClasses = ImageHeapMap.create();
@@ -136,11 +129,6 @@ public class GraalSupport {
     protected final List<DebugHandlersFactory> debugHandlersFactories = new ArrayList<>();
     protected final DiagnosticsOutputDirectory outputDirectory = new DiagnosticsOutputDirectory(RuntimeOptionValues.singleton());
     protected final Map<ExceptionAction, Integer> compilationProblemsPerAction = new EnumMap<>(ExceptionAction.class);
-
-    private static final Field graphEncodingField = ReflectionUtil.lookupField(GraalSupport.class, "graphEncoding");
-    private static final Field graphObjectsField = ReflectionUtil.lookupField(GraalSupport.class, "graphObjects");
-    private static final Field graphNodeTypesField = ReflectionUtil.lookupField(GraalSupport.class, "graphNodeTypes");
-    private static final Field methodsToCompileField = ReflectionUtil.lookupField(GraalSupport.class, "methodsToCompile");
 
     private static final CGlobalData<Pointer> nextIsolateId = CGlobalDataFactory.createWord((Pointer) WordFactory.unsigned(1L));
 
@@ -222,6 +210,8 @@ public class GraalSupport {
         effectiveSuites.getHighTier().removeSubTypePhases(Speculative.class);
         effectiveSuites.getMidTier().removeSubTypePhases(Speculative.class);
         effectiveSuites.getLowTier().removeSubTypePhases(Speculative.class);
+        // remove after GR-49600 is resolved:
+        effectiveSuites.getMidTier().replaceAllPhases(SpeculativeGuardMovementPhase.class, () -> new SpeculativeGuardMovementPhase(CanonicalizerPhase.create(), false, false));
         return effectiveSuites;
     }
 
@@ -233,6 +223,8 @@ public class GraalSupport {
         effectiveSuites.getHighTier().removeSubTypePhases(Speculative.class);
         effectiveSuites.getMidTier().removeSubTypePhases(Speculative.class);
         effectiveSuites.getLowTier().removeSubTypePhases(Speculative.class);
+        // remove after GR-49600 is resolved:
+        effectiveSuites.getMidTier().replaceAllPhases(SpeculativeGuardMovementPhase.class, () -> new SpeculativeGuardMovementPhase(CanonicalizerPhase.create(), false, false));
         return effectiveSuites;
     }
 
@@ -242,7 +234,7 @@ public class GraalSupport {
         GraalSupport support = get();
         if (!Arrays.equals(support.methodsToCompile, methodsToCompile)) {
             support.methodsToCompile = methodsToCompile;
-            GraalSupport.rescan(config, support, methodsToCompileField);
+            GraalSupport.rescan(config, methodsToCompile);
             result = true;
         }
         return result;
@@ -282,30 +274,40 @@ public class GraalSupport {
         boolean result = false;
         if (!Arrays.equals(support.graphEncoding, graphEncoding)) {
             support.graphEncoding = graphEncoding;
-            GraalSupport.rescan(a, support, graphEncodingField);
             result = true;
         }
         if (!Arrays.deepEquals(support.graphObjects, graphObjects)) {
             support.graphObjects = graphObjects;
-            GraalSupport.rescan(a, support, graphObjectsField);
+            GraalSupport.rescan(a, graphObjects);
             result = true;
         }
         if (!Arrays.equals(support.graphNodeTypes, graphNodeTypes)) {
             support.graphNodeTypes = graphNodeTypes;
-            GraalSupport.rescan(a, support, graphNodeTypesField);
+            GraalSupport.rescan(a, graphNodeTypes);
             result = true;
         }
         return result;
     }
 
-    private static void rescan(FeatureAccess a, GraalSupport support, Field field) {
-        if (a instanceof DuringAnalysisAccessImpl) {
-            ((DuringAnalysisAccessImpl) a).rescanField(support, field);
+    private static void rescan(FeatureAccess a, Object object) {
+        if (a instanceof DuringAnalysisAccessImpl access) {
+            rescan(access.getUniverse(), object);
         }
     }
 
+    /**
+     * Rescan Graal objects during analysis. The fields that point to these objects are annotated
+     * with {@link UnknownObjectField} so their value is not processed during analysis, only their
+     * declared type is injected in the type flow graphs. Their eventual value becomes available
+     * after analysis. Later when the field is read the lazy value supplier scans the final value
+     * and patches the shadow heap.
+     */
+    public static void rescan(AnalysisUniverse universe, Object object) {
+        universe.getHeapScanner().rescanObject(object);
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerImmutableObjects(CompilationAccess access) {
+    public static void registerImmutableObjects(BeforeHeapLayoutAccess access) {
         access.registerAsImmutable(get().graphEncoding);
         access.registerAsImmutable(get().graphObjects);
         access.registerAsImmutable(get().graphNodeTypes);
@@ -376,19 +378,20 @@ public class GraalSupport {
         return new EncodedGraph(get().graphEncoding, startOffset, get().graphObjects, get().graphNodeTypes, null, null, false, trackNodeSourcePosition);
     }
 
-    public static StructuredGraph decodeGraph(DebugContext debug, String name, CompilationIdentifier compilationId, SharedRuntimeMethod method) {
+    public static StructuredGraph decodeGraph(DebugContext debug, String name, CompilationIdentifier compilationId, SharedRuntimeMethod method, StructuredGraph caller) {
         EncodedGraph encodedGraph = encodedGraph(method, false);
         if (encodedGraph == null) {
             return null;
         }
 
-        boolean isSubstitution = method.getAnnotation(Snippet.class) != null;
+        boolean isSubstitution = method.isSnippet();
         StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug)
                         .name(name)
                         .method(method)
                         .recordInlinedMethods(false)
                         .compilationId(compilationId)
                         .setIsSubstitution(isSubstitution)
+                        .speculationLog((caller != null) ? caller.getSpeculationLog() : null)
                         .build();
         GraphDecoder decoder = new GraphDecoder(ConfigurationValues.getTarget().arch, graph);
         decoder.decode(encodedGraph);
@@ -410,5 +413,17 @@ public class GraalSupport {
 
     public static void setRuntimeBackendProvider(Function<Providers, SubstrateBackend> backendProvider) {
         get().runtimeBackendProvider = backendProvider;
+    }
+
+    public EconomicMap<Class<?>, BasePhase.BasePhaseStatistics> getBasePhaseStatistics() {
+        return basePhaseStatistics;
+    }
+
+    public EconomicMap<Class<?>, LIRPhase.LIRPhaseStatistics> getLirPhaseStatistics() {
+        return lirPhaseStatistics;
+    }
+
+    public List<DebugHandlersFactory> getDebugHandlersFactories() {
+        return debugHandlersFactories;
     }
 }

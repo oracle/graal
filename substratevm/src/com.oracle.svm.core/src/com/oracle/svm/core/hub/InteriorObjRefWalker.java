@@ -26,13 +26,14 @@ package com.oracle.svm.core.hub;
 
 import java.util.function.IntConsumer;
 
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.InstanceReferenceMapDecoder;
@@ -42,7 +43,7 @@ import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.heap.PodReferenceMapDecoder;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
-import com.oracle.svm.core.thread.Continuation;
+import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -66,6 +67,7 @@ public class InteriorObjRefWalker {
     }
 
     @AlwaysInline("Performance critical version")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean walkObjectInline(final Object obj, final ObjectReferenceVisitor visitor) {
         final DynamicHub objHub = ObjectHeader.readDynamicHubFromObject(obj);
         final Pointer objPointer = Word.objectToUntrackedPointer(obj);
@@ -107,6 +109,7 @@ public class InteriorObjRefWalker {
     }
 
     @AlwaysInline("Performance critical version")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean walkInstance(Object obj, ObjectReferenceVisitor visitor, DynamicHub objHub, Pointer objPointer) {
         NonmovableArray<Byte> referenceMapEncoding = DynamicHubSupport.getReferenceMapEncoding();
         long referenceMapIndex = objHub.getReferenceMapIndex();
@@ -116,6 +119,7 @@ public class InteriorObjRefWalker {
     }
 
     @AlwaysInline("Performance critical version")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean walkPod(Object obj, ObjectReferenceVisitor visitor, DynamicHub objHub, Pointer objPointer) {
         if (!Pod.RuntimeSupport.isPresent()) {
             throw VMError.shouldNotReachHere("Pod objects cannot be in the heap if the pod support is disabled.");
@@ -124,19 +128,22 @@ public class InteriorObjRefWalker {
     }
 
     @AlwaysInline("Performance critical version")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean walkStoredContinuation(Object obj, ObjectReferenceVisitor visitor) {
-        if (!Continuation.isSupported()) {
+        if (!ContinuationSupport.isSupported()) {
             throw VMError.shouldNotReachHere("Stored continuation objects cannot be in the heap if the continuation support is disabled.");
         }
         return StoredContinuationAccess.walkReferences(obj, visitor);
     }
 
     @AlwaysInline("Performance critical version")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean walkOther() {
         throw VMError.shouldNotReachHere("Unexpected object with hub type 'other' in the heap.");
     }
 
     @AlwaysInline("Performance critical version")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean walkObjectArray(Object obj, ObjectReferenceVisitor visitor, DynamicHub objHub, Pointer objPointer) {
         int length = ArrayLengthNode.arrayLength(obj);
         int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
@@ -145,12 +152,17 @@ public class InteriorObjRefWalker {
         Pointer pos = objPointer.add(LayoutEncoding.getArrayBaseOffset(objHub.getLayoutEncoding()));
         Pointer end = pos.add(WordFactory.unsigned(referenceSize).multiply(length));
         while (pos.belowThan(end)) {
-            final boolean visitResult = visitor.visitObjectReferenceInline(pos, 0, isCompressed, obj);
+            final boolean visitResult = callVisitor(obj, visitor, isCompressed, pos);
             if (!visitResult) {
                 return false;
             }
             pos = pos.add(referenceSize);
         }
         return true;
+    }
+
+    @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
+    private static boolean callVisitor(Object obj, ObjectReferenceVisitor visitor, boolean isCompressed, Pointer pos) {
+        return visitor.visitObjectReferenceInline(pos, 0, isCompressed, obj);
     }
 }

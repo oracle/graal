@@ -34,7 +34,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableMapCursor;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
@@ -249,16 +249,11 @@ public final class JNIReflectionDictionary {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static JNIAccessibleMethod getMethodByID(JNIMethodId method) {
-        return (JNIAccessibleMethod) getObjectFromMethodID(method);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static Object getObjectFromMethodID(JNIMethodId method) {
         Pointer p = (Pointer) method;
         if (SubstrateOptions.SpawnIsolates.getValue()) {
             p = p.add((UnsignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate()));
         }
-        return p.toObject();
+        return p.toObject(JNIAccessibleMethod.class, false);
     }
 
     private JNIAccessibleField getDeclaredField(Class<?> classObject, CharSequence name, boolean isStatic, String dumpLabel) {

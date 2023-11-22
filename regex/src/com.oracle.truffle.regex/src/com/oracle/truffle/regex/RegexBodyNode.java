@@ -120,7 +120,7 @@ public abstract class RegexBodyNode extends ExecutableNode implements Instrument
     @Override
     public final String toString() {
         String src = source.toStringEscaped();
-        return "regex " + getEngineLabel() + ": " + (src.length() > 30 ? src.substring(0, 30) + "..." : src);
+        return "tregex " + source.getSource().getName() + " " + getEngineLabel() + ": " + (src.length() > 30 ? src.substring(0, 30) + "..." : src);
     }
 
     protected String getEngineLabel() {

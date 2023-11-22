@@ -769,7 +769,7 @@ public class AsmFactory {
             case "fstcw":
             case "fnstcw": {
                 assert getPrimitiveType(dstType) == PrimitiveKind.I16;
-                statements.add(getOperandStore(dstType, operand, LLVMI16LiteralNodeGen.create((short) 0)));
+                statements.add(getOperandStore(dstType, operand, LLVMI16LiteralNodeGen.create((short) 0x037F)));
                 return;
             }
             default:

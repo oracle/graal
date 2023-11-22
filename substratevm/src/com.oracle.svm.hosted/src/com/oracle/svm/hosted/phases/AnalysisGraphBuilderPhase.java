@@ -24,25 +24,28 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import org.graalvm.compiler.core.common.BootstrapMethodIntrospection;
-import org.graalvm.compiler.java.BytecodeParser;
-import org.graalvm.compiler.java.GraphBuilderPhase;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.word.WordTypes;
+import jdk.graal.compiler.core.common.BootstrapMethodIntrospection;
+import jdk.graal.compiler.java.BciBlockMapping;
+import jdk.graal.compiler.java.BytecodeParser;
+import jdk.graal.compiler.java.FrameStateBuilder;
+import jdk.graal.compiler.java.GraphBuilderPhase;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
+import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.util.ModuleSupport;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -98,7 +101,7 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
              * access.
              */
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, accessingClass, false, "jdk.internal.vm.ci", "jdk.vm.ci.meta");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, accessingClass, false, "jdk.internal.vm.compiler", "org.graalvm.compiler.nodes");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, accessingClass, false, "jdk.graal.compiler", "jdk.graal.compiler.nodes");
             return super.applyInvocationPlugin(invokeKind, args, targetMethod, resultType, plugin);
         }
 
@@ -143,6 +146,25 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
         protected void genStoreField(ValueNode receiver, ResolvedJavaField field, ValueNode value) {
             hostVM.recordFieldStore(field, method);
             super.genStoreField(receiver, field, value);
+        }
+
+        @Override
+        protected FrameStateBuilder createFrameStateForExceptionHandling(int bci) {
+            var dispatchState = super.createFrameStateForExceptionHandling(bci);
+            if (SubstrateOptions.parseOnce()) {
+                /*
+                 * It is beneficial to eagerly clear all non-live locals on the exception object
+                 * before entering the dispatch target. This helps us prune unneeded values from the
+                 * graph, which can positively impact our analysis. Since deoptimization is not
+                 * possible, then there is no risk in clearing the unneeded locals.
+                 */
+                AnalysisMethod aMethod = (AnalysisMethod) method;
+                if (aMethod.isOriginalMethod() && !SubstrateCompilationDirectives.singleton().isRegisteredForDeoptTesting(aMethod)) {
+                    BciBlockMapping.BciBlock dispatchBlock = getDispatchBlock(bci);
+                    clearNonLiveLocals(dispatchState, dispatchBlock, true);
+                }
+            }
+            return dispatchState;
         }
     }
 }

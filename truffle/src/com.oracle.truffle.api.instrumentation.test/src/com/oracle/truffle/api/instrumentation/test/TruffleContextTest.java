@@ -156,6 +156,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
 
     @Test
     public void testParallelForceClose() throws InterruptedException {
+        List<Thread> threads = new ArrayList<>();
         setupEnv(Context.newBuilder().allowAllAccess(true).option("engine.TriggerUncaughtExceptionHandlerForCancel", "true").build(),
                         new ProxyLanguage() {
 
@@ -163,14 +164,24 @@ public class TruffleContextTest extends AbstractPolyglotTest {
                             protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
                                 return true;
                             }
+
+                            @Override
+                            protected void finalizeContext(LanguageContext langContext) {
+                                for (int i = 0; i < threads.size(); i++) {
+                                    try {
+                                        threads.get(i).join();
+                                    } catch (InterruptedException e) {
+                                        throw new AssertionError(e);
+                                    }
+                                }
+                            }
                         });
 
         TruffleContext tc = languageEnv.newInnerContextBuilder().inheritAllAccess(true).initializeCreatorContext(true).build();
-        List<Thread> threads = new ArrayList<>();
         List<AtomicReference<Throwable>> exceptions = new ArrayList<>();
         Semaphore waitUntilStart = new Semaphore(0);
         for (int i = 0; i < 100; i++) {
-            Thread t = languageEnv.createThread(() -> {
+            Thread t = languageEnv.newTruffleThreadBuilder(() -> {
                 com.oracle.truffle.api.source.Source s = com.oracle.truffle.api.source.Source.newBuilder(InstrumentationTestLanguage.ID, "EXPRESSION", "").build();
                 CallTarget target = LanguageContext.get(null).getEnv().parsePublic(s);
                 while (true) {
@@ -179,7 +190,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
                     // at least one thread should have started execution
                     waitUntilStart.release();
                 }
-            }, tc);
+            }).context(tc).build();
             AtomicReference<Throwable> exception = new AtomicReference<>();
             t.setUncaughtExceptionHandler((thread, e) -> {
                 exception.set(e);
@@ -203,10 +214,6 @@ public class TruffleContextTest extends AbstractPolyglotTest {
             assertNull(exceptions.get(i).get());
         }
         tc.closeCancelled(null, "testreason");
-
-        for (int i = 0; i < threads.size(); i++) {
-            threads.get(i).join();
-        }
 
         for (int i = 0; i < threads.size(); i++) {
             Throwable e = exceptions.get(i).get();
@@ -513,11 +520,11 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         TruffleContext tc = languageEnv.getContext();
         assertTrue(tc.isEntered());
 
-        int value = tc.leaveAndEnter(null, () -> {
+        int value = tc.leaveAndEnter(null, TruffleSafepoint.Interrupter.THREAD_INTERRUPT, (x) -> {
             assertFalse(tc.isEntered());
             assertFalse(tc.isClosed());
             return 42;
-        });
+        }, null);
         assertEquals(42, value);
 
         assertTrue(tc.isEntered());
@@ -810,13 +817,13 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         assertEquals(parent, tc.getParent());
 
         try {
-            tc.leaveAndEnter(null, () -> {
+            tc.leaveAndEnter(null, TruffleSafepoint.Interrupter.THREAD_INTERRUPT, (x) -> {
                 fail();
                 return true;
-            });
+            }, null);
             fail();
-        } catch (AssertionError e) {
-            assertTrue(e.getMessage(), e.getMessage().contains("Cannot leave context that is currently not entered"));
+        } catch (IllegalStateException e) {
+            assertEquals("Context is entered 0 times. It must be entered exactly once for leaveAndEnter.", e.getMessage());
         }
 
         assertTrue(parent.isEntered());
@@ -824,12 +831,12 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         try {
             assertFalse(parent.isEntered());
             assertTrue(parent.isActive());
-            int value = tc.leaveAndEnter(null, () -> {
+            int value = tc.leaveAndEnter(null, TruffleSafepoint.Interrupter.THREAD_INTERRUPT, (x) -> {
                 assertFalse(tc.isEntered());
                 assertFalse(parent.isEntered());
                 assertTrue(parent.isActive());
                 return 42;
-            });
+            }, null);
             assertEquals(42, value);
             assertTrue(tc.isEntered());
         } finally {
@@ -872,12 +879,12 @@ public class TruffleContextTest extends AbstractPolyglotTest {
             TruffleLanguage.Env env = LanguageContext.get(this).getEnv();
             TruffleContext creatorContext = env.newInnerContextBuilder().initializeCreatorContext(true).build();
             CountDownLatch running = new CountDownLatch(1);
-            Thread t = env.createThread(() -> {
+            Thread t = env.newTruffleThreadBuilder(() -> {
                 CallTarget target = LanguageContext.get(null).getEnv().parsePublic(com.oracle.truffle.api.source.Source.newBuilder(
                                 ProxyLanguage.ID, "worker", "worker").build());
                 running.countDown();
                 target.call();
-            }, creatorContext);
+            }).context(creatorContext).build();
             try {
                 t.start();
                 running.await();
@@ -905,8 +912,8 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         private Object executeImpl() {
             while (true) {
                 try {
-                    Thread.sleep(1_000);
                     TruffleSafepoint.poll(this);
+                    Thread.sleep(1_000);
                 } catch (InterruptedException ie) {
                     // Ignore InterruptedException, wait for ThreadDeath.
                 }

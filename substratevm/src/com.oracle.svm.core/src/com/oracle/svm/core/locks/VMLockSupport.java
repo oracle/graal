@@ -68,7 +68,7 @@ public abstract class VMLockSupport {
             }
 
             if (support == null || support.getMutexes() == null) {
-                log.string("No mutex information is available.");
+                log.string("No mutex information is available.").newline();
             } else {
                 VMMutex[] mutexes = support.getMutexes();
                 for (int i = 0; i < mutexes.length; i++) {

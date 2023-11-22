@@ -24,18 +24,19 @@
  */
 package com.oracle.svm.core.option;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import java.util.Objects;
+import java.util.function.Consumer;
+
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import java.util.Objects;
-import java.util.function.Consumer;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 
 /**
  * Defines a runtime {@link Option}, in contrast to a {@link HostedOptionKey hosted option}.
@@ -133,7 +134,14 @@ public class RuntimeOptionKey<T> extends OptionKey<T> implements SubstrateOption
     }
 
     public enum RuntimeOptionKeyFlag {
+        /** If this flag is set, then option value is propagated to all compilation isolates. */
         RelevantForCompilationIsolates,
+
+        /**
+         * If this flag is set, then the option value can only be changed during startup, i.e.,
+         * before the startup hooks are executed (see {@link RuntimeSupport#initialize()}). This
+         * flag should be used for runtime options that are accessed in startup hooks.
+         */
         Immutable,
     }
 }

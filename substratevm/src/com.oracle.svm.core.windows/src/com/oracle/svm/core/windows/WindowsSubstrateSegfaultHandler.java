@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -119,7 +119,8 @@ class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
             } else {
                 log.string(", ExceptionInformation=").zhex(operation);
             }
-            log.string(" ").zhex(exInfo.addressOf(1).read());
+            log.string(" ");
+            printSegfaultAddressInfo(log, exInfo.addressOf(1).read());
         } else {
             if (numParameters > 0) {
                 log.string(", ExceptionInformation=");
@@ -134,6 +135,6 @@ class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.")
     private static RuntimeException shouldNotReachHere() {
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 }

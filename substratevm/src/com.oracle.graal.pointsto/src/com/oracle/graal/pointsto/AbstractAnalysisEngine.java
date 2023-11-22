@@ -27,20 +27,20 @@ package com.oracle.graal.pointsto;
 import java.io.PrintWriter;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugContext.Builder;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.DeoptBciSupplier;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
-import org.graalvm.compiler.word.WordTypes;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext.Builder;
+import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.Indent;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.DeoptBciSupplier;
+import jdk.graal.compiler.nodes.StateSplit;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.word.WordTypes;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.api.HostVM;
@@ -73,7 +73,6 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     protected final AnalysisUniverse universe;
     protected final AnalysisMetaAccess metaAccess;
     protected final AnalysisPolicy analysisPolicy;
-    private final HeapScanningPolicy heapScanningPolicy;
 
     protected final Boolean extendedAsserts;
     protected final int maxConstantObjectsPerType;
@@ -94,15 +93,15 @@ public abstract class AbstractAnalysisEngine implements BigBang {
      * Processing queue.
      */
     protected final CompletionExecutor executor;
-    private final Runnable heartbeatCallback;
 
     protected final Timer processFeaturesTimer;
     protected final Timer analysisTimer;
     protected final Timer verifyHeapTimer;
 
+    @SuppressWarnings("this-escape")
     public AbstractAnalysisEngine(OptionValues options, AnalysisUniverse universe, HostVM hostVM, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
-                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, ForkJoinPool executorService, Runnable heartbeatCallback,
-                    UnsupportedFeatures unsupportedFeatures, TimerCollection timerCollection) {
+                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, UnsupportedFeatures unsupportedFeatures, DebugContext debugContext,
+                    TimerCollection timerCollection) {
         this.options = options;
         this.universe = universe;
         this.debugHandlerFactories = Collections.singletonList(new GraalDebugHandlersFactory(snippetReflectionProvider));
@@ -110,8 +109,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         this.metaAccess = metaAccess;
         this.analysisPolicy = universe.analysisPolicy();
         this.hostVM = hostVM;
-        this.executor = new CompletionExecutor(this, executorService, heartbeatCallback);
-        this.heartbeatCallback = heartbeatCallback;
+        this.executor = new CompletionExecutor(debugContext, this);
         this.unsupportedFeatures = unsupportedFeatures;
 
         this.processFeaturesTimer = timerCollection.get(TimerCollection.Registry.FEATURES);
@@ -122,11 +120,6 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         maxConstantObjectsPerType = PointstoOptions.MaxConstantObjectsPerType.getValue(options);
         profileConstantObjects = PointstoOptions.ProfileConstantObjects.getValue(options);
         optimizeReturnedParameter = PointstoOptions.OptimizeReturnedParameter.getValue(options);
-
-        this.heapScanningPolicy = PointstoOptions.ExhaustiveHeapScan.getValue(options)
-                        ? HeapScanningPolicy.scanAll()
-                        : HeapScanningPolicy.skipTypes(skippedHeapTypes());
-
         this.snippetReflectionProvider = snippetReflectionProvider;
         this.constantReflectionProvider = constantReflectionProvider;
         this.wordTypes = wordTypes;
@@ -202,10 +195,23 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     protected abstract CompletionExecutor.Timing getTiming();
 
     @SuppressWarnings("try")
-    private boolean analysisModified() throws InterruptedException {
+    private boolean analysisModified() {
         boolean analysisModified;
         try (Timer.StopTimer ignored = verifyHeapTimer.start()) {
-            analysisModified = universe.getHeapVerifier().requireAnalysisIteration(executor);
+            /*
+             * After the analysis reaches a stable state check if the shadow heap contains all
+             * objects reachable from roots. If this leads to analysis state changes, an additional
+             * analysis iteration will be run.
+             * 
+             * We reuse the analysis executor, which at this point should be in before-start state:
+             * the analysis finished and it re-initialized the executor for the next iteration. The
+             * verifier controls the life cycle of the executor: it starts it and then waits until
+             * all operations are completed. The same executor is implicitly used by the shadow heap
+             * scanner and the verifier also passes it to the root scanner, so when
+             * checkHeapSnapshot returns all heap scanning and verification tasks are completed.
+             */
+            assert executor.isBeforeStart() : executor.getState();
+            analysisModified = universe.getHeapVerifier().checkHeapSnapshot(metaAccess, executor, "during analysis", true);
         }
         /* Initialize for the next iteration. */
         executor.init(getTiming());
@@ -232,11 +238,6 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     }
 
     @Override
-    public AnalysisType[] skippedHeapTypes() {
-        return new AnalysisType[]{metaAccess.lookupJavaType(String.class)};
-    }
-
-    @Override
     public boolean extendedAsserts() {
         return extendedAsserts;
     }
@@ -259,11 +260,6 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     @Override
     public OptionValues getOptions() {
         return options;
-    }
-
-    @Override
-    public Runnable getHeartbeatCallback() {
-        return heartbeatCallback;
     }
 
     @Override
@@ -317,11 +313,6 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     }
 
     @Override
-    public HeapScanningPolicy scanningPolicy() {
-        return heapScanningPolicy;
-    }
-
-    @Override
     public HostVM getHostVM() {
         return hostVM;
     }
@@ -333,6 +324,21 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     @Override
     public final void postTask(CompletionExecutor.DebugContextRunnable task) {
         executor.execute(task);
+    }
+
+    public void postTask(final Runnable task) {
+        executor.execute(new CompletionExecutor.DebugContextRunnable() {
+            @Override
+            public void run(DebugContext ignore) {
+                task.run();
+            }
+
+            @Override
+            public DebugContext getDebug(OptionValues opts, List<DebugHandlersFactory> factories) {
+                assert opts == getOptions() : opts + " != " + getOptions();
+                return DebugContext.disabled(opts);
+            }
+        });
     }
 
     @Override
@@ -361,6 +367,35 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         int bci = BytecodeFrame.UNKNOWN_BCI;
         if (node instanceof DeoptBciSupplier) {
             bci = ((DeoptBciSupplier) node).bci();
+        }
+
+        /*
+         * If the node is a state split, then we can read the framestate to get a better guess of
+         * the node's position
+         */
+        if (node instanceof StateSplit stateSplit) {
+            var frameState = stateSplit.stateAfter();
+            if (frameState != null) {
+                if (frameState.outerFrameState() != null) {
+                    /*
+                     * If the outer framestate is not null, then inlinebeforeanalysis has inlined
+                     * this call. We store the position of the original call to prevent recursive
+                     * flows.
+                     */
+                    var current = frameState;
+                    while (current.outerFrameState() != null) {
+                        current = current.outerFrameState();
+                    }
+                    assert method.equals(current.getMethod()) : method + " != " + current.getMethod();
+                    bci = current.bci;
+                } else if (bci == BytecodeFrame.UNKNOWN_BCI) {
+                    /*
+                     * If there is a single framestate, then use its bci if nothing better is
+                     * available
+                     */
+                    bci = frameState.bci;
+                }
+            }
         }
         return new BytecodePosition(null, method, bci);
     }

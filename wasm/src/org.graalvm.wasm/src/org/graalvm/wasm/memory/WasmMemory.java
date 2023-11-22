@@ -109,16 +109,31 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     protected final long maxAllowedSize;
 
     /**
-     * Optional grow callback to notify the embedder .
+     * Optional grow callback to notify the embedder.
      */
     private Object growCallback;
+
+    /**
+     * JS callback to implement part of memory.atomic.notify.
+     */
+    private Object notifyCallback;
+
+    /**
+     * JS callback to implement part of memory.atomic.waitN.
+     */
+    private Object waitCallback;
 
     /**
      * @see #hasIndexType64()
      */
     protected final boolean indexType64;
 
-    protected WasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64) {
+    /**
+     * @see #isShared()
+     */
+    protected final boolean shared;
+
+    protected WasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64, boolean shared) {
         assert compareUnsigned(declaredMinSize, initialSize) <= 0;
         assert compareUnsigned(initialSize, maxAllowedSize) <= 0;
         assert compareUnsigned(maxAllowedSize, declaredMaxSize) <= 0;
@@ -132,6 +147,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
         this.currentMinSize = declaredMinSize;
         this.maxAllowedSize = maxAllowedSize;
         this.indexType64 = indexType64;
+        this.shared = shared;
     }
 
     /**
@@ -179,11 +195,22 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
         return currentMinSize;
     }
 
+    public final long maxAllowedSize() {
+        return maxAllowedSize;
+    }
+
     /**
      * @return Whether the index type (addressing mode) is 64-bit or 32-bit.
      */
     public final boolean hasIndexType64() {
         return indexType64;
+    }
+
+    /**
+     * @return Whether the memory is shared (modifications are visible to other threads).
+     */
+    public final boolean isShared() {
+        return shared;
     }
 
     public abstract boolean grow(long extraPageSize);
@@ -243,6 +270,138 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     public abstract void store_i64_16(Node node, long address, short value);
 
     public abstract void store_i64_32(Node node, long address, int value);
+
+    public abstract int atomic_load_i32(Node node, long address);
+
+    public abstract long atomic_load_i64(Node node, long address);
+
+    public abstract int atomic_load_i32_8u(Node node, long address);
+
+    public abstract int atomic_load_i32_16u(Node node, long address);
+
+    public abstract long atomic_load_i64_8u(Node node, long address);
+
+    public abstract long atomic_load_i64_16u(Node node, long address);
+
+    public abstract long atomic_load_i64_32u(Node node, long address);
+
+    public abstract void atomic_store_i32(Node node, long address, int value);
+
+    public abstract void atomic_store_i64(Node node, long address, long value);
+
+    public abstract void atomic_store_i32_8(Node node, long address, byte value);
+
+    public abstract void atomic_store_i32_16(Node node, long address, short value);
+
+    public abstract void atomic_store_i64_8(Node node, long address, byte value);
+
+    public abstract void atomic_store_i64_16(Node node, long address, short value);
+
+    public abstract void atomic_store_i64_32(Node node, long address, int value);
+
+    public abstract int atomic_rmw_add_i32_8u(Node node, long address, byte value);
+
+    public abstract int atomic_rmw_add_i32_16u(Node node, long address, short value);
+
+    public abstract int atomic_rmw_add_i32(Node node, long address, int value);
+
+    public abstract long atomic_rmw_add_i64_8u(Node node, long address, byte value);
+
+    public abstract long atomic_rmw_add_i64_16u(Node node, long address, short value);
+
+    public abstract long atomic_rmw_add_i64_32u(Node node, long address, int value);
+
+    public abstract long atomic_rmw_add_i64(Node node, long address, long value);
+
+    public abstract int atomic_rmw_sub_i32_8u(Node node, long address, byte value);
+
+    public abstract int atomic_rmw_sub_i32_16u(Node node, long address, short value);
+
+    public abstract int atomic_rmw_sub_i32(Node node, long address, int value);
+
+    public abstract long atomic_rmw_sub_i64_8u(Node node, long address, byte value);
+
+    public abstract long atomic_rmw_sub_i64_16u(Node node, long address, short value);
+
+    public abstract long atomic_rmw_sub_i64_32u(Node node, long address, int value);
+
+    public abstract long atomic_rmw_sub_i64(Node node, long address, long value);
+
+    public abstract int atomic_rmw_and_i32_8u(Node node, long address, byte value);
+
+    public abstract int atomic_rmw_and_i32_16u(Node node, long address, short value);
+
+    public abstract int atomic_rmw_and_i32(Node node, long address, int value);
+
+    public abstract long atomic_rmw_and_i64_8u(Node node, long address, byte value);
+
+    public abstract long atomic_rmw_and_i64_16u(Node node, long address, short value);
+
+    public abstract long atomic_rmw_and_i64_32u(Node node, long address, int value);
+
+    public abstract long atomic_rmw_and_i64(Node node, long address, long value);
+
+    public abstract int atomic_rmw_or_i32_8u(Node node, long address, byte value);
+
+    public abstract int atomic_rmw_or_i32_16u(Node node, long address, short value);
+
+    public abstract int atomic_rmw_or_i32(Node node, long address, int value);
+
+    public abstract long atomic_rmw_or_i64_8u(Node node, long address, byte value);
+
+    public abstract long atomic_rmw_or_i64_16u(Node node, long address, short value);
+
+    public abstract long atomic_rmw_or_i64_32u(Node node, long address, int value);
+
+    public abstract long atomic_rmw_or_i64(Node node, long address, long value);
+
+    public abstract int atomic_rmw_xor_i32_8u(Node node, long address, byte value);
+
+    public abstract int atomic_rmw_xor_i32_16u(Node node, long address, short value);
+
+    public abstract int atomic_rmw_xor_i32(Node node, long address, int value);
+
+    public abstract long atomic_rmw_xor_i64_8u(Node node, long address, byte value);
+
+    public abstract long atomic_rmw_xor_i64_16u(Node node, long address, short value);
+
+    public abstract long atomic_rmw_xor_i64_32u(Node node, long address, int value);
+
+    public abstract long atomic_rmw_xor_i64(Node node, long address, long value);
+
+    public abstract int atomic_rmw_xchg_i32_8u(Node node, long address, byte value);
+
+    public abstract int atomic_rmw_xchg_i32_16u(Node node, long address, short value);
+
+    public abstract int atomic_rmw_xchg_i32(Node node, long address, int value);
+
+    public abstract long atomic_rmw_xchg_i64_8u(Node node, long address, byte value);
+
+    public abstract long atomic_rmw_xchg_i64_16u(Node node, long address, short value);
+
+    public abstract long atomic_rmw_xchg_i64_32u(Node node, long address, int value);
+
+    public abstract long atomic_rmw_xchg_i64(Node node, long address, long value);
+
+    public abstract int atomic_rmw_cmpxchg_i32_8u(Node node, long address, byte expected, byte replacement);
+
+    public abstract int atomic_rmw_cmpxchg_i32_16u(Node node, long address, short expected, short replacement);
+
+    public abstract int atomic_rmw_cmpxchg_i32(Node node, long address, int expected, int replacement);
+
+    public abstract long atomic_rmw_cmpxchg_i64_8u(Node node, long address, byte expected, byte replacement);
+
+    public abstract long atomic_rmw_cmpxchg_i64_16u(Node node, long address, short expected, short replacement);
+
+    public abstract long atomic_rmw_cmpxchg_i64_32u(Node node, long address, int expected, int replacement);
+
+    public abstract long atomic_rmw_cmpxchg_i64(Node node, long address, long expected, long replacement);
+
+    public abstract int atomic_notify(Node node, long address, int count);
+
+    public abstract int atomic_wait32(Node node, long address, int expected, long timeout);
+
+    public abstract int atomic_wait64(Node node, long address, long expected, long timeout);
     // Checkstyle: resume
 
     public abstract WasmMemory duplicate();
@@ -254,19 +413,19 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * @param sourceOffset The offset in the source data segment
      * @param destinationOffset The offset in the memory
      * @param length The number of bytes that should be copied
-     * 
+     *
      * @throws UnsupportedOperationException If this method is called on an unsafe wasm memory.
      */
     public abstract void initialize(byte[] source, int sourceOffset, long destinationOffset, int length);
 
     /**
      * Initializes the content of an unsafe wasm memory with the given date instance.
-     * 
+     *
      * @param sourceAddress The address of the memory portion that should be copied to the memory
      * @param sourceOffset The offset from the data instance address
      * @param destinationOffset The offset in the memory
      * @param length The number of bytes that should be copied
-     * 
+     *
      * @throws UnsupportedOperationException If the method is called on a byte array based memory
      */
     @TruffleBoundary
@@ -298,6 +457,19 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
         final String message = String.format("%d-byte memory access at address 0x%016X (%d) is out-of-bounds (memory size %d bytes).",
                         length, address, address, byteSize());
         return WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS, node, message);
+    }
+
+    @TruffleBoundary
+    protected static WasmException trapUnalignedAtomic(Node node, long address, int length) {
+        final String message = String.format("%d-byte atomic memory access at address 0x%016X (%d) is unaligned.",
+                        length, address, address);
+        return WasmException.create(Failure.UNALIGNED_ATOMIC, node, message);
+    }
+
+    @TruffleBoundary
+    protected WasmException trapUnsharedMemory(Node node) {
+        final String message = "Atomic wait operator can only be used on shared memories.";
+        return WasmException.create(Failure.EXPECTED_SHARED_MEMORY, node, message);
     }
 
     /**
@@ -647,6 +819,30 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
         WebAssembly.invokeMemGrowCallback(this);
     }
 
+    public void setNotifyCallback(Object notifyCallback) {
+        this.notifyCallback = notifyCallback;
+    }
+
+    public Object getNotifyCallback() {
+        return notifyCallback;
+    }
+
+    protected int invokeNotifyCallback(long address, int count) {
+        return WebAssembly.invokeMemNotifyCallback(this, address, count);
+    }
+
+    public void setWaitCallback(Object waitCallback) {
+        this.waitCallback = waitCallback;
+    }
+
+    public Object getWaitCallback() {
+        return waitCallback;
+    }
+
+    protected int invokeWaitCallback(long address, long expected, long timeout, boolean is64) {
+        return WebAssembly.invokeMemWaitCallback(this, address, expected, timeout, is64);
+    }
+
     public abstract void close();
 
     public abstract ByteBuffer asByteBuffer();
@@ -659,9 +855,13 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
         return length < 0 || offset < 0 || offset > getBufferSize() - length;
     }
 
+    protected boolean outOfBounds(long offset, long length) {
+        return length < 0 || offset < 0 || offset > getBufferSize() - length;
+    }
+
     /**
      * Copy data from an input stream into memory.
-     * 
+     *
      * @param node the node used for errors
      * @param stream the input stream
      * @param offset the offset in the memory
@@ -673,7 +873,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
 
     /**
      * Copy data from memory into an output stream.
-     * 
+     *
      * @param node the node used for errors
      * @param stream the output stream
      * @param offset the offset in the memory
@@ -681,4 +881,8 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * @throws IOException if writing the stream leads to an error.
      */
     public abstract void copyToStream(Node node, OutputStream stream, int offset, int length) throws IOException;
+
+    public boolean isUnsafe() {
+        return false;
+    }
 }

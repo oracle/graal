@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.charset;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -107,6 +108,17 @@ public final class CodePointSet extends ImmutableSortedListOfIntRanges implement
         return constant;
     }
 
+    /**
+     * Expects {@code ranges} to be a list of sorted and disjoint ranges (can be adjacent though).
+     */
+    public static CodePointSet createNoDedup(SortedListOfRanges ranges) {
+        IntRangesBuffer buf = new IntRangesBuffer(2 * ranges.size());
+        for (int i = 0; i < ranges.size(); i++) {
+            buf.appendRangeConcatAdjacent(ranges.getLo(i), ranges.getHi(i));
+        }
+        return createNoDedup(buf.toArray());
+    }
+
     private static CodePointSet checkConstants(int[] ranges, int length) {
         if (length == 0) {
             return CONSTANT_EMPTY;
@@ -153,6 +165,10 @@ public final class CodePointSet extends ImmutableSortedListOfIntRanges implement
     @Override
     public CodePointSet createInverse(Encoding encoding) {
         return createInverse(this, encoding);
+    }
+
+    public CodePointSet createInverse(CodePointSet allCharacters, CompilationBuffer compilationBuffer) {
+        return createInverse(compilationBuffer.getEncoding()).createIntersection(allCharacters, compilationBuffer);
     }
 
     public static CodePointSet createInverse(SortedListOfRanges src, Encoding encoding) {

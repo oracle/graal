@@ -40,6 +40,7 @@ public class ELFProgbitsSection extends ELFUserDefinedSection implements Progbit
      * See the comment in ObjectFile.Element about the divide between Elements and their -Impls.
      */
 
+    @SuppressWarnings("this-escape")
     public ELFProgbitsSection(ELFObjectFile owner, String name, int alignment, ProgbitsSectionImpl impl, EnumSet<ELFSectionFlag> flags) {
         super(owner, name, alignment, ELFObjectFile.SectionType.PROGBITS, impl != null ? impl : new BasicProgbitsSectionImpl(new byte[0]), flags);
         // this *is* necessary because the newProgbitsSection helper doesn't see the impl
@@ -48,6 +49,7 @@ public class ELFProgbitsSection extends ELFUserDefinedSection implements Progbit
         }
     }
 
+    @SuppressWarnings("this-escape")
     public ELFProgbitsSection(ELFObjectFile owner, String name, int alignment, EnumSet<ELFSectionFlag> flags, int shtIndex, InputDisassembler in, int size) {
         super(owner, name, alignment, ELFObjectFile.SectionType.PROGBITS, new BasicProgbitsSectionImpl(in.readBlob(size)), flags, shtIndex);
         // this *is* necessary because the newProgbitsSection helper doesn't see the impl

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,12 +47,12 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.hotspot.JVMCIVersionCheck;
-import org.graalvm.compiler.word.BarrieredAccess;
-import org.graalvm.compiler.word.ObjectAccess;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
+import jdk.graal.compiler.word.BarrieredAccess;
+import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
@@ -595,10 +595,6 @@ public final class NativeLibraries {
 
     public boolean isEnum(ResolvedJavaType type) {
         return enumType.isAssignableFrom(type);
-    }
-
-    public ResolvedJavaType enumType() {
-        return enumType;
     }
 
     public ResolvedJavaType getPointerBaseType() {

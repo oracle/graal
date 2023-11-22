@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,9 @@
  */
 package org.graalvm.profdiff.core.pair;
 
-import org.graalvm.profdiff.core.CompilationFragment;
 import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.ExperimentId;
+import org.graalvm.profdiff.core.Writer;
 
 /**
  * A pair of compilations of the same method in two experiments. At most one of the compilations may
@@ -52,10 +52,14 @@ public class CompilationUnitPair {
      * @param compilationUnit2 a compilation unit from the second experiment
      */
     public CompilationUnitPair(CompilationUnit compilationUnit1, CompilationUnit compilationUnit2) {
-        assert compilationUnit1 != null || compilationUnit2 != null;
-        assert !bothNotNull() || compilationUnit1.getMethod().getMethodName().equals(compilationUnit2.getMethod().getMethodName());
         this.compilationUnit1 = compilationUnit1;
         this.compilationUnit2 = compilationUnit2;
+        if (compilationUnit1 != null && compilationUnit2 != null && !compilationUnit1.getMethod().getMethodName().equals(compilationUnit2.getMethod().getMethodName())) {
+            throw new IllegalArgumentException("The compilation units must be linked to the same method.");
+        }
+        if (compilationUnit1 == null && compilationUnit2 == null) {
+            throw new IllegalArgumentException("At least one of the compilation units must not be null.");
+        }
     }
 
     /**
@@ -73,61 +77,13 @@ public class CompilationUnitPair {
     }
 
     /**
-     * Returns {@code true} if both compilation units are not {@code null}.
-     */
-    public boolean bothNotNull() {
-        return compilationUnit1 != null && compilationUnit2 != null;
-    }
-
-    /**
-     * Returns {@code true} if both compilation units are not {@code null} and both are hot.
-     */
-    public boolean bothHot() {
-        return bothNotNull() && compilationUnit1.isHot() && compilationUnit2.isHot();
-    }
-
-    /**
-     * Returns {@code true} if at least one of the compilation units is hot.
-     */
-    public boolean someHot() {
-        return (compilationUnit1 != null && compilationUnit1.isHot()) || (compilationUnit2 != null && compilationUnit2.isHot());
-    }
-
-    /**
-     * Returns the first non-null compilation unit.
-     */
-    public CompilationUnit firstNonNull() {
-        return compilationUnit1 == null ? compilationUnit2 : compilationUnit1;
-    }
-
-    /**
-     * Formats a header containing the compilation ID, an execution summary, the experiment ID of
-     * each hot compilation in the pair. Returns {@code null} if the pair does not contain a hot
-     * compilation. The execution summary is omitted if the profile is not available.
+     * Writes the headers for both compilation units to the destination writer.
      *
-     * @return a header for hot compilations or {@code null}
+     * @param writer the destination writer
      */
-    public String formatHeaderForHotCompilations() {
-        if (!someHot()) {
-            return null;
-        }
-        StringBuilder sb = new StringBuilder("Compilation ");
-        if (bothHot()) {
-            sb.append(compilationUnit1 instanceof CompilationFragment ? "fragment" : "unit").append(' ').append(compilationUnit1.getCompilationId());
-            if (compilationUnit1.getMethod().getExperiment().isProfileAvailable()) {
-                sb.append(" (").append(compilationUnit1.createExecutionSummary()).append(")");
-            }
-            sb.append(" in experiment ").append(compilationUnit1.getMethod().getExperiment().getExperimentId()).append(" vs compilation ").append(
-                            compilationUnit2 instanceof CompilationFragment ? "fragment" : "unit").append(' ').append(compilationUnit2.getCompilationId());
-            if (compilationUnit2.getMethod().getExperiment().isProfileAvailable()) {
-                sb.append(" (").append(compilationUnit2.createExecutionSummary()).append(")");
-            }
-            sb.append(" in experiment ").append(compilationUnit2.getMethod().getExperiment().getExperimentId());
-        } else {
-            CompilationUnit compilationUnit = compilationUnit1 != null && compilationUnit1.isHot() ? compilationUnit1 : compilationUnit2;
-            sb.append(compilationUnit instanceof CompilationFragment ? "fragment" : "unit").append(' ').append(compilationUnit.getCompilationId()).append(" is ").append(
-                            compilationUnit.isHot() ? "hot" : "present").append(" only in experiment ").append(compilationUnit.getMethod().getExperiment().getExperimentId());
-        }
-        return sb.toString();
+    public void writeHeaders(Writer writer) {
+        writer.write(compilationUnit1.toString());
+        writer.writeln(" vs");
+        writer.writeln(compilationUnit2.toString());
     }
 }

@@ -26,19 +26,19 @@ package com.oracle.svm.hosted.fieldfolding;
 
 import java.util.Arrays;
 
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.EndNode;
-import org.graalvm.compiler.nodes.IfNode;
-import org.graalvm.compiler.nodes.LogicNode;
-import org.graalvm.compiler.nodes.MergeNode;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValuePhiNode;
-import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
-import org.graalvm.compiler.nodes.type.StampTool;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.EndNode;
+import jdk.graal.compiler.nodes.IfNode;
+import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.MergeNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.ValuePhiNode;
+import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.nodes.type.StampTool;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -80,7 +80,7 @@ final class StaticFinalFieldFoldingNodePlugin implements NodePlugin {
             return false;
         }
 
-        if (aField.wrapped instanceof ReadableJavaField && !((ReadableJavaField) aField.wrapped).isValueAvailable()) {
+        if (!ReadableJavaField.isValueAvailable(aField)) {
             /*
              * Cannot optimize static field whose value is recomputed and is not yet available,
              * i.e., it may depend on analysis/compilation derived data.
@@ -111,7 +111,10 @@ final class StaticFinalFieldFoldingNodePlugin implements NodePlugin {
         ValueNode fieldCheckStatusNode = b.add(new IsStaticFinalFieldInitializedNode(field));
         LogicNode isUninitializedNode = b.add(IntegerEqualsNode.create(fieldCheckStatusNode, ConstantNode.forBoolean(false), NodeView.DEFAULT));
 
-        JavaConstant uninitializedValue = b.getConstantReflection().readFieldValue(field, null);
+        JavaConstant uninitializedValue = aField.getConstantValue();
+        if (uninitializedValue == null) {
+            uninitializedValue = JavaConstant.defaultForKind(aField.getStorageKind());
+        }
         ConstantNode uninitializedValueNode = ConstantNode.forConstant(uninitializedValue, b.getMetaAccess());
         ConstantNode initializedValueNode = ConstantNode.forConstant(initializedValue, b.getMetaAccess());
 
@@ -125,9 +128,9 @@ final class StaticFinalFieldFoldingNodePlugin implements NodePlugin {
 
         ConstantNode[] phiValueNodes = {uninitializedValueNode, initializedValueNode};
         ValuePhiNode phi = new ValuePhiNode(StampTool.meet(Arrays.asList(phiValueNodes)), merge, phiValueNodes);
+        b.addPush(field.getJavaKind(), phi);
         b.setStateAfter(merge);
 
-        b.addPush(field.getJavaKind(), phi);
         return true;
     }
 

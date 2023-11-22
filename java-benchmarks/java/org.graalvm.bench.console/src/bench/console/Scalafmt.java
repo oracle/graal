@@ -26,8 +26,7 @@ package bench.console;
 
 public class Scalafmt {
 
-    private static final String file =
-                    "/*                     __                                               *\\\n" +
+    private static final String file = "/*                     __                                               *\\\n" +
                     "**     ________ ___   / /  ___     Scala API                            **\n" +
                     "**    / __/ __// _ | / /  / _ |    (c) 2003-2013, LAMP/EPFL             **\n" +
                     "**  __\\ \\/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **\n" +

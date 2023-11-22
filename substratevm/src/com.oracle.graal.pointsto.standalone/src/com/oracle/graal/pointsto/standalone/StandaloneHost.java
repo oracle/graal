@@ -26,20 +26,22 @@
 
 package com.oracle.graal.pointsto.standalone;
 
+import java.util.Comparator;
+import java.util.concurrent.ConcurrentHashMap;
+
+import jdk.graal.compiler.java.GraphBuilderPhase;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
+
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.standalone.plugins.StandaloneGraphBuilderPhase;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.compiler.java.GraphBuilderPhase;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
 
-import java.util.Comparator;
-import java.util.concurrent.ConcurrentHashMap;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class StandaloneHost extends HostVM {
     private final ConcurrentHashMap<AnalysisType, Class<?>> typeToClass = new ConcurrentHashMap<>();
@@ -78,10 +80,6 @@ public class StandaloneHost extends HostVM {
          * There is no eager class initialization nor delayed class initialization in standalone
          * analysis, so we don't need do any actual class initialization work here.
          */
-    }
-
-    @Override
-    public void onTypeInstantiated(AnalysisType newValue) {
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,9 +51,10 @@ import org.graalvm.wasm.memory.WasmMemory;
  * Represents the state of a WebAssembly module.
  */
 @SuppressWarnings("static-method")
-public class RuntimeState {
+public abstract class RuntimeState {
     private static final int INITIAL_GLOBALS_SIZE = 64;
     private static final int INITIAL_TABLES_SIZE = 1;
+    private static final int INITIAL_MEMORIES_SIZE = 1;
 
     private final WasmContext context;
     private final WasmModule module;
@@ -86,13 +87,7 @@ public class RuntimeState {
      */
     @CompilationFinal(dimensions = 1) private int[] tableAddresses;
 
-    /**
-     * Memory that this module is using.
-     * <p>
-     * In the current WebAssembly specification, a module can use at most one memory. The value
-     * {@code null} denotes that this module uses no memory.
-     */
-    @CompilationFinal private WasmMemory memory;
+    @CompilationFinal(dimensions = 1) private WasmMemory[] memories;
 
     /**
      * The passive elem instances that can be used to lazily initialize tables. They can potentially
@@ -114,6 +109,8 @@ public class RuntimeState {
 
     @CompilationFinal private Linker.LinkState linkState;
 
+    @CompilationFinal private int startFunctionIndex;
+
     private void ensureGlobalsCapacity(int index) {
         while (index >= globalAddresses.length) {
             final int[] nGlobalAddresses = new int[globalAddresses.length * 2];
@@ -130,17 +127,27 @@ public class RuntimeState {
         }
     }
 
+    private void ensureMemoriesCapacity(int index) {
+        if (index >= memories.length) {
+            final WasmMemory[] nMemories = new WasmMemory[Math.max(Integer.highestOneBit(index) << 1, 2 * memories.length)];
+            System.arraycopy(memories, 0, nMemories, 0, memories.length);
+            memories = nMemories;
+        }
+    }
+
     public RuntimeState(WasmContext context, WasmModule module, int numberOfFunctions, int droppedDataInstanceOffset) {
         this.context = context;
         this.module = module;
         this.globalAddresses = new int[INITIAL_GLOBALS_SIZE];
         this.tableAddresses = new int[INITIAL_TABLES_SIZE];
+        this.memories = new WasmMemory[INITIAL_MEMORIES_SIZE];
         this.targets = new CallTarget[numberOfFunctions];
         this.functionInstances = new WasmFunctionInstance[numberOfFunctions];
         this.linkState = Linker.LinkState.nonLinked;
         this.dataInstances = null;
         this.elementInstances = null;
         this.droppedDataInstanceOffset = droppedDataInstanceOffset;
+        this.startFunctionIndex = -1;
     }
 
     private void checkNotLinked() {
@@ -199,6 +206,10 @@ public class RuntimeState {
         return module;
     }
 
+    protected WasmInstance instance() {
+        return null;
+    }
+
     public CallTarget target(int index) {
         return targets[index];
     }
@@ -231,20 +242,21 @@ public class RuntimeState {
         tableAddresses[tableIndex] = address;
     }
 
-    public WasmMemory memory() {
-        return memory;
+    public WasmMemory memory(int index) {
+        return memories[index];
     }
 
-    public void setMemory(WasmMemory memory) {
+    public void setMemory(int index, WasmMemory memory) {
+        ensureMemoriesCapacity(index);
         checkNotLinked();
-        this.memory = memory;
+        memories[index] = memory;
     }
 
     public WasmFunctionInstance functionInstance(WasmFunction function) {
         int functionIndex = function.index();
         WasmFunctionInstance functionInstance = functionInstances[functionIndex];
         if (functionInstance == null) {
-            functionInstance = new WasmFunctionInstance(context(), function, target(functionIndex));
+            functionInstance = new WasmFunctionInstance(instance(), function, target(functionIndex));
             functionInstances[functionIndex] = functionInstance;
         }
         return functionInstance;
@@ -384,5 +396,13 @@ public class RuntimeState {
         }
         assert index < elementInstances.length;
         return elementInstances[index];
+    }
+
+    public int startFunctionIndex() {
+        return startFunctionIndex;
+    }
+
+    public void setStartFunctionIndex(int index) {
+        this.startFunctionIndex = index;
     }
 }

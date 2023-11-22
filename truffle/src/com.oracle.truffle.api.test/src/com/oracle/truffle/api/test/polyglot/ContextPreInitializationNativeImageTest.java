@@ -49,6 +49,7 @@ import com.oracle.truffle.api.staticobject.DefaultStaticObjectFactory;
 import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticShape;
+import com.oracle.truffle.api.test.ReflectionUtils;
 import org.graalvm.polyglot.Context;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -182,7 +183,7 @@ public class ContextPreInitializationNativeImageTest {
 
         static void alignedOffset(StaticProperty longProperty) throws Exception {
             Field offset = StaticProperty.class.getDeclaredField("offset");
-            offset.setAccessible(true);
+            ReflectionUtils.setAccessible(offset, true);
             assertEquals(0, ((int) offset.get(longProperty)) % 8);
         }
     }
@@ -204,8 +205,8 @@ public class ContextPreInitializationNativeImageTest {
     @TruffleLanguage.Registration(id = LANGUAGE, name = LANGUAGE, version = "1.0", contextPolicy = TruffleLanguage.ContextPolicy.SHARED)
     public static final class Language extends TruffleLanguage<TestContext> {
 
-        final ContextThreadLocal<Integer> threadLocal = createContextThreadLocal((c, t) -> 42);
-        final ContextLocal<Integer> contextLocal = createContextLocal((c) -> 42);
+        final ContextThreadLocal<Integer> threadLocal = locals.createContextThreadLocal((c, t) -> 42);
+        final ContextLocal<Integer> contextLocal = locals.createContextLocal((c) -> 42);
         private static final ContextReference<TestContext> CONTEXT_REF = ContextReference.create(Language.class);
         private static final LanguageReference<Language> LANGUAGE_REF = LanguageReference.create(Language.class);
 

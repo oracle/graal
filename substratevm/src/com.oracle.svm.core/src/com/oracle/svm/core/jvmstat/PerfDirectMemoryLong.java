@@ -26,8 +26,7 @@ package com.oracle.svm.core.jvmstat;
 
 import java.nio.ByteBuffer;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
+import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -39,6 +38,6 @@ public class PerfDirectMemoryLong extends PerfDirectMemoryEntry {
     protected ByteBuffer allocate(PerfVariability variability, long value) {
         allocate(variability, JavaKind.Long, 0);
         valuePtr.writeLong(0, value);
-        return SubstrateUtil.cast(new Target_java_nio_DirectByteBuffer(valuePtr.rawValue(), Long.BYTES), ByteBuffer.class);
+        return DirectByteBufferUtil.allocate(valuePtr.rawValue(), Long.BYTES);
     }
 }

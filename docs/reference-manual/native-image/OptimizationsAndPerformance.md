@@ -1,5 +1,5 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: optimizations-and-performance
 link_title: Optimizations and Performance
 permalink: /reference-manual/native-image/optimizations-and-performance/

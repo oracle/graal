@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
-import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -33,6 +32,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.posix.PosixProcessPropertiesSupport;
 import com.oracle.svm.core.posix.headers.darwin.DarwinDyld;
 import com.oracle.svm.core.util.VMError;
@@ -50,8 +50,8 @@ public class DarwinProcessPropertiesSupport extends PosixProcessPropertiesSuppor
         }
         /* Allocate a correctly-sized buffer and ask again. */
         final byte[] byteBuffer = new byte[sizePointer.read()];
-        try (PinnedObject pinnedBuffer = PinnedObject.create(byteBuffer)) {
-            final CCharPointer bufferPointer = pinnedBuffer.addressOfArrayElement(0);
+        try (PrimitiveArrayView refBuffer = PrimitiveArrayView.createForReadingAndWriting(byteBuffer)) {
+            final CCharPointer bufferPointer = refBuffer.addressOfArrayElement(0);
             if (DarwinDyld._NSGetExecutablePath(bufferPointer, sizePointer) == -1) {
                 /* Failure to find executable path. */
                 return null;

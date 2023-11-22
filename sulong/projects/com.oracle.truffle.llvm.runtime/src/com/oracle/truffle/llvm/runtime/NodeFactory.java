@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,10 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.util.List;
-
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
@@ -69,8 +66,6 @@ public interface NodeFactory {
     DataLayout getDataLayout();
 
     LLVMLanguage getLanguage();
-
-    boolean isCfgOsrEnabled();
 
     LLVMExpressionNode createInsertElement(Type resultType, LLVMExpressionNode vector, LLVMExpressionNode element, LLVMExpressionNode index);
 
@@ -167,7 +162,7 @@ public interface NodeFactory {
     LLVMExpressionNode createStructureConstantNode(Type structureType, GetStackSpaceFactory getStackSpaceFactory, boolean packed, Type[] types, LLVMExpressionNode[] constants);
 
     RootNode createFunction(int exceptionValueSlot, LLVMBasicBlockNode[] basicBlockNodes, UniquesRegion uniquesRegion, LLVMStatementNode[] copyArgumentsToFrame, FrameDescriptor frameDescriptor,
-                    int loopSuccessorSlot, LocalVariableDebugInfo debugInfo, String name, String originalName, int argumentCount, Source bcSource, LLVMSourceLocation location,
+                    LocalVariableDebugInfo debugInfo, String name, String originalName, int argumentCount, Source bcSource, LLVMSourceLocation location,
                     LLVMFunction rootFunction);
 
     LLVMExpressionNode createInlineAssemblerExpression(String asmExpression, String asmFlags, LLVMExpressionNode[] args, Type.TypeArrayBuilder argTypes, Type retType);
@@ -206,11 +201,6 @@ public interface NodeFactory {
     LLVMMemorySizedOpNode createFreeGlobalsBlock();
 
     LLVMMemorySizedOpNode getFreeGlobalsBlockUncached();
-
-    LLVMControlFlowNode createLoop(RepeatingNode body, int[] successorIDs);
-
-    RepeatingNode createLoopDispatchNode(int exceptionValueSlot, List<? extends LLVMStatementNode> list, LLVMBasicBlockNode[] originalBodyNodes, int headerId, int[] indexMapping,
-                    int[] successors, int successorSlot);
 
     LLVMExpressionNode createGetStackFromFrame();
 

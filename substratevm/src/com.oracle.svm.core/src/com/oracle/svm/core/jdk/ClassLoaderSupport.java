@@ -29,12 +29,14 @@ import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.graalvm.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 /**
@@ -69,10 +71,15 @@ public final class ClassLoaderSupport {
 
     private static final Method packageGetPackageInfo = ReflectionUtil.lookupMethod(Package.class, "getPackageInfo");
 
-    public static void registerPackage(ClassLoader classLoader, String packageName, Package packageValue) {
+    /**
+     * Register the package with its classLoader. If the registration was missing return the entire
+     * package registry of the classLoader, return null otherwise.
+     */
+    public static ConcurrentMap<String, Package> registerPackage(ClassLoader classLoader, String packageName, Package packageValue) {
         assert classLoader != null;
         assert packageName != null;
         assert packageValue != null;
+        VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Packages should be collected and registered during analysis.");
 
         /*
          * Eagerly initialize the field Package.packageInfo, which stores the .package-info class
@@ -89,11 +96,17 @@ public final class ClassLoaderSupport {
             throw GraalError.shouldNotReachHere(e); // ExcludeFromJacocoGeneratedReport
         }
 
-        ConcurrentMap<String, Package> classPackages = singleton().registeredPackages.computeIfAbsent(classLoader, k -> new ConcurrentHashMap<>());
-        classPackages.putIfAbsent(packageName, packageValue);
+        var loaderPackages = singleton().registeredPackages.computeIfAbsent(classLoader, k -> new ConcurrentHashMap<>());
+        Package previous = loaderPackages.putIfAbsent(packageName, packageValue);
+        if (previous == null) {
+            /* Return the class loader packages if the new package was missing. */
+            return loaderPackages;
+        }
+        return null;
     }
 
     public static ConcurrentHashMap<String, Package> getRegisteredPackages(ClassLoader classLoader) {
+        VMError.guarantee(BuildPhaseProvider.isAnalysisFinished(), "Packages are stable only after analysis.");
         return singleton().registeredPackages.get(classLoader);
     }
 }

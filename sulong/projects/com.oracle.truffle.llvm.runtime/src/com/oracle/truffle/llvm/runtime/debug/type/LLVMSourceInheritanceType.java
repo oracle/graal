@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,8 +41,7 @@ public class LLVMSourceInheritanceType extends LLVMSourceMemberType {
     private boolean virtual;
 
     private LLVMSourceInheritanceType(String name, long size, long align, long offset, LLVMSourceType elementType, LLVMSourceLocation location, boolean virtual) {
-        super(name, size, align, offset, location);
-        setElementType(elementType);
+        super(name, size, align, offset, elementType, location);
         this.virtual = virtual;
     }
 

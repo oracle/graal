@@ -24,12 +24,6 @@
  */
 package com.oracle.svm.hosted.analysis;
 
-import java.util.concurrent.ForkJoinPool;
-
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.word.WordTypes;
-
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -41,6 +35,10 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 
 public class NativeImageReachabilityAnalysisEngine extends ReachabilityAnalysisEngine implements Inflation {
@@ -50,14 +48,12 @@ public class NativeImageReachabilityAnalysisEngine extends ReachabilityAnalysisE
     private final boolean strengthenGraalGraphs;
     private final CustomTypeFieldHandler unknownFieldHandler;
 
-    public NativeImageReachabilityAnalysisEngine(OptionValues options, AnalysisUniverse universe,
-                    AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
-                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes,
-                    AnnotationSubstitutionProcessor annotationSubstitutionProcessor,
-                    ForkJoinPool executor,
-                    Runnable heartbeatCallback, TimerCollection timerCollection, ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler) {
-        super(options, universe, universe.hostVM(), metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, executor, heartbeatCallback, new SubstrateUnsupportedFeatures(),
-                        timerCollection, reachabilityMethodProcessingHandler);
+    @SuppressWarnings("this-escape")
+    public NativeImageReachabilityAnalysisEngine(OptionValues options, AnalysisUniverse universe, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
+                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, AnnotationSubstitutionProcessor annotationSubstitutionProcessor, DebugContext debugContext,
+                    TimerCollection timerCollection, ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler) {
+        super(options, universe, universe.hostVM(), metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, new SubstrateUnsupportedFeatures(), debugContext, timerCollection,
+                        reachabilityMethodProcessingHandler);
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
         this.strengthenGraalGraphs = SubstrateOptions.parseOnce();
         this.dynamicHubInitializer = new DynamicHubInitializer(this);
@@ -90,7 +86,7 @@ public class NativeImageReachabilityAnalysisEngine extends ReachabilityAnalysisE
 
     @Override
     public void onTypeReachable(AnalysisType type) {
-        postTask(d -> initializeMetaData(type));
+        postTask(d -> type.getInitializeMetaDataTask().ensureDone());
     }
 
     @Override

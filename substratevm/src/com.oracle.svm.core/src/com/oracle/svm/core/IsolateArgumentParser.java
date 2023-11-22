@@ -28,7 +28,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -54,7 +54,7 @@ import com.oracle.svm.core.util.VMError;
  */
 @AutomaticallyRegisteredImageSingleton
 public class IsolateArgumentParser {
-    private static final RuntimeOptionKey<?>[] OPTIONS = {SubstrateGCOptions.MinHeapSize, SubstrateGCOptions.MaxHeapSize, SubstrateGCOptions.MaxNewSize,
+    private static final RuntimeOptionKey<?>[] OPTIONS = {SubstrateGCOptions.MinHeapSize, SubstrateGCOptions.MaxHeapSize, SubstrateGCOptions.MaxNewSize, SubstrateGCOptions.ReservedAddressSpaceSize,
                     SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling, SubstrateOptions.ConcealedOptions.UsePerfData};
     private static final int OPTION_COUNT = OPTIONS.length;
     private static final CGlobalData<CCharPointer> OPTION_NAMES = CGlobalDataFactory.createBytes(IsolateArgumentParser::createOptionNames);
@@ -63,10 +63,10 @@ public class IsolateArgumentParser {
     private static final CGlobalData<CLongPointer> HOSTED_VALUES = CGlobalDataFactory.createBytes(IsolateArgumentParser::createHostedValues);
     private static final long[] PARSED_OPTION_VALUES = new long[OPTION_COUNT];
 
-    private static final int K = 1024;
-    private static final int M = K * K;
-    private static final int G = K * M;
-    private static final int T = K * G;
+    private static final long K = 1024;
+    private static final long M = K * K;
+    private static final long G = K * M;
+    private static final long T = K * G;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public IsolateArgumentParser() {
@@ -183,8 +183,19 @@ public class IsolateArgumentParser {
 
     public void verifyOptionValues() {
         for (int i = 0; i < OPTION_COUNT; i++) {
-            validate(OPTIONS[i], getOptionValue(i));
+            RuntimeOptionKey<?> option = OPTIONS[i];
+            if (shouldValidate(option)) {
+                validate(option, getOptionValue(i));
+            }
         }
+    }
+
+    private static boolean shouldValidate(RuntimeOptionKey<?> option) {
+        if (SubstrateOptions.UseSerialGC.getValue()) {
+            /* The serial GC supports changing the heap size at run-time to some degree. */
+            return option != SubstrateGCOptions.MinHeapSize && option != SubstrateGCOptions.MaxHeapSize && option != SubstrateGCOptions.MaxNewSize;
+        }
+        return true;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -206,7 +217,7 @@ public class IsolateArgumentParser {
         Class<?> optionValueType = OPTIONS[index].getDescriptor().getOptionValueType();
         long value = PARSED_OPTION_VALUES[index];
         if (optionValueType == Boolean.class) {
-            assert value == 0 || value == 1;
+            assert value == 0 || value == 1 : value;
             return value == 1;
         } else if (optionValueType == Integer.class) {
             return (int) value;
@@ -346,7 +357,7 @@ public class IsolateArgumentParser {
             return false;
         }
 
-        int modifier;
+        long modifier;
         switch (tail.read()) {
             case 'T':
             case 't':
@@ -371,7 +382,7 @@ public class IsolateArgumentParser {
                 return false;
         }
 
-        UnsignedWord value = n.multiply(modifier);
+        UnsignedWord value = n.multiply(WordFactory.unsigned(modifier));
         if (checkForOverflow(value, n, modifier)) {
             return false;
         }

@@ -41,13 +41,14 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 /**
  * Provides bridges to guest world thread implementation.
  */
 public final class ThreadsAccess extends ContextAccessImpl implements GuestInterrupter<StaticObject> {
 
+    public static final long ALIVE_EETOP = 0XCAFEBABEL;
     private final Meta meta;
 
     @Override
@@ -70,7 +71,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
 
     @Override
     public StaticObject getCurrentGuestThread() {
-        return getContext().getCurrentThread();
+        return getContext().getCurrentPlatformThread();
     }
 
     public ThreadsAccess(Meta meta) {
@@ -135,6 +136,18 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
         }
     }
 
+    void setEETopAlive(StaticObject thread) {
+        meta.java_lang_Thread_eetop.setLong(thread, ALIVE_EETOP);
+    }
+
+    void setEETopDead(StaticObject thread) {
+        meta.java_lang_Thread_eetop.setLong(thread, 0);
+    }
+
+    long getEETop(StaticObject thread) {
+        return meta.java_lang_Thread_eetop.getLong(thread);
+    }
+
     int fromRunnable(StaticObject self, State state) {
         int old = getState(self);
         assert (old & State.RUNNABLE.value) != 0 || old == State.NEW.value : old;
@@ -193,7 +206,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
             if (state == State.TERMINATED.value) {
                 return StaticObject.NULL;
             }
-            if (meta.java_lang_BaseVirtualThread.isAssignableFrom(thread.getKlass())) {
+            if (isVirtualThread(thread)) {
                 return meta.java_lang_Thread$Constants_VTHREAD_GROUP.getObject(meta.java_lang_Thread$Constants.getStatics());
             }
             StaticObject holder = meta.java_lang_Thread_holder.getObject(thread);
@@ -201,6 +214,20 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
         } else {
             return meta.java_lang_Thread_threadGroup.getObject(thread);
         }
+    }
+
+    public boolean isVirtualThread(StaticObject thread) {
+        assert !StaticObject.isNull(thread);
+        return meta.java_lang_BaseVirtualThread.isAssignableFrom(thread.getKlass());
+    }
+
+    public boolean isVirtualOrCarrierThread(StaticObject thread) {
+        assert !StaticObject.isNull(thread);
+        if (meta.java_lang_BaseVirtualThread.isAssignableFrom(thread.getKlass())) {
+            return true;
+        }
+        // TODO check for carrier thread with mounted vthread
+        return false;
     }
 
     @SuppressWarnings("unused")
@@ -227,7 +254,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
      * we do not require a node.
      */
     public void fullSafePoint(StaticObject thread) {
-        assert thread == getContext().getCurrentThread();
+        assert thread == getContext().getCurrentPlatformThread();
         handleStop(thread);
         handleSuspend(thread);
     }
@@ -332,7 +359,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
      * Creates a thread for the given guest thread. This thread will be ready to be started.
      */
     public Thread createJavaThread(StaticObject guest, DirectCallNode exit, DirectCallNode dispatch) {
-        Thread host = getContext().getEnv().createThread(new GuestRunnable(getContext(), guest, exit, dispatch));
+        Thread host = getContext().getEnv().newTruffleThreadBuilder(new GuestRunnable(getContext(), guest, exit, dispatch)).build();
         initializeHiddenFields(guest, host, true);
         // Prepare host thread
         host.setDaemon(isDaemon(guest));
@@ -342,6 +369,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
         }
         String guestName = getContext().getThreadAccess().getThreadName(guest);
         host.setName(guestName);
+        getThreadAccess().setEETopAlive(guest);
         // Make the thread known to the context
         getContext().registerThread(host, guest);
         setState(guest, State.RUNNABLE.value);
@@ -422,18 +450,25 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
     void terminate(StaticObject thread, DirectCallNode exit) {
         DeprecationSupport support = getDeprecationSupport(thread, true);
         support.exit();
-        if (!getContext().isTruffleClosed()) {
-            try {
-                if (exit == null) {
-                    meta.java_lang_Thread_exit.invokeDirect(thread);
-                } else {
-                    exit.call(thread);
+        long eetop = getEETop(thread);
+        // check eetop to avoid re-executing `exit`
+        if (eetop != 0) {
+            assert eetop == ALIVE_EETOP;
+            if (!getContext().isTruffleClosed()) {
+                try {
+                    if (exit == null) {
+                        meta.java_lang_Thread_exit.invokeDirect(thread);
+                    } else {
+                        exit.call(thread);
+                    }
+                } catch (AbstractTruffleException e) {
+                    // just drop it
                 }
-            } catch (AbstractTruffleException e) {
-                // just drop it
             }
+            setTerminateStatusAndNotify(thread);
+        } else {
+            assert getState(thread) == State.TERMINATED.value;
         }
-        setTerminateStatusAndNotify(thread);
     }
 
     /**
@@ -454,6 +489,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
         guest.getLock(getContext()).lock();
         try {
             setState(guest, State.TERMINATED.value);
+            setEETopDead(guest);
             // Notify waiting threads you are done working
             guest.getLock(getContext()).signalAll();
         } finally {
@@ -492,6 +528,26 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
         return support;
     }
 
+    public void setDepthFirstNumber(StaticObject thread, int i) {
+        meta.HIDDEN_THREAD_DEPTH_FIRST_NUMBER.setHiddenObject(thread, i);
+    }
+
+    public int getDepthFirstNumber(StaticObject thread) {
+        return (int) meta.HIDDEN_THREAD_DEPTH_FIRST_NUMBER.getHiddenObject(thread);
+    }
+
+    public StaticObject getScopedValueCache(StaticObject platformThread) {
+        StaticObject cache = (StaticObject) meta.HIDDEN_THREAD_SCOPED_VALUE_CACHE.getHiddenObject(platformThread);
+        if (cache == null) {
+            return StaticObject.NULL;
+        }
+        return cache;
+    }
+
+    public void setScopedValueCache(StaticObject platformThread, StaticObject cache) {
+        meta.HIDDEN_THREAD_SCOPED_VALUE_CACHE.setHiddenObject(platformThread, cache);
+    }
+
     private final class DeprecationSupport {
 
         private final StaticObject thread;
@@ -525,9 +581,11 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
         }
 
         private class StopAction extends ThreadLocalAction {
+            final Thread host;
 
-            StopAction() {
+            StopAction(Thread host) {
                 super(true, false);
+                this.host = host;
             }
 
             @Override
@@ -536,39 +594,58 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
             }
         }
 
-        synchronized void stop(StaticObject death) {
-            KillStatus s = status;
-            if (s.canStop()) {
-                // Writing the throwable must be done before the kill status can be observed
-                throwable = death;
-                updateKillState(STOP);
+        void stop(StaticObject death) {
+            StopAction action = null;
+            synchronized (this) {
+                KillStatus s = status;
+                if (s.canStop()) {
+                    // Writing the throwable must be done before the kill status can be observed
+                    throwable = death;
+                    action = updateKillState(STOP);
+                }
+            }
+            if (action != null) {
+                getContext().getEnv().submitThreadLocal(new Thread[]{action.host}, action);
             }
         }
 
-        synchronized void kill() {
-            updateKillState(KILL);
+        void kill() {
+            StopAction action;
+            synchronized (this) {
+                action = updateKillState(KILL);
+            }
+            if (action != null) {
+                getContext().getEnv().submitThreadLocal(new Thread[]{action.host}, action);
+            }
         }
 
-        synchronized void exit() {
-            updateKillState(EXITING);
+        void exit() {
+            StopAction action;
+            synchronized (this) {
+                action = updateKillState(EXITING);
+            }
+            if (action != null) {
+                getContext().getEnv().submitThreadLocal(new Thread[]{action.host}, action);
+            }
         }
 
-        private void updateKillState(KillStatus state) {
+        private StopAction updateKillState(KillStatus state) {
             assert Thread.holdsLock(this);
             status = state;
             if (state.asyncThrows()) {
                 Thread host = getHost(thread);
                 if (host == null) {
                     // Not yet attached thread. Will be handled by still born checks.
-                    return;
+                    return null;
                 }
                 if (host != Thread.currentThread()) {
-                    getContext().getEnv().submitThreadLocal(new Thread[]{host}, new StopAction());
                     interrupt(host); // best effort to wake up blocked thread.
+                    return new StopAction(host);
                 } else {
                     handleStop();
                 }
             }
+            return null;
         }
 
         @TruffleBoundary
@@ -591,7 +668,8 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
                         // synchronize to make sure we are still stopped.
                         KillStatus s = status;
                         if (s == STOP) {
-                            updateKillState(NORMAL);
+                            StopAction action = updateKillState(NORMAL);
+                            assert action == null;
                             // check if death cause throwable is set, if not throw ThreadDeath
                             StaticObject deathThrowable = throwable;
                             throw deathThrowable != null ? meta.throwException(deathThrowable) : meta.throwException(meta.java_lang_ThreadDeath);

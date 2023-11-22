@@ -33,9 +33,8 @@
     ]
   },
 
-  latest_jdk:: common["labsjdk-ee-20"],
+  latest_jdk:: common["labsjdk-ee-21"],
   bench_jdks:: [
-    common["labsjdk-ee-17"],
     self.latest_jdk
   ],
 
@@ -52,6 +51,7 @@
     local use_libgraal_profile = libgraal_profiling_only(config.compiler.use_libgraal_profile),
 
     job_prefix:: "bench-compiler",
+    tags+: ["bench-compiler"],
     python_version : "3",
     environment+: {
       BENCH_RESULTS_FILE_PATH : "bench-results.json"
@@ -170,6 +170,27 @@
     platform+:: "-zgc",
     environment+: {
       "JVM_CONFIG"+: "-zgc",
+    }
+  },
+
+  gen_zgc_mode:: {
+    platform+:: "-gen-zgc",
+    environment+: {
+      "JVM_CONFIG"+: "-gen-zgc",
+    }
+  },
+
+  serialgc_mode:: {
+    platform+:: "-serialgc",
+    environment+: {
+      "JVM_CONFIG"+: "-serialgc",
+    }
+  },
+
+  pargc_mode:: {
+    platform+:: "-pargc",
+    environment+: {
+      "JVM_CONFIG"+: "-pargc",
     }
   }
 }

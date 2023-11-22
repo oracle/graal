@@ -26,8 +26,13 @@
 
 package com.oracle.graal.pointsto.standalone;
 
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionType;
+import jdk.graal.compiler.options.OptionValues;
+
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class StandaloneOptions {
 
@@ -36,4 +41,11 @@ public class StandaloneOptions {
 
     @Option(help = "file:doc-files/AnalysisEntryPointsFileHelp.txt")//
     public static final OptionKey<String> AnalysisEntryPointsFile = new OptionKey<>(null);
+
+    @Option(help = "Directory of analysis reports to be generated", type = OptionType.User)//
+    public static final OptionKey<String> ReportsPath = new OptionKey<>("./");
+
+    public static Path reportsPath(OptionValues options, String relativePath) {
+        return Paths.get(Paths.get(ReportsPath.getValue(options)).toString(), relativePath).normalize().toAbsolutePath();
+    }
 }

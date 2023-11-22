@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -52,11 +52,6 @@ public class Driver {
 
     public Driver(String exe) {
         this(exe, true);
-    }
-
-    public Driver() {
-        this.exe = null;
-        this.isBundledTool = false;
     }
 
     public enum OS {
@@ -124,7 +119,7 @@ public class Driver {
         return runtimeDir;
     }
 
-    public Path getLLVMBinDir() {
+    public static Path getLLVMBinDir() {
         final String property = System.getProperty("llvm.bin.dir");
         if (property != null) {
             return Paths.get(property);
@@ -139,7 +134,7 @@ public class Driver {
         return getRuntimeDir().resolve("lib").resolve("llvm").resolve("bin");
     }
 
-    public Path getSulongHome() {
+    public static Path getSulongHome() {
         final Path sulongHome = HomeFinder.getInstance().getLanguageHomes().get("llvm");
         if (sulongHome != null) {
             return sulongHome;
@@ -200,7 +195,11 @@ public class Driver {
             // wait for process termination
             p.waitFor();
             // set exit code
-            return p.exitValue();
+            int exitCode = p.exitValue();
+            if (verbose) {
+                System.out.println("exit code: " + exitCode);
+            }
+            return exitCode;
         } catch (IOException ioe) {
             // can only occur on ProcessBuilder#start, no destroying necessary
             if (isBundledTool) {
@@ -231,9 +230,8 @@ public class Driver {
         return pb.inheritIO();
     }
 
-    public void printMissingToolMessage() {
+    public static void printMissingToolMessage() {
         System.err.println("Tool execution failed. Are you sure the toolchain is available at " + getLLVMBinDir().getParent());
-        System.err.println("You can install it via GraalVM updater: `gu install llvm-toolchain`");
         System.err.println();
         System.err.println("More infos: https://www.graalvm.org/docs/reference-manual/languages/llvm/");
     }
@@ -267,7 +265,7 @@ public class Driver {
         return Paths.get(exe).getFileName();
     }
 
-    public Path getLLVMExecutable(String tool) {
+    public static Path getLLVMExecutable(String tool) {
         return getLLVMBinDir().resolve(tool);
     }
 }

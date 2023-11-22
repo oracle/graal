@@ -86,6 +86,9 @@ import java.io.OutputStream;
  * changelog</a>.
  * <p>
  *
+ * For further information on Polyglot Sandboxing, please refer to the
+ * <a href="https://www.graalvm.org/latest/security-guide/polyglot-sandbox/">security guide</a>.
+ *
  * @see Context.Builder#sandbox(SandboxPolicy)
  * @see Engine.Builder#sandbox(SandboxPolicy)
  *
@@ -153,7 +156,7 @@ public enum SandboxPolicy {
      * </p>
      * <p>
      * Constrained Context building example:
-     * 
+     *
      * <pre>
      * ByteArrayOutputStream output = new ByteArrayOutputStream();
      * ByteArrayOutputStream errorOutput = new ByteArrayOutputStream();

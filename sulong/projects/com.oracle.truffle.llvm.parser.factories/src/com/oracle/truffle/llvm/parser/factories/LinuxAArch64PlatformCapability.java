@@ -30,6 +30,7 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
+import com.oracle.truffle.api.InternalResource.OS;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMNativeSyscallNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallExitNode;
@@ -79,7 +80,7 @@ final class LinuxAArch64PlatformCapability extends BasicAarch64PlatformCapabilit
 
     @Override
     public OS getOS() {
-        return OS.Linux;
+        return OS.LINUX;
     }
 
     @Override

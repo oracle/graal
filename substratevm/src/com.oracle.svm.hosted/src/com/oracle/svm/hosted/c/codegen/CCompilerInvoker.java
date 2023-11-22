@@ -40,8 +40,8 @@ import java.util.Scanner;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.core.riscv64.RISCV64ReflectionUtil;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import jdk.graal.compiler.core.riscv64.RISCV64ReflectionUtil;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -66,6 +66,7 @@ public abstract class CCompilerInvoker {
     public final Path tempDirectory;
     public final CompilerInfo compilerInfo;
 
+    @SuppressWarnings("this-escape")
     protected CCompilerInvoker(Path tempDirectory) {
         this.tempDirectory = tempDirectory;
         try {
@@ -187,7 +188,7 @@ public abstract class CCompilerInvoker {
             int minimumMinorVersion = 31;
             if (compilerInfo.versionMajor < minimumMajorVersion || compilerInfo.versionMinor0 < minimumMinorVersion) {
                 UserError.abort("On Windows, GraalVM Native Image for JDK %s requires %s or later (C/C++ Optimizing Compiler Version %s.%s or later).%nCompiler info detected: %s",
-                                JavaVersionUtil.JAVA_SPEC, VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION, minimumMajorVersion, minimumMinorVersion, compilerInfo);
+                                JavaVersionUtil.JAVA_SPEC, VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION, minimumMajorVersion, minimumMinorVersion, compilerInfo.getShortDescription());
             }
             if (guessArchitecture(compilerInfo.targetArch) != AMD64.class) {
                 String targetPrefix = compilerInfo.targetArch.matches("(.*x|i\\d)86$") ? "32-bit architecture " : "";
@@ -515,7 +516,11 @@ public abstract class CCompilerInvoker {
     }
 
     public static Optional<Path> lookupSearchPath(String name) {
-        return Arrays.stream(System.getenv("PATH").split(File.pathSeparator))
+        String envPath = System.getenv("PATH");
+        if (envPath == null) {
+            return Optional.empty();
+        }
+        return Arrays.stream(envPath.split(File.pathSeparator))
                         .map(entry -> Paths.get(entry, name))
                         .filter(p -> Files.isExecutable(p) && !Files.isDirectory(p))
                         .findFirst();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,7 @@
 package org.graalvm.wasm.parser.validation;
 
 import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.parser.bytecode.BytecodeGen;
+import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
 
 /**
  * Represents the scope of a block structure during module validation.
@@ -119,14 +119,14 @@ public abstract class ControlFrame {
      * @param state The current parser state.
      * @param bytecode The current extra data array.
      */
-    abstract void enterElse(ParserState state, BytecodeGen bytecode);
+    abstract void enterElse(ParserState state, RuntimeBytecodeGen bytecode);
 
     /**
      * Performs checks and actions when exiting a frame.
      * 
      * @param bytecode The current extra data array.
      */
-    abstract void exit(BytecodeGen bytecode);
+    abstract void exit(RuntimeBytecodeGen bytecode);
 
     /**
      * Adds an unconditional branch targeting this control frame. Automatically patches the branch
@@ -134,7 +134,7 @@ public abstract class ControlFrame {
      * 
      * @param bytecode The bytecode of the current control frame.
      */
-    abstract void addBranch(BytecodeGen bytecode);
+    abstract void addBranch(RuntimeBytecodeGen bytecode);
 
     /**
      * Adds a conditional branch targeting this control frame. Automatically patches the branch *
@@ -143,7 +143,7 @@ public abstract class ControlFrame {
      * @param bytecode The bytecode of the current control frame.
      */
 
-    abstract void addBranchIf(BytecodeGen bytecode);
+    abstract void addBranchIf(RuntimeBytecodeGen bytecode);
 
     /**
      * Adds a branch table item targeting this control frame. Automatically patches the branch *
@@ -152,5 +152,5 @@ public abstract class ControlFrame {
      * @param bytecode The bytecode of the current control frame.
      */
 
-    abstract void addBranchTableItem(BytecodeGen bytecode);
+    abstract void addBranchTableItem(RuntimeBytecodeGen bytecode);
 }

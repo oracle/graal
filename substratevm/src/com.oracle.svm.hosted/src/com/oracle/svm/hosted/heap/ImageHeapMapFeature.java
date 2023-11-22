@@ -86,7 +86,8 @@ final class ImageHeapMapFeature implements InternalFeature {
     public void afterImageWrite(AfterImageWriteAccess access) {
         for (HostedImageHeapMap<?, ?> hostedImageHeapMap : allInstances) {
             if (needsUpdate(hostedImageHeapMap)) {
-                throw VMError.shouldNotReachHere("ImageHeapMap modified after static analysis: " + hostedImageHeapMap + System.lineSeparator() + hostedImageHeapMap.runtimeMap);
+                throw VMError.shouldNotReachHere("ImageHeapMap modified after static analysis:%n%s%n%s",
+                                hostedImageHeapMap, hostedImageHeapMap.runtimeMap);
             }
         }
     }

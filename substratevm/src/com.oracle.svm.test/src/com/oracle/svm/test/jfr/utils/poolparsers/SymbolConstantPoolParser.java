@@ -28,14 +28,13 @@ package com.oracle.svm.test.jfr.utils.poolparsers;
 
 import java.io.IOException;
 
+import com.oracle.svm.test.jfr.utils.JfrFileParser;
 import com.oracle.svm.test.jfr.utils.RecordingInput;
 
 public class SymbolConstantPoolParser extends AbstractRepositoryParser {
-
-    @Override
-    public void reset() {
+    public SymbolConstantPoolParser(JfrFileParser parser) {
         /* 0 is the null symbol. */
-        foundIds.add(0L);
+        super(parser, 0L);
     }
 
     @Override

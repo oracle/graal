@@ -28,7 +28,8 @@ import static com.oracle.truffle.tools.chromeinspector.objects.JSONTruffleObject
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.api.utilities.TriState;
+import org.graalvm.shadowed.org.json.JSONArray;
 
 /**
  * TruffleObject of a JSON array.
@@ -54,6 +55,35 @@ public final class JSONTruffleArray extends AbstractInspectorArray {
         }
         Object value = json.get((int) index);
         return getTruffleValueFromJSONValue(value);
+    }
+
+    @Override
+    @CompilerDirectives.TruffleBoundary
+    void writeArrayElement(long index, Object value) throws InvalidArrayIndexException {
+        if (!isArrayElementModifiable(index)) {
+            throw InvalidArrayIndexException.create(index);
+        }
+        json.put((int) index, value);
+    }
+
+    @Override
+    boolean isArrayElementModifiable(long index) {
+        return index >= 0 && index < getArraySize();
+    }
+
+    @Override
+    TriState isIdenticalOrUndefined(Object other) {
+        if (other instanceof JSONTruffleArray otherArray) {
+            return TriState.valueOf(json == otherArray.json);
+        } else {
+            return TriState.UNDEFINED;
+        }
+    }
+
+    @Override
+    @CompilerDirectives.TruffleBoundary
+    int identityHashCode() {
+        return json.hashCode();
     }
 
 }

@@ -45,13 +45,13 @@ import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.ThreadListenerSupportFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.sun.management.HotSpotDiagnosticMXBean;
 import com.sun.management.internal.PlatformMBeanProviderImpl;
 
 import jdk.jfr.Configuration;
-import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.jfc.JFC;
 
 /**
@@ -116,7 +116,7 @@ public class JfrFeature implements InternalFeature {
         boolean runtimeEnabled = VMInspectionOptions.hasJfrSupport();
         if (HOSTED_ENABLED && !runtimeEnabled) {
             if (allowPrinting) {
-                System.err.println("Warning: When FlightRecorder is used to profile the image generator, it is also automatically enabled in the native image at run time. " +
+                LogUtils.warning("When FlightRecorder is used to profile the image generator, it is also automatically enabled in the native image at run time. " +
                                 "This can affect the measurements because it can can make the image larger and image build time longer.");
             }
             runtimeEnabled = true;
@@ -157,7 +157,7 @@ public class JfrFeature implements InternalFeature {
 
         // Initialize some parts of JFR/JFC at image build time.
         List<Configuration> knownConfigurations = JFC.getConfigurations();
-        JVM.getJVM().createNativeJFR();
+        JfrJdkCompatibility.createNativeJFR();
 
         ImageSingletons.add(JfrManager.class, new JfrManager(HOSTED_ENABLED));
         ImageSingletons.add(SubstrateJVM.class, new SubstrateJVM(knownConfigurations));
@@ -173,11 +173,13 @@ public class JfrFeature implements InternalFeature {
         JfrSerializerSupport.get().register(new JfrGCCauseSerializer());
         JfrSerializerSupport.get().register(new JfrGCNameSerializer());
         JfrSerializerSupport.get().register(new JfrVMOperationNameSerializer());
+        JfrSerializerSupport.get().register(new JfrGCWhenSerializer());
 
         ThreadListenerSupport.get().register(SubstrateJVM.getThreadLocal());
 
+        RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+        rci.initializeAtBuildTime("jdk.management.jfr.internal.FlightRecorderMXBeanProvider$SingleMBeanComponent", "Used by FlightRecorder");
         if (HOSTED_ENABLED) {
-            RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
             rci.initializeAtBuildTime("jdk.management.jfr", "Allow FlightRecorder to be used at image build time");
             rci.initializeAtBuildTime("com.sun.jmx.mbeanserver", "Allow FlightRecorder to be used at image build time");
             rci.initializeAtBuildTime("com.sun.jmx.defaults", "Allow FlightRecorder to be used at image build time");

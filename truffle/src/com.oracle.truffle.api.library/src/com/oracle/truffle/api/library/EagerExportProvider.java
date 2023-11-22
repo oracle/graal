@@ -52,23 +52,8 @@ package com.oracle.truffle.api.library;
  * {@link #ensureRegistered()}.
  *
  * @since 21.2
+ * @deprecated Use {@link com.oracle.truffle.api.library.provider.EagerExportProvider}.
  */
-public interface EagerExportProvider {
-
-    /**
-     * Ensures that the export is registered and usable. This method has no effect if already
-     * registered.
-     *
-     * @since 21.2
-     */
-    void ensureRegistered();
-
-    /**
-     * Returns the {@link Class#getName() class name} of the library to be used. Uses a string to
-     * avoid triggering class loading for all libraries.
-     *
-     * @since 21.2
-     */
-    String getLibraryClassName();
-
+@Deprecated(since = "23.1")
+public interface EagerExportProvider extends com.oracle.truffle.api.library.provider.EagerExportProvider {
 }

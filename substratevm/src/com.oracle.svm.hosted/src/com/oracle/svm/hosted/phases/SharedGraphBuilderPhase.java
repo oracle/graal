@@ -31,43 +31,44 @@ import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.calc.Condition;
-import org.graalvm.compiler.core.common.type.StampPair;
-import org.graalvm.compiler.debug.DebugCloseable;
-import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.java.BciBlockMapping;
-import org.graalvm.compiler.java.BytecodeParser;
-import org.graalvm.compiler.java.FrameStateBuilder;
-import org.graalvm.compiler.java.GraphBuilderPhase;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.BeginNode;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.IfNode;
-import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.UnreachableBeginNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.replacements.SnippetTemplate;
-import org.graalvm.compiler.word.WordTypes;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.calc.Condition;
+import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.debug.DebugCloseable;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.java.BciBlockMapping;
+import jdk.graal.compiler.java.BytecodeParser;
+import jdk.graal.compiler.java.FrameStateBuilder;
+import jdk.graal.compiler.java.GraphBuilderPhase;
+import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.BeginNode;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.IfNode;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.UnreachableBeginNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.IsNullNode;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.replacements.SnippetTemplate;
+import jdk.graal.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.common.meta.MultiMethod;
@@ -147,8 +148,16 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             }
         }
 
+        protected boolean shouldVerifyFrameStates() {
+            return false;
+        }
+
         @Override
         protected void build(FixedWithNextNode startInstruction, FrameStateBuilder startFrameState) {
+            if (!shouldVerifyFrameStates()) {
+                startFrameState.disableStateVerification();
+            }
+
             super.build(startInstruction, startFrameState);
 
             if (isMethodDeoptTarget()) {
@@ -165,6 +174,9 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         protected RuntimeException throwParserError(Throwable e) {
             if (e instanceof UserException) {
                 throw (UserException) e;
+            }
+            if (e instanceof UnsupportedFeatureException) {
+                throw (UnsupportedFeatureException) e;
             }
             throw super.throwParserError(e);
         }
@@ -199,6 +211,22 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 throw VMError.shouldNotReachHere("Discovered an unresolved callee while parsing " + method.asStackTraceElement(bci()) + '.');
             }
             return result;
+        }
+
+        @Override
+        protected Object lookupConstant(int cpi, int opcode, boolean allowBootstrapMethodInvocation) {
+            try {
+                // Native Image forces bootstrap method invocation at build time
+                // until support has been added for doing the invocation at runtime (GR-45806)
+                return super.lookupConstant(cpi, opcode, true);
+            } catch (BootstrapMethodError | IncompatibleClassChangeError | IllegalArgumentException ex) {
+                if (linkAtBuildTime) {
+                    reportUnresolvedElement("constant", method.format("%H.%n(%P)"), ex);
+                } else {
+                    replaceWithThrowingAtRuntime(this, ex);
+                }
+                return ex;
+            }
         }
 
         /**
@@ -314,8 +342,8 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
-        protected void handleUnresolvedLoadConstant(JavaType type) {
-            handleUnresolvedType(type);
+        protected void handleUnresolvedLoadConstant(JavaType unresolvedType) {
+            handleUnresolvedType(unresolvedType);
         }
 
         @Override
@@ -338,15 +366,6 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             handleUnresolvedMethod(javaMethod);
         }
 
-        @Override
-        protected void handleBootstrapMethodError(BootstrapMethodError bme, JavaMethod javaMethod) {
-            if (linkAtBuildTime) {
-                reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"), bme);
-            } else {
-                replaceWithThrowingAtRuntime(this, bme);
-            }
-        }
-
         /**
          * This method is used to delay errors from image build-time to run-time. It does so by
          * invoking a synthesized method that throws an instance like the one given as throwable in
@@ -362,14 +381,20 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 var causeCtor = ReflectionUtil.lookupConstructor(cause.getClass(), String.class);
                 ResolvedJavaMethod causeCtorMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(causeCtor), false);
                 ValueNode causeMessageNode = ConstantNode.forConstant(b.getConstantReflection().forString(cause.getMessage()), metaAccess, b.getGraph());
-                Invoke causeCtorInvoke = b.appendInvoke(InvokeKind.Static, causeCtorMethod, new ValueNode[]{causeMessageNode}, null);
+                Invoke causeCtorInvoke = (Invoke) b.appendInvoke(InvokeKind.Static, causeCtorMethod, new ValueNode[]{causeMessageNode}, null);
                 /*
                  * Invoke method that creates and throws throwable-instance with message and cause
                  */
                 var errorCtor = ReflectionUtil.lookupConstructor(throwable.getClass(), String.class, Throwable.class);
                 ResolvedJavaMethod throwingMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);
                 ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(throwable.getMessage()), metaAccess, b.getGraph());
+                /*
+                 * As this invoke will always throw, its state after will not respect the expected
+                 * stack effect.
+                 */
+                boolean verifyStates = b.getFrameStateBuilder().disableStateVerification();
                 b.appendInvoke(InvokeKind.Static, throwingMethod, new ValueNode[]{messageNode, causeCtorInvoke.asNode()}, null);
+                b.getFrameStateBuilder().setStateVerification(verifyStates);
                 b.add(new LoweredDeadEndNode());
             } else {
                 replaceWithThrowingAtRuntime(b, throwable.getClass(), throwable.getMessage());
@@ -394,7 +419,9 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             var metaAccess = (UniverseMetaAccess) b.getMetaAccess();
             ResolvedJavaMethod throwingMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);
             ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(throwableMessage), b.getMetaAccess(), b.getGraph());
+            boolean verifyStates = b.getFrameStateBuilder().disableStateVerification();
             b.appendInvoke(InvokeKind.Static, throwingMethod, new ValueNode[]{messageNode}, null);
+            b.getFrameStateBuilder().setStateVerification(verifyStates);
             b.add(new LoweredDeadEndNode());
         }
 
@@ -571,7 +598,9 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 if (isWordTypeExpected && !isWordValue) {
                     throw UserError.abort("Expected Word but got Object for %s in %s", reason, method.asStackTraceElement(bci()));
                 } else if (!isWordTypeExpected && isWordValue) {
-                    throw UserError.abort("Expected Object but got Word for %s in %s", reason, method.asStackTraceElement(bci()));
+                    throw UserError.abort("Expected Object but got Word for %s in %s. One possible cause for this error is when word values are passed into lambdas as parameters " +
+                                    "or from variables in an enclosing scope, which is not supported, but can be solved by instead using explicit classes (including anonymous classes).",
+                                    reason, method.asStackTraceElement(bci()));
                 }
             }
         }
@@ -727,17 +756,24 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 assert frameState.rethrowException();
             }
 
-            DeoptEntrySupport deoptNode = graph.add(deopt.isProxy() ? new DeoptProxyAnchorNode() : new DeoptEntryNode());
+            int proxifiedInvokeBci = deopt.proxifiedInvokeBci();
+            boolean isProxy = deopt.isProxy();
+            DeoptEntrySupport deoptNode;
+            if (isProxy) {
+                deoptNode = graph.add(new DeoptProxyAnchorNode(proxifiedInvokeBci));
+            } else {
+                boolean proxifysInvoke = deopt.proxifysInvoke();
+                deoptNode = graph.add(proxifysInvoke ? DeoptEntryNode.create(proxifiedInvokeBci) : DeoptEntryNode.create());
+            }
             FrameState stateAfter = frameState.create(deopt.frameStateBci(), deoptNode);
             deoptNode.setStateAfter(stateAfter);
             if (lastInstr != null) {
                 lastInstr.setNext(deoptNode.asFixedNode());
             }
 
-            if (deopt.isProxy()) {
+            if (isProxy) {
                 lastInstr = (DeoptProxyAnchorNode) deoptNode;
             } else {
-                assert !deopt.duringCall() : "Implicit deopt entries from invokes cannot have explicit deopt entries.";
                 DeoptEntryNode deoptEntryNode = (DeoptEntryNode) deoptNode;
                 deoptEntryNode.setNext(graph.add(new DeoptEntryBeginNode()));
 
@@ -745,7 +781,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                  * DeoptEntries for positions not during an exception dispatch (rethrowException)
                  * also must be linked to their exception target.
                  */
-                if (!deopt.rethrowException()) {
+                if (!deopt.isExceptionDispatch()) {
                     /*
                      * Saving frameState so that different modifications can be made for next() and
                      * exceptionEdge().

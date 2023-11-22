@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -604,15 +604,37 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
 
             boolean usesInlinedNodes = false;
+            boolean usesSpecializationClass = FlatNodeGenFactory.useSpecializationClass(specialization);
+            boolean usesSharedInlineNodes = false;
+            boolean usesExclusiveInlineNodes = false;
             for (CacheExpression cache : specialization.getCaches()) {
                 if (cache.getInlinedNode() != null) {
                     usesInlinedNodes = true;
-                    break;
+                    if (cache.getSharedGroup() != null) {
+                        usesSharedInlineNodes = true;
+                    } else {
+                        usesExclusiveInlineNodes = true;
+                    }
                 }
             }
+
             if (usesInlinedNodes) {
+                if (usesSpecializationClass && usesSharedInlineNodes && usesExclusiveInlineNodes) {
+                    specialization.addSuppressableWarning(TruffleSuppressedWarnings.INTERPRETED_PERFORMANCE,
+                                    "It is discouraged that specializations with specialization data class combine " + //
+                                                    "shared and exclusive @Cached inline nodes or profiles arguments. Truffle inlining support code then must " + //
+                                                    "traverse the parent pointer in order to resolve the inline data of the shared nodes or profiles, " + //
+                                                    "which incurs performance hit in the interpreter. To resolve this: make all the arguments @Exclusive, " + //
+                                                    "or merge specializations to avoid @Shared arguments, or if the footprint benefit outweighs the " + //
+                                                    "performance degradation, then suppress the warning.");
+                }
+
                 boolean isStatic = element.getModifiers().contains(Modifier.STATIC);
                 if (node.isGenerateInline()) {
+                    /*
+                     * For inlined nodes we need pass down the inlineTarget Node even for shared
+                     * nodes using the first specialization parameter.
+                     */
                     boolean firstParameterNode = false;
                     for (Parameter p : specialization.getSignatureParameters()) {
                         firstParameterNode = p.isDeclared();
@@ -629,8 +651,15 @@ public final class NodeParser extends AbstractParser<NodeData> {
                                         "To resolve this add the static keyword to the specialization method. ",
                                         getSimpleName(types.GenerateInline));
                     }
-                } else if (FlatNodeGenFactory.useSpecializationClass(specialization) || mode == ParseMode.EXPORTED_MESSAGE) {
-
+                } else if (mode == ParseMode.EXPORTED_MESSAGE || FlatNodeGenFactory.substituteNodeWithSpecializationClass(specialization)) {
+                    /*
+                     * For exported message we need to use @Bind("$node") always even for any
+                     * inlined cache as the "this" receiver refers to the library receiver.
+                     *
+                     * For regular cached nodes @Bind("this") must be used if a specialization data
+                     * class is in use. If all inlined caches are shared we can use this and avoid
+                     * the warning.
+                     */
                     boolean hasNodeParameter = false;
                     for (CacheExpression cache : specialization.getCaches()) {
                         if (cache.isBind() && specialization.isNodeReceiverBound(cache.getDefaultExpression())) {
@@ -653,7 +682,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                                                         "To resolve this add a '%s' parameter to the specialization method and pass the value along to inlined cached values.",
                                         nodeParameter, nodeParameter);
 
-                        specialization.addError(message);
+                        specialization.addSuppressableWarning(TruffleSuppressedWarnings.INLINING_RECOMMENDATION, message);
 
                     } else if (!isStatic && mode != ParseMode.EXPORTED_MESSAGE) {
                         // The static keyword does not make sense for exported messages, where the
@@ -3886,7 +3915,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
      * on. This enables that @Cached InlinedBranchProfile inlines by default even if a cached
      * version is generated and no warning is printed.
      */
-    private static boolean forceInlineByDefault(CacheExpression cache) {
+    private boolean forceInlineByDefault(CacheExpression cache) {
         AnnotationMirror cacheAnnotation = cache.getMessageAnnotation();
         TypeElement parameterType = ElementUtils.castTypeElement(cache.getParameter().getType());
         if (parameterType == null) {
@@ -3895,6 +3924,13 @@ public final class NodeParser extends AbstractParser<NodeData> {
         boolean defaultCached = getAnnotationValue(cacheAnnotation, "value", false) == null;
         if (defaultCached && !hasDefaultCreateCacheMethod(parameterType.asType())) {
             return hasInlineMethod(cache);
+        }
+        if (ElementUtils.isAssignable(parameterType.asType(), types.Node)) {
+            AnnotationMirror inlineAnnotation = getGenerateInlineAnnotation(parameterType);
+            if (inlineAnnotation != null) {
+                return getAnnotationValue(Boolean.class, inlineAnnotation, "value") &&
+                                getAnnotationValue(Boolean.class, inlineAnnotation, "inlineByDefault");
+            }
         }
         return false;
     }
@@ -3996,7 +4032,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
     @SuppressWarnings({"unchecked", "try"})
     private NodeData lookupNodeData(NodeData node, TypeMirror type, MessageContainer errorTarget) {
         TypeElement parameterType = ElementUtils.castTypeElement(type);
-        String typeId = ElementUtils.getTypeId(type);
+        String typeId = ElementUtils.getQualifiedName(type);
         NodeData nodeData = nodeDataCache.get(typeId);
         if (nodeDataCache.containsKey(typeId)) {
             return nodeData;

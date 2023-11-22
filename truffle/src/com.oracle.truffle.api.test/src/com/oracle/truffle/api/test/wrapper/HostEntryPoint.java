@@ -54,13 +54,14 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
+import org.graalvm.polyglot.io.IOAccess;
 
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.Message;
 import com.oracle.truffle.api.library.ReflectionLibrary;
-import org.graalvm.polyglot.io.IOAccess;
 
 /**
  * This class simulates a host to guest remote boundary. All parameters are designed to be easily
@@ -85,8 +86,8 @@ final class HostEntryPoint {
 
     public long remoteCreateEngine(SandboxPolicy sandboxPolicy) {
         // host access needs to be replaced
-        GuestHostLanguage hostLanguage = new GuestHostLanguage(guestPolyglot, guestPolyglot.createHostAccess());
-        Object engine = guestPolyglot.buildEngine(new String[0], sandboxPolicy, null, null, null, new HashMap<>(), true, false, false, null, null, hostLanguage, false, false, null);
+        GuestHostLanguage hostLanguage = new GuestHostLanguage(guestPolyglot, (AbstractHostAccess) guestPolyglot.createHostAccess());
+        Object engine = guestPolyglot.buildEngine(new String[0], sandboxPolicy, null, null, null, new HashMap<>(), false, false, null, null, hostLanguage, false, false, null);
         return guestToHost(engine);
     }
 
@@ -117,28 +118,28 @@ final class HostEntryPoint {
         return type.cast(idToGuestObject.get(id));
     }
 
-    public long remoteCreateContext(long engineId, SandboxPolicy sandboxPolicy) {
+    public long remoteCreateContext(long engineId, SandboxPolicy sandboxPolicy, String tmpDir) {
         Engine engine = unmarshall(Engine.class, engineId);
-        Object receiver = api.getReceiver(engine);
-        AbstractEngineDispatch dispatch = api.getDispatch(engine);
-        Context remoteContext = dispatch.createContext(receiver, sandboxPolicy, null, null, null, false, null, PolyglotAccess.NONE, false,
+        Object receiver = api.getEngineReceiver(engine);
+        AbstractEngineDispatch dispatch = api.getEngineDispatch(engine);
+        Context remoteContext = (Context) dispatch.createContext(receiver, sandboxPolicy, null, null, null, false, null, PolyglotAccess.NONE, false,
                         false, false, false, false, null, new HashMap<>(), new HashMap<>(),
                         new String[0], IOAccess.NONE, null,
                         false, null, EnvironmentAccess.NONE,
-                        null, null, null, null, null, true, false);
+                        null, null, null, null, tmpDir, null, true, false);
         return guestToHost(remoteContext);
     }
 
     public long remoteEval(long contextId, String languageId, String characters) {
         Context context = unmarshall(Context.class, contextId);
         Value v = context.eval(languageId, characters);
-        return guestToHost(api.getReceiver(v));
+        return guestToHost(api.getValueReceiver(v));
     }
 
     public long remoteGetBindings(long contextId, String languageId) {
         Context context = unmarshall(Context.class, contextId);
         Value v = context.getBindings(languageId);
-        return guestToHost(api.getReceiver(v));
+        return guestToHost(api.getValueReceiver(v));
     }
 
     public Object remoteMessage(long contextId, long receiverId, Message message, Object[] args) {
@@ -220,8 +221,8 @@ final class HostEntryPoint {
 
     public void shutdown(long engineId) {
         Engine engine = unmarshall(Engine.class, engineId);
-        Object receiver = api.getReceiver(engine);
-        AbstractEngineDispatch dispatch = api.getDispatch(engine);
+        Object receiver = api.getEngineReceiver(engine);
+        AbstractEngineDispatch dispatch = api.getEngineDispatch(engine);
         dispatch.shutdown(receiver);
     }
 

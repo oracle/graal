@@ -1,9 +1,9 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: dynamic-features
 link_title: Dynamic Proxy
 permalink: /reference-manual/native-image/dynamic-features/DynamicProxy/
-redirect_from: /$version/reference-manual/native-image/DynamicProxy/
+redirect_from: /reference-manual/native-image/DynamicProxy/
 ---
 
 # Dynamic Proxy in Native Image

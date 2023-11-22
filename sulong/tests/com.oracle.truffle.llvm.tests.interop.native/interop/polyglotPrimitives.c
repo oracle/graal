@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,16 +28,24 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdint.h>
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 
 #define ACCESS_TYPE(ctype, jtype, val)                                                                                                               \
-    void export_##jtype(const char *name) { polyglot_export(name, polyglot_from_##jtype(val)); }                                                     \
+    void export_##jtype(const char *name) {                                                                                                          \
+        polyglot_export(name, polyglot_from_##jtype(val));                                                                                           \
+    }                                                                                                                                                \
                                                                                                                                                      \
-    void put_member_##jtype(polyglot_value obj) { polyglot_put_member(obj, "member", polyglot_from_##jtype(val)); }                                  \
+    void put_member_##jtype(polyglot_value obj) {                                                                                                    \
+        polyglot_put_member(obj, "member", polyglot_from_##jtype(val));                                                                              \
+    }                                                                                                                                                \
                                                                                                                                                      \
-    polyglot_value get_member_##jtype(polyglot_value obj) { return polyglot_get_member(obj, "member"); }                                             \
+    polyglot_value get_member_##jtype(polyglot_value obj) {                                                                                          \
+        return polyglot_get_member(obj, "member");                                                                                                   \
+    }                                                                                                                                                \
                                                                                                                                                      \
-    ctype import_##jtype(const char *name) { return polyglot_as_##jtype(polyglot_import(name)); }
+    ctype import_##jtype(const char *name) {                                                                                                         \
+        return polyglot_as_##jtype(polyglot_import(name));                                                                                           \
+    }
 
 ACCESS_TYPE(bool, boolean, true)
 ACCESS_TYPE(int8_t, i8, 42)

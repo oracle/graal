@@ -2,6 +2,55 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 24.0.0
+
+* GR-45863 Yield and resume events added to the instrumentation:
+	* `ExecutionEventListener.onYield()` and `ExecutionEventNode.onYield()` is invoked on a yield of the current thread
+	* `ExecutionEventListener.onResume()` and `ExecutionEventNode.onResume()` is invoked on a resume of the execution on the current thread after a yield
+	* `ProbeNode.onYield()` and `ProbeNode.onResume()`
+	* `GenerateWrapper` has new `yieldExceptions()` and `resumeMethodPrefix()` parameters to automatically call the new `onYield()`/`onResume()` methods from wrapper nodes.
+	* `RootNode.isSameFrame()` and `TruffleInstrument.Env.isSameFrame()` added to test if two frames are the same, to match the yielded and resumed execution.
+* GR-45863 Adopted onYield() and onResume() instrumentation events in the debugger stepping logic.
+* [GR-21361] Remove support for legacy `<language-id>.home` system property. Only `org.graalvm.language.<language-id>.home` will be used.
+* GR-41302 Added the `--engine.AssertProbes` option, which asserts that enter and return are always called in pairs on ProbeNode, verifies correct behavior of wrapper nodes. Java asserts need to be turned on for this option to have an effect.
+* GR-48816 Added new interpreted performance warning to Truffle DSL.
+
+## Version 23.1.0
+
+* GR-45123 Added `GenerateInline#inlineByDefault` to force usage of inlined node variant even when the node has also a cached variant (`@GenerateCached(true)`).
+* GR-45036 Improved IGV IR dumping. Dump folders for Truffle now include the compilation tier to differentiate compilations better. Inlined IR graphs are now additionally dumped in separate folders if dump level is >= 2.
+* GR-45036 Improved IGV AST dumping. The Truffle AST is now dumped as part of the IR dump folder. The dumped AST tree now shows all inlined ASTS in a single tree. Individual functions can be grouped using the "Cluster nodes" function in IGV (top status bar). Root nodes now display their name e.g. `SLFunctionBody (root add)`. Every AST node now has a property `graalIRNode` that allows to find the corresponding Graal IR constant if there is one. 
+* GR-45284 Added Graal debug options `TruffleTrustedNonNullCast` and `TruffleTrustedTypeCast` that allow disabling trusted non-null and type casts in Truffle, respectively. Note that disabling trusted type casts effectively disables non-null casts, too.
+* GR-44211 Added `TruffleLanguage.Env#newTruffleThreadBuilder(Runnable)` to create a builder for threads that have access to the appropriate `TruffleContext`. All existing `TruffleLanguage.Env#createThread` methods have been deprecated. On top of what the deprecated methods provided, the builder now allows to specify `beforeEnter` and `afterLeave` callbacks for the created threads.
+* GR-44211 Added `TruffleContext#leaveAndEnter(Node, Interrupter, InterruptibleFunction, Object)` to be able to interrupt the function run when the context is not entered. The exisiting API `TruffleContext#leaveAndEnter(Node, Supplier)` is deprecated.
+* GR-44211 Removed the deprecated method `TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Runnable)`.
+* GR-44211 Added `TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Consumer)`. It replaces the method `TruffleSafepoint#setBlockedWithException(Node, Interrupter, Interruptible, Object, Runnable, Consumer)` that is now deprecated.
+* GR-44211 Added `TruffleSafepoint#setBlockedFunction(Node, Interrupter, InterruptibleFunction, Object, Runnable, Consumer)` to be able to return an object from the interruptible functional method.
+* GR-44211 Added `TruffleSafepoint#setBlockedThreadInterruptibleFunction(Node, InterruptibleFunction, Object)` as a short-cut method to allow setting the blocked status for methods that throw `InterruptedException` and support interrupting using `Thread#interrupt()`.
+* GR-44829 TruffleStrings: added specialized TruffleStringBuilder types for better performance on UTF encodings.
+* GR-46146 Added `TruffleLanguage#ContextLocalProvider` and `TruffleInstrument#ContextLocalProvider`, and deprecated `TruffleLanguage.createContextLocal`, `TruffleLanguage.createContextThreadLocal`, `TruffleInstrument.createContextLocal` and `TruffleInstrument.createContextThreadLocal`. Starting with JDK 21, the deprecated methods trigger the new this-escape warning. The replacement API avoids the warning.
+* GR-44217 In the past, on a GraalVM JDK, languages or instruments could be provided using `-Dtruffle.class.path.append`, but are now loaded from the application module path. The truffle class path is deprecated and should no longer be used, but remains functional. Languages are not picked up from the application class path, so the language first needs to be [migrated](https://github.com/oracle/graal/blob/master/truffle/docs/ModuleMigration.md). Truffle languages or instruments installed as a GraalVM component in the GraalVM JDK are still loaded in an unnamed module. However, GraalVM components will be deprecated, so languages and instruments should be migrated to the module path.
+* GR-46181 `truffle-tck.jar` is not included in GraalVM artifacts anymore. It is still available via Maven.
+* GR-46181 `truffle-dsl-processor.jar` is not included in GraalVM artifacts anymore. It is still available via Maven.
+* GR-44222 Deprecated several experimental engine options and moved them to use the `compiler` prefix instead of the `engine` prefix. You can search for these options with this regexp: `git grep -P '\bengine\.(EncodedGraphCache|ExcludeAssertions|FirstTierInliningPolicy|FirstTierUseEconomy|InlineAcrossTruffleBoundary|InlineOnly|Inlining|InliningExpansionBudget|InliningInliningBudget|InliningPolicy|InliningRecursionDepth|InliningUseSize|InstrumentBoundaries|InstrumentBoundariesPerInlineSite|InstrumentBranches|InstrumentBranchesPerInlineSite|InstrumentFilter|InstrumentationTableSize|IterativePartialEscape|MaximumGraalGraphSize|MethodExpansionStatistics|NodeExpansionStatistics|NodeSourcePositions|ParsePEGraphsWithAssumptions|TraceInlining|TraceInliningDetails|TraceMethodExpansion|TraceNodeExpansion|TracePerformanceWarnings|TraceStackTraceLimit|TreatPerformanceWarningsAsErrors)\b'`.
+* GR-44222 The following deprecated debugging options were removed in this release:
+	* `engine.InvalidationReprofileCount`: The option no longer has any effect. Remove the usage to migrate.
+	* `engine.ReplaceReprofileCount`: The option no longer has any effect. Remove the usage to migrate.
+	* `engine.PerformanceWarningsAreFatal`: Use `engine.CompilationFailureAction=ExitVM` and `compiler.TreatPerformanceWarningsAsErrors=<PerformanceWarningKinds>` instead.
+	* `engine.PrintExpansionHistogram`: Superseded by `engine.TraceMethodExpansion`.
+	* `engine.ForceFrameLivenessAnalysis`: The option no longer has any effect. Remove the usage to migrate.
+	* `engine.CompilationExceptionsArePrinted`: Use `engine.CompilationFailureAction=Print` instead.
+	* `engine.CompilationExceptionsAreThrown`: Use `engine.CompilationFailureAction=Throw` instead.
+	* `engine.CompilationExceptionsAreFatal`: Use `engine.CompilationFailureAction=ExitVM` instead.
+* GR-44420 Added `TruffleLanguage.finalizeThread(Object, Thread)` to allow languages run finalization hooks for initialized threads before the context is disposed.
+* GR-45923 Added `EventBinding.tryAttach()` to try to attach a binding, if not disposed or attached already.
+* GR-20628 Added atomic byte-array operations to `ByteArraySupport` and subclasses.
+* GR-39571 Added `TranscodingErrorHandler` to `TruffleString.SwitchEncodingNode`. 
+* GR-46345 Added a support for the lazy unpacking of language and instrument resources necessary for execution. This support replaces the concept of language homes for Maven language and tool deployment. For a language or instrument that requires additional files to execute, it needs to follow these steps:
+  * Bundle the necessary files into a jar distribution.
+  * Implement the `InternalResource` interface for handling the resource file unpacking.
+  * Call the `Env#getInternalResource` when the language or instrument needs the bundled resource files. This method ensures that the requested `InternalResource` is unpacked and provides a directory containing the unpacked files. Since unpacking internal resources can be an expensive operation, the implementation ensures that internal resources are cached.
+* GR-44464 Added `TruffleString.ToValidStringNode` for encoding-level string sanitization.
 
 ## Version 23.0.0
 
@@ -61,6 +110,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-44053 (change of behavior) The default implementation of `InteropLibrary.getExceptionStackTrace()` will now include host stack trace elements if [public host access is allowed](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#allowPublicAccess-boolean-).
 * GR-44053 (change of behavior) Truffle stack trace information is now attached to host and internal exceptions via suppressed exceptions. The cause of an exception is never modified anymore.
 * GR-44053 (change of behavior) A `StackOverflowError` or `OutOfMemoryError` crossing a Truffle call boundary will not be injected guest stack trace information anymore.
+* GR-44723 `Truffle.getRuntime().getName()` and consequently `Engine.getImplementationName()` have been adjusted to return "Oracle GraalVM" instead of "GraalVM EE".
+* GR-44211 Added `TruffleLanguage.Env#newTruffleThreadBuilder(Runnable)` to create a builder for threads that have access to the appropriate `TruffleContext`. All existing `TruffleLanguage.Env#createThread` methods have been deprecated. On top of what the deprecated methods provide, the builder allows specifying `beforeEnter` and `afterLeave` callbacks for the created threads. 
+* GR-44211 Added `TruffleLanguage.Env#newTruffleThreadBuilder(Runnable)` to create a builder for threads that have access to the appropriate `TruffleContext`. All existing `TruffleLanguage.Env#createThread` methods have been deprecated. On top of what the deprecated methods provided, the builder now allows to specify `beforeEnter` and `afterLeave` callbacks for the created threads. 
 
 ## Version 22.3.0
 

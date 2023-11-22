@@ -26,8 +26,8 @@ package com.oracle.svm.configure.trace;
 
 import java.util.regex.Pattern;
 
-import org.graalvm.compiler.java.LambdaUtils;
-import org.graalvm.compiler.phases.common.LazyValue;
+import jdk.graal.compiler.java.LambdaUtils;
+import jdk.graal.compiler.phases.common.LazyValue;
 
 import com.oracle.svm.configure.filters.ConfigurationFilter;
 import com.oracle.svm.configure.filters.HierarchyFilterNode;
@@ -77,6 +77,9 @@ public final class AccessAdvisor {
         internalCallerFilter.addOrGetChildren("java.util.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("java.util.concurrent.atomic.*", ConfigurationFilter.Inclusion.Include); // Atomic*FieldUpdater
         internalCallerFilter.addOrGetChildren("java.util.Collections", ConfigurationFilter.Inclusion.Include); // java.util.Collections.zeroLengthArray
+        internalCallerFilter.addOrGetChildren("java.util.random.*", ConfigurationFilter.Inclusion.Include); // RandomGeneratorFactory$$Lambda
+        // Exception constructors
+        internalCallerFilter.addOrGetChildren("java.util.concurrent.ForkJoinTask", ConfigurationFilter.Inclusion.Include);
         internalCallerFilter.addOrGetChildren("javax.crypto.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("javax.lang.model.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("javax.net.**", ConfigurationFilter.Inclusion.Exclude);
@@ -92,6 +95,8 @@ public final class AccessAdvisor {
         internalCallerFilter.addOrGetChildren("sun.launcher.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("sun.misc.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("sun.net.**", ConfigurationFilter.Inclusion.Exclude);
+        // Uses constructor reflection on exceptions
+        internalCallerFilter.addOrGetChildren("sun.net.www.protocol.http.*", ConfigurationFilter.Inclusion.Include);
         internalCallerFilter.addOrGetChildren("sun.nio.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("sun.reflect.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("sun.text.**", ConfigurationFilter.Inclusion.Exclude);
@@ -122,6 +127,7 @@ public final class AccessAdvisor {
     private static void excludeInaccessiblePackages(HierarchyFilterNode rootNode) {
         rootNode.addOrGetChildren("com.oracle.graal.**", ConfigurationFilter.Inclusion.Exclude);
         rootNode.addOrGetChildren("com.oracle.truffle.**", ConfigurationFilter.Inclusion.Exclude);
+        rootNode.addOrGetChildren("jdk.graal.compiler.**", ConfigurationFilter.Inclusion.Exclude);
         rootNode.addOrGetChildren("org.graalvm.compiler.**", ConfigurationFilter.Inclusion.Exclude);
         rootNode.addOrGetChildren("org.graalvm.libgraal.**", ConfigurationFilter.Inclusion.Exclude);
     }

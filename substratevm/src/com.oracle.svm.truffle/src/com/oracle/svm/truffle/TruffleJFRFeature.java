@@ -25,36 +25,47 @@
 package com.oracle.svm.truffle;
 
 import java.util.Iterator;
+import java.util.List;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.compiler.truffle.jfr.EventFactory;
-import org.graalvm.compiler.truffle.jfr.EventFactory.Provider;
-import org.graalvm.compiler.truffle.runtime.serviceprovider.TruffleRuntimeServices;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jfr.JfrFeature;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.truffle.runtime.jfr.EventFactory;
+import com.oracle.truffle.runtime.jfr.EventFactory.Provider;
+import com.oracle.truffle.runtime.serviceprovider.TruffleRuntimeServices;
 
-@AutomaticallyRegisteredFeature
 public class TruffleJFRFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        if (isEnabled()) {
-            Iterator<Provider> providers = TruffleRuntimeServices.load(Provider.class).iterator();
-            if (!providers.hasNext()) {
-                throw UserError.abort("No EventFactory.Provider is registered in Truffle runtime services.");
-            }
-            Provider provider = providers.next();
-            EventFactory factory = provider.getEventFactory();
-            ImageSingletons.add(EventFactory.class, factory);
+        Iterator<Provider> providers = TruffleRuntimeServices.load(Provider.class).iterator();
+        if (!providers.hasNext()) {
+            throw UserError.abort("No EventFactory.Provider is registered in Truffle runtime services.");
         }
+        Provider provider = providers.next();
+        EventFactory factory = provider.getEventFactory();
+        ImageSingletons.add(EventFactory.class, factory);
+    }
+
+    @Override
+    public String getDescription() {
+        return "Provides JFR flight recording for Truffle events.";
+    }
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return isEnabled();
+    }
+
+    @Override
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return List.of(TruffleFeature.class, JfrFeature.class);
     }
 
     private static boolean isEnabled() {
-        // The substratevm JFR implementation is not yet stable on the JDK 17, see GR-38866.
-        return ImageSingletons.contains(TruffleFeature.class) && ImageSingletons.contains(JfrFeature.class) && JavaVersionUtil.JAVA_SPEC < 17;
+        return ImageSingletons.contains(TruffleFeature.class) && ImageSingletons.contains(JfrFeature.class);
     }
 }

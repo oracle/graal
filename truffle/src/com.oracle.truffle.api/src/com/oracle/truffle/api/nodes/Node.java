@@ -112,8 +112,38 @@ public abstract class Node implements NodeInterface, Cloneable {
         return NodeClass.get(getClass());
     }
 
-    void setParent(Node parent) {
+    final void setParentForClone(Node parent) {
+        // for clones we do not need to validate the parent
+        // because the object did not yet escape so it is safe to set to null
         this.parent = parent;
+    }
+
+    final void setParent(Node parent) {
+        assert validateNewParent(parent);
+        this.parent = parent;
+    }
+
+    /**
+     * Validates that any new parent is adopted if the previous parent was adopted.
+     */
+    private boolean validateNewParent(Node newParent) {
+        Node oldParent = this.parent;
+        if (oldParent == null) {
+            return true;
+        }
+        RootNode oldRoot = oldParent.getRootNode();
+        if (oldRoot != null) {
+            if (newParent == null) {
+                throw CompilerDirectives.shouldNotReachHere("Old parent was adopted, but new insertion parent be non-null.");
+            } else {
+                try {
+                    return NodeUtil.assertAdopted(newParent);
+                } catch (AssertionError e) {
+                    throw CompilerDirectives.shouldNotReachHere("Old parent was adopted, but new insertion parent is not adopted. Old root was: " + oldRoot, e);
+                }
+            }
+        }
+        return true;
     }
 
     /**
@@ -204,7 +234,8 @@ public abstract class Node implements NodeInterface, Cloneable {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         if (newChildren != null) {
             for (Node newChild : newChildren) {
-                adoptHelper(newChild);
+                adoptHelperInsert(newChild);
+                assert checkSameLanguages(newChild) && newChild.checkSameLanguageOfChildren();
             }
         }
         return newChildren;
@@ -221,10 +252,15 @@ public abstract class Node implements NodeInterface, Cloneable {
      */
     public final <T extends Node> T insert(final T newChild) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
+        adoptHelperInsert(newChild);
+        return newChild;
+    }
+
+    private void adoptHelperInsert(final Node newChild) {
         if (newChild != null) {
             adoptHelper(newChild);
+            assert checkSameLanguages(newChild) && newChild.checkSameLanguageOfChildren();
         }
-        return newChild;
     }
 
     /**
@@ -257,6 +293,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     public final void adoptChildren() {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         NodeUtil.adoptChildrenHelper(this);
+        assert checkSameLanguageOfChildren();
     }
 
     final void adoptHelper(final Node newChild) {
@@ -265,15 +302,24 @@ public abstract class Node implements NodeInterface, Cloneable {
             throw new IllegalStateException("The parent of a node can never be the node itself.");
         }
         if (newChild.isAdoptable()) {
-            assert checkSameLanguages(newChild);
-            newChild.parent = this;
-            NodeUtil.adoptChildrenHelper(newChild);
+            Node oldParent = newChild.getParent();
+            try {
+                newChild.setParent(this);
+                NodeUtil.adoptChildrenHelper(newChild);
+            } catch (Throwable t) {
+                // anything goes wrong adoption (e.g. stackoverflow) restore the old value.
+                // important: keep this handle as simple as possible to minimize stack use.
+                newChild.parent = oldParent;
+                throw t;
+            }
         }
     }
 
     int adoptChildrenAndCount() {
         CompilerAsserts.neverPartOfCompilation();
-        return 1 + NodeUtil.adoptChildrenAndCountHelper(this);
+        int count = 1 + NodeUtil.adoptChildrenAndCountHelper(this);
+        assert checkSameLanguageOfChildren();
+        return count;
     }
 
     int adoptAndCountHelper(Node newChild) {
@@ -283,11 +329,35 @@ public abstract class Node implements NodeInterface, Cloneable {
         }
         int count = 1;
         if (newChild.isAdoptable()) {
-            assert checkSameLanguages(newChild);
-            newChild.parent = this;
-            count += NodeUtil.adoptChildrenAndCountHelper(newChild);
+            Node oldParent = newChild.getParent();
+            try {
+                newChild.setParent(this);
+                count += NodeUtil.adoptChildrenAndCountHelper(newChild);
+            } catch (Throwable t) {
+                // anything goes wrong adoption (e.g. stackoverflow) restore the old value.
+                // important: keep this handle as simple as possible to minimize stack use.
+                newChild.parent = oldParent;
+                throw t;
+            }
         }
         return count;
+    }
+
+    private static final NodeVisitor SAME_LANGUAGE_CHECK_VISITOR = new NodeVisitor() {
+        @Override
+        public boolean visit(Node node) {
+            if (node.isAdoptable()) {
+                assert node.parent.checkSameLanguages(node);
+                return true;
+            } else {
+                return false;
+            }
+        }
+    };
+
+    boolean checkSameLanguageOfChildren() {
+        NodeUtil.forEachChild(this, SAME_LANGUAGE_CHECK_VISITOR);
+        return true;
     }
 
     private boolean checkSameLanguages(final Node newChild) {
@@ -320,7 +390,7 @@ public abstract class Node implements NodeInterface, Cloneable {
         if (newChild == this) {
             throw new IllegalStateException("The parent of a node can never be the node itself.");
         }
-        newChild.parent = this;
+        newChild.setParent(this);
         NodeUtil.forEachChild(newChild, new NodeVisitor() {
             public boolean visit(Node child) {
                 if (child != null && child.getParent() == null) {
@@ -393,7 +463,7 @@ public abstract class Node implements NodeInterface, Cloneable {
         // (aw) need to set parent *before* replace, so that (unsynchronized) getRootNode()
         // will always find the root node
         if (newNode.isAdoptable()) {
-            newNode.parent = this.parent;
+            newNode.setParent(this.parent);
         }
         if (!NodeUtil.replaceChild(this.parent, this, newNode, true)) {
             this.parent.adoptUnadoptedHelper(newNode);
@@ -522,7 +592,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /** Protect against parent cycles and extremely long parent chains. */
-    private static final int PARENT_LIMIT = 100000;
+    static final int PARENT_LIMIT = 100000;
 
     @ExplodeLoop
     private RootNode getRootNodeImpl() {

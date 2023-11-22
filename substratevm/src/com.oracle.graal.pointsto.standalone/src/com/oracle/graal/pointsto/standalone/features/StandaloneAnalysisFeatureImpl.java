@@ -38,7 +38,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
@@ -240,12 +240,12 @@ public class StandaloneAnalysisFeatureImpl {
             }
         }
 
-        public void registerAsInvoked(Executable method, boolean invokeSpecial) {
-            registerAsInvoked(getMetaAccess().lookupJavaMethod(method), invokeSpecial);
+        public void registerAsInvoked(Executable method, boolean invokeSpecial, Object reason) {
+            registerAsInvoked(getMetaAccess().lookupJavaMethod(method), invokeSpecial, reason);
         }
 
-        public void registerAsInvoked(AnalysisMethod aMethod, boolean invokeSpecial) {
-            bb.addRootMethod(aMethod, invokeSpecial);
+        public void registerAsInvoked(AnalysisMethod aMethod, boolean invokeSpecial, Object reason) {
+            bb.addRootMethod(aMethod, invokeSpecial, reason);
         }
 
         public void registerUnsafeFieldsRecomputed(Class<?> clazz) {

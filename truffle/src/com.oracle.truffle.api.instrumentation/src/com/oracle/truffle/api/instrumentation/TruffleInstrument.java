@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -81,6 +82,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.InternalResource;
+import com.oracle.truffle.api.InternalResource.Id;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.TruffleContext;
@@ -97,6 +100,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.InstrumentClientInstrumenter;
+import com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -138,8 +142,182 @@ public abstract class TruffleInstrument {
     protected TruffleInstrument() {
     }
 
-    List<ContextThreadLocal<?>> contextThreadLocals;
-    List<ContextLocal<?>> contextLocals;
+    /**
+     * Provider for creating context local and context thread local references.
+     *
+     * @see TruffleInstrument#locals
+     * @see TruffleInstrument.ContextLocalProvider#createContextLocal(TruffleInstrument.ContextLocalFactory)
+     * @see TruffleInstrument.ContextLocalProvider#createContextThreadLocal(TruffleInstrument.ContextThreadLocalFactory)
+     * @since 23.1
+     */
+    protected static final class ContextLocalProvider {
+
+        List<ContextLocal<?>> contextLocals;
+        List<ContextThreadLocal<?>> contextThreadLocals;
+
+        private ContextLocalProvider() {
+        }
+
+        /**
+         * Creates a new context local reference for this instrument. Context locals for instruments
+         * allow to store additional top-level values for each context similar to language contexts.
+         * This enables instruments to use context local values just as languages using their
+         * language context. Context local factories are guaranteed to be invoked after the
+         * instrument is {@link #onCreate(Env) created}.
+         * <p>
+         * Context local references must be created during the invocation in the
+         * {@link TruffleInstrument} constructor. Calling this method at a later point in time will
+         * throw an {@link IllegalStateException}. For each registered {@link TruffleInstrument}
+         * subclass it is required to always produce the same number of context local references.
+         * The values produced by the factory must not be <code>null</code> and use a stable exact
+         * value type for each instance of a registered instrument class. If the return value of the
+         * factory is not stable or <code>null</code> then an {@link IllegalStateException} is
+         * thrown. These restrictions allow the Truffle runtime to read the value more efficiently.
+         * <p>
+         * Usage example:
+         *
+         * <pre>
+         * &#64;TruffleInstrument.Registration(id = "example", name = "Example Instrument")
+         * public static class ExampleInstrument extends TruffleInstrument {
+         *
+         *     final ContextLocal<ExampleLocal> local = locals.createContextLocal(ExampleLocal::new);
+         *
+         *     &#64;Override
+         *     protected void onCreate(Env env) {
+         *         ExecutionEventListener listener = new ExecutionEventListener() {
+         *             public void onEnter(EventContext context, VirtualFrame frame) {
+         *                 ExampleLocal value = local.get();
+         *                 // use context local value;
+         *             }
+         *
+         *             public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+         *             }
+         *
+         *             public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+         *             }
+         *         };
+         *
+         *         env.getInstrumenter().attachExecutionEventListener(
+         *                         SourceSectionFilter.ANY,
+         *                         listener);
+         *     }
+         *
+         *     static class ExampleLocal {
+         *
+         *         final TruffleContext context;
+         *
+         *         ExampleLocal(TruffleContext context) {
+         *             this.context = context;
+         *         }
+         *
+         *     }
+         *
+         * }
+         * </pre>
+         *
+         * @since 23.1
+         */
+        public <T> ContextLocal<T> createContextLocal(ContextLocalFactory<T> factory) {
+            ContextLocal<T> local = ENGINE.createInstrumentContextLocal(factory);
+            if (contextLocals == null) {
+                contextLocals = new ArrayList<>();
+            }
+            try {
+                contextLocals.add(local);
+            } catch (UnsupportedOperationException e) {
+                throw new IllegalStateException("The set of context locals is frozen. Context locals can only be created during construction of the TruffleInstrument subclass.");
+            }
+            return local;
+        }
+
+        /**
+         * Creates a new context thread local reference for this Truffle language. Context thread
+         * locals for languages allow to store additional top-level values for each context and
+         * thread. The factory may be invoked on any thread other than the thread of the context
+         * thread local value. Context thread local factories are guaranteed to be invoked after the
+         * instrument is {@link #onCreate(Env) created}.
+         * <p>
+         * Context thread local references must be created during the invocation in the
+         * {@link TruffleLanguage} constructor. Calling this method at a later point in time will
+         * throw an {@link IllegalStateException}. For each registered {@link TruffleLanguage}
+         * subclass it is required to always produce the same number of context thread local
+         * references. The values produces by the factory must not be <code>null</code> and use a
+         * stable exact value type for each instance of a registered language class. If the return
+         * value of the factory is not stable or <code>null</code> then an
+         * {@link IllegalStateException} is thrown. These restrictions allow the Truffle runtime to
+         * read the value more efficiently.
+         * <p>
+         * Context thread locals should not contain a strong reference to the provided thread. Use a
+         * weak reference instance for that purpose.
+         * <p>
+         * Usage example:
+         *
+         * <pre>
+         * &#64;TruffleInstrument.Registration(id = "example", name = "Example Instrument")
+         * public static class ExampleInstrument extends TruffleInstrument {
+         *
+         *     final ContextThreadLocal<ExampleLocal> local = locals.createContextThreadLocal(ExampleLocal::new);
+         *
+         *     &#64;Override
+         *     protected void onCreate(Env env) {
+         *         ExecutionEventListener listener = new ExecutionEventListener() {
+         *             public void onEnter(EventContext context, VirtualFrame frame) {
+         *                 ExampleLocal value = local.get();
+         *                 // use thread local value;
+         *                 assert value.thread.get() == Thread.currentThread();
+         *             }
+         *
+         *             public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+         *             }
+         *
+         *             public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+         *             }
+         *         };
+         *
+         *         env.getInstrumenter().attachExecutionEventListener(
+         *                         SourceSectionFilter.ANY,
+         *                         listener);
+         *     }
+         *
+         *     static class ExampleLocal {
+         *
+         *         final TruffleContext context;
+         *         final WeakReference<Thread> thread;
+         *
+         *         ExampleLocal(TruffleContext context, Thread thread) {
+         *             this.context = context;
+         *             this.thread = new WeakReference<>(thread);
+         *         }
+         *     }
+         *
+         * }
+         * </pre>
+         *
+         * @since 23.1
+         */
+        public <T> ContextThreadLocal<T> createContextThreadLocal(ContextThreadLocalFactory<T> factory) {
+            ContextThreadLocal<T> local = ENGINE.createInstrumentContextThreadLocal(factory);
+            if (contextThreadLocals == null) {
+                contextThreadLocals = new ArrayList<>();
+            }
+            try {
+                contextThreadLocals.add(local);
+            } catch (UnsupportedOperationException e) {
+                throw new IllegalStateException("The set of context thread locals is frozen. Context thread locals can only be created during construction of the TruffleInstrument subclass.");
+            }
+            return local;
+        }
+
+    }
+
+    /**
+     * Provider for creating context local and context thread local references.
+     *
+     * @see TruffleInstrument.ContextLocalProvider#createContextLocal(TruffleInstrument.ContextLocalFactory)
+     * @see TruffleInstrument.ContextLocalProvider#createContextThreadLocal(TruffleInstrument.ContextThreadLocalFactory)
+     * @since 23.1
+     */
+    protected final ContextLocalProvider locals = new ContextLocalProvider();
 
     /**
      * Invoked once on each newly allocated {@link TruffleInstrument} instance.
@@ -179,7 +357,7 @@ public abstract class TruffleInstrument {
      * {@link org.graalvm.polyglot.Engine engines} is not called, and so in case the instrument is
      * supposed to do some specific action before its disposal, e.g. print some kind of summary, it
      * should be done in this method.
-     * 
+     *
      * @param env environment information for the instrument
      * @since 19.0
      */
@@ -263,152 +441,37 @@ public abstract class TruffleInstrument {
     }
 
     /**
-     * Creates a new context local reference for this instrument. Context locals for instruments
-     * allow to store additional top-level values for each context similar to language contexts.
-     * This enables instruments to use context local values just as languages using their language
-     * context. Context local factories are guaranteed to be invoked after the instrument is
-     * {@link #onCreate(Env) created}.
-     * <p>
-     * Context local references must be created during the invocation in the
-     * {@link TruffleInstrument} constructor. Calling this method at a later point in time will
-     * throw an {@link IllegalStateException}. For each registered {@link TruffleInstrument}
-     * subclass it is required to always produce the same number of context local references. The
-     * values produced by the factory must not be <code>null</code> and use a stable exact value
-     * type for each instance of a registered instrument class. If the return value of the factory
-     * is not stable or <code>null</code> then an {@link IllegalStateException} is thrown. These
-     * restrictions allow the Truffle runtime to read the value more efficiently.
-     * <p>
-     * Usage example:
+     * Creates a new context local reference for this Truffle instrument.
      *
-     * <pre>
-     * &#64;TruffleInstrument.Registration(id = "example", name = "Example Instrument")
-     * public static class ExampleInstrument extends TruffleInstrument {
+     * Starting with JDK 21, using this method leads to a this-escape warning. Use
+     * {@link TruffleInstrument.ContextLocalProvider#createContextLocal(TruffleInstrument.ContextLocalFactory)}
+     * instead.
      *
-     *     final ContextLocal<ExampleLocal> local = createContextLocal(ExampleLocal::new);
-     *
-     *     &#64;Override
-     *     protected void onCreate(Env env) {
-     *         ExecutionEventListener listener = new ExecutionEventListener() {
-     *             public void onEnter(EventContext context, VirtualFrame frame) {
-     *                 ExampleLocal value = local.get();
-     *                 // use context local value;
-     *             }
-     *
-     *             public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
-     *             }
-     *
-     *             public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
-     *             }
-     *         };
-     *
-     *         env.getInstrumenter().attachExecutionEventListener(
-     *                         SourceSectionFilter.ANY,
-     *                         listener);
-     *     }
-     *
-     *     static class ExampleLocal {
-     *
-     *         final TruffleContext context;
-     *
-     *         ExampleLocal(TruffleContext context) {
-     *             this.context = context;
-     *         }
-     *
-     *     }
-     *
-     * }
-     * </pre>
-     *
+     * @deprecated in 23.1, use
+     *             {@link TruffleInstrument.ContextLocalProvider#createContextLocal(TruffleInstrument.ContextLocalFactory)}
+     *             instead
      * @since 20.3
      */
+    @Deprecated
     protected final <T> ContextLocal<T> createContextLocal(ContextLocalFactory<T> factory) {
-        ContextLocal<T> local = ENGINE.createInstrumentContextLocal(factory);
-        if (contextLocals == null) {
-            contextLocals = new ArrayList<>();
-        }
-        try {
-            contextLocals.add(local);
-        } catch (UnsupportedOperationException e) {
-            throw new IllegalStateException("The set of context locals is frozen. Context locals can only be created during construction of the TruffleInstrument subclass.");
-        }
-        return local;
+        return locals.createContextLocal(factory);
     }
 
     /**
-     * Creates a new context thread local reference for this Truffle language. Context thread locals
-     * for languages allow to store additional top-level values for each context and thread. The
-     * factory may be invoked on any thread other than the thread of the context thread local value.
-     * Context thread local factories are guaranteed to be invoked after the instrument is
-     * {@link #onCreate(Env) created}.
-     * <p>
-     * Context thread local references must be created during the invocation in the
-     * {@link TruffleLanguage} constructor. Calling this method at a later point in time will throw
-     * an {@link IllegalStateException}. For each registered {@link TruffleLanguage} subclass it is
-     * required to always produce the same number of context thread local references. The values
-     * produces by the factory must not be <code>null</code> and use a stable exact value type for
-     * each instance of a registered language class. If the return value of the factory is not
-     * stable or <code>null</code> then an {@link IllegalStateException} is thrown. These
-     * restrictions allow the Truffle runtime to read the value more efficiently.
-     * <p>
-     * Context thread locals should not contain a strong reference to the provided thread. Use a
-     * weak reference instance for that purpose.
-     * <p>
-     * Usage example:
+     * Creates a new context thread local reference for this Truffle instrument.
      *
-     * <pre>
-     * &#64;TruffleInstrument.Registration(id = "example", name = "Example Instrument")
-     * public static class ExampleInstrument extends TruffleInstrument {
+     * Starting with JDK 21, using this method leads to a this-escape warning. Use
+     * {@link TruffleInstrument.ContextLocalProvider#createContextThreadLocal(TruffleInstrument.ContextThreadLocalFactory)}
+     * instead.
      *
-     *     final ContextThreadLocal<ExampleLocal> local = createContextThreadLocal(ExampleLocal::new);
-     *
-     *     &#64;Override
-     *     protected void onCreate(Env env) {
-     *         ExecutionEventListener listener = new ExecutionEventListener() {
-     *             public void onEnter(EventContext context, VirtualFrame frame) {
-     *                 ExampleLocal value = local.get();
-     *                 // use thread local value;
-     *                 assert value.thread.get() == Thread.currentThread();
-     *             }
-     *
-     *             public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
-     *             }
-     *
-     *             public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
-     *             }
-     *         };
-     *
-     *         env.getInstrumenter().attachExecutionEventListener(
-     *                         SourceSectionFilter.ANY,
-     *                         listener);
-     *     }
-     *
-     *     static class ExampleLocal {
-     *
-     *         final TruffleContext context;
-     *         final WeakReference<Thread> thread;
-     *
-     *         ExampleLocal(TruffleContext context, Thread thread) {
-     *             this.context = context;
-     *             this.thread = new WeakReference<>(thread);
-     *         }
-     *     }
-     *
-     * }
-     * </pre>
-     *
+     * @deprecated in 23.1, use
+     *             {@link TruffleInstrument.ContextLocalProvider#createContextThreadLocal(TruffleInstrument.ContextThreadLocalFactory)}
+     *             instead
      * @since 20.3
      */
+    @Deprecated
     protected final <T> ContextThreadLocal<T> createContextThreadLocal(ContextThreadLocalFactory<T> factory) {
-        ContextThreadLocal<T> local = ENGINE.createInstrumentContextThreadLocal(factory);
-        if (contextThreadLocals == null) {
-            contextThreadLocals = new ArrayList<>();
-        }
-        try {
-            contextThreadLocals.add(local);
-        } catch (UnsupportedOperationException e) {
-            throw new IllegalStateException("The set of context thread locals is frozen. Context thread locals can only be created during construction of the TruffleInstrument subclass.");
-        }
-        return local;
+        return locals.createContextThreadLocal(factory);
     }
 
     /**
@@ -427,7 +490,7 @@ public abstract class TruffleInstrument {
          * {@link com.oracle.truffle.api.exception.AbstractTruffleException} the exception interop
          * messages may be executed without a context being entered.
          *
-         * @see TruffleInstrument#createContextLocal(ContextLocalFactory)
+         * @see TruffleInstrument.ContextLocalProvider#createContextLocal(TruffleInstrument.ContextLocalFactory)
          * @since 20.3
          */
         T create(TruffleContext context);
@@ -450,7 +513,7 @@ public abstract class TruffleInstrument {
          * {@link com.oracle.truffle.api.exception.AbstractTruffleException} the exception interop
          * messages may be executed without a context being entered.
          *
-         * @see TruffleInstrument#createContextThreadLocal(ContextThreadLocalFactory)
+         * @see TruffleInstrument.ContextLocalProvider#createContextThreadLocal(TruffleInstrument.ContextThreadLocalFactory)
          * @since 20.3
          */
         T create(TruffleContext context, Thread thread);
@@ -998,6 +1061,56 @@ public abstract class TruffleInstrument {
         }
 
         /**
+         * Returns the {@link TruffleFile} representing the target directory of an internal
+         * resource. The internal resource is guaranteed to be fully
+         * {@link InternalResource#unpackFiles(InternalResource.Env, Path)} unpacked} before this
+         * method returns. When this method is called for the first time and the resource is not
+         * cached than the resource will be unpacked. Unpacking an internal resource can be an
+         * expensive operation, but the implementation makes sure that unpacked internal resources
+         * are cached.
+         * <p>
+         * The returned {@link TruffleFile} will only grant read-only access to the target
+         * directory, but access is provided even if IO access is disabled.
+         * <p>
+         * On a HotSpot VM the internal resource is typically cached in the user directory, so
+         * unpacking would be repeated once per operating system user. When the language was
+         * compiled using native-image internal resources are unpacked at native-image compile time
+         * and stored relative to the native-image.
+         * <p>
+         * The caller thread must be entered in a context.
+         *
+         * @param resource the resource class to load
+         * @throws IllegalArgumentException if {@code resource} is not associated with this
+         *             instrument
+         * @throws IOException in case of IO error
+         * @since 23.1
+         */
+        public TruffleFile getInternalResource(Class<? extends InternalResource> resource) throws IOException {
+            return InstrumentAccessor.ENGINE.getInternalResource(polyglotInstrument, resource);
+        }
+
+        /**
+         * Returns the {@link TruffleFile} representing the target directory of an internal
+         * resource. Unlike the {@link #getInternalResource(Class)}, this method can be used for
+         * optional resources whose classes may not exist at runtime. In this case the optional
+         * resource must be unpacked at build time, see
+         * {@link Engine#copyResources(Path, String...)}. If the resource with the specified
+         * {@code resourceId} is not associated to this instrument, the function returns
+         * {@code null}.
+         *
+         * @param resourceId unique id of the resource to be loaded
+         * @return internal resource directory or {@code null} if resource with the
+         *         {@code resourceId} is not associated with this instrument
+         * @throws IOException in case of IO error
+         * @see #getInternalResource(Class)
+         * @see Engine#copyResources(Path, String...)
+         * @since 23.1
+         */
+        public TruffleFile getInternalResource(String resourceId) throws IOException {
+            return InstrumentAccessor.ENGINE.getInternalResource(polyglotInstrument, resourceId);
+        }
+
+        /**
          * Find or create an engine bound logger for an instrument. When a logging is required from
          * a thread which entered a context the context's logging handler and options are used.
          * Otherwise the engine's logging handler and options are used.
@@ -1052,6 +1165,17 @@ public abstract class TruffleInstrument {
          */
         public TruffleLogger getLogger(Class<?> forClass) {
             return getLogger(forClass.getName());
+        }
+
+        /**
+         * Tests if two frames are the same. This method is mainly used by instruments in case of
+         * <code>yield</code> of the execution and later resume. Frame comparison is used to match
+         * the particular yielded and resumed execution. The frames must correspond to the root.
+         *
+         * @since 24.0
+         */
+        public boolean isSameFrame(RootNode root, Frame frame1, Frame frame2) {
+            return InstrumentAccessor.nodesAccess().isSameFrame(root, frame1, frame2);
         }
 
         private static class MessageTransportProxy implements MessageTransport {
@@ -1183,7 +1307,7 @@ public abstract class TruffleInstrument {
          * <p>
          * If the thread local action future needs to be waited on and this might be prone to
          * deadlocks the
-         * {@link TruffleSafepoint#setBlockedWithException(Node, Interrupter, Interruptible, Object, Runnable, Consumer)
+         * {@link TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Consumer)
          * blocking API} can be used to allow other thread local actions to be processed while the
          * current thread is waiting. The returned {@link Future#get()} method can be used as
          * {@link Interruptible}. If the supplied context is already closed, the method returns a
@@ -1360,6 +1484,19 @@ public abstract class TruffleInstrument {
          * @since 23.0
          */
         SandboxPolicy sandbox() default SandboxPolicy.TRUSTED;
+
+        /**
+         * Declarative list of {@link InternalResource} classes that is associated with this
+         * instrument. Use the {@code internalResources} attribute solely for registering required
+         * internal resources. Optional internal resources should provide the associated instrument
+         * identifier using the {@link Id#componentId()} method. To unpack all resources of an
+         * instrument embedders may use {@link Engine#copyResources(Path, String...)}.
+         *
+         * @see InternalResource
+         * @see Id
+         * @since 23.1
+         */
+        Class<? extends InternalResource>[] internalResources() default {};
     }
 
     /**
@@ -1369,7 +1506,9 @@ public abstract class TruffleInstrument {
      * {@link Registration} annotations from the {@link TruffleInstrument}.
      *
      * @since 19.3.0
+     * @deprecated Use {@link TruffleInstrumentProvider}.
      */
+    @Deprecated(since = "23.1")
     public interface Provider {
 
         /**

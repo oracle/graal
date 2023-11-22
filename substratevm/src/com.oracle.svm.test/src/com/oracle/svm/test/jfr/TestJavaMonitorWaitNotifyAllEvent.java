@@ -26,6 +26,7 @@
 
 package com.oracle.svm.test.jfr;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -35,6 +36,7 @@ import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
 
+import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
@@ -49,42 +51,11 @@ public class TestJavaMonitorWaitNotifyAllEvent extends JfrRecordingTest {
     private boolean notifierFound;
     private int waitersFound;
 
-    @Override
-    public String[] getTestedEvents() {
-        return new String[]{JfrEvent.JavaMonitorWait.getName()};
-    }
-
-    @Override
-    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
-        for (RecordedEvent event : events) {
-            String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
-            String notifThread = event.<RecordedThread> getValue("notifier") != null ? event.<RecordedThread> getValue("notifier").getJavaName() : null;
-            if (!eventThread.equals(producerThread1.getName()) &&
-                            !eventThread.equals(producerThread2.getName()) &&
-                            !eventThread.equals(consumerThread.getName())) {
-                continue;
-            }
-            if (!event.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName())) {
-                continue;
-            }
-
-            assertTrue("Event is wrong duration.", event.getDuration().toMillis() >= MILLIS);
-            if (eventThread.equals(consumerThread.getName())) {
-                assertTrue("Should have timed out.", event.<Boolean> getValue("timedOut").booleanValue());
-                notifierFound = true;
-            } else {
-                assertFalse("Should not have timed out.", event.<Boolean> getValue("timedOut").booleanValue());
-                assertTrue("Notifier thread name is incorrect", notifThread.equals(consumerThread.getName()));
-                waitersFound++;
-            }
-
-        }
-        assertTrue("Couldn't find expected wait events. NotifierFound: " + notifierFound + " waitersFound: " + waitersFound,
-                        notifierFound && waitersFound == 2);
-    }
-
     @Test
-    public void test() throws Exception {
+    public void test() throws Throwable {
+        String[] events = new String[]{JfrEvent.JavaMonitorWait.getName()};
+        Recording recording = startRecording(events);
+
         Runnable producer = () -> {
             try {
                 helper.doWork();
@@ -110,6 +81,36 @@ public class TestJavaMonitorWaitNotifyAllEvent extends JfrRecordingTest {
         consumerThread.join();
         producerThread1.join();
         producerThread2.join();
+
+        stopRecording(recording, this::validateEvents);
+    }
+
+    private void validateEvents(List<RecordedEvent> events) {
+        for (RecordedEvent event : events) {
+            String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
+            String notifThread = event.<RecordedThread> getValue("notifier") != null ? event.<RecordedThread> getValue("notifier").getJavaName() : null;
+            if (!eventThread.equals(producerThread1.getName()) &&
+                            !eventThread.equals(producerThread2.getName()) &&
+                            !eventThread.equals(consumerThread.getName())) {
+                continue;
+            }
+            if (!event.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName())) {
+                continue;
+            }
+
+            assertTrue("Event is wrong duration.", event.getDuration().toMillis() >= MILLIS);
+            if (eventThread.equals(consumerThread.getName())) {
+                assertTrue("Should have timed out.", event.<Boolean> getValue("timedOut").booleanValue());
+                notifierFound = true;
+            } else {
+                assertFalse("Should not have timed out.", event.<Boolean> getValue("timedOut").booleanValue());
+                assertEquals("Notifier thread name is incorrect", notifThread, consumerThread.getName());
+                waitersFound++;
+            }
+
+        }
+        assertTrue("Couldn't find expected wait events. NotifierFound: " + notifierFound + " waitersFound: " + waitersFound,
+                        notifierFound && waitersFound == 2);
     }
 
     private class Helper {

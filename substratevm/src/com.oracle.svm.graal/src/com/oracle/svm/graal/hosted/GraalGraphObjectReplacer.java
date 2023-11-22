@@ -24,31 +24,29 @@
  */
 package com.oracle.svm.graal.hosted;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.api.runtime.GraalRuntime;
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.debug.MetricKey;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
-import org.graalvm.compiler.hotspot.HotSpotBackendFactory;
-import org.graalvm.compiler.hotspot.SnippetResolvedJavaMethod;
-import org.graalvm.compiler.hotspot.SnippetResolvedJavaType;
-import org.graalvm.compiler.nodes.FieldLocationIdentity;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.api.runtime.GraalRuntime;
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.debug.MetricKey;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
+import jdk.graal.compiler.hotspot.HotSpotBackendFactory;
+import jdk.graal.compiler.hotspot.SnippetResolvedJavaMethod;
+import jdk.graal.compiler.hotspot.SnippetResolvedJavaType;
+import jdk.graal.compiler.nodes.FieldLocationIdentity;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
-import org.graalvm.nativeimage.hosted.Feature.CompilationAccess;
+import org.graalvm.nativeimage.hosted.Feature.BeforeHeapLayoutAccess;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -56,18 +54,21 @@ import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.HostedStringDeduplication;
+import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.SubstrateGraalRuntime;
 import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateSignature;
 import com.oracle.svm.graal.meta.SubstrateType;
+import com.oracle.svm.graal.meta.SubstrateUniverseFactory;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
-import com.oracle.svm.hosted.ameta.ReadableJavaField;
-import com.oracle.svm.hosted.analysis.AnnotationsProcessor;
 import com.oracle.svm.hosted.meta.HostedConstantFieldProvider;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -96,44 +97,45 @@ import jdk.vm.ci.meta.Signature;
  * It is mainly used to replace the Hosted* meta data with the Substrate* meta data.
  */
 public class GraalGraphObjectReplacer implements Function<Object, Object> {
+    public static class Options {
+        @Option(help = "Ensure all created SubstrateTypes are linked")//
+        public static final HostedOptionKey<Boolean> GuaranteeSubstrateTypesLinked = new HostedOptionKey<>(false);
+    }
 
     private final AnalysisUniverse aUniverse;
-    private final AnalysisMetaAccess aMetaAccess;
-    private final HashMap<AnalysisMethod, SubstrateMethod> methods = new HashMap<>();
-    private final HashMap<AnalysisField, SubstrateField> fields = new HashMap<>();
-    private final HashMap<FieldLocationIdentity, SubstrateFieldLocationIdentity> fieldLocationIdentities = new HashMap<>();
-    private final HashMap<AnalysisType, SubstrateType> types = new HashMap<>();
-    private final HashMap<Signature, SubstrateSignature> signatures = new HashMap<>();
+    private final ConcurrentMap<AnalysisMethod, SubstrateMethod> methods = ObservableImageHeapMapProvider.create();
+    private final ConcurrentMap<AnalysisField, SubstrateField> fields = new ConcurrentHashMap<>();
+    private final ConcurrentMap<FieldLocationIdentity, SubstrateFieldLocationIdentity> fieldLocationIdentities = new ConcurrentHashMap<>();
+    private final ConcurrentMap<AnalysisType, SubstrateType> types = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Signature, SubstrateSignature> signatures = new ConcurrentHashMap<>();
     private final SubstrateProviders sProviders;
+    private final SubstrateUniverseFactory universeFactory;
     private SubstrateGraalRuntime sGraalRuntime;
 
     private final HostedStringDeduplication stringTable;
 
-    private final Field substrateFieldAnnotationsEncodingField;
-    private final Field substrateFieldTypeField;
-    private final Field substrateFieldDeclaringClassField;
-    private final Field dynamicHubMetaTypeField;
-    private final Field substrateTypeRawAllInstanceFieldsField;
-    private final Field substrateMethodImplementationsField;
-    private final Field substrateMethodAnnotationsEncodingField;
+    private final Class<?> jvmciCleanerClass = ReflectionUtil.lookupClass(false, "jdk.vm.ci.hotspot.Cleaner");
 
-    public GraalGraphObjectReplacer(AnalysisUniverse aUniverse, AnalysisMetaAccess aMetaAccess, SubstrateProviders sProviders) {
+    /**
+     * Tracks whether it is legal to create new types.
+     */
+    private boolean forbidNewTypes = false;
+    private BeforeAnalysisAccessImpl beforeAnalysisAccess;
+
+    public GraalGraphObjectReplacer(AnalysisUniverse aUniverse, SubstrateProviders sProviders, SubstrateUniverseFactory universeFactory) {
         this.aUniverse = aUniverse;
-        this.aMetaAccess = aMetaAccess;
         this.sProviders = sProviders;
+        this.universeFactory = universeFactory;
         this.stringTable = HostedStringDeduplication.singleton();
-        substrateFieldAnnotationsEncodingField = ReflectionUtil.lookupField(SubstrateField.class, "annotationsEncoding");
-        substrateFieldTypeField = ReflectionUtil.lookupField(SubstrateField.class, "type");
-        substrateFieldDeclaringClassField = ReflectionUtil.lookupField(SubstrateField.class, "declaringClass");
-        dynamicHubMetaTypeField = ReflectionUtil.lookupField(DynamicHub.class, "metaType");
-        substrateTypeRawAllInstanceFieldsField = ReflectionUtil.lookupField(SubstrateType.class, "rawAllInstanceFields");
-        substrateMethodImplementationsField = ReflectionUtil.lookupField(SubstrateMethod.class, "implementations");
-        substrateMethodAnnotationsEncodingField = ReflectionUtil.lookupField(SubstrateMethod.class, "annotationsEncoding");
     }
 
     public void setGraalRuntime(SubstrateGraalRuntime sGraalRuntime) {
         assert this.sGraalRuntime == null;
         this.sGraalRuntime = sGraalRuntime;
+    }
+
+    public void setAnalysisAccess(BeforeAnalysisAccessImpl beforeAnalysisAccess) {
+        this.beforeAnalysisAccess = beforeAnalysisAccess;
     }
 
     @Override
@@ -162,7 +164,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             HotSpotBackendFactory factory = (HotSpotBackendFactory) source;
             Architecture hostArch = HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget().arch;
             if (!factory.getArchitecture().equals(hostArch.getClass())) {
-                throw new UnsupportedFeatureException("Non-host archtecture HotSpotBackendFactory should not appear in the image: " + source);
+                throw new UnsupportedFeatureException("Non-host architecture HotSpotBackendFactory should not appear in the image: " + source);
             }
         } else if (source instanceof GraalRuntime) {
             dest = sGraalRuntime;
@@ -200,10 +202,17 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             dest = createType((ResolvedJavaType) source);
         } else if (source instanceof FieldLocationIdentity && !(source instanceof SubstrateFieldLocationIdentity)) {
             dest = createFieldLocationIdentity((FieldLocationIdentity) source);
+        } else if (source instanceof ImageHeapConstant heapConstant) {
+            VMError.guarantee(heapConstant.isBackedByHostedObject(), "Expected to find a heap object backed by a hosted object, found %s", heapConstant);
+            dest = heapConstant.getHostedObject();
         }
 
         assert dest != null;
-        String className = dest.getClass().getName();
+        Class<?> destClass = dest.getClass();
+        if (jvmciCleanerClass.isAssignableFrom(destClass)) {
+            throw new UnsupportedFeatureException(jvmciCleanerClass.getName() + " objects should not appear in the image: " + source);
+        }
+        String className = destClass.getName();
         assert SubstrateUtil.isBuildingLibgraal() || !className.contains(".hotspot.") || className.contains(".svm.jtt.hotspot.") : "HotSpot object in image " + className;
         assert !className.contains(".graal.reachability") : "Analysis meta object in image " + className;
         assert !className.contains(".pointsto.meta.") : "Analysis meta object in image " + className;
@@ -230,20 +239,33 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         SubstrateMethod sMethod = methods.get(aMethod);
         if (sMethod == null) {
             assert !(original instanceof HostedMethod) : "too late to create new method";
-            sMethod = new SubstrateMethod(aMethod, stringTable);
-            methods.put(aMethod, sMethod);
+            SubstrateMethod newMethod = universeFactory.createMethod(aMethod, stringTable);
+            sMethod = methods.putIfAbsent(aMethod, newMethod);
+            if (sMethod == null) {
+                sMethod = newMethod;
+                AnalysisType baseType = aMethod.getDeclaringClass();
+                AnalysisMethod baseMethod = aMethod;
+                /*
+                 * Cannot use a method override reachability handler here. The original method can
+                 * be the target of an invokeinterface, which doesn't necessarily correspond to an
+                 * actual declared method, so normal resolution will not work.
+                 */
+                beforeAnalysisAccess.registerSubtypeReachabilityHandler((a, reachableSubtype) -> {
+                    AnalysisType subtype = beforeAnalysisAccess.getMetaAccess().lookupJavaType(reachableSubtype);
+                    if (!subtype.equals(baseType)) {
+                        AnalysisMethod resolvedOverride = subtype.resolveConcreteMethod(baseMethod, null);
+                        if (resolvedOverride != null) {
+                            resolvedOverride.registerImplementationInvokedCallback((analysisAccess) -> createMethod(resolvedOverride));
+                        }
+                    }
+                }, baseType.getJavaClass());
 
-            /*
-             * The links to other meta objects must be set after adding to the methods to avoid
-             * infinite recursion.
-             */
-            sMethod.setLinks(createSignature(aMethod.getSignature()), createType(aMethod.getDeclaringClass()));
-
-            /*
-             * Annotations are updated in every analysis iteration, but this is a starting point. It
-             * also ensures that all types used by annotations are created eagerly.
-             */
-            setAnnotationsEncoding(aMethod, sMethod, null);
+                /*
+                 * The links to other meta objects must be set after adding to the methods to avoid
+                 * infinite recursion.
+                 */
+                sMethod.setLinks(createSignature(aMethod.getSignature()), createType(aMethod.getDeclaringClass()));
+            }
         }
         return sMethod;
     }
@@ -260,40 +282,24 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             throw new InternalError(original.toString());
         }
         SubstrateField sField = fields.get(aField);
-
         if (sField == null) {
             assert !(original instanceof HostedField) : "too late to create new field";
+            SubstrateField newField = universeFactory.createField(aField, stringTable);
+            sField = fields.putIfAbsent(aField, newField);
+            if (sField == null) {
+                sField = newField;
 
-            int modifiers = aField.getModifiers();
-            if (ReadableJavaField.injectFinalForRuntimeCompilation(aField.wrapped)) {
-                modifiers = modifiers | Modifier.FINAL;
+                sField.setLinks(createType(aField.getType()), createType(aField.getDeclaringClass()));
+                GraalSupport.rescan(aUniverse, sField.getType());
+                GraalSupport.rescan(aUniverse, sField.getDeclaringClass());
             }
-            sField = new SubstrateField(aField, modifiers, stringTable);
-            fields.put(aField, sField);
-
-            sField.setLinks(createType(aField.getType()), createType(aField.getDeclaringClass()));
-            aUniverse.getHeapScanner().rescanField(sField, substrateFieldTypeField);
-            aUniverse.getHeapScanner().rescanField(sField, substrateFieldDeclaringClassField);
-
-            /*
-             * Annotations are updated in every analysis iteration, but this is a starting point. It
-             * also ensures that all types used by annotations are created eagerly.
-             */
-            setAnnotationsEncoding(aField, sField, null);
         }
         return sField;
     }
 
     private synchronized SubstrateFieldLocationIdentity createFieldLocationIdentity(FieldLocationIdentity original) {
         assert !(original instanceof SubstrateFieldLocationIdentity) : original;
-
-        SubstrateFieldLocationIdentity dest = fieldLocationIdentities.get(original);
-        if (dest == null) {
-            SubstrateField destField = createField(original.getField());
-            dest = new SubstrateFieldLocationIdentity(destField, original.isImmutable());
-            fieldLocationIdentities.put(original, dest);
-        }
-        return dest;
+        return fieldLocationIdentities.computeIfAbsent(original, (id) -> new SubstrateFieldLocationIdentity(createField(id.getField()), id.isImmutable()));
     }
 
     public SubstrateField getField(AnalysisField field) {
@@ -308,6 +314,13 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         return types.containsKey(toAnalysisType(original));
     }
 
+    /**
+     * After this is called no new types can be created.
+     */
+    public void forbidNewTypes() {
+        forbidNewTypes = true;
+    }
+
     public synchronized SubstrateType createType(JavaType original) {
         assert !(original instanceof SubstrateType) : original;
         if (original == null) {
@@ -315,24 +328,25 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         }
 
         AnalysisType aType = toAnalysisType(original);
-        VMError.guarantee(aType.isLinked(), "types reachable for JIT compilation must not have linkage errors");
         SubstrateType sType = types.get(aType);
-
         if (sType == null) {
-            assert !(original instanceof HostedType) : "too late to create new type";
+            VMError.guarantee(!(forbidNewTypes || (original instanceof HostedType)), "Too late to create a new type: %s", aType);
             aType.registerAsReachable("type reachable from Graal graphs");
             DynamicHub hub = ((SVMHost) aUniverse.hostVM()).dynamicHub(aType);
-            sType = new SubstrateType(aType.getJavaKind(), hub);
-            types.put(aType, sType);
-            hub.setMetaType(sType);
-            aUniverse.getHeapScanner().rescanField(hub, dynamicHubMetaTypeField);
+            SubstrateType newType = new SubstrateType(aType.getJavaKind(), hub);
+            sType = types.putIfAbsent(aType, newType);
+            if (sType == null) {
+                sType = newType;
+                hub.setMetaType(sType);
+                GraalSupport.rescan(aUniverse, hub.getMetaType());
 
-            sType.setRawAllInstanceFields(createAllInstanceFields(aType));
-            aUniverse.getHeapScanner().rescanField(sType, substrateTypeRawAllInstanceFieldsField);
-            createType(aType.getSuperclass());
-            createType(aType.getComponentType());
-            for (AnalysisType aInterface : aType.getInterfaces()) {
-                createType(aInterface);
+                sType.setRawAllInstanceFields(createAllInstanceFields(aType));
+                GraalSupport.rescan(aUniverse, sType.getRawAllInstanceFields());
+                createType(aType.getSuperclass());
+                createType(aType.getComponentType());
+                for (AnalysisType aInterface : aType.getInterfaces()) {
+                    createType(aInterface);
+                }
             }
         }
         return sType;
@@ -344,7 +358,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         } else if (original instanceof AnalysisType) {
             return (AnalysisType) original;
         } else {
-            throw new InternalError("unexpected type " + original);
+            throw new InternalError("Unexpected type " + original);
         }
     }
 
@@ -362,86 +376,42 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
 
         SubstrateSignature sSignature = signatures.get(original);
         if (sSignature == null) {
-            sSignature = new SubstrateSignature();
-            signatures.put(original, sSignature);
+            SubstrateSignature newSignature = new SubstrateSignature();
+            sSignature = signatures.putIfAbsent(original, newSignature);
+            if (sSignature == null) {
+                sSignature = newSignature;
 
-            SubstrateType[] parameterTypes = new SubstrateType[original.getParameterCount(false)];
-            for (int index = 0; index < original.getParameterCount(false); index++) {
-                parameterTypes[index] = createType(original.getParameterType(index, null));
+                SubstrateType[] parameterTypes = new SubstrateType[original.getParameterCount(false)];
+                for (int index = 0; index < original.getParameterCount(false); index++) {
+                    parameterTypes[index] = createType(original.getParameterType(index, null));
+                }
+                /*
+                 * The links to other meta objects must be set after adding to the signatures to
+                 * avoid infinite recursion.
+                 */
+                sSignature.setTypes(parameterTypes, createType(original.getReturnType(null)));
             }
-            /*
-             * The links to other meta objects must be set after adding to the signatures to avoid
-             * infinite recursion.
-             */
-            sSignature.setTypes(parameterTypes, createType(original.getReturnType(null)));
         }
         return sSignature;
     }
 
     /**
-     * Some meta data must be updated during analysis. This is done here.
+     * Collect {@link SubstrateMethod} implementations.
      */
-    public boolean updateDataDuringAnalysis() {
-        boolean result = false;
-        List<AnalysisMethod> aMethods = new ArrayList<>();
-        aMethods.addAll(methods.keySet());
-
-        int index = 0;
-        while (index < aMethods.size()) {
-            AnalysisMethod aMethod = aMethods.get(index++);
-            SubstrateMethod sMethod = methods.get(aMethod);
-
-            SubstrateMethod[] implementations = new SubstrateMethod[aMethod.getImplementations().length];
-            int idx = 0;
-            for (AnalysisMethod impl : aMethod.getImplementations()) {
-                SubstrateMethod sImpl = methods.get(impl);
-                if (sImpl == null) {
-                    sImpl = createMethod(impl);
-                    aMethods.add(impl);
-                    result = true;
-                }
-                implementations[idx++] = sImpl;
-            }
-            if (sMethod.setImplementations(implementations)) {
-                aUniverse.getHeapScanner().rescanField(sMethod, substrateMethodImplementationsField);
-                result = true;
-            }
-        }
-
+    public void setMethodsImplementations() {
         for (Map.Entry<AnalysisMethod, SubstrateMethod> entry : methods.entrySet()) {
             AnalysisMethod aMethod = entry.getKey();
             SubstrateMethod sMethod = entry.getValue();
-            if (setAnnotationsEncoding(aMethod, sMethod, sMethod.getAnnotationsEncoding())) {
-                result = true;
+            AnalysisMethod[] aMethodImplementations = aMethod.getImplementations();
+            SubstrateMethod[] implementations = new SubstrateMethod[aMethodImplementations.length];
+            int idx = 0;
+            for (AnalysisMethod impl : aMethodImplementations) {
+                SubstrateMethod sImpl = methods.get(impl);
+                VMError.guarantee(sImpl != null, "SubstrateMethod for %s missing.", impl);
+                implementations[idx++] = sImpl;
             }
+            sMethod.setImplementations(implementations);
         }
-        for (Map.Entry<AnalysisField, SubstrateField> entry : fields.entrySet()) {
-            AnalysisField aField = entry.getKey();
-            SubstrateField sField = entry.getValue();
-            if (setAnnotationsEncoding(aField, sField, sField.getAnnotationsEncoding())) {
-                result = true;
-            }
-        }
-
-        return result;
-    }
-
-    private boolean setAnnotationsEncoding(AnalysisMethod aMethod, SubstrateMethod sMethod, Object oldEncoding) {
-        Object annotationsEncoding = AnnotationsProcessor.encodeAnnotations(aMetaAccess, aMethod.getAnnotations(), aMethod.getDeclaredAnnotations(), oldEncoding);
-        if (sMethod.setAnnotationsEncoding(annotationsEncoding)) {
-            aUniverse.getHeapScanner().rescanField(sMethod, substrateMethodAnnotationsEncodingField);
-            return true;
-        }
-        return false;
-    }
-
-    private boolean setAnnotationsEncoding(AnalysisField aField, SubstrateField sField, Object oldEncoding) {
-        Object annotationsEncoding = AnnotationsProcessor.encodeAnnotations(aMetaAccess, aField.getAnnotations(), aField.getDeclaredAnnotations(), oldEncoding);
-        if (sField.setAnnotationsEncoding(annotationsEncoding)) {
-            aUniverse.getHeapScanner().rescanField(sField, substrateFieldAnnotationsEncodingField);
-            return true;
-        }
-        return false;
     }
 
     /**
@@ -450,7 +420,14 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
      * universe.
      */
     @SuppressWarnings("try")
-    public void updateSubstrateDataAfterCompilation(HostedUniverse hUniverse, ConstantFieldProvider constantFieldProvider) {
+    public void updateSubstrateDataAfterCompilation(HostedUniverse hUniverse, Providers providers) {
+
+        if (Options.GuaranteeSubstrateTypesLinked.getValue()) {
+            var unlinkedTypes = types.values().stream().filter(sType -> !sType.isLinked()).map(SubstrateType::toString).toList();
+            if (!unlinkedTypes.isEmpty()) {
+                throw VMError.shouldNotReachHere(String.format("Unlinked SubstrateTypes have been created:%n%s", String.join(System.lineSeparator(), unlinkedTypes)));
+            }
+        }
 
         for (Map.Entry<AnalysisType, SubstrateType> entry : types.entrySet()) {
             AnalysisType aType = entry.getKey();
@@ -482,8 +459,10 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             SubstrateField sField = entry.getValue();
             HostedField hField = hUniverse.lookup(aField);
 
-            JavaConstant constantValue = hField.isStatic() && ((HostedConstantFieldProvider) constantFieldProvider).isFinalField(hField, null) ? hField.readValue(null) : null;
-            sField.setSubstrateData(hField.getLocation(), hField.isAccessed(), hField.isWritten(), constantValue);
+            JavaConstant constantValue = hField.isStatic() && ((HostedConstantFieldProvider) providers.getConstantFieldProvider()).isFinalField(hField, null)
+                            ? providers.getConstantReflection().readFieldValue(hField, null)
+                            : null;
+            sField.setSubstrateData(hField.getLocation(), hField.isAccessed(), hField.isWritten() || !hField.isValueAvailable(), constantValue);
         }
     }
 
@@ -502,7 +481,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         }
     }
 
-    public void registerImmutableObjects(CompilationAccess access) {
+    public void registerImmutableObjects(BeforeHeapLayoutAccess access) {
         for (SubstrateMethod method : methods.values()) {
             access.registerAsImmutable(method);
             access.registerAsImmutable(method.getRawImplementations());

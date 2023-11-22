@@ -51,6 +51,7 @@ import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.errors.PyErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
@@ -65,7 +66,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
 
 public final class PythonRegexParser implements RegexParser {
 
-    private static final EnumSet<Token.Kind> QUANTIFIER_PREV = EnumSet.of(Token.Kind.charClass, Token.Kind.groupEnd, Token.Kind.backReference);
+    private static final EnumSet<Token.Kind> QUANTIFIER_PREV = EnumSet.of(Token.Kind.literalChar, Token.Kind.charClass, Token.Kind.charClassEnd, Token.Kind.groupEnd, Token.Kind.backReference);
 
     /**
      * Indicates whether the regex being parsed is a 'str' pattern or a 'bytes' pattern.
@@ -73,10 +74,11 @@ public final class PythonRegexParser implements RegexParser {
     private final PythonREMode mode;
     private final PythonRegexLexer lexer;
     private final RegexASTBuilder astBuilder;
+    private final CodePointSetAccumulator curCharClass = new CodePointSetAccumulator();
 
     public PythonRegexParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
         this.mode = PythonREMode.fromEncoding(source.getEncoding());
-        this.lexer = new PythonRegexLexer(source, mode);
+        this.lexer = new PythonRegexLexer(source, mode, compilationBuffer);
         this.astBuilder = new RegexASTBuilder(language, source, createECMAScriptFlags(source), false, compilationBuffer);
     }
 
@@ -113,8 +115,8 @@ public final class PythonRegexParser implements RegexParser {
             prevKind = token == null ? null : token.kind;
             token = lexer.next();
             switch (token.kind) {
-                case a:
-                case z:
+                case A:
+                case Z:
                     astBuilder.addPositionAssertion(token);
                     break;
                 case caret:
@@ -228,8 +230,25 @@ public final class PythonRegexParser implements RegexParser {
                     }
                     astBuilder.popGroup(token);
                     break;
+                case literalChar:
+                    literalChar(((Token.LiteralCharacter) token).getCodePoint());
+                    break;
                 case charClass:
                     astBuilder.addCharClass((Token.CharacterClass) token);
+                    break;
+                case charClassBegin:
+                    curCharClass.clear();
+                    break;
+                case charClassAtom:
+                    curCharClass.addSet(((Token.CharacterClassAtom) token).getContents());
+                    break;
+                case charClassEnd:
+                    boolean wasSingleChar = !lexer.isCurCharClassInverted() && curCharClass.matchesSingleChar();
+                    if (lexer.featureEnabledIgnoreCase()) {
+                        lexer.caseFoldUnfold(curCharClass);
+                    }
+                    CodePointSet cps = curCharClass.toCodePointSet();
+                    astBuilder.addCharClass(lexer.isCurCharClassInverted() ? cps.createInverse(lexer.source.getEncoding()) : cps, wasSingleChar);
                     break;
                 case conditionalBackreference:
                     Token.BackReference conditionalBackRefToken = (Token.BackReference) token;
@@ -255,11 +274,23 @@ public final class PythonRegexParser implements RegexParser {
         }
         RegexAST ast = astBuilder.popRootGroup();
         for (Token.BackReference conditionalBackReference : conditionalBackReferences) {
-            if (conditionalBackReference.getGroupNr() >= ast.getNumberOfCaptureGroups()) {
-                throw syntaxErrorAtAbs(PyErrorMessages.invalidGroupReference(Integer.toString(conditionalBackReference.getGroupNr())), conditionalBackReference.getPosition() + 3);
+            assert conditionalBackReference.getGroupNumbers().length == 1;
+            if (conditionalBackReference.getGroupNumbers()[0] >= ast.getNumberOfCaptureGroups()) {
+                throw syntaxErrorAtAbs(PyErrorMessages.invalidGroupReference(Integer.toString(conditionalBackReference.getGroupNumbers()[0])), conditionalBackReference.getPosition() + 3);
             }
         }
         return ast;
+    }
+
+    private void literalChar(int codePoint) {
+        if (lexer.featureEnabledIgnoreCase()) {
+            curCharClass.clear();
+            curCharClass.addCodePoint(codePoint);
+            lexer.caseFoldUnfold(curCharClass);
+            astBuilder.addCharClass(curCharClass.toCodePointSet(), true);
+        } else {
+            astBuilder.addCharClass(CodePointSet.create(codePoint));
+        }
     }
 
     /**
@@ -270,7 +301,8 @@ public final class PythonRegexParser implements RegexParser {
      */
     private void verifyGroupReference(Token.BackReference backRefToken) throws RegexSyntaxException {
         boolean conditional = backRefToken.kind == Token.Kind.conditionalBackreference;
-        int groupNumber = backRefToken.getGroupNr();
+        assert backRefToken.getGroupNumbers().length == 1;
+        int groupNumber = backRefToken.getGroupNumbers()[0];
         boolean insideLookBehind = insideLookBehind();
         // CPython allows conditional back-references to be forward references and to also refer to
         // an open group. However, this is not the case when inside a look-behind assertion. In such

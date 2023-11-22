@@ -33,8 +33,8 @@ import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.options.Option;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -147,7 +147,7 @@ public final class PredefinedClassesSupport {
         boolean loaded = loadClassIfNotLoaded(classLoader, protectionDomain, clazz);
         if (!loaded) {
             if (classLoader == clazz.getClassLoader()) {
-                throw new LinkageError("loader " + classLoader + " attempted duplicate class definition for " + clazz.getName() + " defined by " + clazz.getClassLoader());
+                throw new LinkageError("Loader " + classLoader + " attempted duplicate class definition for " + clazz.getName() + " defined by " + clazz.getClassLoader());
             } else {
                 throw VMError.unsupportedFeature("A predefined class can be loaded (defined) at runtime only once by a single class loader. " +
                                 "Hierarchies of class loaders and distinct sets of classes are not supported. Class " + clazz.getName() + " has already " +

@@ -24,16 +24,17 @@
  */
 package com.oracle.graal.reachability;
 
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.util.AtomicUtils;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.util.AtomicUtils;
+
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Reachability specific extension of AnalysisType. Contains mainly information necessary to resolve
@@ -49,6 +50,8 @@ public class ReachabilityAnalysisType extends AnalysisType {
     private final Set<ReachabilityAnalysisType> instantiatedSubtypes = ConcurrentHashMap.newKeySet();
 
     private final Set<ReachabilityAnalysisMethod> invokedVirtualMethods = ConcurrentHashMap.newKeySet();
+
+    private final Set<ReachabilityAnalysisMethod> invokedSpecialMethods = ConcurrentHashMap.newKeySet();
 
     private static final AtomicIntegerFieldUpdater<ReachabilityAnalysisType> isInstantiatedUpdater = AtomicIntegerFieldUpdater
                     .newUpdater(ReachabilityAnalysisType.class, "isInstantiated");
@@ -80,6 +83,14 @@ public class ReachabilityAnalysisType extends AnalysisType {
 
     public void addInvokedVirtualMethod(ReachabilityAnalysisMethod method) {
         invokedVirtualMethods.add(method);
+    }
+
+    public void addSpecialInvokedMethod(ReachabilityAnalysisMethod method) {
+        invokedSpecialMethods.add(method);
+    }
+
+    public Set<ReachabilityAnalysisMethod> getInvokedSpecialMethods() {
+        return invokedSpecialMethods;
     }
 
     @Override

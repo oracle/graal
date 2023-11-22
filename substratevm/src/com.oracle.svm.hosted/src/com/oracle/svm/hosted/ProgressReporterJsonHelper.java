@@ -26,13 +26,10 @@
 package com.oracle.svm.hosted;
 
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
-import java.lang.management.OperatingSystemMXBean;
-import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
-import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.json.JsonWriter;
 
@@ -44,22 +41,6 @@ public class ProgressReporterJsonHelper {
     private static final String RESOURCE_USAGE_KEY = "resource_usage";
 
     private final Map<String, Object> statsHolder = new HashMap<>();
-    private final Path jsonOutputFile;
-
-    ProgressReporterJsonHelper(Path outFile) {
-        this.jsonOutputFile = outFile;
-    }
-
-    private void recordSystemFixedValues() {
-        putResourceUsage(ResourceUsageKey.CPU_CORES_TOTAL, Runtime.getRuntime().availableProcessors());
-        putResourceUsage(ResourceUsageKey.MEMORY_TOTAL, getTotalSystemMemory());
-    }
-
-    @SuppressWarnings("deprecation")
-    private static long getTotalSystemMemory() {
-        OperatingSystemMXBean osMXBean = ManagementFactory.getOperatingSystemMXBean();
-        return ((com.sun.management.OperatingSystemMXBean) osMXBean).getTotalPhysicalMemorySize();
-    }
 
     @SuppressWarnings("unchecked")
     public void putAnalysisResults(AnalysisResults key, long value) {
@@ -107,16 +88,8 @@ public class ProgressReporterJsonHelper {
         }
     }
 
-    public Path printToFile() {
-        recordSystemFixedValues();
-        String description = "image statistics in json";
-        return ReportUtils.report(description, jsonOutputFile.toAbsolutePath(), out -> {
-            try {
-                new JsonWriter(out).print(statsHolder);
-            } catch (IOException e) {
-                throw VMError.shouldNotReachHere("Failed to create " + jsonOutputFile, e);
-            }
-        }, false);
+    public void print(JsonWriter writer) throws IOException {
+        writer.print(statsHolder);
     }
 
     interface JsonMetric {
@@ -155,7 +128,9 @@ public class ProgressReporterJsonHelper {
         CPU_LOAD("cpu", "load"),
         CPU_CORES_TOTAL("cpu", "total_cores"),
         GC_COUNT("garbage_collection", "count"),
+        GC_MAX_HEAP("garbage_collection", "max_heap"),
         GC_SECS("garbage_collection", "total_secs"),
+        PARALLELISM("cpu", "parallelism"),
         PEAK_RSS("memory", "peak_rss_bytes"),
         MEMORY_TOTAL("memory", "system_total"),
         TOTAL_SECS(null, "total_secs");
@@ -174,7 +149,7 @@ public class ProgressReporterJsonHelper {
         }
     }
 
-    enum AnalysisResults implements JsonMetric {
+    public enum AnalysisResults implements JsonMetric {
         TYPES_TOTAL("types", "total"),
         TYPES_REACHABLE("types", "reachable"),
         TYPES_JNI("types", "jni"),
@@ -187,6 +162,7 @@ public class ProgressReporterJsonHelper {
         FIELD_REACHABLE("fields", "reachable"),
         FIELD_JNI("fields", "jni"),
         FIELD_REFLECT("fields", "reflection"),
+        FOREIGN_DOWNCALLS("methods", "foreign_downcalls"),
 
         // TODO GR-42148: remove deprecated entries in a future release
         DEPRECATED_CLASS_TOTAL("classes", "total"),
@@ -225,6 +201,7 @@ public class ProgressReporterJsonHelper {
     public enum GeneralInfo implements JsonMetric {
         IMAGE_NAME("name", null),
         JAVA_VERSION("java_version", null),
+        VENDOR_VERSION("vendor_version", null),
         GRAALVM_VERSION("graalvm_version", null),
         GRAAL_COMPILER_OPTIMIZATION_LEVEL("optimization_level", "graal_compiler"),
         GRAAL_COMPILER_MARCH("march", "graal_compiler"),
@@ -246,7 +223,7 @@ public class ProgressReporterJsonHelper {
 
         @Override
         public void record(ProgressReporterJsonHelper helper, Object value) {
-            if (value instanceof String || value instanceof Boolean) {
+            if (value instanceof String || value instanceof Boolean || value instanceof List || value == null) {
                 helper.putGeneralInfo(this, value);
             } else {
                 VMError.shouldNotReachHere("Imcompatible type of 'value': " + value.getClass());

@@ -42,6 +42,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -88,8 +89,8 @@ import com.oracle.truffle.tools.chromeinspector.types.Scope;
 import com.oracle.truffle.tools.chromeinspector.types.Script;
 import com.oracle.truffle.tools.chromeinspector.types.StackTrace;
 import com.oracle.truffle.tools.chromeinspector.util.LineSearch;
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 public final class InspectorDebugger extends DebuggerDomain {
 
@@ -104,6 +105,8 @@ public final class InspectorDebugger extends DebuggerDomain {
                                     "for\\s*\\(var\\s+(?<o>\\w+)\\s*=\\s*\\k<x>;\\s*\\k<o>\\s*\\!==\\s*null\\s*&&\\s*typeof\\s+\\k<o>\\s*\\!==\\s*.undefined.;\\k<o>\\s*=\\s*\\k<o>\\.__proto__\\)\\s*\\{" +
                                     "\\s*\\k<a>\\.push\\(Object\\.getOwnPropertyNames\\(\\k<o>\\)\\)" +
                                     "\\};\\s*return\\s+\\k<a>\\}\\)\\((?<object>.*)\\)$");
+
+    private static final AtomicLong lastUniqueId = new AtomicLong();
 
     private final InspectorExecutionContext context;
     private final Object suspendLock = new Object();
@@ -121,6 +124,7 @@ public final class InspectorDebugger extends DebuggerDomain {
     private final Phaser onSuspendPhaser = new Phaser();
     private final BlockingQueue<CancellableRunnable> suspendThreadExecutables = new LinkedBlockingQueue<>();
     private final ReadWriteLock domainLock;
+    private final long uniqueId = lastUniqueId.incrementAndGet();
 
     public InspectorDebugger(InspectorExecutionContext context, boolean suspend, ReadWriteLock domainLock) {
         this.context = context;
@@ -151,6 +155,11 @@ public final class InspectorDebugger extends DebuggerDomain {
             }
             debuggerSession.suspendNextExecution();
         }
+    }
+
+    @Override
+    public String getUniqueDebuggerId() {
+        return "UniqueDebuggerId." + uniqueId;
     }
 
     private void startSession() {

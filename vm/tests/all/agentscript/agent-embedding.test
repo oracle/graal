@@ -1,3 +1,26 @@
+# Copyright (c) 2019, 2023 Oracle and/or its affiliates. All rights reserved.
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+# This code is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 only, as
+# published by the Free Software Foundation.  Oracle designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
+#
+# This code is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+# version 2 for more details (a copy is included in the LICENSE file that
+# accompanied this code).
+#
+# You should have received a copy of the GNU General Public License version
+# 2 along with this work; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+# or visit www.oracle.com if you need additional information or have any
+# questions.
+#
 >[0] javac Embedding*.java -d ${TMP_DIR}
 >[0] java -ea -cp .:${TMP_DIR} Embedding
 Everything is OK!
@@ -15,8 +38,16 @@ OK 2 times!
 >   export INSIGHT_LIBS=$JAVA_HOME
 > fi
 >[0] mkdir -p ${TMP_DIR}/instrument
->[0] javac -cp $INSIGHT_LIBS/lib/truffle/truffle-api.jar:$INSIGHT_LIBS/lib/truffle/truffle-dsl-processor.jar:$INSIGHT_LIBS/tools/insight/insight.jar -d ${TMP_DIR}/instrument Emb*Instrument.java
->[1] java -ea -Dtruffle.class.path.append=${TMP_DIR}/instrument -cp ${TMP_DIR} EmbeddingRegisterSymbols primitives
+> if [ -z $TRUFFLE_DSL_PROCESSOR_JAR ]
+>   echo "The TRUFFLE_DSL_PROCESSOR_JAR environment variable must be set and point to the Truffle DSL jar"
+> fi
+>[0] javac -proc:full -cp $INSIGHT_LIBS/lib/truffle/truffle-api.jar:$TRUFFLE_DSL_PROCESSOR_JAR:$INSIGHT_LIBS/tools/insight/insight.jar -d ${TMP_DIR}/instrument Emb*Instrument.java
+>[0] jar cf ${TMP_DIR}/instrument.jar -C ${TMP_DIR}/instrument META-INF -C ${TMP_DIR}/instrument registersymbols
+# ##################################################################
+# Register instrument using deprecated -Dtruffle.class.path.append
+# ##################################################################
+>[1] java -ea -Dtruffle.class.path.append=${TMP_DIR}/instrument.jar -cp ${TMP_DIR} EmbeddingRegisterSymbols primitives
+\[engine\] The internal option -Dtruffle\.class\.path\.append option is deprecated.*
 
 Exception in thread "main" Stop: 0
 .*at.*js.*insight.js.*
@@ -30,7 +61,39 @@ Exception in thread "main" Stop: 0
 .*at.*org.graalvm.polyglot.Value.execute.*
 .*at.*EmbeddingRegisterSymbols.exportAndTest.*
 .*at.*EmbeddingRegisterSymbols.main.*
->[1] java -ea -Dtruffle.class.path.append=${TMP_DIR}/instrument -cp ${TMP_DIR} EmbeddingRegisterSymbols object
+>[1] java -ea -Dtruffle.class.path.append=${TMP_DIR}/instrument.jar -cp ${TMP_DIR} EmbeddingRegisterSymbols object
+\[engine\] The internal option -Dtruffle\.class\.path\.append option is deprecated.*
+
+Exception in thread "main" Stop: 0
+.*at.*js.*insight.js.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*org.graalvm.polyglot.Value.execute.*
+.*at.*EmbeddingRegisterSymbols.exportAndTest.*
+.*at.*EmbeddingRegisterSymbols.main.*
+# ##################################################################
+# Register instrument using module-path
+# ##################################################################
+>[1] java -ea --module-path ${TMP_DIR}/instrument.jar:${GRAALVM_HOME}/tools/insight -cp ${TMP_DIR} EmbeddingRegisterSymbols primitives
+
+Exception in thread "main" Stop: 0
+.*at.*js.*insight.js.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*js.*fib.*Unnamed.*
+.*at.*org.graalvm.polyglot.Value.execute.*
+.*at.*EmbeddingRegisterSymbols.exportAndTest.*
+.*at.*EmbeddingRegisterSymbols.main.*
+>[1] java -ea --module-path ${TMP_DIR}/instrument.jar:${GRAALVM_HOME}/tools/insight -cp ${TMP_DIR} EmbeddingRegisterSymbols object
 
 Exception in thread "main" Stop: 0
 .*at.*js.*insight.js.*

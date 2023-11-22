@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ public class ModuleImportDescriptor extends Dictionary {
     private final String name;
     private final ImportExportKind kind;
 
+    @SuppressWarnings("this-escape")
     public ModuleImportDescriptor(String module, String name, String kind, String type) {
         this.module = module;
         this.name = name;

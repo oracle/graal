@@ -57,8 +57,6 @@ final class TStringOpsNodes {
      */
     static final String LIMIT_STRIDE = "9";
 
-    static final String SINGLE_LIMIT_STRIDE = "3";
-
     abstract static class RawReadValueNode extends AbstractInternalNode {
 
         abstract int execute(Node node, AbstractTruffleString a, Object arrayA, int i);

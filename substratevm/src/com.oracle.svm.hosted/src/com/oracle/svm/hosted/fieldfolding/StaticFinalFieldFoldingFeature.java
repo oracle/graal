@@ -33,12 +33,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import org.graalvm.compiler.nodes.java.StoreFieldNode;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.phases.util.Providers;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.nodes.java.StoreFieldNode;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -53,7 +53,6 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.meta.HostedField;
-import com.oracle.svm.hosted.phases.IntrinsifyMethodHandlesInvocationPlugin;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -64,8 +63,8 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * folded by the regular constant folding mechanism. But if a class is initialized at run time, the
  * class initializer of that class is analyzed like any other method, i.e., the static analysis sees
  * a static final field as written and does not perform constant folding. Without constant folding
- * during parsing already, other graph builder plugins like
- * {@link IntrinsifyMethodHandlesInvocationPlugin} do not work on such fields.
+ * during parsing already, other simplifications and intrinsifications do not work on such fields,
+ * such as those involving method handles.
  *
  * This feature performs constant folding for a limited but important class of static final fields:
  * the class initializer contains a single field store and the stored value is a constant. That

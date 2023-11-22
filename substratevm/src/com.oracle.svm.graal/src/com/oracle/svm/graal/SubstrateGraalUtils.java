@@ -31,23 +31,23 @@ import java.io.PrintStream;
 import java.util.EnumMap;
 import java.util.Map;
 
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.core.CompilationWatchDog;
-import org.graalvm.compiler.core.CompilationWrapper;
-import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
-import org.graalvm.compiler.core.GraalCompiler;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.target.Backend;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
-import org.graalvm.compiler.lir.phases.LIRSuites;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.phases.tiers.Suites;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.CompilationWatchDog;
+import jdk.graal.compiler.core.CompilationWrapper;
+import jdk.graal.compiler.core.CompilationWrapper.ExceptionAction;
+import jdk.graal.compiler.core.GraalCompiler;
+import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.core.target.Backend;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.Indent;
+import jdk.graal.compiler.debug.TTY;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
+import jdk.graal.compiler.lir.phases.LIRSuites;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.phases.tiers.Suites;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CPUFeatureAccess;
@@ -100,7 +100,7 @@ public class SubstrateGraalUtils {
             @Override
             protected CompilationResult performCompilation(DebugContext debug) {
                 try (CompilationWatchDog watchdog = CompilationWatchDog.watch(compilationId, debug.getOptions(), false, COMPILATION_WATCH_DOG_EVENT_HANDLER)) {
-                    StructuredGraph graph = GraalSupport.decodeGraph(debug, null, compilationId, method);
+                    StructuredGraph graph = GraalSupport.decodeGraph(debug, null, compilationId, method, null);
                     return compileGraph(runtimeConfig, GraalSupport.getMatchingSuitesForGraph(graph), lirSuites, method, graph);
                 }
             }

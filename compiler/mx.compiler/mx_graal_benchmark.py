@@ -1,6 +1,4 @@
 #
-# ----------------------------------------------------------------------------------------------------
-#
 # Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
@@ -24,7 +22,6 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
-# ----------------------------------------------------------------------------------------------------
 
 import re
 import os
@@ -126,15 +123,18 @@ _graal_variants = [
     ('no-tiered-comp', ['-XX:-TieredCompilation'], 0),
     ('economy', [], 0, 'economy'),
     ('economy-no-tiered-comp', ['-XX:-TieredCompilation'], 0, 'economy'),
+    ('serialgc', ['-XX:+UseSerialGC'], 12),
+    ('pargc', ['-XX:+UseParallelGC'], 12),
     ('g1gc', ['-XX:+UseG1GC'], 12),
     ('zgc', ['-XX:+UseZGC'], 12),
+    # ('gen-zgc', ['-XX:+UseZGC', '-XX:+ZGenerational'], 12), # GR-45919 not yet supported
     ('zgc-avx2', ['-XX:+UseZGC', '-XX:UseAVX=2'], 12),
     ('zgc-avx3', ['-XX:+UseZGC', '-XX:UseAVX=3'], 12),
     ('no-comp-oops', ['-XX:-UseCompressedOops'], 0),
     ('no-profile-info', ['-Djvmci.UseProfilingInformation=false'], 0),
     ('no-splitting', ['-Dpolyglot.engine.Splitting=false'], 0),
-    ('limit-truffle-inlining', ['-Dpolyglot.engine.InliningRecursionDepth=2'], 0),
-    ('no-splitting-limit-truffle-inlining', ['-Dpolyglot.engine.Splitting=false', '-Dpolyglot.engine.InliningRecursionDepth=2'], 0),
+    ('limit-truffle-inlining', ['-Dpolyglot.compiler.InliningRecursionDepth=2'], 0),
+    ('no-splitting-limit-truffle-inlining', ['-Dpolyglot.engine.Splitting=false', '-Dpolyglot.compiler.InliningRecursionDepth=2'], 0),
     ('no-truffle-bg-comp', ['-Dpolyglot.engine.BackgroundCompilation=false'], 0),
     ('avx0', ['-XX:UseAVX=0'], 11),
     ('avx1', ['-XX:UseAVX=1'], 11),
@@ -151,7 +151,10 @@ mx_benchmark.add_java_vm(JvmciJdkVm('client', 'hosted', ['-server', '-XX:+Enable
 
 
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default', ['-server', '-XX:-EnableJVMCI']), _suite, 2)
+mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default-serialgc', ['-server', '-XX:-EnableJVMCI', '-XX:+UseSerialGC']), _suite, 2)
+mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default-pargc', ['-server', '-XX:-EnableJVMCI', '-XX:+UseParallelGC']), _suite, 2)
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default-zgc', ['-server', '-XX:-EnableJVMCI', '-XX:+UseZGC']), _suite, 2)
+mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default-gen-zgc', ['-server', '-XX:-EnableJVMCI', '-XX:+UseZGC', '-XX:+ZGenerational']), _suite, 2)
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default-no-tiered-comp', ['-server', '-XX:-EnableJVMCI', '-XX:-TieredCompilation']), _suite, 2)
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'hosted', ['-server', '-XX:+EnableJVMCI']), _suite, 3)
 
@@ -514,13 +517,13 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHJarBa
     def whitebox_dependency(dist):
         return itertools.chain(
             (dep.name.startswith('GRAAL') for dep in dist.deps),
-            (dep.name.startswith('org.graalvm.compiler') for dep in dist.archived_deps())
+            (dep.name.startswith('jdk.graal.compiler') for dep in dist.archived_deps())
         )
 
     def filter_distribution(self, dist):
         return super(JMHDistWhiteboxBenchmarkSuite, self).filter_distribution(dist) and \
                any(JMHDistWhiteboxBenchmarkSuite.whitebox_dependency(dist)) and \
-               not any(dep.name.startswith('com.oracle.truffle.enterprise.dispatch.jmh') for dep in dist.deps)
+               not any(dep.name.startswith('com.oracle.truffle.enterprise.jmh') for dep in dist.deps)
 
 
     def extraVmArgs(self):
@@ -530,7 +533,15 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHJarBa
                  '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED',
                  '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
                  '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=ALL-UNNAMED',
-                 '--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.graph=ALL-UNNAMED']
+                 '--add-exports=jdk.graal.compiler/jdk.graal.compiler.graph=ALL-UNNAMED',
+                 '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.benchmark=ALL-UNNAMED',
+                 '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.debug=ALL-UNNAMED',
+                 '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.library=ALL-UNNAMED',
+                 '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.memory=ALL-UNNAMED',
+                 '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.nodes=ALL-UNNAMED',
+                 '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.strings=ALL-UNNAMED',
+                 '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl=ALL-UNNAMED',
+                 '--add-exports=org.graalvm.truffle/com.oracle.truffle.api=ALL-UNNAMED']
         return extra + super(JMHDistWhiteboxBenchmarkSuite, self).extraVmArgs()
 
     def getJMHEntry(self, bmSuiteArgs):

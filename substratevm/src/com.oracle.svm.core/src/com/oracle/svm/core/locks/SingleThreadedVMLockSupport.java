@@ -75,7 +75,7 @@ final class SingleThreadedVMLockFeature implements InternalFeature {
     private final ClassInstanceReplacer<VMSemaphore, VMSemaphore> semaphoreReplacer = new ClassInstanceReplacer<>(VMSemaphore.class) {
         @Override
         protected VMSemaphore createReplacement(VMSemaphore source) {
-            return new SingleThreadedVMSemaphore();
+            return new SingleThreadedVMSemaphore(source.getName());
         }
     };
 
@@ -109,7 +109,7 @@ final class SingleThreadedVMMutex extends VMMutex {
 
     @Override
     public VMMutex lock() {
-        assertNotOwner("Recursive locking is not supported");
+        assert !isOwner() : "Recursive locking is not supported";
         setOwnerToCurrentThread();
         return this;
     }
@@ -117,7 +117,7 @@ final class SingleThreadedVMMutex extends VMMutex {
     @Override
     @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.", callerMustBe = true)
     public void lockNoTransition() {
-        assertNotOwner("Recursive locking is not supported");
+        assert !isOwner() : "Recursive locking is not supported";
         setOwnerToCurrentThread();
     }
 
@@ -177,6 +177,7 @@ final class SingleThreadedVMCondition extends VMCondition {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void signal() {
         /* Nothing to do. */
     }
@@ -189,6 +190,11 @@ final class SingleThreadedVMCondition extends VMCondition {
 }
 
 final class SingleThreadedVMSemaphore extends VMSemaphore {
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    SingleThreadedVMSemaphore(String name) {
+        super(name);
+    }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

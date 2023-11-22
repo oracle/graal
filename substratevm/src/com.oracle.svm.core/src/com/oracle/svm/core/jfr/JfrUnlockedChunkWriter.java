@@ -41,6 +41,11 @@ public interface JfrUnlockedChunkWriter {
     JfrChunkWriter lock();
 
     /**
+     * Returns true if the current thread holds the lock.
+     */
+    boolean isLockedByCurrentThread();
+
+    /**
      * It is valid to call this method without locking but be aware that the result will be racy in
      * that case.
      */

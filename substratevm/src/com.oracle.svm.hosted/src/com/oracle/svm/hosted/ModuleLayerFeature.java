@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,8 @@
  * questions.
  */
 package com.oracle.svm.hosted;
+
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
 
 import java.lang.module.Configuration;
 import java.lang.module.FindException;
@@ -54,20 +56,29 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.internal.module.DefaultRoots;
-import jdk.internal.module.ModuleBootstrap;
-import jdk.internal.module.SystemModuleFinders;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.BootModuleLayerSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.core.jdk.RuntimeModuleSupport;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.AnalysisAccessBase;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.internal.module.DefaultRoots;
+import jdk.internal.module.ModuleBootstrap;
+import jdk.internal.module.SystemModuleFinders;
 
 /**
  * This feature:
@@ -116,17 +127,7 @@ public final class ModuleLayerFeature implements InternalFeature {
         FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
         moduleLayerFeatureUtils = new ModuleLayerFeatureUtils(accessImpl.imageClassLoader);
 
-        /*
-         * Generate a temporary module layer to serve as a runtime boot module layer until the
-         * analysis is finished.
-         */
-        Set<String> baseModules = ModuleLayer.boot().modules()
-                        .stream()
-                        .map(Module::getName)
-                        .collect(Collectors.toSet());
-        Function<String, ClassLoader> clf = moduleLayerFeatureUtils::getClassLoaderForBootLayerModule;
-        ModuleLayer runtimeBootLayer = synthesizeRuntimeModuleLayer(new ArrayList<>(List.of(ModuleLayer.empty())), accessImpl.imageClassLoader, baseModules, Set.of(), clf, null);
-        BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
+        RuntimeModuleSupport.instance().setHostedToRuntimeModuleMapper(moduleLayerFeatureUtils::getOrCreateRuntimeModuleForHostedModule);
 
         /*
          * Register an object replacer that will ensure all references to hosted module instances
@@ -136,33 +137,54 @@ public final class ModuleLayerFeature implements InternalFeature {
     }
 
     private Object replaceHostedModules(Object source) {
-        if (source instanceof Module) {
-            Module module = (Module) source;
-            return moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(module, module.getDescriptor());
+        if (source instanceof Module module) {
+            return moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(module);
         }
         return source;
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(BootModuleLayerSupport.class, new BootModuleLayerSupport());
+        ImageSingletons.add(RuntimeModuleSupport.class, new RuntimeModuleSupport());
 
         List<Module> bootLayerAutomaticModules = ModuleLayer.boot().modules()
                         .stream()
                         .filter(m -> m.isNamed() && m.getDescriptor().isAutomatic())
-                        .collect(Collectors.toList());
+                        .toList();
         if (!bootLayerAutomaticModules.isEmpty()) {
-            System.out.println("Warning: Detected automatic module(s) on the module-path of the image builder:" + System.lineSeparator() +
-                            bootLayerAutomaticModules.stream().map(ModuleLayerFeatureUtils::formatModule).collect(Collectors.joining(System.lineSeparator())) +
-                            System.lineSeparator() + "Extending the image builder with automatic modules is not supported and might result in failed build. " +
-                            "This is probably caused by specifying a jar-file that is not a proper module on the module-path. " +
-                            "Please ensure that only proper modules are found on the module-path");
+            LogUtils.warning(
+                            "Detected automatic module(s) on the module-path of the image builder:\n%s\nExtending the image builder with automatic modules is not supported and might result in failed build. " +
+                                            "This is probably caused by specifying a jar-file that is not a proper module on the module-path. " +
+                                            "Please ensure that only proper modules are found on the module-path.",
+                            bootLayerAutomaticModules.stream().map(ModuleLayerFeatureUtils::formatModule).collect(Collectors.joining(System.lineSeparator())));
         }
     }
 
     @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        scanRuntimeBootLayerPrototype((BeforeAnalysisAccessImpl) access);
+    }
+
+    /**
+     * Generate a temporary module layer to serve as a prototype object for
+     * {@link RuntimeModuleSupport}.bootLayer. The value doesn't need to actually be set in the
+     * field, just scanned such that the analysis sees the deep type hierarchy. The field value
+     * wouldn't be processed during analysis anyway since the field is annotated with
+     * {@link UnknownObjectField}, only the field declared type is injected in the type flow graphs.
+     * The concrete value is set in {@link ModuleLayerFeature#afterAnalysis}. Later when the field
+     * is read the lazy value supplier scans the concrete value and patches the shadow heap.
+     */
+    private void scanRuntimeBootLayerPrototype(BeforeAnalysisAccessImpl accessImpl) {
+        Set<String> baseModules = ModuleLayer.boot().modules().stream().map(Module::getName).collect(Collectors.toSet());
+        Function<String, ClassLoader> clf = moduleLayerFeatureUtils::getClassLoaderForBootLayerModule;
+        ModuleLayer runtimeBootLayer = synthesizeRuntimeModuleLayer(new ArrayList<>(List.of(ModuleLayer.empty())), accessImpl, accessImpl.imageClassLoader, baseModules, Set.of(), clf, null);
+        /* Only scan the value if module support is enabled and bootLayer field is reachable. */
+        accessImpl.registerReachabilityHandler((a) -> accessImpl.rescanObject(runtimeBootLayer), ReflectionUtil.lookupField(RuntimeModuleSupport.class, "bootLayer"));
+    }
+
+    @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
+        AfterAnalysisAccessImpl accessImpl = (AfterAnalysisAccessImpl) access;
 
         Set<Module> runtimeImageNamedModules = accessImpl.getUniverse().getTypes()
                         .stream()
@@ -176,12 +198,7 @@ public final class ModuleLayerFeature implements InternalFeature {
          * is required when filtering the analysis reachable module set.
          */
         Set<String> extraModules = ModuleLayerFeatureUtils.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES);
-        Set<String> includedResourceModules = ImageSingletons.lookup(ResourcesFeature.class).includedResourcesModules
-                        .stream()
-                        .map(Module::getName)
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.toSet());
-        extraModules.addAll(includedResourceModules);
+        extraModules.addAll(Resources.getIncludedResourcesModules());
         extraModules.stream().filter(Predicate.not(ModuleSupport.nonExplicitModules::contains)).forEach(moduleName -> {
             Optional<?> module = accessImpl.imageClassLoader.findModule(moduleName);
             if (module.isEmpty()) {
@@ -219,13 +236,14 @@ public final class ModuleLayerFeature implements InternalFeature {
         Set<String> rootModules = calculateRootModules(extraModules);
         List<ModuleLayer> runtimeModuleLayers = synthesizeRuntimeModuleLayers(accessImpl, reachableModuleLayers, runtimeImageNamedModules, analysisReachableSyntheticModules, rootModules);
         ModuleLayer runtimeBootLayer = runtimeModuleLayers.get(0);
-        BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
+        RuntimeModuleSupport.instance().setBootLayer(runtimeBootLayer);
 
         /*
          * Ensure that runtime modules have the same relations (i.e., reads, opens and exports) as
          * the originals.
          */
-        replicateVisibilityModifications(runtimeBootLayer, accessImpl.imageClassLoader, runtimeImageNamedModules);
+        replicateVisibilityModifications(runtimeBootLayer, accessImpl, accessImpl.imageClassLoader, runtimeImageNamedModules);
+        replicateNativeAccess(accessImpl, runtimeImageNamedModules);
     }
 
     /**
@@ -343,7 +361,7 @@ public final class ModuleLayerFeature implements InternalFeature {
         return Stream.concat(Stream.of(m.getName()), requiredModules);
     }
 
-    private List<ModuleLayer> synthesizeRuntimeModuleLayers(FeatureImpl.AfterAnalysisAccessImpl accessImpl, List<ModuleLayer> hostedModuleLayers, Collection<Module> reachableNamedModules,
+    private List<ModuleLayer> synthesizeRuntimeModuleLayers(AfterAnalysisAccessImpl accessImpl, List<ModuleLayer> hostedModuleLayers, Collection<Module> reachableNamedModules,
                     Collection<Module> reachableSyntheticModules, Collection<String> rootModuleNames) {
         /*
          * A mapping from hosted to runtime module layers. Used when looking up runtime module layer
@@ -387,7 +405,7 @@ public final class ModuleLayerFeature implements InternalFeature {
             Configuration cf = isBootModuleLayer ? null : hostedModuleLayer.configuration();
             Function<String, ClassLoader> clf = name -> moduleLayerFeatureUtils.getClassLoaderForModuleInModuleLayer(hostedModuleLayer, name);
 
-            ModuleLayer runtimeModuleLayer = synthesizeRuntimeModuleLayer(parents, accessImpl.imageClassLoader, moduleNames, syntheticModules, clf, cf);
+            ModuleLayer runtimeModuleLayer = synthesizeRuntimeModuleLayer(parents, accessImpl, accessImpl.imageClassLoader, moduleNames, syntheticModules, clf, cf);
             moduleLayerPairs.put(hostedModuleLayer, runtimeModuleLayer);
         }
 
@@ -395,8 +413,8 @@ public final class ModuleLayerFeature implements InternalFeature {
         return new ArrayList<>(moduleLayerPairs.values());
     }
 
-    private ModuleLayer synthesizeRuntimeModuleLayer(List<ModuleLayer> parentLayers, ImageClassLoader cl, Set<String> reachableModules, Set<Module> syntheticModules,
-                    Function<String, ClassLoader> clf, Configuration cfOverride) {
+    private ModuleLayer synthesizeRuntimeModuleLayer(List<ModuleLayer> parentLayers, AnalysisAccessBase accessImpl, ImageClassLoader cl, Set<String> reachableModules,
+                    Set<Module> syntheticModules, Function<String, ClassLoader> clf, Configuration cfOverride) {
         /**
          * For consistent module lookup we reuse the {@link ModuleFinder}s defined and used in
          * {@link NativeImageClassLoaderSupport}.
@@ -414,20 +432,21 @@ public final class ModuleLayerFeature implements InternalFeature {
         ModuleLayer runtimeModuleLayer = null;
         try {
             runtimeModuleLayer = moduleLayerFeatureUtils.createNewModuleLayerInstance(runtimeModuleLayerConfiguration);
-            Map<String, Module> nameToModule = moduleLayerFeatureUtils.synthesizeNameToModule(runtimeModuleLayer, clf);
+            Map<String, Module> nameToModule = moduleLayerFeatureUtils.synthesizeNameToModule(accessImpl, runtimeModuleLayer, clf);
             for (Module syntheticModule : syntheticModules) {
-                Module runtimeSyntheticModule = moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(syntheticModule, syntheticModule.getDescriptor());
+                Module runtimeSyntheticModule = moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(syntheticModule);
                 nameToModule.putIfAbsent(runtimeSyntheticModule.getName(), runtimeSyntheticModule);
-                moduleLayerFeatureUtils.patchModuleLayerField(runtimeSyntheticModule, runtimeModuleLayer);
+                moduleLayerFeatureUtils.patchModuleLayerField(accessImpl, runtimeSyntheticModule, runtimeModuleLayer);
             }
-            patchRuntimeModuleLayer(runtimeModuleLayer, nameToModule, parentLayers);
+            patchRuntimeModuleLayer(accessImpl, runtimeModuleLayer, nameToModule, parentLayers);
+            accessImpl.rescanField(runtimeModuleLayer, moduleLayerFeatureUtils.moduleLayerModulesField);
             return runtimeModuleLayer;
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
             throw VMError.shouldNotReachHere("Failed to synthesize the runtime module layer: " + runtimeModuleLayer, ex);
         }
     }
 
-    private void replicateVisibilityModifications(ModuleLayer runtimeBootLayer, ImageClassLoader cl, Set<Module> analysisReachableNamedModules) {
+    private void replicateVisibilityModifications(ModuleLayer runtimeBootLayer, AfterAnalysisAccessImpl accessImpl, ImageClassLoader cl, Set<Module> analysisReachableNamedModules) {
         List<Module> applicationModules = findApplicationModules(runtimeBootLayer, cl.applicationModulePath());
 
         Map<Module, Module> modulePairs = analysisReachableNamedModules
@@ -453,27 +472,27 @@ public final class ModuleLayerFeature implements InternalFeature {
                     }
                     Module runtimeTo = e2.getValue();
                     if (ModuleLayerFeatureUtils.isModuleSynthetic(hostedFrom) || hostedFrom.canRead(hostedTo)) {
-                        moduleLayerFeatureUtils.addReads(runtimeFrom, runtimeTo);
+                        moduleLayerFeatureUtils.addReads(accessImpl, runtimeFrom, runtimeTo);
                         if (hostedFrom == builderModule) {
                             for (Module appModule : applicationModules) {
-                                moduleLayerFeatureUtils.addReads(appModule, runtimeTo);
+                                moduleLayerFeatureUtils.addReads(accessImpl, appModule, runtimeTo);
                             }
                         }
                     }
                     for (String pn : runtimeFrom.getPackages()) {
                         if (ModuleLayerFeatureUtils.isModuleSynthetic(hostedFrom) || hostedFrom.isOpen(pn, hostedTo)) {
-                            moduleLayerFeatureUtils.addOpens(runtimeFrom, pn, runtimeTo);
+                            moduleLayerFeatureUtils.addOpens(accessImpl, runtimeFrom, pn, runtimeTo);
                             if (hostedTo == builderModule) {
                                 for (Module appModule : applicationModules) {
-                                    moduleLayerFeatureUtils.addOpens(runtimeFrom, pn, appModule);
+                                    moduleLayerFeatureUtils.addOpens(accessImpl, runtimeFrom, pn, appModule);
                                 }
                             }
                         }
                         if (ModuleLayerFeatureUtils.isModuleSynthetic(hostedFrom) || hostedFrom.isExported(pn, hostedTo)) {
-                            moduleLayerFeatureUtils.addExports(runtimeFrom, pn, runtimeTo);
+                            moduleLayerFeatureUtils.addExports(accessImpl, runtimeFrom, pn, runtimeTo);
                             if (hostedTo == builderModule) {
                                 for (Module appModule : applicationModules) {
-                                    moduleLayerFeatureUtils.addExports(runtimeFrom, pn, appModule);
+                                    moduleLayerFeatureUtils.addExports(accessImpl, runtimeFrom, pn, appModule);
                                 }
                             }
                         }
@@ -483,6 +502,21 @@ public final class ModuleLayerFeature implements InternalFeature {
         } catch (IllegalAccessException ex) {
             throw VMError.shouldNotReachHere("Failed to transfer hosted module relations to the runtime boot module layer.", ex);
         }
+    }
+
+    private void replicateNativeAccess(AfterAnalysisAccessImpl accessImpl, Set<Module> analysisReachableNamedModules) {
+        Map<Module, Module> modulePairs = analysisReachableNamedModules
+                        .stream()
+                        .collect(Collectors.toMap(m -> m, m -> moduleLayerFeatureUtils.getRuntimeModuleForHostedModule(m, false)));
+
+        for (Map.Entry<Module, Module> modulesPair : modulePairs.entrySet()) {
+            Module hosted = modulesPair.getKey();
+            Module runtime = modulesPair.getValue();
+            if (moduleLayerFeatureUtils.allowsNativeAccess(hosted)) {
+                moduleLayerFeatureUtils.setNativeAccess(accessImpl, runtime, true);
+            }
+        }
+
     }
 
     private static List<Module> findApplicationModules(ModuleLayer runtimeBootLayer, List<Path> applicationModulePath) {
@@ -528,10 +562,10 @@ public final class ModuleLayerFeature implements InternalFeature {
         }
     }
 
-    private void patchRuntimeModuleLayer(ModuleLayer runtimeModuleLayer, Map<String, Module> nameToModule, List<ModuleLayer> parents) {
+    private void patchRuntimeModuleLayer(AnalysisAccessBase accessImpl, ModuleLayer runtimeModuleLayer, Map<String, Module> nameToModule, List<ModuleLayer> parents) {
         try {
-            moduleLayerFeatureUtils.patchModuleLayerNameToModuleField(runtimeModuleLayer, nameToModule);
-            moduleLayerFeatureUtils.patchModuleLayerParentsField(runtimeModuleLayer, parents);
+            moduleLayerFeatureUtils.patchModuleLayerNameToModuleField(accessImpl, runtimeModuleLayer, nameToModule);
+            moduleLayerFeatureUtils.patchModuleLayerParentsField(accessImpl, runtimeModuleLayer, parents);
         } catch (IllegalAccessException ex) {
             throw VMError.shouldNotReachHere("Failed to patch the runtime boot module layer.", ex);
         }
@@ -540,6 +574,7 @@ public final class ModuleLayerFeature implements InternalFeature {
         runtimeModuleLayer.modules();
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static final class ModuleLayerFeatureUtils {
         private final Map<ClassLoader, Map<String, Module>> runtimeModules;
         private final ImageClassLoader imageClassLoader;
@@ -555,6 +590,7 @@ public final class ModuleLayerFeature implements InternalFeature {
         private final Field moduleReadsField;
         private final Field moduleOpenPackagesField;
         private final Field moduleExportedPackagesField;
+        private final Field moduleEnableNativeAccessField;
         private final Method moduleFindModuleMethod;
         private final Method systemModuleFindersAllSystemModulesMethod;
         private final Method systemModuleFindersOfMethod;
@@ -564,6 +600,7 @@ public final class ModuleLayerFeature implements InternalFeature {
         private final Constructor<ModuleLayer> moduleLayerConstructor;
         private final Field moduleLayerNameToModuleField;
         private final Field moduleLayerParentsField;
+        private final Field moduleLayerModulesField;
 
         ModuleLayerFeatureUtils(ImageClassLoader cl) {
             runtimeModules = new HashMap<>();
@@ -587,12 +624,17 @@ public final class ModuleLayerFeature implements InternalFeature {
                 moduleReadsField = findFieldByName(moduleClassFields, "reads");
                 moduleOpenPackagesField = findFieldByName(moduleClassFields, "openPackages");
                 moduleExportedPackagesField = findFieldByName(moduleClassFields, "exportedPackages");
+                // Only present on JDK 19+
+                moduleEnableNativeAccessField = findFieldByName(moduleClassFields, "enableNativeAccess", true);
                 moduleDescriptorField.setAccessible(true);
                 moduleLayerField.setAccessible(true);
                 moduleLoaderField.setAccessible(true);
                 moduleReadsField.setAccessible(true);
                 moduleOpenPackagesField.setAccessible(true);
                 moduleExportedPackagesField.setAccessible(true);
+                if (moduleEnableNativeAccessField != null) {
+                    moduleEnableNativeAccessField.setAccessible(true);
+                }
 
                 allUnnamedModuleSet = new HashSet<>(1);
                 allUnnamedModuleSet.add(allUnnamedModule);
@@ -614,6 +656,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                 moduleLayerConstructor = ReflectionUtil.lookupConstructor(ModuleLayer.class, Configuration.class, List.class, Function.class);
                 moduleLayerNameToModuleField = ReflectionUtil.lookupField(ModuleLayer.class, "nameToModule");
                 moduleLayerParentsField = ReflectionUtil.lookupField(ModuleLayer.class, "parents");
+                moduleLayerModulesField = ReflectionUtil.lookupField(ModuleLayer.class, "modules");
             } catch (ReflectiveOperationException | NoSuchElementException ex) {
                 throw VMError.shouldNotReachHere("Failed to retrieve fields of the Module/ModuleLayer class.", ex);
             }
@@ -624,8 +667,19 @@ public final class ModuleLayerFeature implements InternalFeature {
          * versions. This method should be removed once {@link ReflectionUtil} becomes immune to
          * reflection filters.
          */
+        private static Field findFieldByName(Field[] fields, String name, boolean optional) {
+            var res = Arrays.stream(fields).filter(f -> f.getName().equals(name)).findAny();
+            if (res.isPresent()) {
+                return res.get();
+            } else if (optional) {
+                return null;
+            } else {
+                throw shouldNotReachHereAtRuntime();
+            }
+        }
+
         private static Field findFieldByName(Field[] fields, String name) {
-            return Arrays.stream(fields).filter(f -> f.getName().equals(name)).findAny().orElseThrow(VMError::shouldNotReachHere);
+            return findFieldByName(fields, name, false);
         }
 
         private static boolean isModuleSynthetic(Module m) {
@@ -731,9 +785,9 @@ public final class ModuleLayerFeature implements InternalFeature {
             }
         }
 
-        public Module getOrCreateRuntimeModuleForHostedModule(Module hostedModule, ModuleDescriptor runtimeModuleDescriptor) {
+        public Module getOrCreateRuntimeModuleForHostedModule(Module hostedModule) {
             if (hostedModule.isNamed()) {
-                return getOrCreateRuntimeModuleForHostedModule(hostedModule.getClassLoader(), hostedModule.getName(), runtimeModuleDescriptor);
+                return getOrCreateRuntimeModuleForHostedModule(hostedModule.getClassLoader(), hostedModule.getName(), hostedModule.getDescriptor());
             } else {
                 return hostedModule == everyoneModule ? everyoneModule : allUnnamedModule;
             }
@@ -764,7 +818,7 @@ public final class ModuleLayerFeature implements InternalFeature {
          * and removal of VM state updates (otherwise we would be re-defining modules to the host
          * VM).
          */
-        Map<String, Module> synthesizeNameToModule(ModuleLayer runtimeModuleLayer, Function<String, ClassLoader> clf)
+        Map<String, Module> synthesizeNameToModule(AnalysisAccessBase access, ModuleLayer runtimeModuleLayer, Function<String, ClassLoader> clf)
                         throws IllegalAccessException, InvocationTargetException {
             Configuration cf = runtimeModuleLayer.configuration();
 
@@ -783,8 +837,9 @@ public final class ModuleLayerFeature implements InternalFeature {
                 Module m = getOrCreateRuntimeModuleForHostedModule(loader, name, descriptor);
                 if (!descriptor.equals(m.getDescriptor())) {
                     moduleDescriptorField.set(m, descriptor);
+                    access.rescanField(m, moduleDescriptorField);
                 }
-                patchModuleLayerField(m, runtimeModuleLayer);
+                patchModuleLayerField(access, m, runtimeModuleLayer);
                 nameToModule.put(name, m);
             }
 
@@ -811,6 +866,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                     reads.add(allUnnamedModule);
                 }
                 moduleReadsField.set(m, reads);
+                access.rescanField(m, moduleReadsField);
 
                 if (!descriptor.isOpen() && !descriptor.isAutomatic()) {
                     if (descriptor.opens().isEmpty()) {
@@ -833,6 +889,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                             }
                         }
                         moduleExportedPackagesField.set(m, exportedPackages);
+                        access.rescanField(m, moduleExportedPackagesField);
                     } else {
                         Map<String, Set<Module>> openPackages = new HashMap<>(descriptor.opens().size());
                         for (ModuleDescriptor.Opens opens : descriptor.opens()) {
@@ -880,26 +937,30 @@ public final class ModuleLayerFeature implements InternalFeature {
                         }
 
                         moduleOpenPackagesField.set(m, openPackages);
+                        access.rescanField(m, moduleOpenPackagesField);
                         moduleExportedPackagesField.set(m, exportedPackages);
+                        access.rescanField(m, moduleExportedPackagesField);
                     }
                 }
+                access.rescanObject(m);
             }
 
             return nameToModule;
         }
 
         @SuppressWarnings("unchecked")
-        void addReads(Module module, Module other) throws IllegalAccessException {
+        void addReads(AfterAnalysisAccessImpl accessImpl, Module module, Module other) throws IllegalAccessException {
             Set<Module> reads = (Set<Module>) moduleReadsField.get(module);
             if (reads == null) {
                 reads = new HashSet<>(1);
                 moduleReadsField.set(module, reads);
             }
             reads.add(other == null ? allUnnamedModule : other);
+            accessImpl.rescanField(module, moduleReadsField);
         }
 
         @SuppressWarnings("unchecked")
-        void addExports(Module module, String pn, Module other) throws IllegalAccessException {
+        void addExports(AfterAnalysisAccessImpl accessImpl, Module module, String pn, Module other) throws IllegalAccessException {
             if (other != null && module.isExported(pn, other)) {
                 return;
             }
@@ -922,10 +983,11 @@ public final class ModuleLayerFeature implements InternalFeature {
             if (prev != null) {
                 prev.add(other == null ? allUnnamedModule : other);
             }
+            accessImpl.rescanField(module, moduleExportedPackagesField);
         }
 
         @SuppressWarnings("unchecked")
-        void addOpens(Module module, String pn, Module other) throws IllegalAccessException {
+        void addOpens(AfterAnalysisAccessImpl accessImpl, Module module, String pn, Module other) throws IllegalAccessException {
             if (other != null && module.isOpen(pn, other)) {
                 return;
             }
@@ -948,10 +1010,12 @@ public final class ModuleLayerFeature implements InternalFeature {
             if (prev != null) {
                 prev.add(other == null ? allUnnamedModule : other);
             }
+            accessImpl.rescanField(module, moduleOpenPackagesField);
         }
 
-        void patchModuleLayerField(Module module, ModuleLayer runtimeBootLayer) throws IllegalAccessException {
+        void patchModuleLayerField(AnalysisAccessBase accessImpl, Module module, ModuleLayer runtimeBootLayer) throws IllegalAccessException {
             moduleLayerField.set(module, runtimeBootLayer);
+            accessImpl.rescanField(module, moduleLayerField);
         }
 
         void patchModuleLoaderField(Module module, ClassLoader loader) throws IllegalAccessException {
@@ -962,12 +1026,14 @@ public final class ModuleLayerFeature implements InternalFeature {
             return moduleLayerConstructor.newInstance(cf, List.of(), null);
         }
 
-        void patchModuleLayerNameToModuleField(ModuleLayer moduleLayer, Map<String, Module> nameToModule) throws IllegalAccessException {
+        void patchModuleLayerNameToModuleField(AnalysisAccessBase accessImpl, ModuleLayer moduleLayer, Map<String, Module> nameToModule) throws IllegalAccessException {
             moduleLayerNameToModuleField.set(moduleLayer, nameToModule);
+            accessImpl.rescanField(moduleLayer, moduleLayerNameToModuleField);
         }
 
-        void patchModuleLayerParentsField(ModuleLayer moduleLayer, List<ModuleLayer> parents) throws IllegalAccessException {
+        void patchModuleLayerParentsField(AnalysisAccessBase accessImpl, ModuleLayer moduleLayer, List<ModuleLayer> parents) throws IllegalAccessException {
             moduleLayerParentsField.set(moduleLayer, parents);
+            accessImpl.rescanField(moduleLayer, moduleLayerParentsField);
         }
 
         ClassLoader getClassLoaderForBootLayerModule(String name) {
@@ -1019,6 +1085,30 @@ public final class ModuleLayerFeature implements InternalFeature {
                 return (Set<String>) defaultRootsComputeMethod.invoke(null, finder1, finder2);
             } catch (ReflectiveOperationException e) {
                 throw VMError.shouldNotReachHere("Failed to reflectively invoke DefaultRoots.compute().", e);
+            }
+        }
+
+        /**
+         * In the future, this can be replaced by calling Module#isNativeAccessEnabled(). We
+         * currently do it this way to still be compatible with older JDKs.
+         */
+        boolean allowsNativeAccess(Module module) {
+            assert moduleEnableNativeAccessField != null : "Only available on JDK19+";
+            try {
+                return (boolean) moduleEnableNativeAccessField.get(module);
+            } catch (IllegalAccessException e) {
+                throw VMError.shouldNotReachHere("Failed to reflectively access Module.enableNativeAccess.", e);
+            }
+
+        }
+
+        void setNativeAccess(AfterAnalysisAccessImpl accessImpl, Module module, boolean value) {
+            assert moduleEnableNativeAccessField != null : "Only available on JDK19+";
+            try {
+                moduleEnableNativeAccessField.set(module, value);
+                accessImpl.rescanField(module, moduleEnableNativeAccessField);
+            } catch (IllegalAccessException e) {
+                throw VMError.shouldNotReachHere("Failed to reflectively set Module.enableNativeAccess.", e);
             }
         }
     }

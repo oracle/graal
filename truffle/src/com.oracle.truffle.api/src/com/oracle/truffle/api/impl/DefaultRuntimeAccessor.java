@@ -40,7 +40,9 @@
  */
 package com.oracle.truffle.api.impl;
 
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -81,6 +83,11 @@ final class DefaultRuntimeAccessor extends Accessor {
         @Override
         public RootCallTarget newCallTarget(CallTarget sourceCallTarget, RootNode rootNode) {
             return new DefaultCallTarget(rootNode);
+        }
+
+        @Override
+        public boolean isLegacyCompilerOption(String key) {
+            return false;
         }
 
         @Override
@@ -137,7 +144,7 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public OptionDescriptors getEngineOptionDescriptors() {
+        public OptionDescriptors getRuntimeOptionDescriptors() {
             return OptionDescriptors.EMPTY;
         }
 
@@ -165,11 +172,6 @@ final class DefaultRuntimeAccessor extends Accessor {
         @Override
         public void onEngineClosed(Object runtimeData) {
 
-        }
-
-        @Override
-        public String getSavedProperty(String key) {
-            return System.getProperty(key);
         }
 
         @Override
@@ -203,7 +205,7 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public Object createRuntimeData(OptionValues options, Function<String, TruffleLogger> loggerFactory) {
+        public Object createRuntimeData(Object engine, OptionValues engineOptions, Function<String, TruffleLogger> loggerFactory) {
             return null;
         }
 
@@ -223,7 +225,7 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public void onEnginePatch(Object runtimeData, OptionValues options, Function<String, TruffleLogger> loggerFactory) {
+        public void onEnginePatch(Object runtimeData, OptionValues runtimeOptions, Function<String, TruffleLogger> loggerFactory) {
 
         }
 
@@ -271,6 +273,10 @@ final class DefaultRuntimeAccessor extends Accessor {
             return DefaultContextThreadLocal.SINGLETON;
         }
 
+        @Override
+        public <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onThreadTermination) {
+            return ThreadLocal.withInitial(initialValue);
+        }
     }
 
 }

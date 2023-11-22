@@ -13,7 +13,7 @@ This document gives motivation and an overview of this approach.
 
 During execution of guest code each Truffle call target counts how many times it was executed as well as how many loop iterations happened during those executions (i.e. the target's "call and loop count").
 Once this counter reaches a certain threshold the call target is deemed "hot" and scheduled for compilation.
-In order to minimize the impact this has on the execution of the guest code the notion that the target should be compiled is made concrete as a [compilation task](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.compiler.truffle.runtime/src/org/graalvm/compiler/truffle/runtime/CompilationTask.java) and placed into a [compilation queue](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.compiler.truffle.runtime/src/org/graalvm/compiler/truffle/runtime/BackgroundCompileQueue.java) to await compilation.
+In order to minimize the impact this has on the execution of the guest code the notion that the target should be compiled is made concrete as a [compilation task](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.runtime/src/com/oracle/truffle/runtime/CompilationTask.java) and placed into a [compilation queue](https://github.com/oracle/graal/blob/master/compiler/src/com.oracle.truffle.runtime/src/com/oracle/truffle/runtime/BackgroundCompileQueue.java) to await compilation.
 The Truffle runtime spawns several compiler threads (`--engine.CompilerThreads`) that take tasks from the queue and compile the specified call targets.
 
 The initial implementation of the compilation queue in Truffle was a straightforward FIFO queue.
@@ -48,10 +48,10 @@ Using a FIFO queue, we would compile the `lowUsage` function first, even though 
 
 ## Traversing Compilation Queue
 
-The new compilation queue in Truffle, colloquially called ["Traversing Compilation Queue"](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.compiler.truffle.runtime/src/org/graalvm/compiler/truffle/runtime/TraversingBlockingQueue.java), takes a more dynamic approach to selecting the order in which targets are compiled.
+The new compilation queue in Truffle, colloquially called ["Traversing Compilation Queue"](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.runtime/src/com/oracle/truffle/runtime/TraversingBlockingQueue.java), takes a more dynamic approach to selecting the order in which targets are compiled.
 Every time a compiler thread requests the next compilation task the queue will traverse all the entries in the queue and pick the one with the highest priority.
 
-A task's priority is [determined based on several factors](https://github.com/oracle/graal/blob/c7c061b3230852e9582badf788b3dab74a809ca9/compiler/src/org.graalvm.compiler.truffle.runtime/src/org/graalvm/compiler/truffle/runtime/CompilationTask.java#L209).
+A task's priority is [determined based on several factors](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.runtime/src/com/oracle/truffle/runtime/CompilationTask.java#L209).
 
 For starters, targets scheduled for [first-tier compilation](https://medium.com/graalvm/multi-tier-compilation-in-graalvm-5fbc65f92402) (i.e. first-tier tasks) always have higher priority than second-tier tasks.
 The rational behind this is that performance difference between executing code in the interpreter and executing it in first-tier compiled code is much greater then the difference between tier-one and tier-two compiled code, meaning that we get more benefit from compiling these targets sooner.
@@ -78,7 +78,7 @@ One problem of the traversing compilation queue is that it needs to traverse all
 This does not have a significant performance impact as long as the size of the queue remains reasonable.
 This means that in order to always choose the highest priority task in a reasonable about of time we need to ensure that the queue does not grow indefinitely.
 
-This is achieved by an approach we call ["dynamic compilation thresholds"](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.compiler.truffle.runtime/src/org/graalvm/compiler/truffle/runtime/DynamicThresholdsQueue.java).
+This is achieved by an approach we call ["dynamic compilation thresholds"](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.runtime/src/com/oracle/truffle/runtime/DynamicThresholdsQueue.java).
 Simply put, dynamic compilation thresholds means that the compilation threshold (the one each call target's call and loop count is compared against when determining whether to compile it) may change over time depending on the state of the queue.
 If the queue is overloaded we aim to increase the compilation thresholds to reduce the number of incoming compilation tasks, i.e. targets need to be "more hot" to get scheduled for compilation.
 On the other hand, if the queue is close to empty, we can reduce the compilation thresholds to allow more targets to get scheduled for compilation, i.e. the compilation threads are in danger of idling so let's give them even "less hot" targets to compile.

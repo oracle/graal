@@ -29,33 +29,33 @@ import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.GC_
 import java.util.Arrays;
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
-import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.nodeinfo.Verbosity;
-import org.graalvm.compiler.nodes.SafepointNode;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.SnippetTemplate;
-import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
-import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
-import org.graalvm.compiler.replacements.Snippets;
+import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.nodeinfo.Verbosity;
+import jdk.graal.compiler.nodes.SafepointNode;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.extended.ForeignCallNode;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.SnippetTemplate;
+import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
+import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
+import jdk.graal.compiler.replacements.Snippets;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.thread.Safepoint;
 
@@ -93,7 +93,7 @@ final class SafepointSnippets extends SubstrateTemplates implements Snippets {
         public void lower(SafepointNode node, LoweringTool tool) {
             if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
                 assert SubstrateOptions.MultiThreaded.getValue() : "safepoints are only inserted into the graph in MultiThreaded mode";
-                if (Uninterruptible.Utils.isUninterruptible(node.graph().method())) {
+                if (((SharedMethod) node.graph().method()).isUninterruptible()) {
                     /* Basic sanity check to catch errors during safepoint insertion. */
                     throw GraalError.shouldNotReachHere("Must not insert safepoints in Uninterruptible code: " + node.stateBefore().toString(Verbosity.Debugger)); // ExcludeFromJacocoGeneratedReport
                 }

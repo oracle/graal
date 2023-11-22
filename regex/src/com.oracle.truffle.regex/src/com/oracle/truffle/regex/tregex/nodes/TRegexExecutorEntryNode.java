@@ -87,7 +87,7 @@ public abstract class TRegexExecutorEntryNode extends Node {
         @Override
         public String toString() {
             String src = executor.getSource().toStringEscaped();
-            return "tregex " + executor.getName() + " " + codeRange + ": " + (src.length() > 30 ? src.substring(0, 30) + "..." : src);
+            return "tregex " + executor.getSource().getSource().getName() + " " + executor.getName() + " " + codeRange + ": " + (src.length() > 30 ? src.substring(0, 30) + "..." : src);
         }
     }
 

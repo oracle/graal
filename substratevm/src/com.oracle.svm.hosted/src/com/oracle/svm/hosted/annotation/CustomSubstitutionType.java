@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,97 +24,67 @@
  */
 package com.oracle.svm.hosted.annotation;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.svm.core.util.VMError;
 
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
+import jdk.vm.ci.meta.UnresolvedJavaField;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
-/**
- * A type used as a substitution for an original type.
- *
- * @param <F> The type of fields in the substitution type
- * @param <M> The type of methods in the substitution type
- */
-public abstract class CustomSubstitutionType<F extends CustomSubstitutionField, M extends CustomSubstitutionMethod> implements ResolvedJavaType, OriginalClassProvider, AnnotationWrapper {
-
-    protected final ResolvedJavaType original;
-    protected final List<F> fields;
-    protected final Map<ResolvedJavaMethod, M> methods;
+public abstract class CustomSubstitutionType implements ResolvedJavaType, OriginalClassProvider, AnnotationWrapper {
+    private final ResolvedJavaType original;
 
     public CustomSubstitutionType(ResolvedJavaType original) {
         this.original = original;
-
-        fields = new ArrayList<>();
-        methods = new HashMap<>();
-    }
-
-    /** Get the type that this is a substitution for. */
-    public ResolvedJavaType getOriginal() {
-        return original;
-    }
-
-    /** Get the substitution for a method on the original type. */
-    public M getSubstitutionMethod(ResolvedJavaMethod method) {
-        return methods.get(method);
-    }
-
-    public void addSubstitutionMethod(ResolvedJavaMethod originalMethod, M substitution) {
-        methods.put(originalMethod, substitution);
-    }
-
-    public void addSubstitutionField(F field) {
-        fields.add(field);
     }
 
     @Override
-    public JavaKind getJavaKind() {
-        return JavaKind.Object;
+    public String getName() {
+        return original.getName();
     }
 
     @Override
-    public ResolvedJavaType resolve(ResolvedJavaType accessingClass) {
-        return this;
+    public AnnotatedElement getAnnotationRoot() {
+        return null;
     }
 
     @Override
     public boolean hasFinalizer() {
-        return false;
+        return original.hasFinalizer();
     }
 
     @Override
     public AssumptionResult<Boolean> hasFinalizableSubclass() {
-        return new AssumptionResult<>(false);
+        return original.hasFinalizableSubclass();
     }
 
     @Override
     public boolean isInterface() {
-        return false;
+        return original.isInterface();
     }
 
     @Override
     public boolean isInstanceClass() {
-        return true;
-    }
-
-    @Override
-    public boolean isArray() {
-        return false;
+        return original.isInstanceClass();
     }
 
     @Override
     public boolean isPrimitive() {
-        return false;
+        return original.isPrimitive();
+    }
+
+    @Override
+    public boolean isLeaf() {
+        return original.isLeaf();
     }
 
     @Override
@@ -123,45 +93,49 @@ public abstract class CustomSubstitutionType<F extends CustomSubstitutionField, 
     }
 
     @Override
-    public int getModifiers() {
-        return original.getModifiers();
-    }
-
-    @Override
     public boolean isInitialized() {
-        return true;
+        return original.isInitialized();
     }
 
     @Override
     public void initialize() {
-        assert isInitialized();
+        original.initialize();
     }
 
     @Override
     public boolean isLinked() {
-        return true;
+        return original.isLinked();
     }
 
     @Override
     public void link() {
-        assert isLinked();
+        original.link();
     }
 
     @Override
     public boolean hasDefaultMethods() {
-        assert !isInterface() : "only interfaces can have default methods";
-        return false;
+        return original.hasDefaultMethods();
     }
 
     @Override
     public boolean declaresDefaultMethods() {
-        assert !isInterface() : "only interfaces can have default methods";
-        return false;
+        return original.declaresDefaultMethods();
     }
 
     @Override
     public boolean isAssignableFrom(ResolvedJavaType other) {
         return original.isAssignableFrom(other);
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
+    public ResolvedJavaType getHostClass() {
+        return original.getHostClass();
+    }
+
+    @Override
+    public boolean isJavaLangObject() {
+        return original.isJavaLangObject();
     }
 
     @Override
@@ -180,13 +154,13 @@ public abstract class CustomSubstitutionType<F extends CustomSubstitutionField, 
     }
 
     @Override
-    public ResolvedJavaType findLeastCommonAncestor(ResolvedJavaType otherType) {
-        return original.findLeastCommonAncestor(otherType);
+    public ResolvedJavaType getSingleImplementor() {
+        return original.getSingleImplementor();
     }
 
     @Override
-    public ResolvedJavaType getSingleImplementor() {
-        return original.getSingleImplementor();
+    public ResolvedJavaType findLeastCommonAncestor(ResolvedJavaType otherType) {
+        return original.findLeastCommonAncestor(otherType);
     }
 
     @Override
@@ -200,18 +174,23 @@ public abstract class CustomSubstitutionType<F extends CustomSubstitutionField, 
     }
 
     @Override
+    public ResolvedJavaType getElementalType() {
+        return original.getElementalType();
+    }
+
+    @Override
     public ResolvedJavaType getArrayClass() {
         return original.getArrayClass();
     }
 
     @Override
-    public ResolvedJavaMethod resolveConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
-        return original.resolveConcreteMethod(method, callerType);
+    public ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
+        return original.resolveMethod(method, callerType);
     }
 
     @Override
-    public ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
-        return original.resolveMethod(method, callerType);
+    public ResolvedJavaMethod resolveConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
+        return original.resolveConcreteMethod(method, callerType);
     }
 
     @Override
@@ -221,7 +200,7 @@ public abstract class CustomSubstitutionType<F extends CustomSubstitutionField, 
 
     @Override
     public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
-        return fields.toArray(new ResolvedJavaField[fields.size()]);
+        return original.getInstanceFields(includeSuperclasses);
     }
 
     @Override
@@ -230,65 +209,177 @@ public abstract class CustomSubstitutionType<F extends CustomSubstitutionField, 
     }
 
     @Override
-    public AnnotatedElement getAnnotationRoot() {
-        return original;
-    }
-
-    @Override
     public ResolvedJavaField findInstanceFieldWithOffset(long offset, JavaKind expectedKind) {
-        /* All of our instance fields are synthetic and do not exist in the hosted VM. */
-        return null;
+        return original.findInstanceFieldWithOffset(offset, expectedKind);
     }
 
     @Override
     public String getSourceFileName() {
-        return null;
+        return original.getSourceFileName();
     }
 
     @Override
     public boolean isLocal() {
-        return false;
+        return original.isLocal();
     }
 
     @Override
     public boolean isMember() {
-        return false;
+        return original.isMember();
     }
 
     @Override
     public ResolvedJavaType getEnclosingType() {
-        return null;
+        return original.getEnclosingType();
     }
 
     @Override
     public ResolvedJavaMethod[] getDeclaredConstructors() {
-        return new ResolvedJavaMethod[0];
+        return getDeclaredConstructors(true);
+    }
+
+    @Override
+    public ResolvedJavaMethod[] getDeclaredConstructors(boolean forceLink) {
+        VMError.guarantee(forceLink == false, "only use getDeclaredConstructors without forcing to link, because linking can throw LinkageError");
+        return original.getDeclaredConstructors(forceLink);
     }
 
     @Override
     public ResolvedJavaMethod[] getDeclaredMethods() {
-        return original.getDeclaredMethods();
+        return getDeclaredMethods(true);
+    }
+
+    @Override
+    public ResolvedJavaMethod[] getDeclaredMethods(boolean forceLink) {
+        return original.getDeclaredMethods(forceLink);
     }
 
     @Override
     public ResolvedJavaMethod getClassInitializer() {
-        return null;
+        return original.getClassInitializer();
+    }
+
+    @Override
+    public ResolvedJavaMethod findMethod(String name, Signature signature) {
+        return original.findMethod(name, signature);
     }
 
     @Override
     public boolean isCloneableWithAllocation() {
-        throw JVMCIError.unimplemented();
+        return original.isCloneableWithAllocation();
     }
 
-    @SuppressWarnings("deprecation")
     @Override
-    public ResolvedJavaType getHostClass() {
-        throw JVMCIError.unimplemented();
+    public ResolvedJavaType lookupType(UnresolvedJavaType unresolvedJavaType, boolean resolve) {
+        return original.lookupType(unresolvedJavaType, resolve);
+    }
+
+    @Override
+    public ResolvedJavaField resolveField(UnresolvedJavaField unresolvedJavaField, ResolvedJavaType accessingClass) {
+        return original.resolveField(unresolvedJavaField, accessingClass);
+    }
+
+    @Override
+    public boolean isArray() {
+        return original.isArray();
+    }
+
+    @Override
+    public JavaKind getJavaKind() {
+        return original.getJavaKind();
+    }
+
+    @Override
+    public ResolvedJavaType resolve(ResolvedJavaType accessingClass) {
+        return original.resolve(accessingClass);
+    }
+
+    @Override
+    public int getModifiers() {
+        return original.getModifiers();
+    }
+
+    @Override
+    public boolean isSynchronized() {
+        return original.isSynchronized();
+    }
+
+    @Override
+    public boolean isStatic() {
+        return original.isStatic();
+    }
+
+    @Override
+    public boolean isFinalFlagSet() {
+        return original.isFinalFlagSet();
+    }
+
+    @Override
+    public boolean isPublic() {
+        return original.isPublic();
+    }
+
+    @Override
+    public boolean isPackagePrivate() {
+        return original.isPackagePrivate();
+    }
+
+    @Override
+    public boolean isPrivate() {
+        return original.isPrivate();
+    }
+
+    @Override
+    public boolean isProtected() {
+        return original.isProtected();
+    }
+
+    @Override
+    public boolean isTransient() {
+        return original.isTransient();
+    }
+
+    @Override
+    public boolean isStrict() {
+        return original.isStrict();
+    }
+
+    @Override
+    public boolean isVolatile() {
+        return original.isVolatile();
+    }
+
+    @Override
+    public boolean isNative() {
+        return original.isNative();
+    }
+
+    @Override
+    public boolean isAbstract() {
+        return original.isAbstract();
+    }
+
+    @Override
+    public boolean isConcrete() {
+        return original.isConcrete();
+    }
+
+    @Override
+    public <T extends Annotation> T[] getAnnotationsByType(Class<T> annotationClass) {
+        return original.getAnnotationsByType(annotationClass);
+    }
+
+    @Override
+    public <T extends Annotation> T[] getDeclaredAnnotationsByType(Class<T> annotationClass) {
+        return original.getDeclaredAnnotationsByType(annotationClass);
+    }
+
+    public ResolvedJavaType getOriginal() {
+        return original;
     }
 
     @Override
     public Class<?> getJavaClass() {
         return OriginalClassProvider.getJavaClass(original);
     }
-
 }

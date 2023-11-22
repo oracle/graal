@@ -1,7 +1,5 @@
 #
-# ----------------------------------------------------------------------------------------------------
-#
-# Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -24,7 +22,6 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
-# ----------------------------------------------------------------------------------------------------
 
 from __future__ import print_function
 
@@ -38,6 +35,7 @@ import mx
 import mx_benchmark
 import mx_sdk_benchmark
 import mx_java_benchmarks
+import mx_sdk_vm_impl
 
 _suite = mx.suite("substratevm")
 _successful_stage_pattern = re.compile(r'Successfully finished the last specified stage:.*$', re.MULTILINE)
@@ -117,9 +115,9 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
                             force_buildtime_init_slf4j_1_7_73,
                             force_runtime_init_netty_4_1_72
                           ],
-    'dotty'             : [
+    'dotty'             : mx_sdk_vm_impl.svm_experimental_options([
                             '-H:+AllowJRTFileSystem'
-                          ]
+                          ])
 }
 
 _renaissance_pre014_config = {
@@ -498,7 +496,7 @@ _DACAPO_EXTRA_IMAGE_BUILD_ARGS = {
     # org.apache.crimson.parser.Parser2 is force initialized at build-time due to non-determinism in class initialization
     # order that can lead to runtime issues. See GR-26324.
     'xalan':    ['--report-unsupported-elements-at-runtime',
-                 '--initialize-at-build-time=org.apache.crimson.parser.Parser2'],
+                 '--initialize-at-build-time=org.apache.crimson.parser.Parser2,org.apache.crimson.parser.Parser2$Catalog,org.apache.crimson.parser.Parser2$NullHandler'],
     # There are two main issues with fop:
     # 1. LoggingFeature is enabled by default, causing the LogManager configuration to be parsed at build-time. However
     #    DaCapo Harness sets the `java.util.logging.config.file` property at run-time. Therefore, we set
@@ -588,7 +586,8 @@ class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, B
         return ["9.12-MR1-git+2baec49"]
 
     def daCapoIterations(self):
-        return _daCapo_iterations
+        compiler_iterations = super(DaCapoNativeImageBenchmarkSuite, self).daCapoIterations()
+        return {key: _daCapo_iterations[key] for key in compiler_iterations.keys() if key in _daCapo_iterations.keys()}
 
     def benchmark_resources(self, benchmark):
         return _dacapo_resources[benchmark]
@@ -711,7 +710,8 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
         return 'scala-dacapo'
 
     def daCapoIterations(self):
-        return _scala_dacapo_iterations
+        compiler_iterations = super(ScalaDaCapoNativeImageBenchmarkSuite, self).daCapoIterations()
+        return {key: _scala_dacapo_iterations[key] for key in compiler_iterations.keys() if key in _scala_dacapo_iterations.keys()}
 
     def benchmark_resources(self, benchmark):
         return _scala_dacapo_resources[benchmark]
@@ -793,6 +793,9 @@ class ConsoleNativeImageBenchmarkSuite(mx_java_benchmarks.ConsoleBenchmarkSuite,
         self.benchmark_name = benchmarks[0]
         return args
 
+    def checkSamplesInPgo(self):
+        return False
+
 
 mx_benchmark.add_bm_suite(ConsoleNativeImageBenchmarkSuite())
 
@@ -819,7 +822,7 @@ class SpecJVM2008NativeImageBenchmarkSuite(mx_java_benchmarks.SpecJvm2008Benchma
         return args
 
     def extra_image_build_argument(self, benchmark, args):
-        return super(SpecJVM2008NativeImageBenchmarkSuite, self).extra_image_build_argument(benchmark, args) + ["-H:-ParseRuntimeOptions", "-Djava.awt.headless=false"]
+        return super(SpecJVM2008NativeImageBenchmarkSuite, self).extra_image_build_argument(benchmark, args) + mx_sdk_vm_impl.svm_experimental_options(['-H:-ParseRuntimeOptions']) + ['-Djava.awt.headless=false']
 
 
 mx_benchmark.add_bm_suite(SpecJVM2008NativeImageBenchmarkSuite())

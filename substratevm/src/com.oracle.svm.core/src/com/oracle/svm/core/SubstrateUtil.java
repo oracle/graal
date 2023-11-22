@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,20 +24,22 @@
  */
 package com.oracle.svm.core;
 
+import java.io.Console;
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
+import java.math.BigInteger;
 import java.util.List;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.java.LambdaUtils;
-import org.graalvm.compiler.nodes.BreakpointNode;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.java.LambdaUtils;
+import jdk.graal.compiler.nodes.BreakpointNode;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -51,7 +53,6 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.StringUtil;
@@ -104,8 +105,26 @@ public class SubstrateUtil {
         return Services.IS_IN_NATIVE_IMAGE;
     }
 
+    private static final Method IS_TERMINAL_METHOD = ReflectionUtil.lookupMethod(true, Console.class, "isTerminal");
+
+    private static boolean isTTY() {
+        Console console = System.console();
+        if (console == null) {
+            return false;
+        }
+        if (IS_TERMINAL_METHOD != null) {
+            try {
+                return (boolean) IS_TERMINAL_METHOD.invoke(console);
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                throw new Error(e);
+            }
+        } else {
+            return true;
+        }
+    }
+
     public static boolean isRunningInCI() {
-        return System.console() == null || System.getenv("CI") != null;
+        return !isTTY() || System.getenv("CI") != null;
     }
 
     /**
@@ -212,6 +231,7 @@ public class SubstrateUtil {
      * are actually the same class.
      */
     @SuppressWarnings({"unused", "unchecked"})
+    @AlwaysInline("Some callers rely on this never becoming an actual method call.")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> T cast(Object obj, Class<T> toType) {
         return (T) obj;
@@ -325,11 +345,22 @@ public class SubstrateUtil {
      * @return a unique stub name for the method
      */
     public static String uniqueStubName(ResolvedJavaMethod m) {
-        String shortName = UniqueShortNameProvider.singleton().uniqueShortName(null, m.getDeclaringClass(), m.getName(), m.getSignature(), m.isConstructor());
-        return stripPackage(m.getDeclaringClass().toJavaName()) + "_" +
-                        (m.isConstructor() ? "constructor" : m.getName()) + "_" +
-                        SubstrateUtil.digest(shortName);
+        return uniqueShortName("", m.getDeclaringClass(), m.getName(), m.getSignature(), m.isConstructor());
+    }
 
+    public static String uniqueShortName(String loaderNameAndId, ResolvedJavaType declaringClass, String methodName, Signature methodSignature, boolean isConstructor) {
+        StringBuilder sb = new StringBuilder(loaderNameAndId);
+        sb.append(declaringClass.toClassName()).append(".").append(methodName).append("(");
+        for (int i = 0; i < methodSignature.getParameterCount(false); i++) {
+            sb.append(methodSignature.getParameterType(i, null).toClassName()).append(",");
+        }
+        sb.append(')');
+        if (!isConstructor) {
+            sb.append(methodSignature.getReturnType(null).toClassName());
+        }
+
+        return stripPackage(declaringClass.toJavaName()) + "_" +
+                        (isConstructor ? "constructor" : methodName) + "_" + digest(sb.toString());
     }
 
     /**
@@ -382,7 +413,7 @@ public class SubstrateUtil {
             }
         }
         String mangled = out.toString();
-        assert mangled.matches("[a-zA-Z\\._][a-zA-Z0-9_]*");
+        assert mangled.matches("[a-zA-Z\\._][a-zA-Z0-9_]*") : mangled;
         /*-
          * To demangle, the following pipeline works for me (assuming no multi-byte characters):
          *
@@ -392,27 +423,6 @@ public class SubstrateUtil {
          * happen to match ^[0-9a-f]{2}, but hey....
          */
         return mangled;
-    }
-
-    private static final Method isHiddenMethod = JavaVersionUtil.JAVA_SPEC >= 17 ? ReflectionUtil.lookupMethod(Class.class, "isHidden") : null;
-
-    public static boolean isHiddenClass(Class<?> javaClass) {
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            try {
-                return (boolean) isHiddenMethod.invoke(javaClass);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                throw VMError.shouldNotReachHere(e);
-            }
-        }
-        return false;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean isHiddenClass(DynamicHub hub) {
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            return hub.isHidden();
-        }
-        return false;
     }
 
     public static int arrayTypeDimension(Class<?> clazz) {
@@ -438,5 +448,11 @@ public class SubstrateUtil {
     public static String stripPackage(String qualifiedClassName) {
         /* Anonymous classes can contain a '/' which can lead to an invalid binary name. */
         return qualifiedClassName.substring(qualifiedClassName.lastIndexOf(".") + 1).replace("/", "");
+    }
+
+    public static UUID getUUIDFromString(String digest) {
+        long mostSigBits = new BigInteger(digest.substring(0, 16), 16).longValue();
+        long leastSigBits = new BigInteger(digest.substring(16), 16).longValue();
+        return new UUID(mostSigBits, leastSigBits);
     }
 }

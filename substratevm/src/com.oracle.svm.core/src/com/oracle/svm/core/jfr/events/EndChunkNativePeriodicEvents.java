@@ -30,7 +30,6 @@ import java.util.Properties;
 import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrEventWriteStatus;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
@@ -55,7 +54,6 @@ public class EndChunkNativePeriodicEvents extends Event {
     }
 
     public static void emit() {
-        emitClassLoadingStatistics(Heap.getHeap().getClassCount());
         emitJVMInformation(JVMInformation.getJVMInfo());
         emitOSInformation(formatOSInformation());
         emitInitialEnvironmentVariables(getEnvironmentVariables());
@@ -110,20 +108,6 @@ public class EndChunkNativePeriodicEvents extends Event {
         JfrNativeEventWriter.putString(data, systemProperty.key);
         JfrNativeEventWriter.putString(data, systemProperty.value);
         return JfrNativeEventWriter.endEvent(data, isLarge);
-    }
-
-    @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static void emitClassLoadingStatistics(long loadedClassCount) {
-        if (JfrEvent.ClassLoadingStatistics.shouldEmit()) {
-            JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
-            JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
-
-            JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ClassLoadingStatistics);
-            JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
-            JfrNativeEventWriter.putLong(data, loadedClassCount);
-            JfrNativeEventWriter.putLong(data, 0); /* unloadedClassCount */
-            JfrNativeEventWriter.endSmallEvent(data);
-        }
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")

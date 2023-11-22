@@ -31,6 +31,8 @@ import java.io.PrintWriter;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
@@ -72,12 +74,14 @@ import com.oracle.truffle.tools.utils.java_websocket.WebSocketAdapter;
 import com.oracle.truffle.tools.utils.java_websocket.WebSocketImpl;
 import com.oracle.truffle.tools.utils.java_websocket.WebSocketServerFactory;
 import com.oracle.truffle.tools.utils.java_websocket.drafts.Draft;
+import com.oracle.truffle.tools.utils.java_websocket.framing.Framedata;
+import com.oracle.truffle.tools.utils.java_websocket.framing.PingFrame;
 import com.oracle.truffle.tools.utils.java_websocket.handshake.ClientHandshake;
 import com.oracle.truffle.tools.utils.java_websocket.server.DefaultSSLWebSocketServerFactory;
 import com.oracle.truffle.tools.utils.java_websocket.server.DefaultWebSocketServerFactory;
 import com.oracle.truffle.tools.utils.java_websocket.server.WebSocketServer;
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 /**
  * Server of the
@@ -104,6 +108,9 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
         // secret URLs. Also, protecting WebSockets from DNS rebind attacks is not much useful,
         // since they are not protected by same-origin policy.
         // See DNSRebindProtectionHandler in WrappingSocketServerFactory
+
+        // Disable Lost connection detection, Chrome Inspector does not send PONG response reliably.
+        setConnectionLostTimeout(0);
         WebSocketServerFactory wssf;
         if (keyStoreOptions != null) {
             wssf = new WrappingSocketServerFactory(new DefaultSSLWebSocketServerFactory(sslContext(keyStoreOptions)));
@@ -303,15 +310,22 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
         @Override
         public HttpResponse apply(HttpRequest request) {
             if ("GET".equals(request.getMethod())) {
-                String uri = request.getUri();
+                String uriStr = request.getUri();
+                URI uri;
+                try {
+                    uri = new URI(uriStr);
+                } catch (URISyntaxException ex) {
+                    return null;
+                }
+                String uriPath = uri.getPath();
                 String responseJson = null;
-                if ("/json/version".equals(uri)) {
+                if ("/json/version".equals(uriPath)) {
                     JSONObject version = new JSONObject();
                     version.put("Browser", "GraalVM");
                     version.put("Protocol-Version", "1.2");
                     responseJson = version.toString();
                 }
-                if ("/json".equals(uri)) {
+                if ("/json".equals(uriPath) || "/json/list".equals(uriPath)) {
                     JSONArray json = new JSONArray();
                     for (ServerPathSession serverPathSession : sessions.values()) {
                         final String path = serverPathSession.pathContainingToken;
@@ -342,6 +356,16 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
 
     @Override
     public void onStart() {
+        InetSocketAddress address = getAddress();
+        if (address.getPort() == 0) {
+            InetSocketAddress realAddress = new InetSocketAddress(address.getAddress(), getPort());
+            // Set this server for the real address.
+            synchronized (SERVERS) {
+                InspectorServer wss = SERVERS.remove(address);
+                assert wss == this;
+                SERVERS.put(realAddress, wss);
+            }
+        }
         started.countDown();
     }
 
@@ -398,6 +422,33 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
         if (iws != null) {
             iws.onException(ex);
         }
+    }
+
+    @Override
+    public void onWebsocketPing(WebSocket conn, Framedata f) {
+        InspectWebSocketHandler iws = socketConnectionHandlers.get(conn);
+        if (iws != null) {
+            iws.onPing();
+        }
+        super.onWebsocketPing(conn, f);
+    }
+
+    @Override
+    public void onWebsocketPong(WebSocket conn, Framedata f) {
+        InspectWebSocketHandler iws = socketConnectionHandlers.get(conn);
+        if (iws != null) {
+            iws.onPong();
+        }
+        super.onWebsocketPong(conn, f);
+    }
+
+    @Override
+    public PingFrame onPreparePing(WebSocket conn) {
+        InspectWebSocketHandler iws = socketConnectionHandlers.get(conn);
+        if (iws != null) {
+            iws.onPreparePing();
+        }
+        return super.onPreparePing(conn);
     }
 
     @Override
@@ -549,6 +600,18 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
             iss.context.logException("CLIENT: ", exception);
         }
 
+        void onPreparePing() {
+            iss.context.logMessage("SERVER: ", "SENDING PING");
+        }
+
+        void onPing() {
+            iss.context.logMessage("CLIENT: ", "PING");
+            // The default implementation of WebSocketAdapter sends pong.
+        }
+
+        void onPong() {
+            iss.context.logMessage("CLIENT: ", "PONG");
+        }
     }
 
     private static class HTTPChannelWrapper implements ByteChannel {

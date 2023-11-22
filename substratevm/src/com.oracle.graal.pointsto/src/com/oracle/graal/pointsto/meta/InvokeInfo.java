@@ -54,4 +54,8 @@ public interface InvokeInfo {
     BytecodePosition getPosition();
 
     boolean isDirectInvoke();
+
+    default boolean isDeoptInvokeTypeFlow() {
+        return false;
+    }
 }

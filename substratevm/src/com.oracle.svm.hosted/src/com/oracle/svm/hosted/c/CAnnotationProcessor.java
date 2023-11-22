@@ -34,7 +34,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.svm.hosted.c.libc.HostedLibCBase;
+import com.oracle.svm.hosted.DeadlockWatchdog;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -47,6 +47,7 @@ import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.codegen.QueryCodeWriter;
 import com.oracle.svm.hosted.c.info.InfoTreeBuilder;
 import com.oracle.svm.hosted.c.info.NativeCodeInfo;
+import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 import com.oracle.svm.hosted.c.query.QueryResultParser;
 import com.oracle.svm.hosted.c.query.RawStructureLayoutPlanner;
 import com.oracle.svm.hosted.c.query.SizeAndSignednessVerifier;
@@ -108,8 +109,8 @@ public class CAnnotationProcessor {
                 // Only output query code and exit
                 return codeInfo;
             }
-
             Path binary = compileQueryCode(queryFile);
+            DeadlockWatchdog.singleton().recordActivity();
             if (nativeLibs.getErrors().size() > 0) {
                 return codeInfo;
             }

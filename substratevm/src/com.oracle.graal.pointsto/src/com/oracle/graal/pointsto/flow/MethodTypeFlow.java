@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,24 +26,25 @@ package com.oracle.graal.pointsto.flow;
 
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.debug.Assertions;
-import org.graalvm.compiler.nodes.ParameterNode;
-import org.graalvm.compiler.nodes.ReturnNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.ReturnNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.builder.TypeFlowGraphBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.AnalysisError.ParsingError;
 
 public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
@@ -162,10 +163,15 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
             parsingReason = reason;
             try {
                 MethodTypeFlowBuilder builder = bb.createMethodTypeFlowBuilder(bb, method, null, graphKind);
-                builder.apply(forceReparseOnCreation, PointsToAnalysisMethod.unwrapInvokeReason(parsingReason));
+                try {
+                    builder.apply(forceReparseOnCreation, PointsToAnalysisMethod.unwrapInvokeReason(parsingReason));
+                } catch (UnsupportedFeatureException ex) {
+                    String message = String.format("%s%n%s", ex.getMessage(), ParsingError.message(method));
+                    bb.getUnsupportedFeatures().addMessage("typeflow_" + method.getQualifiedName(), null, message, null, ex);
+                }
                 bb.numParsedGraphs.incrementAndGet();
 
-                boolean computeIndex = bb.getHostVM().getMultiMethodAnalysisPolicy().canComputeReturnedParameterIndex(method.getMultiMethodKey());
+                boolean computeIndex = !method.getReturnsAllInstantiatedTypes() && bb.getHostVM().getMultiMethodAnalysisPolicy().canComputeReturnedParameterIndex(method.getMultiMethodKey());
                 returnedParameterIndex = computeIndex ? computeReturnedParameterIndex(builder.graph) : -1;
 
                 /* Set the flows graph after fully built. */
@@ -229,10 +235,6 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         return flowsGraph == null ? null : flowsGraph.getParameter(idx);
     }
 
-    public Iterable<TypeFlow<?>> getParameters() {
-        return flowsGraph == null ? Collections.emptyList() : Arrays.asList(flowsGraph.getParameters());
-    }
-
     /** Check if the type flow is saturated, i.e., any of its clones is saturated. */
     public boolean isSaturated(@SuppressWarnings("unused") PointsToAnalysis bb, TypeFlow<?> originalTypeFlow) {
         return originalTypeFlow.isSaturated();
@@ -250,7 +252,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
      * method does not always return a parameter.
      */
     public int getReturnedParameterIndex() {
-        assert flowsGraphCreated();
+        assert flowsGraphCreated() : returnedParameterIndex;
         return returnedParameterIndex;
     }
 
@@ -280,7 +282,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
      * @return whether a new graph was created
      */
     public synchronized boolean updateFlowsGraph(PointsToAnalysis bb, MethodFlowsGraph.GraphKind newGraphKind, InvokeTypeFlow newParsingReason, boolean forceReparse) {
-        assert !method.isOriginalMethod();
+        assert !method.isOriginalMethod() : method;
         if (sealedFlowsGraph != null) {
             throwSealedError();
         }
@@ -298,7 +300,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
             return false;
         }
         if (newGraphKind == MethodFlowsGraph.GraphKind.STUB) {
-            assert originalGraphKind == MethodFlowsGraph.GraphKind.STUB;
+            assert originalGraphKind == MethodFlowsGraph.GraphKind.STUB : originalGraphKind;
             /*
              * No action is needed since a stub creation is idempotent.
              */
@@ -317,7 +319,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         }
 
         try {
-            assert returnedParameterIndex == -1;
+            assert returnedParameterIndex == -1 : returnedParameterIndex;
 
             // if the graph is a stub, then it has not yet be registered as implementation invoked
             boolean registerAsImplementationInvoked = originalGraphKind == MethodFlowsGraph.GraphKind.STUB;

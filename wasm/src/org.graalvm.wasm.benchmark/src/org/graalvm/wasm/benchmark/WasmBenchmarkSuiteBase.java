@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,12 +44,14 @@ import static org.graalvm.wasm.utils.SystemProperties.DISABLE_COMPILATION_FLAG;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.EnumSet;
 import java.util.Objects;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.utils.Assert;
+import org.graalvm.wasm.utils.WasmBinaryTools;
 import org.graalvm.wasm.utils.cases.WasmCase;
 import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Level;
@@ -88,13 +90,11 @@ public abstract class WasmBenchmarkSuiteBase {
             context = contextBuilder.build();
             benchmarkCase = WasmCase.loadBenchmarkCase(benchmarkResource());
             System.out.println("...::: Benchmark " + benchmarkCase.name() + " :::...");
-            benchmarkCase.getSources().forEach(context::eval);
+            var sources = benchmarkCase.getSources(EnumSet.noneOf(WasmBinaryTools.WabtOption.class));
+            sources.forEach(context::eval);
 
-            // TODO: This should call benchmarkCase.name(), and not main (GR-26734),
-            // but we currently have a hack because the WASI module imports
-            // a memory from a module called main.
-            // We should fix that in the future.
-            Value benchmarkModule = context.getBindings(WasmLanguage.ID).getMember("main");
+            String mainModuleName = benchmarkCase.name();
+            Value benchmarkModule = context.getBindings(WasmLanguage.ID).getMember(mainModuleName);
             Value benchmarkSetupOnce = benchmarkModule.getMember("benchmarkSetupOnce");
             benchmarkSetupEach = benchmarkModule.getMember("benchmarkSetupEach");
             benchmarkTeardownEach = benchmarkModule.getMember("benchmarkTeardownEach");

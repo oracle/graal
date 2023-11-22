@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import org.graalvm.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.type.CompressibleConstant;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.meta.SubstrateMemoryAccessProvider;
 import com.oracle.svm.core.meta.CompressedNullConstant;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.Constant;
@@ -38,10 +38,12 @@ import jdk.vm.ci.meta.JavaKind;
 
 public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider {
 
-    private final HostedMetaAccess metaAccess;
+    private final HostedMetaAccess hMetaAccess;
+    private final HostedConstantReflectionProvider hConstantReflection;
 
-    public HostedMemoryAccessProvider(HostedMetaAccess metaAccess) {
-        this.metaAccess = metaAccess;
+    public HostedMemoryAccessProvider(HostedMetaAccess hMetaAccess, HostedConstantReflectionProvider hConstantReflection) {
+        this.hMetaAccess = hMetaAccess;
+        this.hConstantReflection = hConstantReflection;
     }
 
     @Override
@@ -66,7 +68,7 @@ public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider
                 wrappedResult = result;
                 break;
             default:
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(stackKind); // ExcludeFromJacocoGeneratedReport
         }
 
         return wrappedResult;
@@ -88,7 +90,7 @@ public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider
         if (JavaConstant.NULL_POINTER.equals(result)) {
             return CompressedNullConstant.COMPRESSED_NULL;
         }
-        return ((SubstrateObjectConstant) result).compress();
+        return ((CompressibleConstant) result).compress();
     }
 
     /**
@@ -98,7 +100,7 @@ public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider
         if (base.getJavaKind() != JavaKind.Object) {
             return null;
         }
-        HostedType type = metaAccess.lookupJavaType(base);
+        HostedType type = hMetaAccess.lookupJavaType(base);
         HostedField field = (HostedField) type.findInstanceFieldWithOffset(displacement, null);
         if (field == null) {
             return null;
@@ -106,7 +108,7 @@ public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider
 
         assert field.getStorageKind().getStackKind() == stackKind;
 
-        JavaConstant result = field.readValue(base);
+        JavaConstant result = hConstantReflection.readFieldValue(field, base);
         if (result.getJavaKind().getStackKind() != stackKind) {
             /*
              * For certain Word types like RelocatedPointer, the boxed value is returned by

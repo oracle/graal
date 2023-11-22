@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -82,31 +82,31 @@ abstract class ManagedPointerLibraries extends CommonPointerLibraries {
 
     @ExportMessage(library = InteropLibrary.class)
     static boolean isPointer(LLVMPointerImpl receiver,
-                    @CachedLibrary(limit = "1") LLVMNativeLibrary natives) {
+                    @CachedLibrary("receiver.object") LLVMNativeLibrary natives) {
         return natives.isPointer(receiver.object);
     }
 
     @ExportMessage(library = InteropLibrary.class)
     static long asPointer(LLVMPointerImpl receiver,
-                    @CachedLibrary(limit = "1") LLVMNativeLibrary natives) throws UnsupportedMessageException {
+                    @CachedLibrary("receiver.object") LLVMNativeLibrary natives) throws UnsupportedMessageException {
         return natives.asPointer(receiver.object) + receiver.getOffset();
     }
 
     @ExportMessage
     static void toNative(LLVMPointerImpl receiver,
-                    @CachedLibrary(limit = "1") InteropLibrary interop) {
+                    @CachedLibrary("receiver.object") InteropLibrary interop) {
         interop.toNative(receiver.object);
     }
 
     @ExportMessage
     static boolean isForeign(LLVMPointerImpl receiver,
-                    @CachedLibrary(limit = "1") LLVMAsForeignLibrary foreigns) {
+                    @CachedLibrary("receiver.object") LLVMAsForeignLibrary foreigns) {
         return isForeignTest(receiver, foreigns);
     }
 
     @ExportMessage
     static Object asForeign(LLVMPointerImpl receiver,
-                    @CachedLibrary(limit = "1") LLVMAsForeignLibrary foreigns) {
+                    @CachedLibrary("receiver.object") LLVMAsForeignLibrary foreigns) {
         return foreigns.asForeign(receiver.object);
     }
 

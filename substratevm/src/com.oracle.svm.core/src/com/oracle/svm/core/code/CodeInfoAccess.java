@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.UnsignedWord;
@@ -182,6 +182,11 @@ public final class CodeInfoAccess {
         return cast(info).getCodeStart();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord getCodeEntryPointOffset(CodeInfo info) {
+        return cast(info).getCodeEntryPointOffset();
+    }
+
     /** @see CodeInfoImpl#getCodeSize */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getCodeSize(CodeInfo info) {
@@ -257,6 +262,7 @@ public final class CodeInfoAccess {
         return CodeInfoDecoder.lookupDeoptimizationEntrypoint(info, method, encodedBci, codeInfo);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long lookupTotalFrameSize(CodeInfo info, long ip) {
         SimpleCodeInfoQueryResult codeInfoQueryResult = UnsafeStackValue.get(SimpleCodeInfoQueryResult.class);
         lookupCodeInfo(info, ip, codeInfoQueryResult);
@@ -309,7 +315,7 @@ public final class CodeInfoAccess {
     }
 
     public static Log log(CodeInfo info, Log log) {
-        return info.isNull() ? log.string("null") : log.string(CodeInfo.class.getName()).string("@").hex(info);
+        return info.isNull() ? log.string("null") : log.string("CodeInfo@").hex(info);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -389,7 +395,7 @@ public final class CodeInfoAccess {
         long installedCodeAddress = 0;
         long installedCodeEntryPoint = 0;
         if (installedCode != null) {
-            assert hasInstalledCode == HasInstalledCode.Yes;
+            assert hasInstalledCode == HasInstalledCode.Yes : hasInstalledCode;
             installedCodeAddress = installedCode.getAddress();
             installedCodeEntryPoint = installedCode.getEntryPoint();
         }

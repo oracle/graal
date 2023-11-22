@@ -1,7 +1,7 @@
 suite = {
     "name": "vm",
-    "version" : "23.0.0",
-    "mxversion": "6.15.3",
+    "version" : "24.0.0",
+    "mxversion": "6.41.0",
     "release" : False,
     "groupId" : "org.graalvm",
 
@@ -23,68 +23,57 @@ suite = {
             {
                 "name": "sdk",
                 "subdir": True,
-                "urls": [
-                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
-                ]
             },
             {
                 "name": "truffle",
                 "subdir": True,
-                "urls": [
-                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
-                ]
             },
             # Dynamic imports for components:
             {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "ed69b91e7113b05be4d28352ac7dbbc81ddd89c9",
+                "version": "95767f4db8df01a69fc77ba69335c9ce09a1165d",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
-                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
             },
             {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "ed69b91e7113b05be4d28352ac7dbbc81ddd89c9",
+                "version": "95767f4db8df01a69fc77ba69335c9ce09a1165d",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
-                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
             },
             {
                 "name": "truffleruby",
-                "version": "0c315d259ec3cc69e765160650c9ec02b6d0c97c",
+                "version": "8fb923745aec51575921596382fb8055759f316e",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
-                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
             },
             {
                 "name": "fastr",
-                "version": "6515cd443d11726b031fbb2ae5f5b955a50ca56e",
+                "version": "1fb09547278fce242be7f24b23dc2c3e5a9343bf",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
-                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
             },
             {
                 "name": "graalpython",
-                "version": "e4954f1433ee171eb472a6079504736fc6d515f8",
+                "version": "e902929ead209962d2a4a1697f69054becf7e801",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
-                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
             },
             {
                 "name": "polybenchmarks",
-                "version": "a54325418d93db80147811fdf3fbf2395a54c80f",
+                "version": "9c11e267b9925f44e42b1187fee466b47c2ffcf3",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/polybenchmarks.git", "kind": "git"},
@@ -102,7 +91,7 @@ suite = {
             "checkstyleVersion" : "10.7.0",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
-                "truffle:TruffleJSON",
+                "truffle:TRUFFLE_JSON",
             ],
             "requires" : ["java.logging"],
         },
@@ -126,6 +115,7 @@ suite = {
             "checkstyle": "org.graalvm.component.installer",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
+                "sdk:POLYGLOT",
                 "truffle:VISUALVM-LIB-JFLUID-HEAP",
             ],
             "requires": [
@@ -209,9 +199,7 @@ suite = {
             ],
             "distDependencies": [
                 "sdk:LAUNCHER_COMMON",
-            ],
-            "exclude" : [
-                "truffle:TruffleJSON"
+                "truffle:TRUFFLE_JSON",
             ],
             "maven" : False,
         },
@@ -236,6 +224,29 @@ suite = {
             },
             "maven": False,
         },
+        "INSTALLER_DEPRECATED_GRAALVM_SUPPORT": {
+            "native": True,
+            "description": "Deprecated GraalVM Updater launchers support for the GraalVM",
+            "platformDependent": True,
+            "os": {
+                "linux": {
+                    "layout": {
+                        "bin/gu": "file:mx.vm/gu-deprecated",
+                    },
+                },
+                "darwin": {
+                    "layout": {
+                        "bin/gu": "file:mx.vm/gu-deprecated",
+                    },
+                },
+                "windows": {
+                    "layout": {
+                        "bin/gu.cmd": "file:mx.vm/gu-deprecated.cmd",
+                    },
+                },
+            },
+            "maven": False,
+        },
         "VM_GRAALVM_SUPPORT": {
             "native": True,
             "description": "VM support distribution for the GraalVM",
@@ -254,7 +265,8 @@ suite = {
             ],
             "distDependencies": [
                 "sdk:LAUNCHER_COMMON",
-                 "truffle:VISUALVM-LIB-JFLUID-HEAP",
+                "sdk:POLYGLOT",
+                "truffle:VISUALVM-LIB-JFLUID-HEAP",
             ],
             "maven" : False,
         },

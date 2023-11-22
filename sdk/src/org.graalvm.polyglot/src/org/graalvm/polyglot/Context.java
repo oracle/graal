@@ -60,10 +60,10 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
+import java.util.stream.StreamSupport;
 
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.IOAccessor;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextDispatch;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.IOAccessor;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.io.MessageTransport;
@@ -399,7 +399,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value eval(Source source) {
-        return dispatch.eval(receiver, source.getLanguage(), source);
+        return (Value) dispatch.eval(receiver, source.getLanguage(), source);
     }
 
     /**
@@ -480,7 +480,7 @@ public final class Context implements AutoCloseable {
      * @since 20.2
      */
     public Value parse(Source source) throws PolyglotException {
-        return dispatch.parse(receiver, source.getLanguage(), source);
+        return (Value) dispatch.parse(receiver, source.getLanguage(), source);
     }
 
     /**
@@ -543,7 +543,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value getPolyglotBindings() {
-        return dispatch.getPolyglotBindings(receiver);
+        return (Value) dispatch.getPolyglotBindings(receiver);
     }
 
     /**
@@ -560,7 +560,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value getBindings(String languageId) {
-        return dispatch.getBindings(receiver, languageId);
+        return (Value) dispatch.getBindings(receiver, languageId);
     }
 
     /**
@@ -735,7 +735,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value asValue(Object hostValue) {
-        return dispatch.asValue(receiver, hostValue);
+        return (Value) dispatch.asValue(receiver, hostValue);
     }
 
     /**
@@ -960,7 +960,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public static Context getCurrent() {
-        Context context = Engine.getImpl().getCurrentContext();
+        Context context = (Context) Engine.getImpl().getCurrentContext();
         if (context.currentAPI == null) {
             return context;
         } else {
@@ -1932,12 +1932,13 @@ public final class Context implements AutoCloseable {
                 contextErr = err;
                 contextIn = in;
             }
-            LogHandler logHandler = customLogHandler != null ? Engine.getImpl().newLogHandler(customLogHandler) : null;
-            ctx = engine.dispatch.createContext(engine.receiver, useSandboxPolicy, contextOut, contextErr, contextIn, hostClassLookupEnabled,
+            Object logHandler = customLogHandler != null ? Engine.getImpl().newLogHandler(customLogHandler) : null;
+            String tmpDir = Engine.getImpl().getIO().hasHostFileAccess(useIOAccess) ? System.getProperty("java.io.tmpdir") : null;
+            ctx = (Context) engine.dispatch.createContext(engine.receiver, useSandboxPolicy, contextOut, contextErr, contextIn, hostClassLookupEnabled,
                             hostAccess, polyglotAccess, nativeAccess, createThread, hostClassLoading, innerContextOptions,
                             experimentalOptions, localHostLookupFilter, contextOptions, arguments == null ? Collections.emptyMap() : arguments,
                             permittedLanguages, useIOAccess, logHandler, createProcess, processHandler, useEnvironmentAccess, environment, zone, limits,
-                            localCurrentWorkingDirectory, hostClassLoader, allowValueSharing, useSystemExit);
+                            localCurrentWorkingDirectory, tmpDir, hostClassLoader, allowValueSharing, useSystemExit);
             return ctx;
         }
 
@@ -2138,6 +2139,15 @@ public final class Context implements AutoCloseable {
                                         "Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowIteratorAccess(boolean) set to true, " +
                                                         "but HostAccess.Builder.allowIteratorAccess(boolean) must not be set to true.",
                                         "do not set HostAccess.Builder.allowIteratorAccess(boolean)");
+                    }
+                    if (hostAccess.implementableAnnotations != null && !hostAccess.implementableAnnotations.isEmpty()) {
+                        var annotations = StreamSupport.stream(hostAccess.implementableAnnotations.spliterator(), false).map(Class::getSimpleName).toList();
+                        var builderCommands = annotations.stream().map((n) -> String.format("HostAccess.Builder.allowImplementationsAnnotatedBy(%s.class)", n)).toList();
+                        throw Engine.Builder.throwSandboxException(useSandboxPolicy, String.format(
+                                        "Builder.allowHostAccess(HostAccess) is set to a HostAccess which allows implementations of types annotated by %s, " +
+                                                        "but implementations of annotated types must not be enabled.",
+                                        String.join(", ", annotations)),
+                                        String.format("do not set %s", String.join(", ", builderCommands)));
                     }
                 }
             }

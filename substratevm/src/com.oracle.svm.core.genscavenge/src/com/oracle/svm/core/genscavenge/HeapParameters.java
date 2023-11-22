@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -34,21 +34,27 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 
 /** Constants and variables for the size and layout of the heap and behavior of the collector. */
 public final class HeapParameters {
-    private static final int ALIGNED_HEAP_CHUNK_FRACTION_FOR_LARGE_ARRAY_THRESHOLD = 8;
-
     @Platforms(Platform.HOSTED_ONLY.class)
     static void initialize() {
-        if (!SubstrateUtil.isPowerOf2(getAlignedHeapChunkSize().rawValue())) {
-            throw UserError.abort("AlignedHeapChunkSize (%d) should be a power of 2.", getAlignedHeapChunkSize().rawValue());
+        long alignedChunkSize = getAlignedHeapChunkSize().rawValue();
+        if (!SubstrateUtil.isPowerOf2(alignedChunkSize)) {
+            throw UserError.abort("AlignedHeapChunkSize (%d) should be a power of 2.", alignedChunkSize);
         }
-        if (!getLargeArrayThreshold().belowOrEqual(getAlignedHeapChunkSize())) {
-            throw UserError.abort("LargeArrayThreshold (%d) should be below or equal to AlignedHeapChunkSize (%d).",
-                            getLargeArrayThreshold().rawValue(), getAlignedHeapChunkSize().rawValue());
+        long maxLargeArrayThreshold = alignedChunkSize - RememberedSet.get().getHeaderSizeOfAlignedChunk().rawValue() + 1;
+        if (SerialAndEpsilonGCOptions.AlignedHeapChunkSize.hasBeenSet() && !SerialAndEpsilonGCOptions.LargeArrayThreshold.hasBeenSet()) {
+            throw UserError.abort("When setting AlignedHeapChunkSize, LargeArrayThreshold should be explicitly set to a value between 1 " +
+                            "and the usable size of an aligned chunk + 1 (currently %d).", maxLargeArrayThreshold);
+        }
+        long largeArrayThreshold = getLargeArrayThreshold().rawValue();
+        if (largeArrayThreshold <= 0 || largeArrayThreshold > maxLargeArrayThreshold) {
+            throw UserError.abort("LargeArrayThreshold (set to %d) should be between 1 and the usable size of an aligned chunk + 1 (currently %d).",
+                            largeArrayThreshold, maxLargeArrayThreshold);
         }
     }
 
@@ -124,19 +130,20 @@ public final class HeapParameters {
     }
 
     @Fold
+    public static UnsignedWord getMinUnalignedChunkSize() {
+        return UnalignedHeapChunk.getChunkSizeForObject(HeapParameters.getLargeArrayThreshold());
+    }
+
+    @Fold
     public static UnsignedWord getLargeArrayThreshold() {
-        long largeArrayThreshold = SerialAndEpsilonGCOptions.LargeArrayThreshold.getValue();
-        if (largeArrayThreshold == 0) {
-            return getAlignedHeapChunkSize().unsignedDivide(ALIGNED_HEAP_CHUNK_FRACTION_FOR_LARGE_ARRAY_THRESHOLD);
-        } else {
-            return WordFactory.unsigned(SerialAndEpsilonGCOptions.LargeArrayThreshold.getValue());
-        }
+        return WordFactory.unsigned(SerialAndEpsilonGCOptions.LargeArrayThreshold.getValue());
     }
 
     /*
      * Zapping
      */
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean getZapProducedHeapChunks() {
         return SerialAndEpsilonGCOptions.ZapChunks.getValue() || SerialAndEpsilonGCOptions.ZapProducedHeapChunks.getValue();
     }

@@ -45,7 +45,7 @@ Note that this applies in particular to most of the standard C library.
 
 The managed mode (enabled with the `--llvm.managed` option) is a special execution mode where the LLVM runtime runs purely in managed mode, similar to all other GraalVM supported languages.
 
-> Note: The managed mode is only available in GraalVM Enterprise Edition.
+> Note: The managed mode is only available in Oracle GraalVM.
 
 In this mode, by design, it is not allowed to call native code and access native memory.
 All memory is managed by the garbage collector, and all code that should be run needs to be compiled to bitcode.
@@ -62,7 +62,7 @@ Syscalls are virtualized and routed through appropriate GraalVM APIs.
 
 When using polyglot interoperability between LLVM languages (e.g., C/C++) and managed languages (e.g., JavaScript, Python, Ruby), some care must be taken with the manual memory management.
 Note that this section only applies to the native mode of execution (the default).
-In managed mode (enabled with the `--llvm.managed` option and only available in GraalVM Enterprise), the LLVM runtime itself behaves like a managed language, and the polyglot interaction is the same as between other managed languages.
+In managed mode (enabled with the `--llvm.managed` option and only available in Oracle GraalVM), the LLVM runtime itself behaves like a managed language, and the polyglot interaction is the same as between other managed languages.
 
 * Garbage collection policies to be considered:
     - Pointers to objects of managed languages are managed by a garbage collector, therefore they do not need to be freed manually.

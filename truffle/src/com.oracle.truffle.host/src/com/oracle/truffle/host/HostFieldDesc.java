@@ -90,12 +90,12 @@ abstract class HostFieldDesc {
 
     public abstract void set(Object receiver, Object value) throws ClassCastException, NullPointerException, IllegalArgumentException;
 
-    static HostFieldDesc unreflect(Field reflectionField) {
+    static HostFieldDesc unreflect(MethodHandles.Lookup methodLookup, Field reflectionField) {
         assert isAccessible(reflectionField);
         if (TruffleOptions.AOT) { // use reflection instead of MethodHandle
             return new ReflectImpl(reflectionField);
         } else {
-            return new MHImpl(reflectionField);
+            return new MHImpl(methodLookup, reflectionField);
         }
     }
 
@@ -146,12 +146,14 @@ abstract class HostFieldDesc {
     }
 
     private static final class MHImpl extends HostFieldDesc {
+        private final MethodHandles.Lookup methodLookup;
         private final Field field;
         @CompilationFinal private MethodHandle getHandle;
         @CompilationFinal private MethodHandle setHandle;
 
-        MHImpl(Field field) {
+        MHImpl(MethodHandles.Lookup methodLookup, Field field) {
             super(field.getType(), field.getGenericType(), field.getName(), Modifier.isFinal(field.getModifiers()));
+            this.methodLookup = methodLookup;
             this.field = field;
         }
 
@@ -194,7 +196,7 @@ abstract class HostFieldDesc {
         private MethodHandle makeGetMethodHandle() {
             CompilerAsserts.neverPartOfCompilation();
             try {
-                MethodHandle getter = MethodHandles.publicLookup().unreflectGetter(field);
+                MethodHandle getter = methodLookup.unreflectGetter(field);
                 if (Modifier.isStatic(field.getModifiers())) {
                     return MethodHandles.dropArguments(getter.asType(MethodType.methodType(Object.class)), 0, Object.class);
                 } else {
@@ -208,7 +210,7 @@ abstract class HostFieldDesc {
         private MethodHandle makeSetMethodHandle() {
             CompilerAsserts.neverPartOfCompilation();
             try {
-                MethodHandle setter = MethodHandles.publicLookup().unreflectSetter(field);
+                MethodHandle setter = methodLookup.unreflectSetter(field);
                 if (Modifier.isStatic(field.getModifiers())) {
                     return MethodHandles.dropArguments(setter.asType(MethodType.methodType(void.class, Object.class)), 0, Object.class);
                 } else {

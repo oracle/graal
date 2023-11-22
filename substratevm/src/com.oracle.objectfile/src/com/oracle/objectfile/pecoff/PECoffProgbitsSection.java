@@ -40,6 +40,7 @@ public class PECoffProgbitsSection extends PECoffUserDefinedSection implements P
      * See the comment in ObjectFile.Element about the divide between Elements and their -Impls.
      */
 
+    @SuppressWarnings("this-escape")
     public PECoffProgbitsSection(PECoffObjectFile owner, String name, int alignment, ProgbitsSectionImpl impl, EnumSet<PECoffSectionFlag> flags) {
         super(owner, name, alignment, impl != null ? impl : new BasicProgbitsSectionImpl(new byte[0]), flags);
         // this *is* necessary because the newProgbitsSection helper doesn't see the impl
@@ -48,6 +49,7 @@ public class PECoffProgbitsSection extends PECoffUserDefinedSection implements P
         }
     }
 
+    @SuppressWarnings("this-escape")
     public PECoffProgbitsSection(PECoffObjectFile owner, String name, int alignment, EnumSet<PECoffSectionFlag> flags, int shtIndex, InputDisassembler in, int size) {
         super(owner, name, alignment, new BasicProgbitsSectionImpl(in.readBlob(size)), flags, shtIndex);
         // this *is* necessary because the newProgbitsSection helper doesn't see the impl

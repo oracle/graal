@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,34 +33,34 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
-import org.graalvm.compiler.core.common.calc.FloatConvert;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.TypeReference;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.AbstractMergeNode;
-import org.graalvm.compiler.nodes.CallTargetNode;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.EndNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.LogicNode;
-import org.graalvm.compiler.nodes.MergeNode;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.PiNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValuePhiNode;
-import org.graalvm.compiler.nodes.calc.FloatConvertNode;
-import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
-import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.calc.SignExtendNode;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
-import org.graalvm.compiler.nodes.extended.GuardingNode;
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
-import org.graalvm.compiler.nodes.java.InstanceOfNode;
-import org.graalvm.compiler.nodes.type.StampTool;
+import jdk.graal.compiler.core.common.calc.FloatConvert;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.AbstractMergeNode;
+import jdk.graal.compiler.nodes.CallTargetNode;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.EndNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.MergeNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.PiNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.ValuePhiNode;
+import jdk.graal.compiler.nodes.calc.FloatConvertNode;
+import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
+import jdk.graal.compiler.nodes.calc.IsNullNode;
+import jdk.graal.compiler.nodes.calc.SignExtendNode;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.extended.GuardingNode;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
+import jdk.graal.compiler.nodes.java.InstanceOfNode;
+import jdk.graal.compiler.nodes.type.StampTool;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.HostedProviders;
@@ -305,7 +305,7 @@ public class ReflectionGraphKit extends HostedGraphKit {
                     case Double:
                         return graph.addOrUniqueWithInputs(FloatConvertNode.create(FloatConvert.I2D, unboxedValue, NodeView.DEFAULT));
                     default:
-                        throw VMError.shouldNotReachHere();
+                        throw VMError.shouldNotReachHereUnexpectedInput(toStackKind); // ExcludeFromJacocoGeneratedReport
                 }
             case Long:
                 switch (toStackKind) {
@@ -314,17 +314,17 @@ public class ReflectionGraphKit extends HostedGraphKit {
                     case Double:
                         return graph.addOrUniqueWithInputs(FloatConvertNode.create(FloatConvert.L2D, unboxedValue, NodeView.DEFAULT));
                     default:
-                        throw VMError.shouldNotReachHere();
+                        throw VMError.shouldNotReachHereUnexpectedInput(toStackKind); // ExcludeFromJacocoGeneratedReport
                 }
             case Float:
                 switch (toStackKind) {
                     case Double:
                         return graph.addOrUniqueWithInputs(FloatConvertNode.create(FloatConvert.F2D, unboxedValue, NodeView.DEFAULT));
                     default:
-                        throw VMError.shouldNotReachHere();
+                        throw VMError.shouldNotReachHereUnexpectedInput(toStackKind); // ExcludeFromJacocoGeneratedReport
                 }
             default:
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(fromStackKind); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

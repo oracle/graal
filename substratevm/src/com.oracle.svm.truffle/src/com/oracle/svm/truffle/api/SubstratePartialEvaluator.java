@@ -28,26 +28,29 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
-import org.graalvm.compiler.nodes.EncodedGraph;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.PEGraphDecoder;
-import org.graalvm.compiler.replacements.PEGraphDecoder.SpecialCallTargetCacheKey;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
-import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
-import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
+import jdk.graal.compiler.graph.SourceLanguagePositionProvider;
+import jdk.graal.compiler.nodes.EncodedGraph;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.ParameterPlugin;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.PEGraphDecoder;
+import jdk.graal.compiler.replacements.PEGraphDecoder.SpecialCallTargetCacheKey;
+import jdk.graal.compiler.truffle.PartialEvaluator;
+import jdk.graal.compiler.truffle.PartialEvaluatorConfiguration;
+import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
+import jdk.graal.compiler.truffle.TruffleTierContext;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.truffle.compiler.ConstantFieldInfo;
+import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
+
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SubstratePartialEvaluator extends PartialEvaluator {
@@ -56,8 +59,8 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
     private final ConcurrentHashMap<SpecialCallTargetCacheKey, Object> specialCallTargetCache;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstratePartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration graphBuilderConfigForRoot, KnownTruffleTypes knownTruffleTypes) {
-        super(config, graphBuilderConfigForRoot, knownTruffleTypes);
+    public SubstratePartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration graphBuilderConfigForRoot) {
+        super(config, graphBuilderConfigForRoot);
         this.invocationPluginsCache = new ConcurrentHashMap<>();
         this.specialCallTargetCache = new ConcurrentHashMap<>();
     }
@@ -66,8 +69,8 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
     protected PEGraphDecoder createGraphDecoder(TruffleTierContext context, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin,
                     NodePlugin[] nodePlugins, SourceLanguagePositionProvider sourceLanguagePositionProvider, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache,
                     Supplier<AutoCloseable> createCachedGraphScope) {
-        return new SubstratePEGraphDecoder(config.architecture(), context.graph, config.lastTier().providers().copyWith(compilationLocalConstantProvider), loopExplosionPlugin, invocationPlugins,
-                        inlineInvokePlugins, parameterPlugin, nodePlugins, callInlined, sourceLanguagePositionProvider, specialCallTargetCache, invocationPluginsCache);
+        return new SubstratePEGraphDecoder(config.architecture(), context.graph, config.lastTier().providers().copyWith(this.constantFieldProvider), loopExplosionPlugin, invocationPlugins,
+                        inlineInvokePlugins, parameterPlugin, nodePlugins, types.OptimizedCallTarget_callInlined, sourceLanguagePositionProvider, specialCallTargetCache, invocationPluginsCache);
     }
 
     @Override
@@ -81,9 +84,19 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
     }
 
     @Override
+    public final PartialEvaluationMethodInfo getMethodInfo(ResolvedJavaMethod method) {
+        return ((TruffleMethod) method).getTruffleMethodInfo();
+    }
+
+    @Override
+    public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
+        return ((TruffleField) field).getConstantFieldInfo();
+    }
+
+    @Override
     protected void registerGraphBuilderInvocationPlugins(InvocationPlugins invocationPlugins, boolean canDelayIntrinsification) {
         super.registerGraphBuilderInvocationPlugins(invocationPlugins, canDelayIntrinsification);
-        SubstrateTruffleGraphBuilderPlugins.registerInvocationPlugins(invocationPlugins, canDelayIntrinsification, (SubstrateKnownTruffleTypes) getKnownTruffleTypes());
+        SubstrateTruffleGraphBuilderPlugins.registerInvocationPlugins(invocationPlugins, canDelayIntrinsification, (SubstrateKnownTruffleTypes) getTypes());
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

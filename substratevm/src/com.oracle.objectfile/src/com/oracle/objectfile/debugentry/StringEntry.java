@@ -31,7 +31,7 @@ package com.oracle.objectfile.debugentry;
  * be located in the debug_string section and, if so, tracks the offset at which it gets written.
  */
 public class StringEntry {
-    private String string;
+    private final String string;
     private int offset;
     private boolean addToStrSection;
 

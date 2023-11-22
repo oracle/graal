@@ -181,35 +181,35 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
     }
 
     private static String isTypeMethodName(TypeSystemData typeSystem, TypeMirror type) {
-        return "is" + getTypeId(typeSystem, type);
+        return "is" + getTypeSimpleId(typeSystem, type);
     }
 
-    private static String getTypeId(TypeSystemData typeSystem, TypeMirror type) {
-        return ElementUtils.getTypeId(typeSystem.boxType(type));
+    private static String getTypeSimpleId(TypeSystemData typeSystem, TypeMirror type) {
+        return ElementUtils.getTypeSimpleId(typeSystem.boxType(type));
     }
 
     private static String isImplicitTypeMethodName(TypeSystemData typeSystem, TypeMirror type) {
-        return "isImplicit" + getTypeId(typeSystem, type);
+        return "isImplicit" + getTypeSimpleId(typeSystem, type);
     }
 
     private static String asTypeMethodName(TypeSystemData typeSystem, TypeMirror type) {
-        return "as" + getTypeId(typeSystem, type);
+        return "as" + getTypeSimpleId(typeSystem, type);
     }
 
     private static String asImplicitTypeMethodName(TypeSystemData typeSystem, TypeMirror type) {
-        return "asImplicit" + getTypeId(typeSystem, type);
+        return "asImplicit" + getTypeSimpleId(typeSystem, type);
     }
 
     private static String specializeImplicitTypeMethodName(TypeSystemData typeSystem, TypeMirror type) {
-        return "specializeImplicit" + getTypeId(typeSystem, type);
+        return "specializeImplicit" + getTypeSimpleId(typeSystem, type);
     }
 
     private static String expectImplicitTypeMethodName(TypeSystemData typeSystem, TypeMirror type) {
-        return "expectImplicit" + getTypeId(typeSystem, type);
+        return "expectImplicit" + getTypeSimpleId(typeSystem, type);
     }
 
     private static String expectTypeMethodName(TypeSystemData typeSystem, TypeMirror type) {
-        return "expect" + getTypeId(typeSystem, type);
+        return "expect" + getTypeSimpleId(typeSystem, type);
     }
 
     static String typeName(TypeSystemData typeSystem) {

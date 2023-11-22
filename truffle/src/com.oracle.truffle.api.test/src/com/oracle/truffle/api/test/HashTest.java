@@ -427,6 +427,18 @@ public class HashTest extends AbstractPolyglotTest {
                         ValueAssert.Trait.HASH, ValueAssert.Trait.MEMBERS, ValueAssert.Trait.PROXY_OBJECT);
     }
 
+    @Test
+    public void testReadOnlyHashMap() {
+        setupEnv();
+        Value value = context.asValue(new ReadOnlyProxyHashMap(Map.of("key", "value")));
+        ValueAssert.assertValue(value, ValueAssert.Trait.HASH, ValueAssert.Trait.PROXY_OBJECT);
+        assertEquals(1, value.getHashSize());
+        AbstractPolyglotTest.assertFails(() -> value.putHashEntry("otherKey", "otherValue"), UnsupportedOperationException.class);
+        AbstractPolyglotTest.assertFails(() -> value.removeHashEntry("key"), UnsupportedOperationException.class);
+        assertEquals(1, value.getHashSize());
+        assertEquals("value", value.getHashValue("key").asString());
+    }
+
     @ExportLibrary(InteropLibrary.class)
     static final class HashEntry implements TruffleObject {
         final int hashCode;
@@ -728,6 +740,40 @@ public class HashTest extends AbstractPolyglotTest {
         @Override
         public void putMember(String key, Value value) {
             membersSpace.put(key, value.isHostObject() ? value.asHostObject() : value);
+        }
+    }
+
+    private static final class ReadOnlyProxyHashMap implements ProxyHashMap {
+
+        private Map<Object, Object> delegate;
+
+        ReadOnlyProxyHashMap(Map<Object, Object> delegate) {
+            this.delegate = Objects.requireNonNull(delegate, "Delegate must be non null");
+        }
+
+        @Override
+        public long getHashSize() {
+            return delegate.size();
+        }
+
+        @Override
+        public boolean hasHashEntry(Value key) {
+            return delegate.containsKey(key.as(Object.class));
+        }
+
+        @Override
+        public Object getHashValue(Value key) {
+            return delegate.get(key.as(Object.class));
+        }
+
+        @Override
+        public void putHashEntry(Value key, Value value) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Object getHashEntriesIterator() {
+            return ProxyIterator.from(delegate.entrySet().iterator());
         }
     }
 

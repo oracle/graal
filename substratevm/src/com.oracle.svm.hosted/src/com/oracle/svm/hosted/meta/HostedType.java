@@ -32,6 +32,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
@@ -41,6 +42,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class HostedType extends HostedElement implements SharedType, WrappedJavaType, OriginalClassProvider {
+
+    public static final HostedType[] EMPTY_ARRAY = new HostedType[0];
 
     protected final HostedUniverse universe;
     protected final AnalysisType wrapped;
@@ -235,7 +238,18 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
 
     @Override
     public final boolean isInitialized() {
-        return wrapped.isInitialized();
+        if (!wrapped.isReachable()) {
+            /* Workaround until ParseOnce can always be enabled. */
+            return wrapped.isInitialized();
+        }
+
+        /*
+         * Note that we do not delegate to wrapped.isInitialized here: when a class initializer is
+         * simulated at image build time, then AnalysisType.isInitialized() returns false but
+         * DynamicHub.isInitialized returns true. We want to treat such classes as initialized
+         * during AOT compilation.
+         */
+        return getHub().isInitialized();
     }
 
     @Override
@@ -339,7 +353,6 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
 
     @Override
     public final boolean isInstance(JavaConstant obj) {
-        assert universe.lookup(obj) == obj : "constant should not have analysis-universe dependent value";
         return wrapped.isInstance(obj);
     }
 
@@ -374,13 +387,25 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     @Override
-    public HostedMethod[] getDeclaredConstructors() {
-        return universe.lookup(wrapped.getDeclaredConstructors());
+    public ResolvedJavaMethod[] getDeclaredConstructors() {
+        return getDeclaredConstructors(true);
     }
 
     @Override
-    public HostedMethod[] getDeclaredMethods() {
-        return universe.lookup(wrapped.getDeclaredMethods());
+    public HostedMethod[] getDeclaredConstructors(boolean forceLink) {
+        VMError.guarantee(forceLink == false, "only use getDeclaredConstructors without forcing to link, because linking can throw LinkageError");
+        return universe.lookup(wrapped.getDeclaredConstructors(forceLink));
+    }
+
+    @Override
+    public ResolvedJavaMethod[] getDeclaredMethods() {
+        return getDeclaredMethods(true);
+    }
+
+    @Override
+    public HostedMethod[] getDeclaredMethods(boolean forceLink) {
+        VMError.guarantee(forceLink == false, "only use getDeclaredMethods without forcing to link, because linking can throw LinkageError");
+        return universe.lookup(wrapped.getDeclaredMethods(forceLink));
     }
 
     @Override

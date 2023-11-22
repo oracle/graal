@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.c.info;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
 
 import org.graalvm.nativeimage.c.CContext;
 
@@ -49,7 +49,7 @@ public class NativeCodeInfo extends ElementInfo {
 
     @Override
     public Object getAnnotatedElement() {
-        throw shouldNotReachHere();
+        throw shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

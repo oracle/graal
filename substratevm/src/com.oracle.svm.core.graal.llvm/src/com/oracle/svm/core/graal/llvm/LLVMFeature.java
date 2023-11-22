@@ -27,26 +27,32 @@ package com.oracle.svm.core.graal.llvm;
 import java.nio.file.Path;
 import java.util.Map;
 
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.java.LoadExceptionObjectNode;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.TargetGraphBuilderPlugins;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodes.java.LoadExceptionObjectNode;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.core.graal.code.SubstrateLoweringProviderFactory;
 import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
+import com.oracle.svm.core.graal.llvm.image.LLVMCCompilerInvoker;
 import com.oracle.svm.core.graal.llvm.lowering.LLVMLoadExceptionObjectLowering;
 import com.oracle.svm.core.graal.llvm.lowering.SubstrateLLVMLoweringProvider;
+import com.oracle.svm.core.graal.llvm.objectfile.LLVMObjectFile;
 import com.oracle.svm.core.graal.llvm.replacements.LLVMGraphBuilderPlugins;
 import com.oracle.svm.core.graal.llvm.runtime.LLVMExceptionUnwind;
 import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
@@ -54,15 +60,16 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.image.LLVMToolchain;
 import com.oracle.svm.hosted.image.LLVMToolchain.RunFailureException;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
 import com.oracle.svm.hosted.image.NativeImageHeap;
+import com.oracle.svm.hosted.image.ObjectFileFactory;
 import com.oracle.svm.util.ModuleSupport;
 
 /*
@@ -111,6 +118,21 @@ public class LLVMFeature implements Feature, InternalFeature {
             }
         });
 
+        ImageSingletons.add(ObjectFileFactory.class, new ObjectFileFactory() {
+            @Override
+            public ObjectFile newObjectFile(int pageSize, Path tempDir, BigBang bb) {
+                if (LLVMOptions.UseLLVMDataSection.getValue()) {
+                    return new LLVMObjectFile(pageSize, tempDir, bb);
+                } else {
+                    return ObjectFile.getNativeObjectFile(pageSize);
+                }
+            }
+        });
+
+        if (LLVMOptions.UseLLVMDataSection.getValue()) {
+            ImageSingletons.add(CCompilerInvoker.class, new LLVMCCompilerInvoker(ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory()));
+        }
+
         ImageSingletons.add(ExceptionUnwind.class, LLVMExceptionUnwind.createRaiseExceptionHandler());
 
         ImageSingletons.add(TargetGraphBuilderPlugins.class, new LLVMGraphBuilderPlugins());
@@ -121,7 +143,7 @@ public class LLVMFeature implements Feature, InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        accessImpl.registerAsRoot((AnalysisMethod) LLVMExceptionUnwind.getRetrieveExceptionMethod(accessImpl.getMetaAccess()), true);
+        accessImpl.registerAsRoot((AnalysisMethod) LLVMExceptionUnwind.getRetrieveExceptionMethod(accessImpl.getMetaAccess()), true, "LLVM exception unwind, registered in " + LLVMFeature.class);
     }
 
     @Override

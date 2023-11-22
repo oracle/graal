@@ -49,15 +49,8 @@ import java.security.CodeSource;
 import java.security.Permissions;
 import java.security.ProtectionDomain;
 import java.security.SecureClassLoader;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Objects;
 import java.util.function.Supplier;
-
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Value;
 
 /**
  * This class encapsulates the bytecode of the adapter class and can be used to load it into the JVM
@@ -68,8 +61,6 @@ import org.graalvm.polyglot.Value;
  */
 final class HostAdapterClassLoader {
     static final ProtectionDomain GENERATED_PROTECTION_DOMAIN = createGeneratedProtectionDomain();
-    static final Collection<String> VISIBLE_INTERNAL_CLASS_NAMES = Collections.unmodifiableCollection(
-                    new HashSet<>(Arrays.asList(Value.class.getName())));
     static final String SERVICE_CLASS_NAME = "com.oracle.truffle.host.adapters.HostAdapterServices";
 
     interface LazyClassBytes {
@@ -90,16 +81,17 @@ final class HostAdapterClassLoader {
      * @param parentLoader the parent class loader for the generated class loader
      * @return the generated adapter class
      */
-    Class<?> generateClass(ClassLoader parentLoader, Object classOverrides) {
+    Class<?> generateClass(HostClassCache cache, ClassLoader parentLoader, Object classOverrides) {
         try {
-            return Class.forName(className, true, createClassLoader(parentLoader, classOverrides));
+            Class<?> c = createClassLoader(cache, parentLoader, classOverrides).loadClass(className);
+            return c;
         } catch (final ClassNotFoundException e) {
             throw new IllegalStateException(e);
         }
     }
 
-    private ClassLoader createClassLoader(final ClassLoader parentLoader, final Object classOverrides) {
-        return new GeneratedClassLoader(parentLoader, classOverrides);
+    private ClassLoader createClassLoader(HostClassCache cache, final ClassLoader parentLoader, final Object classOverrides) {
+        return new GeneratedClassLoader(cache, parentLoader, classOverrides);
     }
 
     static boolean isAdapterInstance(Object adapter) {
@@ -114,13 +106,13 @@ final class HostAdapterClassLoader {
         return classLoader instanceof GeneratedClassLoader;
     }
 
-    final class GeneratedClassLoader extends SecureClassLoader implements Supplier<Value> {
-        private final ClassLoader internalLoader;
+    final class GeneratedClassLoader extends SecureClassLoader implements Supplier<Object> {
         private final Object classOverrides;
+        private final HostClassCache cache;
 
-        private GeneratedClassLoader(final ClassLoader parentLoader, final Object classOverrides) {
+        private GeneratedClassLoader(HostClassCache cache, final ClassLoader parentLoader, final Object classOverrides) {
             super(parentLoader);
-            this.internalLoader = GeneratedClassLoader.class.getClassLoader();
+            this.cache = cache;
             this.classOverrides = classOverrides;
         }
 
@@ -129,9 +121,6 @@ final class HostAdapterClassLoader {
             // bypass the parent class loader for the generated class and allowed internal classes.
             if (isGeneratedClassName(name)) {
                 return loadGeneratedClass(name, resolve);
-            }
-            if (VISIBLE_INTERNAL_CLASS_NAMES.contains(name)) {
-                return loadInternalClass(name);
             }
             return super.loadClass(name, resolve);
         }
@@ -147,11 +136,6 @@ final class HostAdapterClassLoader {
                 }
                 return c;
             }
-        }
-
-        private Class<?> loadInternalClass(final String name) throws ClassNotFoundException {
-            assert VISIBLE_INTERNAL_CLASS_NAMES.contains(name);
-            return internalLoader != null ? internalLoader.loadClass(name) : Class.forName(name, false, internalLoader);
         }
 
         private boolean isGeneratedClassName(final String name) {
@@ -171,8 +155,9 @@ final class HostAdapterClassLoader {
         }
 
         @Override
-        public Value get() {
-            return Context.getCurrent().asValue(classOverrides);
+        public Object get() {
+            Object current = cache.apiAccess.callContextGetCurrent();
+            return cache.apiAccess.callContextAsValue(current, classOverrides);
         }
     }
 
@@ -191,8 +176,8 @@ final class HostAdapterClassLoader {
     }
 
     @SuppressWarnings("unchecked")
-    static Value getClassOverrides(ClassLoader classLoader) {
-        return ((Supplier<Value>) classLoader).get();
+    static Object getClassOverrides(ClassLoader classLoader) {
+        return ((Supplier<Object>) classLoader).get();
     }
 
     static byte[] loadClassBytes(String className) {

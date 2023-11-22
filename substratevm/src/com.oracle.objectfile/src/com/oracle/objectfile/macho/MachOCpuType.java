@@ -44,7 +44,7 @@ public enum MachOCpuType {
             case 0x0100000C:
                 return ARM64;
         }
-        throw new IllegalStateException("unknown CPU type");
+        throw new IllegalStateException("Unknown CPU type");
     }
 
     public static MachOCpuType from(String s) {
@@ -56,7 +56,7 @@ public enum MachOCpuType {
             case "aarch64":
                 return ARM64;
         }
-        throw new IllegalStateException("unknown CPU type: " + s);
+        throw new IllegalStateException("Unknown CPU type: " + s);
     }
 
     public int toInt() {
@@ -70,6 +70,6 @@ public enum MachOCpuType {
             case ARM64:
                 return 0x0100000C;
         }
-        throw new IllegalStateException("should not reach here");
+        throw new IllegalStateException("Should not reach here");
     }
 }

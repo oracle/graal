@@ -35,6 +35,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+
 import jdk.internal.reflect.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import sun.reflect.annotation.AnnotationParser;
@@ -150,13 +152,13 @@ public final class AnnotationValue extends AnnotationMemberValue {
     }
 
     @Override
-    public List<JavaConstant> getExceptionProxies() {
+    public List<JavaConstant> getExceptionProxies(SnippetReflectionProvider snippetReflection) {
         if (isAnnotationFormatException()) {
             return List.of();
         }
         List<JavaConstant> exceptionProxies = new ArrayList<>();
         for (AnnotationMemberValue memberValue : members.values()) {
-            exceptionProxies.addAll(memberValue.getExceptionProxies());
+            exceptionProxies.addAll(memberValue.getExceptionProxies(snippetReflection));
         }
         return exceptionProxies;
     }

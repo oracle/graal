@@ -1,9 +1,9 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: native-code-interoperability
 link_title: Interoperability with Native Code
 permalink: /reference-manual/native-image/native-code-interoperability/
-redirect_from: /$version/reference-manual/native-image/ImplementingNativeMethodsInJavaWithSVM/
+redirect_from: /reference-manual/native-image/ImplementingNativeMethodsInJavaWithSVM/
 ---
 
 # Interoperability with Native Code

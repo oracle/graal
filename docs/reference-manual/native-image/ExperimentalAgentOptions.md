@@ -1,9 +1,9 @@
 ---
-layout: ni-docs
+layout: docs
 toc_group: metadata
 link_title: Experimental Agent Options
 permalink: /reference-manual/native-image/metadata/ExperimentalAgentOptions/
-redirect_from: /$version/reference-manual/native-image/ExperimentalAgentOptions/
+redirect_from: /reference-manual/native-image/ExperimentalAgentOptions/
 ---
 
 # Experimental Agent Options

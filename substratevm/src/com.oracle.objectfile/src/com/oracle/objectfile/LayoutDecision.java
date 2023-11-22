@@ -108,7 +108,7 @@ public final class LayoutDecision implements Comparable<LayoutDecision> {
 
         // we can only compare decisions about the same object file
         if (ourElement != null && argElement != null && ourElement.getOwner() != argElement.getOwner()) {
-            throw new IllegalArgumentException("cannot compare decisions across object files");
+            throw new IllegalArgumentException("Cannot compare decisions across object files");
         }
 
         if (ourElementIndex < argElementIndex) {

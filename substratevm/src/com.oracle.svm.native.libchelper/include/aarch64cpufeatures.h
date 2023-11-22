@@ -24,24 +24,26 @@
  * questions.
  */
 
+#include <stdint.h>
+
 typedef struct {
-  char fFP;
-  char fASIMD;
-  char fEVTSTRM;
-  char fAES;
-  char fPMULL;
-  char fSHA1;
-  char fSHA2;
-  char fCRC32;
-  char fLSE;
-  char fDCPOP;
-  char fSHA3;
-  char fSHA512;
-  char fSVE;
-  char fSVE2;
-  char fSTXR_PREFETCH;
-  char fA53MAC;
-  char fDMB_ATOMICS;
-  char fPACA;
-  char fSVEBITPERM;
+  uint8_t fFP;
+  uint8_t fASIMD;
+  uint8_t fEVTSTRM;
+  uint8_t fAES;
+  uint8_t fPMULL;
+  uint8_t fSHA1;
+  uint8_t fSHA2;
+  uint8_t fCRC32;
+  uint8_t fLSE;
+  uint8_t fDCPOP;
+  uint8_t fSHA3;
+  uint8_t fSHA512;
+  uint8_t fSVE;
+  uint8_t fSVE2;
+  uint8_t fSTXR_PREFETCH;
+  uint8_t fA53MAC;
+  uint8_t fDMB_ATOMICS;
+  uint8_t fPACA;
+  uint8_t fSVEBITPERM;
 } CPUFeatures;

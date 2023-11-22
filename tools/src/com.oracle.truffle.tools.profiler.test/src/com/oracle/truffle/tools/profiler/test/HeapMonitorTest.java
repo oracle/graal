@@ -46,6 +46,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.tools.profiler.HeapMonitor;
 import com.oracle.truffle.tools.profiler.HeapSummary;
 
+@SuppressWarnings("this-escape")
 public class HeapMonitorTest extends AbstractProfilerTest {
     private HeapMonitor monitor;
 

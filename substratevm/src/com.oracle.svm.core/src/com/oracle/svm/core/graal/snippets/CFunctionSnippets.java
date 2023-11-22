@@ -28,23 +28,23 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.InvokeNode;
-import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.extended.MembarNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.ReplacementsUtil;
-import org.graalvm.compiler.replacements.SnippetTemplate;
-import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
-import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
-import org.graalvm.compiler.replacements.Snippets;
+import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.InvokeNode;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.extended.MembarNode;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.ReplacementsUtil;
+import jdk.graal.compiler.replacements.SnippetTemplate;
+import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
+import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
+import jdk.graal.compiler.replacements.Snippets;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -178,7 +178,6 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
     }
 
     class CFunctionEpilogueLowering implements NodeLoweringProvider<CFunctionEpilogueNode> {
-
         @Override
         public void lower(CFunctionEpilogueNode node, LoweringTool tool) {
             if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
@@ -188,7 +187,6 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
 
             int oldThreadStatus = node.getOldThreadStatus();
             assert StatusSupport.isValidStatus(oldThreadStatus);
-
             Arguments args = new Arguments(epilogue, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.addConst("oldThreadStatus", oldThreadStatus);
             SnippetTemplate template = template(tool, node, args);

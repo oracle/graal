@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jfr;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -69,9 +68,17 @@ public final class JfrThreadRepository implements JfrRepository {
         epochData1.teardown();
     }
 
+    @Uninterruptible(reason = "Required to get epoch data.")
+    public void clearPreviousEpoch() {
+        assert VMOperation.isInProgressAtSafepoint() && SubstrateJVM.getChunkWriter().isLockedByCurrentThread();
+        getEpochData(true).clear(false);
+    }
+
     @Uninterruptible(reason = "Prevent any JFR events from triggering.")
     public void registerRunningThreads() {
         assert VMOperation.isInProgressAtSafepoint();
+        assert SubstrateJVM.get().isRecording();
+
         for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
             /*
              * IsolateThreads without a Java thread just started executing and will register
@@ -80,12 +87,21 @@ public final class JfrThreadRepository implements JfrRepository {
             Thread thread = PlatformThreads.fromVMThread(isolateThread);
             if (thread != null) {
                 registerThread(thread);
+                // Re-register vthreads that are already mounted.
+                Thread vthread = PlatformThreads.getMountedVirtualThread(thread);
+                if (vthread != null) {
+                    registerThread(vthread);
+                }
             }
         }
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public void registerThread(Thread thread) {
+        if (!SubstrateJVM.get().isRecording()) {
+            return;
+        }
+
         long threadId = JavaThreads.getThreadId(thread);
 
         JfrVisited visitedThread = StackValue.get(JfrVisited.class);
@@ -118,9 +134,7 @@ public final class JfrThreadRepository implements JfrRepository {
             JfrNativeEventWriter.putString(data, thread.getName()); // Java thread name
             JfrNativeEventWriter.putLong(data, threadId); // Java thread id
             JfrNativeEventWriter.putLong(data, threadGroupId); // Java thread group
-            if (JavaVersionUtil.JAVA_SPEC >= 19) {
-                JfrNativeEventWriter.putBoolean(data, isVirtual);
-            }
+            JfrNativeEventWriter.putBoolean(data, isVirtual);
             if (!JfrNativeEventWriter.commit(data)) {
                 return;
             }
@@ -139,7 +153,8 @@ public final class JfrThreadRepository implements JfrRepository {
             /* For virtual threads, a fixed thread group id is reserved. */
             return VIRTUAL_THREAD_GROUP_ID;
         }
-        return registerThreadGroup0(thread.getThreadGroup());
+        ThreadGroup group = JavaThreads.getRawThreadGroup(thread);
+        return registerThreadGroup0(group);
     }
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")

@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -43,17 +44,19 @@ public class GCCause {
     @Platforms(Platform.HOSTED_ONLY.class) private static final ArrayList<GCCause> HostedGCCauseList = new ArrayList<>();
 
     @DuplicatedInNativeCode public static final GCCause JavaLangSystemGC = new GCCause("java.lang.System.gc()", 0);
-    @DuplicatedInNativeCode public static final GCCause UnitTest = new GCCause("UnitTest", 1);
-    @DuplicatedInNativeCode public static final GCCause TestGCInDeoptimizer = new GCCause("TestGCInDeoptimizer", 2);
-    @DuplicatedInNativeCode public static final GCCause HintedGC = new GCCause("Hint", 3);
+    @DuplicatedInNativeCode public static final GCCause UnitTest = new GCCause("Forced GC in unit test", 1);
+    @DuplicatedInNativeCode public static final GCCause TestGCInDeoptimizer = new GCCause("Test GC in deoptimizer", 2);
+    @DuplicatedInNativeCode public static final GCCause HintedGC = new GCCause("Hinted GC", 3);
+    @DuplicatedInNativeCode public static final GCCause JvmtiForceGC = new GCCause("JvmtiEnv ForceGarbageCollection", 4);
+    @DuplicatedInNativeCode public static final GCCause HeapDump = new GCCause("Heap Dump Initiated GC ", 5);
 
-    @UnknownObjectField(types = GCCause[].class) //
-    protected static GCCause[] GCCauses;
+    @UnknownObjectField(availability = ReadyForCompilation.class) protected static GCCause[] GCCauses;
 
     private final int id;
     private final String name;
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    @SuppressWarnings("this-escape")
     protected GCCause(String name, int id) {
         this.id = id;
         this.name = name;

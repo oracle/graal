@@ -111,9 +111,9 @@ public abstract class ExecutableNode extends Node {
         }
     }
 
-    final void setSharingLayer(Object engine) {
+    final void setSharingLayer(Object layer) {
         assert !(polyglotRef instanceof TruffleLanguage<?>) : "not allowed overwrite language";
-        this.polyglotRef = engine;
+        this.polyglotRef = layer;
     }
 
     /**

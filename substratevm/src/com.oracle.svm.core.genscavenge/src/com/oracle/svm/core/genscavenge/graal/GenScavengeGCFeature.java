@@ -29,9 +29,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -40,6 +37,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.genscavenge.ChunkedImageHeapLayouter;
 import com.oracle.svm.core.genscavenge.CompleteGarbageCollectorMXBean;
+import com.oracle.svm.core.genscavenge.EpsilonGarbageCollectorMXBean;
 import com.oracle.svm.core.genscavenge.GenScavengeMemoryPoolMXBeans;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.HeapImplMemoryMXBean;
@@ -66,6 +64,11 @@ import com.oracle.svm.core.jdk.management.ManagementSupport;
 import com.oracle.svm.core.jvmstat.PerfDataFeature;
 import com.oracle.svm.core.jvmstat.PerfDataHolder;
 import com.oracle.svm.core.jvmstat.PerfManager;
+import com.sun.management.GarbageCollectorMXBean;
+
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
 
 @AutomaticallyRegisteredFeature
 class GenScavengeGCFeature implements InternalFeature {
@@ -92,10 +95,20 @@ class GenScavengeGCFeature implements InternalFeature {
         ImageSingletons.add(Heap.class, heap);
         ImageSingletons.add(GCAllocationSupport.class, new GenScavengeAllocationSupport());
 
+        GenScavengeMemoryPoolMXBeans memoryPoolMXBeans = new GenScavengeMemoryPoolMXBeans();
+        ImageSingletons.add(GenScavengeMemoryPoolMXBeans.class, memoryPoolMXBeans);
+
+        List<GarbageCollectorMXBean> garbageCollectors;
+        if (SubstrateOptions.UseEpsilonGC.getValue()) {
+            garbageCollectors = Arrays.asList(new EpsilonGarbageCollectorMXBean());
+        } else {
+            garbageCollectors = Arrays.asList(new IncrementalGarbageCollectorMXBean(), new CompleteGarbageCollectorMXBean());
+        }
+
         ManagementSupport managementSupport = ManagementSupport.getSingleton();
         managementSupport.addPlatformManagedObjectSingleton(java.lang.management.MemoryMXBean.class, new HeapImplMemoryMXBean());
-        managementSupport.addPlatformManagedObjectList(java.lang.management.MemoryPoolMXBean.class, Arrays.asList(GenScavengeMemoryPoolMXBeans.createMemoryPoolMXBeans()));
-        managementSupport.addPlatformManagedObjectList(com.sun.management.GarbageCollectorMXBean.class, Arrays.asList(new IncrementalGarbageCollectorMXBean(), new CompleteGarbageCollectorMXBean()));
+        managementSupport.addPlatformManagedObjectList(java.lang.management.MemoryPoolMXBean.class, Arrays.asList(memoryPoolMXBeans.getMXBeans()));
+        managementSupport.addPlatformManagedObjectList(com.sun.management.GarbageCollectorMXBean.class, garbageCollectors);
         /* Not supported yet. */
         managementSupport.addPlatformManagedObjectList(java.lang.management.BufferPoolMXBean.class, Collections.emptyList());
 

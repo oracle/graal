@@ -26,18 +26,25 @@ package com.oracle.svm.core.jdk;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.module.ModuleReader;
 import java.lang.module.ModuleReference;
 import java.net.URL;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Map;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
 @TargetClass(value = jdk.internal.loader.BuiltinClassLoader.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_jdk_internal_loader_BuiltinClassLoader {
+
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    private Map<ModuleReference, ModuleReader> moduleToReader;
 
     @Substitute
     protected Class<?> findClass(String name) throws ClassNotFoundException {

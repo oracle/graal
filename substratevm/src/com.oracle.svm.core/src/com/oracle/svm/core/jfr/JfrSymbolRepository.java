@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.jfr;
 
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -135,16 +135,13 @@ public class JfrSymbolRepository implements JfrRepository {
         try {
             JfrSymbolEpochData epochData = getEpochData(!flushpoint);
             int count = epochData.unflushedEntries;
-            if (count == 0) {
-                return EMPTY;
+            if (count != 0) {
+                writer.writeCompressedLong(JfrType.Symbol.getId());
+                writer.writeCompressedLong(count);
+                writer.write(epochData.buffer);
             }
-
-            writer.writeCompressedLong(JfrType.Symbol.getId());
-            writer.writeCompressedLong(count);
-            writer.write(epochData.buffer);
-
             epochData.clear(flushpoint);
-            return NON_EMPTY;
+            return count == 0 ? EMPTY : NON_EMPTY;
         } finally {
             mutex.unlock();
         }
@@ -180,7 +177,7 @@ public class JfrSymbolRepository implements JfrRepository {
     }
 
     private static class JfrSymbolHashtable extends AbstractUninterruptibleHashtable {
-        private long nextId;
+        private static long nextId;
 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

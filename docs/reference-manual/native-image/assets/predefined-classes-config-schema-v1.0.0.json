@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/predefined-classes-config-schema-v1.0.0.json",
+  "default": [
+    {
+      "type": "agent-extracted",
+      "classes": []
+    }
+  ],
+  "items": {
+    "properties": {
+      "type": {
+        "default": "agent-extracted",
+        "title": "Origin of the classes listed in <classes>",
+        "type": "string",
+        "enum": [
+          "agent-extracted"
+        ]
+      },
+      "classes": {
+        "default": [],
+        "items": {
+          "properties": {
+            "nameInfo": {
+              "type": "string",
+              "title": "Fully qualified name of the predefined class"
+            },
+            "hash": {
+              "type": "string",
+              "title": "Hash value of the predefined class"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "hash"
+          ]
+        },
+        "type": "array",
+        "title": "List of classes that are predefined"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "List of classes with their origin that are predefined"
+  },
+  "type": "array",
+  "title": "JSON schema for the predefined-classes-config that GraalVM Native Image uses"
+}

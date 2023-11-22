@@ -38,14 +38,24 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public final class MethodPointer implements CFunctionPointer {
     private final ResolvedJavaMethod method;
+    private final boolean isAbsolute;
 
-    public MethodPointer(ResolvedJavaMethod method) {
+    public MethodPointer(ResolvedJavaMethod method, boolean isAbsolute) {
         Objects.requireNonNull(method);
         this.method = method;
+        this.isAbsolute = isAbsolute;
+    }
+
+    public MethodPointer(ResolvedJavaMethod method) {
+        this(method, false);
     }
 
     public ResolvedJavaMethod getMethod() {
         return method;
+    }
+
+    public boolean isAbsolute() {
+        return isAbsolute;
     }
 
     @Override

@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.truffle.api;
 
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -33,6 +32,8 @@ import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.truffle.TruffleSupport;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.EngineData;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -59,8 +60,16 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
      */
     protected SubstrateOptimizedCallTargetInstalledCode installedCode;
 
+    @SuppressWarnings("this-escape")
     public SubstrateOptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         super(sourceCallTarget, rootNode);
+        this.installedCode = createInitializationInstalledCode();
+        assert this.installedCode != null : "Must never be null";
+    }
+
+    @SuppressWarnings("this-escape")
+    public SubstrateOptimizedCallTarget(EngineData engine) {
+        super(engine);
         this.installedCode = createInitializationInstalledCode();
         assert this.installedCode != null : "Must never be null";
     }

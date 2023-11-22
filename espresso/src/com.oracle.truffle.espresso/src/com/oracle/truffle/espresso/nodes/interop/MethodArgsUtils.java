@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,14 +33,15 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public class MethodArgsUtils {
 
     @TruffleBoundary
-    public static CandidateMethodWithArgs matchCandidate(Method candidate, Object[] arguments, Klass[] parameterKlasses, ToEspressoNode toEspressoNode) {
+    public static CandidateMethodWithArgs matchCandidate(Method candidate, Object[] arguments, Klass[] parameterKlasses, ToEspressoNode.DynamicToEspresso toEspressoNode) {
         boolean canConvert = true;
         int paramLength = parameterKlasses.length;
         Object[] convertedArgs = new Object[arguments.length];
@@ -63,7 +64,8 @@ public class MethodArgsUtils {
                             convertedArgs = Arrays.copyOf(convertedArgs, convertedArgs.length + (int) arraySize - 1);
                             for (int l = 0; l < arraySize; l++) {
                                 if (library.isArrayElementReadable(argument, l)) {
-                                    convertedArgs[j + l] = toEspressoNode.execute(library.readArrayElement(argument, l), paramType);
+                                    Object element = library.readArrayElement(argument, l);
+                                    convertedArgs[j + l] = toEspressoNode.execute(element, paramType);
                                 } else {
                                     canConvert = false;
                                     break;
@@ -95,7 +97,7 @@ public class MethodArgsUtils {
     }
 
     @TruffleBoundary
-    public static CandidateMethodWithArgs ensureVarArgsArrayCreated(CandidateMethodWithArgs matched, ToEspressoNode toEspressoNode) {
+    public static CandidateMethodWithArgs ensureVarArgsArrayCreated(CandidateMethodWithArgs matched, ToEspressoNode.DynamicToEspresso toEspressoNode) {
         int varArgsIndex = matched.getParameterTypes().length - 1;
         Klass varArgsArrayType = matched.getParameterTypes()[varArgsIndex];
         Klass varArgsType = ((ArrayKlass) varArgsArrayType).getComponentType();
@@ -110,7 +112,7 @@ public class MethodArgsUtils {
         StaticObject varArgsArray = isPrimitive ? varArgsType.getAllocator().createNewPrimitiveArray(varArgsType, varArgsLength) : varArgsType.allocateReferenceArray(varArgsLength);
 
         if (isPrimitive) {
-            varArgsType = primitiveTypeToBoxedType(varArgsType);
+            varArgsType = primitiveTypeToBoxedType((PrimitiveKlass) varArgsType);
         }
 
         int index = 0;
@@ -118,12 +120,11 @@ public class MethodArgsUtils {
             Object inputArg = matched.getConvertedArgs()[i];
             try {
                 Object convertedArg = toEspressoNode.execute(inputArg, varArgsType);
-
                 if (!isPrimitive) {
-                    Object[] array = varArgsArray.unwrap(toEspressoNode.getLanguage());
+                    Object[] array = varArgsArray.unwrap(matched.getMethod().getLanguage());
                     array[index++] = convertedArg;
                 } else {
-                    putPrimitiveArg(varArgsArray, inputArg, index, toEspressoNode.getLanguage());
+                    putPrimitiveArg(varArgsArray, inputArg, index, matched.getMethod().getLanguage());
                     index++;
                 }
             } catch (UnsupportedTypeException e) {
@@ -136,7 +137,7 @@ public class MethodArgsUtils {
         return new CandidateMethodWithArgs(matched.getMethod(), finalConvertedArgs, matched.getParameterTypes());
     }
 
-    public static Klass boxedTypeToPrimitiveType(Klass primitiveType) {
+    public static PrimitiveKlass boxedTypeToPrimitiveType(Klass primitiveType) {
         Meta meta = primitiveType.getMeta();
         if (primitiveType == meta.java_lang_Boolean) {
             return meta._boolean;
@@ -159,26 +160,21 @@ public class MethodArgsUtils {
         }
     }
 
-    static Klass primitiveTypeToBoxedType(Klass primitiveType) {
+    public static Klass primitiveTypeToBoxedType(PrimitiveKlass primitiveType) {
         Meta meta = primitiveType.getMeta();
-        if (primitiveType == meta._boolean) {
-            return meta.java_lang_Boolean;
-        } else if (primitiveType == meta._byte) {
-            return meta.java_lang_Byte;
-        } else if (primitiveType == meta._short) {
-            return meta.java_lang_Short;
-        } else if (primitiveType == meta._char) {
-            return meta.java_lang_Character;
-        } else if (primitiveType == meta._int) {
-            return meta.java_lang_Integer;
-        } else if (primitiveType == meta._long) {
-            return meta.java_lang_Long;
-        } else if (primitiveType == meta._float) {
-            return meta.java_lang_Float;
-        } else if (primitiveType == meta._double) {
-            return meta.java_lang_Double;
-        } else {
-            return null;
+        switch (primitiveType.getPrimitiveJavaKind()) {
+            // @formatter:off
+            case Int: return meta.java_lang_Integer;
+            case Boolean: return meta.java_lang_Boolean;
+            case Char: return meta.java_lang_Character;
+            case Short: return meta.java_lang_Short;
+            case Byte: return meta.java_lang_Byte;
+            case Long: return meta.java_lang_Long;
+            case Double: return meta.java_lang_Double;
+            case Float: return meta.java_lang_Float;
+            case Void: return meta.java_lang_Void;
+            default: return null;
+            // @formatter:on
         }
     }
 

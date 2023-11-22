@@ -131,7 +131,7 @@ public final class ModuleSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private static void accessModuleByClass(Access access, Class<?> accessingClass, Module declaringModule, String packageName) {
+    public static void accessModuleByClass(Access access, Class<?> accessingClass, Module declaringModule, String packageName) {
         Module namedAccessingModule = null;
         if (accessingClass != null) {
             Module accessingModule = accessingClass.getModule();

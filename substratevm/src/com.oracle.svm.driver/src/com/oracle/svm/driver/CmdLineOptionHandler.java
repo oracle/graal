@@ -27,14 +27,17 @@ package com.oracle.svm.driver;
 import java.io.File;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Pattern;
 
-import org.graalvm.compiler.options.OptionType;
+import jdk.graal.compiler.options.OptionType;
 
+import com.oracle.svm.core.VM;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
+import com.oracle.svm.util.LogUtils;
 
 class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
@@ -48,7 +51,7 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     private static final String VERBOSE_SERVER_OPTION = "--verbose-server";
     private static final String SERVER_OPTION_PREFIX = "--server-";
 
-    private static final String JAVA_RUNTIME_VERSION = System.getProperty("java.runtime.version");
+    private static final String LAUNCHER_NAME = "native-image";
 
     boolean useDebugAttach = false;
 
@@ -60,10 +63,12 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     boolean consume(ArgumentQueue args) {
         String headArg = args.peek();
         boolean consumed = consume(args, headArg);
-        OptionOrigin origin = OptionOrigin.from(args.argumentOrigin);
-        if (consumed && !origin.commandLineLike()) {
-            String msg = String.format("Using '%s' provided by %s is only allowed on command line.", headArg, origin);
-            throw NativeImage.showError(msg);
+        if (consumed) {
+            OptionOrigin origin = OptionOrigin.from(args.argumentOrigin);
+            if (!origin.commandLineLike()) {
+                String msg = String.format("Using '%s' provided by %s is only allowed on command line.", headArg, origin);
+                throw NativeImage.showError(msg);
+            }
         }
         return consumed;
     }
@@ -84,9 +89,7 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             case "--version":
                 args.poll();
                 singleArgumentCheck(args, headArg);
-                String message = NativeImage.getNativeImageVersion();
-                message += " (Java Version " + JAVA_RUNTIME_VERSION + ")";
-                nativeImage.showMessage(message);
+                printVersion();
                 System.exit(ExitStatus.OK.getValue());
                 return true;
             case "--help-extra":
@@ -142,13 +145,9 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 String optionNames = args.poll();
                 nativeImage.setPrintFlagsWithExtraHelpOptionQuery(optionNames);
                 return true;
-            case BundleSupport.UNLOCK_BUNDLE_SUPPORT_OPTION:
-                args.poll();
-                BundleSupport.allowBundleSupport = true;
-                return true;
             case VERBOSE_SERVER_OPTION:
                 args.poll();
-                NativeImage.showWarning("Ignoring server-mode native-image argument " + headArg + ".");
+                LogUtils.warning("Ignoring server-mode native-image argument " + headArg + ".");
                 return true;
         }
 
@@ -174,7 +173,7 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
         if (headArg.startsWith(SERVER_OPTION_PREFIX)) {
             args.poll();
-            NativeImage.showWarning("Ignoring server-mode native-image argument " + headArg + ".");
+            LogUtils.warning("Ignoring server-mode native-image argument " + headArg + ".");
             String serverOptionCommand = headArg.substring(SERVER_OPTION_PREFIX.length());
             if (!serverOptionCommand.startsWith("session=")) {
                 /*
@@ -187,6 +186,41 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
 
         return false;
+    }
+
+    /**
+     * Prints version output following
+     * "src/java.base/share/classes/java/lang/VersionProps.java.template#print(boolean)".
+     */
+    private void printVersion() {
+        /* First line: platform version. */
+        String javaVersion = System.getProperty("java.version");
+        String javaVersionDate = System.getProperty("java.version.date");
+        Optional<String> versionOpt = Runtime.version().optional();
+        boolean isLTS = versionOpt.isPresent() && versionOpt.get().startsWith("LTS");
+        nativeImage.showMessage("%s %s %s", LAUNCHER_NAME, javaVersion, javaVersionDate, isLTS ? " LTS" : "");
+
+        /* Second line: runtime version (ie, libraries). */
+        String javaRuntimeVersion = System.getProperty("java.runtime.version");
+
+        String jdkDebugLevel = System.getProperty("jdk.debug", "release");
+        if ("release".equals(jdkDebugLevel)) {
+            /* Do not show debug level "release" builds */
+            jdkDebugLevel = "";
+        } else {
+            jdkDebugLevel = jdkDebugLevel + " ";
+        }
+
+        String javaRuntimeName = System.getProperty("java.runtime.name");
+        String vendorVersion = VM.getVendorVersion();
+        vendorVersion = vendorVersion.isEmpty() ? "" : " " + vendorVersion;
+        nativeImage.showMessage("%s%s (%sbuild %s)", javaRuntimeName, vendorVersion, jdkDebugLevel, javaRuntimeVersion);
+
+        /* Third line: VM information. */
+        String javaVMName = System.getProperty("java.vm.name");
+        String javaVMVersion = System.getProperty("java.vm.version");
+        String javaVMInfo = System.getProperty("java.vm.info");
+        nativeImage.showMessage("%s%s (%sbuild %s, %s)", javaVMName, vendorVersion, jdkDebugLevel, javaVMVersion, javaVMInfo);
     }
 
     private static void singleArgumentCheck(ArgumentQueue args, String arg) {

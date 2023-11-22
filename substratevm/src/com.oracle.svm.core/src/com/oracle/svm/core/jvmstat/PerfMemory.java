@@ -29,7 +29,7 @@ import static com.oracle.svm.core.jvmstat.PerfManager.Options.PerfDataMemoryMapp
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -43,8 +43,8 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 import com.oracle.svm.core.jdk.Target_java_nio_Buffer;
-import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
 
 /**
  * Provides access to the underlying OS-specific memory that stores the performance data.
@@ -111,6 +111,7 @@ public class PerfMemory {
         buffer = b;
         capacity = b.capacity();
         rawMemory = WordFactory.pointer(SubstrateUtil.cast(b, Target_java_nio_Buffer.class).address);
+
         assert verifyRawMemoryAccess();
 
         return true;
@@ -134,7 +135,7 @@ public class PerfMemory {
      * may only be used for JDK code that needs direct memory access.
      */
     public ByteBuffer createByteBuffer() {
-        return SubstrateUtil.cast(new Target_java_nio_DirectByteBuffer(rawMemory.rawValue(), capacity), ByteBuffer.class);
+        return DirectByteBufferUtil.allocate(rawMemory.rawValue(), capacity);
     }
 
     /**

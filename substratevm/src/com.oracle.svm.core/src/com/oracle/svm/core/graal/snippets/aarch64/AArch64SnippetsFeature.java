@@ -27,9 +27,9 @@ package com.oracle.svm.core.graal.snippets.aarch64;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -44,7 +44,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.AARCH64.class)
-class AArch64SnippetsFeature implements InternalFeature {
+public class AArch64SnippetsFeature implements InternalFeature {
 
     @Override
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,

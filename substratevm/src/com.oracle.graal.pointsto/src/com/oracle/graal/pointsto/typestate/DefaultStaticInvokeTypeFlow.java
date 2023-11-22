@@ -42,9 +42,17 @@ import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
 import jdk.vm.ci.code.BytecodePosition;
 
 final class DefaultStaticInvokeTypeFlow extends AbstractStaticInvokeTypeFlow {
+    private final boolean isDeoptInvokeTypeFlow;
+
     DefaultStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
+        this(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey, false);
+    }
+
+    DefaultStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey, boolean isDeoptInvokeTypeFlow) {
         super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
+        this.isDeoptInvokeTypeFlow = isDeoptInvokeTypeFlow;
     }
 
     @Override
@@ -70,7 +78,12 @@ final class DefaultStaticInvokeTypeFlow extends AbstractStaticInvokeTypeFlow {
     }
 
     @Override
-    protected Collection<MethodFlowsGraph> getAllCalleesFlows(PointsToAnalysis bb) {
-        return DefaultInvokeTypeFlowUtil.getAllCalleesFlows(this);
+    public Collection<MethodFlowsGraph> getAllNonStubCalleesFlows(PointsToAnalysis bb) {
+        return DefaultInvokeTypeFlowUtil.getAllNonStubCalleesFlows(this);
+    }
+
+    @Override
+    public boolean isDeoptInvokeTypeFlow() {
+        return isDeoptInvokeTypeFlow;
     }
 }

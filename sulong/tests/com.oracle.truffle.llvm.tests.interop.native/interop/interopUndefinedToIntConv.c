@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,7 +45,7 @@ int main() {
 
     /* polyglot_from_Order(&o) should be used here for correct operation, but this test is
      about making sure we throw a PolyglotException rather than an InternalError. */
-    int price = ((int (*)(struct Order * order)) foo)(&o);
+    int price = ((int (*)(struct Order *order)) foo)(&o);
 
     return price;
 }

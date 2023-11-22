@@ -49,17 +49,16 @@ public class Stream {
         Random random = new Random(42);
         for (int i = 0; i < PERSONS_NR; i++) {
             persons[i] = new Person(
-                    random.nextDouble() >= EMPLOYMENT_RATIO ? Employment.EMPLOYED : Employment.UNEMPLOYED,
-                    random.nextInt(MAX_SALARY),
-                    random.nextInt(MAX_AGE));
+                            random.nextDouble() >= EMPLOYMENT_RATIO ? Employment.EMPLOYED : Employment.UNEMPLOYED,
+                            random.nextInt(MAX_SALARY),
+                            random.nextInt(MAX_AGE));
         }
     }
 
     @Benchmark
     public static double bench() {
-        return Arrays.stream(persons).filter(p -> p.getEmployment() == Employment.EMPLOYED)
-                .filter(p -> p.getSalary() > 100_000)
-                .mapToInt(Person::getAge).filter(age -> age >= 40).average().getAsDouble();
+        return Arrays.stream(persons).filter(p -> p.getEmployment() == Employment.EMPLOYED).filter(p -> p.getSalary() > 100_000).mapToInt(Person::getAge).filter(
+                        age -> age >= 40).average().getAsDouble();
     }
 }
 

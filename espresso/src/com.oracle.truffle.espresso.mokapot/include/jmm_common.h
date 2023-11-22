@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
- 
+
 #ifndef _JAVA_JMM_COMMON_H_
 #define _JAVA_JMM_COMMON_H_
 
@@ -34,7 +34,7 @@
  *
  * 2. There is a change in the contract between VM and Java classes.
  */
- 
+
 #include "jni.h"
 
 #ifdef __cplusplus
@@ -51,6 +51,7 @@ enum {
   JMM_VERSION_1_2_3 = 0x20010203,
   JMM_VERSION_2   = 0x20020000, // JDK 10
   JMM_VERSION_3   = 0x20030000, // JDK 11.0.9 and JDK 14
+  JMM_VERSION_4   = 0x20040000, // JDK 21
 };
 
 typedef struct {

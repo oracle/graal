@@ -210,6 +210,7 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      *
      * @since 20.3
      */
+    @SuppressWarnings("this-escape")
     @TruffleBoundary
     protected AbstractTruffleException(AbstractTruffleException prototype) {
         this(prototype.getMessage(), prototype.getCause(), prototype.getStackTraceElementLimit(), prototype.getLocation());

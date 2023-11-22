@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import org.graalvm.compiler.nodes.FieldLocationIdentity;
+import jdk.graal.compiler.nodes.FieldLocationIdentity;
 
 import com.oracle.svm.core.meta.SharedField;
 
@@ -42,6 +42,6 @@ public class SubstrateFieldLocationIdentity extends FieldLocationIdentity {
 
     @Override
     public boolean isImmutable() {
-        return super.isImmutable() || (getField() instanceof SharedField && !((SharedField) getField()).isWritten());
+        return super.isImmutable() || (getField() instanceof SharedField sField && !sField.isWritten() && sField.isValueAvailable());
     }
 }

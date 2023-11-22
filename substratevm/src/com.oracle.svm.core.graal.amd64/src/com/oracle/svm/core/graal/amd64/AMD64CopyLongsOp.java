@@ -31,18 +31,18 @@ import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
-import org.graalvm.compiler.asm.Label;
-import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
-import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
-import org.graalvm.compiler.asm.amd64.AVXKind;
-import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.Stride;
-import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.Opcode;
-import org.graalvm.compiler.lir.amd64.AMD64ComplexVectorOp;
-import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
-import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
+import jdk.graal.compiler.asm.Label;
+import jdk.graal.compiler.asm.amd64.AMD64Address;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
+import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
+import jdk.graal.compiler.asm.amd64.AVXKind;
+import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.Stride;
+import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.Opcode;
+import jdk.graal.compiler.lir.amd64.AMD64ComplexVectorOp;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 
 import java.util.EnumSet;
 
@@ -50,7 +50,7 @@ import static jdk.vm.ci.amd64.AMD64.rdi;
 import static jdk.vm.ci.amd64.AMD64.rdx;
 import static jdk.vm.ci.amd64.AMD64.rsi;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 @Opcode("AMD64_COPY_LONGS")
 public final class AMD64CopyLongsOp extends AMD64ComplexVectorOp {

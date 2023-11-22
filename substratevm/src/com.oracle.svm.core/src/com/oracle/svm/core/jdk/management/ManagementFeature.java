@@ -29,15 +29,19 @@ import java.lang.management.CompilationMXBean;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
+import java.lang.management.MemoryManagerMXBean;
+import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.OperatingSystemMXBean;
 import java.lang.management.PlatformManagedObject;
 import java.lang.management.RuntimeMXBean;
 import java.lang.management.ThreadMXBean;
 import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.management.MBeanServerBuilder;
 import javax.management.openmbean.OpenType;
@@ -47,12 +51,12 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.RuntimeSupportFeature;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.ThreadListenerSupportFeature;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.util.ReflectionUtil;
 
 /** See {@link ManagementSupport} for documentation. */
@@ -67,10 +71,13 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        SubstrateRuntimeMXBean runtimeMXBean = new SubstrateRuntimeMXBean();
+        ImageSingletons.add(SubstrateRuntimeMXBean.class, runtimeMXBean);
+
         SubstrateThreadMXBean threadMXBean = new SubstrateThreadMXBean();
         ImageSingletons.add(SubstrateThreadMXBean.class, threadMXBean);
 
-        ManagementSupport managementSupport = new ManagementSupport(threadMXBean);
+        ManagementSupport managementSupport = new ManagementSupport(runtimeMXBean, threadMXBean);
         ImageSingletons.add(ManagementSupport.class, managementSupport);
         ThreadListenerSupport.get().register(managementSupport);
     }
@@ -116,6 +123,40 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         access.registerReachabilityHandler(ManagementFeature::registerMBeanServerFactoryNewBuilder, method(access, "javax.management.MBeanServerFactory", "newBuilder", Class.class));
         access.registerReachabilityHandler(ManagementFeature::registerMXBeanMappingMakeOpenClass, method(access, "com.sun.jmx.mbeanserver.MXBeanMapping", "makeOpenClass", Type.class, OpenType.class));
+
+        assert verifyMemoryManagerBeans();
+    }
+
+    private static boolean verifyMemoryManagerBeans() {
+        ManagementSupport managementSupport = ManagementSupport.getSingleton();
+        List<MemoryPoolMXBean> memoryPools = managementSupport.getPlatformMXBeans(MemoryPoolMXBean.class);
+        List<MemoryManagerMXBean> memoryManagers = managementSupport.getPlatformMXBeans(MemoryManagerMXBean.class);
+
+        Set<String> memoryManagerNames = new HashSet<>();
+        Set<String> memoryPoolNames = new HashSet<>();
+        for (MemoryPoolMXBean memoryPool : memoryPools) {
+            String memoryPoolName = memoryPool.getName();
+            assert verifyObjectName(memoryPoolName);
+            memoryPoolNames.add(memoryPoolName);
+        }
+        for (MemoryManagerMXBean memoryManager : memoryManagers) {
+            String memoryManagerName = memoryManager.getName();
+            assert verifyObjectName(memoryManagerName);
+            memoryManagerNames.add(memoryManagerName);
+            assert memoryPoolNames.containsAll(List.of(memoryManager.getMemoryPoolNames())) : memoryManagerName;
+        }
+        for (MemoryPoolMXBean memoryPool : memoryPools) {
+            assert memoryManagerNames.containsAll(List.of(memoryPool.getMemoryManagerNames())) : memoryPool.getName();
+        }
+        return true;
+    }
+
+    private static boolean verifyObjectName(String name) {
+        assert !name.contains(":");
+        assert !name.contains("=");
+        assert !name.contains("\"");
+        assert !name.contains("\n");
+        return true;
     }
 
     private static void registerMBeanServerFactoryNewBuilder(@SuppressWarnings("unused") DuringAnalysisAccess a) {

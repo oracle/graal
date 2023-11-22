@@ -51,6 +51,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public @interface StubCallingConvention {
 
     class Utils {
+        @Platforms(Platform.HOSTED_ONLY.class)
         public static boolean hasStubCallingConvention(ResolvedJavaMethod method) {
             boolean result = false;
             if (CalleeSavedRegisters.supportedByPlatform()) {

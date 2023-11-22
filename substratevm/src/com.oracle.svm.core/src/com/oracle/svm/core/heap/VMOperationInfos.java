@@ -28,11 +28,12 @@ import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.Objects;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -48,7 +49,7 @@ import com.oracle.svm.core.thread.VMOperation.SystemEffect;
 @AutomaticallyRegisteredImageSingleton
 public final class VMOperationInfos {
     @Platforms(Platform.HOSTED_ONLY.class) private static final HashMap<VMOperationKey, VMOperationInfo> hostedMap = new HashMap<>();
-    @UnknownObjectField(types = String[].class) static String[] names = new String[0];
+    @UnknownObjectField(availability = ReadyForCompilation.class) static String[] names = new String[0];
 
     @Fold
     public static VMOperationInfos singleton() {

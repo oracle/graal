@@ -30,8 +30,7 @@ import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
+import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 
 /**
  * Allocates a buffer with a minimal size that only contains the performance data header (see
@@ -44,7 +43,7 @@ public class CHeapPerfMemoryProvider implements PerfMemoryProvider {
     public ByteBuffer create() {
         int size = PerfMemoryPrologue.getPrologueSize();
         memory = UnmanagedMemory.calloc(size);
-        return SubstrateUtil.cast(new Target_java_nio_DirectByteBuffer(memory.rawValue(), size), ByteBuffer.class);
+        return DirectByteBufferUtil.allocate(memory.rawValue(), size);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,6 +64,11 @@ import org.graalvm.word.WordBase;
  * that points to a Java object, no guarantees are taken regarding its integrity as a pointer.
  * <p>
  * The class containing the annotated method must be annotated with {@link CContext}.
+ * <p>
+ * Note that this annotation must not be used for native functions that use variadic arguments
+ * (varargs) because varargs calling conventions are not supported and even a declaration with a
+ * specific non-varargs signature can be incompatible with vararg target functions on some
+ * platforms.
  *
  * @since 19.0
  */

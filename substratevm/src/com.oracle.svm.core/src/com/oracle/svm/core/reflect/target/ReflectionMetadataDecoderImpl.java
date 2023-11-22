@@ -34,8 +34,7 @@ import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.function.Function;
 
-import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import jdk.graal.compiler.core.common.util.UnsafeArrayTypeReader;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -89,10 +88,9 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     public static final int ALL_PERMITTED_SUBCLASSES_FLAG = 1 << 25;
     public static final int ALL_NEST_MEMBERS_FLAG = 1 << 26;
     public static final int ALL_SIGNERS_FLAG = 1 << 27;
-    public static final int ALL_ENABLED_QUERIES_FLAGS_MASK = ALL_FIELDS_FLAG | ALL_DECLARED_FIELDS_FLAG | ALL_METHODS_FLAG | ALL_DECLARED_METHODS_FLAG | ALL_CONSTRUCTORS_FLAG |
-                    ALL_DECLARED_CONSTRUCTORS_FLAG | ALL_CLASSES_FLAG | ALL_DECLARED_CLASSES_FLAG | ALL_RECORD_COMPONENTS_FLAG | ALL_PERMITTED_SUBCLASSES_FLAG | ALL_NEST_MEMBERS_FLAG |
-                    ALL_SIGNERS_FLAG;
-    public static final int CLASS_ACCESS_FLAGS_MASK = ~ALL_ENABLED_QUERIES_FLAGS_MASK;
+
+    // Value from Reflection.getClassAccessFlags()
+    public static final int CLASS_ACCESS_FLAGS_MASK = 0x1FFF;
 
     static byte[] getEncoding() {
         return ImageSingletons.lookup(ReflectionMetadataEncoding.class).getEncoding();
@@ -247,7 +245,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     }
 
     @Override
-    public long getMetadataByteLength() {
+    public int getMetadataByteLength() {
         return ImageSingletons.lookup(ReflectionMetadataEncoding.class).getEncoding().length;
     }
 
@@ -309,7 +307,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      *     StringIndex name
      * }
      * </pre>
-     * 
+     *
      * Negative query field encoding.
      *
      * <pre>
@@ -355,14 +353,10 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
                 return new FieldDescriptor(declaringClass, name);
             }
             Target_java_lang_reflect_Field field = new Target_java_lang_reflect_Field();
-            if (JavaVersionUtil.JAVA_SPEC >= 17) {
-                field.constructorJDK17OrLater(declaringClass, name, negative ? Object.class : type, modifiers, false, -1, null, null);
-            } else {
-                field.constructorJDK11OrEarlier(declaringClass, name, negative ? Object.class : type, modifiers, -1, null, null);
-            }
+            field.constructor(declaringClass, name, negative ? Object.class : type, modifiers, false, -1, null, null);
             return SubstrateUtil.cast(field, Field.class);
         }
-        boolean trustedFinal = (JavaVersionUtil.JAVA_SPEC >= 17) ? buf.getU1() == 1 : false;
+        boolean trustedFinal = buf.getU1() == 1;
         String signature = decodeName(buf);
         byte[] annotations = decodeByteArray(buf);
         byte[] typeAnnotations = decodeByteArray(buf);
@@ -373,11 +367,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         }
 
         Target_java_lang_reflect_Field field = new Target_java_lang_reflect_Field();
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            field.constructorJDK17OrLater(declaringClass, name, type, modifiers, trustedFinal, -1, signature, annotations);
-        } else {
-            field.constructorJDK11OrEarlier(declaringClass, name, type, modifiers, -1, signature, annotations);
-        }
+        field.constructor(declaringClass, name, type, modifiers, trustedFinal, -1, signature, annotations);
         field.offset = offset;
         field.deletedReason = deletedReason;
         SubstrateUtil.cast(field, Target_java_lang_reflect_AccessibleObject.class).typeAnnotations = typeAnnotations;
@@ -476,7 +466,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      *     ClassIndex[] parameterTypes
      * }
      * </pre>
-     * 
+     *
      * Negative query constructor encoding.
      *
      * <pre>

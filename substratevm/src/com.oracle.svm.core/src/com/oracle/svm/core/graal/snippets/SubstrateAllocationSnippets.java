@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,62 +24,64 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
-import static org.graalvm.compiler.nodes.PiArrayNode.piArrayCastToSnippetReplaceeStamp;
-import static org.graalvm.compiler.nodes.PiNode.piCastToSnippetReplaceeStamp;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_FAST_PATH_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
-import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
+import static jdk.graal.compiler.nodes.PiArrayNode.piArrayCastToSnippetReplaceeStamp;
+import static jdk.graal.compiler.nodes.PiNode.piCastToSnippetReplaceeStamp;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_FAST_PATH_PROBABILITY;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
+import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import java.util.Arrays;
 import java.util.Map;
 
-import org.graalvm.compiler.api.directives.GraalDirectives;
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.api.replacements.Snippet.NonNullParameter;
-import org.graalvm.compiler.api.replacements.Snippet.VarargsParameter;
-import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
-import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.GraphState;
-import org.graalvm.compiler.nodes.NamedLocationIdentity;
-import org.graalvm.compiler.nodes.PiNode;
-import org.graalvm.compiler.nodes.SnippetAnchorNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.UnreachableNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
-import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
-import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
-import org.graalvm.compiler.nodes.java.NewArrayNode;
-import org.graalvm.compiler.nodes.java.NewInstanceNode;
-import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
-import org.graalvm.compiler.nodes.java.ValidateNewInstanceClassNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.AllocationSnippets;
-import org.graalvm.compiler.replacements.ReplacementsUtil;
-import org.graalvm.compiler.replacements.SnippetCounter;
-import org.graalvm.compiler.replacements.SnippetTemplate;
-import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
-import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
-import org.graalvm.compiler.word.BarrieredAccess;
-import org.graalvm.compiler.word.ObjectAccess;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
+import jdk.graal.compiler.api.replacements.Snippet.NonNullParameter;
+import jdk.graal.compiler.api.replacements.Snippet.VarargsParameter;
+import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.GraphState;
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
+import jdk.graal.compiler.nodes.PiNode;
+import jdk.graal.compiler.nodes.SnippetAnchorNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.UnreachableNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.ForeignCallNode;
+import jdk.graal.compiler.nodes.java.DynamicNewArrayNode;
+import jdk.graal.compiler.nodes.java.DynamicNewInstanceNode;
+import jdk.graal.compiler.nodes.java.NewArrayNode;
+import jdk.graal.compiler.nodes.java.NewInstanceNode;
+import jdk.graal.compiler.nodes.java.NewMultiArrayNode;
+import jdk.graal.compiler.nodes.java.ValidateNewInstanceClassNode;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.AllocationSnippets;
+import jdk.graal.compiler.replacements.ReplacementsUtil;
+import jdk.graal.compiler.replacements.SnippetCounter;
+import jdk.graal.compiler.replacements.SnippetTemplate;
+import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
+import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
+import jdk.graal.compiler.word.BarrieredAccess;
+import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.allocationprofile.AllocationCounter;
 import com.oracle.svm.core.allocationprofile.AllocationSite;
@@ -96,12 +98,11 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
-import com.oracle.svm.core.thread.Continuation;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.util.VMError;
 
@@ -115,9 +116,9 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     AllocationCounter.COUNT_FIELD, AllocationCounter.SIZE_FIELD};
     public static final LocationIdentity[] GC_LOCATIONS = new LocationIdentity[]{TLAB_TOP_IDENTITY, TLAB_END_IDENTITY, IdentityHashCodeSupport.IDENTITY_HASHCODE_SALT_LOCATION};
 
-    private static final SubstrateForeignCallDescriptor NEW_MULTI_ARRAY = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "newMultiArrayStub", true);
-    private static final SubstrateForeignCallDescriptor INSTANCE_HUB_ERROR = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "instanceHubErrorStub", true);
-    private static final SubstrateForeignCallDescriptor ARRAY_HUB_ERROR = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "arrayHubErrorStub", true);
+    private static final SubstrateForeignCallDescriptor NEW_MULTI_ARRAY = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "newMultiArrayStub", NO_SIDE_EFFECT);
+    private static final SubstrateForeignCallDescriptor INSTANCE_HUB_ERROR = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "instanceHubErrorStub", NO_SIDE_EFFECT);
+    private static final SubstrateForeignCallDescriptor ARRAY_HUB_ERROR = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "arrayHubErrorStub", NO_SIDE_EFFECT);
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{NEW_MULTI_ARRAY, INSTANCE_HUB_ERROR, ARRAY_HUB_ERROR};
 
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
@@ -130,7 +131,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter FillContent fillContents,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter AllocationProfilingData profilingData) {
-        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), WordFactory.unsigned(size), fillContents, emitMemoryBarrier, true, profilingData);
+        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), WordFactory.unsigned(size), false, fillContents, emitMemoryBarrier, true, profilingData);
         return piCastToSnippetReplaceeStamp(result);
     }
 
@@ -229,7 +230,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     @SuppressWarnings("unused") boolean supportsOptimizedFilling, AllocationProfilingData profilingData) {
         // The hub was already verified by a ValidateNewInstanceClassNode.
         UnsignedWord size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding());
-        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), size, fillContents, emitMemoryBarrier, false, profilingData);
+        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), size, false, fillContents, emitMemoryBarrier, false, profilingData);
         return piCastToSnippetReplaceeStamp(result);
     }
 
@@ -307,12 +308,15 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         } else if (!hub.isInstanceClass() || LayoutEncoding.isSpecial(hub.getLayoutEncoding())) {
             throw new InstantiationException("Can only allocate instance objects for concrete classes.");
         } else if (!hub.isInstantiated()) {
+            if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
+                MissingReflectionRegistrationUtils.forClass(hub.getTypeName());
+            }
             throw new IllegalArgumentException("Type " + DynamicHub.toClass(hub).getTypeName() + " is instantiated reflectively but was never registered." +
                             " Register the type by adding \"unsafeAllocated\" for the type in " + ConfigurationFile.REFLECTION.getFileName() + ".");
         } else if (LayoutEncoding.isHybrid(hub.getLayoutEncoding())) {
             throw new InstantiationException("Cannot allocate objects of special hybrid types.");
         } else {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereUnexpectedInput(hub); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -346,7 +350,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             throw new IllegalArgumentException("Class " + DynamicHub.toClass(elementType).getTypeName() + "[] is instantiated reflectively but was never registered." +
                             "Register the class by adding \"unsafeAllocated\" for the class in " + ConfigurationFile.REFLECTION.getFileName() + ".");
         } else {
-            VMError.shouldNotReachHere();
+            VMError.shouldNotReachHereUnexpectedInput(elementType); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -552,6 +556,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         private final SnippetInfo allocateStoredContinuation;
         private final SnippetInfo allocatePod;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, Providers providers, SubstrateAllocationSnippets receiver) {
             super(options, providers);
             snippetCounters = new AllocationSnippetCounters(SnippetCounter.Group.NullFactory);
@@ -595,7 +600,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                             ALLOCATION_LOCATIONS);
 
             SnippetInfo allocateStoredContinuationSnippet = null;
-            if (Continuation.isSupported()) {
+            if (ContinuationSupport.isSupported()) {
                 allocateStoredContinuationSnippet = snippet(providers,
                                 SubstrateAllocationSnippets.class,
                                 "allocateStoredContinuation",
@@ -629,7 +634,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             lowerings.put(NewMultiArrayNode.class, new NewMultiArrayLowering());
             lowerings.put(ValidateNewInstanceClassNode.class, new ValidateNewInstanceClassLowering());
 
-            if (Continuation.isSupported()) {
+            if (ContinuationSupport.isSupported()) {
                 lowerings.put(NewStoredContinuationNode.class, new NewStoredContinuationLowering());
             }
             if (Pod.RuntimeSupport.isPresent()) {
@@ -680,7 +685,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 SharedType type = (SharedType) node.instanceClass();
                 DynamicHub hub = ensureMarkedAsInstantiated(type.getHub());
 
-                ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), tool.getMetaAccess(), graph);
+                ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(hub), tool.getMetaAccess(), graph);
                 long size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding()).rawValue();
 
                 Arguments args = new Arguments(allocateInstance, graph.getGuardsStage(), tool.getLoweringStage());
@@ -711,7 +716,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 boolean fillContents = node.fillContents();
                 assert fillContents : "fillContents must be true for hybrid allocations";
 
-                ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), tool.getMetaAccess(), graph);
+                ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(hub), tool.getMetaAccess(), graph);
 
                 Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
@@ -744,7 +749,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 int arrayBaseOffset = LayoutEncoding.getArrayBaseOffsetAsInt(layoutEncoding);
                 int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
 
-                ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), tool.getMetaAccess(), graph);
+                ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(hub), tool.getMetaAccess(), graph);
 
                 Arguments args = new Arguments(allocateStoredContinuation, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
@@ -773,7 +778,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 int layoutEncoding = hub.getLayoutEncoding();
                 int arrayBaseOffset = getArrayBaseOffset(layoutEncoding);
                 int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
-                ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), tool.getMetaAccess(), graph);
+                ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(hub), tool.getMetaAccess(), graph);
 
                 Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
@@ -806,7 +811,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 }
 
                 SharedType type = (SharedType) node.type();
-                ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(type.getHub()), tool.getMetaAccess(), graph);
+                ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(type.getHub()), tool.getMetaAccess(), graph);
 
                 Arguments args = new Arguments(newmultiarray, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);

@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
+import com.oracle.truffle.api.InternalResource.OS;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallArchPrctlNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallBrkNodeGen;
@@ -95,7 +96,7 @@ final class LinuxAMD64PlatformCapability extends BasicAMD64PlatformCapability<Li
 
     @Override
     public OS getOS() {
-        return OS.Linux;
+        return OS.LINUX;
     }
 
     @Override

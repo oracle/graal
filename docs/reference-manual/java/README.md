@@ -1,11 +1,11 @@
 ---
 layout: docs
 toc_group: java
-link_title: Java Reference
+link_title: Java and JVM
 permalink: /reference-manual/java/
 ---
 
-# Java Reference
+# Java and JVM
 
 Any JVM-based application that runs on Java HotSpot VM can run on GraalVM.
 GraalVM is based on Java HotSpot VM, but integrates an advanced just-in-time (JIT) compiler, written in Java - the Graal compiler.
@@ -28,7 +28,7 @@ This is the default and recommended mode of operation.
 - **jargraal**: the Graal compiler goes through the same warm-up phase that the rest of the Java application does. That is, it is first interpreted before its hot methods are compiled.
 This mode is selected with the `-XX:-UseJVMCINativeLibrary` command-line option.
 This will delay the time to reach peak performance as the compiler itself needs to be compiled before it produces code quickly.
-This mode allows you to [debug the Graal compiler with a Java debugger](Operations.md#troubleshooting-the-graalvm-compiler).
+This mode allows you to [debug the Graal compiler with a Java debugger](Operations.md/#troubleshooting-the-graal-compiler).
 
 ## Interoperability
 

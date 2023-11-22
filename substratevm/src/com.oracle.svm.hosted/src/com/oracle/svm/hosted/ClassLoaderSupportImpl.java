@@ -33,13 +33,12 @@ import java.io.InputStream;
 import java.lang.module.ModuleReader;
 import java.lang.module.ModuleReference;
 import java.lang.module.ResolvedModule;
-import java.net.URLClassLoader;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -55,6 +54,8 @@ import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.UserError;
@@ -67,21 +68,16 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     private final NativeImageClassLoaderSupport classLoaderSupport;
 
-    private final ClassLoader imageClassLoader;
-    private final URLClassLoader classPathClassLoader;
+    private final NativeImageClassLoader imageClassLoader;
 
     private final Map<String, Set<Module>> packageToModules;
+
+    private record ConditionalResource(ConfigurationCondition condition, String resourceName) {
+    }
 
     public ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
         this.classLoaderSupport = classLoaderSupport;
         imageClassLoader = classLoaderSupport.getClassLoader();
-        /*
-         * Only if imageClassLoader is not the URLClassLoader we need to also remember its parent as
-         * classPathClassLoader (for use in isNativeImageClassLoaderImpl). Otherwise, there is only
-         * the URLClassLoader (already stored in imageClassLoader, extra classPathClassLoader field
-         * can be set to null).
-         */
-        classPathClassLoader = imageClassLoader instanceof URLClassLoader ? null : (URLClassLoader) imageClassLoader.getParent();
         packageToModules = new HashMap<>();
         buildPackageToModulesMap(classLoaderSupport);
     }
@@ -89,9 +85,6 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
     @Override
     protected boolean isNativeImageClassLoaderImpl(ClassLoader loader) {
         if (loader == imageClassLoader) {
-            return true;
-        }
-        if (classPathClassLoader != null && loader == classPathClassLoader) {
             return true;
         }
         if (loader instanceof NativeImageSystemClassLoader) {
@@ -118,47 +111,60 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         /* Collect resources from modules */
         NativeImageClassLoaderSupport.allLayers(classLoaderSupport.moduleLayerForImageBuild).stream()
                         .flatMap(ClassLoaderSupportImpl::extractModuleLookupData)
+                        .parallel()
                         .forEach(lookup -> collectResourceFromModule(resourceCollector, lookup));
 
         /* Collect remaining resources from classpath */
-        for (Path classpathFile : classLoaderSupport.classpath()) {
+        classLoaderSupport.classpath().stream().parallel().forEach(classpathFile -> {
+            boolean includeCurrent = classLoaderSupport.getJavaPathsToInclude().contains(classpathFile);
             try {
                 if (Files.isDirectory(classpathFile)) {
-                    scanDirectory(classpathFile, resourceCollector);
+                    scanDirectory(classpathFile, resourceCollector, includeCurrent);
                 } else if (ClasspathUtils.isJar(classpathFile)) {
-                    scanJar(classpathFile, resourceCollector);
+                    scanJar(classpathFile, resourceCollector, includeCurrent);
                 }
             } catch (IOException ex) {
                 throw UserError.abort("Unable to handle classpath element '%s'. Make sure that all classpath entries are either directories or valid jar files.", classpathFile);
             }
-        }
+        });
     }
 
-    private static void collectResourceFromModule(ResourceCollector resourceCollector, ResourceLookupInfo info) {
+    private void collectResourceFromModule(ResourceCollector resourceCollector, ResourceLookupInfo info) {
         ModuleReference moduleReference = info.resolvedModule.reference();
         try (ModuleReader moduleReader = moduleReference.open()) {
-            List<String> foundResources = moduleReader.list()
-                            .filter(resourceName -> resourceCollector.isIncluded(info.module, resourceName, moduleReference.location().orElse(null)))
-                            .collect(Collectors.toList());
+            boolean includeCurrent = classLoaderSupport.getJavaModuleNamesToInclude().contains(info.resolvedModule().name());
+            List<ConditionalResource> resourcesFound = new ArrayList<>();
+            moduleReader.list().forEach(resourceName -> {
+                List<ConfigurationCondition> conditions = shouldIncludeEntry(info.module, resourceCollector, resourceName, moduleReference.location().orElse(null), includeCurrent);
+                for (ConfigurationCondition condition : conditions) {
+                    resourcesFound.add(new ConditionalResource(condition, resourceName));
+                }
+            });
 
-            for (String resName : foundResources) {
-                Optional<InputStream> content = moduleReader.open(resName);
-                if (content.isEmpty()) {
+            for (ConditionalResource entry : resourcesFound) {
+                ConfigurationCondition condition = entry.condition();
+                String resName = entry.resourceName();
+                if (resName.endsWith("/")) {
+                    includeResource(resourceCollector, info.module, resName, condition);
                     continue;
                 }
-                try (InputStream is = content.get()) {
-                    resourceCollector.addResource(info.module, resName, is, false);
+
+                Optional<InputStream> content = moduleReader.open(resName);
+                if (content.isEmpty()) {
+                    /* This is to be resilient, but the resources returned by list() should exist */
+                    resourceCollector.registerNegativeQuery(info.module, resName);
+                    continue;
                 }
+
+                includeResource(resourceCollector, info.module, resName, condition);
             }
+
         } catch (IOException e) {
             throw VMError.shouldNotReachHere(e);
         }
     }
 
-    private static void scanDirectory(Path root, ResourceCollector collector) throws IOException {
-        Map<String, List<String>> matchedDirectoryResources = new HashMap<>();
-        Set<String> allEntries = new HashSet<>();
-
+    private static void scanDirectory(Path root, ResourceCollector collector, boolean includeCurrent) {
         ArrayDeque<Path> queue = new ArrayDeque<>();
         queue.push(root);
         while (!queue.isEmpty()) {
@@ -168,66 +174,65 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
             String relativeFilePath;
             if (entry != root) {
                 relativeFilePath = root.relativize(entry).toString().replace(File.separatorChar, RESOURCES_INTERNAL_PATH_SEPARATOR);
-                allEntries.add(relativeFilePath);
             } else {
-                relativeFilePath = "";
+                relativeFilePath = String.valueOf(RESOURCES_INTERNAL_PATH_SEPARATOR);
+            }
+
+            List<ConfigurationCondition> conditions = shouldIncludeEntry(null, collector, relativeFilePath, Path.of(relativeFilePath).toUri(), includeCurrent);
+            for (ConfigurationCondition condition : conditions) {
+                includeResource(collector, null, relativeFilePath, condition);
             }
 
             if (Files.isDirectory(entry)) {
-                if (collector.isIncluded(null, relativeFilePath, Path.of(relativeFilePath).toUri())) {
-                    matchedDirectoryResources.put(relativeFilePath, new ArrayList<>());
+                if (conditions.isEmpty()) {
+                    collector.registerNegativeQuery(null, relativeFilePath);
                 }
+
                 try (Stream<Path> pathStream = Files.list(entry)) {
                     Stream<Path> filtered = pathStream;
                     if (ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT.equals(entry)) {
                         filtered = filtered.filter(Predicate.not(ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES::contains));
                     }
                     filtered.forEach(queue::push);
-                }
-            } else {
-                if (collector.isIncluded(null, relativeFilePath, Path.of(relativeFilePath).toUri())) {
-                    try (InputStream is = Files.newInputStream(entry)) {
-                        collector.addResource(null, relativeFilePath, is, false);
-                    }
+                } catch (IOException resourceException) {
+                    collector.registerIOException(null, relativeFilePath, resourceException, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(relativeFilePath));
                 }
             }
         }
-
-        for (String entry : allEntries) {
-            int last = entry.lastIndexOf(RESOURCES_INTERNAL_PATH_SEPARATOR);
-            String key = last == -1 ? "" : entry.substring(0, last);
-            List<String> dirContent = matchedDirectoryResources.get(key);
-            if (dirContent != null && !dirContent.contains(entry)) {
-                dirContent.add(entry.substring(last + 1));
-            }
-        }
-
-        matchedDirectoryResources.forEach((dir, content) -> {
-            content.sort(Comparator.naturalOrder());
-            collector.addDirectoryResource(null, dir, String.join(System.lineSeparator(), content), false);
-        });
     }
 
-    private static void scanJar(Path jarPath, ResourceCollector collector) throws IOException {
+    private static void scanJar(Path jarPath, ResourceCollector collector, boolean includeCurrent) throws IOException {
         try (JarFile jf = new JarFile(jarPath.toFile())) {
             Enumeration<JarEntry> entries = jf.entries();
             while (entries.hasMoreElements()) {
                 JarEntry entry = entries.nextElement();
+                String entryName = entry.getName();
                 if (entry.isDirectory()) {
-                    String dirName = entry.getName().substring(0, entry.getName().length() - 1);
-                    if (collector.isIncluded(null, dirName, jarPath.toUri())) {
-                        // Register the directory with empty content to preserve Java behavior
-                        collector.addDirectoryResource(null, dirName, "", true);
-                    }
-                } else {
-                    if (collector.isIncluded(null, entry.getName(), jarPath.toUri())) {
-                        try (InputStream is = jf.getInputStream(entry)) {
-                            collector.addResource(null, entry.getName(), is, true);
-                        }
-                    }
+                    entryName = entryName.substring(0, entry.getName().length() - 1);
+                }
+
+                List<ConfigurationCondition> conditions = shouldIncludeEntry(null, collector, entryName, jarPath.toUri(), includeCurrent);
+                for (ConfigurationCondition condition : conditions) {
+                    includeResource(collector, null, entryName, condition);
                 }
             }
         }
+    }
+
+    private static void includeResource(ResourceCollector collector, Module module, String name, ConfigurationCondition condition) {
+        if (ConfigurationCondition.isAlwaysTrue(condition)) {
+            collector.addResource(module, name);
+        } else {
+            collector.addResourceConditionally(module, name, condition);
+        }
+    }
+
+    private static List<ConfigurationCondition> shouldIncludeEntry(Module module, ResourceCollector collector, String fileName, URI uri, boolean includeCurrent) {
+        if (includeCurrent && !(fileName.endsWith(".class") || fileName.endsWith(".jar"))) {
+            return Collections.singletonList(ConfigurationCondition.alwaysTrue());
+        }
+
+        return collector.isIncluded(module, fileName, uri);
     }
 
     @Override
@@ -242,6 +247,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
             moduleName = null;
             bundleName = specParts[0];
         }
+        bundleName = bundleName.replace("/", ".");
         String packageName = packageName(bundleName);
         Set<Module> modules;
         if (ResourcesFeature.MODULE_NAME_ALL_UNNAMED.equals(moduleName)) {
@@ -268,8 +274,13 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         return resourceBundles;
     }
 
+    @Override
+    public Map<String, Set<Module>> getPackageToModules() {
+        return packageToModules;
+    }
+
     private static String packageName(String bundleName) {
-        int classSep = bundleName.replace('/', '.').lastIndexOf('.');
+        int classSep = bundleName.lastIndexOf('.');
         if (classSep == -1) {
             return ""; /* unnamed package */
         }

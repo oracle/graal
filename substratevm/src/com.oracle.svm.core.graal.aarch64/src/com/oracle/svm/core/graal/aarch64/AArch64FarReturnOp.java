@@ -26,17 +26,17 @@ package com.oracle.svm.core.graal.aarch64;
 
 import static com.oracle.svm.core.graal.aarch64.SubstrateAArch64RegisterConfig.fp;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 
-import org.graalvm.compiler.asm.Label;
-import org.graalvm.compiler.asm.aarch64.AArch64Address;
-import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
-import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
-import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.Opcode;
-import org.graalvm.compiler.lir.aarch64.AArch64BlockEndOp;
-import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.asm.Label;
+import jdk.graal.compiler.asm.aarch64.AArch64Address;
+import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
+import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
+import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.Opcode;
+import jdk.graal.compiler.lir.aarch64.AArch64BlockEndOp;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
@@ -96,7 +96,14 @@ public final class AArch64FarReturnOp extends AArch64BlockEndOp {
                 Register scratchReg = scratch.getRegister();
                 masm.mov(64, scratchReg, asRegister(ip));
 
-                AArch64CalleeSavedRegisters.singleton().emitRestore(masm, 0, asRegister(result));
+                AArch64CalleeSavedRegisters calleeSavedRegistersSupport = AArch64CalleeSavedRegisters.singleton();
+                calleeSavedRegistersSupport.emitRestore(masm, 0, asRegister(result));
+                if (calleeSavedRegistersSupport.restoreFPAtFarReturn()) {
+                    assert !SubstrateOptions.PreserveFramePointer.getValue() : "FP can't be both preserved and callee saved.";
+                    AArch64Address fpAddress = AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, AArch64.sp,
+                                    -2 * FrameAccess.wordSize());
+                    masm.ldr(64, fp, fpAddress);
+                }
                 masm.ret(scratchReg);
             }
         } else {

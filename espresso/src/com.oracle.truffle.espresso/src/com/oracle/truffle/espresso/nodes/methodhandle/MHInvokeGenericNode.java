@@ -31,7 +31,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 /**
  * Orchestrates the semantics of invoke and invoke exacts, and newer polymorphic signature methods
@@ -51,7 +51,7 @@ public class MHInvokeGenericNode extends MethodHandleIntrinsicNode {
         this.appendix = appendix;
         Method target = (Method) method.getMeta().HIDDEN_VMTARGET.getHiddenObject(memberName);
         // Call the invoker java code spun for us.
-        if (getContext().getEspressoEnv().SplitMethodHandles) {
+        if (method.getContext().getEspressoEnv().SplitMethodHandles) {
             this.callNode = DirectCallNode.create(target.forceSplit().getCallTarget());
         } else {
             this.callNode = DirectCallNode.create(target.getCallTarget());

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,10 +32,6 @@ import org.graalvm.nativeimage.Platform;
 import com.oracle.svm.hosted.code.CompileQueue;
 
 public abstract class NativeImageCodeCacheFactory {
-
-    public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Path tempDir) {
-        return newCodeCache(compileQueue, heap, ImageSingletons.lookup(Platform.class), tempDir);
-    }
 
     public abstract NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform target, Path tempDir);
 

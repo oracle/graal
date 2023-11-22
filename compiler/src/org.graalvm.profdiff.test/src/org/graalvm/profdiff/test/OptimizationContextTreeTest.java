@@ -27,14 +27,22 @@ package org.graalvm.profdiff.test;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.profdiff.core.OptimizationContextTree;
 import org.graalvm.profdiff.core.OptimizationContextTreeNode;
+import org.graalvm.profdiff.core.OptionValues;
+import org.graalvm.profdiff.core.Writer;
 import org.graalvm.profdiff.core.inlining.InliningTree;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
+import org.graalvm.profdiff.core.inlining.ReceiverTypeProfile;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.graalvm.profdiff.core.optimization.OptimizationTree;
+import org.graalvm.profdiff.core.optimization.Position;
 import org.junit.Test;
 
+import java.util.List;
+
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 
 public class OptimizationContextTreeTest {
     /**
@@ -122,26 +130,26 @@ public class OptimizationContextTreeTest {
         OptimizationPhase tier1 = new OptimizationPhase("Tier1");
         OptimizationPhase tier2 = new OptimizationPhase("Tier2");
         Optimization o1 = new Optimization("Optimization1", "", null, null);
-        Optimization o2 = new Optimization("Optimization2", "", EconomicMap.of("a()", 5), null);
-        Optimization o3 = new Optimization("Optimization3", "", EconomicMap.of("b()", 2, "a()", 1), null);
+        Optimization o2 = new Optimization("Optimization2", "", Position.of("a()", 5), null);
+        Optimization o3 = new Optimization("Optimization3", "", Position.of("b()", 2, "a()", 1), null);
         EconomicMap<String, Integer> o4Position = EconomicMap.create();
         o4Position.put("d()", 1);
         o4Position.put("b()", 3);
         o4Position.put("a()", 1);
-        Optimization o4 = new Optimization("Optimization4", "", o4Position, null);
-        Optimization o5 = new Optimization("Optimization5", "", EconomicMap.of("c()", 4, "a()", 2), null);
-        Optimization o6 = new Optimization("Optimization6", "", EconomicMap.of("f()", 2, "a()", 3), null);
-        Optimization o7 = new Optimization("Optimization7", "", EconomicMap.of("x()", 2, "a()", 3), null);
+        Optimization o4 = new Optimization("Optimization4", "", Position.fromMap(o4Position), null);
+        Optimization o5 = new Optimization("Optimization5", "", Position.of("c()", 4, "a()", 2), null);
+        Optimization o6 = new Optimization("Optimization6", "", Position.of("f()", 2, "a()", 3), null);
+        Optimization o7 = new Optimization("Optimization7", "", Position.of("x()", 2, "a()", 3), null);
         EconomicMap<String, Integer> o8Position = EconomicMap.create();
         o8Position.put("y()", 3);
         o8Position.put("c()", 5);
         o8Position.put("a()", 2);
-        Optimization o8 = new Optimization("Optimization8", "", o8Position, null);
+        Optimization o8 = new Optimization("Optimization8", "", Position.fromMap(o8Position), null);
         EconomicMap<String, Integer> o9Position = EconomicMap.create();
         o9Position.put("z()", 4);
         o9Position.put("f()", 1);
         o9Position.put("a()", 3);
-        Optimization o9 = new Optimization("Optimization9", "", o9Position, null);
+        Optimization o9 = new Optimization("Optimization9", "", Position.fromMap(o9Position), null);
 
         rootPhase.addChild(tier1);
         rootPhase.addChild(tier2);
@@ -207,5 +215,67 @@ public class OptimizationContextTreeTest {
         ce.addChild(cf);
 
         assertEquals(root, actual.getRoot());
+    }
+
+    @Test
+    public void nodeEqualsAndHashCode() {
+        OptimizationContextTreeNode node1 = new OptimizationContextTreeNode();
+        OptimizationContextTreeNode node2 = new OptimizationContextTreeNode();
+        assertEquals(node1, node1);
+        assertEquals(node1, node2);
+        assertEquals(node1.hashCode(), node2.hashCode());
+        assertNotEquals(node1, null);
+        assertNotEquals(node1, new Object());
+
+        InliningTreeNode inliningTreeNode1 = new InliningTreeNode("foo()", 0, true, null, false, null, false);
+        InliningTreeNode inliningTreeNode2 = new InliningTreeNode("foo()", 0, true, null, false, null, false);
+        assertEquals(new OptimizationContextTreeNode(inliningTreeNode1), new OptimizationContextTreeNode(inliningTreeNode2));
+
+        Optimization optimization1 = new Optimization("Opt", "Event", null, null);
+        Optimization optimization2 = new Optimization("Opt", "Event", null, null);
+        assertEquals(new OptimizationContextTreeNode(optimization1), new OptimizationContextTreeNode(optimization2));
+    }
+
+    @Test
+    public void writeOptimizationContextTree() {
+        var writer = Writer.stringBuilder(new OptionValues());
+        new OptimizationContextTree(null).write(writer);
+        assertTrue(writer.getOutput().isEmpty());
+
+        InliningTreeNode inliningRoot = new InliningTreeNode("foo()", -1, true, null, false, null, false);
+        InliningTreeNode inliningChild = new InliningTreeNode("bar()", 1, false, List.of("not inlined"), true, new ReceiverTypeProfile(false, null), true);
+        inliningRoot.addChild(inliningChild);
+
+        Optimization optimization = new Optimization("Opt", "Foo", null, null);
+
+        OptimizationContextTreeNode root = new OptimizationContextTreeNode();
+        OptimizationContextTreeNode optimizationNode = new OptimizationContextTreeNode(optimization);
+        root.addChild(optimizationNode);
+        OptimizationContextTreeNode foo = new OptimizationContextTreeNode(inliningRoot);
+        root.addChild(foo);
+        OptimizationContextTreeNode bar = new OptimizationContextTreeNode(inliningChild);
+        foo.addChild(bar);
+        OptimizationContextTree tree = new OptimizationContextTree(root);
+
+        writer = Writer.stringBuilder(new OptionValues());
+        tree.write(writer);
+        assertEquals("""
+                        Optimization-context tree
+                            Opt Foo
+                            (root) foo()
+                                (indirect) bar() at bci 1
+                                    |_ immature receiver-type profile
+                        """, writer.getOutput());
+
+        writer = Writer.stringBuilder(OptionValues.builder().withAlwaysPrintInlinerReasoning(true).build());
+        tree.write(writer);
+        assertEquals("""
+                        Optimization-context tree
+                            Opt Foo
+                            (root) foo()
+                                (indirect) bar() at bci 1
+                                    |_ reasoning: not inlined
+                                    |_ immature receiver-type profile
+                        """, writer.getOutput());
     }
 }

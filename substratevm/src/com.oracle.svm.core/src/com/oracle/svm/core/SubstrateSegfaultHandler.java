@@ -29,8 +29,8 @@ import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.options.Option;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -178,13 +178,22 @@ public abstract class SubstrateSegfaultHandler {
             PointerBase ip = RegisterDumper.singleton().getIP(context);
             boolean printedDiagnostics = SubstrateDiagnostics.printFatalError(log, (Pointer) sp, (CodePointer) ip, context, false);
             if (printedDiagnostics) {
-                log.string("Segfault detected, aborting process.").newline()
+                log.string("Segfault detected, aborting process. ")
                                 .string("Use '-XX:-InstallSegfaultHandler' to disable the segfault handler at run time and create a core dump instead. ")
                                 .string("Rebuild with '-R:-InstallSegfaultHandler' to disable the handler permanently at build time.") //
                                 .newline().newline();
             }
         }
         logHandler.fatalError();
+    }
+
+    protected static void printSegfaultAddressInfo(Log log, long addr) {
+        log.zhex(addr);
+        if (addr != 0) {
+            long delta = addr - CurrentIsolate.getIsolate().rawValue();
+            String sign = (delta >= 0 ? "+" : "-");
+            log.string(" (heapBase ").string(sign).string(" ").signed(Math.abs(delta)).string(")");
+        }
     }
 
     static class SingleIsolateSegfaultSetup implements IsolateListener {

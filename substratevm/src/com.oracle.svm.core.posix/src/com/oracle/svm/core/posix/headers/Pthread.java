@@ -39,7 +39,6 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.posix.headers.Time.timespec;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
-import com.oracle.svm.core.thread.VMThreads.OSThreadId;
 
 // Checkstyle: stop
 
@@ -49,7 +48,7 @@ import com.oracle.svm.core.thread.VMThreads.OSThreadId;
 @CContext(PosixDirectives.class)
 @CLibrary("pthread")
 public class Pthread {
-    public interface pthread_t extends OSThreadHandle, OSThreadId {
+    public interface pthread_t extends OSThreadHandle {
     }
 
     @CPointerTo(nameOfCType = "pthread_t")

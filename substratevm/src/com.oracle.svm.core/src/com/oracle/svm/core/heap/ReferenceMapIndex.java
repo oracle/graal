@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.heap;
 
+import com.oracle.svm.core.Uninterruptible;
+
 public class ReferenceMapIndex {
     /**
      * Marker value returned by
@@ -44,6 +46,7 @@ public class ReferenceMapIndex {
         return referenceMapIndex == EMPTY_REFERENCE_MAP || referenceMapIndex == NO_REFERENCE_MAP;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean denotesValidReferenceMap(long referenceMapIndex) {
         return referenceMapIndex != NO_REFERENCE_MAP;
     }

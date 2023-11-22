@@ -49,8 +49,8 @@ import com.oracle.truffle.tck.tests.ValueAssert;
 
 /**
  * Register all <i>named</i> inner classes under {@link #TEST_CLASSES} for reflection, so that they
- * do not need to be listed in {@code reflection.json}. Anonymous inner classes however must be
- * listed in {@code reflection.json}, as Java provides no way to list those.
+ * do not need to be listed in {@code reflect-config.json}. Anonymous inner classes however must be
+ * listed in {@code reflect-config.json}, as Java provides no way to list those.
  */
 public class RegisterTestClassesForReflectionFeature implements Feature {
 

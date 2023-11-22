@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -42,7 +42,7 @@ public class LLVMSourceMemberType extends LLVMSourceType {
         this(name, size, align, offset, LLVMSourceType.UNKNOWN, location);
     }
 
-    private LLVMSourceMemberType(String name, long size, long align, long offset, LLVMSourceType elementType, LLVMSourceLocation location) {
+    protected LLVMSourceMemberType(String name, long size, long align, long offset, LLVMSourceType elementType, LLVMSourceLocation location) {
         super(() -> name, size, align, offset, location);
         this.elementType = elementType;
     }

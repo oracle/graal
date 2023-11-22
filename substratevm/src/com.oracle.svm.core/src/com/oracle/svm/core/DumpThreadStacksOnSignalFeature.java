@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.WINDOWS;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -39,17 +40,15 @@ import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
-import sun.misc.Signal;
-import sun.misc.SignalHandler;
+import jdk.internal.misc.Signal;
 
 @AutomaticallyRegisteredFeature
 public class DumpThreadStacksOnSignalFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.DumpThreadStacksOnSignal.getValue();
+        return VMInspectionOptions.hasThreadDumpSupport();
     }
 
     @Override
@@ -67,7 +66,7 @@ final class DumpThreadStacksOnSignalStartupHook implements RuntimeSupport.Hook {
     }
 }
 
-class DumpAllStacks implements SignalHandler {
+class DumpAllStacks implements Signal.Handler {
     static void install() {
         Signal.handle(Platform.includedIn(WINDOWS.class) ? new Signal("BREAK") : new Signal("QUIT"), new DumpAllStacks());
     }

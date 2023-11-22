@@ -26,7 +26,7 @@ package com.oracle.svm.graal.isolated;
 
 import java.lang.reflect.Array;
 
-import org.graalvm.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.CompressEncoding;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.word.WordFactory;
@@ -186,21 +186,6 @@ final class IsolateAwareConstantReflectionProvider extends SubstrateConstantRefl
         JavaConstant receiver = ConstantDataConverter.toClient(receiverData);
         Constant result = readFieldValue(ImageHeapObjects.deref(fieldRef), receiver);
         ConstantDataConverter.fromClient(result, resultData);
-    }
-
-    @Override
-    public JavaConstant boxPrimitive(JavaConstant primitive) {
-        if (!isIsolatedCompilation()) {
-            return super.boxPrimitive(primitive);
-        }
-        if (!canBoxPrimitive(primitive)) {
-            return null;
-        }
-        ConstantData resultData = StackValue.get(ConstantData.class);
-        ConstantData primitiveData = StackValue.get(ConstantData.class);
-        ConstantDataConverter.fromCompiler(primitive, primitiveData);
-        boxPrimitive0(IsolatedCompileContext.get().getClient(), primitiveData, resultData);
-        return ConstantDataConverter.toCompiler(resultData);
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)

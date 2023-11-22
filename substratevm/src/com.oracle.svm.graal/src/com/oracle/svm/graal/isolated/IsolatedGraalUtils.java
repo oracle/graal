@@ -29,18 +29,17 @@ import java.nio.ByteBuffer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugContext.Builder;
-import org.graalvm.compiler.debug.DebugOptions;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionsParser;
-import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext.Builder;
+import jdk.graal.compiler.debug.DebugOptions;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionsParser;
+import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolates;
 import org.graalvm.nativeimage.Isolates.CreateIsolateParameters;
 import org.graalvm.nativeimage.Isolates.ProtectionDomain;
-import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -49,6 +48,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
+import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionValues;
@@ -85,8 +85,8 @@ public final class IsolatedGraalUtils {
 
     private static void initializeCompilationIsolate(CompilerIsolateThread isolate) {
         byte[] encodedOptions = encodeRuntimeOptionValues();
-        try (PinnedObject pin = PinnedObject.create(encodedOptions)) {
-            initializeCompilationIsolate0(isolate, pin.addressOfArrayElement(0), encodedOptions.length);
+        try (PrimitiveArrayView ref = PrimitiveArrayView.createForReading(encodedOptions)) {
+            initializeCompilationIsolate0(isolate, ref.addressOfArrayElement(0), encodedOptions.length);
         }
     }
 

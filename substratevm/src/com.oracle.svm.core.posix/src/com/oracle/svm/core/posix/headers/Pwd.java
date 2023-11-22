@@ -27,9 +27,12 @@ package com.oracle.svm.core.posix.headers;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.CField;
+import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 
 // Checkstyle: stop
 
@@ -48,6 +51,14 @@ public class Pwd {
         CCharPointer pw_dir();
     }
 
+    @CPointerTo(passwd.class)
+    public interface passwdPointer extends Pointer {
+        passwd read();
+    }
+
     @CFunction
     public static native passwd getpwuid(int __uid);
+
+    @CFunction
+    public static native int getpwuid_r(int __uid, passwd pwd, CCharPointer buf, UnsignedWord buflen, passwdPointer result);
 }

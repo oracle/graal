@@ -24,11 +24,7 @@
  */
 package com.oracle.svm.hosted.analysis;
 
-import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
-
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,11 +35,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.heap.UnknownObjectField;
-import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
-
-import jdk.vm.ci.meta.JavaKind;
 
 public abstract class CustomTypeFieldHandler {
     protected final BigBang bb;
@@ -64,45 +56,17 @@ public abstract class CustomTypeFieldHandler {
          * types as allocated when the field is not yet accessed.
          */
         assert field.isAccessed();
-        if (field.wrapped instanceof ComputedValueField) {
-            ComputedValueField computedField = ((ComputedValueField) field.wrapped);
+        if (field.wrapped instanceof ComputedValueField computedField) {
             if (!computedField.isValueAvailableBeforeAnalysis() && field.getJavaKind().isObject()) {
                 injectFieldTypes(field, field.getType());
             }
-        } else {
-            UnknownObjectField unknownObjectField = field.getAnnotation(UnknownObjectField.class);
-            UnknownPrimitiveField unknownPrimitiveField = field.getAnnotation(UnknownPrimitiveField.class);
-            if (unknownObjectField != null) {
-                assert !Modifier.isFinal(field.getModifiers()) : "@UnknownObjectField annotated field " + field.format("%H.%n") + " cannot be final";
-                assert field.getJavaKind() == JavaKind.Object;
-
-                field.setCanBeNull(unknownObjectField.canBeNull());
-                injectFieldTypes(field, extractAnnotationTypes(field, unknownObjectField));
-
-            } else if (unknownPrimitiveField != null) {
-                assert !Modifier.isFinal(field.getModifiers()) : "@UnknownPrimitiveField annotated field " + field.format("%H.%n") + " cannot be final";
-                /*
-                 * Register a primitive field as containing unknown values(s), i.e., is usually
-                 * written only in hosted code.
-                 */
-                field.registerAsWritten("@UnknownPrimitiveField annotated field");
+        } else if (field.isComputedValue()) {
+            if (!field.getStorageKind().isPrimitive()) {
+                field.setCanBeNull(field.computedValueCanBeNull());
+                injectFieldTypes(field, transformTypes(field, field.computedValueTypes()));
             }
         }
         processedFields.add(field);
-    }
-
-    private List<AnalysisType> extractAnnotationTypes(AnalysisField field, UnknownObjectField unknownObjectField) {
-        List<Class<?>> annotationTypes = new ArrayList<>(Arrays.asList(unknownObjectField.types()));
-        for (String annotationTypeName : unknownObjectField.fullyQualifiedTypes()) {
-            try {
-                Class<?> annotationType = Class.forName(annotationTypeName);
-                annotationTypes.add(annotationType);
-            } catch (ClassNotFoundException e) {
-                throw shouldNotReachHere("Annotation type not found " + annotationTypeName);
-            }
-        }
-
-        return transformTypes(field, annotationTypes.toArray(new Class<?>[0]));
     }
 
     private void injectFieldTypes(AnalysisField field, List<AnalysisType> customTypes) {
@@ -129,12 +93,15 @@ public abstract class CustomTypeFieldHandler {
                             " | custom type: " + customType;
             assert declaredType.isAssignableFrom(aCustomType) : "Custom type must be a subtype of the declared type: field: " + field + " | declared type: " + declaredType +
                             " | custom type: " + customType;
-            assert aCustomType.isPrimitive() || aCustomType.isArray() ||
-                            (aCustomType.isInstanceClass() && !Modifier.isAbstract(aCustomType.getModifiers())) : "Custom type cannot be abstract: field: " + field + " | custom type " + aCustomType;
+            assert aCustomType.isPrimitive() || isConcreteType(aCustomType) : "Custom type cannot be abstract: field: " + field + " | custom type " + aCustomType;
 
             customTypes.add(aCustomType);
         }
         return customTypes;
+    }
+
+    public static boolean isConcreteType(AnalysisType type) {
+        return type.isArray() || (type.isInstanceClass() && !type.isAbstract());
     }
 
     public void cleanupAfterAnalysis() {

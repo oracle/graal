@@ -27,10 +27,10 @@ package com.oracle.svm.hosted.phases;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.util.VMError;
@@ -76,7 +76,7 @@ public final class InjectedAccessorsPlugin implements NodePlugin {
         String longName = shortName + Character.toUpperCase(fieldName.charAt(0)) + fieldName.substring(1);
 
         ResolvedJavaMethod foundMethod = null;
-        for (ResolvedJavaMethod method : accessorsType.getDeclaredMethods()) {
+        for (ResolvedJavaMethod method : accessorsType.getDeclaredMethods(false)) {
             if (method.getName().equals(shortName) || method.getName().equals(longName)) {
                 if (foundMethod != null) {
                     error(field, accessorsType, null, "found two methods " + foundMethod.format("%n(%p)") + " and " + method.format("%n(%p)"));

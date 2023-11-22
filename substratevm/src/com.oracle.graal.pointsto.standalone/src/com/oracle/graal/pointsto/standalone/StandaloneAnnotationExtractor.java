@@ -48,15 +48,6 @@ public class StandaloneAnnotationExtractor implements AnnotationExtractor {
         }
     }
 
-    @Override
-    public Annotation[] extractAnnotations(AnnotatedElement element, boolean declaredOnly) {
-        if (declaredOnly) {
-            return element.getDeclaredAnnotations();
-        } else {
-            return element.getAnnotations();
-        }
-    }
-
     @SuppressWarnings("unchecked")
     @Override
     public Class<? extends Annotation>[] getAnnotationTypes(AnnotatedElement element) {

@@ -45,8 +45,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-import org.graalvm.polyglot.Value;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.ThreadLocalAction;
@@ -84,10 +82,12 @@ final class PolyglotStackFramesRetriever {
         TruffleSafepoint.setBlockedThreadInterruptible(context.uncachedLocation, new TruffleSafepoint.Interruptible<Future<Void>>() {
             @Override
             public void apply(Future<Void> arg) throws InterruptedException {
-                try {
-                    arg.get();
-                } catch (ExecutionException e) {
-                    throw CompilerDirectives.shouldNotReachHere(e);
+                if (!context.state.isClosed()) {
+                    try {
+                        arg.get();
+                    } catch (ExecutionException e) {
+                        throw CompilerDirectives.shouldNotReachHere(e);
+                    }
                 }
             }
         }, future);
@@ -98,8 +98,8 @@ final class PolyglotStackFramesRetriever {
             heapRoots.add(obj);
         } else if (obj instanceof PolyglotWrapper) {
             heapRoots.add(((PolyglotWrapper) obj).getGuestObject());
-        } else if (obj instanceof Value) {
-            heapRoots.add(context.getAPIAccess().getReceiver((Value) obj));
+        } else if (context.getAPIAccess().isValue(obj)) {
+            heapRoots.add(context.getAPIAccess().getValueReceiver(obj));
         }
     }
 

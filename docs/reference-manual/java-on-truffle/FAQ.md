@@ -1,5 +1,5 @@
 ---
-layout: docs-experimental
+layout: docs
 toc_group: espresso
 link_title: FAQ
 permalink: /reference-manual/java-on-truffle/faq/
@@ -33,9 +33,8 @@ Java on Truffle does require a standard core Java library (the `rt.jar` library 
 Java on Truffle is an implementation of the Java Virtual Machine. It is open source and is offered as free software under the [GNU General Public License version two (GPLv2)](https://github.com/oracle/graal/blob/master/tools/LICENSE).
 
 ### Can I run Java on Truffle in production?
-Running in production is not recommended.
-While Java on Truffle already passes the Java Compatibility Kit (JCK or TCK for Java SE) 8, 11 and 17 runtimes, it is still an early prototype and experimental feature in GraalVM.
-It may undergo significant improvements before being considered production-ready.
+Yes, you can. Java on Truffle is still a prototype, but it already passes the Java Compatibility Kit (JCK or TCK for Java SE) 8, 11 and 17 runtimes.
+It may undergo significant improvements.
 
 ### What performance can I expect from executing Java on Truffle?
 Performance is currently 2-3x slower than HotSpot.

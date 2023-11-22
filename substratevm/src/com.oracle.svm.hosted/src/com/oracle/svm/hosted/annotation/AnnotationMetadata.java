@@ -30,7 +30,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 
-import org.graalvm.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.GraalError;
 
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -58,7 +58,7 @@ public class AnnotationMetadata {
         try {
             annotationTypeMismatchExceptionProxyConstructor = ReflectionUtil.lookupConstructor(Class.forName("sun.reflect.annotation.AnnotationTypeMismatchExceptionProxy"), String.class);
         } catch (ClassNotFoundException e) {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(e);
         }
     }
 

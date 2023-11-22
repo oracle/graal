@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,11 +47,13 @@ public class AbstractRuntimeCodeInstaller {
     }
 
     protected void makeCodeMemoryExecutableReadOnly(Pointer start, UnsignedWord size) {
-        RuntimeCodeInfoAccess.makeCodeMemoryExecutableReadOnly((CodePointer) start, size);
+        int result = RuntimeCodeInfoAccess.makeCodeMemoryExecutableReadOnly((CodePointer) start, size);
+        VMError.guarantee(result == 0, "Failed to make code memory read only.");
     }
 
     protected void makeCodeMemoryExecutableWritable(Pointer start, UnsignedWord size) {
-        RuntimeCodeInfoAccess.makeCodeMemoryExecutableWritable((CodePointer) start, size);
+        int result = RuntimeCodeInfoAccess.makeCodeMemoryExecutableWritable((CodePointer) start, size);
+        VMError.guarantee(result == 0, "Failed to make code memory writable.");
     }
 
     protected static void doInstallPrepared(SharedMethod method, CodeInfo codeInfo, SubstrateInstalledCode installedCode) {
@@ -97,10 +99,10 @@ public class AbstractRuntimeCodeInstaller {
         @Override
         protected void operate() {
             try {
-                assert !installedCode.isValid() && !installedCode.isAlive();
+                assert !installedCode.isValid() && !installedCode.isAlive() : installedCode;
                 CodePointer codeStart = CodeInfoAccess.getCodeStart(codeInfo);
-                installedCode.setAddress(codeStart.rawValue(), method);
-
+                UnsignedWord offset = CodeInfoAccess.getCodeEntryPointOffset(codeInfo);
+                installedCode.setAddress(codeStart.rawValue(), codeStart.rawValue() + offset.rawValue(), method);
                 CodeInfoTable.getRuntimeCodeCache().addMethod(codeInfo);
                 platformHelper().performCodeSynchronization(codeInfo);
                 VMError.guarantee(CodeInfoAccess.getState(codeInfo) == CodeInfo.STATE_CODE_CONSTANTS_LIVE && installedCode.isValid(), "The code can't be invalidated before the VM operation finishes");

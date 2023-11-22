@@ -47,16 +47,16 @@ import java.util.function.Supplier;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.SandboxPolicy;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
-import org.graalvm.polyglot.SandboxPolicy;
 
 class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
-    Instrument api;
+    Object api;
     InstrumentInfo info;
     final InstrumentCache cache;
     final PolyglotEngineImpl engine;
@@ -107,7 +107,7 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
         if (optionValues == null) {
             synchronized (instrumentLock) {
                 if (optionValues == null) {
-                    optionValues = new OptionValuesImpl(getAllOptionsInternal(), engine.sandboxPolicy, false);
+                    optionValues = new OptionValuesImpl(getAllOptionsInternal(), engine.sandboxPolicy, false, false);
                 }
             }
         }
@@ -121,6 +121,16 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
     @Override
     public PolyglotEngineImpl getEngine() {
         return engine;
+    }
+
+    @Override
+    public APIAccess getAPIAccess() {
+        return engine.apiAccess;
+    }
+
+    @Override
+    public PolyglotImpl getImpl() {
+        return engine.impl;
     }
 
     private void ensureInitialized() {

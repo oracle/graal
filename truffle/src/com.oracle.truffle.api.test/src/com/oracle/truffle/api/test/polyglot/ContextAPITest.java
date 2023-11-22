@@ -1181,6 +1181,9 @@ public class ContextAPITest extends AbstractPolyglotTest {
 
     @Test
     public void testGetCurrentContextNotEnteredRaceCondition() throws ExecutionException, InterruptedException {
+        // TODO GR-47643 too slow with isolates
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
         for (int i = 0; i < 10000; i++) {
             AtomicBoolean checkCompleted = new AtomicBoolean();
             ExecutorService executorService = Executors.newFixedThreadPool(1);
@@ -1240,7 +1243,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
     public static class ValidExclusiveLanguage extends TruffleLanguage<TruffleLanguage.Env> {
         static final String ID = getDefaultLanguageId(ValidExclusiveLanguage.class);
 
-        final ContextLocal<Env> contextLocal = createContextLocal((e) -> e);
+        final ContextLocal<Env> contextLocal = locals.createContextLocal((e) -> e);
 
         @Override
         protected TruffleLanguage.Env createContext(TruffleLanguage.Env env) {

@@ -21,8 +21,8 @@
  * questions.
  */
 
-#ifndef _JAVA_JMM11_H_
-#define _JAVA_JMM11_H_
+#ifndef _JAVA_JMM14_H_
+#define _JAVA_JMM14_H_
 
 /*
  * This is a private interface used by JDK for JVM monitoring
@@ -170,4 +170,4 @@ typedef struct jmmInterface_3 {
 } /* extern "C" */
 #endif /* __cplusplus */
 
-#endif /* !_JAVA_JMM11_H_ */
+#endif /* !_JAVA_JMM14_H_ */

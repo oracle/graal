@@ -38,8 +38,8 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMRelocationIteratorRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMSectionIteratorRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMSymbolIteratorRef;
@@ -77,6 +77,11 @@ public interface LLVMTargetSpecific {
      * Snippet that adds two registers and save the result in one of them.
      */
     String getAddInlineAssembly(String outputRegisterName, String inputRegisterName);
+
+    /**
+     * Snippet representing a nop instruction.
+     */
+    String getNopInlineAssembly();
 
     /**
      * Name of the architecture to be passed to the LLVM compiler.
@@ -144,6 +149,19 @@ public interface LLVMTargetSpecific {
                     @SuppressWarnings("unused") LLVMRelocationIteratorRef relocationIteratorRef) {
         return buffer.getInt(offset);
     }
+
+    /**
+     * String representing the target for compilation.
+     */
+    default String getTargetTriple() {
+        if (Platform.includedIn(Platform.DARWIN.class)) {
+            return "-unknown-darwin";
+        } else if (Platform.includedIn(Platform.LINUX.class)) {
+            return "-unknown-linux-gnu";
+        } else {
+            throw shouldNotReachHere("Unexpected target for LLVM backend: " + ImageSingletons.lookup(Platform.class).toString());
+        }
+    }
 }
 
 @AutomaticallyRegisteredFeature
@@ -183,6 +201,11 @@ class LLVMAMD64TargetSpecificFeature implements InternalFeature {
             @Override
             public String getAddInlineAssembly(String outputRegister, String inputRegister) {
                 return "addq %" + inputRegister + ", %" + outputRegister;
+            }
+
+            @Override
+            public String getNopInlineAssembly() {
+                return "nop";
             }
 
             @Override
@@ -238,6 +261,11 @@ class LLVMAMD64TargetSpecificFeature implements InternalFeature {
             public String getScratchRegister() {
                 return "rax";
             }
+
+            @Override
+            public String getTargetTriple() {
+                return "x86_64" + LLVMTargetSpecific.super.getTargetTriple();
+            }
         });
     }
 }
@@ -279,6 +307,11 @@ class LLVMAArch64TargetSpecificFeature implements InternalFeature {
             @Override
             public String getAddInlineAssembly(String outputRegister, String inputRegister) {
                 return "ADD " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(inputRegister);
+            }
+
+            @Override
+            public String getNopInlineAssembly() {
+                return "NOP";
             }
 
             @Override
@@ -338,6 +371,11 @@ class LLVMAArch64TargetSpecificFeature implements InternalFeature {
             public String getScratchRegister() {
                 return "x16";
             }
+
+            @Override
+            public String getTargetTriple() {
+                return "arm64" + LLVMTargetSpecific.super.getTargetTriple();
+            }
         });
     }
 }
@@ -379,6 +417,11 @@ class LLVMRISCV64TargetSpecificFeature implements InternalFeature {
             @Override
             public String getAddInlineAssembly(String outputRegister, String inputRegister) {
                 return "add " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(inputRegister);
+            }
+
+            @Override
+            public String getNopInlineAssembly() {
+                return "nop";
             }
 
             @Override
@@ -437,7 +480,7 @@ class LLVMRISCV64TargetSpecificFeature implements InternalFeature {
              */
             @Override
             public boolean isSymbolValid(String section) {
-                return !section.isEmpty() && !section.startsWith(".LBB");
+                return !section.isEmpty() && !section.startsWith(".LBB") && !section.startsWith(".Lpcrel_hi");
             }
 
             /*
@@ -458,6 +501,11 @@ class LLVMRISCV64TargetSpecificFeature implements InternalFeature {
                 } else {
                     throw shouldNotReachHere("Stack map has no relocation for offset " + offset);
                 }
+            }
+
+            @Override
+            public String getTargetTriple() {
+                return "riscv64" + LLVMTargetSpecific.super.getTargetTriple();
             }
         });
     }

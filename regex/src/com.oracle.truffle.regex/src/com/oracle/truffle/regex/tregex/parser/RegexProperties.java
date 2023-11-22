@@ -65,9 +65,10 @@ public class RegexProperties implements JsonConvertible {
     private static final int FLAG_EMPTY_CAPTURE_GROUPS = 1 << 14;
     private static final int FLAG_ATOMIC_GROUPS = 1 << 15;
     private static final int FLAG_BACK_REFERENCES = 1 << 16;
-    private static final int FLAG_NESTED_LOOK_BEHIND_ASSERTIONS = 1 << 17;
-    private static final int FLAG_CONDITIONAL_BACKREFERENCES = 1 << 18;
-    private static final int FLAG_CONDITIONAL_REFERENCES_INTO_LOOK_AHEADS = 1 << 19;
+    private static final int FLAG_RECURSIVE_BACK_REFERENCES = 1 << 17;
+    private static final int FLAG_NESTED_LOOK_BEHIND_ASSERTIONS = 1 << 18;
+    private static final int FLAG_CONDITIONAL_BACKREFERENCES = 1 << 19;
+    private static final int FLAG_CONDITIONAL_REFERENCES_INTO_LOOK_AHEADS = 1 << 20;
 
     private int flags = FLAG_CHAR_CLASSES_CAN_BE_MATCHED_WITH_MASK | FLAG_FIXED_CODEPOINT_WIDTH;
     private int innerLiteralStart = -1;
@@ -244,6 +245,14 @@ public class RegexProperties implements JsonConvertible {
 
     public void setBackReferences() {
         setFlag(FLAG_BACK_REFERENCES);
+    }
+
+    public boolean hasRecursiveBackReferences() {
+        return getFlag(FLAG_RECURSIVE_BACK_REFERENCES);
+    }
+
+    public void setRecursiveBackReferences() {
+        setFlag(FLAG_RECURSIVE_BACK_REFERENCES);
     }
 
     public boolean hasNestedLookBehindAssertions() {

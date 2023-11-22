@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -97,7 +97,9 @@ class ChunkedImageHeapAllocator {
 
         public long allocate(ImageHeapObject obj, boolean writable) {
             long size = obj.getSize();
-            VMError.guarantee(size <= getUnallocatedBytes(), "Object of size %s does not fit in the chunk's remaining bytes", size);
+            if (size > getUnallocatedBytes()) {
+                throw VMError.shouldNotReachHere("Object of size " + size + " does not fit in the chunk's remaining bytes");
+            }
             long objStart = getTop();
             topOffset += size;
             objects.add(obj);
@@ -225,8 +227,9 @@ class ChunkedImageHeapAllocator {
     public void alignInAlignedChunk(int multiple) {
         if (!currentAlignedChunk.tryAlignTop(multiple)) {
             startNewAlignedChunk();
-            boolean aligned = currentAlignedChunk.tryAlignTop(multiple);
-            VMError.guarantee(aligned, "Cannot align to %s  bytes within an aligned chunk's object area", multiple);
+            if (!currentAlignedChunk.tryAlignTop(multiple)) {
+                throw VMError.shouldNotReachHere("Cannot align to " + multiple + " bytes within an aligned chunk's object area");
+            }
         }
     }
 
@@ -278,11 +281,11 @@ final class FillerObjectDummyPartition implements ImageHeapPartition {
 
     @Override
     public String getName() {
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public long getSize() {
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 }

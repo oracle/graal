@@ -31,7 +31,6 @@ public enum OS {
 
     DARWIN("Darwin", false),
     LINUX("Linux", true),
-    SOLARIS("Solaris", true),
     WINDOWS("Windows", false);
 
     /**
@@ -61,16 +60,13 @@ public enum OS {
         if (name.equals("Linux")) {
             return LINUX;
         }
-        if (name.equals("SunOS")) {
-            return SOLARIS;
-        }
         if (name.equals("Mac OS X") || name.equals("Darwin")) {
             return DARWIN;
         }
         if (name.contains("Windows")) {
             return WINDOWS;
         }
-        throw new IllegalArgumentException("unknown OS: " + name);
+        throw new IllegalArgumentException("Unknown OS: " + name);
     }
 
     private static final OS current = findCurrent();

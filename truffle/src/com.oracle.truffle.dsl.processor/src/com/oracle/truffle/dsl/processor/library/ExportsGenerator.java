@@ -154,7 +154,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
         @Override
         public int hashCode() {
-            return Objects.hash(ElementUtils.getTypeId(libraryType), expressionKey);
+            return Objects.hash(ElementUtils.getTypeSimpleId(libraryType), expressionKey);
         }
 
         @Override
@@ -612,9 +612,9 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 CodeTree mergedLibraryIdentifier = writeExpression(key.cache, receiverLocalName, libraryExports.getReceiverType(), libraryExports.getReceiverType());
                 String identifier = key.getCache().getMergedLibraryIdentifier();
                 builder.startStatement();
-                builder.string("this.", identifier, " = super.insert(");
+                builder.string("this.", identifier, " = ");
                 builder.staticReference(useLibraryConstant(key.libraryType)).startCall(".create").tree(mergedLibraryIdentifier).end();
-                builder.string(")").end();
+                builder.end();
                 CodeVariableElement var = cacheClass.add(new CodeVariableElement(modifiers(PRIVATE), key.libraryType, identifier));
                 var.getAnnotationMirrors().add(new CodeAnnotationMirror(types.Node_Child));
             }
@@ -1365,7 +1365,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         if (element != null) {
             builder.startAssert().string("assertAdopted()").end();
         } else {
-            builder.startAssert().string("getRootNode() != null : ").doubleQuote("Invalid library usage. Cached library must be adopted by a RootNode before it is executed.").end();
+            builder.startAssert().startCall("assertAdopted").string("this").end().end();
         }
         builder.tree(body);
     }
