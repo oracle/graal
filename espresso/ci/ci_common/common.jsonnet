@@ -71,7 +71,12 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
       ] + base.nativeimage_guard_includes else []) + (if with_vm then [
         "<graal>/vm/**",
       ] + base.vm_guard_includes else []),
-    }
+    },
+    setup+: [
+        ['apply-predicates', '--verbose', '--delete-excluded', '--pattern-root', '..'] # we are the espresso directory
+            + (if std.objectHasAll(self.guard, 'excludes') then ['--exclude=' + e for e in  self.guard.excludes] else [])
+            + ['--include=' + e for e in  self.guard.includes]
+    ],
   },
 
   // generic targets
