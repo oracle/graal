@@ -24,9 +24,13 @@
  */
 package jdk.graal.compiler.hotspot.amd64;
 
+import java.util.List;
+
 import jdk.graal.compiler.core.amd64.AMD64LoweringProviderMixin;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
+import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.DebugHandlersFactory;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
@@ -37,6 +41,7 @@ import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.meta.HotSpotRegistersProvider;
 import jdk.graal.compiler.hotspot.replacements.HotSpotAllocationSnippets;
 import jdk.graal.compiler.hotspot.replacements.arraycopy.HotSpotArraycopySnippets;
+import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.calc.FloatConvertNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
@@ -118,7 +123,12 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
             }
         }
 
-        ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, math.getOperation().foreignCallSignature, math.getValue()));
+// ForeignCallNode call = graph.add(
+// new ForeignCallNode(foreignCalls, math.getOperation().foreignCallSignature, math.getValue()));
+
+        ForeignCallDescriptor desc = foreignCalls.getDescriptor(math.getOperation().foreignCallSignature);
+        Stamp s = UnaryMathIntrinsicNode.UnaryOperation.computeStamp(math.getOperation(), math.getValue().stamp(NodeView.DEFAULT));
+        ForeignCallNode call = graph.add(new ForeignCallNode(desc, s, List.of(math.getValue())));
         graph.addAfterFixed(tool.lastFixedNode(), call);
         math.replaceAtUsages(call);
     }
