@@ -29,6 +29,7 @@ import argparse
 import os
 from os.path import join, exists
 import json
+import shutil
 from shutil import rmtree
 from tempfile import mkdtemp, mkstemp
 
@@ -1364,8 +1365,7 @@ if 'compiler.compiler' in _allSpecJVM2008BenchesJDK9:
 if 'startup.compiler.compiler' in _allSpecJVM2008BenchesJDK9:
     _allSpecJVM2008BenchesJDK9.remove('startup.compiler.compiler')
 
-
-class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
+class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.TemporaryWorkdirMixin):
     """SpecJVM2008 benchmark suite implementation.
 
     This benchmark suite can run multiple benchmarks as part of one VM run.
@@ -1384,11 +1384,19 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         if specjvm2008 is None:
             mx.abort("Please set the SPECJVM2008 environment variable to a " +
                      "SPECjvm2008 directory.")
-        jarpath = join(specjvm2008, "SPECjvm2008.jar")
+        jarname = "SPECjvm2008.jar"
+        jarpath = join(specjvm2008, jarname)
         if not exists(jarpath):
             mx.abort("The SPECJVM2008 environment variable points to a directory " +
                      "without the SPECjvm2008.jar file.")
-        return jarpath
+
+        # copy to newly-created temporary working directory
+        working_dir_jarpath =  os.path.abspath(join(self.workdir, jarname))
+        if not exists(working_dir_jarpath):
+            mx.log("copying " + specjvm2008 + " to " + self.workdir)
+            shutil.copytree(specjvm2008, self.workdir, dirs_exist_ok=True)
+
+        return working_dir_jarpath
 
     def validateEnvironment(self):
         if not self.specJvmPath():
@@ -1397,9 +1405,6 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
     def validateReturnCode(self, retcode):
         return retcode == 0
-
-    def workingDirectory(self, benchmarks, bmSuiteArgs):
-        return mx.get_env("SPECJVM2008")
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
