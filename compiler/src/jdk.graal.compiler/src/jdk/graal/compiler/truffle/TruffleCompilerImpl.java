@@ -33,14 +33,24 @@ import static jdk.graal.compiler.phases.OptimisticOptimizations.Optimization.Use
 import static jdk.graal.compiler.phases.OptimisticOptimizations.Optimization.UseTypeCheckedInlining;
 import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.PrintStream;
+import java.security.Timestamp;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import jdk.graal.compiler.code.DisassemblerProvider;
+import jdk.graal.compiler.code.ObjdumpDisassemblerProvider;
+import jdk.graal.compiler.core.GraalCompilerOptions;
+import jdk.graal.compiler.core.common.GraalOptions;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
@@ -603,7 +613,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
 
         final TruffleTierConfiguration tier = task.isFirstTier() ? config.firstTier() : config.lastTier();
         try (DebugCloseable a = CompilationTime.start(debug);
-                        DebugContext.Scope s = debug.scope("TruffleGraal.GraalCompiler", graph, tier.providers().getCodeCache());
+        DebugContext.Scope s = debug.scope("TruffleGraal.GraalCompiler", graph, tier.providers().getCodeCache());
                         DebugCloseable c = CompilationMemUse.start(debug)) {
             Suites selectedSuites = tier.suites();
             LIRSuites selectedLirSuites = tier.lirSuites();
@@ -611,10 +621,31 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             CompilationResult compilationResult = createCompilationResult(name, graph.compilationId(), compilable);
             result = GraalCompiler.compileGraph(graph, graph.method(), selectedProviders, tier.backend(), graphBuilderSuite, Optimizations, graph.getProfilingInfo(), selectedSuites,
                             selectedLirSuites, compilationResult, CompilationResultBuilderFactory.Default, false);
+
+            System.out.println("Exporting compiled result");
+            System.out.println("BCI: " + compilationResult.getEntryBCI());
+            System.out.println("Data section size: " + compilationResult.getDataSection().getSectionSize());
+            File tmp = File.createTempFile(new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date()) + "compiledBinary", ".bin");
+            try (FileOutputStream fos = new FileOutputStream(tmp)) {
+                fos.write(compilationResult.getTargetCode());
+
+            }
+
+            File tmp2 = File.createTempFile(new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date()) + "compiledBinary-no-data", ".bin");
+            try (FileOutputStream fos = new FileOutputStream(tmp2)) {
+                fos.write(Arrays.copyOfRange(compilationResult.getTargetCode(), compilationResult.getDataSection().getSectionSize(), compilationResult.getTargetCodeSize()));
+
+            }
+
+            System.out.println("Methods in the exported code");
+            for (var method: compilationResult.getMethods()) {
+                System.out.println("--> Method name: " + method.getName());
+            }
+
+
         } catch (Throwable e) {
             throw debug.handle(e);
         }
-
         if (listener != null) {
             listener.onGraalTierFinished(compilable, new GraphInfoImpl(graph));
         }
