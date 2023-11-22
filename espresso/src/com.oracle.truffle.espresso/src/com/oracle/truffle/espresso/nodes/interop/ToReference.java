@@ -56,7 +56,6 @@ import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
 import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.dispatch.staticobject.EspressoInterop;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 @NodeInfo(shortName = "Convert to Espresso StaticObject")
@@ -2144,12 +2143,7 @@ public abstract class ToReference extends ToEspressoNode {
             if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass(), meta.java_math_BigInteger)) {
                 return value; // pass through, NULL coercion not needed.
             }
-            try {
-                BigInteger bigInteger = EspressoInterop.asBigInteger(value);
-                return toGuestBigInteger(meta, bigInteger);
-            } catch (UnsupportedMessageException e) {
-                throw UnsupportedTypeException.create(new Object[]{value}, meta.java_math_BigInteger.getTypeAsString());
-            }
+            throw UnsupportedTypeException.create(new Object[]{value}, meta.java_math_BigInteger.getTypeAsString());
         }
 
         @TruffleBoundary

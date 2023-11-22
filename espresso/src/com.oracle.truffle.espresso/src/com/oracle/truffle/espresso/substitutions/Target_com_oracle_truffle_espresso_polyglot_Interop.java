@@ -600,6 +600,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     @Substitution
     @Throws(others = @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"))
     abstract static class AsBigInteger extends SubstitutionNode {
+        static final int LIMIT = 2;
 
         abstract @JavaType(BigInteger.class) StaticObject execute(@JavaType(Object.class) StaticObject receiver);
 
@@ -607,15 +608,24 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @JavaType(BigInteger.class)
         StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Cached ToReference.ToBigInteger toBigInteger,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
-                return toBigInteger.execute(InteropUtils.unwrapForeign(getLanguage(), receiver));
-            } catch (UnsupportedTypeException e) {
+                BigInteger bigInteger = interop.asBigInteger(InteropUtils.unwrapForeign(getLanguage(), receiver));
+                return toGuestBigInteger(getMeta(), bigInteger);
+            } catch (InteropException e) {
                 exceptionProfile.enter();
-                throw throwInteropExceptionAsGuest.execute(UnsupportedMessageException.create());
+                throw throwInteropExceptionAsGuest.execute(e);
             }
+        }
+
+        @TruffleBoundary
+        private StaticObject toGuestBigInteger(Meta meta, BigInteger bigInteger) {
+            byte[] bytes = bigInteger.toByteArray();
+            StaticObject guestBigInteger = getAllocator().createNew(meta.java_math_BigInteger);
+            meta.java_math_BigInteger_init.invokeDirect(guestBigInteger, StaticObject.wrap(bytes, meta));
+            return guestBigInteger;
         }
     }
 
