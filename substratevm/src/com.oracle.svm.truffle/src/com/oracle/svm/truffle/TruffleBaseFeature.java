@@ -25,16 +25,22 @@
 package com.oracle.svm.truffle;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.truffle.api.SubstrateTruffleRuntime.MAX_SVM_VERSION;
+import static com.oracle.svm.truffle.api.SubstrateTruffleRuntime.MIN_SVM_VERSION;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.graalvm.compiler.options.OptionType.User;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -78,6 +84,7 @@ import org.graalvm.compiler.truffle.compiler.host.InjectImmutableFrameFieldsPhas
 import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPlugins;
 import org.graalvm.home.HomeFinder;
+import org.graalvm.home.Version;
 import org.graalvm.home.impl.DefaultHomeFinder;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -295,8 +302,27 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
+        if (!Boolean.getBoolean("polyglotimpl.DisableVersionChecks")) {
+            Version truffleVersion = getTruffleReleaseVersion(a);
+            if (truffleVersion.compareTo(MIN_SVM_VERSION) < 0 || truffleVersion.compareTo(MAX_SVM_VERSION) >= 0) {
+                String fix;
+                if (truffleVersion.compareTo(MIN_SVM_VERSION) < 0) {
+                    // old truffle
+                    fix = String.format("To resolve this, upgrade Truffle to be in this version range %s ... %s.", MIN_SVM_VERSION, MAX_SVM_VERSION);
+                } else {
+                    // old compiler
+                    fix = String.format("To resolve this, upgrade native-image to be in this version range %s ... %s.", MIN_SVM_VERSION, MAX_SVM_VERSION);
+                }
+                throw UserError.abort("Mismatched versions for the org.graalvm.truffle and org.graalvm.truffle.runtime.svm modules. " +
+                                "The version of org.graalvm.truffle is %s, while org.graalvm.truffle.runtime.svm is at version %s. %s " +
+                                "Alternatively, you can disable this check by setting the system property polyglotimpl.DisableVersionChecks to true, " +
+                                "using `-Dpolyglotimpl.DisableVersionChecks=true`.",
+                                truffleVersion,
+                                getReleaseVersion(),
+                                fix);
+            }
+        }
         imageClassLoader = a.getApplicationClassLoader();
-
         TruffleRuntime runtime = Truffle.getRuntime();
         UserError.guarantee(runtime != null, "TruffleRuntime not available via Truffle.getRuntime()");
         UserError.guarantee(isSubstrateRuntime(runtime) || runtime instanceof DefaultTruffleRuntime,
@@ -322,6 +348,40 @@ public final class TruffleBaseFeature implements InternalFeature {
         invokeStaticMethod("com.oracle.truffle.polyglot.InternalResourceCacheSymbol", "initialize", List.of());
 
         profilingEnabled = false;
+    }
+
+    /**
+     * Reads reflectively the org.graalvm.truffle module version. The method uses reflection to
+     * access the {@code PolyglotImpl#VERSION} field because the Truffle API may be of a version
+     * earlier than graalvm-23.1.2 where the field does not exist.
+     *
+     * @return the Truffle API version or 23.1.1 if the {@code PolyglotImpl#VERSION} field does not
+     *         exist.
+     */
+    private static Version getTruffleReleaseVersion(AfterRegistrationAccess config) {
+        Class<?> polyglotImplClass = config.findClassByName("com.oracle.truffle.polyglot.PolyglotImpl");
+        Field versionField = ReflectionUtil.lookupField(true, polyglotImplClass, "VERSION");
+        if (versionField != null) {
+            try {
+                return (Version) versionField.get(null);
+            } catch (ReflectiveOperationException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        } else {
+            return Version.create(23, 1, 1);
+        }
+    }
+
+    private Version getReleaseVersion() {
+        InputStream in = getClass().getResourceAsStream("/META-INF/graalvm/org.graalvm.truffle.runtime.svm/version");
+        if (in == null) {
+            throw VMError.shouldNotReachHere("Truffle SVM must have a version file.");
+        }
+        try (BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+            return Version.parse(r.readLine());
+        } catch (IOException ioe) {
+            throw VMError.shouldNotReachHere(ioe);
+        }
     }
 
     @SuppressWarnings({"null", "unused"})

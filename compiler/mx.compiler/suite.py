@@ -489,6 +489,16 @@ suite = {
       "maven": False,
     },
 
+    "GRAAL_VERSION": {
+      "type": "dir",
+      "platformDependent": False,
+      "layout": {
+        "META-INF/graalvm/jdk.graal.compiler/version": "dependency:sdk:RELEASE_VERSION/version",
+      },
+      "description": "Compiler version.",
+      "maven": False,
+    },
+
     "GRAAL" : {
       # This distribution defines a module.
       "moduleInfo" : {
@@ -532,6 +542,7 @@ suite = {
         "sdk:COLLECTIONS",
         "sdk:WORD",
         "truffle:TRUFFLE_COMPILER",
+        "GRAAL_VERSION",
       ],
       "allowsJavadocWarnings": True,
       "description":  "The GraalVM compiler and the Graal-truffle optimizer.",

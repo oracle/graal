@@ -44,7 +44,9 @@ import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleRuntimeAccess;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.compiler.TruffleCompilationSupport;
+import com.oracle.truffle.polyglot.PolyglotImpl;
 import com.oracle.truffle.runtime.ModulesSupport;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.hotspot.libgraal.LibGraal;
 import com.oracle.truffle.runtime.hotspot.libgraal.LibGraalTruffleCompilationSupport;
 
@@ -53,6 +55,9 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.services.Services;
+import org.graalvm.home.Version;
+
+import java.lang.reflect.Field;
 
 public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
 
@@ -111,6 +116,29 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
         if (LibGraal.isAvailable()) {
             // try LibGraal
             compilationSupport = new LibGraalTruffleCompilationSupport();
+            if (!Boolean.getBoolean("polyglotimpl.DisableVersionChecks")) {
+                String compilerVersionString = compilationSupport.getReleaseVersion();
+                Version compilerVersion = compilerVersionString != null ? Version.parse(compilerVersionString) : Version.create(23, 1, 1);
+                if (compilerVersion.compareTo(OptimizedTruffleRuntime.MIN_COMPILER_VERSION) < 0 || compilerVersion.compareTo(OptimizedTruffleRuntime.MAX_COMPILER_VERSION) >= 0) {
+                    String fix;
+                    if (compilerVersion.compareTo(OptimizedTruffleRuntime.MIN_COMPILER_VERSION) < 0) {
+                        // old compiler
+                        fix = String.format("To resolve this, upgrade your JDK to be in this version range %s ... %s.", OptimizedTruffleRuntime.MIN_COMPILER_VERSION,
+                                        OptimizedTruffleRuntime.MAX_COMPILER_VERSION);
+                    } else {
+                        // old truffle
+                        fix = String.format("To resolve this, upgrade Truffle to be in this version range %s ... %s.", OptimizedTruffleRuntime.MIN_COMPILER_VERSION,
+                                        OptimizedTruffleRuntime.MAX_COMPILER_VERSION);
+                    }
+                    throw new IllegalStateException(String.format("Mismatched versions for the org.graalvm.truffle module and the libjvmcicompiler library. " +
+                                    "The version of org.graalvm.truffle is %s, while libjvmcicompiler is at version %s. %s " +
+                                    "Alternatively, you can disable this check by setting the system property polyglotimpl.DisableVersionChecks to true, " +
+                                    "using `-Dpolyglotimpl.DisableVersionChecks=true`.",
+                                    getTruffleReleaseVersion(),
+                                    compilerVersion,
+                                    fix));
+                }
+            }
         } else {
             // try jar graal
             try {
@@ -127,6 +155,18 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
                 Modules.addExports(compilerModule, "org.graalvm.compiler.truffle.compiler.hotspot", HotSpotTruffleRuntimeAccess.class.getModule());
                 Class<?> hotspotCompilationSupport = Class.forName(compilerModule, "org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilationSupport");
                 compilationSupport = (TruffleCompilationSupport) hotspotCompilationSupport.getConstructor().newInstance();
+                if (!Boolean.getBoolean("polyglotimpl.DisableVersionChecks")) {
+                    String compilerVersionString = compilationSupport.getReleaseVersion();
+                    Version compilerVersion = compilerVersionString != null ? Version.parse(compilerVersionString) : Version.create(23, 1, 1);
+                    Version truffleVersion = getTruffleReleaseVersion();
+                    if (!compilerVersion.equals(truffleVersion)) {
+                        throw new IllegalStateException(String.format("Mismatched versions for the org.graalvm.truffle and jdk.graal.compiler modules. " +
+                                        "The version of org.graalvm.truffle is %s, while jdk.graal.compiler is at version %s. " +
+                                        "Ensure both modules share the same version. Alternatively, you can disable this check by setting " +
+                                        "the system property polyglotimpl.DisableVersionChecks to true, using `-Dpolyglotimpl.DisableVersionChecks=true`.",
+                                        truffleVersion, compilerVersion));
+                    }
+                }
             } catch (ReflectiveOperationException e) {
                 throw new InternalError(e);
             }
@@ -136,4 +176,23 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
         return rt;
     }
 
+    /**
+     * Reads reflectively the org.graalvm.truffle module version. The method uses reflection to
+     * access the {@code PolyglotImpl#VERSION} field because the Truffle API may be of a version
+     * earlier than graalvm-23.1.2 where the field does not exist.
+     *
+     * @return the Truffle API version or 23.1.1 if the {@code PolyglotImpl#VERSION} field does not
+     *         exist.
+     */
+    private static Version getTruffleReleaseVersion() {
+        try {
+            Field versionField = PolyglotImpl.class.getDeclaredField("VERSION");
+            versionField.setAccessible(true);
+            return (Version) versionField.get(null);
+        } catch (NoSuchFieldException nf) {
+            return Version.create(23, 1, 1);
+        } catch (ReflectiveOperationException e) {
+            throw new InternalError(e);
+        }
+    }
 }

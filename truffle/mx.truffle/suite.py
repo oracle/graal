@@ -1335,8 +1335,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.compiler",
       ],
-      "distDependencies" : [
-      ],
+      "distDependencies" : [],
       "description" : "Truffle compiler API.",
       "maven": {
           "tag": ["default", "public"],
@@ -1395,6 +1394,16 @@ suite = {
           "artifactId": "truffle-runtime",
           "tag": ["default", "public"],
       },
+    },
+
+    "TRUFFLE_API_VERSION": {
+      "type": "dir",
+      "platformDependent": False,
+      "layout": {
+        "META-INF/graalvm/org.graalvm.truffle/version": "dependency:sdk:RELEASE_VERSION/version",
+      },
+      "description": "Truffle API version.",
+      "maven": False,
     },
 
     "TRUFFLE_API" : {
@@ -1484,7 +1493,8 @@ suite = {
         "com.oracle.truffle.api.staticobject",
       ],
       "distDependencies" : [
-        "sdk:POLYGLOT"
+        "sdk:POLYGLOT",
+        "TRUFFLE_API_VERSION",
       ],
       "description" : "Truffle is a multi-language framework for executing dynamic languages\nthat achieves high performance when combined with Graal.",
       "javadocType": "api",
