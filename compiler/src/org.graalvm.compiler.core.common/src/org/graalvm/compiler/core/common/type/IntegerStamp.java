@@ -1095,7 +1095,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
                     },
 
-                    new BinaryOp.Sub(true, false) {
+                    new BinaryOp.Sub(false, false) {
 
                         @Override
                         public Constant foldConstant(Constant const1, Constant const2) {
@@ -1487,7 +1487,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
                     },
 
-                    new BinaryOp.Div(true, false) {
+                    new BinaryOp.Div(false, false) {
 
                         @Override
                         public Constant foldConstant(Constant const1, Constant const2) {
