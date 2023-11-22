@@ -49,6 +49,7 @@ import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetMarksCount;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetNodeCount;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetNodeTypes;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetReleaseVersion;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetSuppliedString;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetTargetCodeSize;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetTotalFrameSize;
@@ -160,4 +161,7 @@ final class TruffleToLibGraalCalls {
 
     @TruffleToLibGraal(PurgePartialEvaluationCaches)
     static native void purgePartialEvaluationCaches(long isolateThreadId, long compilerHandle);
+
+    @TruffleToLibGraal(GetReleaseVersion)
+    static native String getReleaseVersion(long isolateThreadId);
 }

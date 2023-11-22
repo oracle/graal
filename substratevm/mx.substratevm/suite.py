@@ -1621,6 +1621,16 @@ suite = {
             },
         },
 
+        "TRUFFLE_RUNTIME_SVM_VERSION": {
+            "type": "dir",
+            "platformDependent": False,
+            "layout": {
+                "META-INF/graalvm/org.graalvm.truffle.runtime.svm/version": "dependency:sdk:RELEASE_VERSION/version",
+            },
+            "description": "SVM Runtime for Truffle version.",
+            "maven": False,
+        },
+
         "TRUFFLE_RUNTIME_SVM": {
             "subDir": "src",
             "description" : "SVM Runtime for Truffle languages.",
@@ -1635,6 +1645,7 @@ suite = {
                 "OBJECTFILE",
                 "POINTSTO",
                 "truffle:TRUFFLE_RUNTIME",
+                "TRUFFLE_RUNTIME_SVM_VERSION",
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.truffle.runtime.svm",

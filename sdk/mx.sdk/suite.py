@@ -676,13 +676,27 @@ suite = {
       "maven": False,
     },
 
+    "POLYGLOT_VERSION": {
+      "type": "dir",
+      "platformDependent": False,
+      "layout": {
+        "META-INF/graalvm/org.graalvm.polyglot/version": "dependency:RELEASE_VERSION/version",
+      },
+      "description": "Polyglot version.",
+      "maven": False,
+    },
+
     "POLYGLOT" : {
       "subDir" : "src",
       "dependencies" : [
         "org.graalvm.polyglot",
         "org.graalvm.home",
       ],
-      "distDependencies" : ["COLLECTIONS", "NATIVEIMAGE"],
+      "distDependencies" : [
+        "COLLECTIONS",
+        "NATIVEIMAGE",
+        "POLYGLOT_VERSION",
+      ],
       "javadocType": "api",
       "moduleInfo" : {
         "name" : "org.graalvm.polyglot",

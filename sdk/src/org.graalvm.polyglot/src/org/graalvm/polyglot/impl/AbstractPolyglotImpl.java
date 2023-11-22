@@ -74,6 +74,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.logging.LogRecord;
 
+import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
@@ -576,6 +577,10 @@ public abstract class AbstractPolyglotImpl {
 
     public boolean copyResources(Path targetFolder, String... components) throws IOException {
         return getNext().copyResources(targetFolder, components);
+    }
+
+    public Version getReleaseVersion() {
+        return null;
     }
 
     /**

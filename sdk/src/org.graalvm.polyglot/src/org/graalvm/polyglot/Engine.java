@@ -40,9 +40,11 @@
  */
 package org.graalvm.polyglot;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.ModuleLayer.Controller;
@@ -66,6 +68,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.AccessController;
@@ -101,6 +104,7 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 
 import org.graalvm.home.HomeFinder;
+import org.graalvm.home.Version;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -1630,13 +1634,26 @@ public final class Engine implements AutoCloseable {
             impls.add(found);
         }
         Collections.sort(impls, Comparator.comparing(AbstractPolyglotImpl::getPriority));
+        Version polyglotVersion = Boolean.getBoolean("polyglotimpl.DisableVersionChecks") ? null : getPolyglotReleaseVersion();
         AbstractPolyglotImpl prev = null;
         for (AbstractPolyglotImpl impl : impls) {
             if (impl.getPriority() == Integer.MIN_VALUE) {
                 // disabled
                 continue;
             }
-
+            if (polyglotVersion != null) {
+                Version implVersion = impl.getReleaseVersion();
+                if (implVersion == null) {
+                    implVersion = Version.create(23, 1, 1);
+                }
+                if (!polyglotVersion.equals(implVersion)) {
+                    throw new IllegalStateException(String.format("Mismatched versions for the org.graalvm.polyglot and org.graalvm.truffle modules. " +
+                                    "The version of org.graalvm.polyglot is %s, while org.graalvm.truffle is at version %s. " +
+                                    "Ensure both modules share the same version. Alternatively, you can disable this check by setting " +
+                                    "the system property polyglotimpl.DisableVersionChecks to true, using `-Dpolyglotimpl.DisableVersionChecks=true`.",
+                                    polyglotVersion, implVersion));
+                }
+            }
             impl.setNext(prev);
             try {
                 impl.setConstructors(APIAccessImpl.INSTANCE);
@@ -1656,6 +1673,18 @@ public final class Engine implements AutoCloseable {
         }
 
         return prev;
+    }
+
+    private static Version getPolyglotReleaseVersion() {
+        InputStream in = Engine.class.getResourceAsStream("/META-INF/graalvm/org.graalvm.polyglot/version");
+        if (in == null) {
+            throw new InternalError("Polyglot must have a version file.");
+        }
+        try (BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+            return Version.parse(r.readLine());
+        } catch (IOException ioe) {
+            throw new InternalError(ioe);
+        }
     }
 
     @SuppressWarnings({"unchecked", "deprecation"})

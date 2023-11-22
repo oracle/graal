@@ -164,4 +164,14 @@ public final class LibGraalTruffleCompilationSupport implements TruffleCompilati
         }
     }
 
+    @Override
+    public String getReleaseVersion() {
+        try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
+            return TruffleToLibGraalCalls.getReleaseVersion(getIsolateThread());
+        } catch (UnsatisfiedLinkError linkError) {
+            // An old libjvmcicompiler without the getReleaseVersion entry point.
+            return null;
+        }
+    }
+
 }

@@ -33,6 +33,7 @@ import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetMarksCount;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetNodeCount;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetNodeTypes;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetReleaseVersion;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetSuppliedString;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetTargetCodeSize;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetTotalFrameSize;
@@ -99,6 +100,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * system property to {@code 3}.
  */
 final class TruffleToLibGraalEntryPoints {
+
+    private static final String VERSION = HotSpotTruffleCompilationSupport.readReleaseVersion();
 
     @CEntryPoint(builtin = Builtin.GET_CURRENT_THREAD, name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_LibGraalScope_getIsolateThreadIn")
     private static native IsolateThread getIsolateThreadIn(PointerBase env, PointerBase hsClazz, @IsolateContext Isolate isolate);
@@ -470,11 +473,12 @@ final class TruffleToLibGraalEntryPoints {
     public static JString validateCompilerOption(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, JString optionName, JString optionValue) {
         JNIMethodScope scope = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, Id.ValidateCompilerOption, env);
         try (JNIMethodScope s = scope) {
-            return JNIUtil.createHSString(env, TruffleCompilerOptions.validateOption(JNIUtil.createString(env, optionName), JNIUtil.createString(env, optionValue)));
+            scope.setObjectResult(JNIUtil.createHSString(env, TruffleCompilerOptions.validateOption(JNIUtil.createString(env, optionName), JNIUtil.createString(env, optionValue))));
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
-            return WordFactory.nullPointer();
+            scope.setObjectResult(WordFactory.nullPointer());
         }
+        return scope.getObjectResult();
     }
 
     @TruffleToLibGraal(GetMarksCount)
@@ -513,6 +517,20 @@ final class TruffleToLibGraalEntryPoints {
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
         }
+    }
+
+    @TruffleToLibGraal(GetReleaseVersion)
+    @CEntryPoint(name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_getReleaseVersion")
+    @SuppressWarnings({"unused", "try"})
+    public static JString getReleaseVersion(JNIEnv env, JClass hsClass, @CEntryPoint.IsolateThreadContext long isolateThreadId) {
+        JNIMethodScope scope = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, GetReleaseVersion, env);
+        try (JNIMethodScope s = scope) {
+            scope.setObjectResult(createHSString(env, VERSION));
+        } catch (Throwable t) {
+            JNIExceptionWrapper.throwInHotSpot(env, t);
+            scope.setObjectResult(WordFactory.nullPointer());
+        }
+        return scope.getObjectResult();
     }
 
     static {
