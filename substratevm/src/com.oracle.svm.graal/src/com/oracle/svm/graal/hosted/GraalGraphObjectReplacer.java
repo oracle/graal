@@ -45,8 +45,8 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
 import com.oracle.svm.graal.SubstrateGraalRuntime;
+import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
 import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateSignature;
@@ -460,9 +460,17 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             JavaConstant constantValue = hField.isStatic() && ((HostedConstantFieldProvider) providers.getConstantFieldProvider()).isFinalField(hField, null)
                             ? providers.getConstantReflection().readFieldValue(hField, null)
                             : null;
-            constantValue = providers.getSnippetReflection().unwrapConstant(constantValue);
+            constantValue = unwrapConstant(constantValue);
             sField.setSubstrateData(hField.getLocation(), hField.isAccessed(), hField.isWritten() || !hField.isValueAvailable(), constantValue);
         }
+    }
+
+    static JavaConstant unwrapConstant(JavaConstant constant) {
+        if (constant instanceof ImageHeapConstant heapConstant) {
+            VMError.guarantee(heapConstant.isBackedByHostedObject(), "Expected to find a heap object backed by a hosted object, found %s", heapConstant);
+            return heapConstant.getHostedObject();
+        }
+        return constant;
     }
 
     public void updateSubstrateDataAfterHeapLayout(HostedUniverse hUniverse) {
