@@ -242,10 +242,9 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
             masm.neon.mulVVV(ASIMDSize.FullReg, ElementSize.Word, vresult[idx], vresult[idx], vcoef[idx]);
         }
 
-        reduceVectorLanes(masm, ASIMDSize.FullReg, vresult);
-
         // accumulate horizontal vector sum in result
-        masm.neon.umovGX(ElementSize.Word, tmp2, vresult[0], 0);
+        reduceVectorLanes(masm, ASIMDSize.FullReg, vresult);
+        masm.fmov(32, tmp2, vresult[0]); // umovGX(Word, tmp2, vresult[0], 0);
         masm.add(32, result, result, tmp2);
 
         // } else if (cnt1 < elementsPerIteration) {
