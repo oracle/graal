@@ -28,26 +28,12 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.nodes.ComputeObjectAddressNode;
-import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins;
-import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
-import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.AMD64.class)
@@ -55,26 +41,6 @@ public class SubstrateAMD64GraphBuilderPlugins implements InternalFeature {
 
     @Override
     public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
-        if (!SubstrateOptions.useLLVMBackend()) {
-            registerArraysSupportPlugins(plugins.getInvocationPlugins(), providers.getReplacements());
-        }
     }
 
-    private static void registerArraysSupportPlugins(InvocationPlugins plugins, Replacements replacements) {
-        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "jdk.internal.util.ArraysSupport", replacements);
-        r.register(new InvocationPlugin("vectorizedMismatch", Object.class, long.class, Object.class, long.class, int.class, int.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
-                            ValueNode aObject, ValueNode aOffset, ValueNode bObject, ValueNode bOffset, ValueNode length, ValueNode log2ArrayIndexScale) {
-                ValueNode aAddr = b.add(new ComputeObjectAddressNode(aObject, aOffset));
-                ValueNode bAddr = b.add(new ComputeObjectAddressNode(bObject, bOffset));
-                b.addPush(JavaKind.Int, new VectorizedMismatchNode(aAddr, bAddr, length, log2ArrayIndexScale));
-                return true;
-            }
-        });
-        if (JavaVersionUtil.JAVA_SPEC >= 21) {
-            r.registerConditional(VectorizedHashCodeNode.isSupported(ConfigurationValues.getTarget().arch),
-                            new StandardGraphBuilderPlugins.VectorizedHashCodeInvocationPlugin("vectorizedHashCode"));
-        }
-    }
 }

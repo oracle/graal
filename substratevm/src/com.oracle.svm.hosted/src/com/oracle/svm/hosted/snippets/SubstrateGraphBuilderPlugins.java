@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -115,6 +115,7 @@ import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.BeginNode;
+import jdk.graal.compiler.nodes.ComputeObjectAddressNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DynamicPiNode;
 import jdk.graal.compiler.nodes.FixedNode;
@@ -159,6 +160,8 @@ import jdk.graal.compiler.replacements.nodes.AESNode;
 import jdk.graal.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode.MacroParams;
+import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
+import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
 import jdk.graal.compiler.word.WordCastNode;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -209,6 +212,7 @@ public class SubstrateGraphBuilderPlugins {
         registerReferenceAccessPlugins(plugins);
         if (supportsStubBasedPlugins) {
             registerAESPlugins(plugins, replacements, architecture);
+            registerArraysSupportPlugins(plugins, replacements, architecture);
         }
     }
 
@@ -1272,6 +1276,22 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
+    }
+
+    private static void registerArraysSupportPlugins(InvocationPlugins plugins, Replacements replacements, Architecture arch) {
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "jdk.internal.util.ArraysSupport", replacements);
+        r.registerConditional(VectorizedMismatchNode.isSupported(arch), new InvocationPlugin("vectorizedMismatch", Object.class, long.class, Object.class, long.class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                            ValueNode aObject, ValueNode aOffset, ValueNode bObject, ValueNode bOffset, ValueNode length, ValueNode log2ArrayIndexScale) {
+                ValueNode aAddr = b.add(new ComputeObjectAddressNode(aObject, aOffset));
+                ValueNode bAddr = b.add(new ComputeObjectAddressNode(bObject, bOffset));
+                b.addPush(JavaKind.Int, new VectorizedMismatchNode(aAddr, bAddr, length, log2ArrayIndexScale));
+                return true;
+            }
+        });
+        r.registerConditional(VectorizedHashCodeNode.isSupported(arch),
+                        new StandardGraphBuilderPlugins.VectorizedHashCodeInvocationPlugin("vectorizedHashCode"));
     }
 
     private static class SubstrateCipherBlockChainingCryptPlugin extends StandardGraphBuilderPlugins.CipherBlockChainingCryptPlugin {
