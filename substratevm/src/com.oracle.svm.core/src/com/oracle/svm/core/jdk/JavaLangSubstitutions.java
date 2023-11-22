@@ -42,10 +42,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
-import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
-import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
-import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -75,6 +71,10 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import jdk.internal.loader.ClassLoaderValue;
 import jdk.internal.module.ServicesCatalog;
 
@@ -206,6 +206,11 @@ final class Target_java_lang_StringUTF16 {
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
 @SuppressWarnings({"unused"})
 final class Target_java_lang_Throwable {
+
+    @Alias //
+    @TargetElement(onlyWith = JDK22OrLater.class) //
+    @RecomputeFieldValue(kind = Kind.FromAlias, isFinal = true) //
+    static boolean jfrTracing = false;
 
     @Alias @RecomputeFieldValue(kind = Reset)//
     Object backtrace;

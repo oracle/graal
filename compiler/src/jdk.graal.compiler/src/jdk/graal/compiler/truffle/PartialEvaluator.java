@@ -40,6 +40,7 @@ import com.oracle.truffle.compiler.TruffleSourceLanguagePosition;
 
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.SourceLanguagePosition;
@@ -68,7 +69,6 @@ import jdk.graal.compiler.replacements.InlineDuringParsingPlugin;
 import jdk.graal.compiler.replacements.PEGraphDecoder;
 import jdk.graal.compiler.replacements.ReplacementsImpl;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
 import jdk.graal.compiler.truffle.phases.DeoptimizeOnExceptionPhase;
 import jdk.graal.compiler.truffle.phases.InstrumentPhase;
@@ -77,6 +77,7 @@ import jdk.graal.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -118,6 +119,11 @@ public abstract class PartialEvaluator {
 
     protected final TruffleConstantFieldProvider constantFieldProvider;
 
+    /**
+     * See {@link #appendJFRTracingPlugin(Plugins)} for details.
+     */
+    private final ResolvedJavaField throwableJFRTracingField;
+
     @SuppressWarnings("this-escape")
     public PartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot) {
         this.config = config;
@@ -127,6 +133,22 @@ public abstract class PartialEvaluator {
         this.lastTierDecodingPlugins = createDecodingInvocationPlugins(config.lastTier().partialEvaluator(), configForRoot.getPlugins(), config.lastTier().providers());
         this.nodePlugins = createNodePlugins(configForRoot.getPlugins());
         this.constantFieldProvider = new TruffleConstantFieldProvider(this, getProviders().getConstantFieldProvider());
+        this.throwableJFRTracingField = getThrowableJFRTracingField(getProviders());
+    }
+
+    private static ResolvedJavaField getThrowableJFRTracingField(Providers providers) {
+        if (throwableUsesJFRTracing()) {
+            ResolvedJavaType throwableType = providers.getMetaAccess().lookupJavaType(Throwable.class);
+            for (ResolvedJavaField staticField : throwableType.getStaticFields()) {
+                if (staticField.getName().equals("jfrTracing") &&
+                                staticField.getType().equals(providers.getMetaAccess().lookupJavaType(boolean.class)) && staticField.isVolatile()) {
+                    return staticField;
+                }
+            }
+            throw GraalError.shouldNotReachHere("Field Throwable.jfrTracing not found. " + "This field was added in JDK-22+24 and must be present. " +
+                            "This either means this field was removed in which case this code needs to be adapted or the meta access lookup above failed which should never happen.");
+        }
+        return null;
     }
 
     protected void initialize(OptionValues options) {
@@ -457,14 +479,23 @@ public abstract class PartialEvaluator {
         return newConfig;
     }
 
+    public static final int JDK = Runtime.version().feature();
+
+    private static boolean throwableUsesJFRTracing() {
+        return JDK >= 22;
+    }
+
     protected void appendParsingNodePlugins(Plugins plugins) {
-        if (JavaVersionUtil.JAVA_SPEC < 19) {
+        if (JDK < 19) {
             ResolvedJavaType memorySegmentProxyType = config.types().MemorySegmentProxy;
             for (ResolvedJavaMethod m : memorySegmentProxyType.getDeclaredMethods(false)) {
                 if (m.getName().equals("scope")) {
                     appendMemorySegmentScopePlugin(plugins, m);
                 }
             }
+        }
+        if (throwableUsesJFRTracing()) {
+            appendJFRTracingPlugin(plugins);
         }
     }
 
@@ -485,6 +516,29 @@ public abstract class PartialEvaluator {
                     return true;
                 }
                 return false;
+            }
+
+        });
+    }
+
+    /**
+     * JDK 22+24 introduced JFR tracing in java code of constructors of subclasses of
+     * {@link Throwable}. This complicates exception handlers used in Truffle code. We cannot just
+     * deopt in case JFR tracing is enabled as that can cause repeated deopts for hot exceptions
+     * (e.g. ControlFlowExceptions) and we cannot just move behind a Truffle boundary for call
+     * itself since Truffle does not yet support marking arbitrary methods as Truffle boundaries.
+     * GR-50226 will take care of this and rework how the jfrTracing is handled in Truffle here.
+     */
+    private void appendJFRTracingPlugin(Plugins plugins) {
+        plugins.appendNodePlugin(new NodePlugin() {
+
+            @Override
+            public boolean handleLoadStaticField(GraphBuilderContext b, ResolvedJavaField field) {
+                if (field.equals(throwableJFRTracingField)) {
+                    b.addPush(JavaKind.Boolean, jdk.graal.compiler.nodes.ConstantNode.forBoolean(false));
+                    return true;
+                }
+                return NodePlugin.super.handleLoadStaticField(b, field);
             }
         });
     }
