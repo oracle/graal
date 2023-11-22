@@ -18,7 +18,26 @@ common + common.frequencies + {
   + (
     if (std.length(std.find('gate', build.targets)) > 0 || std.length(std.find('deploy', build.targets)) == 0) then {
       guard+: {
-        excludes+: ["**.md", "<graal>/**.md", "<graal>/docs/**", "<graal>/.devcontainer/**", "<graal>/.github/**", "<graal>/vm/ce-release-artifacts.json"]
+        excludes+: ["*.md",
+          "<graal>/*.md",
+          "<graal>/ci/**.md",
+          "<graal>/compiler/**.md",
+          "<graal>/espresso/**.md",
+          "<graal>/regex/**.md",
+          "<graal>/sdk/**.md",
+          "<graal>/substratevm/**.md",
+          "<graal>/sulong/docs/**.md",  # Sulong includes its readme in a distribution
+          "<graal>/sulong/CHANGELOG.md",
+          "<graal>/tools/**.md",
+          "<graal>/truffle/**.md",
+          "<graal>/visualizer/**.md",
+          "<graal>/vm/**.md",
+          "<graal>/wasm/**.md",
+          "<graal>/docs/**",
+          "<graal>/.devcontainer/**",
+          "<graal>/.github/**",
+          "<graal>/vm/ce-release-artifacts.json"
+        ]
       }
     } else {}
   ),
