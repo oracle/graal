@@ -36,7 +36,6 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public class MethodArgsUtils {
@@ -98,7 +97,7 @@ public class MethodArgsUtils {
     }
 
     @TruffleBoundary
-    public static CandidateMethodWithArgs ensureVarArgsArrayCreated(CandidateMethodWithArgs matched, ToEspressoNode.DynamicToEspresso toEspressoNode) {
+    public static CandidateMethodWithArgs ensureVarArgsArrayCreated(CandidateMethodWithArgs matched) {
         int varArgsIndex = matched.getParameterTypes().length - 1;
         Klass varArgsArrayType = matched.getParameterTypes()[varArgsIndex];
         Klass varArgsType = ((ArrayKlass) varArgsArrayType).getComponentType();
@@ -112,28 +111,15 @@ public class MethodArgsUtils {
 
         StaticObject varArgsArray = isPrimitive ? varArgsType.getAllocator().createNewPrimitiveArray(varArgsType, varArgsLength) : varArgsType.allocateReferenceArray(varArgsLength);
 
-        if (isPrimitive) {
-            varArgsType = primitiveTypeToBoxedType((PrimitiveKlass) varArgsType);
-        }
-
-        EspressoLanguage language = matched.getMethod().getLanguage();
-        Meta meta = varArgsType.getMeta();
         int index = 0;
         for (int i = varArgsIndex; i < matched.getConvertedArgs().length; i++) {
-            Object inputArg = matched.getConvertedArgs()[i];
-            try {
-                // Already converted arguments could be foreign wrappers,
-                // so we need to unwrap here before ToEspresso.
-                Object convertedArg = toEspressoNode.execute(InteropUtils.unwrap(language, inputArg, meta), varArgsType);
-                if (!isPrimitive) {
-                    Object[] array = varArgsArray.unwrap(matched.getMethod().getLanguage());
-                    array[index++] = convertedArg;
-                } else {
-                    putPrimitiveArg(varArgsArray, inputArg, index, matched.getMethod().getLanguage());
-                    index++;
-                }
-            } catch (UnsupportedTypeException e) {
-                throw EspressoError.shouldNotReachHere();
+            Object convertedArg = matched.getConvertedArgs()[i];
+            if (!isPrimitive) {
+                Object[] array = varArgsArray.unwrap(matched.getMethod().getLanguage());
+                array[index++] = convertedArg;
+            } else {
+                putPrimitiveArg(varArgsArray, convertedArg, index, matched.getMethod().getLanguage());
+                index++;
             }
         }
         Object[] finalConvertedArgs = new Object[matched.getParameterTypes().length];

@@ -741,7 +741,7 @@ public class EspressoInterop extends BaseInterop {
                     } else {
                         CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(m, arguments, m.resolveParameterKlasses(), toEspressoNode);
                         if (matched != null) {
-                            matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
+                            matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched);
                             if (matched != null) {
                                 return invoke.execute(matched.getMethod(), receiver, matched.getConvertedArgs(), true);
                             }
