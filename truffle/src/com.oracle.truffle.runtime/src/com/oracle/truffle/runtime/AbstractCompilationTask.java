@@ -52,6 +52,7 @@ import java.util.Map;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -137,7 +138,9 @@ public abstract class AbstractCompilationTask implements TruffleCompilationTask 
             return position;
         }
         SourceSection section = null;
-        if (truffleNode instanceof DirectCallNode) {
+        if (truffleNode.getRootNode() instanceof BytecodeRootNode bytecodeRootNode) {
+            section = BytecodeRootNode.getSourceSectionFromLocation(truffleNode);
+        } else if (truffleNode instanceof DirectCallNode) {
             section = ((DirectCallNode) truffleNode).getCurrentRootNode().getSourceSection();
         }
         if (section == null) {

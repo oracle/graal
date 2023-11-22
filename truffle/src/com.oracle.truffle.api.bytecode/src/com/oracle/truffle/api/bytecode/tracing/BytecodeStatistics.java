@@ -59,6 +59,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.shadowed.org.json.JSONArray;
 import org.graalvm.shadowed.org.json.JSONObject;
@@ -85,16 +86,19 @@ public class BytecodeStatistics {
         return new BytecodeStatistics(statePath);
     }
 
+    @TruffleBoundary
     public BytecodeStatistics enter() {
         BytecodeStatistics prev = STATISTICS.get();
         STATISTICS.set(this);
         return prev;
     }
 
+    @TruffleBoundary
     public void exit(BytecodeStatistics prev) {
         STATISTICS.set(prev);
     }
 
+    @TruffleBoundary
     private void read() {
         try {
             stateFile = FileChannel.open(statePath, StandardOpenOption.READ, StandardOpenOption.WRITE);
@@ -118,6 +122,7 @@ public class BytecodeStatistics {
         }
     }
 
+    @TruffleBoundary
     public void write(PrintWriter dumpWriter) {
         try {
             try {
@@ -147,6 +152,7 @@ public class BytecodeStatistics {
         });
     }
 
+    @TruffleBoundary
     synchronized BytecodeRootNodeStatistics getStatistics(Class<?> bytecodeClass) {
         return rootNodeStatistics.computeIfAbsent(bytecodeClass, (c) -> BytecodeRootNodeStatistics.createFromClass(bytecodeClass));
     }
@@ -170,6 +176,7 @@ public class BytecodeStatistics {
             this.specializationNames = specializationNames;
         }
 
+        @TruffleBoundary
         private static BytecodeRootNodeStatistics createFromClass(Class<?> bytecodeClass) {
             if (!bytecodeClass.isAnnotationPresent(TracingMetadata.class)) {
                 throw new AssertionError(String.format("Bytecode class %s does not contain the @%s annotation.", bytecodeClass.getName(), TracingMetadata.class.getName()));
