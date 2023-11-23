@@ -31,7 +31,10 @@ common + common.frequencies + {
           "<graal>/tools/**.md",
           "<graal>/truffle/**.md",
           "<graal>/visualizer/**.md",
-          "<graal>/vm/**.md",
+          "<graal>/vm/README.md", # vm/GRAALVM-README.md is included in a distribution
+          "<graal>/vm/src/**.md",
+          "<graal>/vm/benchmarks/**.md",
+          "<graal>/vm/docs/**",
           "<graal>/wasm/**.md",
           "<graal>/docs/**",
           "<graal>/.devcontainer/**",
