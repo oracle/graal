@@ -44,6 +44,7 @@ package org.graalvm.wasm.parser.bytecode;
 import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.wasm.WasmType;
 
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.SegmentMode;
@@ -124,6 +125,19 @@ public class RuntimeBytecodeGen extends BytecodeGen {
         assert fitsIntoUnsignedByte(opcode) : "opcode does not fit into byte";
         add1(opcode);
         add8(value);
+    }
+
+    /**
+     * Adds an opcode and an i128 immediate value to the bytecode. See {@link Bytecode} for a list
+     * of opcodes.
+     *
+     * @param opcode The opcode
+     * @param value The immediate value
+     */
+    public void add(int opcode, Vector128 value) {
+        assert fitsIntoUnsignedByte(opcode) : "opcode does not fit into byte";
+        add1(opcode);
+        add16(value);
     }
 
     /**

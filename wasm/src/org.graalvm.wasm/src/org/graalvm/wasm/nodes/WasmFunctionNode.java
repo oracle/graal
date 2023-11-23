@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.nodes;
 
+import static org.graalvm.wasm.BinaryStreamParser.rawPeekI128;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekI32;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekI64;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekI8;
@@ -55,11 +56,13 @@ import static org.graalvm.wasm.nodes.WasmFrame.popFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.popInt;
 import static org.graalvm.wasm.nodes.WasmFrame.popLong;
 import static org.graalvm.wasm.nodes.WasmFrame.popReference;
+import static org.graalvm.wasm.nodes.WasmFrame.popVector128;
 import static org.graalvm.wasm.nodes.WasmFrame.pushDouble;
 import static org.graalvm.wasm.nodes.WasmFrame.pushFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.pushInt;
 import static org.graalvm.wasm.nodes.WasmFrame.pushLong;
 import static org.graalvm.wasm.nodes.WasmFrame.pushReference;
+import static org.graalvm.wasm.nodes.WasmFrame.pushVector128;
 
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.SymbolTable;
@@ -75,6 +78,7 @@ import org.graalvm.wasm.WasmMath;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmType;
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.exception.Failure;
@@ -1710,6 +1714,30 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     final WasmMemory memory = memory(instance, memoryIndex);
                     final int stackPointerDecrement = executeAtomic(frame, stackPointer, atomicOpcode, memory, memOffset, indexType64);
                     stackPointer -= stackPointerDecrement;
+                    break;
+                }
+                case Bytecode.VECTOR: {
+                    final int vectorOpcode = rawPeekU8(bytecode, offset);
+                    offset++;
+                    CompilerAsserts.partialEvaluationConstant(vectorOpcode);
+                    switch (vectorOpcode) {
+                        case Bytecode.VECTOR_V128_CONST_I128:
+                            final Vector128 value = rawPeekI128(bytecode, offset);
+                            offset += 16;
+
+                            pushVector128(frame, stackPointer, value);
+                            stackPointer++;
+                            break;
+                        case Bytecode.VECTOR_I32X4_ALL_TRUE:
+                            i32x4_all_true(frame, stackPointer);
+                            break;
+                        case Bytecode.VECTOR_I32X4_ADD:
+                            i32x4_add(frame, stackPointer);
+                            stackPointer--;
+                            break;
+                        default:
+                            throw CompilerDirectives.shouldNotReachHere();
+                    }
                     break;
                 }
                 case Bytecode.NOTIFY: {
@@ -3802,6 +3830,28 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             return;
         }
         destMemory.copyFrom(srcMemory, source, destination, length);
+    }
+
+    private static void i32x4_all_true(VirtualFrame frame, int stackPointer) {
+        int[] x = popVector128(frame, stackPointer - 1).asInts();
+        int result = 1;
+        for (int i = 0; i < 4; i++) {
+            if (x[i] == 0) {
+                result = 0;
+                break;
+            }
+        }
+        pushInt(frame, stackPointer - 1, result);
+    }
+
+    private static void i32x4_add(VirtualFrame frame, int stackPointer) {
+        int[] x = popVector128(frame, stackPointer - 1).asInts();
+        int[] y = popVector128(frame, stackPointer - 2).asInts();
+        int[] result = new int[4];
+        for (int i = 0; i < 4; i++) {
+            result[i] = y[i] + x[i];
+        }
+        pushVector128(frame, stackPointer - 2, Vector128.ofInts(result));
     }
 
     // Checkstyle: resume method name check

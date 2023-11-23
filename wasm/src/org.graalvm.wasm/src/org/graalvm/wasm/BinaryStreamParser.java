@@ -42,12 +42,15 @@ package org.graalvm.wasm;
 
 import static com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN;
 
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+
+import java.util.Arrays;
 
 public abstract class BinaryStreamParser {
     protected static final int SINGLE_RESULT_VALUE = 0;
@@ -308,6 +311,7 @@ public abstract class BinaryStreamParser {
             case WasmType.I64_TYPE:
             case WasmType.F32_TYPE:
             case WasmType.F64_TYPE:
+            case WasmType.V128_TYPE:
                 break;
             case WasmType.FUNCREF_TYPE:
             case WasmType.EXTERNREF_TYPE:
@@ -449,6 +453,18 @@ public abstract class BinaryStreamParser {
         bytecode[offset + 5] = (byte) ((value >> 40) & 0xFF);
         bytecode[offset + 6] = (byte) ((value >> 48) & 0xFF);
         bytecode[offset + 7] = (byte) ((value >> 56) & 0xFF);
+    }
+
+    /**
+     * Reads the {@link Vector128} value at the given bytecode offset.
+     *
+     * @param bytecode The bytecode
+     * @param offset The offset in the bytecode.
+     * @return The {@link Vector128} value at the given bytecode offset.
+     */
+    public static Vector128 rawPeekI128(byte[] bytecode, int offset) {
+        byte[] bytes = Arrays.copyOfRange(bytecode, offset, offset + 16);
+        return new Vector128(bytes);
     }
 
     // endregion

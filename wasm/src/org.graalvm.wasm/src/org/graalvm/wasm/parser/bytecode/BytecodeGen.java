@@ -41,6 +41,7 @@
 
 package org.graalvm.wasm.parser.bytecode;
 
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.collection.ByteArrayList;
 
 /**
@@ -172,6 +173,18 @@ public class BytecodeGen {
         data.add((byte) ((value >>> 40) & 0x0000_00FF));
         data.add((byte) ((value >>> 48) & 0x0000_00FF));
         data.add((byte) ((value >>> 56) & 0x0000_00FF));
+    }
+
+    /**
+     * Adds a {@link Vector128} value as sixteen bytes in little endian to the bytecode.
+     *
+     * @param value the {@link Vector128} value
+     */
+    protected void add16(Vector128 value) {
+        byte[] bytes = value.asBytes();
+        for (int i = 0; i < 16; i++) {
+            data.add(bytes[i]);
+        }
     }
 
     /**

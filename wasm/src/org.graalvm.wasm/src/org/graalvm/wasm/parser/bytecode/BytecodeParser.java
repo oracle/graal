@@ -895,6 +895,20 @@ public abstract class BytecodeParser {
                             throw CompilerDirectives.shouldNotReachHere();
                     }
                     break;
+                case Bytecode.VECTOR:
+                    final int vectorOpcode = rawPeekU8(bytecode, offset);
+                    offset++;
+                    switch (vectorOpcode) {
+                        case Bytecode.VECTOR_V128_CONST_I128:
+                            offset += 16;
+                            break;
+                        case Bytecode.VECTOR_I32X4_ALL_TRUE:
+                        case Bytecode.VECTOR_I32X4_ADD:
+                            break;
+                        default:
+                            throw CompilerDirectives.shouldNotReachHere();
+                    }
+                    break;
                 default:
                     throw CompilerDirectives.shouldNotReachHere();
             }
