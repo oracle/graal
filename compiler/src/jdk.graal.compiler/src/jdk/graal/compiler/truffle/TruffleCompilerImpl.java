@@ -625,21 +625,20 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             System.out.println("Exporting compiled result");
             System.out.println("BCI: " + compilationResult.getEntryBCI());
             System.out.println("Data section size: " + compilationResult.getDataSection().getSectionSize());
-            File tmp = File.createTempFile(new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date()) + "compiledBinary", ".bin");
+
+            System.out.println("Methods in the exported code");
+            StringBuilder binName = new StringBuilder();
+            for (var method: compilationResult.getMethods()) {
+                System.out.println("--> Method name: " + method.getName());
+                binName.append(method.getName());
+            }
+            System.out.println("Bin name: " + binName);
+
+
+            File tmp = File.createTempFile(new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date()) + binName, ".bin");
             try (FileOutputStream fos = new FileOutputStream(tmp)) {
                 fos.write(compilationResult.getTargetCode());
 
-            }
-
-            File tmp2 = File.createTempFile(new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date()) + "compiledBinary-no-data", ".bin");
-            try (FileOutputStream fos = new FileOutputStream(tmp2)) {
-                fos.write(Arrays.copyOfRange(compilationResult.getTargetCode(), compilationResult.getDataSection().getSectionSize(), compilationResult.getTargetCodeSize()));
-
-            }
-
-            System.out.println("Methods in the exported code");
-            for (var method: compilationResult.getMethods()) {
-                System.out.println("--> Method name: " + method.getName());
             }
 
 
