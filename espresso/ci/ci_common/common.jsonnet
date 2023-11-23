@@ -76,7 +76,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     },
     setup+: [
       ['mx', 'sversions'],
-      ['apply-predicates', '--verbose', '--delete-excluded', '--pattern-root', '..'] # we are the espresso directory
+      ['apply-predicates', '--delete-excluded', '--pattern-root', '..'] # we are the espresso directory
         + (if std.objectHasAll(self.guard, 'excludes') then ['--exclude=' + e for e in  self.guard.excludes] else [])
         + ['--include=' + e for e in  self.guard.includes]
     ],
