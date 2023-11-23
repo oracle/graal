@@ -390,6 +390,9 @@ public final class InspectServerSession implements MessageEndpoint {
                 runtime.releaseObjectGroup(json.optString("objectGroup"));
                 break;
             case "Debugger.enable":
+                JSONObject dbgJson = new JSONObject();
+                dbgJson.put("debuggerId", debugger.getUniqueDebuggerId());
+                resultParams = new Params(dbgJson);
                 debugger.enable();
                 break;
             case "Debugger.disable":
