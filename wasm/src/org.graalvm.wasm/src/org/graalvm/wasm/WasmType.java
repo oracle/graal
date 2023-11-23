@@ -76,6 +76,9 @@ public class WasmType implements TruffleObject {
     public static final byte F64_TYPE = 0x7C;
     @CompilationFinal(dimensions = 1) public static final byte[] F64_TYPE_ARRAY = {F64_TYPE};
 
+    public static final byte V128_TYPE = 0x7B;
+    @CompilationFinal(dimensions = 1) public static final byte[] V128_TYPE_ARRAY = {V128_TYPE};
+
     /**
      * Reference Types.
      */
@@ -93,8 +96,9 @@ public class WasmType implements TruffleObject {
      */
     public static final int NONE_COMMON_TYPE = 0;
     public static final int NUM_COMMON_TYPE = 1;
-    public static final int REF_COMMON_TYPE = 2;
-    public static final int MIX_COMMON_TYPE = NUM_COMMON_TYPE | REF_COMMON_TYPE;
+    public static final int VEC_COMMON_TYPE = 2;
+    public static final int REF_COMMON_TYPE = 3;
+    public static final int MIX_COMMON_TYPE = NUM_COMMON_TYPE | VEC_COMMON_TYPE | REF_COMMON_TYPE;
 
     public static String toString(int valueType) {
         CompilerAsserts.neverPartOfCompilation();
@@ -107,6 +111,8 @@ public class WasmType implements TruffleObject {
                 return "f32";
             case F64_TYPE:
                 return "f64";
+            case V128_TYPE:
+                return "v128";
             case VOID_TYPE:
                 return "void";
             case FUNCREF_TYPE:
@@ -120,6 +126,10 @@ public class WasmType implements TruffleObject {
 
     public static boolean isNumberType(byte type) {
         return type == I32_TYPE || type == I64_TYPE || type == F32_TYPE || type == F64_TYPE || type == UNKNOWN_TYPE;
+    }
+
+    public static boolean isVectorType(byte type) {
+        return type == V128_TYPE || type == UNKNOWN_TYPE;
     }
 
     public static boolean isReferenceType(byte type) {

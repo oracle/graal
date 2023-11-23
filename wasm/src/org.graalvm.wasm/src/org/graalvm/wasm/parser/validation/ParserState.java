@@ -45,6 +45,7 @@ import static java.lang.Integer.compareUnsigned;
 
 import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.WasmType;
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.exception.Failure;
@@ -416,6 +417,13 @@ public class ParserState {
     }
 
     /**
+     * Adds the vector flag to the bytecode.
+     */
+    public void addVectorFlag() {
+        bytecode.add(Bytecode.VECTOR);
+    }
+
+    /**
      * Adds the given instruction and an i32 immediate value to the bytecode.
      * 
      * @param instruction The instruction
@@ -432,6 +440,16 @@ public class ParserState {
      * @param value The immediate value
      */
     public void addInstruction(int instruction, long value) {
+        bytecode.add(instruction, value);
+    }
+
+    /**
+     * Adds the given instruction and an i128 immediate value to the bytecode.
+     *
+     * @param instruction The instruction
+     * @param value The immediate value
+     */
+    public void addInstruction(int instruction, Vector128 value) {
         bytecode.add(instruction, value);
     }
 

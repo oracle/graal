@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,64 +38,42 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+
 package org.graalvm.wasm.api;
 
-import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
+public class Vector128 {
 
-import com.oracle.truffle.api.CompilerAsserts;
+    public static final Vector128 ZERO = new Vector128(new byte[16]);
 
-public enum ValueType {
-    i32(WasmType.I32_TYPE),
-    i64(WasmType.I64_TYPE),
-    f32(WasmType.F32_TYPE),
-    f64(WasmType.F64_TYPE),
-    v128(WasmType.V128_TYPE),
-    anyfunc(WasmType.FUNCREF_TYPE),
-    externref(WasmType.EXTERNREF_TYPE);
+    private final byte[] bytes;
 
-    private final byte byteValue;
-
-    ValueType(byte byteValue) {
-        this.byteValue = byteValue;
+    public Vector128(byte[] bytes) {
+        assert bytes.length == 16;
+        this.bytes = bytes;
     }
 
-    public static ValueType fromByteValue(byte value) {
-        CompilerAsserts.neverPartOfCompilation();
-        switch (value) {
-            case WasmType.I32_TYPE:
-                return i32;
-            case WasmType.I64_TYPE:
-                return i64;
-            case WasmType.F32_TYPE:
-                return f32;
-            case WasmType.F64_TYPE:
-                return f64;
-            case WasmType.V128_TYPE:
-                return v128;
-            case WasmType.FUNCREF_TYPE:
-                return anyfunc;
-            case WasmType.EXTERNREF_TYPE:
-                return externref;
-            default:
-                throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: 0x" + Integer.toHexString(value));
+    public byte[] asBytes() {
+        return bytes;
+    }
+
+    public static Vector128 ofBytes(byte[] bytes) {
+        return new Vector128(bytes);
+    }
+
+    public int[] asInts() {
+        int[] ints = new int[4];
+        for (int i = 0; i < 4; i++) {
+            ints[i] = (bytes[4 * i + 3] & 0xFF) << 24 | (bytes[4 * i + 2] & 0xFF) << 16 | (bytes[4 * i + 1] & 0xFF) << 8 | bytes[4 * i] & 0xFF;
         }
+        return ints;
     }
 
-    public byte byteValue() {
-        return byteValue;
-    }
-
-    public static boolean isNumberType(ValueType valueType) {
-        return valueType == i32 || valueType == i64 || valueType == f32 || valueType == f64;
-    }
-
-    public static boolean isVectorType(ValueType valueType) {
-        return valueType == v128;
-    }
-
-    public static boolean isReferenceType(ValueType valueType) {
-        return valueType == anyfunc || valueType == externref;
+    public static Vector128 ofInts(int[] ints) {
+        assert ints.length == 4;
+        byte[] bytes = new byte[16];
+        for (int i = 0; i < 16; i++) {
+            bytes[i] = (byte) ((ints[i / 4] >> 8 * (i % 4)) & 0xFF);
+        }
+        return new Vector128(bytes);
     }
 }

@@ -55,6 +55,7 @@ import static org.graalvm.wasm.WasmType.FUNCREF_TYPE;
 import static org.graalvm.wasm.WasmType.I32_TYPE;
 import static org.graalvm.wasm.WasmType.I64_TYPE;
 import static org.graalvm.wasm.WasmType.NULL_TYPE;
+import static org.graalvm.wasm.WasmType.V128_TYPE;
 import static org.graalvm.wasm.WasmType.VOID_TYPE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_64_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
@@ -71,6 +72,7 @@ import java.util.ArrayList;
 import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.collection.LongArrayList;
 import org.graalvm.wasm.constants.Bytecode;
@@ -1796,6 +1798,30 @@ public class BinaryParser extends BinaryStreamParser {
                         fail(Failure.UNSPECIFIED_MALFORMED, "Unknown opcode: 0xFE 0x%02x", atomicOpcode);
                 }
                 break;
+            case Instructions.VECTOR:
+                int vectorOpcode = read1() & 0xFF;
+                state.addVectorFlag();
+                switch (vectorOpcode) {
+                    case Instructions.VECTOR_V128_CONST:
+                        final Vector128 value = readUnsignedInt128();
+                        state.push(V128_TYPE);
+                        state.addInstruction(Bytecode.VECTOR_V128_CONST_I128, value);
+                        break;
+                    case Instructions.VECTOR_I32X4_ALL_TRUE:
+                        state.popChecked(V128_TYPE);
+                        state.push(I32_TYPE);
+                        state.addInstruction(Bytecode.VECTOR_I32X4_ALL_TRUE);
+                        break;
+                    case Instructions.VECTOR_I32X4_ADD:
+                        state.popChecked(V128_TYPE);
+                        state.popChecked(V128_TYPE);
+                        state.push(V128_TYPE);
+                        state.addInstruction(Bytecode.VECTOR_I32X4_ADD);
+                        break;
+                    default:
+                        fail(Failure.UNSPECIFIED_MALFORMED, "Unknown opcode: 0xFD 0x%02x", vectorOpcode);
+                }
+                break;
             default:
                 fail(Failure.UNSPECIFIED_MALFORMED, "Unknown opcode: 0x%02x", opcode);
                 break;
@@ -2731,6 +2757,14 @@ public class BinaryParser extends BinaryStreamParser {
         final byte length = peekLeb128Length(data, offset);
         offset += length;
         return value;
+    }
+
+    private Vector128 readUnsignedInt128() {
+        byte[] bytes = new byte[16];
+        for (int i = 0; i < 16; i++) {
+            bytes[i] = read1();
+        }
+        return new Vector128(bytes);
     }
 
     /**
