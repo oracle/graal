@@ -5,6 +5,7 @@
   local s = self,
   local t(limit) = {timelimit: limit},
   local utils = import '../../../ci/ci_common/common-utils.libsonnet',
+  local galahad = import '../../../ci/ci_common/galahad-common.libsonnet',
 
   local jmh_benchmark_test = {
     run+: [
@@ -159,7 +160,7 @@
   bootstrap_full_zgc:: s.base("build,bootstrapfullverify", no_warning_as_error=true, extra_vm_args="-XX:+UseZGC"),
   bootstrap_economy:: s.base("build,bootstrapeconomy", no_warning_as_error=true, extra_vm_args="-Djdk.graal.CompilerConfiguration=economy"),
 
-  style:: c.deps.eclipse + c.deps.jdt + s.base("style,fullbuild,javadoc"),
+  style:: c.deps.eclipse + c.deps.jdt + s.base("style,fullbuild,javadoc") + galahad.include,
 
   avx3:: {
     capabilities+: ["avx512"],
@@ -344,6 +345,7 @@
       (if is_weekly then s.weekly else {}) +
       (if is_monthly then s.monthly else {}) +
       (if is_windows then c.devkits["windows-jdk%s" % jdk] else {}) +
+      (if std.startsWith(jdk, "Latest") then galahad.include else {} ) +
       extra,
   },
 
