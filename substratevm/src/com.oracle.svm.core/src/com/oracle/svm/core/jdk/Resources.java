@@ -88,10 +88,7 @@ public final class Resources {
      * com.oracle.svm.hosted.ModuleLayerFeature}.
      */
     private final EconomicMap<Pair<Module, String>, ResourceStorageEntryBase> resources = ImageHeapMap.create();
-    private final EconomicMap<ModuleResourcePair, Boolean> includePatterns = ImageHeapMap.create();
-
-    public record ModuleResourcePair(String module, String resource) {
-    }
+    private final EconomicMap<Pair<String, String>, Boolean> includePatterns = ImageHeapMap.create();
 
     /**
      * The object used to mark a resource as reachable according to the metadata. It can be obtained
@@ -259,7 +256,7 @@ public final class Resources {
         assert MissingRegistrationUtils.throwMissingRegistrationErrors();
         synchronized (includePatterns) {
             updateTimeStamp();
-            includePatterns.put(new ModuleResourcePair(module, handleEscapedCharacters(pattern)), Boolean.TRUE);
+            includePatterns.put(Pair.create(module, handleEscapedCharacters(pattern)), Boolean.TRUE);
         }
     }
 
@@ -318,11 +315,11 @@ public final class Resources {
         ResourceStorageEntryBase entry = resources.get(createStorageKey(module, canonicalResourceName));
         if (entry == null) {
             if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
-                MapCursor<ModuleResourcePair, Boolean> cursor = includePatterns.getEntries();
+                MapCursor<Pair<String, String>, Boolean> cursor = includePatterns.getEntries();
                 while (cursor.advance()) {
-                    ModuleResourcePair moduleResourcePair = cursor.getKey();
-                    if (Objects.equals(moduleName, moduleResourcePair.module) &&
-                                    (matchResource(moduleResourcePair.resource, resourceName) || matchResource(moduleResourcePair.resource, canonicalResourceName))) {
+                    Pair<String, String> moduleResourcePair = cursor.getKey();
+                    if (Objects.equals(moduleName, moduleResourcePair.getLeft()) &&
+                                    (matchResource(moduleResourcePair.getRight(), resourceName) || matchResource(moduleResourcePair.getRight(), canonicalResourceName))) {
                         return null;
                     }
                 }
