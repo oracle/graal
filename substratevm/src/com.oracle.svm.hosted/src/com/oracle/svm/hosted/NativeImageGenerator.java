@@ -975,7 +975,8 @@ public class NativeImageGenerator {
         if (!(Modifier.isAbstract(cls.getModifiers()) || cls.isInterface() || cls.isPrimitive())) {
             bb.getMetaAccess().lookupJavaType(cls).registerAsAllocated(reason);
         }
-        Stream.concat(Arrays.stream(cls.getDeclaredConstructors()), Arrays.stream(cls.getDeclaredMethods()))
+        Stream<Method> methods = Arrays.stream(cls.getDeclaredMethods()).filter(method -> bb.getMetaAccess().lookupJavaMethod(method).getAnnotation(Fold.class) == null);
+        Stream.concat(Arrays.stream(cls.getDeclaredConstructors()), methods)
                         .forEach(mthd -> bb.addRootMethod(mthd, false, reason));
     }
 
