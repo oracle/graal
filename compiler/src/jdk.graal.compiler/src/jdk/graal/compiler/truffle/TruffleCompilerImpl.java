@@ -622,23 +622,27 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             result = GraalCompiler.compileGraph(graph, graph.method(), selectedProviders, tier.backend(), graphBuilderSuite, Optimizations, graph.getProfilingInfo(), selectedSuites,
                             selectedLirSuites, compilationResult, CompilationResultBuilderFactory.Default, false);
 
-            System.out.println("Exporting compiled result");
-            System.out.println("BCI: " + compilationResult.getEntryBCI());
-            System.out.println("Data section size: " + compilationResult.getDataSection().getSectionSize());
 
-            System.out.println("Methods in the exported code");
-            StringBuilder binName = new StringBuilder();
-            for (var method: compilationResult.getMethods()) {
-                System.out.println("--> Method name: " + method.getName());
-                binName.append(method.getName());
-            }
-            System.out.println("Bin name: " + binName);
+            if (TruffleCompilerOptions.DumpRuntimeCompiledMethods.getValue(getOrCreateCompilerOptions(compilable))) {
+
+                System.out.println("Should I export?" + TruffleCompilerOptions.DumpRuntimeCompiledMethods);
+                System.out.println("Exporting compiled result");
+                System.out.println("BCI: " + compilationResult.getEntryBCI());
+                System.out.println("Data section size: " + compilationResult.getDataSection().getSectionSize());
+
+                System.out.println("Methods in the exported code");
+                StringBuilder binName = new StringBuilder();
+                for (var method : compilationResult.getMethods()) {
+                    System.out.println("--> Method name: " + method.getName());
+                    binName.append(method.getName());
+                }
+                System.out.println("Bin name: " + binName);
 
 
-            File tmp = File.createTempFile(new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date()) + binName, ".bin");
-            try (FileOutputStream fos = new FileOutputStream(tmp)) {
-                fos.write(compilationResult.getTargetCode());
-
+                File tmp = File.createTempFile(new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date()) + binName, ".bin");
+                try (FileOutputStream fos = new FileOutputStream(tmp)) {
+                    fos.write(compilationResult.getTargetCode());
+                }
             }
 
 
