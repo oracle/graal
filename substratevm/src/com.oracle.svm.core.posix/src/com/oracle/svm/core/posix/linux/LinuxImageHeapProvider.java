@@ -31,11 +31,20 @@ import static com.oracle.svm.core.Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_RELOCATABLE_END;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
+import static com.oracle.svm.core.layeredimage.LayeredImageHeapSymbols.SECOND_IMAGE_HEAP_A_RELOCATABLE_POINTER;
+import static com.oracle.svm.core.layeredimage.LayeredImageHeapSymbols.SECOND_IMAGE_HEAP_BEGIN;
+import static com.oracle.svm.core.layeredimage.LayeredImageHeapSymbols.SECOND_IMAGE_HEAP_END;
+import static com.oracle.svm.core.layeredimage.LayeredImageHeapSymbols.SECOND_IMAGE_HEAP_RELOCATABLE_BEGIN;
+import static com.oracle.svm.core.layeredimage.LayeredImageHeapSymbols.SECOND_IMAGE_HEAP_RELOCATABLE_END;
+import static com.oracle.svm.core.layeredimage.LayeredImageHeapSymbols.SECOND_IMAGE_HEAP_WRITABLE_BEGIN;
+import static com.oracle.svm.core.layeredimage.LayeredImageHeapSymbols.SECOND_IMAGE_HEAP_WRITABLE_END;
 import static com.oracle.svm.core.posix.linux.ProcFSSupport.findMapping;
 import static com.oracle.svm.core.util.PointerUtils.roundDown;
+import static com.oracle.svm.core.util.UnsignedUtils.isAMultiple;
 import static com.oracle.svm.core.util.UnsignedUtils.roundUp;
 import static org.graalvm.word.WordFactory.signed;
 
+import java.nio.ByteBuffer;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.graalvm.nativeimage.StackValue;
@@ -47,8 +56,10 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
@@ -68,6 +79,7 @@ import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.word.Word;
+import jdk.vm.ci.code.Architecture;
 
 /**
  * An optimal image heap provider for Linux which creates isolate image heaps that retain the
@@ -91,10 +103,40 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
 
     private static final SignedWord UNASSIGNED_FD = signed(-1);
     private static final SignedWord CANNOT_OPEN_FD = signed(-2);
-    private static final CGlobalData<WordPointer> CACHED_IMAGE_FD = CGlobalDataFactory.createWord(UNASSIGNED_FD);
-    private static final CGlobalData<WordPointer> CACHED_IMAGE_HEAP_OFFSET_IN_FILE = CGlobalDataFactory.createWord();
+
+    private static final int IMAGE_COUNT = 2;
+    private static final CGlobalData<WordPointer> CACHED_IMAGE_FDS = CGlobalDataFactory.createBytes(() -> createWords(IMAGE_COUNT, UNASSIGNED_FD));
+    private static final CGlobalData<WordPointer> CACHED_IMAGE_HEAP_OFFSETS = CGlobalDataFactory.createBytes(() -> createWords(IMAGE_COUNT, WordFactory.zero()));
 
     private static final int MAX_PATHLEN = 4096;
+
+    private static byte[] createWords(int count, WordBase initialValue) {
+        Architecture arch = ConfigurationValues.getTarget().arch;
+        assert arch.getWordSize() == Long.BYTES : "currently hard-coded for 8 byte words";
+        ByteBuffer buffer = ByteBuffer.allocate(count * Long.BYTES).order(arch.getByteOrder());
+        for (int i = 0; i < count; i++) {
+            buffer.putLong(initialValue.rawValue());
+        }
+        return buffer.array();
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected UnsignedWord getImageHeapAddressSpaceSize() {
+        if (SubstrateOptions.ImageLayer.hasBeenSet() || SubstrateOptions.LoadImageLayer.hasBeenSet()) {
+            int imageHeapOffset = Heap.getHeap().getImageHeapOffsetInAddressSpace();
+            assert imageHeapOffset >= 0;
+            UnsignedWord size = WordFactory.unsigned(imageHeapOffset);
+            UnsignedWord granularity = VirtualMemoryProvider.get().getGranularity();
+            assert isAMultiple(size, granularity);
+            size = size.add(getImageHeapSizeInFile(IMAGE_HEAP_BEGIN.get(), IMAGE_HEAP_END.get()));
+            size = roundUp(size, granularity);
+            size = size.add(getImageHeapSizeInFile(SECOND_IMAGE_HEAP_BEGIN.get(), SECOND_IMAGE_HEAP_END.get()));
+            return size;
+        } else {
+            return super.getImageHeapAddressSpaceSize();
+        }
+    }
 
     @Override
     @Uninterruptible(reason = "Called during isolate initialization.")
@@ -143,15 +185,30 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
 
         int imageHeapOffsetInAddressSpace = Heap.getHeap().getImageHeapOffsetInAddressSpace();
         basePointer.write(heapBase);
-        Pointer imageHeapStart = heapBase.add(imageHeapOffsetInAddressSpace);
+        Pointer firstHeapStart = heapBase.add(imageHeapOffsetInAddressSpace);
         remainingSize = remainingSize.subtract(imageHeapOffsetInAddressSpace);
-        int result = initializeImageHeap(imageHeapStart, remainingSize, endPointer,
-                        CACHED_IMAGE_FD.get(), CACHED_IMAGE_HEAP_OFFSET_IN_FILE.get(), MAGIC.get(),
+        boolean layeredImage = SubstrateOptions.ImageLayer.hasBeenSet() || SubstrateOptions.LoadImageLayer.hasBeenSet();
+        WordPointer firstEndPtr = layeredImage ? StackValue.get(WordPointer.class) : endPointer;
+        int result = initializeImageHeap(firstHeapStart, remainingSize, firstEndPtr,
+                        CACHED_IMAGE_FDS.get().addressOf(0), CACHED_IMAGE_HEAP_OFFSETS.get().addressOf(0), MAGIC.get(),
                         IMAGE_HEAP_BEGIN.get(), IMAGE_HEAP_END.get(),
                         IMAGE_HEAP_RELOCATABLE_BEGIN.get(), IMAGE_HEAP_A_RELOCATABLE_POINTER.get(), IMAGE_HEAP_RELOCATABLE_END.get(),
                         IMAGE_HEAP_WRITABLE_BEGIN.get(), IMAGE_HEAP_WRITABLE_END.get());
         if (result != CEntryPointErrors.NO_ERROR) {
             freeImageHeap(selfReservedHeapBase);
+            return result;
+        }
+        if (SubstrateOptions.ImageLayer.hasBeenSet() || SubstrateOptions.LoadImageLayer.hasBeenSet()) {
+            Pointer secondHeapStart = firstEndPtr.read(); // aligned
+            remainingSize = remainingSize.subtract(secondHeapStart.subtract(firstHeapStart));
+            result = initializeImageHeap(secondHeapStart, remainingSize, endPointer,
+                            CACHED_IMAGE_FDS.get().addressOf(1), CACHED_IMAGE_HEAP_OFFSETS.get().addressOf(1), MAGIC.get(),
+                            SECOND_IMAGE_HEAP_BEGIN.get(), SECOND_IMAGE_HEAP_END.get(),
+                            SECOND_IMAGE_HEAP_RELOCATABLE_BEGIN.get(), SECOND_IMAGE_HEAP_A_RELOCATABLE_POINTER.get(), SECOND_IMAGE_HEAP_RELOCATABLE_END.get(),
+                            SECOND_IMAGE_HEAP_WRITABLE_BEGIN.get(), SECOND_IMAGE_HEAP_WRITABLE_END.get());
+            if (result != CEntryPointErrors.NO_ERROR) {
+                freeImageHeap(selfReservedHeapBase);
+            }
         }
         return result;
     }

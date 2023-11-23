@@ -40,6 +40,7 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FIELD_FOLDED
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FIELD_READ_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FIELD_WRITTEN_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ID_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_HEAP_SIZE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INSTANCE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INTERFACES_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_ENUM_TAG;
@@ -252,6 +253,8 @@ public class ImageLayerLoader {
 
     protected EconomicMap<String, Object> jsonMap;
 
+    private long imageHeapSize;
+
     public ImageLayerLoader() {
         this(new ImageLayerSnapshotUtil(), List.of());
     }
@@ -307,6 +310,8 @@ public class ImageLayerLoader {
 
         int nextFieldId = get(jsonMap, NEXT_FIELD_ID_TAG);
         universe.setStartFieldId(nextFieldId);
+
+        imageHeapSize = Long.parseLong(get(jsonMap, IMAGE_HEAP_SIZE_TAG));
 
         /* This mapping allows one to get the base layer information from a type id */
         EconomicMap<String, Object> typesMap = get(jsonMap, TYPES_TAG);
@@ -984,5 +989,9 @@ public class ImageLayerLoader {
     private ImageHeapConstant getTaggedImageHeapConstant(String tag) {
         int id = get(jsonMap, tag);
         return constants.get(id);
+    }
+
+    public long getImageHeapSize() {
+        return imageHeapSize;
     }
 }
