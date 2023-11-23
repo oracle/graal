@@ -312,6 +312,7 @@ suite = {
       "javaCompliance" : "17+",
       "workingSets" : "SDK",
       "checkstyle" : "org.graalvm.word",
+      "libGraalSourceEdition": "ignore",
     },
     "org.graalvm.launcher" : {
       "subDir" : "src",
@@ -340,6 +341,7 @@ suite = {
       "javaCompliance" : "17+",
       "workingSets" : "Truffle,Tools,Test",
       "checkstyle" : "org.graalvm.word",
+      "libGraalSourceEdition": "ignore",
     },
     "org.graalvm.polyglot.tck" : {
       "subDir" : "src",
@@ -368,6 +370,7 @@ suite = {
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "17+",
       "workingSets" : "API,SDK,Test",
+      "libGraalSourceEdition": "ignore",
     },
     "org.graalvm.home" : {
       "subDir" : "src",
@@ -389,6 +392,7 @@ suite = {
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "17+",
       "workingSets" : "API,SDK",
+      "libGraalSourceEdition": "ignore",
     },
     "org.graalvm.jniutils" : {
       "subDir" : "src",
@@ -441,11 +445,13 @@ suite = {
       "workingSets" : "Graal,Test",
       "jacoco" : "exclude",
       "testProject" : True,
+      "libGraalSourceEdition": "ignore",
     },
     "org.graalvm.toolchain.test" : {
       "class" : "ToolchainTestProject",
       "subDir" : "src",
       "buildDependencies" : ["LLVM_TOOLCHAIN"],
+      "libGraalSourceEdition": "ignore",
     },
     "org.graalvm.shadowed.org.jline": {
       # shaded JLINE_*
@@ -534,6 +540,7 @@ suite = {
       "noMavenJavadoc": True,
       "javac.lint.overrides": 'none',
       "jacoco": "exclude",
+      "libGraalSourceEdition": "ignore",
     },
     "org.graalvm.maven.downloader" : {
       "subDir" : "src",
@@ -806,6 +813,7 @@ suite = {
         "sdk:LAUNCHER_COMMON"
       ],
       "maven" : False,
+      "libGraalSourceEdition": "ignore",
     },
     "JLINE3": {
       # shaded JLINE_*
@@ -940,6 +948,7 @@ suite = {
       },
       "maven": False,
       "testDistribution" : True,
+      "libGraalSourceEdition": "ignore",
     },
     "LLVM_TOOLCHAIN": {
       "native": True,
@@ -1058,6 +1067,7 @@ suite = {
       "platformDependent" : True,
       "maven": False,
       "license" : "Apache-2.0-LLVM",
+      "libGraalSourceEdition": "ignore",
     },
     "LLVM_TOOLCHAIN_FULL": {
       "description": "Distribution including all of LLVM. Use only for building/testing. Only the content of LLVM_TOOLCHAIN will be included in the llvm-toolchain installable.",
@@ -1076,6 +1086,7 @@ suite = {
       "maven": False,
       "license" : "Apache-2.0-LLVM",
       "defaultBuild" : False,
+      "libGraalSourceEdition": "ignore",
     },
     "LLVM_NINJA_TOOLCHAIN": {
       "native": True,
@@ -1136,6 +1147,7 @@ ML=<path:LLVM_TOOLCHAIN>\\bin\\llvm-ml
         "LLVM_TOOLCHAIN",
         "org.graalvm.toolchain.test",
       ],
+      "libGraalSourceEdition": "ignore",
     },
   },
 }
