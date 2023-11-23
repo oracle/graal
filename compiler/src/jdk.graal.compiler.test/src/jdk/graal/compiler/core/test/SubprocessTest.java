@@ -72,7 +72,7 @@ public abstract class SubprocessTest extends GraalCompilerTest {
     public static SubprocessUtil.Subprocess launchSubprocess(Predicate<List<String>> testPredicate, Predicate<String> vmArgsFilter, boolean expectNormalExit,
                     Class<? extends GraalCompilerTest> testClass, Runnable runnable, String... args)
                     throws InterruptedException, IOException {
-        String recursionPropName = testClass.getName() + ".subprocess";
+        String recursionPropName = "test." + testClass.getName() + ".subprocess";
         if (Boolean.getBoolean(recursionPropName)) {
             runnable.run();
             return null;

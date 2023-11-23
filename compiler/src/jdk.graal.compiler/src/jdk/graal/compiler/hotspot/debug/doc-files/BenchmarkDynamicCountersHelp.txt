@@ -15,13 +15,13 @@ As a more detailed example, here are the options to use for getting statistics
 about allocations within the DaCapo pmd benchmark:
 
   -XX:JVMCICounterSize=<value> -XX:-JVMCICountersExcludeCompiler \
-  -Dgraal.BenchmarkDynamicCounters="err, starting ====, PASSED in " \
-  -Dgraal.ProfileAllocations=true
+  -Djdk.graal.BenchmarkDynamicCounters="err, starting ====, PASSED in " \
+  -Djdk.graal.ProfileAllocations=true
   
 The JVMCICounterSize value depends on the granularity of the profiling -
 10000 should be sufficient. Omit JVMCICountersExcludeCompiler to exclude
 counting allocations on the compiler threads.
 The counters can be further configured by the ProfileAllocationsContext option.
 
-We highly recommend the use of -Dgraal.AbortOnBenchmarkCounterOverflow=true to
+We highly recommend the use of -Djdk.graal.AbortOnBenchmarkCounterOverflow=true to
 detect counter overflows eagerly.

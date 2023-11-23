@@ -47,15 +47,17 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PostAllocationOptimizationContext context) {
         LIR lir = lirGenRes.getLIR();
-        new Optimizer(lir).deleteEmptyBlocks(lir.getBlocks());
+        new Optimizer(lir, lirGenRes.emitIndirectTargetBranchMarkers()).deleteEmptyBlocks(lir.getBlocks());
     }
 
     private static final class Optimizer {
 
         private final LIR lir;
+        private final boolean preserveIndirectBranchTargetMarkers;
 
-        private Optimizer(LIR lir) {
+        private Optimizer(LIR lir, boolean preserveIndirectBranchTargetMarkers) {
             this.lir = lir;
+            this.preserveIndirectBranchTargetMarkers = preserveIndirectBranchTargetMarkers;
         }
 
         private static final CounterKey BLOCKS_DELETED = DebugContext.counter("BlocksDeleted");
@@ -69,6 +71,12 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
          */
         private boolean canDeleteBlock(BasicBlock<?> block) {
             if (block == null || block.getSuccessorCount() != 1 || block.getPredecessorCount() == 0 || block.getSuccessorAt(0) == block) {
+                return false;
+            }
+            if (preserveIndirectBranchTargetMarkers && block.isIndirectBranchTarget()) {
+                /*
+                 * Blocks marked as indirect branch targets must be preserved.
+                 */
                 return false;
             }
 

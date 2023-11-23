@@ -173,7 +173,7 @@ There are three options for diagnosing the reachability reasons for types, metho
 For each option, the right-hand side specifies the pattern of the code element to be diagnosed.
 
 - The syntax for specifying types and fields is the same as that of suppression/expansion (See documentation for `-H:ImageObjectTreeSuppressTypes` above).
-- The syntax for specifying methods is the same as that of method filters (See documentation for `-Dgraal.MethodFilter`).
+- The syntax for specifying methods is the same as that of method filters (See documentation for `-Djdk.graal.MethodFilter`).
 
 When one of the option is enabled and the corresponding code element is reachable, a reachability trace will be dumped to a TXT file and Native Image will abort.
 Here is an example of the reachability report for `-H:AbortOnTypeReachable=java.io.File`:

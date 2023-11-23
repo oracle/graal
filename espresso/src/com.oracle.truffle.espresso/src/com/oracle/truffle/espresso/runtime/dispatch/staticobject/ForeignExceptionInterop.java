@@ -29,9 +29,9 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 @GenerateInteropNodes
 @Shareable
@@ -39,7 +39,7 @@ import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public class ForeignExceptionInterop extends ThrowableInterop {
 
-    public static Object getRawForeignObject(StaticObject object) {
+    private static Object getRawForeignObject(StaticObject object) {
         Meta meta = object.getKlass().getMeta();
         assert object.getKlass() == meta.polyglot.ForeignException;
         return meta.java_lang_Throwable_backtrace.getObject(object).rawForeignObject(object.getKlass().getContext().getLanguage());
@@ -93,5 +93,11 @@ public class ForeignExceptionInterop extends ThrowableInterop {
     public static RuntimeException throwException(StaticObject object) {
         object.checkNotForeign();
         throw (RuntimeException) getRawForeignObject(object);
+    }
+
+    @ExportMessage
+    public static boolean isExceptionIncompleteSource(StaticObject object) throws UnsupportedMessageException {
+        object.checkNotForeign();
+        return InteropLibrary.getUncached().isExceptionIncompleteSource(getRawForeignObject(object));
     }
 }

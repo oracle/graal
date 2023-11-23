@@ -75,14 +75,14 @@ public class ReservedStackAccessTest extends HotSpotGraalCompilerTest {
         Assume.assumeTrue(runtime().getVMConfig().enableStackReservedZoneAddress != 0);
         List<String> vmArgs = SubprocessUtil.withoutDebuggerArguments(SubprocessUtil.getVMCommandLine());
         vmArgs.add("-XX:+UseJVMCICompiler");
-        vmArgs.add("-Dgraal.Inline=false");
+        vmArgs.add("-Djdk.graal.Inline=false");
         vmArgs.add("-XX:MaxInlineLevel=2");
         vmArgs.add("-XX:CompileCommand=exclude,java/util/concurrent/locks/ReentrantLock,lock");
         vmArgs.add("-XX:CompileCommand=exclude,java/util/concurrent/locks/AbstractOwnableSynchronizer.setExclusiveOwnerThread");
         vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
 
         // Avoid SOE in HotSpotJVMCIRuntime.adjustCompilationLevel
-        vmArgs.add("-Dgraal.CompileGraalWithC1Only=false");
+        vmArgs.add("-Djdk.graal.CompileGraalWithC1Only=false");
 
         Subprocess proc = SubprocessUtil.java(vmArgs, ReservedStackAccessTest.class.getName());
         boolean passed = false;

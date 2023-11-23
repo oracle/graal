@@ -160,8 +160,8 @@ public final class CompileTheWorld {
 
     /**
      * @param options a space separated set of option value settings with each option setting in a
-     *            {@code -Dgraal.<name>=<value>} format but without the leading {@code -Dgraal.}.
-     *            Ignored if null.
+     *            {@code -Djdk.graal.<name>=<value>} format but without the leading
+     *            {@code -Djdk.graal.}. Ignored if null.
      */
     public static EconomicMap<OptionKey<?>, Object> parseOptions(String options) {
         EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();

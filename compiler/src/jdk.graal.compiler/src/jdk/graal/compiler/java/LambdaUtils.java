@@ -60,6 +60,7 @@ public final class LambdaUtils {
     public static final String LAMBDA_CLASS_NAME_SUBSTRING = "$$Lambda";
     public static final String SERIALIZATION_TEST_LAMBDA_CLASS_SUBSTRING = "$$Lambda";
     public static final String SERIALIZATION_TEST_LAMBDA_CLASS_SPLIT_PATTERN = "\\$\\$Lambda";
+    public static final String ADDRESS_PREFIX = ".0x";
 
     private static GraphBuilderConfiguration buildLambdaParserConfig(ClassInitializationPlugin cip) {
         GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
@@ -141,7 +142,7 @@ public final class LambdaUtils {
         Matcher m = lambdaMatcher(lambdaName);
         StringBuilder sb = new StringBuilder();
         targetMethods.forEach((targetMethod) -> sb.append(targetMethod.format("%H.%n(%P)%R")));
-        return m.replaceFirst(Matcher.quoteReplacement("$$Lambda$" + digest(sb.toString()) + ";"));
+        return m.replaceFirst(Matcher.quoteReplacement(LAMBDA_CLASS_NAME_SUBSTRING + ADDRESS_PREFIX + digest(sb.toString()) + ";"));
     }
 
     private static Matcher lambdaMatcher(String value) {

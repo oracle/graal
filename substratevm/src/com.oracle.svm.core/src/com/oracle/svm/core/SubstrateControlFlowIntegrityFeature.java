@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.lir.amd64;
+package com.oracle.svm.core;
 
-import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
-import jdk.graal.compiler.lir.LIRInstruction;
-import jdk.graal.compiler.lir.LIRInstructionClass;
-import jdk.graal.compiler.lir.Opcode;
-import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.nativeimage.ImageSingletons;
 
-@Opcode("ENDBR64")
-public final class EndbranchOp extends AMD64LIRInstruction {
-    public static final LIRInstructionClass<EndbranchOp> TYPE = LIRInstructionClass.create(EndbranchOp.class);
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 
-    private EndbranchOp() {
-        super(TYPE);
-    }
-
+@AutomaticallyRegisteredFeature
+public class SubstrateControlFlowIntegrityFeature implements InternalFeature {
     @Override
-    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        masm.endbranch();
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(SubstrateControlFlowIntegrity.class, new SubstrateControlFlowIntegrity());
     }
-
-    public static LIRInstruction create() {
-        return new EndbranchOp();
-    }
-
 }

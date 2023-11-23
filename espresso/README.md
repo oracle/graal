@@ -76,7 +76,7 @@ $ mx --dy /compiler espresso-standalone -cp my.jar HelloWorld
 
 ### Dumping IGV graphs
 ```bash
-$ mx -v --dy /compiler -J"-Dgraal.Dump=:4 -Dgraal.TraceTruffleCompilation=true -Dgraal.TruffleBackgroundCompilation=false" espresso-standalone -cp  mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.TestMain
+$ mx -v --dy /compiler -J"-Djdk.graal.Dump=:4 -Djdk.graal.TraceTruffleCompilation=true -Djdk.graal.TruffleBackgroundCompilation=false" espresso-standalone -cp  mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.TestMain
 ```
 
 ### Running Espresso cross-versions
