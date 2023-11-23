@@ -105,7 +105,7 @@ public final class ImageHeapInstance extends ImageHeapConstant {
      * {@link #isReaderInstalled()} which ensures that the future setting the field values was
      * executed, therefore we can read the field directly.
      */
-    private Object[] getFieldValues() {
+    Object[] getFieldValues() {
         AnalysisError.guarantee(isReaderInstalled());
         Object[] fieldValues = getConstantData().fieldValues;
         AnalysisError.guarantee(fieldValues != null);

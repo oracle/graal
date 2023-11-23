@@ -62,6 +62,7 @@ public interface BuildArtifacts {
         BUILD_INFO("build_info"),
         /* For all debugging-related artifacts. */
         DEBUG_INFO("debug_info"),
+        LAYER_SNAPSHOT("layer_snapshot"),
 
         /* For C header files. */
         C_HEADER("c_headers"),

@@ -48,6 +48,8 @@ import com.oracle.graal.pointsto.flow.context.bytecode.BytecodeSensitiveAnalysis
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeap;
+import com.oracle.graal.pointsto.heap.ImageLayerLoader;
+import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccessExtensionProvider;
@@ -159,9 +161,13 @@ public final class PointsToAnalyzer {
         standaloneHost.setImageName(analysisName);
         aUniverse.setBigBang(bigbang);
         ImageHeap heap = new ImageHeap();
+        ImageLayerLoader imageLayerLoader = new ImageLayerLoader(aUniverse);
+        aUniverse.setImageLayerLoader(imageLayerLoader);
         StandaloneImageHeapScanner heapScanner = new StandaloneImageHeapScanner(bigbang, heap, aMetaAccess,
                         snippetReflection, aConstantReflection, new AnalysisObjectScanningObserver(bigbang), analysisClassLoader, new HostedValuesProvider(aMetaAccess, aUniverse));
         aUniverse.setHeapScanner(heapScanner);
+        ImageLayerWriter imageLayerWriter = new ImageLayerWriter(heap);
+        aUniverse.setImageLayerWriter(imageLayerWriter);
         HeapSnapshotVerifier heapVerifier = new StandaloneHeapSnapshotVerifier(bigbang, heap, heapScanner);
         aUniverse.setHeapVerifier(heapVerifier);
         /* Register already created types as assignable. */

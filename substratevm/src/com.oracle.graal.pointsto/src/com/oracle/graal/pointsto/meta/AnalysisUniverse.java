@@ -49,6 +49,8 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
+import com.oracle.graal.pointsto.heap.ImageLayerLoader;
+import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -124,6 +126,8 @@ public class AnalysisUniverse implements Universe {
     private final JavaKind wordKind;
     private AnalysisPolicy analysisPolicy;
     private ImageHeapScanner heapScanner;
+    private ImageLayerLoader imageLayerLoader;
+    private ImageLayerWriter imageLayerWriter;
     private HeapSnapshotVerifier heapVerifier;
     private BigBang bb;
     private DuringAnalysisAccess concurrentAnalysisAccess;
@@ -413,6 +417,9 @@ public class AnalysisUniverse implements Universe {
         }
         AnalysisMethod newValue = analysisFactory.createMethod(this, method);
         AnalysisMethod oldValue = methods.putIfAbsent(method, newValue);
+        if (oldValue == null && newValue.isInBaseLayer()) {
+            getImageLayerLoader().patchBaseLayerMethod(newValue);
+        }
         return oldValue != null ? oldValue : newValue;
     }
 
@@ -482,6 +489,10 @@ public class AnalysisUniverse implements Universe {
             return constant;
         }
         return heapScanner.createImageHeapConstant(getHostedValuesProvider().interceptHosted(constant), ObjectScanner.OtherReason.UNKNOWN);
+    }
+
+    public boolean isTypeCreated(int typeId) {
+        return typesById.length > typeId && typesById[typeId] != null;
     }
 
     public List<AnalysisType> getTypes() {
@@ -699,6 +710,22 @@ public class AnalysisUniverse implements Universe {
         return heapScanner;
     }
 
+    public void setImageLayerLoader(ImageLayerLoader imageLayerLoader) {
+        this.imageLayerLoader = imageLayerLoader;
+    }
+
+    public ImageLayerLoader getImageLayerLoader() {
+        return imageLayerLoader;
+    }
+
+    public ImageLayerWriter getImageLayerWriter() {
+        return imageLayerWriter;
+    }
+
+    public void setImageLayerWriter(ImageLayerWriter imageLayerWriter) {
+        this.imageLayerWriter = imageLayerWriter;
+    }
+
     public HostedValuesProvider getHostedValuesProvider() {
         return heapScanner.getHostedValuesProvider();
     }
@@ -717,5 +744,28 @@ public class AnalysisUniverse implements Universe {
 
     public int getReachableTypes() {
         return numReachableTypes.get();
+    }
+
+    public void setStartTypeId(int startTid) {
+        /* No type was created yet, so the array can be overwritten without any concurrency issue */
+        typesById = new AnalysisType[startTid];
+
+        if (nextTypeId.compareAndExchange(0, startTid) != 0) {
+            throw AnalysisError.shouldNotReachHere("A type id was assigned before the start id was set.");
+        }
+    }
+
+    public void setStartMethodId(int startMid) {
+        if (nextMethodId.compareAndExchange(1, startMid) != 1) {
+            throw AnalysisError.shouldNotReachHere("A method id was assigned before the start id was set.");
+        }
+    }
+
+    public int computeNextTypeId() {
+        return nextTypeId.getAndIncrement();
+    }
+
+    public int computeNextMethodId() {
+        return nextMethodId.getAndIncrement();
     }
 }

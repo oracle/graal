@@ -103,6 +103,10 @@ public class ImageHeap {
         return reachableObjects.getOrDefault(type, Collections.emptySet());
     }
 
+    public Map<AnalysisType, Set<ImageHeapConstant>> getReachableObjects() {
+        return reachableObjects;
+    }
+
     public boolean addReachableObject(AnalysisType type, ImageHeapConstant heapObj) {
         assert heapObj.isReachable() : heapObj;
         Set<ImageHeapConstant> objectSet = reachableObjects.computeIfAbsent(type, t -> ConcurrentHashMap.newKeySet());

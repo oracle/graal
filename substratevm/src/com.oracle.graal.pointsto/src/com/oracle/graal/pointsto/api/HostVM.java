@@ -159,6 +159,10 @@ public abstract class HostVM {
      */
     public abstract void onTypeReachable(BigBang bb, AnalysisType newValue);
 
+    public boolean useBaseLayer() {
+        return false;
+    }
+
     /**
      * Check if an {@link AnalysisType} is initialized.
      */

@@ -1086,6 +1086,12 @@ public class SubstrateOptions {
         return ClosedTypeWorld.getValue();
     }
 
+    @Option(help = "Persist the image heap and the AnalysisUniverse (types, methods and fields) of the current build", type = OptionType.Debug) //
+    public static final HostedOptionKey<Boolean> PersistImageLayer = new HostedOptionKey<>(false);
+
+    @Option(help = "Names of layer snapshots produced by PersistImageLayer", type = OptionType.Debug) //
+    public static final HostedOptionKey<LocatableMultiOptionValue.Paths> LoadImageLayer = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.build());
+
     public static class TruffleStableOptions {
 
         @Option(help = "Automatically copy the necessary language resources to the resources/languages directory next to the produced image." +

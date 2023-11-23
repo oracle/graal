@@ -31,6 +31,7 @@ import java.util.Set;
 import jdk.graal.compiler.java.LambdaUtils;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -60,7 +61,7 @@ final class StableLambdaProxyNameFeature implements InternalFeature {
             throw new AssertionError("Expensive check: should only run with assertions enabled.");
         }
         /* There should be no random lambda names visible to the analysis. */
-        if (types.stream().anyMatch(type -> LambdaUtils.isLambdaType(type) && type.getWrapped().getClass() != LambdaSubstitutionType.class)) {
+        if (types.stream().anyMatch(type -> LambdaUtils.isLambdaType(type) && type.getWrapped().getClass() != LambdaSubstitutionType.class && type.getWrapped().getClass() != BaseLayerType.class)) {
             throw new AssertionError("All lambda proxies should be substituted.");
         }
 

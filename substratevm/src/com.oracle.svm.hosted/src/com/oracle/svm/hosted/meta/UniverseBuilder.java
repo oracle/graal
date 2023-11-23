@@ -58,6 +58,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.FunctionPointerHolder;
@@ -269,7 +270,7 @@ public class UniverseBuilder {
         Class<?> hostedJavaClass = hub.getHostedJavaClass();
         AnalysisType aTypeChecked = aMetaAccess.lookupJavaType(hostedJavaClass);
         HostedType hTypeChecked = hMetaAccess.lookupJavaType(hostedJavaClass);
-        if (!sameObject(aType, aTypeChecked) || !sameObject(hTypeChecked, hType)) {
+        if ((!sameObject(aType, aTypeChecked) || !sameObject(hTypeChecked, hType)) && !(aType.getWrapped() instanceof BaseLayerType)) {
             throw VMError.shouldNotReachHere("Type mismatch when performing round-trip HostedType/AnalysisType -> DynamicHub -> java.lang.Class -> HostedType/AnalysisType: " + System.lineSeparator() +
                             hType + " @ " + Integer.toHexString(System.identityHashCode(hType)) +
                             " / " + aType + " @ " + Integer.toHexString(System.identityHashCode(aType)) + System.lineSeparator() +

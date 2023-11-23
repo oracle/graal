@@ -176,6 +176,8 @@ public class SVMHost extends HostVM {
 
     private final FieldValueInterceptionSupport fieldValueInterceptionSupport;
 
+    private final boolean useBaseLayer;
+
     @SuppressWarnings("this-escape")
     public SVMHost(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions) {
         super(options, loader.getClassLoader());
@@ -202,6 +204,12 @@ public class SVMHost extends HostVM {
         }
         fieldValueInterceptionSupport = new FieldValueInterceptionSupport(annotationSubstitutions, classInitializationSupport);
         ImageSingletons.add(FieldValueInterceptionSupport.class, fieldValueInterceptionSupport);
+        useBaseLayer = SubstrateOptions.LoadImageLayer.hasBeenSet();
+    }
+
+    @Override
+    public boolean useBaseLayer() {
+        return useBaseLayer;
     }
 
     protected InlineBeforeAnalysisPolicyUtils getInlineBeforeAnalysisPolicyUtils() {
