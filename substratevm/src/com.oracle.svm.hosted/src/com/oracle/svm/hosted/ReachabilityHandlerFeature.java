@@ -32,6 +32,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -44,6 +45,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.util.ConcurrentIdentityHashMap;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -52,8 +54,8 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 @AutomaticallyRegisteredFeature
 public class ReachabilityHandlerFeature extends ReachabilityHandler implements InternalFeature {
 
-    private final IdentityHashMap<Object, Set<Object>> activeHandlers = new IdentityHashMap<>();
-    private final IdentityHashMap<Object, Map<Object, Set<Object>>> triggeredHandlers = new IdentityHashMap<>();
+    private final Map<Object, Set<Object>> activeHandlers = new ConcurrentIdentityHashMap<>();
+    private final Map<Object, Map<Object, Set<Object>>> triggeredHandlers = new ConcurrentIdentityHashMap<>();
 
     public static ReachabilityHandlerFeature singleton() {
         return ImageSingletons.lookup(ReachabilityHandlerFeature.class);
@@ -88,7 +90,7 @@ public class ReachabilityHandlerFeature extends ReachabilityHandler implements I
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
         AnalysisMetaAccess metaAccess = access.getMetaAccess();
 
-        Set<Object> triggerSet = activeHandlers.computeIfAbsent(callback, c -> new HashSet<>());
+        var triggerSet = activeHandlers.computeIfAbsent(callback, c -> ConcurrentHashMap.newKeySet());
 
         for (Object trigger : triggers) {
             if (trigger instanceof Class) {
@@ -119,7 +121,7 @@ public class ReachabilityHandlerFeature extends ReachabilityHandler implements I
                 Set<Object> triggers = activeHandlers.get(callback);
                 if (callback instanceof Consumer) {
                     if (isTriggered(access, triggers)) {
-                        triggeredHandlers.put(callback, null);
+                        triggeredHandlers.put(callback, Map.of());
                         toExactCallback(callback).accept(access);
                         completedCallbacks.add(callback);
                     }
