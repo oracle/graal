@@ -123,9 +123,6 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
             }
         }
 
-// ForeignCallNode call = graph.add(
-// new ForeignCallNode(foreignCalls, math.getOperation().foreignCallSignature, math.getValue()));
-
         ForeignCallDescriptor desc = foreignCalls.getDescriptor(math.getOperation().foreignCallSignature);
         Stamp s = UnaryMathIntrinsicNode.UnaryOperation.computeStamp(math.getOperation(), math.getValue().stamp(NodeView.DEFAULT));
         ForeignCallNode call = graph.add(new ForeignCallNode(desc, s, List.of(math.getValue())));
