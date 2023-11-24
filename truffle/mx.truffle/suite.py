@@ -202,6 +202,7 @@ suite = {
       "javaCompliance" : "17+",
       "checkstyleVersion" : "10.7.0",
       "workingSets" : "API,Truffle",
+      "libGraalSourceEdition": "ignore",
     },
 
     "com.oracle.truffle.api.jdk21" : {
@@ -215,6 +216,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "21+",
       "workingSets" : "API,Truffle",
+      "libGraalSourceEdition": "ignore",
     },
 
     "com.oracle.truffle.api.utilities" : {
@@ -226,6 +228,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle",
+      "libGraalSourceEdition": "ignore",
     },
 
     "com.oracle.truffle.polyglot" : {
@@ -276,6 +279,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle",
+      "libGraalSourceEdition": "ignore",
     },
 
     "com.oracle.truffle.compiler" : {
@@ -340,6 +344,7 @@ suite = {
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle,Test",
       "jacoco" : "exclude",
+      "libGraalSourceEdition": "ignore",
     },
 
     "com.oracle.truffle.api.test" : {
@@ -409,6 +414,7 @@ suite = {
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle",
+      "libGraalSourceEdition": "ignore",
     },
 
     "com.oracle.truffle.api.dsl" : {
@@ -422,6 +428,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle,Codegen",
+      "libGraalSourceEdition": "ignore",
     },
 
     "com.oracle.truffle.api.library.test" : {
@@ -690,6 +697,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle",
+      "libGraalSourceEdition": "ignore",
     },
 
     "com.oracle.truffle.object" : {
@@ -749,6 +757,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "Truffle,Tools",
+      "libGraalSourceEdition": "ignore",
     },
     "com.oracle.truffle.tck.tests" : {
       "subDir" : "src",
@@ -780,6 +789,7 @@ suite = {
       "workingSets" : "Truffle,Test",
       "jacoco" : "exclude",
       "testProject" : True,
+      "libGraalSourceEdition": "ignore",
     },
     "com.oracle.truffle.tck.instrumentation" : {
       "subDir" : "src",
@@ -867,6 +877,7 @@ suite = {
       # disable SpotBugs and Jacoco as long as JDK 22 is unsupported [GR-49566]
       "spotbugs" : "false",
       "jacoco" : "exclude",
+      "libGraalSourceEdition": "ignore",
     },
 
     "com.oracle.truffle.nfi.backend.spi" : {
@@ -879,6 +890,7 @@ suite = {
       "javaCompliance" : "17+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
+      "libGraalSourceEdition": "ignore",
     },
 
     "libffi" : {
@@ -1016,6 +1028,7 @@ suite = {
       },
       "testProject" : True,
       "jacoco" : "exclude",
+      "libGraalSourceEdition": "ignore",
     },
 
     "com.oracle.truffle.sl" : {
@@ -1045,6 +1058,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "Truffle,SimpleLanguage",
+      "libGraalSourceEdition": "ignore",
     },
 
     "com.oracle.truffle.sl.test" : {
@@ -1077,6 +1091,7 @@ suite = {
       "checkstyleVersion" : "10.7.0",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,SimpleLanguage",
+      "libGraalSourceEdition": "ignore",
     },
 
     "com.oracle.truffle.st.test" : {
@@ -1105,6 +1120,7 @@ suite = {
       "javaCompliance" : "17+",
       "license": "GPLv2-CPE",
       "jacoco" : "exclude",
+      "libGraalSourceEdition": "ignore",
     },
 
     "org.graalvm.shadowed.com.ibm.icu" : {
@@ -1223,6 +1239,7 @@ suite = {
           },
         },
       },
+      "libGraalSourceEdition": "ignore",
     },
 
     "com.oracle.truffle.libgraal.processor" : {
@@ -1467,6 +1484,7 @@ suite = {
           "artifactId": "truffle-runtime",
           "tag": ["default", "public"],
       },
+      "libGraalSourceEdition": "ignore",
     },
 
     "TRUFFLE_API" : {
@@ -1564,6 +1582,7 @@ suite = {
           "tag": ["default", "public"],
       },
       "useModulePath": True,
+      "libGraalSourceEdition": "ignore",
       # We do no longer deploy a closed module to graalvm because there are known bugs
       # when a JDK boot module exports itself at runtime to a language at runtime.
       # with Truffle unchained we want to use truffle always from the module path
@@ -1593,6 +1612,7 @@ suite = {
       },
       "description" : "Contains a library to provide access for the Truffle runtime to JVMCI.",
       "maven": False,
+      "libGraalSourceEdition": "ignore",
     },
 
     "TRUFFLE_NFI" : {
@@ -1619,6 +1639,7 @@ suite = {
       "maven": {
           "tag": ["default", "public"],
       },
+      "libGraalSourceEdition": "ignore",
     },
 
     "TRUFFLE_NFI_LIBFFI" : {
@@ -1743,6 +1764,7 @@ suite = {
       "maven": {
           "tag": ["default", "public"],
       },
+      "libGraalSourceEdition": "ignore",
     },
 
     "TRUFFLE_TCK_TESTS" : {
@@ -1814,6 +1836,7 @@ suite = {
       "maven": {
           "tag": ["default", "public"],
       },
+      "libGraalSourceEdition": "ignore",
     },
 
     "TRUFFLE_LIBGRAAL_PROCESSOR" : {
@@ -1825,6 +1848,7 @@ suite = {
       "maven": {
           "tag": ["default", "public"],
       },
+      "libGraalSourceEdition": "ignore",
     },
 
     "TRUFFLE_SL" : {
@@ -2096,6 +2120,7 @@ suite = {
         "truffle:TRUFFLE_API",
       ],
       "maven" : False,
+      "libGraalSourceEdition": "ignore",
     },
 
     "TRUFFLE_ICU4J" : {
@@ -2135,6 +2160,7 @@ suite = {
         "artifactId" : "icu4j",
         "tag": ["default", "public"],
       },
+      "libGraalSourceEdition": "ignore",
     },
 
     "TRUFFLE_XZ" : {
@@ -2163,6 +2189,7 @@ suite = {
         "artifactId" : "xz",
         "tag": ["default", "public"],
       },
+      "libGraalSourceEdition": "ignore",
     },
 
     "TRUFFLE_JSON" : {
@@ -2194,6 +2221,7 @@ suite = {
         "artifactId" : "json",
         "tag": ["default", "public"],
       },
+      "libGraalSourceEdition": "ignore",
     },
 
     "TRUFFLE_ANTLR4" : {
@@ -2219,6 +2247,7 @@ suite = {
         "artifactId" : "antlr4",
         "tag": ["default", "public"],
       },
+      "libGraalSourceEdition": "ignore",
     },
   },
 }

@@ -116,7 +116,6 @@ suite = {
       "checkstyle" : "com.oracle.truffle.regex",
       "javaCompliance" : "17+",
       "workingSets" : "Truffle,Regex",
-      "libGraalSourceEdition": "ignore",
     },
 
     "com.oracle.truffle.regex.test.dummylang" : {
@@ -188,7 +187,6 @@ suite = {
         "regex:TREGEX_TEST_DUMMY_LANG",
       ],
       "maven" : False,
-      "libGraalSourceEdition": "ignore",
     },
 
     "TREGEX_GRAALVM_SUPPORT" : {

@@ -243,6 +243,7 @@ suite = {
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "17+",
       "workingSets" : "API,SDK",
+      "libGraalSourceEdition": "ignore",
     },
     "org.graalvm.polyglot.processor" : {
       "subDir" : "src",
@@ -270,6 +271,7 @@ suite = {
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "17+",
       "workingSets" : "API,SDK",
+      "libGraalSourceEdition": "ignore",
     },
 
     "org.graalvm.word" : {
@@ -330,6 +332,7 @@ suite = {
       "javaCompliance" : "17+",
       "workingSets" : "Truffle,Tools",
       "checkstyle" : "org.graalvm.word",
+      "libGraalSourceEdition": "ignore",
     },
     "org.graalvm.launcher.test" : {
       "subDir" : "src",
@@ -352,6 +355,7 @@ suite = {
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "17+",
       "workingSets" : "API,SDK,Test",
+      "libGraalSourceEdition": "ignore",
     },
     "org.graalvm.collections" : {
       "subDir" : "src",
@@ -381,6 +385,7 @@ suite = {
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
+      "libGraalSourceEdition": "ignore",
     },
     "org.graalvm.home.test" : {
       "subDir" : "src",
@@ -554,6 +559,7 @@ suite = {
         "java.logging",
         "java.xml",
       ],
+      "libGraalSourceEdition": "ignore",
     },
   },
   "licenses" : {
@@ -630,6 +636,7 @@ suite = {
       "maven": {
           "tag": ["default", "public"],
       },
+      "libGraalSourceEdition": "ignore",
     },
 
     "NATIVEIMAGE" : {
@@ -727,7 +734,8 @@ suite = {
         "groupId" : "org.graalvm.polyglot",
         "artifactId" : "polyglot",
         "tag": ["default", "public"],
-      }
+      },
+      "libGraalSourceEdition": "ignore",
     },
 
     "COLLECTIONS" : {
@@ -795,6 +803,7 @@ suite = {
       "maven": {
         "tag": ["default", "public"],
       },
+      "libGraalSourceEdition": "ignore",
     },
 
     "SDK_TEST" : {
@@ -849,6 +858,7 @@ suite = {
         "artifactId": "jline",
         "tag": ["default", "public"],
       },
+      "libGraalSourceEdition": "ignore",
     },
     "LAUNCHER_COMMON" : {
       "subDir" : "src",
@@ -870,6 +880,7 @@ suite = {
       "maven": {
           "tag": ["default", "public"],
       },
+      "libGraalSourceEdition": "ignore",
     },
     "POLYGLOT_TCK" : {
       "subDir" : "src",
@@ -891,6 +902,7 @@ suite = {
       "maven": {
           "tag": ["default", "public"],
       },
+      "libGraalSourceEdition": "ignore",
     },
     "JNIUTILS" : {
       "moduleInfo" : {
