@@ -1,3 +1,7 @@
+local common_json = import "../../common.json";
+local labsjdk_ce = common_json.jdks["labsjdk-ce-latest"];
+local labsjdk_ee = common_json.jdks["labsjdk-ee-latest"];
+local galahad_jdk = common_json.jdks["galahad-jdk"];
 local utils = import "common-utils.libsonnet";
 {
   local GALAHAD_PROPERTY = "_galahad_include",
@@ -30,6 +34,17 @@ local utils = import "common-utils.libsonnet";
       targets: [if t == "gate" then "ondemand" else t for t in b.targets],
     }
   ,
+  # Replaces labsjdk-ce-latest and labsjdk-ee-latest with galahad-jdk
+  local replace_labsjdk(b) =
+    if b.downloads.JAVA_HOME == labsjdk_ce || b.downloads.JAVA_HOME == labsjdk_ee then
+      b + {
+        downloads+: {
+          JAVA_HOME: galahad_jdk,
+        }
+      }
+    else
+      b
+  ,
   # Transforms a job if it is not relevant for galahad.
   # Only gate jobs are touched.
   # Gate jobs that are not relevant for galahad are turned into ondemand jobs.
@@ -42,7 +57,7 @@ local utils = import "common-utils.libsonnet";
       local include = std.foldr(function(x, y) x && y, utils.std_get(b, GALAHAD_PROPERTY, [false]), true);
       assert std.type(include) == "boolean" : "Not a boolean: " + std.type(include);
       if include then
-        b
+        replace_labsjdk(b)
       else
         convert_gate_to_ondemand(b)
   ,
