@@ -356,7 +356,11 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
                     if (isWorkstation) {
                         switch (minorVersion) {
                             case 0:
-                                osName = "Windows 10";
+                                if (buildNumber >= 22000) {
+                                    osName = "Windows 11";
+                                } else {
+                                    osName = "Windows 10";
+                                }
                                 break;
                             default:
                                 osName = "Windows NT (unknown)";
@@ -364,7 +368,9 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
                     } else {
                         switch (minorVersion) {
                             case 0:
-                                if (buildNumber > 17762) {
+                                if (buildNumber > 20347) {
+                                    osName = "Windows Server 2022";
+                                } else if (buildNumber > 17762) {
                                     osName = "Windows Server 2019";
                                 } else {
                                     osName = "Windows Server 2016";
