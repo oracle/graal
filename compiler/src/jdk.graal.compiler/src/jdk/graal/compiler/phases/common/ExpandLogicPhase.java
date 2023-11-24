@@ -32,6 +32,7 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeStack;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.BeginNode;
@@ -101,7 +102,6 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
         ConditionalNode value = graph.unique(new ConditionalNode(lessComp, ConstantNode.forIntegerStamp(stamp, -1, graph), equalValue));
         normalize.replaceAtUsagesAndDelete(value);
     }
-
 
     @SuppressWarnings("try")
     private static void expandBinary(ShortCircuitOrNode s) {
