@@ -50,18 +50,18 @@ local exclude_latest_darwin_amd64(builds) = [b for b in builds if !(import 'ci/c
   overlay: graal_common.ci.overlay,
   specVersion: "3",
   builds: exclude_latest_darwin_amd64([common.add_excludes_guard(b) for b in (
-    compiler.builds +
-    wasm.builds +
-    espresso.builds +
-    regex.builds +
-    sdk.builds +
-    substratevm.builds +
-    sulong.builds +
-    tools.builds +
-    truffle.builds +
-    javadoc.builds +
-    vm.builds +
-    visualizer.builds
+    common.with_tags(compiler.builds, ["compiler"]) +
+    common.with_tags(wasm.builds, ["wasm"]) +
+    common.with_tags(espresso.builds, ["expresso"]) +
+    common.with_tags(regex.builds, ["regex"]) +
+    common.with_tags(sdk.builds, ["sdk"]) +
+    common.with_tags(substratevm.builds, ["svm"]) +
+    common.with_tags(sulong.builds, ["sulong"]) +
+    common.with_tags(tools.builds, ["tools"]) +
+    common.with_tags(truffle.builds, ["truffle"]) +
+    common.with_tags(javadoc.builds, ["javadoc"]) +
+    common.with_tags(vm.builds, ["vm"]) +
+    common.with_tags(visualizer.builds, ["visualizer"])
   )]),
   assert verify_ci(self.builds),
   // verify that the run-spec demo works

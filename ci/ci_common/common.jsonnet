@@ -47,6 +47,19 @@ common + common.frequencies + {
     } else {}
   ),
 
+  # Add the specified tags to the field `tags` of builds if `build.targets` contains "gate".
+  with_tags(builds, tags)::
+    [
+      if std.count(build.targets, "gate") > 0 then
+        if std.objectHas(build, "tags") then
+          build + { "tags" : std.setUnion(tags, build.tags) }
+        else
+          build + { "tags" : tags }
+      else
+        build
+      for build in builds
+    ],
+
   // Heap settings
   // *************
   local small_heap = "1G",
