@@ -150,8 +150,9 @@ public abstract class ToEspressoNode extends EspressoNode {
         }
 
         @Specialization
-        public Object doStaticObject(StaticObject value, @SuppressWarnings("unused") Klass targetType,
+        public Object doStaticObject(StaticObject value, Klass targetType,
                         @Cached InstanceOf.Dynamic instanceOf) throws UnsupportedTypeException {
+            assert !value.isForeignObject();
             if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass(), targetType)) {
                 return value; // pass through, NULL coercion not needed.
             }
@@ -172,7 +173,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "isTypeMappingEnabled(targetType)",
                         "!isStaticObject(value)"
         })
-        public Object doMappedInterface(Object value, @SuppressWarnings("unused") Klass targetType,
+        public Object doMappedInterface(Object value, Klass targetType,
                         @Cached LookupProxyKlassNode lookupProxyKlassNode,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             try {
@@ -192,7 +193,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "!interop.isNull(value)",
                         "!isStaticObject(value)"
         })
-        public Object doArray(Object value, @SuppressWarnings("unused") ArrayKlass targetType,
+        public Object doArray(Object value, ArrayKlass targetType,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             if (targetType == getMeta()._byte_array) {
                 if (interop.hasBufferElements(value) && !isHostString(value)) {
@@ -210,7 +211,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "isTypeConverterEnabled(targetType)",
                         "!isStaticObject(value)"
         })
-        public Object doTypeConverter(Object value, @SuppressWarnings("unused") Klass targetType,
+        public Object doTypeConverter(Object value, Klass targetType,
                         @Cached LookupTypeConverterNode lookupTypeConverter,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             try {
@@ -233,7 +234,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "isInternalTypeConverterEnabled(targetType)",
                         "!isStaticObject(value)"
         })
-        public Object doInternalTypeConverter(Object value, @SuppressWarnings("unused") Klass targetType,
+        public Object doInternalTypeConverter(Object value, Klass targetType,
                         @Cached ToReference.DynamicToReference converterToEspresso,
                         @Cached LookupInternalTypeConverterNode lookupInternalTypeConverter,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {

@@ -41,6 +41,7 @@
 
 package com.oracle.truffle.espresso.polyglot;
 
+import java.math.BigInteger;
 import java.nio.ByteOrder;
 
 /**
@@ -250,6 +251,20 @@ public final class Interop {
     public static native boolean fitsInDouble(Object receiver);
 
     /**
+     * Returns <code>true</code> if the receiver represents a <code>number</code> and its value fits
+     * in a Java BigInteger without loss of precision, else <code>false</code>. Invoking this
+     * message does not cause any observable side-effects.
+     *
+     * Foreign objects for which this method returns <code>true</code>, can be
+     * {@link Polyglot#cast(Class, Object) polyglot-casted} as <code>BigInteger</code>.
+     *
+     * @see #isNumber(Object)
+     * @see #asBigInteger(Object)
+     * @since 24.0
+     */
+    public static native boolean fitsInBigInteger(Object receiver);
+
+    /**
      * Returns the receiver value as Java byte primitive if the number fits without loss of
      * precision. Invoking this message does not cause any observable side-effects.
      *
@@ -320,6 +335,18 @@ public final class Interop {
      * @since 21.0
      */
     public static native double asDouble(Object receiver) throws UnsupportedMessageException;
+
+    /**
+     * Returns the receiver value as Java BigInteger primitive if the number fits without loss of
+     * precision. Invoking this message does not cause any observable side-effects.
+     *
+     * @throws UnsupportedMessageException if and only if the receiver is not a
+     *             {@link #isNumber(Object)} or it does not fit without loss of precision.
+     * @see #isNumber(Object)
+     * @see #fitsInBigInteger(Object)
+     * @since 24.0
+     */
+    public static native BigInteger asBigInteger(Object receiver) throws UnsupportedMessageException;
 
     // endregion Number Messages
 
