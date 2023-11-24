@@ -59,7 +59,7 @@ local common_json = import "../common.json";
     for name in ["oraclejdk21"] + variants("labsjdk-ce-21") + variants("labsjdk-ee-21")
   } + {
     [name]: jdk_base + common_json.jdks[name] + { jdk_version:: parse_labsjdk_version(self), jdk_name:: "jdk-latest"}
-    for name in ["oraclejdk-latest"] + variants("labsjdk-ce-latest") + variants("labsjdk-ee-latest")
+    for name in ["oraclejdk-latest", "galahad-jdk"] + variants("labsjdk-ce-latest") + variants("labsjdk-ee-latest")
   },
   assert std.assertEqual(std.objectFields(common_json.jdks), std.objectFields(jdks_data)),
   # Verify oraclejdk-latest and labsjdk-ee-latest versions match
