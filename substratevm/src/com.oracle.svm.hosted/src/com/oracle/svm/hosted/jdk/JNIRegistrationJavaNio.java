@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.jdk;
 
+import java.lang.reflect.Field;
 import java.net.InetAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
@@ -38,6 +39,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
+import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * Registration of classes, methods, and fields accessed via JNI by C code of the JDK.
@@ -156,8 +158,13 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
         RuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes",
                         "st_mode", "st_ino", "st_dev", "st_rdev", "st_nlink", "st_uid", "st_gid", "st_size",
                         "st_atime_sec", "st_atime_nsec", "st_mtime_sec", "st_mtime_nsec", "st_ctime_sec", "st_ctime_nsec"));
-        if (isDarwin()) {
+        if (isDarwin() || JavaVersionUtil.JAVA_SPEC >= 21 && isLinux()) {
             RuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes", "st_birthtime_sec"));
+        }
+
+        Field unixCreationTimeField = ReflectionUtil.lookupField(true, clazz(a, "sun.nio.fs.UnixFileAttributes"), "st_birthtime_nsec");
+        if (unixCreationTimeField != null) {
+            RuntimeJNIAccess.register(fields(a, "sun.nio.fs.UnixFileAttributes", "st_birthtime_nsec"));
         }
 
         RuntimeJNIAccess.register(clazz(a, "sun.nio.fs.UnixFileStoreAttributes"));
