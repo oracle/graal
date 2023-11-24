@@ -900,31 +900,45 @@ else:
 
 
 class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # pylint: disable=R0901
-    def __init__(self, base_name, theLicense=None, stage1=False, components=None, **kw_args):
+    def __init__(self, base_name, theLicense=None, stage1=False, components=None, include_native_image_resources_filelists=None, add_component_dependencies=True, is_graalvm=True, add_jdk_base=True, allow_incomplete_launchers=False, **kw_args):
         self.base_name = base_name
-        components_with_dependencies = [] if components is None else GraalVmLayoutDistribution._add_dependencies(components)
-        if components is not None:
-            for c in components:
+        _include_native_image_resources_filelists = not stage1 if include_native_image_resources_filelists is None else include_native_image_resources_filelists
+
+        if components is None:
+            components_with_dependencies = []
+        elif add_component_dependencies:
+            components_with_dependencies = GraalVmLayoutDistribution._add_dependencies(components)
+        else:
+            components_with_dependencies = components
+
+        if not allow_incomplete_launchers and components_with_dependencies is not None:
+            for c in components_with_dependencies:
                 if c.launcher_configs or c.library_configs:
                     mx.abort('Cannot define a GraalVM layout distribution with a forced list of components that includes launcher or library configs. '
                     'The corresponding projects refer to the global stage1 and final GraalVM distributions.')
-        name, base_dir, self.vm_config_name = _get_graalvm_configuration(base_name, components=components_with_dependencies, stage1=stage1)
+
+        if is_graalvm:
+            name, base_dir, self.vm_config_name = _get_graalvm_configuration(base_name, components=components_with_dependencies, stage1=stage1)
+        else:
+            name = base_name
+            base_dir = base_name.lower().replace('_', '-')
+            self.vm_config_name = None
 
         super(GraalVmLayoutDistribution, self).__init__(
             suite=_suite,
             name=name,
             deps=[],
             components=components_with_dependencies,
-            is_graalvm=True,
+            is_graalvm=is_graalvm,
             exclLibs=[],
             platformDependent=True,
             theLicense=theLicense,
             testDistribution=False,
-            add_jdk_base=True,
+            add_jdk_base=add_jdk_base,
             base_dir=base_dir,
             path=None,
             stage1=stage1,
-            include_native_image_resources_filelists=not stage1,
+            include_native_image_resources_filelists=_include_native_image_resources_filelists,
             **kw_args)
 
     @staticmethod
@@ -1689,7 +1703,7 @@ class GraalVmJImage(mx.Project):
     """
     __metaclass__ = ABCMeta
 
-    def __init__(self, suite, name, jimage_jars, jimage_ignore_jars, workingSets, theLicense=None, default_to_jvmci=False, missing_export_target_action='create', **kw_args):
+    def __init__(self, suite, name, jimage_jars, jimage_ignore_jars, workingSets, theLicense=None, default_to_jvmci=False, missing_export_target_action=None, **kw_args):
         super(GraalVmJImage, self).__init__(suite=suite, name=name, subDir=None, srcDirs=[], deps=jimage_jars,
                                             workingSets=workingSets, d=_suite.dir, theLicense=theLicense,
                                             default_to_jvmci=default_to_jvmci, **kw_args)
@@ -3997,6 +4011,17 @@ def graalvm_home(stage1=False, fatalIfMissing=False):
     return _graalvm_home
 
 
+def graalvm_home_from_env(extra_mx_args, env, stage1=False, suite=None):
+    args = ['--quiet'] + extra_mx_args + ['graalvm-home'] + (['--stage1'] if stage1 else [])
+    out = mx.OutputCapture()
+    err = mx.OutputCapture()
+    exit_status = mx.run_mx(args, suite=suite, out=out, err=err, env=env, nonZeroIsFatal=False)
+    if exit_status:
+        mx.warn(f"'mx {mx.list_to_cmd_line(args)}' returned {exit_status}. Stdout:\n{out.data.strip()}\nStderr: {err.data.strip()}")
+        mx.abort(exit_status)
+    return out.data.strip()
+
+
 def standalone_home(comp_dir_name, is_jvm):
     """
     :type comp_dir_name: str
@@ -4101,6 +4126,18 @@ def _infer_env(graalvm_dist):
         non_rebuildable_images = [str(non_rebuildable_images)]
 
     return sorted(list(dynamicImports)), sorted(components), sorted(excludeComponents), sorted(nativeImages), sorted(disableInstallables), sorted(non_rebuildable_images), _debuginfo_dists(), _no_licenses()
+
+
+def graalvm_clean_env(out_env=None):
+    """
+    Returns an env var that does not define variables that configure the GraalVM
+    """
+    env = out_env or os.environ.copy()
+    for env_var in ['DYNAMIC_IMPORTS', 'COMPONENTS', 'NATIVE_IMAGES', 'EXCLUDE_COMPONENTS', 'DISABLE_INSTALLABLES', 'NON_REBUILDABLE_IMAGES', 'BUILD_TARGETS']:
+        if env_var in env:
+            env.pop(env_var)
+    return env
+
 
 def graalvm_env(out_env=None):
     """
@@ -4455,6 +4492,7 @@ mx.add_argument('--no-licenses', action='store_true', help='Do not add license f
 mx.add_argument('--base-jdk-info', action='store', help='Colon-separated tuple of base JDK `NAME:VERSION`, to be added on deployment to the \'basejdk\' attribute of the \'suite-revisions.xml\' file on maven-deployment.')
 mx.add_argument('--graalvm-skip-archive', action='store_true', help='Do not archive GraalVM distributions.')
 mx.add_argument('--svmtest-target-arch', action='store', dest='svmtest_target_arch', help='specify targeted arch for GraalVM output', default=mx.get_arch())
+mx.add_argument('--default-jlink-missing-export-action', choices=['create', 'error', 'warn', 'none'], default='create', help='The action to perform for a qualified export that targets a module not included in the runtime image.')
 
 
 def _parse_cmd_arg(arg_name, env_var_name=None, separator=',', parse_bool=True, default_value=None):
@@ -4831,6 +4869,10 @@ def _base_jdk_info():
         mx.abort("Unexpected base JDK info: '{}'. Expected format: 'NAME:VERSION'.".format(base_jdk_info))
     else:
         return base_jdk_info.split(':')
+
+
+def default_jlink_missing_export_action():
+    return mx.get_opts().default_jlink_missing_export_action or mx.get_env('DEFAULT_JLINK_MISSING_EXPORT_ACTION')
 
 
 def mx_post_parse_cmd_line(args):
