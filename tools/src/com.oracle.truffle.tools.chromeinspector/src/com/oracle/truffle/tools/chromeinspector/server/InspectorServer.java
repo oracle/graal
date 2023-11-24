@@ -37,6 +37,8 @@ import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -260,15 +262,22 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
         @Override
         public Response handle(IHTTPSession session) {
             if (Method.GET == session.getMethod()) {
-                String uri = session.getUri();
+                String uriStr = session.getUri();
+                URI uri;
+                try {
+                    uri = new URI(uriStr);
+                } catch (URISyntaxException ex) {
+                    return null;
+                }
+                String uriPath = uri.getPath();
                 String responseJson = null;
-                if ("/json/version".equals(uri)) {
+                if ("/json/version".equals(uriPath)) {
                     JSONObject version = new JSONObject();
                     version.put("Browser", "GraalVM");
                     version.put("Protocol-Version", "1.2");
                     responseJson = version.toString();
                 }
-                if ("/json".equals(uri)) {
+                if ("/json".equals(uriPath) || "/json/list".equals(uriPath)) {
                     JSONArray json = new JSONArray();
                     for (ServerPathSession serverPathSession : sessions.values()) {
                         final String path = serverPathSession.pathContainingToken;

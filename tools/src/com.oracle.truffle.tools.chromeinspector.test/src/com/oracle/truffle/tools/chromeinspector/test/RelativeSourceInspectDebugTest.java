@@ -123,7 +123,8 @@ public class RelativeSourceInspectDebugTest {
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         assertEquals("{\"result\":{},\"id\":1}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
-        assertEquals("{\"result\":{},\"id\":2}", tester.getMessages(true).trim());
+        tester.receiveMessages(
+                        "{\"result\":{\"debuggerId\":\"UniqueDebuggerId.", "},\"id\":2}\n");
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
 
         // @formatter:off   The default formatting makes unnecessarily big indents and illogical line breaks
@@ -183,7 +184,8 @@ public class RelativeSourceInspectDebugTest {
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         assertEquals("{\"result\":{},\"id\":1}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
-        assertEquals("{\"result\":{},\"id\":2}", tester.getMessages(true).trim());
+        tester.receiveMessages(
+                        "{\"result\":{\"debuggerId\":\"UniqueDebuggerId.", "},\"id\":2}\n");
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
 
         // @formatter:off   The default formatting makes unnecessarily big indents and illogical line breaks
