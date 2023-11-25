@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,14 +23,11 @@
  * questions.
  */
 
-package com.oracle.svm.test;
+package com.oracle.svm.with.space.test;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLConnection;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -42,13 +39,7 @@ public class NativeImageResourceUtils {
 
     public static final String ROOT_DIRECTORY = "/";
     public static final String RESOURCE_DIR = "/resources";
-    public static final String SIMPLE_RESOURCE_DIR = "/simpleDir";
-    public static final String RESOURCE_EMPTY_DIR = RESOURCE_DIR + "/empty";
-    public static final String RESOURCE_DIR_WITH_SPACE = RESOURCE_DIR + "/dir with space";
-    public static final String RESOURCE_FILE_1 = RESOURCE_DIR + "/resource-test1.txt";
-    public static final String RESOURCE_FILE_2 = RESOURCE_DIR + "/resource-test2.txt";
-    public static final String RESOURCE_FILE_3 = RESOURCE_DIR + "/resource-test3.html";
-    public static final String RESOURCE_FILE_4 = RESOURCE_DIR + "/resource-test4.output";
+    public static final String RESOURCE_FILE_IN_JAR_WITH_SPACE = RESOURCE_DIR + "/resource-in-jar-with-space.txt";
 
     // Register resources.
     public static final class TestFeature implements Feature {
@@ -57,18 +48,7 @@ public class NativeImageResourceUtils {
             // Remove leading / for the resource patterns
             Module resourceModule = TestFeature.class.getModule();
             RuntimeResourceAccess.addResource(resourceModule, RESOURCE_DIR.substring(1));
-            RuntimeResourceAccess.addResource(resourceModule, SIMPLE_RESOURCE_DIR.substring(1));
-            RuntimeResourceAccess.addResource(resourceModule, RESOURCE_EMPTY_DIR.substring(1));
-            RuntimeResourceAccess.addResource(resourceModule, RESOURCE_DIR_WITH_SPACE.substring(1));
-            RuntimeResourceAccess.addResource(resourceModule, RESOURCE_FILE_1.substring(1));
-            RuntimeResourceAccess.addResource(resourceModule, RESOURCE_FILE_2.substring(1));
-            RuntimeResourceAccess.addResource(resourceModule, RESOURCE_FILE_3.substring(1));
-            RuntimeResourceAccess.addResource(resourceModule, RESOURCE_FILE_4.substring(1));
-
-            /** Needed for {@link #testURLExternalFormEquivalence()} */
-            for (Module module : ModuleLayer.boot().modules()) {
-                RuntimeResourceAccess.addResource(module, "module-info.class");
-            }
+            RuntimeResourceAccess.addResource(resourceModule, RESOURCE_FILE_IN_JAR_WITH_SPACE.substring(1));
         }
     }
 
@@ -91,31 +71,5 @@ public class NativeImageResourceUtils {
     public static Path resourceNameToPath(String resourceName, boolean failIfNotExists) {
         URI uri = resourceNameToURI(resourceName, failIfNotExists);
         return uri != null ? Paths.get(uri) : null;
-    }
-
-    public static boolean compareTwoURLs(URL url1, URL url2) {
-        try {
-            URLConnection url1Connection = url1.openConnection();
-            URLConnection url2Connection = url2.openConnection();
-
-            try (InputStream is1 = url1Connection.getInputStream(); InputStream is2 = url2Connection.getInputStream()) {
-                Assert.assertNotNull("First input stream is null!", is1);
-                Assert.assertNotNull("Second input stream is null!", is2);
-                int nextByte1 = is1.read();
-                int nextByte2 = is2.read();
-                while (nextByte1 != -1 && nextByte2 != -1) {
-                    if (nextByte1 != nextByte2) {
-                        return false;
-                    }
-
-                    nextByte1 = is1.read();
-                    nextByte2 = is2.read();
-                }
-                return nextByte1 == -1 && nextByte2 == -1;
-            }
-        } catch (IOException e) {
-            Assert.fail("Exception occurs during URL operations!");
-        }
-        return false;
     }
 }
