@@ -46,12 +46,17 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.benchmark.bytecode.ManualBytecodeInterpreter.AccessToken;
+import com.oracle.truffle.api.bytecode.BytecodeBuilder;
+import com.oracle.truffle.api.bytecode.BytecodeDSLAccess;
+import com.oracle.truffle.api.bytecode.BytecodeNodes;
+import com.oracle.truffle.api.bytecode.BytecodeParser;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeSupport;
 import com.oracle.truffle.api.dsl.GeneratedBy;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.FastAccess;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
@@ -163,6 +168,16 @@ public class ManualBytecodeInterpreter extends BaseBytecodeNode {
             }
         }
     }
+
+    static abstract class AccessToken<T extends RootNode & BytecodeRootNode> extends BytecodeNodes<T> {
+
+        protected AccessToken(BytecodeParser<? extends BytecodeBuilder> parse) {
+            super(parse);
+        }
+
+        static final Object PUBLIC_TOKEN = TOKEN;
+
+    }
 }
 
 class ManualUnsafeBytecodeInterpreter extends BaseBytecodeNode {
@@ -170,7 +185,7 @@ class ManualUnsafeBytecodeInterpreter extends BaseBytecodeNode {
         super(language, frameDescriptor, bc);
     }
 
-    private static final FastAccess UFA = FastAccess.UNSAFE;
+    private static final BytecodeDSLAccess UFA = BytecodeDSLAccess.lookup(AccessToken.PUBLIC_TOKEN);
 
     @Override
     @BytecodeInterpreterSwitch
@@ -469,7 +484,7 @@ class ManualUnsafeNodedInterpreter extends BaseBytecodeNode {
         this.nodes = nodes;
     }
 
-    private static final FastAccess UFA = FastAccess.UNSAFE;
+    private static final BytecodeDSLAccess UFA = BytecodeDSLAccess.lookup(AccessToken.PUBLIC_TOKEN);
 
     public abstract static class AddNode extends Node {
         public abstract int execute(int lhs, int rhs);
@@ -615,7 +630,7 @@ class ManualUnsafeNodedInterpreterWithoutBE extends BaseBytecodeNode {
         this.nodes = nodes;
     }
 
-    private static final FastAccess UFA = FastAccess.UNSAFE;
+    private static final BytecodeDSLAccess UFA = BytecodeDSLAccess.lookup(AccessToken.PUBLIC_TOKEN);
 
     @Override
     @BytecodeInterpreterSwitch

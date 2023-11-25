@@ -381,7 +381,7 @@ public class TruffleTypes {
     public static final String BytecodeTracingMetadata_Name = "com.oracle.truffle.api.bytecode.tracing.TracingMetadata";
     public static final String BytecodeTracingMetadata_SpecializationNames_Name = "com.oracle.truffle.api.bytecode.tracing.TracingMetadata.SpecializationNames";
 
-    public static final String FastAccess_Name = "com.oracle.truffle.api.impl.FastAccess";
+    public static final String BytecodeDSLAccess_Name = "com.oracle.truffle.api.bytecode.BytecodeDSLAccess";
 
     public final DeclaredType BytecodeBuilder = c.getDeclaredTypeOptional(BytecodeBuilder_Name);
     public final DeclaredType BytecodeConfig = c.getDeclaredTypeOptional(BytecodeConfig_Name);
@@ -424,7 +424,7 @@ public class TruffleTypes {
     public final DeclaredType BytecodeTracingMetadata = c.getDeclaredTypeOptional(BytecodeTracingMetadata_Name);
     public final DeclaredType BytecodeTracingMetadata_SpecializationNames = c.getDeclaredTypeOptional(BytecodeTracingMetadata_SpecializationNames_Name);
 
-    public final DeclaredType FastAccess = c.getDeclaredTypeOptional(FastAccess_Name);
+    public final DeclaredType BytecodeDSLAccess = c.getDeclaredTypeOptional(BytecodeDSLAccess_Name);
 
     // Library API
     public static final String CachedLibrary_Name = "com.oracle.truffle.api.library.CachedLibrary";
