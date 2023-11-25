@@ -1353,9 +1353,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 break;
             }
             for (GuardExpression guard : specialization.getGuards()) {
-                if (guard.getExpression().isNodeReceiverBound()) {
+                DSLExpression guardExpression = guard.getExpression();
+                if (guardExpression.isNodeReceiverBound()) {
                     nodeBound = true;
-                    if (requireNodeUnbound) {
+                    if (requireNodeUnbound && guardExpression.isNodeReceiverImplicitlyBound()) {
                         guard.addError("@%s annotated nodes must only refer to static guard methods or fields. " +
                                         "Add a static modifier to the bound guard method or field to resolve this.",
                                         types.ExportMessage.asElement().getSimpleName().toString());
@@ -1364,9 +1365,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
             }
             for (CacheExpression cache : specialization.getCaches()) {
-                if (cache.getDefaultExpression() != null && !cache.isMergedLibrary() && cache.getDefaultExpression().isNodeReceiverBound()) {
+                DSLExpression cachedInitializer = cache.getDefaultExpression();
+                if (cachedInitializer != null && !cache.isMergedLibrary() && cachedInitializer.isNodeReceiverBound()) {
                     nodeBound = true;
-                    if (requireNodeUnbound) {
+                    if (requireNodeUnbound && cachedInitializer.isNodeReceiverImplicitlyBound()) {
                         cache.addError("@%s annotated nodes must only refer to static cache initializer methods or fields. " +
                                         "Add a static modifier to the bound cache initializer method or field or " +
                                         "use the keyword 'this' to refer to the receiver type explicitly.",
@@ -1375,9 +1377,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     break;
                 }
             }
-            if (specialization.getLimitExpression() != null && specialization.getLimitExpression().isNodeReceiverBound()) {
+            DSLExpression limit = specialization.getLimitExpression();
+            if (limit != null && limit.isNodeReceiverBound()) {
                 nodeBound = true;
-                if (requireNodeUnbound) {
+                if (requireNodeUnbound && limit.isNodeReceiverImplicitlyBound()) {
                     specialization.addError("@%s annotated nodes must only refer to static limit initializer methods or fields. " +
                                     "Add a static modifier to the bound cache initializer method or field or " +
                                     "use the keyword 'this' to refer to the receiver type explicitly.",
@@ -1386,6 +1389,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 break;
             }
         }
+
         node.setNodeBound(nodeBound);
     }
 
