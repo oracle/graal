@@ -116,8 +116,8 @@ public final class AccessAdvisor {
         internalCallerFilter.addOrGetChildren("sun.net.www.protocol.http.*", ConfigurationFilter.Inclusion.Include);
         internalCallerFilter.addOrGetChildren("sun.nio.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("sun.reflect.**", ConfigurationFilter.Inclusion.Exclude);
-        // ConstructorUtil has wrappers around reflection methods
-        internalCallerFilter.addOrGetChildren("sun.reflect.misc.ConstructorUtil", ConfigurationFilter.Inclusion.Include);
+        // The sun.reflect.misc package provides reflection utilities
+        internalCallerFilter.addOrGetChildren("sun.reflect.misc.*", ConfigurationFilter.Inclusion.Include);
         internalCallerFilter.addOrGetChildren("sun.text.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("sun.util.**", ConfigurationFilter.Inclusion.Exclude);
         // Bundles calls Bundles.of
