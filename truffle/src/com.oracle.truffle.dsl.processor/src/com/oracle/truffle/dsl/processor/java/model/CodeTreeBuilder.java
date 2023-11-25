@@ -705,6 +705,19 @@ public class CodeTreeBuilder {
         return declaration(type, name, singleString(init));
     }
 
+    public CodeTreeBuilder startDeclaration(TypeMirror type, String name) {
+        if (ElementUtils.isVoid(type)) {
+            startStatement();
+        } else {
+            startStatement();
+            type(type);
+            string(" ");
+            string(name);
+            string(" = ");
+        }
+        return this;
+    }
+
     public CodeTreeBuilder declaration(TypeMirror type, String name) {
         return declaration(type, name, (CodeTree) null);
     }

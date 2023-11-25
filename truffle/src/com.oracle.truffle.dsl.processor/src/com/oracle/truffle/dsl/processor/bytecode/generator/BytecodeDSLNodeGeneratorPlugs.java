@@ -137,8 +137,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                     if (ElementUtils.needsCastTo(expectedType, targetType)) {
                         b.startStaticCall(bytecodeFactory.lookupExpectMethod(expectedType, targetType));
                     }
-                    BytecodeDSLNodeFactory.startExpectFrame(b, expectedType);
-                    b.string(frame);
+                    BytecodeDSLNodeFactory.startExpectFrameUnsafe(b, frame, expectedType);
                     b.string(stackIndex);
                     b.end();
                     if (ElementUtils.needsCastTo(expectedType, targetType)) {
@@ -150,8 +149,8 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                     if (!ElementUtils.isObject(genericType)) {
                         b.cast(targetType);
                     }
-                    BytecodeDSLNodeFactory.startGetFrame(b, null);
-                    b.string(frame).string(stackIndex);
+                    BytecodeDSLNodeFactory.startGetFrameUnsafe(b, frame, null);
+                    b.string(stackIndex);
                     b.end();
                     return false;
                 }

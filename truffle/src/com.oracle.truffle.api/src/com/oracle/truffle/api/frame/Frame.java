@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.frame;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 /**
  * Represents a frame containing values of local variables of the guest language. Instances of this
@@ -88,6 +89,25 @@ public interface Frame {
     }
 
     /**
+     * Read and expects a value of type object for a given slot. Expect methods are intended to be
+     * used to implement speculative behavior where slots are expected to be tagged with a type. If
+     * the type changes an {@link UnexpectedResultException} will be thrown containing the result of
+     * {@link #getValue(int) getValue(slot)}. Clients of this API are then expected to rewrite and
+     * no longer use an expect methods for future reads of that slot. Expect methods are
+     * particularly useful to implement stack like behavior with a frame.
+     *
+     * @param slot the index of the slot
+     * @return the value of the slot in this frame
+     * @throws UnexpectedResultException if the current value is not of type object
+     * @since 24.1
+     */
+    @SuppressWarnings("unused")
+    default Object expectObject(int slot) throws UnexpectedResultException {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * Write access to a local variable of type {@link Object}.
      *
      * @param slot the slot of the local variable
@@ -108,6 +128,25 @@ public interface Frame {
      * @since 22.0
      */
     default byte getByte(int slot) throws FrameSlotTypeException {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Read and expects a value of type byte for a given slot. Expect methods are intended to be
+     * used to implement speculative behavior where slots are expected to be tagged with a type. If
+     * the type changes an {@link UnexpectedResultException} will be thrown containing the result of
+     * {@link #getValue(int) getValue(slot)}. Clients of this API are then expected to rewrite and
+     * no longer use an expect methods for future reads of that slot. Expect methods are
+     * particularly useful to implement stack like behavior with a frame.
+     *
+     * @param slot the index of the slot
+     * @return the value of the slot in this frame
+     * @throws UnexpectedResultException if the current value is not of type byte
+     * @since 24.1
+     */
+    @SuppressWarnings("unused")
+    default byte expectByte(int slot) throws UnexpectedResultException {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new UnsupportedOperationException();
     }
@@ -138,6 +177,25 @@ public interface Frame {
     }
 
     /**
+     * Read and expects a value of type boolean for a given slot. Expect methods are intended to be
+     * used to implement speculative behavior where slots are expected to be tagged with a type. If
+     * the type changes an {@link UnexpectedResultException} will be thrown containing the result of
+     * {@link #getValue(int) getValue(slot)}. Clients of this API are then expected to rewrite and
+     * no longer use an expect methods for future reads of that slot. Expect methods are
+     * particularly useful to implement stack like behavior with a frame.
+     *
+     * @param slot the index of the slot
+     * @return the value of the slot in this frame
+     * @throws UnexpectedResultException if the current value is not of type boolean
+     * @since 24.1
+     */
+    @SuppressWarnings("unused")
+    default boolean expectBoolean(int slot) throws UnexpectedResultException {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * Write access to a local variable of type boolean.
      *
      * @param slot the slot of the local variable
@@ -158,6 +216,25 @@ public interface Frame {
      * @since 22.0
      */
     default int getInt(int slot) throws FrameSlotTypeException {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Read and expects a value of type int for a given slot. Expect methods are intended to be used
+     * to implement speculative behavior where slots are expected to be tagged with a type. If the
+     * type changes an {@link UnexpectedResultException} will be thrown containing the result of
+     * {@link #getValue(int) getValue(slot)}. Clients of this API are then expected to rewrite and
+     * no longer use an expect methods for future reads of that slot. Expect methods are
+     * particularly useful to implement stack like behavior with a frame.
+     *
+     * @param slot the index of the slot
+     * @return the value of the slot in this frame
+     * @throws UnexpectedResultException if the current value is not of type int
+     * @since 24.1
+     */
+    @SuppressWarnings("unused")
+    default int expectInt(int slot) throws UnexpectedResultException {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new UnsupportedOperationException();
     }
@@ -188,6 +265,25 @@ public interface Frame {
     }
 
     /**
+     * Read and expects a value of type long for a given slot. Expect methods are intended to be
+     * used to implement speculative behavior where slots are expected to be tagged with a type. If
+     * the type changes an {@link UnexpectedResultException} will be thrown containing the result of
+     * {@link #getValue(int) getValue(slot)}. Clients of this API are then expected to rewrite and
+     * no longer use an expect methods for future reads of that slot. Expect methods are
+     * particularly useful to implement stack like behavior with a frame.
+     *
+     * @param slot the index of the slot
+     * @return the value of the slot in this frame
+     * @throws UnexpectedResultException if the current value is not of type long
+     * @since 24.1
+     */
+    @SuppressWarnings("unused")
+    default long expectLong(int slot) throws UnexpectedResultException {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * Write access to a local variable of type long.
      *
      * @param slot the slot of the local variable
@@ -213,6 +309,25 @@ public interface Frame {
     }
 
     /**
+     * Read and expects a value of type float for a given slot. Expect methods are intended to be
+     * used to implement speculative behavior where slots are expected to be tagged with a type. If
+     * the type changes an {@link UnexpectedResultException} will be thrown containing the result of
+     * {@link #getValue(int) getValue(slot)}. Clients of this API are then expected to rewrite and
+     * no longer use an expect methods for future reads of that slot. Expect methods are
+     * particularly useful to implement stack like behavior with a frame.
+     *
+     * @param slot the index of the slot
+     * @return the value of the slot in this frame
+     * @throws UnexpectedResultException if the current value is not of type float
+     * @since 24.1
+     */
+    @SuppressWarnings("unused")
+    default float expectFloat(int slot) throws UnexpectedResultException {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * Write access to a local variable of type float.
      *
      * @param slot the slot of the local variable
@@ -233,6 +348,25 @@ public interface Frame {
      * @since 22.0
      */
     default double getDouble(int slot) throws FrameSlotTypeException {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Read and expects a value of type double for a given slot. Expect methods are intended to be
+     * used to implement speculative behavior where slots are expected to be tagged with a type. If
+     * the type changes an {@link UnexpectedResultException} will be thrown containing the result of
+     * {@link #getValue(int) getValue(slot)}. Clients of this API are then expected to rewrite and
+     * no longer use an expect methods for future reads of that slot. Expect methods are
+     * particularly useful to implement stack like behavior with a frame.
+     *
+     * @param slot the index of the slot
+     * @return the value of the slot in this frame
+     * @throws UnexpectedResultException if the current value is not of type double
+     * @since 24.1
+     */
+    @SuppressWarnings("unused")
+    default double expectDouble(int slot) throws UnexpectedResultException {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new UnsupportedOperationException();
     }

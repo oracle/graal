@@ -183,7 +183,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         this.model = model;
         bytecodeNodeGen = GeneratorUtils.createClass(model.templateType, null, Set.of(PUBLIC, FINAL), model.getName(), model.templateType.asType());
         emptyObjectArray = addField(bytecodeNodeGen, Set.of(PRIVATE, STATIC, FINAL), Object[].class, "EMPTY_ARRAY", "new Object[0]");
-        fastAccess = addField(bytecodeNodeGen, Set.of(PRIVATE, STATIC, FINAL), types.FastAccess, "ACCESS");
+        fastAccess = addField(bytecodeNodeGen, Set.of(PRIVATE, STATIC, FINAL), types.BytecodeDSLAccess, "ACCESS");
         fastAccess.setInit(createFastAccessFieldInitializer());
 
         if (model.enableYield) {
@@ -632,7 +632,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     private CodeTree createFastAccessFieldInitializer() {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        b.staticReference(types.FastAccess, model.allowUnsafe ? "UNSAFE" : "SAFE");
+        b.startStaticCall(types.BytecodeDSLAccess, "lookup").string("BytecodeNodesImpl.VISIBLE_TOKEN").end();
         return b.build();
     }
 
@@ -1276,6 +1276,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         String index = "i + " + USER_LOCALS_START_IDX;
 
         b.declaration(context.getType(Object[].class), "result", "new Object[numLocals - " + USER_LOCALS_START_IDX + "]");
+
         if (model.usesBoxingElimination()) {
             b.declaration(types.FrameDescriptor, "frameDescriptor", "getFrameDescriptor()");
             b.startFor().string("int i = 0; i < numLocals - " + USER_LOCALS_START_IDX + "; i++").end().startBlock();
@@ -1286,7 +1287,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startCase().string(ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(type))).end();
                 b.startCaseBlock();
                 b.startStatement().string("result[i] = ");
-                startExpectFrame(b, type).string("frame").string(index).end();
+                startExpectFrame(b, "frame", type, false).string(index).end();
                 b.end(); // statement
                 b.statement("break");
                 b.end(); // case block
@@ -1296,7 +1297,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startCaseBlock();
 
             b.startStatement().string("result[i] = ");
-            startExpectFrame(b, context.getType(Object.class)).string("frame").string(index).end();
+            startExpectFrame(b, "frame", context.getType(Object.class), false).string(index).end();
             b.end(); // statement
             b.statement("break");
 
@@ -1315,7 +1316,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(); // for
         } else {
             b.startFor().string("int i = 0; i < numLocals - " + USER_LOCALS_START_IDX + "; i++").end().startBlock();
-            b.statement("result[i] = ACCESS.uncheckedGetObject(frame, " + index + ")");
+            b.statement("result[i] = frame.getObject(" + index + ")");
             b.end();
         }
 
@@ -4547,6 +4548,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeTypeElement create() {
             bytecodeNodesImpl.setSuperClass(generic(types.BytecodeNodes, model.templateType.asType()));
             bytecodeNodesImpl.setEnclosingElement(bytecodeNodeGen);
+            bytecodeNodesImpl.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(Object.class), "VISIBLE_TOKEN")).createInitBuilder().string("TOKEN");
 
             bytecodeNodesImpl.add(createConstructor());
             bytecodeNodesImpl.add(createReparseImpl());
@@ -5017,7 +5019,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                     b.string("localFrame");
                                 }
                                 b.string("bc").string("bci").string("sp");
-                                startGetFrame(b, type(Object.class)).string("frame").string("sp - 1").end();
+                                startGetFrameUnsafe(b, "frame", type(Object.class)).string("sp - 1").end();
                                 b.end();
                                 b.end();
                             }
@@ -5050,7 +5052,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                     b.string("$this");
                                 }
                                 b.string("frame").string(materializedFrame).string("bc").string("bci").string("sp");
-                                startGetFrame(b, type(Object.class)).string(localFrame()).string("sp - 1").end();
+                                startGetFrameUnsafe(b, localFrame(), type(Object.class)).string("sp - 1").end();
                                 b.end();
                                 b.end();
                             }
@@ -5375,8 +5377,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (ElementUtils.isObject(inputType)) {
                 b.string("(boolean) ");
             }
-            startExpectFrame(b, inputType);
-            b.string("frame").string("sp - 1");
+            startExpectFrameUnsafe(b, "frame", inputType);
+            b.string("sp - 1");
             b.end();
             b.end(); // statement
 
@@ -5506,7 +5508,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (generic) {
                 startRequireFrame(b, slotType).string("frame").tree(readSlot).end();
             } else {
-                startExpectFrame(b, slotType).string("frame").tree(readSlot).end();
+                startExpectFrameUnsafe(b, "frame", slotType).tree(readSlot).end();
             }
             b.end();
             b.end(); // statement
@@ -5583,7 +5585,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 emitOnSpecialize(b, "root", "bci", "bc[bci]", "LoadLocal$" + boxedInstruction.getQuickeningName());
                 b.startStatement();
                 b.string("value = ");
-                startGetFrame(b, boxingType).string("frame").string("slot").end();
+                startGetFrameUnsafe(b, "frame", boxingType).string("slot").end();
                 b.end();
                 b.statement("break");
                 b.end();
@@ -5596,7 +5598,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             emitOnSpecialize(b, "root", "bci", "bc[bci]", "LoadLocal$" + genericInstruction.getQuickeningName());
             b.startStatement();
             b.string("value = ");
-            startGetFrame(b, type(Object.class)).string("frame").string("slot").end();
+            startGetFrameUnsafe(b, "frame", type(Object.class)).string("slot").end();
             b.end();
             b.statement("break");
             b.end();
@@ -5648,7 +5650,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startStatement().string("local = ");
             String stackFrame = needsStackFrame ? "stackFrame" : "frame";
-            startExpectFrame(b, inputType).string(stackFrame).string("sp - 1").end();
+            startExpectFrameUnsafe(b, stackFrame, inputType).string("sp - 1").end();
             b.end();
 
             b.end().startCatchBlock(types.UnexpectedResultException, "ex");
@@ -6309,7 +6311,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createGetLocals() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ContinuationRootNode, "getLocals");
             CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(types.Frame, "localFrame", cast(types.Frame, getFrameObject(COROUTINE_FRAME_IDX)));
+            b.startDeclaration(types.Frame, "localFrame");
+            b.cast(types.Frame);
+            startGetFrame(b, "frame", type(Object.class), false).string(COROUTINE_FRAME_IDX).end();
+            b.end(); // declaration
             b.startReturn().startCall("root", "getLocals").string("localFrame").end(2);
             return ex;
         }
@@ -6618,7 +6623,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return b;
     }
 
-    static CodeTreeBuilder startExpectFrame(CodeTreeBuilder b, TypeMirror type) {
+    static CodeTreeBuilder startExpectFrameUnsafe(CodeTreeBuilder b, String frame, TypeMirror type) {
+        return startExpectFrame(b, frame, type, true);
+    }
+
+    static CodeTreeBuilder startExpectFrame(CodeTreeBuilder b, String frame, TypeMirror type, boolean unsafe) {
         String methodName;
         switch (type.getKind()) {
             case BOOLEAN:
@@ -6643,11 +6652,20 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 methodName = "expectObject";
                 break;
         }
-        b.startCall("ACCESS", methodName);
+        if (unsafe) {
+            b.startCall("ACCESS", methodName);
+            b.string(frame);
+        } else {
+            b.startCall(frame, methodName);
+        }
         return b;
     }
 
-    static CodeTreeBuilder startGetFrame(CodeTreeBuilder b, TypeMirror type) {
+    static CodeTreeBuilder startGetFrameUnsafe(CodeTreeBuilder b, String frame, TypeMirror type) {
+        return startGetFrame(b, frame, type, true);
+    }
+
+    static CodeTreeBuilder startGetFrame(CodeTreeBuilder b, String frame, TypeMirror type, boolean unsafe) {
         String methodName;
         if (type == null) {
             methodName = "getValue";
@@ -6676,7 +6694,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     break;
             }
         }
-        b.startCall("ACCESS", methodName);
+        if (unsafe) {
+            b.startCall("ACCESS", methodName);
+            b.string(frame);
+        } else {
+            b.startCall(frame, methodName);
+        }
         return b;
     }
 

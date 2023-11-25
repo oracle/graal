@@ -55,6 +55,8 @@ public abstract class BytecodeNodes<T extends RootNode & BytecodeRootNode> {
     @CompilationFinal(dimensions = 1) protected volatile Source[] sources;
     @CompilationFinal private boolean hasInstrumentation;
 
+    protected static final Object TOKEN = new Object();
+
     protected BytecodeNodes(BytecodeParser<? extends BytecodeBuilder> parse) {
         this.parse = parse;
     }

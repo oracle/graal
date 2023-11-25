@@ -49,11 +49,13 @@ import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.Variadic;
+import com.oracle.truffle.api.bytecode.debug.BytecodeDebugTraceListener;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -105,13 +107,31 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 @OperationProxy(SLToBooleanNode.class)
 @ShortCircuitOperation(name = "SLAnd", booleanConverter = SLToBooleanNode.class, continueWhen = true)
 @ShortCircuitOperation(name = "SLOr", booleanConverter = SLToBooleanNode.class, continueWhen = false)
-public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeRootNode {
+public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeRootNode, BytecodeDebugTraceListener {
 
     protected SLBytecodeRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super((SLLanguage) language, frameDescriptor);
     }
 
     protected TruffleString tsName;
+
+    private transient String saved;
+
+    public void executeProlog(VirtualFrame frame) {
+        if (saved == null) {
+            saved = dump();
+            System.out.println(saved);
+        }
+    }
+
+    public void executeEpilog(VirtualFrame frame, Object returnValue, Throwable throwable) {
+        String newDump = dump();
+        if (!newDump.equals(saved)) {
+            System.out.println(newDump);
+            saved = newDump;
+        }
+
+    }
 
     @Override
     public SLExpressionNode getBodyNode() {
