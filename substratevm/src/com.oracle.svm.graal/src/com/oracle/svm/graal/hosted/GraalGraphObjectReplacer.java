@@ -40,6 +40,7 @@ import org.graalvm.compiler.hotspot.HotSpotBackendFactory;
 import org.graalvm.compiler.hotspot.SnippetResolvedJavaMethod;
 import org.graalvm.compiler.hotspot.SnippetResolvedJavaType;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
+import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.nativeimage.hosted.Feature.CompilationAccess;
@@ -53,6 +54,7 @@ import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.core.util.VMError;
@@ -94,6 +96,10 @@ import jdk.vm.ci.meta.Signature;
  * It is mainly used to replace the Hosted* meta data with the Substrate* meta data.
  */
 public class GraalGraphObjectReplacer implements Function<Object, Object> {
+    public static class Options {
+        @Option(help = "Ensure all created SubstrateTypes are linked")//
+        public static final HostedOptionKey<Boolean> GuaranteeSubstrateTypesLinked = new HostedOptionKey<>(false);
+    }
 
     private final AnalysisUniverse aUniverse;
     private final ConcurrentMap<AnalysisMethod, SubstrateMethod> methods = ObservableImageHeapMapProvider.create();
@@ -327,7 +333,6 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         }
 
         AnalysisType aType = toAnalysisType(original);
-        VMError.guarantee(aType.isLinked(), "Types reachable for JIT compilation must not have linkage errors");
         SubstrateType sType = types.get(aType);
         if (sType == null) {
             VMError.guarantee(!(forbidNewTypes || (original instanceof HostedType)), "Too late to create a new type: %s", aType);
@@ -421,6 +426,13 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
      */
     @SuppressWarnings("try")
     public void updateSubstrateDataAfterCompilation(HostedUniverse hUniverse, Providers providers) {
+
+        if (Options.GuaranteeSubstrateTypesLinked.getValue()) {
+            var unlinkedTypes = types.values().stream().filter(sType -> !sType.isLinked()).map(SubstrateType::toString).toList();
+            if (!unlinkedTypes.isEmpty()) {
+                throw VMError.shouldNotReachHere(String.format("Unlinked SubstrateTypes have been created:%n%s", String.join(System.lineSeparator(), unlinkedTypes)));
+            }
+        }
 
         for (Map.Entry<AnalysisType, SubstrateType> entry : types.entrySet()) {
             AnalysisType aType = entry.getKey();
