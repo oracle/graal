@@ -171,7 +171,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends LinearScanAlloca
             debug.log(DebugContext.VERBOSE_LEVEL, "Insert spill move %s", move);
             move.setId(LinearScan.DOMINATOR_SPILL_MOVE_ID);
 
-            int insertionIndex = res.getFirstInsertPosition(spillBlock);
+            int insertionIndex = res.getFirstInsertPosition();
             insertionBuffer.append(insertionIndex, move);
 
             betterSpillPosWithLowerProbability.increment(debug);

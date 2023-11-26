@@ -24,20 +24,28 @@
  */
 package jdk.graal.compiler.core.gen;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.code.ValueUtil.isLegal;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.graal.compiler.core.common.GraalOptions.MatchExpressions;
 import static jdk.graal.compiler.core.common.SpectrePHTMitigations.Options.SpeculativeExecutionBarriers;
 import static jdk.graal.compiler.core.match.ComplexMatchValue.INTERIOR_MATCH;
 import static jdk.graal.compiler.lir.LIR.verifyBlock;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isLegal;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableMapCursor;
+
+import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.calc.Condition;
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.core.common.cfg.BlockMap;
+import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.core.match.ComplexMatchValue;
 import jdk.graal.compiler.core.match.MatchPattern;
 import jdk.graal.compiler.core.match.MatchRuleRegistry;
 import jdk.graal.compiler.core.match.MatchStatement;
@@ -47,13 +55,6 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TTY;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.UnmodifiableMapCursor;
-import jdk.graal.compiler.core.common.LIRKind;
-import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.core.common.cfg.BlockMap;
-import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
-import jdk.graal.compiler.core.match.ComplexMatchValue;
 import jdk.graal.compiler.graph.GraalGraphError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeMap;
@@ -114,7 +115,6 @@ import jdk.graal.compiler.nodes.spi.NodeValueMap;
 import jdk.graal.compiler.nodes.spi.NodeWithState;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.StackSlot;
@@ -343,7 +343,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         return values.toArray(new Value[values.size()]);
     }
 
-    public void doBlockPrologue(@SuppressWarnings("unused") HIRBlock block, @SuppressWarnings("unused") OptionValues options) {
+    public final void doBlockPrologue(HIRBlock block, OptionValues options) {
 
         if (SpeculativeExecutionBarriers.getValue(options)) {
             boolean hasControlSplitPredecessor = false;
@@ -672,8 +672,8 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         ForeignCallLinkage linkage = gen.getForeignCalls().lookupForeignCall(x.getDescriptor());
 
         LabelRef exceptionEdge = null;
-        if (x instanceof WithExceptionNode) {
-            exceptionEdge = getLIRBlock(((WithExceptionNode) x).exceptionEdge());
+        if (x instanceof WithExceptionNode withExceptionNode) {
+            exceptionEdge = getLIRBlock(withExceptionNode.exceptionEdge());
             exceptionEdge.getTargetBlock().setIndirectBranchTarget();
         }
         LIRFrameState callState = stateWithExceptionEdge(x, exceptionEdge);

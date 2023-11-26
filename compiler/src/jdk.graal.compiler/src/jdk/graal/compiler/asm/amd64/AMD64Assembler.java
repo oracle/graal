@@ -4931,7 +4931,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitModRM(2, src);
     }
 
-    public final void endbranch() {
+    protected final void endbranch() {
         emitByte(0xf3);
         emitByte(0x0f);
         emitByte(0x1e);

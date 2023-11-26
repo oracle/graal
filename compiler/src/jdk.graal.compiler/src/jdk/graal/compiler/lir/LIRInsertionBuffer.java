@@ -28,9 +28,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.lir.amd64.EndbranchOp;
-
 /**
  * A buffer to enqueue updates to a list. This avoids frequent re-sizing of the list and copying of
  * list elements when insertions are done at multiple positions of the list. Additionally, it
@@ -94,9 +91,6 @@ public final class LIRInsertionBuffer {
      * be appended with index 4 or higher.
      */
     public void append(int index, LIRInstruction op) {
-        if (lir.size() > index && lir.get(index) instanceof EndbranchOp) {
-            throw GraalError.shouldNotReachHere("Cannot insert before EndBranch: " + op);
-        }
         int i = numberOfInsertionPoints() - 1;
         if (i < 0 || indexAt(i) < index) {
             appendNew(index, 1);
