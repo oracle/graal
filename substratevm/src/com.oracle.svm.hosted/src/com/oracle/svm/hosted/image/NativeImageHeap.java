@@ -163,12 +163,13 @@ public final class NativeImageHeap implements ImageHeap {
 
     public ObjectInfo getObjectInfo(Object obj) {
         JavaConstant constant = hUniverse.getSnippetReflection().forObject(obj);
-        /* Must unwrap since objects use the SubstrateObjectConstant hosted objects as keys. */
-        return objects.get(maybeUnwrap(constant));
+        VMError.guarantee(constant instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", constant);
+        return objects.get(uncompress(constant));
     }
 
     public ObjectInfo getConstantInfo(JavaConstant constant) {
-        return objects.get(maybeUnwrap(uncompress(constant)));
+        VMError.guarantee(constant instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", constant);
+        return objects.get(uncompress(constant));
     }
 
     protected HybridLayout<?> getHybridLayout(HostedClass clazz) {
@@ -351,7 +352,7 @@ public final class NativeImageHeap implements ImageHeap {
             handleImageString(stringConstant);
         }
 
-        final ObjectInfo existing = objects.get(maybeUnwrap(uncompressed));
+        final ObjectInfo existing = getConstantInfo(uncompressed);
         if (existing == null) {
             addObjectToImageHeap(uncompressed, immutableFromParent, identityHashCode, reason);
         } else if (objectReachabilityInfo != null) {
@@ -360,26 +361,12 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     /**
-     * When an object is represented as an {@link ImageHeapConstant} we unwrap it before using it as
-     * a key for {@link NativeImageHeap#objects}. This is necessary to avoid duplication of
-     * {@link ObjectInfo} for the same object. Eventually, there will be a complete shadow heap with
-     * only {@link ImageHeapConstant} and this code will be removed.
-     */
-    private static JavaConstant maybeUnwrap(JavaConstant constant) {
-        if (constant instanceof ImageHeapConstant ihc && ihc.getHostedObject() != null) {
-            return uncompress(ihc.getHostedObject());
-        }
-        return constant;
-    }
-
-    /**
      * The constants stored in the image heap, i.g., the {@link #objects} map, are always
      * uncompressed. The same object info is returned whenever the map is queried regardless of the
      * compressed flag value.
      */
     private static JavaConstant uncompress(JavaConstant constant) {
-        if (constant instanceof CompressibleConstant) {
-            CompressibleConstant compressible = (CompressibleConstant) constant;
+        if (constant instanceof CompressibleConstant compressible) {
             if (compressible.isCompressed()) {
                 return compressible.uncompress();
             }
@@ -388,8 +375,7 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     private static boolean isCompressed(JavaConstant constant) {
-        if (constant instanceof CompressibleConstant) {
-            CompressibleConstant compressible = (CompressibleConstant) constant;
+        if (constant instanceof CompressibleConstant compressible) {
             return compressible.isCompressed();
         }
         return false;
@@ -647,11 +633,11 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     private ObjectInfo addToImageHeap(JavaConstant add, HostedClass clazz, long size, int identityHashCode, Object reason) {
-        assert !isCompressed(add);
+        VMError.guarantee(add instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", add);
+        VMError.guarantee(!isCompressed(add), "Constants added to the image heap must be uncompressed.");
         ObjectInfo info = new ObjectInfo(add, size, clazz, identityHashCode, reason);
-        JavaConstant constant = maybeUnwrap(add);
-        assert !objects.containsKey(constant);
-        objects.put(constant, info);
+        ObjectInfo previous = objects.putIfAbsent(add, info);
+        VMError.guarantee(previous == null, "Found an existing object info associated to constant %s", add);
         return info;
     }
 
