@@ -283,7 +283,6 @@ import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import jdk.graal.compiler.java.BciBlockMapping;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
-import jdk.graal.compiler.loop.phases.SpeculativeGuardMovementPhase;
 import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
@@ -1602,8 +1601,6 @@ public class NativeImageGenerator {
         suites.getHighTier().removeSubTypePhases(c);
         suites.getMidTier().removeSubTypePhases(c);
         suites.getLowTier().removeSubTypePhases(c);
-        // remove after GR-49600 is resolved:
-        suites.getMidTier().replaceAllPhases(SpeculativeGuardMovementPhase.class, () -> new SpeculativeGuardMovementPhase(CanonicalizerPhase.create(), false, false));
     }
 
     @SuppressWarnings("unused")

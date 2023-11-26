@@ -68,22 +68,8 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.SpeculationLog;
 
 public class ConditionalEliminationRegressionTest extends GraalCompilerTest {
-
-    private final SpeculationLog speculationLog;
-
-    @SuppressWarnings("this-escape")
-    public ConditionalEliminationRegressionTest() {
-        speculationLog = getCodeCache().createSpeculationLog();
-    }
-
-    @Override
-    protected SpeculationLog getSpeculationLog() {
-        speculationLog.collectFailedSpeculations();
-        return speculationLog;
-    }
 
     @Override
     protected OptimisticOptimizations getOptimisticOptimizations() {
