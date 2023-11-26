@@ -56,7 +56,7 @@ import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
+final class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
     private final ConcurrentHashMap<Pair<TypeFlow<?>, TypeFlow<?>>, Boolean> interflows = new ConcurrentHashMap<>();
 
     /**
@@ -84,12 +84,8 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
         }
     }
 
-    protected TypeflowImpl() {
+    public TypeflowImpl() {
         super(ThreadContext::new);
-    }
-
-    public static TypeflowImpl createWithTypeflowTracking() {
-        return new TypeflowImpl();
     }
 
     @Override
@@ -115,10 +111,6 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
     @Override
     public void registerTypeEntering(PointsToAnalysis bb, CausalityEvent cause, TypeFlow<?> destination, AnalysisType type) {
         flowingFromHeap.computeIfAbsent(Pair.create(cause, destination), p -> new HashSet<>()).add(type);
-    }
-
-    @Override
-    public void registerVirtualInvocation(PointsToAnalysis bb, AbstractVirtualInvokeTypeFlow invocation, AnalysisMethod concreteTargetMethod, AnalysisType concreteTargetType) {
     }
 
     @Override

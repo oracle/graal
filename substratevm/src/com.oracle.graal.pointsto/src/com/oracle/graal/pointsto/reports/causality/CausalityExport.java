@@ -46,6 +46,7 @@ public final class CausalityExport {
     public enum ActivationLevel {
         DISABLED,
         ENABLED_WITHOUT_TYPEFLOW,
+        ENABLED_SIMPLE,
         ENABLED
     }
 
@@ -64,8 +65,9 @@ public final class CausalityExport {
     private static final class InitializationOnDemandHolder {
         private static final ActivationLevel frozenLevel = requestedLevel;
         private static final CausalityImplementation instance = switch (frozenLevel) {
-            case ENABLED -> TypeflowImpl.createWithTypeflowTracking();
-            case ENABLED_WITHOUT_TYPEFLOW -> BasicImpl.create();
+            case ENABLED -> new TypeflowImpl();
+            case ENABLED_WITHOUT_TYPEFLOW -> new RTAImpl();
+            case ENABLED_SIMPLE -> new SimpleGraphImpl();
             case DISABLED -> new CausalityImplementation();
         };
     }

@@ -80,6 +80,9 @@ public class AnalysisReportsOptions {
     @Option(help = "Whether TypeFlow-information should be recorded and included in the Causality Graph.")//
     public static final OptionKey<Boolean> CausalityGraphWithTypeflow = new OptionKey<>(true);
 
+    @Option(help = "Doesn't use hyperedges for virtual method calls.")
+    public static final OptionKey<Boolean> CausalityGraphSimple = new OptionKey<>(false);
+
     @Option(help = "Include debug-string for each typeflow.")//
     public static final OptionKey<Boolean> CausalityGraphVerbose = new OptionKey<>(true);
 

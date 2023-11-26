@@ -41,7 +41,6 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
-import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeapObjectArray;
@@ -57,7 +56,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.vm.ci.meta.JavaConstant;
 
-class BasicImpl<TContext extends BasicImpl.ThreadContext> extends CausalityImplementation {
+abstract class BasicImpl<TContext extends BasicImpl.ThreadContext> extends CausalityImplementation {
     private final ConcurrentHashMap<Graph.DirectEdge, Boolean> directEdges = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Graph.HyperEdge, Boolean> hyperEdges = new ConcurrentHashMap<>();
     private final Map<Object, Object> originsOfReplacedObjects = Collections.synchronizedMap(new IdentityHashMap<>());
@@ -118,10 +117,6 @@ class BasicImpl<TContext extends BasicImpl.ThreadContext> extends CausalityImple
         threadContexts = ThreadLocal.withInitial(contextSupplier);
     }
 
-    public static BasicImpl<ThreadContext> create() {
-        return new BasicImpl<>(ThreadContext::new);
-    }
-
     private static <T> T asObject(BigBang bb, Class<T> tClass, JavaConstant constant) {
         return bb.getSnippetReflectionProvider().asObject(tClass, constant);
     }
@@ -149,28 +144,6 @@ class BasicImpl<TContext extends BasicImpl.ThreadContext> extends CausalityImple
             return;
         }
         directEdges.put(new Graph.DirectEdge(cause, consequence), Boolean.TRUE);
-    }
-
-    @Override
-    public void registerVirtualInvocation(PointsToAnalysis bb, AbstractVirtualInvokeTypeFlow invocation, AnalysisMethod concreteTargetMethod, AnalysisType concreteTargetType) {
-        AnalysisMethod callingMethod = invocation.method();
-
-        if (callingMethod == null && invocation.getTargetMethod().getContextInsensitiveVirtualInvoke(invocation.getCallerMultiMethodKey()) != invocation) {
-            throw new RuntimeException("CausalityExport has made an invalid assumption!");
-        }
-
-        CausalityEvent callerEvent = callingMethod != null
-                        // TODO: Take inlining into account
-                        ? CausalityEvents.InlinedMethodCode.create(callingMethod)
-                        : CausalityEvents.RootMethodRegistration.create(invocation.getTargetMethod());
-
-        registerEdge(
-                        callerEvent,
-                        CausalityEvents.VirtualMethodInvoked.create(invocation.getTargetMethod()));
-        registerConjunctiveEdge(
-                        CausalityEvents.VirtualMethodInvoked.create(invocation.getTargetMethod()),
-                        CausalityEvents.TypeInstantiated.create(concreteTargetType),
-                        CausalityEvents.MethodImplementationInvoked.create(concreteTargetMethod));
     }
 
     private static CausalityEvent getEventForHeapReason(Object customReason, Object o) {
