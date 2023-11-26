@@ -433,8 +433,14 @@ public class InliningUtil extends ValueMergeUtil {
 
             @Override
             public Node replacement(Node node) {
-                if (node instanceof ParameterNode) {
-                    return parameters.get(((ParameterNode) node).index());
+                if (node instanceof ParameterNode parameterNode) {
+                    ValueNode argument = parameters.get(parameterNode.index());
+                    /*
+                     * Create Pi nodes to correct mismatches between caller argument and callee
+                     * parameter stamps, which can be caused by e.g. invokes with an unresolved
+                     * return type, or OSRLocals which always have an unrestricted stamp.
+                     */
+                    return graph.addOrUnique(PiNode.create(argument, parameterNode.stamp(NodeView.DEFAULT)));
                 } else if (node == entryPointNode) {
                     return prevBegin;
                 }
