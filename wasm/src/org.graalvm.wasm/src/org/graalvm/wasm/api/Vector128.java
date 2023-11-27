@@ -41,7 +41,27 @@
 
 package org.graalvm.wasm.api;
 
+import sun.misc.Unsafe;
+
+import java.lang.reflect.Field;
+
 public class Vector128 {
+
+    private static final Unsafe unsafe = initUnsafe();
+
+    private static Unsafe initUnsafe() {
+        try {
+            return Unsafe.getUnsafe();
+        } catch (SecurityException se) {
+            try {
+                Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+                theUnsafe.setAccessible(true);
+                return (Unsafe) theUnsafe.get(Unsafe.class);
+            } catch (Exception e) {
+                throw new RuntimeException("exception while trying to get Unsafe", e);
+            }
+        }
+    }
 
     public static final Vector128 ZERO = new Vector128(new byte[16]);
 
@@ -63,7 +83,7 @@ public class Vector128 {
     public int[] asInts() {
         int[] ints = new int[4];
         for (int i = 0; i < 4; i++) {
-            ints[i] = (bytes[4 * i + 3] & 0xFF) << 24 | (bytes[4 * i + 2] & 0xFF) << 16 | (bytes[4 * i + 1] & 0xFF) << 8 | bytes[4 * i] & 0xFF;
+            ints[i] = unsafe.getInt(bytes, Unsafe.ARRAY_BYTE_BASE_OFFSET + i * Unsafe.ARRAY_INT_INDEX_SCALE);
         }
         return ints;
     }
@@ -72,7 +92,7 @@ public class Vector128 {
         assert ints.length == 4;
         byte[] bytes = new byte[16];
         for (int i = 0; i < 16; i++) {
-            bytes[i] = (byte) ((ints[i / 4] >> 8 * (i % 4)) & 0xFF);
+            bytes[i] = unsafe.getByte(ints, Unsafe.ARRAY_INT_BASE_OFFSET + i * Unsafe.ARRAY_BYTE_INDEX_SCALE);
         }
         return new Vector128(bytes);
     }
