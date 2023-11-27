@@ -33,7 +33,6 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
-import org.graalvm.home.Version;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
@@ -117,9 +116,6 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
             }
         }
     }
-
-    public static final Version NEXT_POLYGLOT_VERSION_UPDATE = Version.create(25, 1);
-    public static final int MAX_JDK_VERSION = 25;
 
     private static final int DEBUG_TEAR_DOWN_TIMEOUT = 2_000;
     private static final int PRODUCTION_TEAR_DOWN_TIMEOUT = 10_000;

@@ -3519,7 +3519,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     """
     with_debuginfo = []
     string_substitutions = mx_subst.SubstitutionEngine(mx_subst.SubstitutionEngine(mx_subst.path_substitutions))
-    string_substitutions.register_no_arg('version', lambda : _suite.suiteDict['version'])
+    string_substitutions.register_no_arg('version', lambda: _suite.suiteDict['version'])
     attrs = {
         'description': 'SDK version file.',
         'maven': False,

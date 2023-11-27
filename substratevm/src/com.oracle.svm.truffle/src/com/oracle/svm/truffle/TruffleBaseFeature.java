@@ -25,8 +25,6 @@
 package com.oracle.svm.truffle;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static com.oracle.svm.truffle.api.SubstrateTruffleRuntime.MAX_JDK_VERSION;
-import static com.oracle.svm.truffle.api.SubstrateTruffleRuntime.NEXT_POLYGLOT_VERSION_UPDATE;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.graalvm.compiler.options.OptionType.User;
 
@@ -168,6 +166,9 @@ import org.graalvm.polyglot.Engine;
 public final class TruffleBaseFeature implements InternalFeature {
 
     private static final String NATIVE_IMAGE_FILELIST_FILE_NAME = "native-image-resources.filelist";
+
+    private static final Version NEXT_POLYGLOT_VERSION_UPDATE = Version.create(25, 1);
+    private static final int MAX_JDK_VERSION = 25;
 
     @Override
     public String getURL() {
