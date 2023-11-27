@@ -47,6 +47,8 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
@@ -59,7 +61,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.AbstractConstantKeysObject;
 import com.oracle.truffle.regex.AbstractRegexObject;
@@ -239,7 +241,7 @@ public final class RegexResult extends AbstractConstantKeysObject {
         @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_LAST_GROUP)"}, limit = "2")
         static int lastGroupIdentity(RegexResult receiver, String symbol,
                         @Cached("symbol") String cachedSymbol,
-                        @Cached RegexResultGetLastGroupNode getLastGroupNode) {
+                        @Cached @Shared RegexResultGetLastGroupNode getLastGroupNode) {
             return getLastGroupNode.execute(receiver);
         }
 
@@ -247,14 +249,14 @@ public final class RegexResult extends AbstractConstantKeysObject {
         @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_LAST_GROUP)"}, limit = "2", replaces = "lastGroupIdentity")
         static int lastGroupEquals(RegexResult receiver, String symbol,
                         @Cached("symbol") String cachedSymbol,
-                        @Cached RegexResultGetLastGroupNode getLastGroupNode) {
+                        @Cached @Shared RegexResultGetLastGroupNode getLastGroupNode) {
             return getLastGroupNode.execute(receiver);
         }
 
         @ReportPolymorphism.Megamorphic
         @Specialization(replaces = {"isMatchEquals", "getStartEquals", "getEndEquals"})
         static Object readGeneric(RegexResult receiver, String symbol,
-                        @Cached RegexResultGetLastGroupNode getLastGroupNode) throws UnknownIdentifierException {
+                        @Cached @Shared RegexResultGetLastGroupNode getLastGroupNode) throws UnknownIdentifierException {
             switch (symbol) {
                 case PROP_IS_MATCH:
                     return receiver != getNoMatchInstance();
@@ -428,47 +430,48 @@ public final class RegexResult extends AbstractConstantKeysObject {
 
     @ImportStatic(RegexResult.class)
     @GenerateUncached
+    @GenerateInline(false)
     abstract static class InvokeCacheNode extends Node {
 
         abstract Object execute(RegexResult receiver, String symbol, int groupNumber) throws UnknownIdentifierException;
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_GET_START)"}, limit = "2")
-        Object getStartIdentity(RegexResult receiver, String symbol, int groupNumber,
+        static Object getStartIdentity(RegexResult receiver, String symbol, int groupNumber,
                         @Cached("symbol") String cachedSymbol,
-                        @Cached RegexResultGetStartNode getStartNode) {
+                        @Cached @Shared RegexResultGetStartNode getStartNode) {
             return getStartNode.execute(receiver, groupNumber);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_GET_START)"}, limit = "2", replaces = "getStartIdentity")
-        Object getStartEquals(RegexResult receiver, String symbol, int groupNumber,
+        static Object getStartEquals(RegexResult receiver, String symbol, int groupNumber,
                         @Cached("symbol") String cachedSymbol,
-                        @Cached RegexResultGetStartNode getStartNode) {
+                        @Cached @Shared RegexResultGetStartNode getStartNode) {
             return getStartNode.execute(receiver, groupNumber);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_GET_END)"}, limit = "2")
-        Object getEndIdentity(RegexResult receiver, String symbol, int groupNumber,
+        static Object getEndIdentity(RegexResult receiver, String symbol, int groupNumber,
                         @Cached("symbol") String cachedSymbol,
-                        @Cached RegexResultGetEndNode getEndNode) {
+                        @Cached @Shared RegexResultGetEndNode getEndNode) {
             return getEndNode.execute(receiver, groupNumber);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_GET_END)"}, limit = "2", replaces = "getEndIdentity")
-        Object getEndEquals(RegexResult receiver, String symbol, int groupNumber,
+        static Object getEndEquals(RegexResult receiver, String symbol, int groupNumber,
                         @Cached("symbol") String cachedSymbol,
-                        @Cached RegexResultGetEndNode getEndNode) {
+                        @Cached @Shared RegexResultGetEndNode getEndNode) {
             return getEndNode.execute(receiver, groupNumber);
         }
 
         @ReportPolymorphism.Megamorphic
         @Specialization(replaces = {"getStartEquals", "getEndEquals"})
         static Object invokeGeneric(RegexResult receiver, String symbol, int groupNumber,
-                        @Cached RegexResultGetStartNode getStartNode,
-                        @Cached RegexResultGetEndNode getEndNode) throws UnknownIdentifierException {
+                        @Cached @Shared RegexResultGetStartNode getStartNode,
+                        @Cached @Shared RegexResultGetEndNode getEndNode) throws UnknownIdentifierException {
             switch (symbol) {
                 case PROP_GET_START:
                     return getStartNode.execute(receiver, groupNumber);
@@ -493,45 +496,43 @@ public final class RegexResult extends AbstractConstantKeysObject {
 
     private static final int INVALID_RESULT_INDEX = -1;
 
+    @GenerateInline(false)
     @GenerateUncached
     abstract static class RegexResultGetEndNode extends Node {
 
         abstract int execute(Object receiver, int groupNumber);
 
         @Specialization
-        static int doResult(RegexResult receiver, int groupNumber,
-                        @Cached BranchProfile lazyProfile,
+        int doResult(RegexResult receiver, int groupNumber,
+                        @Cached InlinedBranchProfile lazyProfile,
                         @Cached DispatchNode getIndicesCall) {
             if (receiver.result == null) {
                 assert receiver.lazyCallTarget != null;
-                lazyProfile.enter();
-                getIndicesCall.execute(receiver.lazyCallTarget, receiver);
+                lazyProfile.enter(this);
+                getIndicesCall.execute(this, receiver.lazyCallTarget, receiver);
             }
             int i = Group.groupNumberToBoundaryIndexEnd(groupNumber);
             return i < 0 || i >= receiver.result.length ? INVALID_RESULT_INDEX : receiver.result[i];
         }
     }
 
+    @GenerateInline(false)
     @GenerateUncached
     public abstract static class RegexResultGetStartNode extends Node {
 
         public abstract int execute(Object receiver, int groupNumber);
 
         @Specialization
-        static int doResult(RegexResult receiver, int groupNumber,
-                        @Cached BranchProfile lazyProfile,
+        int doResult(RegexResult receiver, int groupNumber,
+                        @Cached InlinedBranchProfile lazyProfile,
                         @Cached DispatchNode getIndicesCall) {
             if (receiver.result == null) {
                 assert receiver.lazyCallTarget != null;
-                lazyProfile.enter();
-                getIndicesCall.execute(receiver.lazyCallTarget, receiver);
+                lazyProfile.enter(this);
+                getIndicesCall.execute(this, receiver.lazyCallTarget, receiver);
             }
             int i = Group.groupNumberToBoundaryIndexStart(groupNumber);
             return i < 0 || i >= receiver.result.length ? INVALID_RESULT_INDEX : receiver.result[i];
-        }
-
-        public static RegexResultGetStartNode create() {
-            return RegexResultFactory.RegexResultGetStartNodeGen.create();
         }
 
         public static RegexResultGetStartNode getUncached() {
@@ -539,19 +540,20 @@ public final class RegexResult extends AbstractConstantKeysObject {
         }
     }
 
+    @GenerateInline(false)
     @GenerateUncached
     public abstract static class RegexResultGetLastGroupNode extends Node {
 
         public abstract int execute(Object receiver);
 
         @Specialization
-        static int doResult(RegexResult receiver,
-                        @Cached BranchProfile lazyProfile,
+        int doResult(RegexResult receiver,
+                        @Cached InlinedBranchProfile lazyProfile,
                         @Cached DispatchNode getIndicesCall) {
             if (receiver.result == null) {
                 assert receiver.lazyCallTarget != null;
-                lazyProfile.enter();
-                getIndicesCall.execute(receiver.lazyCallTarget, receiver);
+                lazyProfile.enter(this);
+                getIndicesCall.execute(this, receiver.lazyCallTarget, receiver);
             }
             return receiver.getLastGroup();
         }

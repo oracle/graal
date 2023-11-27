@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.parser.flavors;
+package com.oracle.truffle.regex.tregex.parser;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,20 +47,13 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 
-public final class RubyCaseUnfoldingTrie {
-
-    public static final RubyCaseUnfoldingTrie CASE_UNFOLD;
-
-    static {
-        CASE_UNFOLD = new RubyCaseUnfoldingTrie(0);
-        RubyCaseFoldingData.CASE_FOLD.forEach((k, v) -> CASE_UNFOLD.add(k, v, 0));
-    }
+public final class CaseUnfoldingTrie {
 
     private final List<Integer> codepoints;
-    private final EconomicMap<Integer, RubyCaseUnfoldingTrie> childNodes;
+    private final EconomicMap<Integer, CaseUnfoldingTrie> childNodes;
     private final int depth;
 
-    public RubyCaseUnfoldingTrie(int depth) {
+    public CaseUnfoldingTrie(int depth) {
         this.codepoints = new ArrayList<>();
         this.childNodes = EconomicMap.create();
         this.depth = depth;
@@ -73,7 +66,7 @@ public final class RubyCaseUnfoldingTrie {
         }
 
         if (!hasChildAt(caseFoldedString[offset])) {
-            childNodes.put(caseFoldedString[offset], new RubyCaseUnfoldingTrie(depth + 1));
+            childNodes.put(caseFoldedString[offset], new CaseUnfoldingTrie(depth + 1));
         }
         getChildAt(caseFoldedString[offset]).add(codepoint, caseFoldedString, offset + 1);
     }
@@ -82,7 +75,7 @@ public final class RubyCaseUnfoldingTrie {
         return childNodes.containsKey(index);
     }
 
-    public RubyCaseUnfoldingTrie getChildAt(int index) {
+    public CaseUnfoldingTrie getChildAt(int index) {
         return childNodes.get(index);
     }
 
@@ -122,19 +115,19 @@ public final class RubyCaseUnfoldingTrie {
         }
     }
 
-    public static List<Unfolding> findUnfoldings(List<Integer> caseFolded) {
-        List<RubyCaseUnfoldingTrie> states = new ArrayList<>();
-        List<RubyCaseUnfoldingTrie> nextStates = new ArrayList<>();
+    public static List<Unfolding> findUnfoldings(CaseFoldData.CaseFoldAlgorithm algorithm, List<Integer> caseFolded) {
+        List<CaseUnfoldingTrie> states = new ArrayList<>();
+        List<CaseUnfoldingTrie> nextStates = new ArrayList<>();
         List<Unfolding> unfoldings = new ArrayList<>();
 
         for (int i = 0; i < caseFolded.size(); i++) {
             int codepoint = caseFolded.get(i);
 
-            states.add(RubyCaseUnfoldingTrie.CASE_UNFOLD);
+            states.add(CaseFoldData.getUnfoldingTrie(algorithm));
 
-            for (RubyCaseUnfoldingTrie state : states) {
+            for (CaseUnfoldingTrie state : states) {
                 if (state.hasChildAt(codepoint)) {
-                    RubyCaseUnfoldingTrie newState = state.getChildAt(codepoint);
+                    CaseUnfoldingTrie newState = state.getChildAt(codepoint);
                     nextStates.add(newState);
                     for (int unfoldedCodepoint : newState.getCodepoints()) {
                         unfoldings.add(new Unfolding(i + 1 - newState.getDepth(), newState.getDepth(), unfoldedCodepoint));
@@ -142,7 +135,7 @@ public final class RubyCaseUnfoldingTrie {
                 }
             }
 
-            List<RubyCaseUnfoldingTrie> statesTmp = states;
+            List<CaseUnfoldingTrie> statesTmp = states;
             states = nextStates;
             nextStates = statesTmp;
 
@@ -154,8 +147,8 @@ public final class RubyCaseUnfoldingTrie {
         return unfoldings;
     }
 
-    public static List<Integer> findSingleCharUnfoldings(int[] caseFolded) {
-        RubyCaseUnfoldingTrie state = CASE_UNFOLD;
+    public static List<Integer> findSingleCharUnfoldings(CaseFoldData.CaseFoldAlgorithm algorithm, int[] caseFolded) {
+        CaseUnfoldingTrie state = CaseFoldData.getUnfoldingTrie(algorithm);
 
         for (int codepoint : caseFolded) {
             assert state.hasChildAt(codepoint);
@@ -165,9 +158,9 @@ public final class RubyCaseUnfoldingTrie {
         return state.getCodepoints();
     }
 
-    public static List<Integer> findSingleCharUnfoldings(int caseFolded) {
-        if (CASE_UNFOLD.hasChildAt(caseFolded)) {
-            return CASE_UNFOLD.getChildAt(caseFolded).getCodepoints();
+    public static List<Integer> findSingleCharUnfoldings(CaseFoldData.CaseFoldAlgorithm algorithm, int caseFolded) {
+        if (CaseFoldData.getUnfoldingTrie(algorithm).hasChildAt(caseFolded)) {
+            return CaseFoldData.getUnfoldingTrie(algorithm).getChildAt(caseFolded).getCodepoints();
         } else {
             return Collections.emptyList();
         }

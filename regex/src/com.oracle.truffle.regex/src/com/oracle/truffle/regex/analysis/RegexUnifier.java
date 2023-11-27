@@ -127,12 +127,18 @@ public final class RegexUnifier {
                 case groupEnd:
                     dump.append(")");
                     break;
+                case literalChar:
+                    dump.append("x");
+                    break;
                 case charClass:
                     if (((Token.CharacterClass) token).getCodePointSet().matchesSingleChar()) {
                         dump.append("x");
                     } else {
                         dump.append("[c]");
                     }
+                    break;
+                case charClassEnd:
+                    dump.append("[c]");
                     break;
             }
         }
