@@ -1370,8 +1370,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         CodeExecutableElement copyLocals = GeneratorUtils.overrideImplement(types.BytecodeRootNode, "copyLocals", 3);
         CodeTreeBuilder copyLocalsBuilder = copyLocals.createBuilder();
-        copyLocalsBuilder.startStatement().startCall("ACCESS.copyTo");
-        copyLocalsBuilder.string("source");
+        copyLocalsBuilder.startStatement().startCall("source.copyTo");
         copyLocalsBuilder.string("USER_LOCALS_START_IDX");
         copyLocalsBuilder.string("destination");
         copyLocalsBuilder.string("USER_LOCALS_START_IDX");
