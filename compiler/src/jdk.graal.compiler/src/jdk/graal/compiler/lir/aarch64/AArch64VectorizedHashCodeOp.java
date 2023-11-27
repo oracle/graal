@@ -144,10 +144,26 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         };
 
         final int nRegs = vresult.length;
-        assert nRegs >= 2 && CodeUtil.isPowerOf2(nRegs) : "number of vectors must be >= 2 and a power of 2";
+        GraalError.guarantee(nRegs >= 2 && CodeUtil.isPowerOf2(nRegs), "number of vectors must be a power of 2 >= 2");
         final int elementsPerVector = ASIMDSize.FullReg.bytes() / ElementSize.Word.bytes();
         final int elementsPerIteration = elementsPerVector * nRegs;
+        // We can load up to 4 registers at once.
         final int maxConsecutiveRegs = Math.min(nRegs, 4);
+        final int minBits = elSize.bits() * elementsPerVector;
+        final int maxBits = Math.min(elSize.bits() * elementsPerIteration, ASIMDSize.FullReg.bits());
+        // Sub-word element loads can be spread out to more vector registers.
+        // i.e. byte: 4x32, 2x64, or 1x128, halfword: 4x64 or 2x128, word: 4x128.
+        final ASIMDSize loadVecSize = nRegs * minBits <= ASIMDSize.HalfReg.bits() ? ASIMDSize.HalfReg : ASIMDSize.FullReg;
+        final int loadVecBits = loadVecSize.bits();
+        GraalError.guarantee(CodeUtil.isPowerOf2(loadVecBits) && loadVecBits % minBits == 0 && loadVecBits <= maxBits,
+                        "loaded bit width must be (2^n)*%d <= %d for %s", minBits, maxBits, elSize);
+
+        // to how many eventual registers do we expand each loaded register?
+        int extensionFactor = Math.max((ElementSize.Word.bits() / elSize.bits()) / (maxBits / loadVecBits), 1);
+        // number of <loadVecSize> registers needed to load to fill 4 full vectors.
+        // i.e. byte: 1 full or 2 half, halfword: 2 full or 4 half, word: 4 full.
+        int consecutiveRegs = Math.max(maxConsecutiveRegs / extensionFactor, 1);
+        int regsFilledPerLoad = consecutiveRegs * extensionFactor;
 
         // @formatter:off
         // elementsPerIteration = 16;
@@ -175,6 +191,8 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         Register next = tmp3;
 
         // vnext = IntVector.broadcast(I128, power_of_31_backwards[0]);
+        // Note: (length - elementsPerIteration) is usually zero.
+        // This code throws if there are not enough elements in the array but allows more.
         int nextPow31 = POWERS_OF_31_BACKWARDS[POWERS_OF_31_BACKWARDS.length - elementsPerIteration] * 31;
         masm.mov(next, nextPow31);
         masm.neon.dupVG(ASIMDSize.FullReg, ElementSize.Word, vnext, next);
@@ -192,13 +210,6 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         // OOO execution can then hopefully do a better job of prefetching
         // load next 16 elements into 4 data vector registers
         // vtmp = ary1[index:index+elementsPerIteration];
-        ASIMDSize loadVecSize = ASIMDSize.FullReg;
-        int loadVecBits = loadVecSize.bits();
-        // number of <loadVecSize> registers needed to load to fill 4 full vectors.
-        // i.e. byte: 1 full or 2 half, halfword: 2 full or 4 half, word: 4 full.
-        int consecutiveRegs = Math.min(elSize.bytes() * (ASIMDSize.FullReg.bits() / loadVecBits), maxConsecutiveRegs);
-        int extensionFactor = (ElementSize.Word.bits() / elSize.bits()) / (ASIMDSize.FullReg.bits() / loadVecBits);
-        int regsFilledPerLoad = consecutiveRegs * extensionFactor;
         for (int ldVi = 0; ldVi < nRegs; ldVi += regsFilledPerLoad) {
             boolean postIndex = true;
             loadConsecutiveVectors(masm, loadVecSize, loadVecBits, elSize, ary1, vtmp, ldVi, consecutiveRegs, postIndex, false);
@@ -244,7 +255,7 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         }
 
         // accumulate horizontal vector sum in result
-        reduceVectorLanes(masm, ASIMDSize.FullReg, vresult);
+        reduceVectorLanes(masm, ASIMDSize.FullReg, vresult, nRegs);
         masm.fmov(32, tmp2, vresult[0]); // umovGX(Word, tmp2, vresult[0], 0);
         masm.add(32, result, result, tmp2);
 
@@ -422,9 +433,9 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
      * Reduces elements from multiple vectors to a single vector and then reduces that vector's
      * lanes to a single scalar value in {@code vresult[0]}.
      */
-    private static void reduceVectorLanes(AArch64MacroAssembler masm, ASIMDSize vsize, Register[] vresult) {
+    private static void reduceVectorLanes(AArch64MacroAssembler masm, ASIMDSize vsize, Register[] vresult, int vresultLen) {
         // reduce vectors pairwise until there's only a single vector left
-        for (int nRegs = vresult.length, stride = 1; nRegs >= 2; nRegs /= 2, stride *= 2) {
+        for (int nRegs = vresultLen, stride = 1; nRegs >= 2; nRegs /= 2, stride *= 2) {
             for (int i = 0; i < vresult.length - stride; i += 2 * stride) {
                 masm.neon.addVVV(vsize, ElementSize.Word, vresult[i], vresult[i], vresult[i + stride]);
             }
