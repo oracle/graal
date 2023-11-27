@@ -36,7 +36,13 @@
   local regex_downstream_js = regex_common + {
     name: 'gate-regex-downstream-js-jdk' + self.jdk_version,
     run: [
-      ["mx", "testdownstream", "-R", ['mx', 'urlrewrite', 'https://github.com/graalvm/js-tests.git'], "--mx-command", " gate --no-warning-as-error --all-suites --tags build,Test262-default,TestV8-default,regex"]
+      # checkout graal-js and js-tests suites at the imported (downstream-branch) revisions.
+      ["mx", "-p", "../vm", "--dynamicimports", "/graal-js", "sforceimports"],
+      ["git", "clone", ["mx", "urlrewrite", "https://github.com/graalvm/js-tests.git"], "../../js-tests"],
+      ["mx", "-p", "../vm", "--dynamicimports", "/graal-js,js-tests", "checkout-downstream", "graal-js", "js-tests"],
+      # run downstream gate from js-tests suite.
+      ["mx", "-p", "../../js-tests", "sversions"],
+      ["mx", "-p", "../../js-tests", "gate", "--no-warning-as-error", "--all-suites", "--tags", "build,Test262-default,TestV8-default,regex"],
     ],
     targets: ["gate"],
   },
