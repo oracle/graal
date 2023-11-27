@@ -147,6 +147,47 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
     }
 
     @Test
+    public void testConditional() {
+        // return - (arg0)
+        BoxingEliminationTestRootNode node = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginAbs();
+            b.beginConditional();
+            b.emitTrue();
+            b.emitLoadConstant(-42L);
+            b.emitLoadConstant(22L);
+            b.endConditional();
+
+            b.endAbs();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        printInstructions(node);
+
+        assertInstructions(node,
+                        "c.True",
+                        "branch.false",
+                        "load.constant",
+                        "branch",
+                        "load.constant",
+                        "c.Abs",
+                        "return",
+                        "pop");
+
+        assertEquals(42L, node.getCallTarget().call());
+
+        assertInstructions(node,
+                        "load.constant$Long",
+                        "c.Abs$GreaterZero",
+                        "return",
+                        "pop");
+
+    }
+
+    @Test
     public void testLocalAbs() {
         // return - (arg0)
         BoxingEliminationTestRootNode node = parse(b -> {

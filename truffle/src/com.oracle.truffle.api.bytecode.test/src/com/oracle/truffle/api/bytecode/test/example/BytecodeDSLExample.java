@@ -79,7 +79,7 @@ import com.oracle.truffle.api.nodes.Node;
                 @Variant(suffix = "Unsafe", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = true)),
                 @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableSerialization = true, enableUncachedInterpreter = true)),
                 @Variant(suffix = "WithBE", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableSerialization = true, boxingEliminationTypes = {
-                                long.class}, decisionsFile = "bytecode_dsl_example_quickening_only.json")),
+                                boolean.class, long.class}, decisionsFile = "bytecode_dsl_example_quickening_only.json")),
                 @Variant(suffix = "WithOptimizations", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableSerialization = true, decisionsFile = "bytecode_dsl_example_decisions.json")),
                 // A typical "production" configuration with all of the bells and whistles.
                 @Variant(suffix = "Production", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = true, enableUncachedInterpreter = true, //
