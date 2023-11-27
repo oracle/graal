@@ -24,6 +24,9 @@
  */
 package jdk.graal.compiler.core.test;
 
+import org.junit.Assume;
+import org.junit.Test;
+
 import jdk.graal.compiler.loop.phases.LoopFullUnrollPhase;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -36,8 +39,6 @@ import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
 import jdk.graal.compiler.phases.common.LockEliminationPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class LockEliminationTest extends GraalCompilerTest {
@@ -154,6 +155,7 @@ public class LockEliminationTest extends GraalCompilerTest {
 
     @Test
     public void testEscapeAnalysis() {
+        Assume.assumeTrue("locks have side effects", getProviders().getPlatformConfigurationProvider().areLocksSideEffectFree());
         StructuredGraph graph = getGraph("testEscapeAnalysisSnippet", true);
 
         assertDeepEquals(3, graph.getNodes().filter(MonitorEnterNode.class).count());

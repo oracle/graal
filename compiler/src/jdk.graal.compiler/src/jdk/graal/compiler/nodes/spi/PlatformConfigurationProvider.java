@@ -44,4 +44,12 @@ public interface PlatformConfigurationProvider {
     default boolean requiresStrictLockOrder() {
         return false;
     }
+
+    /**
+     * Returns whether locks of thread local objects are side effect free and can be safely
+     * virtualized.
+     */
+    default boolean areLocksSideEffectFree() {
+        return true;
+    }
 }

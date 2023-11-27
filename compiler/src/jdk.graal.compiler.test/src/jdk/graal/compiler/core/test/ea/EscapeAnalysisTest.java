@@ -26,6 +26,10 @@ package jdk.graal.compiler.core.test.ea;
 
 import java.util.List;
 
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
+
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
@@ -42,10 +46,6 @@ import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.test.SubprocessUtil;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
@@ -87,6 +87,7 @@ public class EscapeAnalysisTest extends EATestBase {
 
     @Test
     public void testMonitor() {
+        Assume.assumeTrue("locks have side effects", getProviders().getPlatformConfigurationProvider().areLocksSideEffectFree());
         testEscapeAnalysis("testMonitorSnippet", JavaConstant.forInt(0), false);
     }
 
@@ -107,6 +108,7 @@ public class EscapeAnalysisTest extends EATestBase {
 
     @Test
     public void testMonitor2() {
+        Assume.assumeTrue("locks have side effects", getProviders().getPlatformConfigurationProvider().areLocksSideEffectFree());
         testEscapeAnalysis("testMonitor2Snippet", JavaConstant.forInt(0), false);
     }
 
