@@ -23,48 +23,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.svm.core.nmt;
 
-import com.oracle.svm.core.Uninterruptible;
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 
-/** Categories for native memory tracking. */
-public enum NmtCategory {
-    /** JIT compiler. */
-    Compiler("Compiler"),
-    /** JIT compiled code. */
-    Code("Code"),
-    /** Garbage collector. */
-    GC("GC"),
-    /** Heap dumping infrastructure. */
-    HeapDump("Heap Dump"),
-    /** Java Flight Recorder. */
-    JFR("JFR"),
-    /** Java Native Interface. */
-    JNI("JNI"),
-    /** JVM stat / perf data. */
-    JvmStat("jvmstat"),
-    /** NMT itself. */
-    NMT("Native Memory Tracking"),
-    /** Profile-guided optimizations. */
-    PGO("PGO"),
-    /** Threading. */
-    Threading("Threading"),
-    /** Memory allocated via Unsafe. */
-    Unsafe("Unsafe"),
-    mtJavaHeap("Java Heap"),
-    mtImageHeap("Image Heap"),
+@RawStructure
+public interface NmtVirtualMemoryData extends PointerBase {
+    @RawField
+    PointerBase getBaseAddr();
 
-    /** Some other, VM internal reason - avoid if possible, better to add a new category. */
-    Internal("Internal");
+    @RawField
+    void setBaseAddr(PointerBase value);
 
-    private final String name;
+    @RawField
+    UnsignedWord getReserved();
 
-    NmtCategory(String name) {
-        this.name = name;
-    }
+    @RawField
+    void setReserved(UnsignedWord value);
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public String getName() {
-        return name;
-    }
+    @RawField
+    UnsignedWord getCommitted();
+
+    @RawField
+    void setCommitted(UnsignedWord value);
 }

@@ -36,10 +36,15 @@ import org.junit.Test;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.genscavenge.HeapParameters;
 
 public class NativeMemoryTrackingTests {
     private static final int ALLOCATION_SIZE = 1024 * 16;
     private static final int REALLOC_SIZE = ALLOCATION_SIZE / 2;
+    private final int commitSize = (int) VirtualMemoryProvider.get().getGranularity().rawValue();
+
+    private final int reserveSize = commitSize * 8;
 
     @Test
     public void testMalloc() {
@@ -85,5 +90,316 @@ public class NativeMemoryTrackingTests {
 
     private static long getUsedMemory() {
         return NativeMemoryTracking.singleton().getUsedMemory(NmtCategory.Code);
+    }
+
+    @Test
+    public void testReserveAndCommitBasic() {
+        assertTrue("Test should start with no memory already allocated in the test category.", NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) == 0);
+
+        Pointer reservePtr = VirtualMemoryProvider.get().reserve(WordFactory.unsigned(reserveSize), HeapParameters.getAlignedHeapChunkSize(), false,
+                        NmtCategory.Code);
+        assertTrue(NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) >= reserveSize);
+        assertTrue(NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) == 0);
+
+        Pointer commitPtr = VirtualMemoryProvider.get().commit(reservePtr, WordFactory.unsigned(commitSize), 0, NmtCategory.Code);
+        assertTrue(NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) >= reserveSize);
+        assertTrue("Expected committed size:" + commitSize + " Actual:" + NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code),
+                        NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) >= commitSize);
+
+        assertTrue("uncommit op failed", 0 == VirtualMemoryProvider.get().uncommit(commitPtr, WordFactory.unsigned(commitSize)));
+        assertTrue(NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) == 0);
+
+        assertTrue("free op failed", 0 == VirtualMemoryProvider.get().free(reservePtr, WordFactory.unsigned(reserveSize)));
+        assertTrue("After freeing memory for test, mtTest category should have size 0. Actual:" + NativeMemoryTracking.getReservedByCategory(NmtCategory.Code),
+                        NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) == 0);
+    }
+
+    @Test
+    public void testSmallAlignmentReserveAndCommit() {
+        assertTrue("Test should start with no memory already allocated in the mtTest category.", NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) == 0);
+
+        Pointer reservePtr = VirtualMemoryProvider.get().reserve(WordFactory.unsigned(reserveSize), VirtualMemoryProvider.get().getGranularity().unsignedDivide(2), false,
+                        NmtCategory.Code);
+        assertTrue(NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) >= reserveSize);
+        assertTrue(NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) == 0);
+
+        Pointer commitPtr = VirtualMemoryProvider.get().commit(reservePtr, WordFactory.unsigned(commitSize * 3), 0, NmtCategory.Code);
+        assertTrue("Unable to commit.", commitPtr.isNonNull());
+        assertTrue("Expected committed size:" + commitSize * 3 + " Actual:" + NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code),
+                        NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) >= commitSize * 3);
+
+        assertTrue("Uncommit failed", 0 == VirtualMemoryProvider.get().uncommit(commitPtr, WordFactory.unsigned(commitSize * 3)));
+        assertTrue(NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) == 0);
+
+        assertTrue("Release failed.", 0 == VirtualMemoryProvider.get().free(reservePtr, WordFactory.unsigned(reserveSize)));
+        assertTrue("After freeing memory for test, test category should have size 0. Actual:" + NativeMemoryTracking.getReservedByCategory(NmtCategory.Code),
+                        NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) == 0);
+    }
+
+    @Test
+    public void testReserveFree() {
+        Pointer reservePtr1 = VirtualMemoryProvider.get().reserve(WordFactory.unsigned(reserveSize), VirtualMemoryProvider.get().getGranularity(), false,
+                        NmtCategory.Code);
+        assertTrue(NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) >= reserveSize);
+
+        Pointer reservePtr2 = VirtualMemoryProvider.get().reserve(WordFactory.unsigned(reserveSize), VirtualMemoryProvider.get().getGranularity(), false,
+                        NmtCategory.Code);
+        assertTrue(NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) >= reserveSize * 2);
+
+        Pointer reservePtr3 = VirtualMemoryProvider.get().reserve(WordFactory.unsigned(reserveSize), VirtualMemoryProvider.get().getGranularity(), false,
+                        NmtCategory.Code);
+        assertTrue(NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) >= reserveSize * 3);
+
+        assertTrue("Free failed", 0 == VirtualMemoryProvider.get().free(reservePtr1, WordFactory.unsigned(reserveSize)));
+        assertTrue("Free failed", 0 == VirtualMemoryProvider.get().free(reservePtr2, WordFactory.unsigned(reserveSize)));
+        assertTrue("Free failed", 0 == VirtualMemoryProvider.get().free(reservePtr3, WordFactory.unsigned(reserveSize)));
+        assertTrue("After releasing memory for test, mtTest category should have size 0. Actual:" + NativeMemoryTracking.getReservedByCategory(NmtCategory.Code),
+                        NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) == 0);
+    }
+
+    @Test
+    public void testAlternatingReserveFree() {
+        assertTrue("Test should start with no memory already allocated in the mtTest category.", NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) == 0);
+
+        Pointer reservePtr1 = VirtualMemoryProvider.get().reserve(WordFactory.unsigned(reserveSize), HeapParameters.getAlignedHeapChunkSize(), false,
+                        NmtCategory.Code);
+        assertTrue("Free failed", 0 == VirtualMemoryProvider.get().free(reservePtr1, WordFactory.unsigned(reserveSize)));
+
+        Pointer reservePtr2 = VirtualMemoryProvider.get().reserve(WordFactory.unsigned(reserveSize), HeapParameters.getAlignedHeapChunkSize(), false,
+                        NmtCategory.Code);
+        assertTrue("Free failed", 0 == VirtualMemoryProvider.get().free(reservePtr2, WordFactory.unsigned(reserveSize)));
+
+        Pointer reservePtr3 = VirtualMemoryProvider.get().reserve(WordFactory.unsigned(reserveSize), HeapParameters.getAlignedHeapChunkSize(), false,
+                        NmtCategory.Code);
+        assertTrue("Free failed", 0 == VirtualMemoryProvider.get().free(reservePtr3, WordFactory.unsigned(reserveSize)));
+
+        assertTrue("After freeing memory for test, test category should have size 0. Actual:" + NativeMemoryTracking.getReservedByCategory(NmtCategory.Code),
+                        NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) == 0);
+    }
+
+    @Test
+    public void testGappedCommits() {
+        Pointer reservePtr = beginVirtualMemoryTest();
+
+        Pointer commitPtr1 = VirtualMemoryProvider.get().commit(reservePtr, WordFactory.unsigned(commitSize), 0, NmtCategory.Code);
+        long recordedCommittedSize1 = NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code);
+        assertTrue("Expected committed size:" + commitSize + " Actual:" + recordedCommittedSize1, recordedCommittedSize1 == commitSize);
+
+        /* Commit again leaving a big gap between the previous regions. */
+        Pointer commitPtr2 = VirtualMemoryProvider.get().commit(commitPtr1.add(commitSize * 3), WordFactory.unsigned(commitSize), 0, NmtCategory.Code);
+        long recordedCommittedSize4 = NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code);
+        assertTrue("Expected committed size:" + commitSize * 2 + " Actual:" + recordedCommittedSize4, recordedCommittedSize4 >= commitSize * 2);
+
+        assertTrue("uncommit op failed", 0 == VirtualMemoryProvider.get().uncommit(commitPtr2, WordFactory.unsigned(commitSize)));
+        assertTrue(NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) == commitSize);
+
+        assertTrue("uncommit op failed", 0 == VirtualMemoryProvider.get().uncommit(commitPtr1, WordFactory.unsigned(commitSize)));
+        assertTrue(NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) == 0);
+
+        endVirtualMemoryTest(reservePtr);
+    }
+
+    @Test
+    public void testCommitUncommitThroughFree() {
+        Pointer reservePtr = beginVirtualMemoryTest();
+
+        VirtualMemoryProvider.get().commit(reservePtr, WordFactory.unsigned(commitSize), 0, NmtCategory.Code);
+        long recordedCommittedSize1 = NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code);
+        assertTrue("Expected committed size:" + commitSize + " Actual:" + recordedCommittedSize1, recordedCommittedSize1 == commitSize);
+
+        /* Commit again leaving a large gap between the previous regions. */
+        VirtualMemoryProvider.get().commit(reservePtr.add(commitSize * 3), WordFactory.unsigned(commitSize), 0, NmtCategory.Code);
+        long recordedCommittedSize2 = NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code);
+        assertTrue("Expected committed size:" + commitSize * 2 + " Actual:" + recordedCommittedSize2, recordedCommittedSize2 >= commitSize * 2);
+
+        endVirtualMemoryTest(reservePtr);
+    }
+
+    @Test
+    public void testAdjacentCommits() {
+        Pointer reservePtr = beginVirtualMemoryTest();
+
+        Pointer commitPtr1 = VirtualMemoryProvider.get().commit(reservePtr, WordFactory.unsigned(commitSize), 0, NmtCategory.Code);
+        long recordedCommittedSize1 = NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code);
+        assertTrue("Expected committed size:" + commitSize + " Actual:" + recordedCommittedSize1, recordedCommittedSize1 == commitSize);
+
+        /* Commit again leaving a no gap between the previous regions. */
+        Pointer commitPtr2 = VirtualMemoryProvider.get().commit(commitPtr1.add(commitSize), WordFactory.unsigned(commitSize), 0, NmtCategory.Code);
+        long recordedCommittedSize4 = NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code);
+        assertTrue("Expected committed size:" + commitSize * 2 + " Actual:" + recordedCommittedSize4, recordedCommittedSize4 >= commitSize * 2);
+
+        assertTrue("uncommit op failed", 0 == VirtualMemoryProvider.get().uncommit(commitPtr2, WordFactory.unsigned(commitSize)));
+        assertTrue("Expected committed size:" + commitSize + " Actual:" + NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code),
+                        NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) == commitSize);
+
+        assertTrue("uncommit op failed", 0 == VirtualMemoryProvider.get().uncommit(commitPtr1, WordFactory.unsigned(commitSize)));
+        assertTrue("Expected committed size:" + 0 + " Actual:" + NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code), NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) == 0);
+
+        endVirtualMemoryTest(reservePtr);
+    }
+
+    @Test
+    public void testAdjacentAndGappedCommits() {
+        Pointer reservePtr = beginVirtualMemoryTest();
+
+        Pointer commitPtr1 = VirtualMemoryProvider.get().commit(reservePtr, WordFactory.unsigned(commitSize), 0, NmtCategory.Code);
+        long recordedCommittedSize1 = NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code);
+        assertTrue("Expected committed size:" + commitSize + " Actual:" + recordedCommittedSize1, recordedCommittedSize1 == commitSize);
+
+        /* Commit again adjacent to the previous committed region. */
+        Pointer commitPtr2 = VirtualMemoryProvider.get().commit(commitPtr1.add(commitSize), WordFactory.unsigned(commitSize), 0, NmtCategory.Code);
+        long recordedCommittedSize2 = NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code);
+        assertTrue("Expected committed size:" + commitSize * 2 + " Actual:" + recordedCommittedSize2, recordedCommittedSize2 >= commitSize * 2);
+
+        /* Commit again leaving a big gap between the previous regions. */
+        Pointer commitPtr3 = VirtualMemoryProvider.get().commit(commitPtr2.add(commitSize * 3), WordFactory.unsigned(commitSize), 0, NmtCategory.Code);
+        long recordedCommittedSize3 = NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code);
+        assertTrue("Expected committed size:" + commitSize * 3 + " Actual:" + recordedCommittedSize3, recordedCommittedSize3 >= commitSize * 3);
+
+        assertTrue("uncommit op failed", 0 == VirtualMemoryProvider.get().uncommit(commitPtr3, WordFactory.unsigned(commitSize)));
+        assertTrue(NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) >= commitSize * 2);
+        assertTrue("uncommit op failed", 0 == VirtualMemoryProvider.get().uncommit(commitPtr2, WordFactory.unsigned(commitSize)));
+        assertTrue(NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) >= commitSize);
+        assertTrue("uncommit op failed", 0 == VirtualMemoryProvider.get().uncommit(commitPtr1, WordFactory.unsigned(commitSize)));
+        assertTrue(NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) == 0);
+
+        endVirtualMemoryTest(reservePtr);
+    }
+
+    @Test
+    public void testFullyOverlappingCommits() {
+        Pointer reservePtr = beginVirtualMemoryTest();
+
+        Pointer commitPtr1 = VirtualMemoryProvider.get().commit(reservePtr, WordFactory.unsigned(commitSize), 0, NmtCategory.Code);
+        long recordedCommittedSize1 = NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code);
+        assertTrue("Expected committed size:" + commitSize + " Actual:" + recordedCommittedSize1, recordedCommittedSize1 == commitSize);
+
+        /* Commit again completely overlapping the previous committed region. */
+        Pointer commitPtr2 = VirtualMemoryProvider.get().commit(commitPtr1, WordFactory.unsigned(commitSize), 0, NmtCategory.Code);
+        long recordedCommittedSize2 = NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code);
+        assertTrue("Expected that committed size remained the same:" + commitSize + " Actual:" + recordedCommittedSize2, recordedCommittedSize2 == commitSize);
+
+        assertTrue("Uncommit failed", 0 == VirtualMemoryProvider.get().uncommit(commitPtr2, WordFactory.unsigned(commitSize)));
+        assertTrue(NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) == 0);
+
+        endVirtualMemoryTest(reservePtr);
+    }
+
+    /**
+     * Test committing regions with unordered start addresses. Then uncommit in an unordered way.
+     * |commitPtr1|commitPtr3| | | |commitPtr2| | |
+     */
+    @Test
+    public void testUnorderedCommits() {
+        Pointer reservePtr = beginVirtualMemoryTest();
+
+        Pointer commitPtr1 = VirtualMemoryProvider.get().commit(reservePtr, WordFactory.unsigned(commitSize), 0, NmtCategory.Code);
+        long recordedCommittedSize1 = NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code);
+        assertTrue("Expected committed size:" + commitSize + " Actual:" + recordedCommittedSize1, recordedCommittedSize1 == commitSize);
+
+        /* Commit again leaving a big gap between the previous regions. */
+        Pointer commitPtr2 = VirtualMemoryProvider.get().commit(reservePtr.add(commitSize * 5), WordFactory.unsigned(commitSize), 0, NmtCategory.Code);
+        long recordedCommittedSize2 = NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code);
+        assertTrue("Expected committed size:" + commitSize * 2 + " Actual:" + recordedCommittedSize2, recordedCommittedSize2 >= commitSize * 2);
+
+        // Commit again adjacent to the first committed region
+        Pointer commitPtr3 = VirtualMemoryProvider.get().commit(commitPtr1.add(commitSize), WordFactory.unsigned(commitSize), 0, NmtCategory.Code);
+        long recordedCommittedSize3 = NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code);
+        assertTrue("Expected committed size:" + commitSize * 3 + " Actual:" + recordedCommittedSize3, recordedCommittedSize3 >= commitSize * 3);
+
+        // Uncommit the previously committed region
+        assertTrue("Uncommit failed", 0 == VirtualMemoryProvider.get().uncommit(commitPtr3, WordFactory.unsigned(commitSize)));
+        assertTrue(NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) >= commitSize * 2);
+        assertTrue("Uncommit failed", 0 == VirtualMemoryProvider.get().uncommit(commitPtr1, WordFactory.unsigned(commitSize)));
+        assertTrue(NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) >= commitSize);
+        assertTrue("Uncommit failed", 0 == VirtualMemoryProvider.get().uncommit(commitPtr2, WordFactory.unsigned(commitSize)));
+        assertTrue(NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) == 0);
+
+        endVirtualMemoryTest(reservePtr);
+    }
+
+    @Test
+    public void testPartiallyOverlappingCommits() {
+        Pointer reservePtr = beginVirtualMemoryTest();
+
+        // Commit from within the middle of the reserved region
+        Pointer commitPtr1 = VirtualMemoryProvider.get().commit(reservePtr.add(commitSize), WordFactory.unsigned(commitSize * 2), 0, NmtCategory.Code);
+        long recordedCommittedSize1 = NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code);
+        assertTrue("Expected committed size:" + commitSize * 2 + " Actual:" + recordedCommittedSize1, recordedCommittedSize1 == commitSize * 2);
+
+        // Commit again partially overlapping to the previous committed region
+        VirtualMemoryProvider.get().commit(commitPtr1.add(commitSize), WordFactory.unsigned(commitSize * 2), 0, NmtCategory.Code);
+        long recordedCommittedSize2 = NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code);
+        assertTrue("Expected that committed size remained the same:" + commitSize * 3 + " Actual:" + recordedCommittedSize2, recordedCommittedSize2 == commitSize * 3);
+
+        endVirtualMemoryTest(reservePtr);
+    }
+
+    @Test
+    public void testPartialUncommit() {
+        Pointer reservePtr = beginVirtualMemoryTest();
+
+        /* Commit from within the middle of the reserved region. */
+        Pointer commitPtr1 = VirtualMemoryProvider.get().commit(reservePtr.add(commitSize), WordFactory.unsigned(commitSize * 2), 0, NmtCategory.Code);
+        long recordedCommittedSize1 = NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code);
+        assertTrue("Expected committed size:" + commitSize * 2 + " Actual:" + recordedCommittedSize1, recordedCommittedSize1 == commitSize * 2);
+
+        /*
+         * Uncommit only half of the committed region. Half of the target region to uncommit is
+         * actually not committed.
+         */
+        assertTrue("Uncommit failed", 0 == VirtualMemoryProvider.get().uncommit(commitPtr1.add(commitSize), WordFactory.unsigned(commitSize * 2)));
+        assertTrue(NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) == commitSize);
+
+        endVirtualMemoryTest(reservePtr);
+    }
+
+    @Test
+    public void testPartialUncommitOverlappingMultipleRegions() {
+        Pointer reservePtr = beginVirtualMemoryTest();
+
+        Pointer commitPtr1 = VirtualMemoryProvider.get().commit(reservePtr, WordFactory.unsigned(commitSize * 2), 0, NmtCategory.Code);
+        long recordedCommittedSize1 = NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code);
+        assertTrue("Expected committed size:" + commitSize * 2 + " Actual:" + recordedCommittedSize1, recordedCommittedSize1 == commitSize * 2);
+
+        /* Commit again adjacent to the previous region */
+        VirtualMemoryProvider.get().commit(commitPtr1.add(commitSize * 2), WordFactory.unsigned(commitSize * 2), 0, NmtCategory.Code);
+        long recordedCommittedSize4 = NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code);
+        assertTrue("Expected committed size:" + commitSize * 4 + " Actual:" + recordedCommittedSize4, recordedCommittedSize4 >= commitSize * 4);
+
+        /* Uncommit a region overlapping both previously committed regions. */
+        assertTrue("Uncommit failed", 0 == VirtualMemoryProvider.get().uncommit(commitPtr1.add(commitSize), WordFactory.unsigned(commitSize * 2)));
+        assertTrue("Expected committed size:" + commitSize * 2 + " Actual:" + NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code),
+                        NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) == commitSize * 2);
+
+        endVirtualMemoryTest(reservePtr);
+    }
+
+    /**
+     * A convenience method that should be used with
+     * {@link com.oracle.svm.test.nmt.NativeMemoryTrackingTests#endVirtualMemoryTest(Pointer)}.
+     */
+    private Pointer beginVirtualMemoryTest() {
+        assertTrue("Test should start with no memory already allocated in the mtTest category.", NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) == 0);
+        assertTrue("Test should start with no memory already allocated in the mtTest category.", NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) == 0);
+
+        /* Reserve some memory. */
+        Pointer reservePtr = VirtualMemoryProvider.get().reserve(WordFactory.unsigned(reserveSize), HeapParameters.getAlignedHeapChunkSize(), false,
+                        NmtCategory.Code);
+        assertTrue(NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) >= reserveSize);
+        assertTrue(NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) == 0);
+        return reservePtr;
+    }
+
+    /**
+     * A convenience method that should be used with
+     * {@link com.oracle.svm.test.nmt.NativeMemoryTrackingTests#beginVirtualMemoryTest()}.
+     */
+    private void endVirtualMemoryTest(Pointer reservePtr) {
+        /* Free the reserved region, which should also uncommit contained committed regions. */
+        assertTrue("Free failed.", 0 == VirtualMemoryProvider.get().free(reservePtr, WordFactory.unsigned(reserveSize)));
+        assertTrue("After freeing memory for test, test category should have size 0.", NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) == 0);
+        assertTrue("After freeing memory for test, test category committed size should be 0.", NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) == 0);
+
     }
 }

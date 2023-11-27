@@ -31,6 +31,8 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
+import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.core.nmt.NmtVirtualMemoryData;
 
 /**
  * Primitive operations for low-level virtual memory management.
@@ -94,6 +96,10 @@ public interface VirtualMemoryProvider {
      */
     Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean code);
 
+    Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean code, NmtCategory category);
+
+    Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean code, NmtVirtualMemoryData nmtData);
+
     /**
      * Map a region of an open file to the specified address range. When {@linkplain Access#WRITE
      * write access} is requested and mapped memory is written, that memory is copied before
@@ -115,6 +121,10 @@ public interface VirtualMemoryProvider {
      *         of an error.
      */
     Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access);
+
+    Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access, NmtCategory category);
+
+    Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access, NmtVirtualMemoryData nmtData);
 
     /**
      * Commit an address range so that physical memory or swap memory can be provisioned for it, and
@@ -143,6 +153,10 @@ public interface VirtualMemoryProvider {
      *         case of an error, such as inadequate physical memory.
      */
     Pointer commit(PointerBase start, UnsignedWord nbytes, int access);
+
+    Pointer commit(PointerBase start, UnsignedWord nbytes, int access, NmtCategory category);
+
+    Pointer commit(PointerBase start, UnsignedWord nbytes, int access, NmtVirtualMemoryData nmtData);
 
     /**
      * Change the protection of a committed address range, or of a subrange of a committed address

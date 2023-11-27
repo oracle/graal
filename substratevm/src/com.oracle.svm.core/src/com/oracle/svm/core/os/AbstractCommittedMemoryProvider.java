@@ -40,6 +40,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -84,24 +85,37 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer allocateAlignedChunk(UnsignedWord nbytes, UnsignedWord alignment) {
-        return allocate(nbytes, alignment, false);
+        return allocate(nbytes, alignment, false, NmtCategory.mtJavaHeap);
     }
 
     @Override
     public Pointer allocateUnalignedChunk(UnsignedWord nbytes) {
-        return allocate(nbytes, getAlignmentForUnalignedChunks(), false);
+        return allocate(nbytes, getAlignmentForUnalignedChunks(), false, NmtCategory.mtJavaHeap);
     }
 
     @Override
     public Pointer allocateExecutableMemory(UnsignedWord nbytes, UnsignedWord alignment) {
-        return allocate(nbytes, alignment, true);
+        return allocate(nbytes, alignment, true, NmtCategory.Code);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private Pointer allocate(UnsignedWord size, UnsignedWord alignment, boolean executable) {
+    private Pointer allocate(UnsignedWord size, UnsignedWord alignment, boolean executable, NmtCategory category) {
         Pointer reserved = WordFactory.nullPointer();
         if (!UnsignedUtils.isAMultiple(getGranularity(), alignment)) {
-            reserved = VirtualMemoryProvider.get().reserve(size, alignment, executable);
+            reserved = VirtualMemoryProvider.get().reserve(size, alignment, executable, category); // ***
+                                                                                                   // this
+                                                                                                   // is
+                                                                                                   // prev
+                                                                                                   // in
+                                                                                                   // fail
+                                                                                                   // 42.
+                                                                                                   // (which
+                                                                                                   // means
+                                                                                                   // the
+                                                                                                   // problem
+                                                                                                   // is
+                                                                                                   // in
+                                                                                                   // reserve)
             if (reserved.isNull()) {
                 return nullPointer();
             }
@@ -110,7 +124,11 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
         if (executable) {
             access |= VirtualMemoryProvider.Access.FUTURE_EXECUTE;
         }
-        Pointer committed = VirtualMemoryProvider.get().commit(reserved, size, access);
+        Pointer committed = VirtualMemoryProvider.get().commit(reserved, size, access, category); // ***
+                                                                                                  // "reserved"
+                                                                                                  // may
+                                                                                                  // be
+                                                                                                  // null
         if (committed.isNull()) {
             if (reserved.isNonNull()) {
                 VirtualMemoryProvider.get().free(reserved, size);

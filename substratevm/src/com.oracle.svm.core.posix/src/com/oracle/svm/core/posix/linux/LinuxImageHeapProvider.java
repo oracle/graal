@@ -57,6 +57,7 @@ import com.oracle.svm.core.code.DynamicMethodAddressResolutionHeapSupport;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.nmt.NmtVirtualMemoryData;
 import com.oracle.svm.core.os.AbstractImageHeapProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
@@ -103,12 +104,12 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
 
     @Override
     @Uninterruptible(reason = "Called during isolate initialization.")
-    public int initialize(Pointer reservedAddressSpace, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer) {
+    public int initialize(Pointer reservedAddressSpace, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer, NmtVirtualMemoryData nmtData) {
         Pointer selfReservedMemory = WordFactory.nullPointer();
         UnsignedWord requiredSize = getTotalRequiredAddressSpaceSize();
         if (reservedAddressSpace.isNull()) {
             UnsignedWord alignment = WordFactory.unsigned(Heap.getHeap().getPreferredAddressSpaceAlignment());
-            selfReservedMemory = VirtualMemoryProvider.get().reserve(requiredSize, alignment, false);
+            selfReservedMemory = VirtualMemoryProvider.get().reserve(requiredSize, alignment, false, nmtData);
             if (selfReservedMemory.isNull()) {
                 return CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED;
             }
@@ -154,7 +155,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
                         CACHED_IMAGE_FD.get(), CACHED_IMAGE_HEAP_OFFSET_IN_FILE.get(), MAGIC.get(),
                         IMAGE_HEAP_BEGIN.get(), IMAGE_HEAP_END.get(),
                         IMAGE_HEAP_RELOCATABLE_BEGIN.get(), IMAGE_HEAP_A_RELOCATABLE_POINTER.get(), IMAGE_HEAP_RELOCATABLE_END.get(),
-                        IMAGE_HEAP_WRITABLE_BEGIN.get(), IMAGE_HEAP_WRITABLE_END.get());
+                        IMAGE_HEAP_WRITABLE_BEGIN.get(), IMAGE_HEAP_WRITABLE_END.get(), nmtData);
         if (result != CEntryPointErrors.NO_ERROR) {
             freeImageHeap(selfReservedHeapBase);
         }
@@ -163,7 +164,8 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
 
     @Uninterruptible(reason = "Called during isolate initialization.")
     private static int initializeImageHeap(Pointer imageHeap, UnsignedWord reservedSize, WordPointer endPointer, WordPointer cachedFd, WordPointer cachedOffsetInFile,
-                    Pointer magicAddress, Word heapBeginSym, Word heapEndSym, Word heapRelocsSym, Pointer heapAnyRelocPointer, Word heapRelocsEndSym, Word heapWritableSym, Word heapWritableEndSym) {
+                    Pointer magicAddress, Word heapBeginSym, Word heapEndSym, Word heapRelocsSym, Pointer heapAnyRelocPointer, Word heapRelocsEndSym, Word heapWritableSym, Word heapWritableEndSym,
+                    NmtVirtualMemoryData nmtData) {
         assert heapBeginSym.belowOrEqual(heapWritableSym) && heapWritableSym.belowOrEqual(heapWritableEndSym) && heapWritableEndSym.belowOrEqual(heapEndSym);
         assert heapBeginSym.belowOrEqual(heapRelocsSym) && heapRelocsSym.belowOrEqual(heapRelocsEndSym) && heapRelocsEndSym.belowOrEqual(heapEndSym);
         assert heapAnyRelocPointer.isNull() || (heapRelocsSym.belowOrEqual(heapAnyRelocPointer) && heapAnyRelocPointer.belowThan(heapRelocsEndSym));
@@ -200,12 +202,12 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
          * heap must be in pristine condition for that).
          */
         if (fd.equal(CANNOT_OPEN_FD)) {
-            return initializeImageHeapByCopying(imageHeap, imageHeapSize, pageSize, heapBeginSym, heapWritableSym, heapWritableEndSym);
+            return initializeImageHeapByCopying(imageHeap, imageHeapSize, pageSize, heapBeginSym, heapWritableSym, heapWritableEndSym, nmtData);
         }
 
         // Create memory mappings from the image file.
         UnsignedWord fileOffset = cachedOffsetInFile.read();
-        Pointer mappedImageHeap = VirtualMemoryProvider.get().mapFile(imageHeap, imageHeapSize, fd, fileOffset, Access.READ);
+        Pointer mappedImageHeap = VirtualMemoryProvider.get().mapFile(imageHeap, imageHeapSize, fd, fileOffset, Access.READ, nmtData);
         if (mappedImageHeap.isNull() || mappedImageHeap != imageHeap) {
             return CEntryPointErrors.MAP_HEAP_FAILED;
         }
@@ -226,7 +228,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
                  * be part of a chunk with writable objects, in which case the chunk header must
                  * also be writable, and all the chunk's pages will be unprotected below.
                  */
-                Pointer committedRelocsBegin = VirtualMemoryProvider.get().commit(relocsBoundary, relocsAlignedSize, Access.READ | Access.WRITE);
+                Pointer committedRelocsBegin = VirtualMemoryProvider.get().commit(relocsBoundary, relocsAlignedSize, Access.READ | Access.WRITE, nmtData);
                 if (committedRelocsBegin.isNull() || committedRelocsBegin != relocsBoundary) {
                     return CEntryPointErrors.PROTECT_HEAP_FAILED;
                 }
@@ -254,8 +256,9 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
     }
 
     @Uninterruptible(reason = "Called during isolate initialization.")
-    private static int initializeImageHeapByCopying(Pointer imageHeap, UnsignedWord imageHeapSize, UnsignedWord pageSize, Word heapBeginSym, Word heapWritableSym, Word heapWritableEndSym) {
-        Pointer committedBegin = VirtualMemoryProvider.get().commit(imageHeap, imageHeapSize, Access.READ | Access.WRITE);
+    private static int initializeImageHeapByCopying(Pointer imageHeap, UnsignedWord imageHeapSize, UnsignedWord pageSize, Word heapBeginSym, Word heapWritableSym, Word heapWritableEndSym,
+                    NmtVirtualMemoryData nmtData) {
+        Pointer committedBegin = VirtualMemoryProvider.get().commit(imageHeap, imageHeapSize, Access.READ | Access.WRITE, nmtData);
         if (committedBegin.isNull()) {
             return CEntryPointErrors.MAP_HEAP_FAILED;
         }
