@@ -33,6 +33,8 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 
+import com.oracle.svm.core.nmt.NmtPreImageHeapData;
+
 import jdk.graal.compiler.api.replacements.Fold;
 
 /**
@@ -52,7 +54,7 @@ public interface CommittedMemoryProvider {
      * @return zero in case of success, non-zero in case of an error.
      */
     @Uninterruptible(reason = "Still being initialized.")
-    int initialize(WordPointer heapBasePointer, CEntryPointCreateIsolateParameters parameters);
+    int initialize(WordPointer heapBasePointer, CEntryPointCreateIsolateParameters parameters, NmtPreImageHeapData nmtData);
 
     /**
      * Tear down <em>for the current isolate</em>. This must be the last method of this interface

@@ -46,6 +46,8 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.core.nmt.NmtPreImageHeapData;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -125,7 +127,19 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean executable) {
+    public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean executable, NmtPreImageHeapData nmtData) {
+        return reserve0(nbytes, alignment, executable, nmtData, NmtCategory.ImageHeap);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean executable, NmtCategory category) {
+        return reserve0(nbytes, alignment, executable, WordFactory.nullPointer(), category);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @SuppressWarnings("unused")
+    private static Pointer reserve0(UnsignedWord nbytes, UnsignedWord alignment, boolean executable, NmtPreImageHeapData nmtData, NmtCategory category) {
         if (nbytes.equal(0)) {
             return WordFactory.nullPointer();
         }
@@ -283,7 +297,19 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access) {
+    public Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access, NmtPreImageHeapData nmtData) {
+        return mapFile0(start, nbytes, fileHandle, offset, access, nmtData, NmtCategory.ImageHeap);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access, NmtCategory category) {
+        return mapFile0(start, nbytes, fileHandle, offset, access, WordFactory.nullPointer(), category);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @SuppressWarnings("unused")
+    private Pointer mapFile0(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access, NmtPreImageHeapData nmtData, NmtCategory category) {
         if ((start.isNonNull() && !isAligned(start)) || nbytes.equal(0)) {
             return WordFactory.nullPointer();
         }
@@ -351,7 +377,19 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer commit(PointerBase start, UnsignedWord nbytes, int access) {
+    public Pointer commit(PointerBase start, UnsignedWord nbytes, int access, NmtPreImageHeapData nmtData) {
+        return commit0(start, nbytes, access, nmtData, NmtCategory.ImageHeap);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public Pointer commit(PointerBase start, UnsignedWord nbytes, int access, NmtCategory category) {
+        return commit0(start, nbytes, access, WordFactory.nullPointer(), category);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @SuppressWarnings("unused")
+    private Pointer commit0(PointerBase start, UnsignedWord nbytes, int access, NmtPreImageHeapData nmtData, NmtCategory category) {
         if ((start.isNonNull() && !isAligned(start)) || nbytes.equal(0)) {
             return WordFactory.nullPointer();
         }
@@ -389,6 +427,12 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int free(PointerBase start, UnsignedWord nbytes) {
+        return free(start, nbytes, WordFactory.nullPointer());
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public int free(PointerBase start, UnsignedWord nbytes, NmtPreImageHeapData nmtData) {
         if (start.isNull() || !isAligned(start) || nbytes.equal(0)) {
             return -1;
         }
