@@ -425,6 +425,6 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void copyTo(int srcOffset, Frame dst, int dstOffset, int length) {
-        throw newReadonlyAssertionError();
+        delegate.copyTo(srcOffset, dst, dstOffset, length);
     }
 }
