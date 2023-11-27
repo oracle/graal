@@ -35,16 +35,13 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
-import com.oracle.truffle.api.bytecode.BytecodeNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
-import com.oracle.truffle.api.bytecode.test.BoxingEliminationTest.BoxingEliminationTestRootNode;
-import com.oracle.truffle.api.bytecode.test.BoxingEliminationTestRootNodeGen;
 import com.oracle.truffle.api.bytecode.test.example.AbstractBytecodeDSLExampleTest;
 import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExample;
 import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleBuilder;
 import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleLanguage;
+import com.oracle.truffle.api.nodes.RootNode;
 
 @RunWith(Parameterized.class)
 public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
@@ -211,6 +208,46 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
         assertPartialEvalEquals(supplier(2L), root);
     }
 
+    @Test
+    public void testConditionalTrue() {
+        // return 20 + 22;
+
+        BytecodeDSLExample root = parseNodeForPE(interpreterClass, "conditionalTrue", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginReturn();
+            b.beginConditional();
+            b.emitLoadConstant(Boolean.TRUE);
+            b.emitLoadConstant(42L);
+            b.emitLoadConstant(21L);
+            b.endConditional();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        assertPartialEvalEquals(RootNode.createConstantNode(42L), root);
+    }
+
+    @Test
+    public void testConditionalFalse() {
+        // return 20 + 22;
+
+        BytecodeDSLExample root = parseNodeForPE(interpreterClass, "conditionalFalse", b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginConditional();
+            b.emitLoadConstant(Boolean.FALSE);
+            b.emitLoadConstant(21L);
+            b.emitLoadConstant(42L);
+            b.endConditional();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertPartialEvalEquals(RootNode.createConstantNode(42L), root);
+    }
+
     private static Supplier<Object> supplier(Object result) {
         return () -> result;
     }
@@ -219,11 +256,6 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
         BytecodeDSLExample result = parseNode(interpreterClass, false, rootName, builder);
         result.setUncachedInterpreterThreshold(0); // force interpreter to skip tier 0
         return result;
-    }
-
-    private static BoxingEliminationTestRootNode parseBoxingEliminated(BytecodeParser<BoxingEliminationTestRootNodeGen.Builder> builder) {
-        BytecodeNodes<BoxingEliminationTestRootNode> nodes = BoxingEliminationTestRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
-        return nodes.getNodes().get(nodes.getNodes().size() - 1);
     }
 
 }
