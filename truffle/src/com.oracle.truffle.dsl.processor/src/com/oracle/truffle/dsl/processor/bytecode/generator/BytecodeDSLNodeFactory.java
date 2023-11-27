@@ -688,7 +688,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.returnNull();
         b.end();
 
-        b.statement("return sources[(sourceInfo[0] >> 16) & 0xffff].createSection(sourceInfo[i + 1], sourceInfo[i + 2])");
+        b.statement("return sources[(sourceInfo[i] >> 16) & 0xffff].createSection(sourceInfo[i + 1], sourceInfo[i + 2])");
 
         return ex;
     }
