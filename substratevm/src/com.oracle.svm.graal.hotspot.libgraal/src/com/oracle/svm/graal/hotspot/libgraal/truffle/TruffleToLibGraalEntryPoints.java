@@ -26,6 +26,7 @@ package com.oracle.svm.graal.hotspot.libgraal.truffle;
 
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.DoCompile;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetCompilerConfigurationFactoryName;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetCompilerVersion;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetDataPatchesCount;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetExceptionHandlersCount;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetInfopoints;
@@ -33,7 +34,6 @@ import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetMarksCount;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetNodeCount;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetNodeTypes;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetReleaseVersion;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetSuppliedString;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetTargetCodeSize;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetTotalFrameSize;
@@ -101,7 +101,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 final class TruffleToLibGraalEntryPoints {
 
-    private static final String VERSION = HotSpotTruffleCompilationSupport.readReleaseVersion();
+    private static final String COMPILER_VERSION = HotSpotTruffleCompilationSupport.readCompilerVersion();
 
     @CEntryPoint(builtin = Builtin.GET_CURRENT_THREAD, name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_LibGraalScope_getIsolateThreadIn")
     private static native IsolateThread getIsolateThreadIn(PointerBase env, PointerBase hsClazz, @IsolateContext Isolate isolate);
@@ -518,13 +518,13 @@ final class TruffleToLibGraalEntryPoints {
         }
     }
 
-    @TruffleToLibGraal(GetReleaseVersion)
-    @CEntryPoint(name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_getReleaseVersion")
+    @TruffleToLibGraal(GetCompilerVersion)
+    @CEntryPoint(name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_getCompilerVersion")
     @SuppressWarnings({"unused", "try"})
-    public static JString getReleaseVersion(JNIEnv env, JClass hsClass, @CEntryPoint.IsolateThreadContext long isolateThreadId) {
-        JNIMethodScope scope = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, GetReleaseVersion, env);
+    public static JString getCompilerVersion(JNIEnv env, JClass hsClass, @CEntryPoint.IsolateThreadContext long isolateThreadId) {
+        JNIMethodScope scope = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, GetCompilerVersion, env);
         try (JNIMethodScope s = scope) {
-            scope.setObjectResult(createHSString(env, VERSION));
+            scope.setObjectResult(createHSString(env, COMPILER_VERSION));
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
             scope.setObjectResult(WordFactory.nullPointer());

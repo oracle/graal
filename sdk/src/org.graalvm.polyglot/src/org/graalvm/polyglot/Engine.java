@@ -1634,7 +1634,7 @@ public final class Engine implements AutoCloseable {
             impls.add(found);
         }
         Collections.sort(impls, Comparator.comparing(AbstractPolyglotImpl::getPriority));
-        Version polyglotVersion = Boolean.getBoolean("polyglotimpl.DisableVersionChecks") ? null : getPolyglotReleaseVersion();
+        Version polyglotVersion = Boolean.getBoolean("polyglotimpl.DisableVersionChecks") ? null : getPolyglotVersion();
         AbstractPolyglotImpl prev = null;
         for (AbstractPolyglotImpl impl : impls) {
             if (impl.getPriority() == Integer.MIN_VALUE) {
@@ -1642,16 +1642,31 @@ public final class Engine implements AutoCloseable {
                 continue;
             }
             if (polyglotVersion != null) {
-                Version implVersion = impl.getReleaseVersion();
-                if (implVersion == null) {
-                    implVersion = Version.create(23, 1, 1);
-                }
-                if (!polyglotVersion.equals(implVersion)) {
-                    throw new IllegalStateException(String.format("Mismatched versions for the org.graalvm.polyglot and org.graalvm.truffle modules. " +
-                                    "The version of org.graalvm.polyglot is %s, while org.graalvm.truffle is at version %s. " +
-                                    "Ensure both modules share the same version. Alternatively, you can disable this check by setting " +
-                                    "the system property polyglotimpl.DisableVersionChecks to true, using `-Dpolyglotimpl.DisableVersionChecks=true`.",
-                                    polyglotVersion, implVersion));
+                String truffleVersionString = impl.getTruffleVersion();
+                Version truffleVersion = truffleVersionString != null ? Version.parse(truffleVersionString) : Version.create(23, 1, 1);
+                if (!polyglotVersion.equals(truffleVersion)) {
+                    StringBuilder errorMessage = new StringBuilder(String.format("""
+                                    Polyglot version compatibility check failed.
+                                    The polyglot version '%s' is not compatible to the used Truffle version '%s'.
+                                    """, polyglotVersion, truffleVersion));
+                    if (polyglotVersion.compareTo(truffleVersion) < 0) {
+                        errorMessage.append(String.format("""
+                                        The polyglot version is older than the Truffle or language version in use.
+                                        The polygot and truffle version must always match.
+                                        Update the org.graalvm.polyglot versions to '%s' to resolve this.
+                                        """, truffleVersion));
+                    } else {
+                        errorMessage.append((String.format("""
+                                        The Truffle or language version is older than the polyglot version in use.
+                                        The polygot and truffle version must always match.
+                                        Update the Truffle or language versions to '%s' to resolve this.
+                                        """, polyglotVersion)));
+                    }
+                    errorMessage.append("""
+                                    To disable this version check the '-Dpolyglotimpl.DisableVersionChecks=true' system property can be used.
+                                    It is not recommended to disable version checks.
+                                    """);
+                    throw new IllegalStateException(errorMessage.toString());
                 }
             }
             impl.setNext(prev);
@@ -1675,7 +1690,7 @@ public final class Engine implements AutoCloseable {
         return prev;
     }
 
-    private static Version getPolyglotReleaseVersion() {
+    private static Version getPolyglotVersion() {
         InputStream in = Engine.class.getResourceAsStream("/META-INF/graalvm/org.graalvm.polyglot/version");
         if (in == null) {
             throw new InternalError("Polyglot must have a version file.");

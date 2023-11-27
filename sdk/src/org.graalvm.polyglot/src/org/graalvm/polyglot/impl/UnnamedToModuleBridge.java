@@ -49,7 +49,6 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import org.graalvm.home.Version;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -424,10 +423,6 @@ public final class UnnamedToModuleBridge {
                 return null;
             }
             return (ThreadScope) BRIDGE.moduleAccess.fromThreadScope(value);
-        }
-
-        static Version fromVersion(Object value) {
-            return Version.parse(value.toString());
         }
 
         static Object toFileSystem(FileSystem value) {
