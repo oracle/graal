@@ -31,8 +31,6 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.locks.VMCondition;
-import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.locks.VMSemaphore;
 import com.oracle.svm.core.sampler.SamplerBuffer;
 import com.oracle.svm.core.sampler.SamplerBuffersAccess;
@@ -42,10 +40,12 @@ import com.oracle.svm.core.util.VMError;
  * A daemon thread that is created during JFR startup and torn down by
  * {@link SubstrateJVM#destroyJFR}.
  * 
+ * <p>
  * This class is primarily used for persisting the {@link JfrGlobalMemory} buffers to a file.
  * Besides that, it is also used for processing full {@link SamplerBuffer}s. As
  * {@link SamplerBuffer}s may also be filled in a signal handler, a {@link VMSemaphore} is used for
  * notification because it is async-signal-safe.
+ * </p>
  */
 public class JfrRecorderThread extends Thread {
     private static final int BUFFER_FULL_ENOUGH_PERCENTAGE = 50;
@@ -54,11 +54,9 @@ public class JfrRecorderThread extends Thread {
     private final JfrUnlockedChunkWriter unlockedChunkWriter;
 
     private final VMSemaphore semaphore;
+    /* A volatile boolean field would not be enough to ensure synchronization. */
     private final UninterruptibleUtils.AtomicBoolean atomicNotify;
 
-    private final VMMutex mutex;
-    private final VMCondition condition;
-    private volatile boolean notified;
     private volatile boolean stopped;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -67,8 +65,6 @@ public class JfrRecorderThread extends Thread {
         super("JFR recorder");
         this.globalMemory = globalMemory;
         this.unlockedChunkWriter = unlockedChunkWriter;
-        this.mutex = new VMMutex("jfrRecorder");
-        this.condition = new VMCondition(mutex);
         this.semaphore = new VMSemaphore("jfrRecorder");
         this.atomicNotify = new UninterruptibleUtils.AtomicBoolean(false);
         setDaemon(true);
@@ -88,25 +84,8 @@ public class JfrRecorderThread extends Thread {
     }
 
     private boolean await() {
-        if (Platform.includedIn(Platform.DARWIN.class)) {
-            /*
-             * DARWIN is not supporting unnamed semaphores, therefore we must use VMLock and
-             * VMConditional for synchronization.
-             */
-            mutex.lock();
-            try {
-                while (!notified) {
-                    condition.block();
-                }
-                notified = false;
-            } finally {
-                mutex.unlock();
-            }
-            return true;
-        } else {
-            semaphore.await();
-            return atomicNotify.compareAndSet(true, false);
-        }
+        semaphore.await();
+        return atomicNotify.compareAndSet(true, false);
     }
 
     private void run0() {
@@ -167,17 +146,8 @@ public class JfrRecorderThread extends Thread {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void signal() {
-        if (Platform.includedIn(Platform.DARWIN.class)) {
-            /*
-             * DARWIN is not supporting unnamed semaphores, therefore we must use VMConditional for
-             * signaling.
-             */
-            notified = true;
-            condition.broadcast();
-        } else {
-            atomicNotify.set(true);
-            semaphore.signal();
-        }
+        atomicNotify.set(true);
+        semaphore.signal();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -198,6 +168,9 @@ public class JfrRecorderThread extends Thread {
             this.join();
         } catch (InterruptedException e) {
             throw VMError.shouldNotReachHere(e);
+        } finally {
+            /* Temporary workaround util we fix GR-39879. */
+            VMError.guarantee(semaphore.destroy() == 0);
         }
     }
 }

@@ -94,13 +94,12 @@ public class JfrManager {
 
     public RuntimeSupport.Hook shutdownHook() {
         return isFirstIsolate -> {
-            if (isJFREnabled()) {
-                // Everything should already have been torn down by JVM.destroyJFR(), which is
-                // called in a shutdown hook. So in this method we should only unregister periodic
-                // events.
-                FlightRecorder.removePeriodicEvent(EveryChunkNativePeriodicEvents::emit);
-                FlightRecorder.removePeriodicEvent(EndChunkNativePeriodicEvents::emit);
-            }
+            /*
+             * Everything should already have been torn down by JVM.destroyJFR(), which is called in
+             * a shutdown hook. So in this method we should only unregister periodic events.
+             */
+            FlightRecorder.removePeriodicEvent(EveryChunkNativePeriodicEvents::emit);
+            FlightRecorder.removePeriodicEvent(EndChunkNativePeriodicEvents::emit);
         };
     }
 

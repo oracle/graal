@@ -30,7 +30,6 @@ import static com.oracle.svm.core.posix.PosixSubstrateSigprofHandler.Options.Sig
 
 import java.util.List;
 
-import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -64,6 +63,8 @@ import com.oracle.svm.core.thread.ThreadListenerSupportFeature;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.UserError;
 
+import jdk.graal.compiler.options.Option;
+
 public final class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
     private static final CEntryPointLiteral<Signal.AdvancedSignalDispatcher> advancedSignalDispatcher = CEntryPointLiteral.create(PosixSubstrateSigprofHandler.class,
                     "dispatch", int.class, Signal.siginfo_t.class, Signal.ucontext_t.class);
@@ -87,7 +88,7 @@ public final class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler 
     }
 
     private static void registerSigprofSignal(Signal.AdvancedSignalDispatcher dispatcher) {
-        PosixUtils.installSignalHandler(Signal.SignalEnum.SIGPROF, dispatcher, Signal.SA_NODEFER() | Signal.SA_RESTART());
+        PosixUtils.installSignalHandler(Signal.SignalEnum.SIGPROF, dispatcher, Signal.SA_RESTART());
     }
 
     @Override
@@ -131,7 +132,7 @@ public final class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler 
     }
 
     private static boolean isPlatformSupported() {
-        return Platform.includedIn(Platform.LINUX.class) && SubstrateOptions.EnableSignalHandling.getValue();
+        return (Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class)) && SubstrateOptions.EnableSignalHandling.getValue();
     }
 
     private static void validateSamplerOption(HostedOptionKey<Boolean> isSamplerEnabled) {

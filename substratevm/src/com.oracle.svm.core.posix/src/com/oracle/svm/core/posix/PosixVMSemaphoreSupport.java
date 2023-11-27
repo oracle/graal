@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,9 +28,11 @@ package com.oracle.svm.core.posix;
 import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.locks.VMSemaphore;
 
+/**
+ * Support of {@link VMSemaphore} in multithreaded environments.
+ */
 public abstract class PosixVMSemaphoreSupport {
 
     @Fold
@@ -38,18 +40,5 @@ public abstract class PosixVMSemaphoreSupport {
         return ImageSingletons.lookup(PosixVMSemaphoreSupport.class);
     }
 
-    /**
-     * Must be called once early during startup, before any semaphore is used.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
-    public abstract boolean initialize();
-
-    /**
-     * Must be called during isolate teardown.
-     */
-    @Uninterruptible(reason = "The isolate teardown is in progress.")
-    public abstract void destroy();
-
     public abstract VMSemaphore[] getSemaphores();
-
 }
