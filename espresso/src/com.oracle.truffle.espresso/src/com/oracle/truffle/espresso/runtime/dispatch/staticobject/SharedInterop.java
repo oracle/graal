@@ -1359,6 +1359,23 @@ public class SharedInterop {
     }
 
     @ExportMessage
+    public static void readBuffer(StaticObject receiver, long byteOffset, byte[] destination, int destinationOffset, int length,
+                    @Cached IndirectCallNode callNode,
+                    @Cached CallSharedInteropMessage sharedCallNode) throws UnsupportedMessageException {
+        int dispatchId = receiver.getKlass().getDispatchId();
+        InteropMessage.Message message = InteropMessage.Message.ReadBuffer;
+        if (InteropMessageFactories.isShareable(dispatchId, message)) {
+            dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
+            sharedCallNode.call(dispatchId, message, receiver, byteOffset, destination, destinationOffset, length);
+        }
+        CallTarget target = getTarget(receiver, InteropMessage.Message.ReadBuffer);
+        if (target != null) {
+            callNode.call(target, receiver, byteOffset, destination, destinationOffset, length);
+        }
+        throw unsupported();
+    }
+
+    @ExportMessage
     public static void writeBufferByte(StaticObject receiver, long byteOffset, byte value,
                     @Cached IndirectCallNode callNode,
                     @Cached CallSharedInteropMessage sharedCallNode) throws UnsupportedMessageException {
