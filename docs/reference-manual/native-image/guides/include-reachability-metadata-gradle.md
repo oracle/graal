@@ -15,12 +15,12 @@ A "real-world" Java application likely requires some Java reflection objects, or
 
 Depending on your application dependencies, there are three ways to provide the metadata with the Native Image Gradle Plugin:
 
-1. [Using the shared GraalVM Reachability Metadata Repository](#build-a-native-executable-using-the-graalvm-reachability-metadata-repository)
+1. [Using the GraalVM Reachability Metadata Repository](#build-a-native-executable-using-the-graalvm-reachability-metadata-repository)
 2. [Using the Tracing Agent](#build-a-native-executable-with-the-tracing-agent)
 3. [Autodetecting](https://graalvm.github.io/native-build-tools/latest/gradle-plugin-quickstart.html#build-a-native-executable-with-resources-autodetection) (if the required resources are directly available on the classpath, in the _src/main/resources_ directory)
 
 This guide demonstrates how to build a native executable using the [GraalVM Reachability Metadata Repository](https://github.com/oracle/graalvm-reachability-metadata), and with the [Tracing agent](https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html#agent-support).
-The goal is to show users the difference, and prove how using shared metadata can simplify the work.
+The goal of this guide is to illustrate the difference between the two approaches, and demonstrate how the use of reachability metadata can simplify your development tasks.
 
 We recommend that you follow the instructions and create the application step-by-step. 
 Alternatively, you can go right to the [completed example](https://github.com/graalvm/native-build-tools/tree/master/samples/metadata-repo-integration).
@@ -219,7 +219,7 @@ The support needs to be enabled explicitly.
         }
     }
     ```
-    The plugin automatically downloads the metadata from the shared repository.
+    The plugin automatically downloads the metadata from the repository.
 
 2. Now build a native executable using the metadata:
     ```shell
@@ -287,7 +287,7 @@ See below how to collect metadata with the tracing agent, and build a native exe
 
 ### Summary
 
-This guide demonstrated how to build a native executable using the [GraalVM Reachability Metadata Repository](https://github.com/oracle/graalvm-reachability-metadata) and with the Tracing agent. The goal was to show the difference, and prove how using the shared reachability metadata can simplify the work.
+This guide demonstrated how to build a native executable using the [GraalVM Reachability Metadata Repository](https://github.com/oracle/graalvm-reachability-metadata) and with the Tracing agent. The goal was to show the difference, and prove how using the reachability metadata can simplify the work.
 
 Note that if your application does not call any dynamic features at run time, enabling the GraalVM Reachability Metadata Repository is needless. 
 Your workflow in that case would just be:
