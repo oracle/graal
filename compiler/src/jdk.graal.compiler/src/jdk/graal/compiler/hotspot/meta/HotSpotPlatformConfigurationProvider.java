@@ -57,7 +57,8 @@ public class HotSpotPlatformConfigurationProvider implements PlatformConfigurati
         // Starting in 21 the JVM tracks lock entry and exit in JavaThread::_held_monitor_count.
         // This means it's not safe to pick up locks during PEA and materialize them at an
         // arbitrary point since the FrameState might be before those locks were acquired so they
-        // will never be unlocked.
+        // will never be unlocked. Additionally lightweight locking maintains an explicit lock stack
+        // which will also be out of sync after a deopt.
         return false;
     }
 
