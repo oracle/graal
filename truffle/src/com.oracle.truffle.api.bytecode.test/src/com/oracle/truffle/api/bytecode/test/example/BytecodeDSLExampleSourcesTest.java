@@ -209,12 +209,12 @@ public class BytecodeDSLExampleSourcesTest extends AbstractBytecodeDSLExampleTes
             // The source section for both should match the expected value.
             for (int j = i * 2; j < i * 2 + 2; j++) {
                 if (expected[i] == null) {
-                    assertEquals("Mismatch at bci " + j, root.getSourceSectionAtBci(j), null);
+                    assertEquals("Mismatch at bci " + j, null, root.getSourceSectionAtBci(j));
                 } else {
                     assertNotNull("Mismatch at bci " + j, root.getSourceSectionAtBci(j));
-                    assertEquals("Mismatch at bci " + j, root.getSourceSectionAtBci(j).getSource(), sources[expected[i][0]]);
-                    assertEquals("Mismatch at bci " + j, root.getSourceSectionAtBci(j).getCharIndex(), expected[i][1]);
-                    assertEquals("Mismatch at bci " + j, root.getSourceSectionAtBci(j).getCharLength(), expected[i][2]);
+                    assertEquals("Mismatch at bci " + j, sources[expected[i][0]], root.getSourceSectionAtBci(j).getSource());
+                    assertEquals("Mismatch at bci " + j, expected[i][1], root.getSourceSectionAtBci(j).getCharIndex());
+                    assertEquals("Mismatch at bci " + j, expected[i][2], root.getSourceSectionAtBci(j).getCharLength());
                 }
             }
         }
