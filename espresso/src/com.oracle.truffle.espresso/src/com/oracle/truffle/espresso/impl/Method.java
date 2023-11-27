@@ -1076,6 +1076,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         private final ExceptionsAttribute exceptionsAttribute;
 
         @CompilationFinal private CallTarget callTarget;
+        @CompilationFinal private CallTarget callTargetNoSubstitutions;
 
         @CompilationFinal private int vtableIndex = -1;
         @CompilationFinal private int itableIndex = -1;
@@ -1232,7 +1233,21 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             CompilerAsserts.neverPartOfCompilation();
             EspressoError.guarantee(getSubstitutions().hasSubstitutionFor(getMethod()),
                             "Using 'getCallTargetNoSubstitution' should be done only to bypass the substitution mechanism.");
-            return findCallTarget();
+            if (callTargetNoSubstitutions == null) {
+                synchronized (this) {
+                    if (callTargetNoSubstitutions == null) {
+                        EspressoRootNode redirectedMethod = getSubstitutions().get(getMethod());
+                        if (redirectedMethod == null) {
+                            // no substitution, use standard call target
+                            getContext().getLogger().warning("Using getCallTargetNoSubstitution() for " + this + " but there is no substitution available");
+                            callTargetNoSubstitutions = getCallTarget();
+                        } else {
+                            callTargetNoSubstitutions = findCallTarget();
+                        }
+                    }
+                }
+            }
+            return callTargetNoSubstitutions;
         }
 
         public CallTarget getCallTarget() {
@@ -1266,6 +1281,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 EspressoRootNode redirectedMethod = getSubstitutions().get(getMethod());
                 if (redirectedMethod != null) {
                     callTarget = redirectedMethod.getCallTarget();
+                    return;
+                }
+                if (callTargetNoSubstitutions != null) {
+                    callTarget = callTargetNoSubstitutions;
                     return;
                 }
 
