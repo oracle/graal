@@ -471,7 +471,7 @@ suite = {
       "type": "dir",
       "platformDependent": False,
       "layout": {
-        "META-INF/graalvm/jdk.graal.compiler/version": "dependency:sdk:RELEASE_VERSION/version",
+        "META-INF/graalvm/jdk.graal.compiler/version": "dependency:sdk:VERSION/version",
       },
       "description": "Compiler version.",
       "maven": False,

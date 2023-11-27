@@ -3558,7 +3558,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     }
     register_distribution(mx.LayoutDirDistribution(
         suite=_suite,
-        name='RELEASE_VERSION',
+        name='VERSION',
         deps=[],
         layout={
             'version': 'string:<version>'

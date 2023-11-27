@@ -680,7 +680,7 @@ suite = {
       "type": "dir",
       "platformDependent": False,
       "layout": {
-        "META-INF/graalvm/org.graalvm.polyglot/version": "dependency:RELEASE_VERSION/version",
+        "META-INF/graalvm/org.graalvm.polyglot/version": "dependency:VERSION/version",
       },
       "description": "Polyglot version.",
       "maven": False,

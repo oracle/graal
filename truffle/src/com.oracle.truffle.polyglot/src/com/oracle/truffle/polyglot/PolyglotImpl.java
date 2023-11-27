@@ -71,7 +71,6 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
-import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.SandboxPolicy;
@@ -111,14 +110,14 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     static final Object SECRET = new Object();
     static final Object[] EMPTY_ARGS = new Object[0];
 
-    static final Version VERSION;
+    static final String TRUFFLE_VERSION;
     static {
         InputStream in = PolyglotImpl.class.getResourceAsStream("/META-INF/graalvm/org.graalvm.truffle/version");
         if (in == null) {
             throw new InternalError("Truffle API must have a version file.");
         }
         try (BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
-            VERSION = Version.parse(r.readLine());
+            TRUFFLE_VERSION = r.readLine();
         } catch (IOException ioe) {
             throw new InternalError(ioe);
         }
@@ -663,8 +662,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
-    public Version getReleaseVersion() {
-        return VERSION;
+    public String getTruffleVersion() {
+        return TRUFFLE_VERSION;
     }
 
     @Override

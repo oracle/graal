@@ -1625,7 +1625,7 @@ suite = {
             "type": "dir",
             "platformDependent": False,
             "layout": {
-                "META-INF/graalvm/org.graalvm.truffle.runtime.svm/version": "dependency:sdk:RELEASE_VERSION/version",
+                "META-INF/graalvm/org.graalvm.truffle.runtime.svm/version": "dependency:sdk:VERSION/version",
             },
             "description": "SVM Runtime for Truffle version.",
             "maven": False,

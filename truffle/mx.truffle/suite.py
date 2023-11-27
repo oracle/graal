@@ -1429,7 +1429,7 @@ suite = {
       "type": "dir",
       "platformDependent": False,
       "layout": {
-        "META-INF/graalvm/org.graalvm.truffle/version": "dependency:sdk:RELEASE_VERSION/version",
+        "META-INF/graalvm/org.graalvm.truffle/version": "dependency:sdk:VERSION/version",
       },
       "description": "Truffle API version.",
       "maven": False,
