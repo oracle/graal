@@ -4133,7 +4133,7 @@ def graalvm_clean_env(out_env=None):
     Returns an env var that does not define variables that configure the GraalVM
     """
     env = out_env or os.environ.copy()
-    for env_var in ['DYNAMIC_IMPORTS', 'COMPONENTS', 'NATIVE_IMAGES', 'EXCLUDE_COMPONENTS', 'DISABLE_INSTALLABLES', 'NON_REBUILDABLE_IMAGES', 'BUILD_TARGETS']:
+    for env_var in ['DYNAMIC_IMPORTS', 'COMPONENTS', 'NATIVE_IMAGES', 'EXCLUDE_COMPONENTS', 'DISABLE_INSTALLABLES', 'NON_REBUILDABLE_IMAGES', 'BUILD_TARGETS', 'MX_ENV_PATH', 'MX_PRIMARY_SUITE_PATH']:
         if env_var in env:
             env.pop(env_var)
     return env
