@@ -23,22 +23,18 @@
 
 package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupAndInvokeKnownMethodNode;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -181,7 +177,6 @@ public final class ListInterop extends IterableInterop {
 
     @GenerateUncached
     abstract static class ListSet extends EspressoNode {
-        static final int LIMIT = 3;
 
         public void listSet(StaticObject receiver, long index, Object value, BranchProfile error) throws InvalidArrayIndexException {
             try {
@@ -192,13 +187,10 @@ public final class ListInterop extends IterableInterop {
                     throw InvalidArrayIndexException.create(index);
                 }
                 throw e; // unexpected exception
-            } catch (ArityException | UnsupportedTypeException e) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw EspressoError.shouldNotReachHere();
             }
         }
 
-        protected abstract void execute(StaticObject receiver, int index, Object value) throws ArityException, UnsupportedTypeException;
+        protected abstract void execute(StaticObject receiver, int index, Object value);
 
         @Specialization
         static void doCached(StaticObject receiver, int index, Object value,
@@ -223,13 +215,10 @@ public final class ListInterop extends IterableInterop {
                     throw UnsupportedMessageException.create();
                 }
                 throw e; // unexpected exception
-            } catch (ArityException | UnsupportedTypeException e) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw EspressoError.shouldNotReachHere();
             }
         }
 
-        protected abstract void execute(StaticObject receiver, Object value) throws ArityException, UnsupportedTypeException;
+        protected abstract void execute(StaticObject receiver, Object value);
 
         @Specialization
         static void doCached(StaticObject receiver, Object value,
@@ -254,13 +243,10 @@ public final class ListInterop extends IterableInterop {
                     throw UnsupportedMessageException.create(e);
                 }
                 throw e; // unexpected exception
-            } catch (ArityException | UnsupportedTypeException e) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw EspressoError.shouldNotReachHere();
             }
         }
 
-        protected abstract void execute(StaticObject receiver, int index) throws ArityException, UnsupportedTypeException;
+        protected abstract void execute(StaticObject receiver, int index);
 
         @Specialization
         static void doCached(StaticObject receiver, int index,
