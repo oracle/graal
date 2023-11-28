@@ -29,8 +29,6 @@ import java.security.ProtectionDomain;
 import java.util.ArrayDeque;
 import java.util.Objects;
 
-import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -59,13 +57,7 @@ class PrivilegedStack {
     }
 
     /* Local AccessControlContext stack */
-    private static final FastThreadLocalObject<ArrayDeque<StackElement>> stack;
-
-    static {
-        @SuppressWarnings("unchecked")
-        Class<ArrayDeque<StackElement>> cls = (Class<ArrayDeque<StackElement>>) (Object) ArrayDeque.class;
-        stack = FastThreadLocalFactory.createObject(cls, "AccessControlContextStack");
-    }
+    private static final ThreadLocal<ArrayDeque<StackElement>> stack = new ThreadLocal<>();
 
     @SuppressWarnings("unchecked")
     private static ArrayDeque<StackElement> getStack() {
