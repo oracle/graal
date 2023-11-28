@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.replacements.test;
 
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Function;
@@ -32,10 +32,15 @@ import java.util.function.Function;
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.lir.aarch64.AArch64VectorizedHashCodeOp;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.VectorizedHashCodeInvocationPlugin;
 import jdk.graal.compiler.test.AddExports;
 import jdk.internal.util.ArraysSupport;
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.code.InstalledCode;
 
 @AddExports({"java.base/jdk.internal.util"})
 public class VectorizedHashCodeTest extends GraalCompilerTest {
@@ -59,9 +64,14 @@ public class VectorizedHashCodeTest extends GraalCompilerTest {
 
     private static int[] initialValues = {0, 1, 0xDEADBEEF};
 
-    private void testHash(String method, Function<byte[], Object> f, Function<byte[], Integer> getLength) throws UnsupportedEncodingException {
+    private void testHash(String method, Function<byte[], Object> f, Function<byte[], Integer> getLength) {
+        testHashOp(getInitialOptions(), method, f, getLength);
+        testHashOpVariants(method, f, getLength);
+    }
+
+    private void testHashOp(OptionValues options, String method, Function<byte[], Object> f, Function<byte[], Integer> getLength) {
         for (String test : tests) {
-            byte[] baseArray = test.getBytes("UTF-8");
+            byte[] baseArray = test.getBytes(StandardCharsets.UTF_8);
             Object array = f.apply(baseArray);
             int len = getLength.apply(baseArray);
 
@@ -81,7 +91,7 @@ public class VectorizedHashCodeTest extends GraalCompilerTest {
                         continue;
                     }
                     for (int initialValue : initialValues) {
-                        test(method, array, index, length, initialValue);
+                        test(options, method, array, index, length, initialValue);
                     }
                 }
             }
@@ -93,7 +103,7 @@ public class VectorizedHashCodeTest extends GraalCompilerTest {
     }
 
     @Test
-    public void testHashByteArray() throws UnsupportedEncodingException {
+    public void testHashByteArray() {
         testHash("hashByteArray", a -> a, a -> a.length);
     }
 
@@ -102,7 +112,7 @@ public class VectorizedHashCodeTest extends GraalCompilerTest {
     }
 
     @Test
-    public void testHashByteArrayCharElement() throws UnsupportedEncodingException {
+    public void testHashByteArrayCharElement() {
         testHash("hashByteArrayCharElement", a -> a, a -> a.length / 2);
     }
 
@@ -111,7 +121,7 @@ public class VectorizedHashCodeTest extends GraalCompilerTest {
     }
 
     @Test
-    public void testHashBooleanArray() throws UnsupportedEncodingException {
+    public void testHashBooleanArray() {
         testHash("hashBooleanArray", a -> {
             byte[] array = new byte[a.length];
             for (int i = 0; i < a.length; i++) {
@@ -128,7 +138,7 @@ public class VectorizedHashCodeTest extends GraalCompilerTest {
     }
 
     @Test
-    public void testHashCharArray() throws UnsupportedEncodingException {
+    public void testHashCharArray() {
         testHash("hashCharArray", a -> {
             char[] array = new char[a.length];
             for (int i = 0; i < a.length; i++) {
@@ -143,7 +153,7 @@ public class VectorizedHashCodeTest extends GraalCompilerTest {
     }
 
     @Test
-    public void testHashShortArray() throws UnsupportedEncodingException {
+    public void testHashShortArray() {
         testHash("hashShortArray", a -> {
             short[] array = new short[a.length];
             for (int i = 0; i < a.length; i++) {
@@ -158,7 +168,7 @@ public class VectorizedHashCodeTest extends GraalCompilerTest {
     }
 
     @Test
-    public void testHashIntArray() throws UnsupportedEncodingException {
+    public void testHashIntArray() {
         testHash("hashIntArray", a -> {
             int[] array = new int[a.length];
             for (int i = 0; i < a.length; i++) {
@@ -166,5 +176,31 @@ public class VectorizedHashCodeTest extends GraalCompilerTest {
             }
             return array;
         }, a -> a.length);
+    }
+
+    private void testHashOpVariants(String method, Function<byte[], Object> f, Function<byte[], Integer> getLength) {
+        if (getArchitecture() instanceof AArch64) {
+            OptionValues options = new OptionValues(getInitialOptions(), GraalOptions.InlineGraalStubs, true);
+            for (int vectorCount : new int[]{2, 4, 8}) {
+                for (boolean useLD1 : new boolean[]{false, true}) {
+                    // Do not reuse already compiled code.
+                    InstalledCode compiledMethod = getCode(getResolvedJavaMethod(method), options);
+                    if (compiledMethod != null) {
+                        compiledMethod.invalidate(true);
+                    }
+
+                    int prevVectorCount = AArch64VectorizedHashCodeOp.VECTOR_COUNT;
+                    boolean prevNeonLoad = AArch64VectorizedHashCodeOp.USE_LD1;
+                    AArch64VectorizedHashCodeOp.VECTOR_COUNT = vectorCount;
+                    AArch64VectorizedHashCodeOp.USE_LD1 = useLD1;
+                    try {
+                        testHashOp(options, method, f, getLength);
+                    } finally {
+                        AArch64VectorizedHashCodeOp.USE_LD1 = prevNeonLoad;
+                        AArch64VectorizedHashCodeOp.VECTOR_COUNT = prevVectorCount;
+                    }
+                }
+            }
+        }
     }
 }
