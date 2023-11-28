@@ -37,8 +37,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -62,6 +60,9 @@ import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.options.Option;
+
 /**
  * Handles the registration and iterations of {@link Feature features}.
  */
@@ -77,7 +78,8 @@ public class FeatureHandler {
             return Options.Features.getValue().values();
         }
 
-        @Option(help = "Allow using deprecated @AutomaticFeature annotation. If set to false, an error is shown instead of a warning.")//
+        @Option(help = "Allow using deprecated @AutomaticFeature annotation. If set to false, an error is shown instead of a warning.", //
+                        deprecated = true, deprecationMessage = "This option was introduced to simplify migration to GraalVM 22.3 and will be removed in a future release")//
         public static final HostedOptionKey<Boolean> AllowDeprecatedAutomaticFeature = new HostedOptionKey<>(true);
     }
 

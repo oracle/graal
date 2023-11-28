@@ -745,7 +745,8 @@ public class SVMHost extends HostVM {
     }
 
     public static class Options {
-        @Option(help = "Enable the behavior of old GraalVM versions. When enabled, interfaces not available for the current platform are filtered.")//
+        @Option(help = "Enable the behavior of old GraalVM versions. When enabled, interfaces not available for the current platform are filtered.", //
+                        deprecated = true, deprecationMessage = "This option was introduced to simplify migration to GraalVM 21.2 and will be removed in a future release")//
         public static final HostedOptionKey<Boolean> PlatformInterfaceCompatibilityMode = new HostedOptionKey<>(false);
     }
 

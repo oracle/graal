@@ -400,7 +400,8 @@ public class SubstrateOptions {
     @Option(help = "Verify naming conventions during image construction.")//
     public static final HostedOptionKey<Boolean> VerifyNamingConventions = new HostedOptionKey<>(false);
 
-    @Option(help = "Enable support for threads and and thread-local variables (disable for single-threaded implementation)")//
+    @Option(help = "Enable support for threads and and thread-local variables (disable for single-threaded implementation)", //
+                    deprecated = true, deprecationMessage = "This special mode to build images that cannot start any additional threads has no benefits anymore and will be removed in a future release")//
     public static final HostedOptionKey<Boolean> MultiThreaded = new HostedOptionKey<>(true);
 
     @Option(help = "Use only a writable native image heap (requires ld.gold linker)")//
@@ -409,7 +410,7 @@ public class SubstrateOptions {
     @Option(help = "Force no direct relocations to be present in the text section of the generated image", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> NoDirectRelocationsInText = new HostedOptionKey<>(true);
 
-    @Option(help = "Support multiple isolates.") //
+    @Option(help = "Support multiple isolates.", deprecated = true, deprecationMessage = "This option disables a major feature of GraalVM Native Image and will be removed in a future release") //
     public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<>(true);
 
     @Option(help = "At CEntryPoints check that the passed IsolateThread is valid.") //
@@ -968,7 +969,7 @@ public class SubstrateOptions {
     @Option(help = "Verify type states computed by the static analysis at run time. This is useful when diagnosing problems in the static analysis, but reduces peak performance significantly.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyTypes = new HostedOptionKey<>(false);
 
-    @Option(help = "Run reachability handlers concurrently during analysis.", type = Expert)//
+    @Option(help = "Run reachability handlers concurrently during analysis.", type = Expert, deprecated = true, deprecationMessage = "This option was introduced to simplify migration to GraalVM 22.2 and will be removed in a future release")//
     public static final HostedOptionKey<Boolean> RunReachabilityHandlersConcurrently = new HostedOptionKey<>(true);
 
     @Option(help = "Force many trampolines to be needed for inter-method calls. Normally trampolines are only used when a method destination is outside the range of a pc-relative branch instruction.", type = OptionType.Debug)//
@@ -990,7 +991,8 @@ public class SubstrateOptions {
         }
     };
 
-    @Option(help = "Instead of abort, only warn if image builder classes are found on the image class-path.", type = OptionType.Debug)//
+    @Option(help = "Instead of abort, only warn if image builder classes are found on the image class-path.", type = OptionType.Debug, //
+                    deprecated = true, deprecationMessage = "This option was introduced to simplify migration to GraalVM 23.0 and will be removed in a future release")//
     public static final HostedOptionKey<Boolean> AllowDeprecatedBuilderClassesOnImageClasspath = new HostedOptionKey<>(false);
 
     @Option(help = "file:doc-files/MissingRegistrationHelp.txt")//
@@ -1023,7 +1025,7 @@ public class SubstrateOptions {
     @Option(help = "Enable and disable normal processing of flags relating to experimental options.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL) //
     public static final HostedOptionKey<Boolean> UnlockExperimentalVMOptions = new HostedOptionKey<>(false);
 
-    @Option(help = "Force using legacy method handle intrinsics.", type = Expert) //
+    @Option(help = "Force using legacy method handle intrinsics.", type = Expert, deprecated = true, deprecationMessage = "This option was introduced to simplify migration to GraalVM 23.1 and will be removed in a future release") //
     public static final HostedOptionKey<Boolean> UseOldMethodHandleIntrinsics = new HostedOptionKey<>(false);
 
     @Option(help = "Include all classes, methods, and fields from given modules", type = OptionType.Debug) //
