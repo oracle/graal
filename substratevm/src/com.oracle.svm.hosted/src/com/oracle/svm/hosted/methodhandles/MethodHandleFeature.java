@@ -33,6 +33,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
@@ -312,7 +313,7 @@ public class MethodHandleFeature implements InternalFeature {
         String srcType = src.primitiveSimpleName();
         String destType = dest.primitiveSimpleName();
         /* Capitalize first letter of destination type */
-        return srcType + "To" + destType.substring(0, 1).toUpperCase() + destType.substring(1);
+        return srcType + "To" + destType.substring(0, 1).toUpperCase(Locale.ENGLISH) + destType.substring(1);
     }
 
     private static void registerValueConversionIgnoreForReflection(DuringAnalysisAccess access) {

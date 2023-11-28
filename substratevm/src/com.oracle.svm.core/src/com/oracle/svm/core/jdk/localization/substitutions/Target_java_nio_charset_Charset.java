@@ -26,6 +26,7 @@ package com.oracle.svm.core.jdk.localization.substitutions;
 
 import java.nio.charset.Charset;
 import java.util.Collections;
+import java.util.Locale;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -77,7 +78,7 @@ public final class Target_java_nio_charset_Charset {
         }
 
         Map<String, Charset> charsets = ImageSingletons.lookup(LocalizationSupport.class).charsets;
-        Charset cs = charsets.get(charsetName.toLowerCase());
+        Charset cs = charsets.get(charsetName.toLowerCase(Locale.ENGLISH));
         if (cs != null) {
             cache(charsetName, cs);
             return cs;

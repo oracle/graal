@@ -33,6 +33,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.ServiceLoader;
@@ -294,7 +295,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     }
 
     private static String startLowerCase(String str) {
-        return str.substring(0, 1).toLowerCase() + str.substring(1);
+        return str.substring(0, 1).toLowerCase(Locale.ENGLISH) + str.substring(1);
     }
 
     @Override

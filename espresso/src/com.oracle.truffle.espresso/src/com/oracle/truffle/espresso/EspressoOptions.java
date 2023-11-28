@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Function;
 
 import org.graalvm.nativeimage.ImageInfo;
@@ -262,7 +263,7 @@ public final class EspressoOptions {
         @Override
         public SpecComplianceMode apply(String s) {
             try {
-                return SpecComplianceMode.valueOf(s.toUpperCase());
+                return SpecComplianceMode.valueOf(s.toUpperCase(Locale.ENGLISH));
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("--java.SpecCompliance: Mode can be 'strict' or 'hotspot'.");
             }
@@ -285,7 +286,7 @@ public final class EspressoOptions {
         @Override
         public VerifyMode apply(String s) {
             try {
-                return VerifyMode.valueOf(s.toUpperCase());
+                return VerifyMode.valueOf(s.toUpperCase(Locale.ENGLISH));
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("-Xverify: Mode can be 'none', 'remote' or 'all'.");
             }
@@ -341,7 +342,7 @@ public final class EspressoOptions {
                 return LivenessAnalysisMode.NONE;
             }
             try {
-                return LivenessAnalysisMode.valueOf(s.toUpperCase());
+                return LivenessAnalysisMode.valueOf(s.toUpperCase(Locale.ENGLISH));
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("--java.LivenessAnalysis can only be 'none'|'false', 'auto' or 'all'|'true'.");
             }
@@ -638,7 +639,7 @@ public final class EspressoOptions {
                         @Override
                         public JImageMode apply(String s) {
                             try {
-                                return JImageMode.valueOf(s.toUpperCase());
+                                return JImageMode.valueOf(s.toUpperCase(Locale.ENGLISH));
                             } catch (IllegalArgumentException e) {
                                 throw new IllegalArgumentException("JImage: Mode can be 'native', 'java'.");
                             }

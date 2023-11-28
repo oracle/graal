@@ -47,6 +47,7 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -1075,7 +1076,7 @@ abstract class AbstractBridgeGenerator {
         }
 
         private static String cacheEntryName(CharSequence name) {
-            return name.toString().replace('.', '_').toUpperCase() + "_BINARY_NAME";
+            return name.toString().replace('.', '_').toUpperCase(Locale.ENGLISH) + "_BINARY_NAME";
         }
     }
 }

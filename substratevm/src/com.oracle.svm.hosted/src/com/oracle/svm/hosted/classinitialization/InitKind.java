@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.classinitialization;
 
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -62,7 +63,7 @@ enum InitKind {
     public static final String SEPARATOR = ":";
 
     String suffix() {
-        return SEPARATOR + name().toLowerCase();
+        return SEPARATOR + name().toLowerCase(Locale.ENGLISH);
     }
 
     Consumer<String> stringConsumer(ClassInitializationSupport support, OptionOrigin origin) {

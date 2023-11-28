@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted;
 
 import java.nio.file.Path;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -120,7 +121,7 @@ public class VMFeature implements InternalFeature {
 
     private static void addCGlobalDataString(String infoType, String content) {
         String data = VM.class.getName() + "." + infoType + valueSeparator + content;
-        String symbolName = "__svm_vm_" + infoType.toLowerCase().replace(".", "_");
+        String symbolName = "__svm_vm_" + infoType.toLowerCase(Locale.ENGLISH).replace(".", "_");
         CGlobalDataFeature.singleton().registerWithGlobalSymbol(CGlobalDataFactory.createCString(data, symbolName));
     }
 }

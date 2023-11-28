@@ -31,6 +31,8 @@ import org.graalvm.collections.EconomicMap;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 
+import java.util.Locale;
+
 public class PointstoOptions {
 
     @Option(help = "Use experimental Reachability Analysis instead of points-to.")//
@@ -164,7 +166,7 @@ public class PointstoOptions {
     public static final OptionKey<String> AnalysisContextSensitivity = new OptionKey<>("insens") {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
-            switch (newValue.toLowerCase()) {
+            switch (newValue.toLowerCase(Locale.ENGLISH)) {
                 case "insens":
                     AllocationSiteSensitiveHeap.update(values, false);
                     MinHeapContextDepth.update(values, 0);
