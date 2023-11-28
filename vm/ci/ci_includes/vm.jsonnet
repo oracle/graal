@@ -196,6 +196,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     # Linux/AMD64
     # - JDK-Latest
     vm_common.deploy_vm_base_javaLatest_linux_amd64,
+    vm_common.deploy_vm_installables_standalones_javaLatest_linux_amd64,
     # - JDK21
     vm_common.deploy_vm_base_java21_linux_amd64,
     vm_common.deploy_vm_installables_standalones_java21_linux_amd64,
@@ -203,6 +204,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     # Linux/AARCH64
     # - JDK-Latest
     vm_common.deploy_vm_base_javaLatest_linux_aarch64,
+    vm_common.deploy_vm_installables_standalones_javaLatest_linux_aarch64,
     # - JDK21
     vm_common.deploy_vm_base_java21_linux_aarch64,
     vm_common.deploy_vm_installables_standalones_java21_linux_aarch64,
@@ -211,6 +213,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     # - JDK-Latest
     # GR-49652
     # vm_common.deploy_vm_base_javaLatest_darwin_amd64,
+    # vm_common.deploy_vm_standalones_javaLatest_darwin_amd64,
     # - JDK21
     vm_common.deploy_vm_base_java21_darwin_amd64,
     vm_common.deploy_vm_installables_java21_darwin_amd64,
@@ -219,6 +222,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     # Darwin/AARCH64
     # - JDK-Latest
     vm_common.deploy_vm_base_javaLatest_darwin_aarch64,
+    vm_common.deploy_vm_standalones_javaLatest_darwin_aarch64,
     # - JDK21
     vm_common.deploy_vm_base_java21_darwin_aarch64,
     vm_common.deploy_vm_installables_java21_darwin_aarch64,
@@ -227,6 +231,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     # Windows/AMD64
     # - JDK-Latest
     vm_common.deploy_vm_base_javaLatest_windows_amd64,
+    vm_common.deploy_vm_standalones_javaLatest_windows_amd64,
     # - JDK21
     vm_common.deploy_vm_base_java21_windows_amd64,
     vm_common.deploy_vm_installables_java21_windows_amd64,
