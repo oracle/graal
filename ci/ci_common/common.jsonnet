@@ -48,7 +48,7 @@ common + common.frequencies + {
   ),
 
   # Add the specified tags to the field `tags` of builds if `build.targets` contains "gate".
-  with_tags(builds, tags)::
+  with_tags_for_gates(builds, tags)::
     [
       if std.count(build.targets, "gate") > 0 then
         if std.objectHas(build, "tags") then
