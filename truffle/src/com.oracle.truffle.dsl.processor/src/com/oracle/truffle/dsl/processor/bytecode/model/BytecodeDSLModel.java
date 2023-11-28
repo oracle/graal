@@ -121,6 +121,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
 
     public OperationModel blockOperation;
     public OperationModel rootOperation;
+    public OperationModel conditionalOperation;
 
     public InstructionModel popInstruction;
     public InstructionModel dupInstruction;
@@ -147,7 +148,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return ElementUtils.getAnnotationValueList(TypeMirror.class, providedTags, "value");
     }
 
-    private Signature signature(Class<?> returnType, Class<?>... argumentTypes) {
+    public Signature signature(Class<?> returnType, Class<?>... argumentTypes) {
         TypeMirror[] arguments = new TypeMirror[argumentTypes.length];
         for (int i = 0; i < arguments.length; i++) {
             arguments[i] = context.getType(argumentTypes[i]);
@@ -188,9 +189,10 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                         .setVoid(true) //
                         .setNumChildren(3) //
                         .setChildrenMustBeValues(true, false, false);
-        operation(OperationKind.CONDITIONAL, "Conditional") //
+        conditionalOperation = operation(OperationKind.CONDITIONAL, "Conditional") //
                         .setNumChildren(3) //
                         .setChildrenMustBeValues(true, true, true);
+
         operation(OperationKind.WHILE, "While") //
                         .setVoid(true) //
                         .setNumChildren(2) //
@@ -299,6 +301,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         }
         mergeVariadicInstruction = instruction(InstructionKind.MERGE_VARIADIC, "merge.variadic", signature(Object.class, Object.class));
         storeNullInstruction = instruction(InstructionKind.STORE_NULL, "store.variadic_end", signature(Object.class));
+
     }
 
     private static TypeMirror array(TypeMirror el) {

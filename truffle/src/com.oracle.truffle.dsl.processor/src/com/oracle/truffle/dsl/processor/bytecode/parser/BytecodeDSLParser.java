@@ -614,6 +614,10 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         }
 
         if (model.usesBoxingElimination()) {
+            InstructionModel conditional = model.instruction(InstructionKind.MERGE_CONDITIONAL,
+                            "merge.conditional", model.signature(Object.class, boolean.class, Object.class));
+            model.conditionalOperation.setInstruction(conditional);
+
             for (InstructionModel instruction : model.getInstructions()) {
                 if (instruction.kind == InstructionKind.CUSTOM_SHORT_CIRCUIT) {
                     // short circuits should be supported in the future
@@ -662,6 +666,29 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                             returnTypeQuickening.returnTypeQuickening = true;
                         }
                         break;
+                    case MERGE_CONDITIONAL:
+                        instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, "child0Bci");
+                        instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, "child1Bci");
+                        for (TypeMirror boxedType : model.boxingEliminatedTypes) {
+                            InstructionModel specializedInstruction = model.quickenInstruction(instruction,
+                                            new Signature(context.getType(Object.class), List.of(context.getType(boolean.class), boxedType)),
+                                            ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxedType)));
+                            specializedInstruction.returnTypeQuickening = false;
+                            specializedInstruction.specializedType = boxedType;
+
+                            Signature newSignature = new Signature(boxedType, specializedInstruction.signature.argumentTypes);
+                            InstructionModel argumentQuickening = model.quickenInstruction(specializedInstruction,
+                                            newSignature,
+                                            "unboxed");
+                            argumentQuickening.returnTypeQuickening = true;
+                            argumentQuickening.specializedType = boxedType;
+                        }
+                        InstructionModel genericQuickening = model.quickenInstruction(instruction,
+                                        instruction.signature,
+                                        "generic");
+                        genericQuickening.returnTypeQuickening = false;
+                        genericQuickening.specializedType = null;
+                        break;
                     case POP:
                         instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, "child0_bci");
                         instruction.specializedType = context.getType(Object.class);
@@ -674,7 +701,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                             specializedInstruction.specializedType = boxedType;
                         }
 
-                        InstructionModel genericQuickening = model.quickenInstruction(instruction,
+                        genericQuickening = model.quickenInstruction(instruction,
                                         instruction.signature, "generic");
                         genericQuickening.returnTypeQuickening = false;
                         genericQuickening.specializedType = null;

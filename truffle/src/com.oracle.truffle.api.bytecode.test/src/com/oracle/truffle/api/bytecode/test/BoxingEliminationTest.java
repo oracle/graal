@@ -147,15 +147,16 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
     }
 
     @Test
-    public void testConditional() {
+    public void testConditionalConstants0() {
         // return - (arg0)
         BoxingEliminationTestRootNode node = parse(b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
             b.beginAbs();
+
             b.beginConditional();
-            b.emitTrue();
+            b.emitLoadArgument(0);
             b.emitLoadConstant(-42L);
             b.emitLoadConstant(22L);
             b.endConditional();
@@ -165,26 +166,164 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
             b.endRoot();
         });
 
-        printInstructions(node);
-
         assertInstructions(node,
-                        "c.True",
+                        "load.argument",
+                        "dup",
                         "branch.false",
                         "load.constant",
                         "branch",
                         "load.constant",
+                        "merge.conditional",
                         "c.Abs",
                         "return",
                         "pop");
 
-        assertEquals(42L, node.getCallTarget().call());
+        assertEquals(42L, node.getCallTarget().call(true));
 
         assertInstructions(node,
+                        "load.argument$Boolean",
+                        "dup",
+                        "branch.false$Boolean",
                         "load.constant$Long",
-                        "c.Abs$GreaterZero",
+                        "branch",
+                        "load.constant",
+                        "merge.conditional$Long$unboxed",
+                        "c.Abs$LessThanZero",
                         "return",
                         "pop");
 
+        assertEquals(22L, node.getCallTarget().call(false));
+
+        assertInstructions(node,
+                        "load.argument$Boolean",
+                        "dup",
+                        "branch.false$Boolean",
+                        "load.constant$Long",
+                        "branch",
+                        "load.constant$Long",
+                        "merge.conditional$Long$unboxed",
+                        "c.Abs$GreaterZero#LessThanZero",
+                        "return",
+                        "pop");
+    }
+
+    @Test
+    public void testConditionalConstants1() {
+        // return - (arg0)
+        BoxingEliminationTestRootNode node = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginAbs();
+
+            b.beginConditional();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(-42L);
+            b.emitLoadConstant("42"); // note the string!
+            b.endConditional();
+
+            b.endAbs();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "load.argument",
+                        "dup",
+                        "branch.false",
+                        "load.constant",
+                        "branch",
+                        "load.constant",
+                        "merge.conditional",
+                        "c.Abs",
+                        "return",
+                        "pop");
+
+        assertEquals(42L, node.getCallTarget().call(true));
+
+        assertInstructions(node,
+                        "load.argument$Boolean",
+                        "dup",
+                        "branch.false$Boolean",
+                        "load.constant$Long",
+                        "branch",
+                        "load.constant",
+                        "merge.conditional$Long$unboxed",
+                        "c.Abs$LessThanZero",
+                        "return",
+                        "pop");
+
+        assertEquals("42", node.getCallTarget().call(false));
+
+        assertInstructions(node,
+                        "load.argument$Boolean",
+                        "dup",
+                        "branch.false$Boolean",
+                        "load.constant",
+                        "branch",
+                        "load.constant",
+                        "merge.conditional$generic",
+                        "c.Abs",
+                        "return",
+                        "pop");
+    }
+
+    @Test
+    public void testConditionalConstants2() {
+        // return - (arg0)
+        BoxingEliminationTestRootNode node = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginAbs();
+
+            b.beginConditional();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(-42L);
+            b.emitLoadConstant("42"); // note the string!
+            b.endConditional();
+
+            b.endAbs();
+            b.endReturn();
+            b.endRoot();
+        });
+        assertInstructions(node,
+                        "load.argument",
+                        "dup",
+                        "branch.false",
+                        "load.constant",
+                        "branch",
+                        "load.constant",
+                        "merge.conditional",
+                        "c.Abs",
+                        "return",
+                        "pop");
+
+        assertEquals("42", node.getCallTarget().call(false));
+        assertInstructions(node,
+                        "load.argument$Boolean",
+                        "dup",
+                        "branch.false$Boolean",
+                        "load.constant",
+                        "branch",
+                        "load.constant",
+                        "merge.conditional$generic",
+                        "c.Abs",
+                        "return",
+                        "pop");
+
+        assertEquals(42L, node.getCallTarget().call(true));
+        assertInstructions(node,
+                        "load.argument$Boolean",
+                        "dup",
+                        "branch.false$Boolean",
+                        "load.constant",
+                        "branch",
+                        "load.constant",
+                        "merge.conditional$generic",
+                        "c.Abs",
+                        "return",
+                        "pop");
     }
 
     @Test
