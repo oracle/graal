@@ -1586,13 +1586,13 @@ suite = {
                 "com.oracle.svm.truffle.nfi",
                 "com.oracle.svm.truffle.nfi.posix",
                 "com.oracle.svm.truffle.nfi.windows",
+                "TRUFFLE_RUNTIME_SVM_VERSION",
             ],
             "distDependencies": [
                 "SVM",
                 "OBJECTFILE",
                 "POINTSTO",
                 "truffle:TRUFFLE_RUNTIME",
-                "TRUFFLE_RUNTIME_SVM_VERSION",
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.truffle.runtime.svm",

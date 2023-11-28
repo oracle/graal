@@ -691,11 +691,11 @@ suite = {
       "dependencies" : [
         "org.graalvm.polyglot",
         "org.graalvm.home",
+        "POLYGLOT_VERSION",
       ],
       "distDependencies" : [
         "COLLECTIONS",
         "NATIVEIMAGE",
-        "POLYGLOT_VERSION",
       ],
       "javadocType": "api",
       "moduleInfo" : {

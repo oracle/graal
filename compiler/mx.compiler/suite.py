@@ -536,13 +536,13 @@ suite = {
       },
       "subDir" : "src",
       "dependencies" : [
-        "jdk.internal.vm.compiler"
+        "jdk.internal.vm.compiler",
+        "GRAAL_VERSION",
       ],
       "distDependencies" : [
         "sdk:COLLECTIONS",
         "sdk:WORD",
         "truffle:TRUFFLE_COMPILER",
-        "GRAAL_VERSION",
       ],
       "allowsJavadocWarnings": True,
       "description":  "The GraalVM compiler and the Graal-truffle optimizer.",
