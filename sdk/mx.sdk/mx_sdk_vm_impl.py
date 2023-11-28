@@ -1979,6 +1979,11 @@ class GraalVmLibrary(GraalVmNativeImage):
             self.buildDependencies = []
         self.buildDependencies += ['{}:{}'.format(_suite, get_stage1_graalvm_distribution_name())]
 
+        if self.is_skipped():
+            # Skipped libraries do not have deps nor build deps
+            self.deps = []
+            self.buildDependencies = []
+
     def getBuildTask(self, args):
         svm_support = _get_svm_support()
         assert svm_support.is_supported(), "Needs svm to build " + str(self)
