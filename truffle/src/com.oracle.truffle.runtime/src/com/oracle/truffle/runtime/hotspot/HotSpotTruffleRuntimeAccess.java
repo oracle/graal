@@ -48,7 +48,6 @@ import com.oracle.truffle.runtime.ModulesSupport;
 import com.oracle.truffle.runtime.hotspot.libgraal.LibGraal;
 import com.oracle.truffle.runtime.hotspot.libgraal.LibGraalTruffleCompilationSupport;
 
-import jdk.internal.module.Modules;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.runtime.JVMCI;
@@ -100,13 +99,24 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
          * We also need to do this for LibGraal as the truffle.compiler module may be installed as
          * part of the JDK if the JDK supports running with jar graal as well.
          */
-        Module truffleCompilerModule = HotSpotTruffleRuntimeAccess.class.getModule().getLayer().findModule("org.graalvm.truffle.compiler").orElse(null);
-        if (truffleCompilerModule == null) {
-            return new DefaultTruffleRuntime("Truffle compiler module is missing. This is likely an installation error.");
+        Module runtimeModule = HotSpotTruffleRuntimeAccess.class.getModule();
+        ModuleLayer layer;
+        if (runtimeModule.isNamed()) {
+            layer = runtimeModule.getLayer();
+        } else {
+            layer = ModuleLayer.boot();
         }
-        for (String pack : truffleCompilerModule.getPackages()) {
-            Modules.addExports(truffleCompilerModule, pack, HotSpotTruffleRuntimeAccess.class.getModule());
+        /*
+         * If the compiler module is installed as part of the JDK we need to explicitly export it.
+         */
+        Module truffleCompilerModule = layer.findModule("org.graalvm.truffle.compiler").orElse(null);
+        if (truffleCompilerModule != null) {
+            ModulesSupport.exportJVMCI(truffleCompilerModule);
+            for (String pack : truffleCompilerModule.getPackages()) {
+                ModulesSupport.addExports(truffleCompilerModule, pack, runtimeModule);
+            }
         }
+
         TruffleCompilationSupport compilationSupport;
         if (LibGraal.isAvailable()) {
             // try LibGraal
@@ -114,17 +124,13 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
         } else {
             // try jar graal
             try {
-                Module compilerModule = HotSpotTruffleRuntimeAccess.class.getModule().getLayer().findModule("jdk.internal.vm.compiler").orElse(null);
+                Module compilerModule = layer.findModule("jdk.internal.vm.compiler").orElse(null);
                 if (compilerModule == null) {
                     // jargraal compiler module not found -> fallback to default runtime
                     return new DefaultTruffleRuntime(
                                     "Libgraal compilation is not available on this JVM. Alternatively, the org.graalvm.compiler:compiler module can be put on the --upgrade-module-path.");
                 }
-                /*
-                 * That the compiler has a qualified export to Truffle may not be enough if truffle
-                 * is running in an isolated module layer.
-                 */
-                Modules.addExports(compilerModule, "org.graalvm.compiler.truffle.compiler.hotspot", HotSpotTruffleRuntimeAccess.class.getModule());
+                ModulesSupport.addExports(compilerModule, "org.graalvm.compiler.truffle.compiler.hotspot", runtimeModule);
                 Class<?> hotspotCompilationSupport = Class.forName(compilerModule, "org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilationSupport");
                 compilationSupport = (TruffleCompilationSupport) hotspotCompilationSupport.getConstructor().newInstance();
             } catch (ReflectiveOperationException e) {

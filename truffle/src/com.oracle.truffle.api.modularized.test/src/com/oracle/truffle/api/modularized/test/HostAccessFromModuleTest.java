@@ -63,6 +63,7 @@ import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -86,7 +87,8 @@ public class HostAccessFromModuleTest {
 
     @Test
     public void testInAModule() {
-        Assert.assertTrue(HostAccessFromModuleTest.class.getModule().isNamed());
+        Assume.assumeTrue(HostAccessFromModuleTest.class.getModule().isNamed());
+
         try (Context context = Context.newBuilder().allowHostClassLookup((c) -> true).allowHostClassLoading(true).allowHostAccess(
                         HostAccess.newBuilder(HostAccess.ALL).useModuleLookup(MethodHandles.lookup()).build()).build()) {
             accessHostObject(context, true);
@@ -182,6 +184,8 @@ public class HostAccessFromModuleTest {
 
     @Test
     public void testClassLoading() throws IOException {
+        Assume.assumeTrue(HostAccessFromModuleTest.class.getModule().isNamed());
+
         Path tempDir;
         tempDir = setupSimpleClassPath();
 
@@ -240,6 +244,7 @@ public class HostAccessFromModuleTest {
 
     @Test
     public void testCreateHostAdapterFromClass() {
+        Assume.assumeTrue(HostAccessFromModuleTest.class.getModule().isNamed());
         try (Context context = Context.newBuilder().allowHostAccess(
                         HostAccess.newBuilder(HostAccess.ALL).allowAllImplementations(true).allowAllClassImplementations(true).build()).allowHostClassLookup(
                                         (c) -> true).allowHostClassLoading(true).build()) {

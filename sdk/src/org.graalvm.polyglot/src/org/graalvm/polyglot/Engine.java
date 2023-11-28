@@ -1713,7 +1713,7 @@ public final class Engine implements AutoCloseable {
         private static final String OPTION_TRACE_CLASS_PATH_ISOLATION = "polyglotimpl.TraceClassPathIsolation";
 
         private static final boolean TRACE_CLASS_PATH_ISOLATION = Boolean.getBoolean(OPTION_TRACE_CLASS_PATH_ISOLATION);
-        private static final boolean DISABLE_CLASS_PATH_ISOLATION = Boolean.getBoolean(OPTION_DISABLE_CLASS_PATH_ISOLATION);
+        private static final boolean DISABLE_CLASS_PATH_ISOLATION = Boolean.parseBoolean(System.getProperty(OPTION_DISABLE_CLASS_PATH_ISOLATION, "true"));
 
         static boolean isEnabled() {
             return !DISABLE_CLASS_PATH_ISOLATION;
