@@ -303,6 +303,16 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         append(new AArch64ControlFlow.BranchOp(ConditionFlag.EQ, trueDestination, falseDestination, trueSuccessorProbability));
     }
 
+    @Override
+    public void emitOpMaskTestBranch(Value left, boolean negateLeft, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability) {
+        throw GraalError.unsupportedArchitecture(target().arch);
+    }
+
+    @Override
+    public void emitOpMaskOrTestBranch(Value left, Value right, boolean allZeros, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability) {
+        throw GraalError.unsupportedArchitecture(target().arch);
+    }
+
     /**
      * Conditionally move trueValue into new variable if cond + unorderedIsTrue is true, else
      * falseValue.
@@ -528,6 +538,16 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             append(new CondMoveOp(result, ConditionFlag.EQ, asAllocatable(trueValue), asAllocatable(falseValue)));
         }
         return result;
+    }
+
+    @Override
+    public Variable emitOpMaskTestMove(Value leftVal, boolean negateLeft, Value right, Value trueValue, Value falseValue) {
+        throw GraalError.unsupportedArchitecture(target().arch);
+    }
+
+    @Override
+    public Variable emitOpMaskOrTestMove(Value leftVal, Value right, boolean allZeros, Value trueValue, Value falseValue) {
+        throw GraalError.unsupportedArchitecture(target().arch);
     }
 
     @Override
