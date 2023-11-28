@@ -26,6 +26,9 @@ package jdk.graal.compiler.lir.aarch64;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
+import java.util.Arrays;
+import java.util.stream.IntStream;
+
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction;
 import jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize;
@@ -62,9 +65,15 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
     @Alive({OperandFlag.REG}) private Value initialValue;
 
     private final JavaKind arrayKind;
+    private final int nRegs;
 
     @Temp({OperandFlag.REG}) Value[] temp;
     @Temp({OperandFlag.REG}) Value[] vectorTemp;
+
+    /** Number of vector registers to use per loop iteration. */
+    public static int VECTOR_COUNT = 4;
+    /** If true, tries to use NEON LD1 (multiple structures) instruction, else, uses LDR or LDP. */
+    public static boolean USE_LD1 = false;
 
     public AArch64VectorizedHashCodeOp(LIRGeneratorTool tool,
                     AllocatableValue result, AllocatableValue arrayStart, AllocatableValue length, AllocatableValue initialValue, JavaKind arrayKind) {
@@ -75,8 +84,10 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         this.initialValue = initialValue;
         this.arrayKind = arrayKind;
 
+        this.nRegs = VECTOR_COUNT;
         this.temp = allocateTempRegisters(tool, 5);
-        this.vectorTemp = allocateVectorRegisters(tool, 9); // (1 vnext + 4 vresult + 4 vtmp/vcoef)
+        // (1 * vnext + n * vresult + n * vtmp/vcoef)
+        this.vectorTemp = allocateVectorRegisters(tool, 1 + 2 * nRegs);
     }
 
     private static void arraysHashcodeElload(AArch64MacroAssembler masm, Register dst, AArch64Address src, JavaKind eltype) {
@@ -91,6 +102,23 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
     }
 
     private static final int[] POWERS_OF_31_BACKWARDS = new int[]{
+                    2111290369,
+                    -2010103841,
+                    350799937,
+                    11316127,
+                    693101697,
+                    -254736545,
+                    961614017,
+                    31019807,
+                    -2077209343,
+                    -67006753,
+                    1244764481,
+                    -2038056289,
+                    211350913,
+                    -408824225,
+                    -844471871,
+                    -997072353,
+                    1353309697,
                     -510534177,
                     1507551809,
                     -505558625,
@@ -108,7 +136,6 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
                     31,
                     1,
     };
-    private static final ArrayDataPointerConstant powersOf31 = new ArrayDataPointerConstant(POWERS_OF_31_BACKWARDS, 16);
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
@@ -129,10 +156,9 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         masm.mov(32, cnt1, asRegister(length));
         masm.mov(32, result, asRegister(initialValue));
 
-        // For "renaming" for readability of the code
         Register vnext = asRegister(vectorTemp[0]);
-        Register[] vcoef = {asRegister(vectorTemp[1]), asRegister(vectorTemp[2]), asRegister(vectorTemp[3]), asRegister(vectorTemp[4])};
-        Register[] vresult = {asRegister(vectorTemp[5]), asRegister(vectorTemp[6]), asRegister(vectorTemp[7]), asRegister(vectorTemp[8])};
+        Register[] vcoef = IntStream.range(1, 1 + nRegs).mapToObj(i -> asRegister(vectorTemp[i])).toArray(Register[]::new);
+        Register[] vresult = IntStream.range(1 + nRegs, 1 + 2 * nRegs).mapToObj(i -> asRegister(vectorTemp[i])).toArray(Register[]::new);
         Register[] vtmp = vcoef;
 
         final boolean unsigned = arrayKind == JavaKind.Boolean || arrayKind == JavaKind.Char;
@@ -143,8 +169,7 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
             default -> throw GraalError.shouldNotReachHereUnexpectedValue(arrayKind);
         };
 
-        final int nRegs = vresult.length;
-        GraalError.guarantee(nRegs >= 2 && CodeUtil.isPowerOf2(nRegs), "number of vectors must be a power of 2 >= 2");
+        GraalError.guarantee(nRegs == 2 || nRegs == 4 || nRegs == 8, "number of vectors must be either 2, 4, or 8");
         final int elementsPerVector = ASIMDSize.FullReg.bytes() / ElementSize.Word.bytes();
         final int elementsPerIteration = elementsPerVector * nRegs;
         // We can load up to 4 registers at once.
@@ -191,9 +216,9 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         Register next = tmp3;
 
         // vnext = IntVector.broadcast(I128, power_of_31_backwards[0]);
-        // Note: (length - elementsPerIteration) is usually zero.
-        // This code throws if there are not enough elements in the array but allows more.
-        int nextPow31 = POWERS_OF_31_BACKWARDS[POWERS_OF_31_BACKWARDS.length - elementsPerIteration] * 31;
+        // Throws AIOOBE if there are not enough elements in the array but allows more.
+        int powersOf31Start = POWERS_OF_31_BACKWARDS.length - elementsPerIteration;
+        int nextPow31 = POWERS_OF_31_BACKWARDS[powersOf31Start - 1];
         masm.mov(next, nextPow31);
         masm.neon.dupVG(ASIMDSize.FullReg, ElementSize.Word, vnext, next);
 
@@ -212,7 +237,7 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         // vtmp = ary1[index:index+elementsPerIteration];
         for (int ldVi = 0; ldVi < nRegs; ldVi += regsFilledPerLoad) {
             boolean postIndex = true;
-            loadConsecutiveVectors(masm, loadVecSize, loadVecBits, elSize, ary1, vtmp, ldVi, consecutiveRegs, postIndex, false);
+            loadConsecutiveVectors(masm, loadVecSize, loadVecBits, elSize, ary1, vtmp, ldVi, consecutiveRegs, postIndex, USE_LD1);
             extendVectorsToWord(masm, unsigned, loadVecBits, elSize, vtmp, ldVi, consecutiveRegs);
         }
 
@@ -236,17 +261,13 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         // release bound
 
         // vcoef = IntVector.fromArray(I128, power_of_31_backwards, 1);
+        var powersOf31 = new ArrayDataPointerConstant(Arrays.copyOfRange(POWERS_OF_31_BACKWARDS, powersOf31Start, POWERS_OF_31_BACKWARDS.length), 16);
         crb.recordDataReferenceInCode(powersOf31);
         Register coefAddrReg = tmp2;
         masm.adrpAdd(coefAddrReg);
-        int coefOffset = (POWERS_OF_31_BACKWARDS.length - elementsPerIteration) * JavaKind.Int.getByteCount();
-        assert coefOffset >= 0 : coefOffset;
-        if (coefOffset != 0) {
-            masm.add(64, coefAddrReg, coefAddrReg, coefOffset);
-        }
         for (int i = 0; i < nRegs; i += maxConsecutiveRegs) {
             boolean postIndex = maxConsecutiveRegs < nRegs;
-            loadConsecutiveVectors(masm, ASIMDSize.FullReg, ASIMDSize.FullReg.bits(), ElementSize.Word, coefAddrReg, vcoef, i, maxConsecutiveRegs, postIndex, false);
+            loadConsecutiveVectors(masm, ASIMDSize.FullReg, ASIMDSize.FullReg.bits(), ElementSize.Word, coefAddrReg, vcoef, i, maxConsecutiveRegs, postIndex, USE_LD1);
         }
 
         // vresult *= vcoef;
