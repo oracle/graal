@@ -199,37 +199,44 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImp
 
         @Override
         public short shortArrayRead(short[] arr, int index) {
+            assert index >= 0 && index < arr.length;
             return UNSAFE.getShort(arr, Unsafe.ARRAY_SHORT_BASE_OFFSET + index * Unsafe.ARRAY_SHORT_INDEX_SCALE);
         }
 
         @Override
         public void shortArrayWrite(short[] arr, int index, short value) {
+            assert index >= 0 && index < arr.length;
             UNSAFE.putShort(arr, Unsafe.ARRAY_SHORT_BASE_OFFSET + index * Unsafe.ARRAY_SHORT_INDEX_SCALE, value);
         }
 
         @Override
         public byte byteArrayRead(byte[] arr, int index) {
+            assert index >= 0 && index < arr.length;
             return UNSAFE.getByte(arr, Unsafe.ARRAY_BYTE_BASE_OFFSET + index * Unsafe.ARRAY_BYTE_INDEX_SCALE);
         }
 
         @Override
         public void byteArrayWrite(byte[] arr, int index, byte value) {
+            assert index >= 0 && index < arr.length;
             UNSAFE.putByte(arr, Unsafe.ARRAY_BYTE_BASE_OFFSET + index * Unsafe.ARRAY_BYTE_INDEX_SCALE, value);
         }
 
         @Override
         public int intArrayRead(int[] arr, int index) {
+            assert index >= 0 && index < arr.length;
             return UNSAFE.getInt(arr, Unsafe.ARRAY_INT_BASE_OFFSET + index * Unsafe.ARRAY_INT_INDEX_SCALE);
         }
 
         @Override
         public void intArrayWrite(int[] arr, int index, int value) {
+            assert index >= 0 && index < arr.length;
             UNSAFE.putInt(arr, Unsafe.ARRAY_INT_BASE_OFFSET + index * Unsafe.ARRAY_INT_INDEX_SCALE, value);
         }
 
         @Override
         @SuppressWarnings("unchecked")
         public <T> T objectArrayRead(T[] arr, int index) {
+            assert index >= 0 && index < arr.length;
             return (T) UNSAFE.getObject(arr, Unsafe.ARRAY_OBJECT_BASE_OFFSET + index * Unsafe.ARRAY_OBJECT_INDEX_SCALE);
         }
 
