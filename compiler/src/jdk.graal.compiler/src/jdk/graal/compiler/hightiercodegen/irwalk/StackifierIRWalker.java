@@ -666,7 +666,6 @@ public class StackifierIRWalker extends IRWalker {
             } else {
                 generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(succ));
             }
-            codeGenTool.genBlockEndBreak();
             codeGenTool.genScopeEnd();
         }
         codeGenTool.genScopeEnd();
