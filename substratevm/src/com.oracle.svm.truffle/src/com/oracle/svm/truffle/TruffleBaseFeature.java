@@ -305,7 +305,7 @@ public final class TruffleBaseFeature implements InternalFeature {
             Version truffleVersion = getTruffleVersion(a);
             Version featureVersion = getSVMFeatureVersion();
             if (featureVersion.compareTo(NEXT_POLYGLOT_VERSION_UPDATE) >= 0) {
-                throw new AssertionError("MAX_JDK_VERSION must be updated!");
+                throw new AssertionError("MAX_JDK_VERSION must be updated, please contact the Truffle team!");
             }
             if (featureVersion.compareTo(truffleVersion) > 0) {
                 // no forward compatibility

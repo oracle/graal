@@ -1520,10 +1520,10 @@ suite = {
         "com.oracle.truffle.polyglot",
         "com.oracle.truffle.host",
         "com.oracle.truffle.api.staticobject",
+        "TRUFFLE_API_VERSION",
       ],
       "distDependencies" : [
         "sdk:POLYGLOT",
-        "TRUFFLE_API_VERSION",
       ],
       "description" : "Truffle is a multi-language framework for executing dynamic languages\nthat achieves high performance when combined with Graal.",
       "javadocType": "api",
