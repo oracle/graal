@@ -620,21 +620,14 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                             "merge.conditional", model.signature(Object.class, boolean.class, Object.class));
             model.conditionalOperation.setInstruction(conditional);
 
-            for (InstructionModel instruction : model.getInstructions()) {
-                if (instruction.kind == InstructionKind.CUSTOM_SHORT_CIRCUIT) {
-                    // short circuits should be supported in the future
-                    continue;
-                }
-                for (int i = 0; i < instruction.signature.valueCount; i++) {
-                    if (instruction.getQuickeningRoot().needsBoxingElimination(model, i)) {
-                        instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, "child" + i + "_bci");
-                    }
-                }
-            }
-
             for (InstructionModel instruction : model.getInstructions().toArray(InstructionModel[]::new)) {
                 switch (instruction.kind) {
                     case CUSTOM:
+                        for (int i = 0; i < instruction.signature.valueCount; i++) {
+                            if (instruction.getQuickeningRoot().needsBoxingElimination(model, i)) {
+                                instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, createChildBciName(i));
+                            }
+                        }
                         if (model.isBoxingEliminated(instruction.signature.returnType)) {
                             InstructionModel returnTypeQuickening = model.quickenInstruction(instruction,
                                             instruction.signature, "unboxed");
@@ -655,7 +648,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         break;
                     case BRANCH_FALSE:
                         if (model.isBoxingEliminated(context.getType(boolean.class))) {
-                            instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, "child0_bci");
+                            instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, createChildBciName(0));
 
                             InstructionModel specialization = model.quickenInstruction(instruction,
                                             new Signature(context.getType(void.class), List.of(context.getType(Object.class))),
@@ -669,8 +662,8 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         }
                         break;
                     case MERGE_CONDITIONAL:
-                        instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, "child0Bci");
-                        instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, "child1Bci");
+                        instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, createChildBciName(0));
+                        instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, createChildBciName(1));
                         for (TypeMirror boxedType : model.boxingEliminatedTypes) {
                             InstructionModel specializedInstruction = model.quickenInstruction(instruction,
                                             new Signature(context.getType(Object.class), List.of(context.getType(boolean.class), boxedType)),
@@ -692,7 +685,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         genericQuickening.specializedType = null;
                         break;
                     case POP:
-                        instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, "child0_bci");
+                        instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, createChildBciName(0));
                         instruction.specializedType = context.getType(Object.class);
 
                         for (TypeMirror boxedType : model.boxingEliminatedTypes) {
@@ -741,7 +734,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                     case STORE_LOCAL:
                     case STORE_LOCAL_MATERIALIZED:
                         // needed for boxing elimination
-                        instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, "child0_bci");
+                        instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, createChildBciName(0));
 
                         for (TypeMirror boxedType : model.boxingEliminatedTypes) {
                             InstructionModel specializedInstruction = model.quickenInstruction(instruction,
@@ -805,6 +798,10 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.finalizeInstructions();
 
         return;
+    }
+
+    private String createChildBciName(int i) {
+        return "child" + i + "_bci";
     }
 
     private static long countBoxingEliminatedTypes(BytecodeDSLModel model, List<TypeMirror> s0) {
