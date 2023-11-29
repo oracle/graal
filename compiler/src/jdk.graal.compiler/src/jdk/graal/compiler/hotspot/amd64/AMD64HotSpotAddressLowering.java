@@ -30,16 +30,13 @@ import jdk.graal.compiler.core.amd64.AMD64AddressNode;
 import jdk.graal.compiler.core.amd64.AMD64CompressAddressLowering;
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.Stride;
-import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.nodes.CompressionNode;
-import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
-import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.vm.ci.code.Register;
 
 public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
+
     private final long heapBase;
     private final Register heapBaseRegister;
 
@@ -80,29 +77,5 @@ public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
         addr.setScale(stride);
         addr.setIndex(compression.getValue());
         return true;
-    }
-
-    private static boolean applicableToImplicitZeroExtend(ZeroExtendNode zeroExtendNode) {
-        return ((IntegerStamp) zeroExtendNode.getValue().stamp(NodeView.DEFAULT)).isPositive() && zeroExtendNode.getInputBits() == 32 && zeroExtendNode.getResultBits() == 64;
-    }
-
-    private static ValueNode tryImplicitZeroExtend(ValueNode input) {
-        if (input instanceof ZeroExtendNode) {
-            ZeroExtendNode zeroExtendNode = (ZeroExtendNode) input;
-            if (applicableToImplicitZeroExtend(zeroExtendNode)) {
-                return zeroExtendNode.getValue();
-            }
-        }
-        return input;
-    }
-
-    @Override
-    public void postProcess(AddressNode lowered) {
-        // Allow implicit zero extend for always positive input. This
-        // assumes that the upper bits of the operand is zero out by
-        // the backend.
-        AMD64AddressNode address = (AMD64AddressNode) lowered;
-        address.setBase(tryImplicitZeroExtend(address.getBase()));
-        address.setIndex(tryImplicitZeroExtend(address.getIndex()));
     }
 }

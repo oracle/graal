@@ -35,11 +35,14 @@ import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.vm.ci.code.CodeUtil;
@@ -154,9 +157,22 @@ public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend> {
         return self;
     }
 
+    /**
+     * @return true if the {@code usage} may depend on the LIRKinds of its inputs. Many arithmetic
+     *         operations often take the LIRKind of the first input as its own LIRKind.
+     */
+    private static boolean mayBeLIRKindDependentOp(Node usage) {
+        return !(usage instanceof AddressNode);
+    }
+
     @Override
     public void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool gen) {
-        nodeValueMap.setResult(this, gen.emitZeroExtend(nodeValueMap.operand(getValue()), getInputBits(), getResultBits()));
+        // If the value originates from caller, we have no control on the upper bits.
+        boolean requiresExplicitZeroExtend = getValue() instanceof ParameterNode || getValue() instanceof NarrowNode;
+        boolean requiresLIRKindChange = usages().filter(ZeroExtendNode::mayBeLIRKindDependentOp).isNotEmpty();
+
+        nodeValueMap.setResult(this, gen.emitZeroExtend(nodeValueMap.operand(getValue()), getInputBits(), getResultBits(),
+                        requiresExplicitZeroExtend, requiresLIRKindChange));
     }
 
     @Override
