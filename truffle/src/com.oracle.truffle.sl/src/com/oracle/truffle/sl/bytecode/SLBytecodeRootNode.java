@@ -41,6 +41,7 @@
 package com.oracle.truffle.sl.bytecode;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
@@ -120,17 +121,21 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
     public void executeProlog(VirtualFrame frame) {
         if (saved == null) {
             saved = dump();
-            System.out.println(saved);
+            printDump(saved);
         }
     }
 
     public void executeEpilog(VirtualFrame frame, Object returnValue, Throwable throwable) {
         String newDump = dump();
         if (!newDump.equals(saved)) {
-            System.out.println(newDump);
+            printDump(newDump);
             saved = newDump;
         }
+    }
 
+    @TruffleBoundary
+    private static void printDump(String dump) {
+        System.out.println(dump);
     }
 
     @Override

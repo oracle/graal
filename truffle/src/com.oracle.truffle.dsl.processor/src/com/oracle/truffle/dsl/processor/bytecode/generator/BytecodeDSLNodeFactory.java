@@ -318,8 +318,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         // Define the method to change between interpreters.
         bytecodeNodeGen.add(createChangeInterpreters());
 
-        // Define a helper method for throwing exceptions silently.
+        // Define helper methods for throwing exceptions.
         bytecodeNodeGen.add(createSneakyThrow());
+        bytecodeNodeGen.add(createAssertionFailed());
 
         // Define methods for introspecting the bytecode and source.
         bytecodeNodeGen.add(createGetIntrospectionData());
@@ -947,6 +948,21 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.startThrow();
         b.cast(tpE.asType()).variable(param);
         b.end();
+
+        return ex;
+    }
+
+    private CodeExecutableElement createAssertionFailed() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), context.getType(AssertionError.class), "assertionFailed");
+
+        // AssertionError.<init> is blocklisted from NI code. Create it behind a boundary.
+        ex.addAnnotationMirror(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
+
+        CodeVariableElement param = new CodeVariableElement(context.getType(String.class), "message");
+        ex.addParameter(param);
+
+        CodeTreeBuilder b = ex.createBuilder();
+        emitThrow(b, AssertionError.class, "message");
 
         return ex;
     }
@@ -4821,7 +4837,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         } else {
                             emitReportLoopCount(b, CodeTreeBuilder.createBuilder().string("++loopCounter.value >= ").staticReference(loopCounter.asType(), "REPORT_LOOP_STRIDE").build(), true);
 
-                            b.startIf().startStaticCall(types.BytecodeOSRNode, "pollOSRBackEdge").string("$this").end(2).startBlock();
+                            b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end(1).string(" && ") //
+                                            .startStaticCall(types.BytecodeOSRNode, "pollOSRBackEdge").string("$this").end(2).startBlock();
 
                             b.startAssign("Object osrResult");
                             b.startStaticCall(types.BytecodeOSRNode, "tryOSR");
@@ -6761,8 +6778,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         emitThrow(b, IllegalStateException.class, reason);
     }
 
-    private void emitThrowAssertionError(CodeTreeBuilder b, String reason) {
-        emitThrow(b, AssertionError.class, reason);
+    private static void emitThrowAssertionError(CodeTreeBuilder b, String reason) {
+        b.startThrow().startCall("assertionFailed").string(reason).end(2);
     }
 
     private void emitThrow(CodeTreeBuilder b, Class<? extends Throwable> exceptionClass, String reasonCode) {

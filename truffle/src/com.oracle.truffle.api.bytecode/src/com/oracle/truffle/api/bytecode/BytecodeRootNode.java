@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.bytecode.introspection.BytecodeIntrospection;
 import com.oracle.truffle.api.bytecode.introspection.ExceptionHandler;
 import com.oracle.truffle.api.bytecode.introspection.Instruction;
@@ -392,6 +393,7 @@ public interface BytecodeRootNode extends BytecodeIntrospection.Provider {
      *
      * @return a string representation of the bytecode
      */
+    @TruffleBoundary
     default String dump() {
         BytecodeIntrospection id = getIntrospectionData();
         List<Instruction> instructions = id.getInstructions();

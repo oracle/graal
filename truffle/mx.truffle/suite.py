@@ -1706,6 +1706,7 @@ suite = {
           "com.oracle.truffle.api.instrumentation",
           "com.oracle.truffle.api.dsl",
           "com.oracle.truffle.api.bytecode",
+          "com.oracle.truffle.api.bytecode.debug",
           "com.oracle.truffle.api.profiles",
           "com.oracle.truffle.api.interop",
           "com.oracle.truffle.api.exception",
