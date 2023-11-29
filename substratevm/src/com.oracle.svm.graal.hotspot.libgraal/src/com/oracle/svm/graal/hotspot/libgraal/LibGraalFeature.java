@@ -83,6 +83,7 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -691,7 +692,7 @@ final class Target_jdk_graal_compiler_hotspot_HotSpotGraalCompiler {
              * libgraal doesn't use a dedicated reference handler thread, so we trigger the
              * reference handling manually when a compilation finishes.
              */
-            Heap.getHeap().doReferenceHandling();
+            LibGraalEntryPoints.doReferenceHandling();
         }
     }
 }
@@ -736,8 +737,13 @@ final class Target_jdk_graal_compiler_hotspot_HotSpotGraalRuntime {
 final class Target_jdk_graal_compiler_serviceprovider_GraalServices {
 
     @Substitute
-    private static void notifyLowMemoryPoint(boolean fullGC) {
-        Heap.getHeap().getGC().collectionHint(fullGC);
+    private static void notifyLowMemoryPoint(boolean hintFullGC, boolean forceFullGC) {
+        if (forceFullGC) {
+            Heap.getHeap().getGC().collectCompletely(GCCause.JavaLangSystemGC);
+        } else {
+            Heap.getHeap().getGC().collectionHint(hintFullGC);
+        }
+        LibGraalEntryPoints.doReferenceHandling();
     }
 }
 

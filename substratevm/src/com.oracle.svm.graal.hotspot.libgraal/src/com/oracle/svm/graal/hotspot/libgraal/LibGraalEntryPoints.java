@@ -35,6 +35,24 @@ import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNIMethodScope;
+import org.graalvm.nativeimage.UnmanagedMemory;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawFieldAddress;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.PointerBase;
+import org.graalvm.word.WordFactory;
+
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.heap.Heap;
+import com.sun.management.ThreadMXBean;
+
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.GlobalMetrics;
@@ -50,25 +68,7 @@ import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
-import org.graalvm.jniutils.JNI.JNIEnv;
-import org.graalvm.jniutils.JNIMethodScope;
-import org.graalvm.nativeimage.UnmanagedMemory;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawFieldAddress;
-import org.graalvm.nativeimage.c.struct.RawStructure;
-import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.c.type.CIntPointer;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
 import jdk.graal.compiler.util.OptionsEncoder;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
-
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.heap.Heap;
-import com.sun.management.ThreadMXBean;
-
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
@@ -212,6 +212,17 @@ public final class LibGraalEntryPoints {
         }
     }
 
+    /**
+     * Since reference handling is synchronous in libgraal, explicitly perform it here and then run
+     * any code which is expecting to process a reference queue to let it clean up.
+     */
+    static void doReferenceHandling() {
+        Heap.getHeap().doReferenceHandling();
+        synchronized (Target_jdk_vm_ci_hotspot_Cleaner.class) {
+            Target_jdk_vm_ci_hotspot_Cleaner.clean();
+        }
+    }
+
     private static final ThreadLocal<CachedOptions> cachedOptions = new ThreadLocal<>();
 
     private static OptionValues decodeOptions(long address, int size, int hash) {
@@ -283,7 +294,7 @@ public final class LibGraalEntryPoints {
                 if (verbose) {
                     System.out.println("calling reference handling");
                 }
-                Heap.getHeap().doReferenceHandling();
+                LibGraalEntryPoints.doReferenceHandling();
                 if (verbose) {
                     System.out.println("called reference handling");
                 }
@@ -406,7 +417,7 @@ public final class LibGraalEntryPoints {
              * libgraal doesn't use a dedicated reference handler thread, so we trigger the
              * reference handling manually when a compilation finishes.
              */
-            Heap.getHeap().doReferenceHandling();
+            LibGraalEntryPoints.doReferenceHandling();
         }
     }
 }

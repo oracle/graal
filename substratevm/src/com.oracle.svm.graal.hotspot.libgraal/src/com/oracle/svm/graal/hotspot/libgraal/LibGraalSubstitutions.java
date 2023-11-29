@@ -30,6 +30,7 @@ import java.util.Map;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.heap.Heap;
 
 import jdk.vm.ci.services.Services;
 
@@ -61,6 +62,9 @@ final class Target_jdk_vm_ci_hotspot_Cleaner {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, isFinal = true, declClass = ReferenceQueue.class)//
     private static ReferenceQueue<Object> queue;
+
+    @Alias
+    static native void clean();
 }
 
 @TargetClass(className = "jdk.vm.ci.hotspot.HotSpotJDKReflection", onlyWith = LibGraalFeature.IsEnabled.class)
