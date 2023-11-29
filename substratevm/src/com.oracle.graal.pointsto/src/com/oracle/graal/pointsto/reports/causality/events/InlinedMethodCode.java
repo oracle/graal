@@ -58,4 +58,9 @@ public final class InlinedMethodCode extends CausalityEvent {
     public EventKinds typeDescriptor() {
         return EventKinds.MethodCode;
     }
+
+    @Override
+    public boolean essential() {
+        return false;
+    }
 }
