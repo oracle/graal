@@ -27,13 +27,17 @@ package com.oracle.svm.truffle;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -60,6 +64,7 @@ import java.util.stream.Stream;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
+import org.graalvm.home.Version;
 import org.graalvm.home.impl.DefaultHomeFinder;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -163,6 +168,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public final class TruffleBaseFeature implements InternalFeature {
 
     private static final String NATIVE_IMAGE_FILELIST_FILE_NAME = "native-image-resources.filelist";
+
+    private static final Version NEXT_POLYGLOT_VERSION_UPDATE = Version.create(25, 1);
+    private static final int MAX_JDK_VERSION = 25;
 
     @Override
     public String getURL() {
@@ -293,8 +301,27 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
+        if (!Boolean.getBoolean("polyglotimpl.DisableVersionChecks")) {
+            Version truffleVersion = getTruffleVersion(a);
+            Version featureVersion = getSVMFeatureVersion();
+            if (featureVersion.compareTo(NEXT_POLYGLOT_VERSION_UPDATE) >= 0) {
+                throw new AssertionError("MAX_JDK_VERSION must be updated, please contact the Truffle team!");
+            }
+            if (featureVersion.compareTo(truffleVersion) > 0) {
+                // no forward compatibility
+                throw throwVersionError("""
+                                Your Java runtime '%s' with native-image feature version '%s' is incompatible with polyglot version '%s'.
+                                Update the org.graalvm.polyglot versions to at least '%s' to resolve this.
+                                """, Runtime.version(), featureVersion, truffleVersion, featureVersion);
+            } else if (truffleVersion.compareTo(NEXT_POLYGLOT_VERSION_UPDATE) >= 0) {
+                throw throwVersionError("""
+                                Your Java runtime '%s' with native-image feature version '%s' is incompatible with polyglot version '%s'.
+                                The Java runtime version must be greater or equal to JDK '%d'.
+                                Update your Java runtime to resolve this.
+                                """, Runtime.version(), featureVersion, truffleVersion, MAX_JDK_VERSION);
+            }
+        }
         imageClassLoader = a.getApplicationClassLoader();
-
         TruffleRuntime runtime = Truffle.getRuntime();
         UserError.guarantee(runtime != null, "TruffleRuntime not available via Truffle.getRuntime()");
         UserError.guarantee(isSubstrateRuntime(runtime) || runtime instanceof DefaultTruffleRuntime,
@@ -320,6 +347,50 @@ public final class TruffleBaseFeature implements InternalFeature {
         invokeStaticMethod("com.oracle.truffle.polyglot.InternalResourceCacheSymbol", "initialize", List.of());
 
         profilingEnabled = false;
+    }
+
+    /**
+     * Reads reflectively the org.graalvm.truffle module version. The method uses reflection to
+     * access the {@code PolyglotImpl#TRUFFLE_VERSION} field because the Truffle API may be of a
+     * version earlier than graalvm-23.1.2 where the field does not exist.
+     *
+     * @return the Truffle API version or 23.1.1 if the {@code PolyglotImpl#TRUFFLE_VERSION} field
+     *         does not exist.
+     */
+    private static Version getTruffleVersion(AfterRegistrationAccess config) {
+        Class<?> polyglotImplClass = config.findClassByName("com.oracle.truffle.polyglot.PolyglotImpl");
+        Field versionField = ReflectionUtil.lookupField(true, polyglotImplClass, "TRUFFLE_VERSION");
+        if (versionField != null) {
+            try {
+                return Version.parse((String) versionField.get(null));
+            } catch (ReflectiveOperationException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        } else {
+            return Version.create(23, 1, 1);
+        }
+    }
+
+    private Version getSVMFeatureVersion() {
+        InputStream in = getClass().getResourceAsStream("/META-INF/graalvm/org.graalvm.truffle.runtime.svm/version");
+        if (in == null) {
+            throw VMError.shouldNotReachHere("Truffle native image feature must have a version file.");
+        }
+        try (BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+            return Version.parse(r.readLine());
+        } catch (IOException ioe) {
+            throw VMError.shouldNotReachHere(ioe);
+        }
+    }
+
+    private static RuntimeException throwVersionError(String errorFormat, Object... args) {
+        StringBuilder errorMessage = new StringBuilder("Polyglot version compatibility check failed.\n");
+        errorMessage.append(String.format(errorFormat, args));
+        errorMessage.append("""
+                        To disable this version check the '-Dpolyglotimpl.DisableVersionChecks=true' system property can be used.
+                        It is not recommended to disable version checks.
+                        """);
+        throw new IllegalStateException(errorMessage.toString());
     }
 
     @SuppressWarnings({"null", "unused"})

@@ -1621,6 +1621,16 @@ suite = {
             },
         },
 
+        "TRUFFLE_RUNTIME_SVM_VERSION": {
+            "type": "dir",
+            "platformDependent": False,
+            "layout": {
+                "META-INF/graalvm/org.graalvm.truffle.runtime.svm/version": "dependency:sdk:VERSION/version",
+            },
+            "description": "SVM Runtime for Truffle version.",
+            "maven": False,
+        },
+
         "TRUFFLE_RUNTIME_SVM": {
             "subDir": "src",
             "description" : "SVM Runtime for Truffle languages.",
@@ -1629,6 +1639,7 @@ suite = {
                 "com.oracle.svm.truffle.nfi",
                 "com.oracle.svm.truffle.nfi.posix",
                 "com.oracle.svm.truffle.nfi.windows",
+                "TRUFFLE_RUNTIME_SVM_VERSION",
             ],
             "distDependencies": [
                 "SVM",

@@ -260,9 +260,11 @@ public class TruffleFeature implements InternalFeature {
     }
 
     public static boolean isInConfiguration() {
-        String property = System.getProperty("truffle.TruffleRuntime");
-        if (property != null) {
-            return property.equals("com.oracle.svm.truffle.api.SubstrateTruffleRuntime");
+        if (!Boolean.getBoolean("truffle.UseFallbackRuntime")) {
+            String property = System.getProperty("truffle.TruffleRuntime");
+            if (property != null) {
+                return property.equals("com.oracle.svm.truffle.api.SubstrateTruffleRuntime");
+            }
         }
         return false;
     }
