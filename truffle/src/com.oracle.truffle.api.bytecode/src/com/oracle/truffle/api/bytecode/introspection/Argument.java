@@ -162,16 +162,16 @@ public final class Argument {
             return "null";
         }
         sb.append(o.getClass().getSimpleName());
-        List<SpecializationInfo> specializationInfo = getSpecializationInfo();
-        if (specializationInfo != null) {
+        List<SpecializationInfo> info = getSpecializationInfo();
+        if (info != null) {
             sb.append("(");
             String sep = "";
-            for (SpecializationInfo info : specializationInfo) {
-                if (info.getInstances() == 0) {
+            for (SpecializationInfo specialization : info) {
+                if (specialization.getInstances() == 0) {
                     continue;
                 }
                 sb.append(sep);
-                sb.append(info.getMethodName());
+                sb.append(specialization.getMethodName());
                 sep = "#";
             }
             sb.append(")");
