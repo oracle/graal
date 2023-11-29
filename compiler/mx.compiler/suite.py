@@ -283,7 +283,7 @@ suite = {
       "checkstyle" : "jdk.graal.compiler",
       "javaCompliance" : "21+",
       "jacoco" : "exclude",
-      "libGraalSourceEdition": "ignore",
+      "graalCompilerSourceEdition": "ignore",
     },
 
     "jdk.graal.compiler.management" : {
@@ -321,7 +321,7 @@ suite = {
       "javaCompliance" : "21+",
       "javaPreviewNeeded": "21+",
       "workingSets" : "Graal,HotSpot,Test",
-      "libGraalSourceEdition": "ignore",
+      "graalCompilerSourceEdition": "ignore",
     },
 
     "jdk.graal.compiler.virtual.bench" : {
@@ -334,7 +334,7 @@ suite = {
       "spotbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Bench",
       "testProject" : True,
-      "libGraalSourceEdition": "ignore",
+      "graalCompilerSourceEdition": "ignore",
     },
 
     "jdk.graal.compiler.microbenchmarks" : {
@@ -357,7 +357,7 @@ suite = {
       "spotbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Bench",
       "testProject" : True,
-      "libGraalSourceEdition": "ignore",
+      "graalCompilerSourceEdition": "ignore",
     },
 
     # ------------- GraalTruffle -------------
@@ -378,7 +378,7 @@ suite = {
       "checkPackagePrefix" : "false",
       "jacoco": "exclude",
       "testProject" : True,
-      "libGraalSourceEdition": "ignore",
+      "graalCompilerSourceEdition": "ignore",
     },
 
     # ------------- blackbox micro benchmarks -------------
@@ -396,7 +396,7 @@ suite = {
       "spotbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Bench",
       "testProject" : True,
-      "libGraalSourceEdition": "ignore",
+      "graalCompilerSourceEdition": "ignore",
     },
 
     "org.graalvm.profdiff" : {
@@ -408,7 +408,7 @@ suite = {
       ],
       "checkstyle" : "jdk.graal.compiler",
       "javaCompliance" : "21+",
-      "libGraalSourceEdition": "ignore",
+      "graalCompilerSourceEdition": "ignore",
     },
 
     "org.graalvm.profdiff.test" : {
@@ -421,7 +421,7 @@ suite = {
       "checkstyle" : "jdk.graal.compiler",
       "javaCompliance" : "21+",
       "workingSets" : "Graal,Test",
-      "libGraalSourceEdition": "ignore",
+      "graalCompilerSourceEdition": "ignore",
     },
   },
 
@@ -451,7 +451,7 @@ suite = {
       "testDistribution" : True,
       "unittestConfig": "graal",
       "maven": False,
-      "libGraalSourceEdition": "ignore",
+      "graalCompilerSourceEdition": "ignore",
     },
     "GRAAL_TEST_PREVIEW_FEATURE" : {
       "subDir" : "src",
@@ -466,7 +466,7 @@ suite = {
       "testDistribution" : True,
       "unittestConfig": "graal",
       "maven": False,
-      "libGraalSourceEdition": "ignore",
+      "graalCompilerSourceEdition": "ignore",
     },
 
     "GRAAL_PROCESSOR" : {
@@ -572,7 +572,7 @@ suite = {
       "testDistribution" : True,
       "maven": False,
       "graalWhiteboxDistribution": True,
-      "libGraalSourceEdition": "ignore",
+      "graalCompilerSourceEdition": "ignore",
     },
 
     "GRAAL_COMPILER_MICRO_BENCHMARKS" : {
@@ -580,7 +580,7 @@ suite = {
       "dependencies" : ["org.graalvm.micro.benchmarks"],
       "testDistribution" : True,
       "maven": False,
-      "libGraalSourceEdition": "ignore",
+      "graalCompilerSourceEdition": "ignore",
     },
 
     "HSDIS_GRAALVM_SUPPORT" : {
@@ -622,7 +622,7 @@ suite = {
         "GRAAL",
       ],
       "maven" : False,
-      "libGraalSourceEdition": "ignore",
+      "graalCompilerSourceEdition": "ignore",
     },
 
     "GRAAL_PROFDIFF_TEST" : {
@@ -638,7 +638,7 @@ suite = {
       ],
       "unittestConfig": "graal",
       "maven": False,
-      "libGraalSourceEdition": "ignore",
+      "graalCompilerSourceEdition": "ignore",
     },
   },
 }

@@ -1391,7 +1391,7 @@ suite = {
             ],
             "javaCompliance" : "21+",
             "jacoco" : "exclude",
-            "libGraalSourceEdition": "ignore",
+            "graalCompilerSourceEdition": "ignore",
         },
     },
 
