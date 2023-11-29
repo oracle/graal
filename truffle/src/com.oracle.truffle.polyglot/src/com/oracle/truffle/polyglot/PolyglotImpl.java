@@ -73,6 +73,7 @@ import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.ModuleToUnnamedBridge;
+import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
@@ -561,6 +562,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public FileSystem newNIOFileSystem(java.nio.file.FileSystem fileSystem) {
         return FileSystems.newNIOFileSystem(fileSystem);
+    }
+
+    @Override
+    public ByteSequence asByteSequence(Object object) {
+        return (ByteSequence) object;
     }
 
     @Override

@@ -125,6 +125,7 @@ public abstract class InteropMessage extends EspressoNode {
         IsBufferWritable,
         GetBufferSize,
         ReadBufferByte,
+        ReadBuffer,
         WriteBufferByte,
         ReadBufferShort,
         WriteBufferShort,
