@@ -406,7 +406,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         nodeChildrenAnnotation.setElementValue("value", new CodeAnnotationValue(createNodeChildAnnotations(signature).stream().map(CodeAnnotationValue::new).collect(Collectors.toList())));
         generatedNode.addAnnotationMirror(nodeChildrenAnnotation);
 
-        if (parent.enableTracing) {
+        if (parent.enableTracing || parent.enableSpecializationIntrospection) {
             generatedNode.addAnnotationMirror(new CodeAnnotationMirror(types.Introspectable));
         }
     }
@@ -544,7 +544,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         }
 
         // NB: Node-to-bci lookups rely on the node being the last immediate.
-        instr.addImmediate(ImmediateKind.NODE, "node");
+        instr.addImmediate(ImmediateKind.NODE_PROFILE, "node");
 
         return instr;
     }

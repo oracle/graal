@@ -105,6 +105,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public boolean enableYield;
     public boolean storeBciInFrame;
     public boolean specializationDebugListener;
+    public boolean enableSpecializationIntrospection;
 
     public ExecutableElement fdConstructor;
     public ExecutableElement fdBuilderConstructor;
@@ -167,7 +168,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                         .addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
         branchFalseInstruction = instruction(InstructionKind.BRANCH_FALSE, "branch.false", signature(void.class, Object.class)) //
                         .addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target") //
-                        .addImmediate(ImmediateKind.PROFILE, "branch_profile");
+                        .addImmediate(ImmediateKind.BRANCH_PROFILE, "branch_profile");
         throwInstruction = instruction(InstructionKind.THROW, "throw", signature(void.class, Object.class)) //
                         .addImmediate(ImmediateKind.INTEGER, "exception_local");
 

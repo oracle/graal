@@ -367,7 +367,7 @@ public class TruffleTypes {
     public static final String InstrumentRootNode_Name = "com.oracle.truffle.api.bytecode.instrumentation.InstrumentRootNode";
     public static final String InstrumentTreeNode_Name = "com.oracle.truffle.api.bytecode.instrumentation.InstrumentTreeNode";
 
-    public static final String Argument_ArgumentKind_Name = "com.oracle.truffle.api.bytecode.introspection.Argument.ArgumentKind";
+    public static final String Argument_ArgumentType_Name = "com.oracle.truffle.api.bytecode.introspection.Argument.ArgumentType";
     public static final String BytecodeIntrospection_Name = "com.oracle.truffle.api.bytecode.introspection.BytecodeIntrospection";
     public static final String BytecodeIntrospection_Provider_Name = "com.oracle.truffle.api.bytecode.introspection.BytecodeIntrospection.Provider";
     public static final String Instruction_Name = "com.oracle.truffle.api.bytecode.introspection.Instruction";
@@ -410,7 +410,7 @@ public class TruffleTypes {
     public final DeclaredType InstrumentRootNode = c.getDeclaredTypeOptional(InstrumentRootNode_Name);
     public final DeclaredType InstrumentTreeNode = c.getDeclaredTypeOptional(InstrumentTreeNode_Name);
 
-    public final DeclaredType Argument_ArgumentKind = c.getDeclaredTypeOptional(Argument_ArgumentKind_Name);
+    public final DeclaredType Argument_ArgumentType = c.getDeclaredTypeOptional(Argument_ArgumentType_Name);
     public final DeclaredType BytecodeIntrospection = c.getDeclaredTypeOptional(BytecodeIntrospection_Name);
     public final DeclaredType BytecodeIntrospection_Provider = c.getDeclaredTypeOptional(BytecodeIntrospection_Provider_Name);
     public final DeclaredType Instruction = c.getDeclaredTypeOptional(Instruction_Name);

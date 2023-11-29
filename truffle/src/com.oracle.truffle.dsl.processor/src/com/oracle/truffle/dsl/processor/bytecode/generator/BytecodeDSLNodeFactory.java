@@ -1088,40 +1088,54 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("nextBci[0] = bci + " + instr.getInstructionLength());
             b.end();
 
+            // instruction data array
             b.startReturn().startNewArray(arrayOf(context.getType(Object.class)), null);
             b.string("bci");
             b.doubleQuote(instr.name);
             b.string("new short[] {" + instr.getId() + "}");
 
+            // arguments array
             b.startNewArray(arrayOf(context.getType(Object.class)), null);
-            switch (instr.kind) {
-                case BRANCH:
-                case BRANCH_BACKWARD:
-                    buildIntrospectionArgument(b, "BRANCH_OFFSET", readBc("bci + 1"));
-                    break;
-                case BRANCH_FALSE:
-                    buildIntrospectionArgument(b, "BRANCH_OFFSET", readBc("bci + 1"));
-                    buildIntrospectionArgument(b, "PROFILE", "new int[] {" + readProfile(readBc("bci + 2") + " * 2") + ", " + readProfile(readBc("bci + 2") + " * 2 + 1") + "}");
-                    break;
-                case LOAD_CONSTANT:
-                    buildIntrospectionArgument(b, "CONSTANT", readConst(readBc("bci + 1")));
-                    break;
-                case LOAD_ARGUMENT:
-                    buildIntrospectionArgument(b, "ARGUMENT", readBc("bci + 1"));
-                    break;
-                case LOAD_LOCAL:
-                case STORE_LOCAL:
-                case LOAD_LOCAL_MATERIALIZED:
-                case STORE_LOCAL_MATERIALIZED:
-                case THROW:
-                    buildIntrospectionArgument(b, "LOCAL", readBc("bci + 1"));
-                    break;
-                case CUSTOM:
-                    break;
-                case CUSTOM_SHORT_CIRCUIT:
-                    assert !instr.getImmediates().isEmpty() : "Short circuit operations should always have branch targets.";
-                    buildIntrospectionArgument(b, "BRANCH_OFFSET", readBc("bci + 1"));
-                    break;
+
+            for (InstructionImmediate immediate : instr.getImmediates()) {
+                // argument data array
+                b.startNewArray(arrayOf(context.getType(Object.class)), null);
+                b.staticReference(types.Argument_ArgumentType, switch (immediate.kind()) {
+                    case CONSTANT -> "CONSTANT";
+                    case BYTECODE_INDEX -> "BYTECODE_INDEX";
+                    case INTEGER, LOCAL_SETTER, LOCAL_SETTER_RANGE_LENGTH, LOCAL_SETTER_RANGE_START -> "INTEGER";
+                    case NODE_PROFILE -> "NODE_PROFILE";
+                    case BRANCH_PROFILE -> "BRANCH_PROFILE";
+                    default -> throw new AssertionError("Unexpected kind");
+                });
+                b.doubleQuote(immediate.name());
+                String readImmediate = readBc("bci + " + immediate.offset());
+                switch (immediate.kind()) {
+                    case BYTECODE_INDEX:
+                    case INTEGER:
+                    case LOCAL_SETTER:
+                    case LOCAL_SETTER_RANGE_LENGTH:
+                    case LOCAL_SETTER_RANGE_START:
+                        b.string(readImmediate);
+                        break;
+                    case CONSTANT:
+                        b.string(readConst(readImmediate));
+                        break;
+                    case NODE_PROFILE:
+                        b.startGroup();
+                        b.string("cachedNodes != null ? ");
+                        b.string(readNodeProfile(types.Node, CodeTreeBuilder.singleString(readImmediate)));
+                        b.string(" : null");
+                        b.end();
+                        break;
+                    case BRANCH_PROFILE:
+                        b.string("new int[] {" + readBranchProfile(readImmediate + " * 2") + ", " + readBranchProfile(readImmediate + " * 2 + 1") + "}");
+                        break;
+                    default:
+                        throw new AssertionError("Unexpected kind");
+                }
+                b.end(); // Object[]
+
             }
             b.end(); // Object[]
 
@@ -1178,14 +1192,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.end(2);
 
         return ex;
-    }
-
-    private void buildIntrospectionArgument(CodeTreeBuilder b, String kind, String content) {
-        b.startNewArray(arrayOf(context.getType(Object.class)), null);
-        b.staticReference(types.Argument_ArgumentKind, kind);
-        b.string(content);
-        b.end();
-
     }
 
     private CodeExecutableElement createReadVariadic() {
@@ -1394,7 +1400,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
             // NB: this relies on all custom instructions encoding their node as the last immediate.
             InstructionModel representativeInstruction = entry.getValue().get(0);
-            InstructionImmediate imm = representativeInstruction.getImmediate(ImmediateKind.NODE);
+            InstructionImmediate imm = representativeInstruction.getImmediate(ImmediateKind.NODE_PROFILE);
             b.startBlock();
 
             b.startStatement().string("nodeIndex = ");
@@ -1547,7 +1553,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             b.startBlock();
-            InstructionImmediate imm = instr.getImmediate(ImmediateKind.NODE);
+            InstructionImmediate imm = instr.getImmediate(ImmediateKind.NODE_PROFILE);
             b.startStatement().string("nodeIndex = ");
             b.tree(readImmediate("bc", "bci", imm));
             b.end();
@@ -3557,8 +3563,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         // LocalSetterRange and set the length variable, and just yield it here.
                         yield "localSetterRangeLength" + (localSetterRangeIndex++);
                     }
-                    case NODE -> "allocateNode()";
-                    case INTEGER, CONSTANT, PROFILE -> throw new AssertionError(
+                    case NODE_PROFILE -> "allocateNode()";
+                    case INTEGER, CONSTANT, BRANCH_PROFILE -> throw new AssertionError(
                                     "Operation " + operation.name + " takes an immediate " + immediate.name() + " with unexpected kind " + immediate.kind() +
                                                     ". This is a bug in the Bytecode DSL processor.");
                 };
@@ -3657,7 +3663,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.end();
                         yield "childBci";
                     }
-                    case NODE -> "allocateNode()";
+                    case NODE_PROFILE -> "allocateNode()";
                     default -> throw new AssertionError(String.format("Boolean converter instruction had unexpected encoding: %s", immediates));
                 };
             }
@@ -3989,7 +3995,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 InstructionImmediate immediate = immedates.get(index);
                 branchArguments[index] = switch (immediate.kind()) {
                     case BYTECODE_INDEX -> (index == 0) ? UNINIT : "childBci";
-                    case PROFILE -> "allocateBranchProfile()";
+                    case BRANCH_PROFILE -> "allocateBranchProfile()";
                     default -> throw new AssertionError("Unexpected immediate: " + immediate);
                 };
             }
@@ -4180,7 +4186,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             b.statement(writeBc("offsetBci + handlerBci + " + immediate.offset(),
                                             "(short) (" + readBc("offsetBci + handlerBci + " + immediate.offset()) + " + offsetBci) /* adjust " + immediate.name() + " */"));
                             break;
-                        case NODE:
+                        case NODE_PROFILE:
                             // Allocate a separate Node for each handler.
                             b.statement(writeBc("offsetBci + handlerBci + " + immediate.offset(), "(short) allocateNode()"));
                             break;
@@ -4845,7 +4851,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         } else {
                             b.startStaticCall(types.BytecodeSupport, "profileBranch");
                             b.string("branchProfiles");
-                            b.tree(readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.PROFILE)));
+                            b.tree(readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BRANCH_PROFILE)));
                             if (model.isBoxingEliminated(context.getType(boolean.class))) {
                                 if (instr.isQuickening()) {
                                     b.startCall(lookupDoBranchFalse(instr).getSimpleName().toString());
@@ -6211,8 +6217,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             if (!tier.isUncached) {
                 // If not in the uncached interpreter, we need to retrieve the node for the call.
-                CodeTree nodeIndex = readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.NODE));
-                CodeTree readNode = CodeTreeBuilder.createBuilder().string(readNode(cachedType, nodeIndex)).build();
+                CodeTree nodeIndex = readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.NODE_PROFILE));
+                CodeTree readNode = CodeTreeBuilder.createBuilder().string(readNodeProfile(cachedType, nodeIndex)).build();
                 b.declaration(cachedType, "node", readNode);
 
                 if (model.enableTracing) {
@@ -6821,11 +6827,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return String.format("ACCESS.objectArrayRead(constants, %s)", index);
     }
 
-    private static String readProfile(String index) {
+    private static String readBranchProfile(String index) {
         return String.format("branchProfiles == null ? 0 : ACCESS.intArrayRead(branchProfiles, %s)", index);
     }
 
-    private static String readNode(TypeMirror expectedType, CodeTree index) {
+    private static String readNodeProfile(TypeMirror expectedType, CodeTree index) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         b.startCall("ACCESS.cast");
         b.startCall("ACCESS.objectArrayRead");
