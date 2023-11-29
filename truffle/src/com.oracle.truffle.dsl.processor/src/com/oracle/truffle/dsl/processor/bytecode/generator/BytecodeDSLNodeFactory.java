@@ -954,16 +954,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     private CodeExecutableElement createAssertionFailed() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), context.getType(AssertionError.class), "assertionFailed");
-
-        // AssertionError.<init> is blocklisted from NI code. Create it behind a boundary.
-        ex.addAnnotationMirror(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
-
         CodeVariableElement param = new CodeVariableElement(context.getType(String.class), "message");
         ex.addParameter(param);
 
         CodeTreeBuilder b = ex.createBuilder();
         emitThrow(b, AssertionError.class, "message");
 
+        // AssertionError.<init> is blocklisted from NI code. Create it behind a boundary.
+        return withTruffleBoundary(ex);
+    }
+
+    private CodeExecutableElement withTruffleBoundary(CodeExecutableElement ex) {
+        ex.addAnnotationMirror(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
         return ex;
     }
 
@@ -1065,7 +1067,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.startThrow().cast(context.getType(IOException.class), "e.getCause()").end();
         b.end();
 
-        return method;
+        return withTruffleBoundary(method);
     }
 
     private CodeExecutableElement createDeserialize() {
@@ -1086,7 +1088,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.startThrow().cast(type(IOException.class), "e.getCause()").end();
         b.end();
 
-        return method;
+        return withTruffleBoundary(method);
     }
 
     private CodeExecutableElement createParseInstruction() {
