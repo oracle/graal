@@ -7,7 +7,7 @@
   local hw = bc.bench_hw,
 
   # GR-49532 TODO add 'throughput' metric and 'top-tier-throughput' secondary_metrics
-  local PR_bench_libgraal = {unicorn_pull_request_benchmarking:: {name: 'libgraal', metrics: ["time"], secondary_metrics: ['max-rss']}},
+  local PR_bench_libgraal = {unicorn_pull_request_benchmarking:: {name: 'libgraal', metrics: ['time', 'throughput'], secondary_metrics: ['max-rss', 'top-tier-throughput']}},
 
   local main_builds = std.flattenArrays([
     [
