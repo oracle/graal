@@ -46,6 +46,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.bytecode.introspection.Argument;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 
 /**
@@ -183,5 +184,11 @@ public @interface GenerateBytecode {
      * Primitive types for which the interpreter should attempt to avoid boxing.
      */
     Class<?>[] boxingEliminationTypes() default {};
+
+    /**
+     * Generate introspection data for specializations. The data is accessible using
+     * {@link Argument#getSpecializationInfo()}.
+     */
+    boolean enableSpecializationIntrospection() default true;
 
 }
