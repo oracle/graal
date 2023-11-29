@@ -61,19 +61,12 @@ For that, the following needs to be added to the plugins section of `pom.xml`:
 </plugin>
 ```
 
-Then, when you run the Maven package command `./mvnw package -Dpackaging=native-image`, you will get the following build artifacts:
+Then, when you run the Maven package command `mvn -Pnative native:compile`, you will get the following build artifacts:
 ```
 Finished generating 'micronautguide' in 2m 0s.
 
 Native Image Bundles: Bundle build output written to /home/testuser/micronaut-data-jdbc-repository-maven-java/target/micronautguide.output
 Native Image Bundles: Bundle written to /home/testuser/micronaut-data-jdbc-repository-maven-java/target/micronautguide.nib
-
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD SUCCESS
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  02:08 min
-[INFO] Finished at: 2023-03-27T15:09:36+02:00
-[INFO] ------------------------------------------------------------------------
 ```
 
 This output indicates that you have created a native executable, `micronautguide`, and a bundle, _micronautguide.nib_.
@@ -139,16 +132,9 @@ target/micronautguide.output
 As mentioned in the `--bundle-create` option description, it is also possible to let `native-image` build a bundle but not actually perform the image building.
 This might be useful if a user wants to move the bundle to a more powerful machine and build the image there.
 Modify the `--bundle-create` argument in the `native-maven-plugin` configuration above to `<buildArg>--bundle-create,dry-run</buildArg>`.
-Then running `./mvnw package -Dpackaging=native-image` takes only seconds and the created bundle is much smaller: 
+Then running `mvn -Pnative native:compile` takes only seconds and the created bundle is much smaller: 
 ```
 Native Image Bundles: Bundle written to /home/testuser/micronaut-data-jdbc-repository-maven-java/target/micronautguide.nib
-
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD SUCCESS
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  2.267 s
-[INFO] Finished at: 2023-03-27T16:33:21+02:00
-[INFO] ------------------------------------------------------------------------
 ```
 
 Now _micronautguide.nib_ is only 20 MB in file size and the executable is not included:
@@ -381,7 +367,7 @@ $ native-image --bundle-apply=micronautguide-pgo-optimized.nib
 ...
 ```
 
-## Executing the bundled application
+## Executing a Bundled Application
 
 As described later in [Bundle File Format](#bundle-file-format), a bundle file is a JAR file with a contained launcher for launching the bundled application.
 This means you can use a native image bundle with any JDK and execute it as a JAR file with `<jdk>/bin/java -jar [bundle-file.nib]`.
