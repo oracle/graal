@@ -686,6 +686,9 @@ public class SubstrateOptions {
     @Option(help = "Common prefix used by method symbols in image.")//
     public static final HostedOptionKey<String> ImageSymbolsPrefix = new HostedOptionKey<>("");
 
+    /**
+     * Needs to be removed as part of GR-50210.
+     */
     @Option(help = "Fold SecurityManager getter.", stability = OptionStability.EXPERIMENTAL, type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> FoldSecurityManagerGetter = new HostedOptionKey<>(true);
 
