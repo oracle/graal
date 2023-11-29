@@ -1145,7 +1145,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.end();
                         break;
                     case BRANCH_PROFILE:
-                        b.string("new int[] {" + readBranchProfile(readImmediate + " * 2") + ", " + readBranchProfile(readImmediate + " * 2 + 1") + "}");
+                        b.string("new int[] {" + readImmediate + ", " + readBranchProfile(readImmediate + " * 2") + ", " + readBranchProfile(readImmediate + " * 2 + 1") + "}");
                         break;
                     default:
                         throw new AssertionError("Unexpected kind");
@@ -4089,133 +4089,66 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startSwitch().string(readHandlerBc("handlerBci")).end().startBlock();
 
             // Fix up instructions.
-            Set<InstructionKind> relocatable = Set.of(InstructionKind.BRANCH, InstructionKind.BRANCH_BACKWARD, InstructionKind.BRANCH_FALSE, InstructionKind.YIELD);
             Map<Boolean, List<InstructionModel>> builtinsGroupedByNeedsRelocation = model.getInstructions().stream().//
                             filter(i -> !i.isQuickening()).//
-                            filter(instr -> !instr.isCustomInstruction()).//
-                            collect(Collectors.partitioningBy(instr -> relocatable.contains(instr.kind)));
+                            filter(i -> !i.isCustomInstruction()).//
+                            collect(Collectors.partitioningBy(instr -> needsRelocation(instr)));
 
             Map<Integer, List<InstructionModel>> nonRelocatingBuiltinsGroupedByLength = builtinsGroupedByNeedsRelocation.get(false).stream().collect(
                             Collectors.groupingBy(InstructionModel::getInstructionLength));
-            Map<Integer, List<InstructionModel>> customInstructionsGroupedByEncoding = model.getInstructions().stream().//
+
+            Map<List<InstructionImmediate>, List<InstructionModel>> customInstructionsGroupedByEncoding = model.getInstructions().stream().//
                             filter(i -> !i.isQuickening()).//
-                            filter(InstructionModel::isCustomInstruction).collect(
-                                            Collectors.groupingBy(instr -> (instr.kind == InstructionKind.CUSTOM_SHORT_CIRCUIT) ? 0 : instr.getId()));
+                            filter(i -> i.isCustomInstruction()).//
+                            collect(Collectors.groupingBy(instr -> instr.getImmediates()));
 
             // Non-relocatable builtins (one case per instruction length)
             for (Map.Entry<Integer, List<InstructionModel>> entry : nonRelocatingBuiltinsGroupedByLength.entrySet()) {
                 for (InstructionModel instr : entry.getValue()) {
                     b.startCase().tree(createInstructionConstant(instr)).end();
+                    if (needsRelocation(instr)) {
+                        throw new AssertionError("Inconsistent grouping");
+                    }
                 }
-                b.startBlock();
+                b.startCaseBlock();
                 b.statement("handlerBci += " + entry.getKey());
                 b.statement("break");
                 b.end();
             }
 
-            // Relocatable builtins (one case each)
+            // Relocatable builtins
             for (InstructionModel instr : builtinsGroupedByNeedsRelocation.get(true)) {
                 if (instr.isQuickening()) {
-                    continue;
+                    throw new AssertionError("unexpected quickening");
                 }
                 b.startCase().tree(createInstructionConstant(instr)).end();
-                for (InstructionModel quickening : instr.getFlattenedQuickenedInstructions()) {
-                    b.startCase().tree(createInstructionConstant(quickening)).end();
-                }
-                b.startBlock();
-
-                switch (instr.kind) {
-                    case BRANCH:
-                    case BRANCH_BACKWARD:
-                    case BRANCH_FALSE:
-                        b.statement("int branchIdx = handlerBci + 1"); // BCI of branch immediate
-                        b.statement("short branchTarget = " + readHandlerBc("branchIdx"));
-
-                        if (instr.kind == InstructionKind.BRANCH_BACKWARD) {
-                            // Backward branches are only used internally by while loops. They
-                            // should be resolved when the while loop ends.
-                            b.startAssert().string("branchTarget != " + UNINIT).end();
-                        } else {
-                            // Mark branch target as unresolved, if necessary.
-                            b.startIf().string("branchTarget == " + UNINIT).end().startBlock();
-                            b.lineComment("This branch is to a not-yet-emitted label defined by an outer operation.");
-                            b.statement("BytecodeLabelImpl lbl = (BytecodeLabelImpl) context.handlerUnresolvedBranchLabels.get(branchIdx)");
-                            b.statement("int sp = context.handlerUnresolvedBranchStackHeights.get(branchIdx)");
-                            b.statement("assert !lbl.isDefined()");
-                            b.startStatement().startCall("registerUnresolvedLabel");
-                            b.string("lbl");
-                            b.string("offsetBci + branchIdx");
-                            b.string("currentStackHeight + sp");
-                            b.end(3);
-                        }
-
-                        b.newLine();
-
-                        // Adjust relative branch targets.
-                        b.startIf().string("context.finallyRelativeBranches.contains(branchIdx)").end().startBlock();
-                        b.statement(writeBc("offsetBci + branchIdx", "(short) (offsetBci + branchTarget)") + " /* relocated */");
-                        b.startIf().string("inFinallyTryHandler(context.parentContext)").end().startBlock();
-                        b.lineComment("If we're currently nested inside some other finally handler, the branch will also need to be relocated in that handler.");
-                        b.statement("context.parentContext.finallyRelativeBranches.add(offsetBci + branchIdx)");
-                        b.end();
-                        b.end().startElseBlock();
-                        b.statement(writeBc("offsetBci + branchIdx", "branchTarget"));
-                        b.end();
-                        break;
-
-                    case YIELD:
-                        b.statement("int locationBci = handlerBci + 1");
-                        b.statement("ContinuationLocationImpl cl = (ContinuationLocationImpl) constantPool.getConstant(" + readHandlerBc("locationBci") + ")");
-                        // The continuation should resume after this yield instruction
-                        b.statement("assert cl.bci == locationBci + 1");
-                        b.statement("ContinuationLocationImpl newContinuation = new ContinuationLocationImpl(numYields++, offsetBci + cl.bci, currentStackHeight + cl.sp)");
-                        b.statement(writeBc("offsetBci + locationBci", "(short) constantPool.addConstant(newContinuation)"));
-                        b.statement("continuationLocations.add(newContinuation)");
-                        break;
-                    default:
-                        // do nothing
-                        break;
-                }
-
+                b.startCaseBlock();
+                relocateImmediates(b, instr);
                 b.statement("handlerBci += " + instr.getInstructionLength());
                 b.statement("break");
                 b.end();
-
             }
 
-            // One case per custom instruction (except short circuit instructions, which all have
-            // the same encoding).
+            // group by instruction immediates
             for (List<InstructionModel> instrs : customInstructionsGroupedByEncoding.values()) {
-                for (InstructionModel instr : instrs) {
-                    b.startCase().tree(createInstructionConstant(instr)).end();
-                }
-                b.startBlock();
-
                 InstructionModel instr = instrs.get(0);
-                List<InstructionImmediate> immediates = instr.getImmediates();
-                for (int i = 0; i < immediates.size(); i++) {
-                    InstructionImmediate immediate = immediates.get(i);
-                    switch (immediate.kind()) {
-                        case BYTECODE_INDEX:
-                            // Custom operations don't have non-local branches/children, so
-                            // this immediate is *always* relative.
-                            b.statement(writeBc("offsetBci + handlerBci + " + immediate.offset(),
-                                            "(short) (" + readBc("offsetBci + handlerBci + " + immediate.offset()) + " + offsetBci) /* adjust " + immediate.name() + " */"));
-                            break;
-                        case NODE_PROFILE:
-                            // Allocate a separate Node for each handler.
-                            b.statement(writeBc("offsetBci + handlerBci + " + immediate.offset(), "(short) allocateNode()"));
-                            break;
-                        default:
-                            // do nothing
-                            break;
+                for (InstructionModel otherInstruction : instrs) {
+                    b.startCase().tree(createInstructionConstant(otherInstruction)).end();
+                    if (instr.getInstructionLength() != otherInstruction.getInstructionLength()) {
+                        throw new AssertionError("Unexpected instruction length mismatch.");
                     }
                 }
-
+                b.startCaseBlock();
+                relocateImmediates(b, instr);
                 b.statement("handlerBci += " + instr.getInstructionLength());
                 b.statement("break");
                 b.end();
             }
+
+            b.caseDefault();
+            b.startCaseBlock();
+            b.tree(GeneratorUtils.createShouldNotReachHere("Unexpected instructions."));
+            b.end();
 
             b.end(); // switch
             b.end(); // for
@@ -4247,6 +4180,125 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("exHandlerCount += context.handlerExHandlers.length");
 
             return ex;
+        }
+
+        private boolean needsRelocation(InstructionModel instr) {
+            if (instr.kind == InstructionKind.YIELD) { // has no immediates but still needs
+                return true;
+            }
+            return instr.getImmediates().stream().filter((i) -> needsRelocation(i)).findAny().isPresent();
+        }
+
+        private static boolean needsRelocation(InstructionImmediate i) {
+            return switch (i.kind()) {
+                case CONSTANT, INTEGER, LOCAL_SETTER, LOCAL_SETTER_RANGE_START, LOCAL_SETTER_RANGE_LENGTH -> false;
+                case BYTECODE_INDEX, NODE_PROFILE, BRANCH_PROFILE -> true;
+                default -> throw new AssertionError("Unexpected kind");
+            };
+        }
+
+        private void relocateImmediates(CodeTreeBuilder b, InstructionModel instr) {
+            if (!needsRelocation(instr)) {
+                throw new AssertionError("Inconsistent grouping");
+            }
+
+            // instruction specific logic
+            switch (instr.kind) {
+                case YIELD:
+                    b.statement("int locationBci = handlerBci + 1");
+                    b.statement("ContinuationLocationImpl cl = (ContinuationLocationImpl) constantPool.getConstant(" + readHandlerBc("locationBci") + ")");
+                    // The continuation should resume after this yield instruction
+                    b.statement("assert cl.bci == locationBci + 1");
+                    b.statement("ContinuationLocationImpl newContinuation = new ContinuationLocationImpl(numYields++, offsetBci + cl.bci, currentStackHeight + cl.sp)");
+                    b.statement(writeBc("offsetBci + locationBci", "(short) constantPool.addConstant(newContinuation)"));
+                    b.statement("continuationLocations.add(newContinuation)");
+                    break;
+            }
+
+            List<InstructionImmediate> immediates = instr.getImmediates();
+            for (int i = 0; i < immediates.size(); i++) {
+                InstructionImmediate immediate = immediates.get(i);
+                switch (immediate.kind()) {
+                    case BYTECODE_INDEX:
+                        if (immediate.name().startsWith("child")) {
+                            // Custom operations don't have non-local branches/children, so
+                            // this immediate is *always* relative.
+                            b.statement(writeBc("offsetBci + handlerBci + " + immediate.offset(),
+                                            "(short) (" + readBc("offsetBci + handlerBci + " + immediate.offset()) + " + offsetBci) /* adjust " + immediate.name() + " */"));
+                        } else if (immediate.name().equals("branch_target")) {
+                            relocateBranchTarget(b, instr, immediate);
+                        } else {
+                            throw new AssertionError("Unexpected bytecode index immediate");
+                        }
+                        break;
+                    case NODE_PROFILE:
+                        // Allocate a separate Node for each handler.
+                        b.statement(writeBc("offsetBci + handlerBci + " + immediate.offset(), "(short) allocateNode()"));
+                        break;
+                    case BRANCH_PROFILE:
+                        b.statement(writeBc("offsetBci + handlerBci + " + immediate.offset(), "(short) allocateBranchProfile()"));
+                        break;
+                    case CONSTANT:
+                    case INTEGER:
+                    case LOCAL_SETTER:
+                    case LOCAL_SETTER_RANGE_LENGTH:
+                    case LOCAL_SETTER_RANGE_START:
+                        // nothing to relocate
+                        break;
+                    default:
+                        throw new AssertionError("Unexpected immediate");
+                }
+            }
+        }
+
+        private void relocateBranchTarget(CodeTreeBuilder b, InstructionModel instr, InstructionImmediate immediate) {
+            switch (instr.kind) {
+                case BRANCH:
+                case BRANCH_BACKWARD:
+                case BRANCH_FALSE:
+                    b.startBlock();
+                    b.statement("int branchIdx = handlerBci + 1"); // BCI of branch
+                    b.statement("short branchTarget = " + readHandlerBc("branchIdx"));
+                    if (instr.kind == InstructionKind.BRANCH_BACKWARD) {
+                        // Backward branches are only used internally by while
+                        // loops. They
+                        // should be resolved when the while loop ends.
+                        b.startAssert().string("branchTarget != " + UNINIT).end();
+                    } else {
+                        // Mark branch target as unresolved, if necessary.
+                        b.startIf().string("branchTarget == " + UNINIT).end().startBlock();
+                        b.lineComment("This branch is to a not-yet-emitted label defined by an outer operation.");
+                        b.statement("BytecodeLabelImpl lbl = (BytecodeLabelImpl) context.handlerUnresolvedBranchLabels.get(branchIdx)");
+                        b.statement("int sp = context.handlerUnresolvedBranchStackHeights.get(branchIdx)");
+                        b.statement("assert !lbl.isDefined()");
+                        b.startStatement().startCall("registerUnresolvedLabel");
+                        b.string("lbl");
+                        b.string("offsetBci + branchIdx");
+                        b.string("currentStackHeight + sp");
+                        b.end(3);
+                    }
+
+                    b.newLine();
+
+                    // Adjust relative branch targets.
+                    b.startIf().string("context.finallyRelativeBranches.contains(branchIdx)").end().startBlock();
+                    b.statement(writeBc("offsetBci + branchIdx", "(short) (offsetBci + branchTarget)") + " /* relocated */");
+                    b.startIf().string("inFinallyTryHandler(context.parentContext)").end().startBlock();
+                    b.lineComment("If we're currently nested inside some other finally handler, the branch will also need to be relocated in that handler.");
+                    b.statement("context.parentContext.finallyRelativeBranches.add(offsetBci + branchIdx)");
+                    b.end();
+                    b.end().startElseBlock();
+                    b.statement(writeBc("offsetBci + branchIdx", "branchTarget"));
+                    b.end();
+                    b.end();
+                    break;
+                case CUSTOM_SHORT_CIRCUIT:
+                    b.statement(writeBc("offsetBci + handlerBci + " + immediate.offset(),
+                                    "(short) (" + readBc("offsetBci + handlerBci + " + immediate.offset()) + " + offsetBci) /* adjust " + immediate.name() + " */"));
+                    break;
+                default:
+                    throw new AssertionError("Unexpected instruction with branch target: " + instr.name);
+            }
         }
 
         private CodeExecutableElement ensureDoEmitInstructionCreated(int argumentLength) {
@@ -4526,6 +4578,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(int.class), "allocateNode");
             CodeTreeBuilder b = ex.createBuilder();
 
+            b.startIf().string("inFinallyTryHandler(finallyTryContext)").end().startBlock();
+            b.lineComment("We allocate nodes later when the finally block is emitted.");
+            b.startReturn().string("-1").end();
+            b.end();
+
             b.startReturn();
             b.string("numNodes++");
             b.end();
@@ -4536,6 +4593,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createAllocateBranchProfile() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(int.class), "allocateBranchProfile");
             CodeTreeBuilder b = ex.createBuilder();
+
+            b.startIf().string("inFinallyTryHandler(finallyTryContext)").end().startBlock();
+            b.lineComment("We allocate nodes later when the finally block is emitted.");
+            b.startReturn().string("-1").end();
+            b.end();
 
             b.startReturn();
             b.string("numConditionalBranches++");

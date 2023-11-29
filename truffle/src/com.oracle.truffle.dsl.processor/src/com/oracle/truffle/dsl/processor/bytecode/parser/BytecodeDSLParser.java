@@ -702,7 +702,6 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         genericQuickening.specializedType = null;
                         break;
                     case DUP:
-                        // TODO
                         break;
                     case LOAD_LOCAL:
                     case LOAD_LOCAL_MATERIALIZED:
@@ -800,8 +799,8 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         return;
     }
 
-    private String createChildBciName(int i) {
-        return "child" + i + "_bci";
+    private static String createChildBciName(int i) {
+        return "child" + i;
     }
 
     private static long countBoxingEliminatedTypes(BytecodeDSLModel model, List<TypeMirror> s0) {

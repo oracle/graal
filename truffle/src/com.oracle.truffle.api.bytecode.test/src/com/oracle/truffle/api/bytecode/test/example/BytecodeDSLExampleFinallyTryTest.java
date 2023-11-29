@@ -210,7 +210,7 @@ public class BytecodeDSLExampleFinallyTryTest extends AbstractBytecodeDSLExample
         //   if (ex) arg0.append(3) else arg0.append(4);
         // }
 
-        RootCallTarget root = parse("finallyTryBindException", b -> {
+        BytecodeDSLExample root = parseNode("finallyTryBindException", b -> {
             b.beginRoot(LANGUAGE);
             BytecodeLocal ex = b.createLocal();
             b.beginFinallyTry(ex);
@@ -234,7 +234,7 @@ public class BytecodeDSLExampleFinallyTryTest extends AbstractBytecodeDSLExample
             b.endRoot();
         });
 
-        testOrdering(true, root, 1L, 3L);
+        testOrdering(true, root.getCallTarget(), 1L, 3L);
     }
 
     @Test
@@ -482,7 +482,7 @@ public class BytecodeDSLExampleFinallyTryTest extends AbstractBytecodeDSLExample
         // }
         // arg0.append(6);
 
-        RootCallTarget root = parse("finallyTryIfThenWithinHandler", b -> {
+        BytecodeDSLExample root = parseNode("finallyTryIfThenWithinHandler", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry(b.createLocal());
@@ -510,8 +510,8 @@ public class BytecodeDSLExampleFinallyTryTest extends AbstractBytecodeDSLExample
             b.endRoot();
         });
 
-        testOrderingWithArguments(false, root, new Object[] {false}, 1L, 3L, 5L);
-        testOrderingWithArguments(false, root, new Object[] {true}, 1L, 3L, 4L, 5L);
+        testOrderingWithArguments(false, root.getCallTarget(), new Object[] {false}, 1L, 3L, 5L);
+        testOrderingWithArguments(false, root.getCallTarget(), new Object[] {true}, 1L, 3L, 4L, 5L);
     }
 
     @Test

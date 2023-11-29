@@ -239,7 +239,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         }
 
         for (int valueIndex : boxingEliminated) {
-            InstructionImmediate immediate = instruction.findImmediate(ImmediateKind.BYTECODE_INDEX, "child" + valueIndex + "_bci");
+            InstructionImmediate immediate = instruction.findImmediate(ImmediateKind.BYTECODE_INDEX, "child" + valueIndex);
 
             b.startStatement();
             b.string("int oldOperandIndex" + valueIndex);
