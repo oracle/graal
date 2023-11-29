@@ -131,7 +131,7 @@ public final class Argument {
             throw new UnsupportedOperationException(String.format("Not supported for argument type %s.", getKind()));
         }
         int[] values = (int[]) data[2];
-        return new BranchProfile(values[0], values[1]);
+        return new BranchProfile(values[0], values[1], values[2]);
     }
 
     public String getName() {
@@ -214,7 +214,7 @@ public final class Argument {
         throw new AssertionError(String.format("Unhandled array type %s", array));
     }
 
-    public record BranchProfile(int trueCount, int falseCount) {
+    public record BranchProfile(int index, int trueCount, int falseCount) {
 
         public double getFrequency() {
             int total = trueCount + falseCount;
@@ -227,9 +227,9 @@ public final class Argument {
         @Override
         public String toString() {
             if (trueCount + falseCount == 0) {
-                return "never executed";
+                return index + ":never executed";
             }
-            return String.format("%.2f", getFrequency());
+            return String.format("%s:%.2f", index, getFrequency());
         }
 
     }
