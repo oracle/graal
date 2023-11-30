@@ -1236,14 +1236,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             if (callTargetNoSubstitutions == null) {
                 synchronized (this) {
                     if (callTargetNoSubstitutions == null) {
-                        EspressoRootNode redirectedMethod = getSubstitutions().get(getMethod());
-                        if (redirectedMethod == null) {
-                            // no substitution, use standard call target
-                            getContext().getLogger().warning("Using getCallTargetNoSubstitution() for " + this + " but there is no substitution available");
-                            callTargetNoSubstitutions = getCallTarget();
-                        } else {
-                            callTargetNoSubstitutions = findCallTarget();
-                        }
+                        callTargetNoSubstitutions = findCallTarget();
                     }
                 }
             }
@@ -1283,10 +1276,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                     callTarget = redirectedMethod.getCallTarget();
                     return;
                 }
-                if (callTargetNoSubstitutions != null) {
-                    callTarget = callTargetNoSubstitutions;
-                    return;
-                }
+                assert callTargetNoSubstitutions == null;
 
                 CallTarget target = findCallTarget();
                 if (target != null) {
