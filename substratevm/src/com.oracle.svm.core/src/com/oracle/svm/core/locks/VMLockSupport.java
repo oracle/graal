@@ -29,10 +29,19 @@ import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunk;
 import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
 
+import jdk.graal.compiler.api.replacements.Fold;
+
 public abstract class VMLockSupport {
+
+    @Fold
+    public static VMLockSupport singleton() {
+        return ImageSingletons.lookup(VMLockSupport.class);
+    }
+
     /**
      * Returns an array that contains all {@link VMMutex} objects that are present in the image or
      * null if that information is not available.
@@ -50,6 +59,65 @@ public abstract class VMLockSupport {
      * or null if that information is not available.
      */
     public abstract VMSemaphore[] getSemaphores();
+
+    /**
+     * Initializes all {@link VMMutex}, {@link VMCondition}, and {@link VMSemaphore} objects.
+     *
+     * @return {@code true} if the initialization was successful, {@code false} if an error
+     *         occurred.
+     */
+    @Uninterruptible(reason = "Too early for safepoints.")
+    public final boolean initialize() {
+        VMLockSupport support = VMLockSupport.singleton();
+        for (VMMutex mutex : support.getMutexes()) {
+            if (mutex.initialize() != 0) {
+                return false;
+            }
+        }
+
+        for (VMCondition condition : support.getConditions()) {
+            if (condition.initialize() != 0) {
+                return false;
+            }
+        }
+
+        for (VMSemaphore semaphore : support.getSemaphores()) {
+            if (semaphore.initialize() != 0) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Destroys all {@link VMMutex}, {@link VMCondition}, and {@link VMSemaphore} objects.
+     *
+     * @return {@code true} if the destruction was successful, {@code false} if an error occurred.
+     */
+    @Uninterruptible(reason = "The isolate teardown is in progress.")
+    public final boolean destroy() {
+        VMLockSupport support = VMLockSupport.singleton();
+        for (VMSemaphore semaphore : support.getSemaphores()) {
+            if (semaphore.destroy() != 0) {
+                return false;
+            }
+        }
+
+        for (VMCondition condition : support.getConditions()) {
+            if (condition.destroy() != 0) {
+                return false;
+            }
+        }
+
+        for (VMMutex mutex : support.getMutexes()) {
+            if (mutex.destroy() != 0) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     public static class DumpVMMutexes extends DiagnosticThunk {
         @Override
@@ -70,9 +138,7 @@ public abstract class VMLockSupport {
             if (support == null || support.getMutexes() == null) {
                 log.string("No mutex information is available.").newline();
             } else {
-                VMMutex[] mutexes = support.getMutexes();
-                for (int i = 0; i < mutexes.length; i++) {
-                    VMMutex mutex = mutexes[i];
+                for (VMMutex mutex : support.getMutexes()) {
                     IsolateThread owner = mutex.owner;
                     log.string("mutex \"").string(mutex.getName()).string("\" ");
                     if (owner.isNull()) {

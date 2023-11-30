@@ -24,14 +24,17 @@
  */
 package com.oracle.svm.core.image;
 
+import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
+
 public class ImageHeapLayoutInfo {
-    private final long writableOffset;
-    private final long writableSize;
+    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private final long writableOffset;
+    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private final long writableSize;
 
-    private final long readOnlyRelocatableOffset;
-    private final long readOnlyRelocatableSize;
+    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private final long readOnlyRelocatableOffset;
+    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private final long readOnlyRelocatableSize;
 
-    private final long imageHeapSize;
+    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private final long imageHeapSize;
 
     public ImageHeapLayoutInfo(long writableOffset, long writableSize, long readOnlyRelocatableOffset, long readOnlyRelocatableSize, long imageHeapSize) {
         this.writableOffset = writableOffset;

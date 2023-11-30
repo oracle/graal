@@ -34,22 +34,27 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.VMError;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 /**
  * Support of {@link VMMutex}, {@link VMCondition} and {@link VMSemaphore} in single-threaded
  * environments. No real locking is necessary.
  */
 final class SingleThreadedVMLockSupport extends VMLockSupport {
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public VMMutex[] getMutexes() {
         return null;
     }
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public VMCondition[] getConditions() {
         return null;
     }
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public VMSemaphore[] getSemaphores() {
         return null;
     }
@@ -108,6 +113,20 @@ final class SingleThreadedVMMutex extends VMMutex {
     }
 
     @Override
+    @Uninterruptible(reason = "Too early for safepoints.")
+    public int initialize() {
+        /* Nothing to do here. */
+        return 0;
+    }
+
+    @Override
+    @Uninterruptible(reason = "The isolate teardown is in progress.")
+    public int destroy() {
+        /* Nothing to do here. */
+        return 0;
+    }
+
+    @Override
     public VMMutex lock() {
         assert !isOwner() : "Recursive locking is not supported";
         setOwnerToCurrentThread();
@@ -144,6 +163,20 @@ final class SingleThreadedVMCondition extends VMCondition {
 
     SingleThreadedVMCondition(SingleThreadedVMMutex mutex) {
         super(mutex);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Too early for safepoints.")
+    public int initialize() {
+        /* Nothing to do here. */
+        return 0;
+    }
+
+    @Override
+    @Uninterruptible(reason = "The isolate teardown is in progress.")
+    public int destroy() {
+        /* Nothing to do here. */
+        return 0;
     }
 
     @Override
@@ -197,16 +230,17 @@ final class SingleThreadedVMSemaphore extends VMSemaphore {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected int init() {
+    @Uninterruptible(reason = "Too early for safepoints.")
+    public int initialize() {
         /* Nothing to do here. */
         return 0;
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected void destroy() {
+    @Uninterruptible(reason = "The isolate teardown is in progress.")
+    public int destroy() {
         /* Nothing to do here. */
+        return 0;
     }
 
     @Override

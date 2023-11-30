@@ -76,7 +76,6 @@ class ReflectionProcessor extends AbstractProcessor {
                 resourceConfiguration.addResourcePattern(condition, (module == null ? "" : module + ":") + Pattern.quote(resource));
                 return;
             case "getResource":
-            case "getResourceAsStream":
             case "getSystemResource":
             case "getSystemResourceAsStream":
             case "getResources":
@@ -88,7 +87,7 @@ class ReflectionProcessor extends AbstractProcessor {
         }
         TypeConfiguration configuration = configurationSet.getReflectionConfiguration();
         String callerClass = (String) entry.get("caller_class");
-        boolean isLoadClass = function.equals("loadClass");
+        boolean isLoadClass = function.equals("loadClass") || function.equals("findSystemClass");
         if (isLoadClass || function.equals("forName") || function.equals("findClass")) {
             String name = singleElement(args);
             if (isLoadClass) { // different array syntax
@@ -258,15 +257,13 @@ class ReflectionProcessor extends AbstractProcessor {
                 break;
             }
 
+            case "putBundleInCache":
             case "getBundleImpl": {
-                expectSize(args, 7);
+                expectSize(args, 5);
                 String baseName = (String) args.get(2);
-                @SuppressWarnings("unchecked")
-                List<String> classNames = (List<String>) args.get(5);
-                @SuppressWarnings("unchecked")
-                List<String> locales = (List<String>) args.get(6);
+                String queriedLocale = (String) args.get(3);
                 if (baseName != null) {
-                    resourceConfiguration.addBundle(condition, classNames, locales, baseName);
+                    resourceConfiguration.addBundle(condition, baseName, queriedLocale);
                 }
                 break;
             }

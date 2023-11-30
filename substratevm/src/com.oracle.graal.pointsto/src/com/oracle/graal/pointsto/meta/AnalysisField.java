@@ -81,16 +81,16 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     public final ResolvedJavaField wrapped;
 
     /** Field type flow for the static fields. */
-    private FieldTypeFlow staticFieldFlow;
+    protected FieldTypeFlow staticFieldFlow;
 
     /** Initial field type flow, i.e., as specified by the analysis client. */
-    private FieldTypeFlow initialInstanceFieldFlow;
+    protected FieldTypeFlow initialInstanceFieldFlow;
 
     /**
      * Field type flow that reflects all the types flowing in this field on its declaring type and
      * all the sub-types. It doesn't track any context-sensitive information.
      */
-    private ContextInsensitiveFieldTypeFlow instanceFieldFlow;
+    protected ContextInsensitiveFieldTypeFlow instanceFieldFlow;
 
     /** The reason flags contain a {@link BytecodePosition} or a reason object. */
     @SuppressWarnings("unused") private volatile Object isRead;
@@ -148,7 +148,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
             this.staticFieldFlow = new FieldTypeFlow(this, getType());
             this.initialInstanceFieldFlow = null;
         } else {
-            this.canBeNull = true;
+            this.canBeNull = !getStorageKind().isPrimitive();
             this.instanceFieldFlow = new ContextInsensitiveFieldTypeFlow(this, getType());
             this.initialInstanceFieldFlow = new FieldTypeFlow(this, getType());
         }

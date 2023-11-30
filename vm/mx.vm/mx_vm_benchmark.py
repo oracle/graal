@@ -214,8 +214,11 @@ class NativeImageVM(GraalVm):
                 base_image_build_args += ['-' + vm.optimization_level]
             if vm.async_sampler:
                 base_image_build_args += ['-R:+FlightRecorder',
-                                               '-R:StartFlightRecording=filename=default.jfr',
-                                               '--enable-monitoring=jfr']
+                                          '-R:StartFlightRecording=filename=default.jfr',
+                                          '--enable-monitoring=jfr',
+                                          # We should enable this flag, but after we fix GR-39427.
+                                          # '-R:+JfrBasedExecutionSamplerStatistics'
+                                          ]
                 for stage in ('instrument-image', 'instrument-run'):
                     if stage in self.stages:
                         self.stages.remove(stage)

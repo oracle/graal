@@ -29,6 +29,7 @@ import java.util.IdentityHashMap;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.java.BytecodeParser;
+import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.word.WordTypes;
@@ -79,7 +80,7 @@ public class HostedReplacements extends SubstrateReplacements {
     }
 
     @Override
-    public void encodeSnippets() {
+    public void encodeSnippets(GraphEncoder encoder) {
         /* Copy over all snippets from the analysis replacements, changing out metadata objects. */
         IdentityHashMap<Object, Object> mapping = new IdentityHashMap<>();
         super.copyFrom(aReplacements, obj -> AnalysisToHostedGraphTransplanter.replaceAnalysisObjects(obj, null, mapping, hUniverse));

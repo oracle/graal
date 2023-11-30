@@ -48,6 +48,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayout.IdentityHashMode;
 import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.monitor.MultiThreadedMonitorSupport;
@@ -100,40 +101,39 @@ public class HostedConfiguration {
             CompressEncoding compressEncoding = new CompressEncoding(SubstrateOptions.SpawnIsolates.getValue() ? 1 : 0, 0);
             ImageSingletons.add(CompressEncoding.class, compressEncoding);
 
-            ObjectLayout objectLayout = createObjectLayout();
+            ObjectLayout objectLayout = createObjectLayout(IdentityHashMode.TYPE_SPECIFIC);
             ImageSingletons.add(ObjectLayout.class, objectLayout);
 
             ImageSingletons.add(HybridLayoutSupport.class, new HybridLayoutSupport());
         }
     }
 
-    public static ObjectLayout createObjectLayout() {
-        return createObjectLayout(JavaKind.Object, false);
+    public static ObjectLayout createObjectLayout(IdentityHashMode identityHashMode) {
+        return createObjectLayout(JavaKind.Object, identityHashMode);
     }
 
     /**
-     * Defines the layout of objects. Identity hash code fields can be optional if the object header
-     * allows for it, in which case such a field is appended to individual objects after an identity
-     * hash code has been assigned to it (unless there is an otherwise unused gap in the object that
-     * can be used).
+     * Defines the serial/epsilon GC object layout. The monitor slot and the identity hash code
+     * fields are appended to instance objects (unless there is an otherwise unused gap in the
+     * object that can be used).
      *
      * The layout of instance objects is:
      * <ul>
-     * <li>object header with hub reference</li>
-     * <li>optional: identity hashcode (int)</li>
+     * <li>64 bit hub reference</li>
      * <li>instance fields (references, primitives)</li>
-     * <li>if needed, object monitor (reference)</li>
+     * <li>64 bit object monitor reference (if needed)</li>
+     * <li>32 bit identity hashcode (if needed)</li>
      * </ul>
      *
      * The layout of array objects is:
      * <ul>
-     * <li>object header with hub reference</li>
-     * <li>optional: identity hashcode (int)</li>
-     * <li>array length (int)</li>
-     * <li>array elements (length * reference or primitive)</li>
+     * <li>64 bit hub reference</li>
+     * <li>32 bit identity hashcode</li>
+     * <li>32 bit array length</li>
+     * <li>array elements (length * elementSize)</li>
      * </ul>
      */
-    public static ObjectLayout createObjectLayout(JavaKind referenceKind, boolean disableOptionalIdentityHash) {
+    public static ObjectLayout createObjectLayout(JavaKind referenceKind, IdentityHashMode identityHashMode) {
         SubstrateTargetDescription target = ConfigurationValues.getTarget();
         int referenceSize = target.arch.getPlatformKind(referenceKind).getSizeInBytes();
         int intSize = target.arch.getPlatformKind(JavaKind.Int).getSizeInBytes();
@@ -142,30 +142,24 @@ public class HostedConfiguration {
         int hubOffset = 0;
         int headerSize = hubOffset + referenceSize;
 
-        int identityHashCodeOffset;
-        if (!disableOptionalIdentityHash && SubstrateOptions.SpawnIsolates.getValue() && headerSize + referenceSize <= objectAlignment) {
-            /*
-             * References are relative to the heap base, so we should be able to use fewer bits in
-             * the object header to reference DynamicHubs which are located near the start of the
-             * heap. This means we could be unable to fit forwarding references in those header bits
-             * during GC, but every object is large enough to fit a separate forwarding reference
-             * outside its header. Therefore, we can avoid reserving an identity hash code field for
-             * every object during its allocation and use extra header bits to track if an
-             * individual object was assigned an identity hash code after allocation.
-             */
-            identityHashCodeOffset = -1;
-        } else { // need all object header bits except for lowest-order bits freed up by alignment
-            identityHashCodeOffset = headerSize;
+        int extraArrayHeaderSize = 0;
+        int headerIdentityHashOffset = headerSize;
+        if (identityHashMode == IdentityHashMode.OBJECT_HEADER) {
             headerSize += intSize;
+        } else if (identityHashMode == IdentityHashMode.TYPE_SPECIFIC) {
+            extraArrayHeaderSize = intSize;
+        } else {
+            assert identityHashMode == IdentityHashMode.OPTIONAL;
+            headerIdentityHashOffset = -1;
         }
 
         headerSize += SubstrateOptions.AdditionalHeaderBytes.getValue();
 
         int firstFieldOffset = headerSize;
-        int arrayLengthOffset = headerSize;
+        int arrayLengthOffset = headerSize + extraArrayHeaderSize;
         int arrayBaseOffset = arrayLengthOffset + intSize;
 
-        return new ObjectLayout(target, referenceSize, objectAlignment, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset, identityHashCodeOffset);
+        return new ObjectLayout(target, referenceSize, objectAlignment, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset, headerIdentityHashOffset, identityHashMode);
     }
 
     public SVMHost createHostVM(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,

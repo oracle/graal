@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
+import com.oracle.svm.common.meta.MultiMethod;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
@@ -34,14 +36,8 @@ import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
-
-import com.oracle.svm.common.meta.MultiMethod;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.meta.SharedMethod;
-
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * For deoptimzation testing. The node performs a deoptimization in a normally compiled method, but
@@ -57,28 +53,12 @@ public class TestDeoptimizeNode extends FixedWithNextNode implements Canonicaliz
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        ResolvedJavaMethod method = graph().method();
-
-        if (SubstrateOptions.parseOnce()) {
-            if (MultiMethod.isDeoptTarget(method)) {
-                /* no-op for deoptimization target methods. */
-                return null;
-            } else {
-                /* deoptimization for all other methods. */
-                return new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter);
-            }
+        if (MultiMethod.isDeoptTarget(graph().method())) {
+            /* no-op for deoptimization target methods. */
+            return null;
         } else {
-            if (method instanceof SharedMethod) {
-                if (MultiMethod.isDeoptTarget(method)) {
-                    /* no-op for deoptimization target methods. */
-                    return null;
-                } else {
-                    /* deoptimization for all other methods. */
-                    return new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter);
-                }
-            }
+            /* deoptimization for all other methods. */
+            return new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter);
         }
-
-        return this;
     }
 }

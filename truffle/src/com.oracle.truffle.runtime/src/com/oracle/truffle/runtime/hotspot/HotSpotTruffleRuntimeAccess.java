@@ -44,6 +44,7 @@ import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleRuntimeAccess;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.compiler.TruffleCompilationSupport;
+import com.oracle.truffle.polyglot.PolyglotImpl;
 import com.oracle.truffle.runtime.ModulesSupport;
 import com.oracle.truffle.runtime.hotspot.libgraal.LibGraal;
 import com.oracle.truffle.runtime.hotspot.libgraal.LibGraalTruffleCompilationSupport;
@@ -53,8 +54,16 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.services.Services;
+import org.graalvm.home.Version;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Set;
+
+import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.MIN_JDK_VERSION;
+import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.MAX_JDK_VERSION;
+import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.MIN_COMPILER_VERSION;
+import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.NEXT_VERSION_UPDATE;
 
 public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
 
@@ -114,6 +123,32 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
         if (LibGraal.isAvailable()) {
             // try LibGraal
             compilationSupport = new LibGraalTruffleCompilationSupport();
+            if (!Boolean.getBoolean("polyglotimpl.DisableVersionChecks")) {
+                Version truffleVersion = getTruffleVersion();
+                if (truffleVersion.compareTo(NEXT_VERSION_UPDATE) >= 0) {
+                    throw new AssertionError("MIN_COMPILER_VERSION, MIN_JDK_VERSION and MAX_JDK_VERSION must be updated!");
+                }
+                Version compilerVersion = getCompilerVersion(compilationSupport);
+                int jdkFeatureVersion = Runtime.version().feature();
+                if (jdkFeatureVersion < MIN_JDK_VERSION || jdkFeatureVersion >= MAX_JDK_VERSION) {
+                    throw throwVersionError("""
+                                    Your Java runtime '%s' with compiler version '%s' is incompatible with polyglot version '%s'.
+                                    The Java runtime version must be greater or equal to JDK '%d' and smaller than JDK '%d'.
+                                    Update your Java runtime to resolve this.
+                                    """, Runtime.version(), compilerVersion, truffleVersion, MIN_JDK_VERSION, MAX_JDK_VERSION);
+                } else if (compilerVersion.compareTo(truffleVersion) > 0) {
+                    // no forward compatibility
+                    throw throwVersionError("""
+                                    Your Java runtime '%s' with compiler version '%s' is incompatible with polyglot version '%s'.
+                                    Update the org.graalvm.polyglot versions to at least '%s' to resolve this.
+                                    """, Runtime.version(), compilerVersion, truffleVersion, compilerVersion);
+                } else if (compilerVersion.compareTo(MIN_COMPILER_VERSION) < 0) {
+                    throw throwVersionError("""
+                                    Your Java runtime '%s' with compiler version '%s' is incompatible with polyglot version '%s'.
+                                    Update the Java runtime to the latest update release of JDK '%d'.
+                                    """, Runtime.version(), compilerVersion, truffleVersion, jdkFeatureVersion);
+                }
+            }
         } else {
             // try jar graal
             try {
@@ -131,6 +166,16 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
                 Modules.addExports(compilerModule, pkg, HotSpotTruffleRuntimeAccess.class.getModule());
                 Class<?> hotspotCompilationSupport = Class.forName(compilerModule, pkg + ".HotSpotTruffleCompilationSupport");
                 compilationSupport = (TruffleCompilationSupport) hotspotCompilationSupport.getConstructor().newInstance();
+                if (!Boolean.getBoolean("polyglotimpl.DisableVersionChecks")) {
+                    Version truffleVersion = getTruffleVersion();
+                    Version compilerVersion = getCompilerVersion(compilationSupport);
+                    if (!compilerVersion.equals(truffleVersion)) {
+                        throw throwVersionError("""
+                                        The Graal compiler version '%s' is incompatible with polyglot version '%s'.
+                                        Update the compiler version to '%s' to resolve this.
+                                        """, compilerVersion, truffleVersion, truffleVersion);
+                    }
+                }
             } catch (ReflectiveOperationException e) {
                 throw new InternalError(e);
             }
@@ -138,6 +183,59 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
         HotSpotTruffleRuntime rt = new HotSpotTruffleRuntime(compilationSupport);
         compilationSupport.registerRuntime(rt);
         return rt;
+    }
+
+    private static RuntimeException throwVersionError(String errorFormat, Object... args) {
+        StringBuilder errorMessage = new StringBuilder("Polyglot version compatibility check failed.\n");
+        errorMessage.append(String.format(errorFormat, args));
+        errorMessage.append("""
+                        Alternatively, it is possible to switch to the fallback runtime with -Dtruffle.UseFallbackRuntime=true.
+                        The fallback runtime is compatible to any Java 17 capable JDK.
+                        Execution with the fallback runtime does not support runtime compilation and therefore will negatively impact the guest application performance.
+                        For more information see: https://www.graalvm.org/latest/reference-manual/embed-languages/#runtime-optimization-support.
+                        To disable this version check the '-Dpolyglotimpl.DisableVersionChecks=true' system property can be used.
+                        It is not recommended to disable version checks.
+                        """);
+        throw new IllegalStateException(errorMessage.toString());
+    }
+
+    /**
+     * Reads reflectively the org.graalvm.truffle module version. The method uses reflection to
+     * access the {@code PolyglotImpl#TRUFFLE_VERSION} field because the Truffle API may be of a
+     * version earlier than graalvm-23.1.2 where the field does not exist.
+     *
+     * @return the Truffle API version or 23.1.1 if the {@code PolyglotImpl#TRUFFLE_VERSION} field
+     *         does not exist.
+     */
+    private static Version getTruffleVersion() {
+        try {
+            Field versionField = PolyglotImpl.class.getDeclaredField("TRUFFLE_VERSION");
+            versionField.setAccessible(true);
+            return Version.parse((String) versionField.get(null));
+        } catch (NoSuchFieldException nf) {
+            return Version.create(23, 1, 1);
+        } catch (ReflectiveOperationException e) {
+            throw new InternalError(e);
+        }
+    }
+
+    private static Version getCompilerVersion(TruffleCompilationSupport compilationSupport) {
+        /*
+         * The TruffleCompilationSupport is present in both the maven artifact
+         * org.graalvm.truffle/truffle-compiler and the JDK org.graalvm.truffle.compiler module. The
+         * JDK version of TruffleCompilationSupport may be outdated and lack the getCompilerVersion
+         * method. To address this, we use reflection.
+         */
+        String compilerVersionString = null;
+        try {
+            Method getCompilerVersion = compilationSupport.getClass().getMethod("getCompilerVersion");
+            compilerVersionString = (String) getCompilerVersion.invoke(compilationSupport);
+        } catch (NoSuchMethodException noMethod) {
+            // pass with compilerVersionString set to null
+        } catch (ReflectiveOperationException e) {
+            throw new InternalError(e);
+        }
+        return compilerVersionString != null ? Version.parse(compilerVersionString) : Version.create(23, 1, 1);
     }
 
     /**

@@ -26,8 +26,6 @@ package jdk.graal.compiler.core.common.util;
 
 import static jdk.graal.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.debug.Assertions;
 import sun.misc.Unsafe;
 
 /**
@@ -87,12 +85,10 @@ public abstract class UnsafeArrayTypeReader extends AbstractTypeReader {
     }
 
     protected static long readOffset(byte[] data, long byteIndex, int numBytes) {
-        assert NumUtil.assertNonNegativeLong(byteIndex);
-        assert NumUtil.assertPositiveInt(numBytes);
-        int length = data.length;
-        assert byteIndex + numBytes <= length : Assertions.errorMessageContext("byteIndex", byteIndex, "numBytes", numBytes, "length", length);
-        int arrayByteIndexScale = Unsafe.ARRAY_BYTE_INDEX_SCALE;
-        assert arrayByteIndexScale == 1 : Assertions.errorMessageContext("unsafe array byte index scale ", arrayByteIndexScale);
+        assert byteIndex >= 0 : "(no detailed message because code must be allocation free)";
+        assert numBytes > 0 : "(no detailed message because code must be allocation free)";
+        assert byteIndex + numBytes <= data.length : "(no detailed message because code must be allocation free)";
+        assert Unsafe.ARRAY_BYTE_INDEX_SCALE == 1 : "(no detailed message because code must be allocation free)";
 
         return byteIndex + Unsafe.ARRAY_BYTE_BASE_OFFSET;
     }

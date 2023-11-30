@@ -41,11 +41,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.CompressEncoding;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.core.common.type.CompressibleConstant;
-import jdk.graal.compiler.core.common.type.TypedConstant;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.UnsignedWord;
@@ -86,6 +81,11 @@ import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
 import com.oracle.svm.hosted.meta.UniverseBuilder;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.type.CompressibleConstant;
+import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -163,12 +163,13 @@ public final class NativeImageHeap implements ImageHeap {
 
     public ObjectInfo getObjectInfo(Object obj) {
         JavaConstant constant = hUniverse.getSnippetReflection().forObject(obj);
-        /* Must unwrap since objects use the SubstrateObjectConstant hosted objects as keys. */
-        return objects.get(maybeUnwrap(constant));
+        VMError.guarantee(constant instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", constant);
+        return objects.get(uncompress(constant));
     }
 
     public ObjectInfo getConstantInfo(JavaConstant constant) {
-        return objects.get(maybeUnwrap(uncompress(constant)));
+        VMError.guarantee(constant instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", constant);
+        return objects.get(uncompress(constant));
     }
 
     protected HybridLayout<?> getHybridLayout(HostedClass clazz) {
@@ -238,16 +239,7 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     private Object readObjectField(HostedField field, JavaConstant receiver) {
-        /*
-         * This method is only used to read the special fields of hybrid objects, which are
-         * currently not maintained as separate ImageHeapConstant and therefore cannot we read via
-         * the snapshot heap.
-         */
-        JavaConstant hostedConstant = receiver;
-        if (receiver instanceof ImageHeapConstant imageHeapConstant) {
-            hostedConstant = imageHeapConstant.getHostedObject();
-        }
-        return hUniverse.getSnippetReflection().asObject(Object.class, hConstantReflection.readFieldValue(field, hostedConstant));
+        return hUniverse.getSnippetReflection().asObject(Object.class, hConstantReflection.readFieldValue(field, receiver));
     }
 
     private JavaConstant readConstantField(HostedField field, JavaConstant receiver) {
@@ -292,10 +284,10 @@ public final class NativeImageHeap implements ImageHeap {
                     addToWorklist(aUniverse.replaceObject(element), includeObject, worklist, registeredObjects);
                 }
             } else {
-                JavaConstant constant = aUniverse.getSnippetReflection().forObject(cur);
+                JavaConstant constant = hUniverse.getSnippetReflection().forObject(cur);
                 for (HostedField field : hMetaAccess.lookupJavaType(constant).getInstanceFields(true)) {
                     if (field.isAccessed() && field.getStorageKind() == JavaKind.Object) {
-                        Object fieldValue = aUniverse.getSnippetReflection().asObject(Object.class, hConstantReflection.readFieldValue(field, constant));
+                        Object fieldValue = hUniverse.getSnippetReflection().asObject(Object.class, hConstantReflection.readFieldValue(field, constant));
                         addToWorklist(fieldValue, includeObject, worklist, registeredObjects);
                     }
                 }
@@ -349,7 +341,7 @@ public final class NativeImageHeap implements ImageHeap {
             }
         }
 
-        JavaConstant uncompressed = maybeUnwrap(uncompress(constant));
+        JavaConstant uncompressed = uncompress(constant);
 
         int identityHashCode = computeIdentityHashCode(uncompressed);
         VMError.guarantee(identityHashCode != 0, "0 is used as a marker value for 'hash code not yet computed'");
@@ -360,7 +352,7 @@ public final class NativeImageHeap implements ImageHeap {
             handleImageString(stringConstant);
         }
 
-        final ObjectInfo existing = objects.get(uncompressed);
+        final ObjectInfo existing = getConstantInfo(uncompressed);
         if (existing == null) {
             addObjectToImageHeap(uncompressed, immutableFromParent, identityHashCode, reason);
         } else if (objectReachabilityInfo != null) {
@@ -369,26 +361,12 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     /**
-     * When an object is represented as an {@link ImageHeapConstant} we unwrap it before using it as
-     * a key for {@link NativeImageHeap#objects}. This is necessary to avoid duplication of
-     * {@link ObjectInfo} for the same object. Eventually, there will be a complete shadow heap with
-     * only {@link ImageHeapConstant} and this code will be removed.
-     */
-    private static JavaConstant maybeUnwrap(JavaConstant constant) {
-        if (constant instanceof ImageHeapConstant ihc && ihc.getHostedObject() != null) {
-            return uncompress(ihc.getHostedObject());
-        }
-        return constant;
-    }
-
-    /**
      * The constants stored in the image heap, i.g., the {@link #objects} map, are always
      * uncompressed. The same object info is returned whenever the map is queried regardless of the
      * compressed flag value.
      */
     private static JavaConstant uncompress(JavaConstant constant) {
-        if (constant instanceof CompressibleConstant) {
-            CompressibleConstant compressible = (CompressibleConstant) constant;
+        if (constant instanceof CompressibleConstant compressible) {
             if (compressible.isCompressed()) {
                 return compressible.uncompress();
             }
@@ -397,8 +375,7 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     private static boolean isCompressed(JavaConstant constant) {
-        if (constant instanceof CompressibleConstant) {
-            CompressibleConstant compressible = (CompressibleConstant) constant;
+        if (constant instanceof CompressibleConstant compressible) {
             return compressible.isCompressed();
         }
         return false;
@@ -656,10 +633,11 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     private ObjectInfo addToImageHeap(JavaConstant add, HostedClass clazz, long size, int identityHashCode, Object reason) {
-        JavaConstant constant = maybeUnwrap(add);
-        ObjectInfo info = new ObjectInfo(constant, size, clazz, identityHashCode, reason);
-        assert !objects.containsKey(constant) && !isCompressed(constant);
-        objects.put(constant, info);
+        VMError.guarantee(add instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", add);
+        VMError.guarantee(!isCompressed(add), "Constants added to the image heap must be uncompressed.");
+        ObjectInfo info = new ObjectInfo(add, size, clazz, identityHashCode, reason);
+        ObjectInfo previous = objects.putIfAbsent(add, info);
+        VMError.guarantee(previous == null, "Found an existing object info associated to constant %s", add);
         return info;
     }
 

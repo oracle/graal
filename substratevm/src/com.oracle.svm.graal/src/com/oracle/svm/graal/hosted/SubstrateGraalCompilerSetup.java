@@ -26,10 +26,6 @@ package com.oracle.svm.graal.hosted;
 
 import java.util.function.Function;
 
-import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.util.Providers;
-
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -44,6 +40,12 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.word.WordTypes;
+
 public class SubstrateGraalCompilerSetup {
 
     protected final SubstrateMetaAccess sMetaAccess;
@@ -56,20 +58,19 @@ public class SubstrateGraalCompilerSetup {
         }
     }
 
-    public SubstrateProviders getSubstrateProviders(AnalysisMetaAccess aMetaAccess) {
+    public SubstrateProviders getSubstrateProviders(AnalysisMetaAccess aMetaAccess, WordTypes wordTypes) {
         if (SubstrateOptions.supportCompileInIsolates()) {
             assert sMetaAccess instanceof IsolateAwareMetaAccess;
             return new IsolateAwareProviders(aMetaAccess, (IsolateAwareMetaAccess) sMetaAccess);
         } else {
-            return new SubstrateProviders(aMetaAccess, sMetaAccess);
+            return new SubstrateProviders(aMetaAccess, sMetaAccess, wordTypes);
         }
     }
 
     public SharedRuntimeConfigurationBuilder createRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, AnalysisUniverse aUniverse, UniverseMetaAccess metaAccess,
-                    Function<Providers, SubstrateBackend> backendProvider,
-                    ClassInitializationSupport classInitializationSupport, LoopsDataProvider loopsDataProvider,
-                    SubstratePlatformConfigurationProvider platformConfig) {
+                    Function<Providers, SubstrateBackend> backendProvider, ClassInitializationSupport classInitializationSupport, LoopsDataProvider loopsDataProvider,
+                    SubstratePlatformConfigurationProvider platformConfig, SnippetReflectionProvider snippetReflection) {
         return new SubstrateRuntimeConfigurationBuilder(options, hostVM, aUniverse, metaAccess, backendProvider, classInitializationSupport,
-                        loopsDataProvider, platformConfig);
+                        loopsDataProvider, platformConfig, snippetReflection);
     }
 }

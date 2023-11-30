@@ -33,6 +33,7 @@ import java.util.function.IntUnaryOperator;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.MapCursor;
 
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.RetryableBailoutException;
@@ -70,6 +71,8 @@ import jdk.graal.compiler.nodes.ValueProxyNode;
 import jdk.graal.compiler.nodes.VirtualState;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
+import jdk.graal.compiler.nodes.java.AccessMonitorNode;
+import jdk.graal.compiler.nodes.java.MonitorEnterNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.NodeWithState;
@@ -110,6 +113,11 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
      * The indexes into this array correspond to {@link VirtualObjectNode#getObjectId()}.
      */
     public final ArrayList<VirtualObjectNode> virtualObjects = new ArrayList<>();
+
+    /**
+     * Indicates whether lock order must be preserved during PEA transformation.
+     */
+    public final boolean requiresStrictLockOrder;
 
     @Override
     public boolean needsApplyEffects() {
@@ -192,6 +200,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         StructuredGraph graph = schedule.getCFG().graph;
         this.hasVirtualInputs = graph.createNodeBitMap();
         this.tool = new VirtualizerToolImpl(providers, this, graph.getAssumptions(), graph.getOptions(), debug);
+        this.requiresStrictLockOrder = providers.getPlatformConfigurationProvider().requiresStrictLockOrder();
     }
 
     /**
@@ -246,6 +255,8 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 if (tool.isDeleted()) {
                     VirtualUtil.trace(node.getOptions(), debug, "deleted virtualizable node %s", node);
                     return true;
+                } else if (requiresStrictLockOrder && node instanceof MonitorEnterNode monitorEnterNode) {
+                    materializeVirtualLocksBefore(state, monitorEnterNode, effects, COUNTER_MATERIALIZATIONS, monitorEnterNode.getMonitorId().getLockDepth());
                 }
             }
             processNodeInputs((ValueNode) node, nextFixedNode, state, effects);
@@ -519,9 +530,14 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
      * @return true if materialization happened, false if not.
      */
     protected boolean ensureMaterialized(PartialEscapeBlockState<?> state, int object, FixedNode materializeBefore, GraphEffectList effects, CounterKey counter) {
-        if (state.getObjectState(object).isVirtual()) {
+        return ensureMaterialized(state, object, materializeBefore, effects, counter, true);
+    }
+
+    private boolean ensureMaterialized(PartialEscapeBlockState<?> state, int object, FixedNode materializeBefore, GraphEffectList effects, CounterKey counter, boolean materializedAcquiredLocks) {
+        ObjectState objectState = state.getObjectState(object);
+        if (objectState.isVirtual()) {
             if (currentMode == EffectsClosureMode.STOP_NEW_VIRTUALIZATIONS_LOOP_NEST) {
-                if (state.getObjectState(object).getEnsureVirtualized()) {
+                if (objectState.getEnsureVirtualized()) {
                     /*
                      * We materialize something after heaving reached the loop depth cut-off, that
                      * is virtualized because it has the ensure virtualized flag set.
@@ -546,11 +562,112 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             counter.increment(debug);
             VirtualObjectNode virtual = virtualObjects.get(object);
             state.materializeBefore(materializeBefore, virtual, effects);
+
+            if (requiresStrictLockOrder && materializedAcquiredLocks && objectState.hasLocks()) {
+                materializeVirtualLocksBefore(state, materializeBefore, effects, counter, objectState.getLockDepth());
+            }
+
             assert !updateStatesForMaterialized(state, virtual, state.getObjectState(object).getMaterializedValue()) : "method must already have been called before";
             return true;
         } else {
             return false;
         }
+    }
+
+    /**
+     * PEA may materialize virtualized allocation at a subsequent control flow point, and
+     * potentially emit unstructured locking. For instance, for the following code,
+     *
+     * <pre>
+     * A obj = new A();
+     * synchronized (obj) {
+     *     synchronized (otherObj) {
+     *         ...
+     *         // obj escape here
+     *         ...
+     *     }
+     * }
+     * </pre>
+     *
+     * PEA may emit:
+     *
+     * <pre>
+     * monitorenter otherObj
+     * ...
+     * A obj = new A()
+     * monitorenter obj
+     * ...
+     * monitorexit otherObj
+     * monitorexit obj
+     * </pre>
+     *
+     * On HotSpot, unstructured locking is acceptable for stack locking (LM_LEGACY) and heavy
+     * monitor (LM_MONITOR). This is because locks under these locking modes are referenced by
+     * pointers stored in the object mark word, and are not necessary contiguous in memory. There is
+     * no way to observe a lock disorder from outside, as long as PEA guarantee that a virtual lock
+     * is materialized and held before it escapes or before the runtime deoptimizes and transfers to
+     * interpreter.
+     *
+     * Lightweight locking (LM_LIGHTWEIGHT), however, maintains locks in a thread-local lock stack.
+     * The more inner lock occupies the closer slot to the lock stack top. Unstructured locking code
+     * will disrupt the lock stack and result in an inconsistent state. For instance, the lock stack
+     * before monitorexits in the above code example is:
+     *
+     * <pre>
+     * ------------
+     * | obj      | <-- stack top
+     * ------------
+     * | otherObj |
+     * ------------
+     * </pre>
+     *
+     * and is
+     *
+     * <pre>
+     * ------------
+     * | otherObj | <-- stack top
+     * ------------
+     * </pre>
+     *
+     * after the first {code monitorexit} instruction. At this point, the still-locked object
+     * {@code obj} is not maintained in the lock stack, while the lock stack top points to
+     * {@code otherObj}, which is with an unlocked mark word. Such inconsistent state can be
+     * observed from outside by scanning a thread's lock stack.
+     *
+     * To avoid such scenario, we disallow PEA to emit unstructured locking code when using
+     * lightweight locking. We materialize all virtual objects that potentially get materialized in
+     * subsequent control flow point and hold locks with lock depth smaller than {@code lockDepth}.
+     * For those will not get materialized (see {@link #mayBeMaterialized}), we keep them virtual
+     * and effectively apply lock elimination. The runtime deoptimization code will take care of
+     * rematerialization of these virtual locks (see JDK-8318895).
+     */
+    private void materializeVirtualLocksBefore(PartialEscapeBlockState<?> state, FixedNode materializeBefore,
+                    GraphEffectList effects, CounterKey counter, int lockDepth) {
+        for (VirtualObjectNode other : virtualObjects) {
+            int otherID = other.getObjectId();
+            if (state.hasObjectState(otherID)) {
+                ObjectState otherState = state.getObjectState(other);
+                if (otherState.isVirtual() && otherState.hasLocks() && otherState.getLockDepth() < lockDepth && mayBeMaterialized(other)) {
+                    ensureMaterialized(state, other.getObjectId(), materializeBefore, effects, counter, false);
+                }
+            }
+        }
+    }
+
+    /**
+     * @return true if this virtual object may be materialized.
+     */
+    private boolean mayBeMaterialized(VirtualObjectNode virtualObjectNode) {
+        MapCursor<Node, ValueNode> cursor = aliases.getEntries();
+        while (cursor.advance()) {
+            if (virtualObjectNode == cursor.getValue()) {
+                Node allocation = cursor.getKey();
+                // This is conservative. In practice, PEA may scalar-replace field accesses and
+                // prevent this virtual object from escaping.
+                return allocation.usages().filter(n -> n instanceof ValueNode && !(n instanceof AccessMonitorNode)).isNotEmpty();
+            }
+        }
+        return true;
     }
 
     public static boolean updateStatesForMaterialized(PartialEscapeBlockState<?> state, VirtualObjectNode virtual, ValueNode materializedValue) {

@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.core.identityhashcode;
 
+import org.graalvm.word.LocationIdentity;
+
+import com.oracle.svm.core.config.ConfigurationValues;
+
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.graal.compiler.graph.NodeClass;
@@ -32,10 +36,6 @@ import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.replacements.nodes.IdentityHashCodeNode;
-import org.graalvm.word.LocationIdentity;
-
-import com.oracle.svm.core.config.ConfigurationValues;
-
 import jdk.vm.ci.meta.JavaConstant;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, cyclesRationale = "Decided depending on identity hash code storage.", //
@@ -58,8 +58,8 @@ public final class SubstrateIdentityHashCodeNode extends IdentityHashCodeNode {
 
     @Override
     public LocationIdentity getKilledLocationIdentity() {
-        // Without a fixed field, we must write bits in the object header.
-        return haveFixedField() ? IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION : LocationIdentity.any();
+        // With optional identity hash codes, we must write bits in the object header.
+        return isIdentityHashFieldOptional() ? LocationIdentity.any() : IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION;
     }
 
     @Override
@@ -69,16 +69,16 @@ public final class SubstrateIdentityHashCodeNode extends IdentityHashCodeNode {
 
     @Override
     public NodeCycles estimatedNodeCycles() {
-        return haveFixedField() ? NodeCycles.CYCLES_2 : NodeCycles.CYCLES_8;
+        return isIdentityHashFieldOptional() ? NodeCycles.CYCLES_8 : NodeCycles.CYCLES_2;
     }
 
     @Override
     protected NodeSize dynamicNodeSizeEstimate() {
-        return haveFixedField() ? NodeSize.SIZE_8 : NodeSize.SIZE_32;
+        return isIdentityHashFieldOptional() ? NodeSize.SIZE_32 : NodeSize.SIZE_8;
     }
 
     @Fold
-    static boolean haveFixedField() {
-        return ConfigurationValues.getObjectLayout().hasFixedIdentityHashField();
+    static boolean isIdentityHashFieldOptional() {
+        return ConfigurationValues.getObjectLayout().isIdentityHashFieldOptional();
     }
 }

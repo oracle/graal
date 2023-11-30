@@ -25,9 +25,12 @@
 
 package com.oracle.svm.core.posix.darwin;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.SubstrateOptions;
@@ -38,10 +41,13 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.locks.ClassInstanceReplacer;
 import com.oracle.svm.core.locks.VMSemaphore;
 import com.oracle.svm.core.posix.PosixVMSemaphoreSupport;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory;
+import com.oracle.svm.core.posix.pthread.PthreadVMLockSupport;
 
 /**
- * Support of {@link VMSemaphore} in multithreaded environments on DARWIN.
+ * Support of unnamed {@link VMSemaphore} in multithreaded environments on Darwin. Please note that
+ * POSIX unnamed semaphores are not supported on Darwin, so we need to use Darwin-specific
+ * implementations.
  */
 @AutomaticallyRegisteredFeature
 final class DarwinVMSemaphoreFeature implements InternalFeature {
@@ -74,35 +80,19 @@ final class DarwinVMSemaphoreFeature implements InternalFeature {
 final class DarwinVMSemaphoreSupport extends PosixVMSemaphoreSupport {
 
     /** All semaphores, so that we can initialize them at run time when the VM starts. */
-    @UnknownObjectField(availability = ReadyForCompilation.class) DarwinVMSemaphore[] semaphores;
+    @UnknownObjectField(availability = ReadyForCompilation.class) //
+    DarwinVMSemaphore[] semaphores;
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
-    public boolean initialize() {
-        for (DarwinVMSemaphore semaphore : semaphores) {
-            if (semaphore.init() != 0) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    @Override
-    @Uninterruptible(reason = "The isolate teardown is in progress.")
-    public void destroy() {
-        for (DarwinVMSemaphore semaphore : semaphores) {
-            semaphore.destroy();
-        }
-    }
-
-    @Override
-    public DarwinVMSemaphore[] getSemaphores() {
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public VMSemaphore[] getSemaphores() {
         return semaphores;
     }
 }
 
 final class DarwinVMSemaphore extends VMSemaphore {
+
+    private DarwinSemaphore.semaphore_t semaphore;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     DarwinVMSemaphore(String name) {
@@ -110,26 +100,38 @@ final class DarwinVMSemaphore extends VMSemaphore {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected int init() {
-        /* sem_init method is now deprecated on DARWIN and do nothing. */
-        return 0;
+    @Uninterruptible(reason = "Too early for safepoints.")
+    public int initialize() {
+        DarwinSemaphore.semaphore_tPointer semaphorePointer = StackValue.get(DarwinSemaphore.semaphore_tPointer.class);
+        int result = DarwinSemaphore.NoTransition.semaphore_create(DarwinVirtualMemory.mach_task_self(), semaphorePointer,
+                        DarwinSemaphore.SYNC_POLICY_FIFO(), 0);
+        semaphore = semaphorePointer.read();
+        return result;
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected void destroy() {
-        /* sem_destroy method is now deprecated on DARWIN and do nothing. */
+    @Uninterruptible(reason = "The isolate teardown is in progress.")
+    public int destroy() {
+        return DarwinSemaphore.NoTransition.semaphore_destroy(DarwinVirtualMemory.mach_task_self(), semaphore);
     }
 
     @Override
     public void await() {
-        VMError.shouldNotReachHere("Unnamed semaphores are not supported on DARWIN.");
+        int result;
+        while ((result = DarwinSemaphore.semaphore_wait(semaphore)) == DarwinSemaphore.KERN_ABORTED()) {
+            /*
+             * Note: On Darwin (macOS), the semaphore_wait method may return KERN_ABORTED if it gets
+             * interrupted by the SIGPROF signal. In such cases, it is necessary to retry the
+             * semaphore_wait operation to ensure the correct behavior of the semaphore wait
+             * operation.
+             */
+        }
+        PthreadVMLockSupport.checkResult(result, "semaphore_wait");
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void signal() {
-        VMError.shouldNotReachHere("Unnamed semaphores are not supported on DARWIN.");
+        PthreadVMLockSupport.checkResult(DarwinSemaphore.NoTransition.semaphore_signal(semaphore), "semaphore_signal");
     }
 }

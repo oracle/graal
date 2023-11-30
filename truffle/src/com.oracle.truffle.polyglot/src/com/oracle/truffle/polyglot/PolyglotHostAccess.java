@@ -91,6 +91,12 @@ final class PolyglotHostAccess extends AbstractHostAccess {
     }
 
     @Override
+    public Object toByteSequence(Object internalContext, Object guestValue) {
+        PolyglotContextImpl context = (PolyglotContextImpl) internalContext;
+        return context.getAPIAccess().toByteSequence(PolyglotByteSequence.create(context.getHostContext(), guestValue));
+    }
+
+    @Override
     public <K, V> Map<K, V> toMap(Object internalContext, Object foreignObject, boolean implementsFunction, Class<K> keyClass, Type keyType, Class<V> valueClass, Type valueType) {
         PolyglotContextImpl context = (PolyglotContextImpl) internalContext;
         return PolyglotMap.create(context.getHostContext(), foreignObject, implementsFunction, keyClass, keyType, valueClass, valueType);

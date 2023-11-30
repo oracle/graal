@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.config;
 
-import jdk.graal.compiler.core.common.NumUtil;
-
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -33,6 +31,7 @@ import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -100,8 +99,8 @@ public class HybridLayout<T> {
         return layout.computeArrayTotalSize(getArrayElementOffset(length), withOptionalIdHashField);
     }
 
-    public long getOptionalIdentityHashOffset(int length) {
-        return layout.getArrayOptionalIdentityHashOffset(getArrayElementOffset(length));
+    public long getIdentityHashOffset(int length) {
+        return layout.getArrayIdentityHashOffset(getArrayElementOffset(length));
     }
 
     public HostedField getArrayField() {

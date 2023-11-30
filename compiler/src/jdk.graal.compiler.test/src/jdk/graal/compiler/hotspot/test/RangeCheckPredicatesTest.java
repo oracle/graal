@@ -54,21 +54,12 @@ import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.SpeculationLog;
 
 public class RangeCheckPredicatesTest extends GraalCompilerTest {
     @SuppressWarnings("unused") private static int volatileField;
     final HotSpotVMConfigStore configStore = HotSpotJVMCIRuntime.runtime().getConfigStore();
     final HotSpotVMConfigAccess access = new HotSpotVMConfigAccess(configStore);
     final boolean useJVMCICompiler = access.getFlag("UseJVMCICompiler", Boolean.class);
-
-    private final SpeculationLog speculationLog;
-
-    @Override
-    protected SpeculationLog getSpeculationLog() {
-        speculationLog.collectFailedSpeculations();
-        return speculationLog;
-    }
 
     /**
      * Initializes the overrides for the tests in this class which are written specifically for the
@@ -89,11 +80,6 @@ public class RangeCheckPredicatesTest extends GraalCompilerTest {
         EconomicMap<OptionKey<?>, Object> overrides = initOverrides();
         overrides.put(LoopPredicationMainPath, false);
         return new OptionValues(getInitialOptions(), overrides);
-    }
-
-    @SuppressWarnings("this-escape")
-    public RangeCheckPredicatesTest() {
-        speculationLog = getCodeCache().createSpeculationLog();
     }
 
     private void runOutOfBound(String methodName, int size, boolean loopLimitCheck, Object... testParameters) {

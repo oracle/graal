@@ -70,7 +70,8 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
     final APIAccess api;
     final HostLanguageService service;
     final Class<?> valueClass;
-    final Class<?> polyglotEngineClass;
+    final Class<?> polyglotExceptionClass;
+    final Class<?> byteSequenceClass;
     @CompilationFinal private boolean methodScopingEnabled;
 
     HostLanguage(AbstractPolyglotImpl polyglot, AbstractHostAccess hostAccess) {
@@ -79,7 +80,8 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
         this.api = polyglot.getAPIAccess();
         this.service = new HostLanguageService(polyglot, this);
         this.valueClass = polyglot.getAPIAccess().getValueClass();
-        this.polyglotEngineClass = polyglot.getAPIAccess().getPolyglotExceptionClass();
+        this.polyglotExceptionClass = polyglot.getAPIAccess().getPolyglotExceptionClass();
+        this.byteSequenceClass = polyglot.getAPIAccess().getByteSequenceClass();
     }
 
     @Override

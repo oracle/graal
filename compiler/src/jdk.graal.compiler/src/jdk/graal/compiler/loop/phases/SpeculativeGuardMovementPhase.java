@@ -75,6 +75,7 @@ import jdk.graal.compiler.nodes.loop.InductionVariable.Direction;
 import jdk.graal.compiler.nodes.loop.LoopEx;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.phases.FloatingGuardPhase;
+import jdk.graal.compiler.phases.Speculative;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.PostRunCanonicalizationPhase;
 import jdk.graal.compiler.phases.common.util.EconomicSetNodeEventListener;
@@ -120,7 +121,7 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
  * speculation log entry is associated with the hoisted guard such that when it fails, the same
  * guard hoisting will not be performed in a subsequent compilation.
  */
-public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<MidTierContext> implements FloatingGuardPhase {
+public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<MidTierContext> implements FloatingGuardPhase, Speculative {
 
     private final boolean ignoreFrequency;
     private final boolean requireSpeculationLog;
@@ -592,7 +593,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
 
             CountedLoopInfo countedLoop = loopEx.counted();
 
-            if (profilingInfo != null && !(profilingInfo instanceof DefaultProfilingInfo)) {
+            if (!(profilingInfo instanceof DefaultProfilingInfo)) {
                 double loopFreqThreshold = 1;
                 if (!(iv.initNode() instanceof ConstantNode && bound instanceof ConstantNode)) {
                     // additional compare and short-circuit-or introduced in optimizeCompare
@@ -930,10 +931,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                     return false;
                 }
             }
-            if (profilingInfo == null) {
-                return false;
-            }
-            if (checkDeoptimizationCount) {
+            if (checkDeoptimizationCount && profilingInfo != null) {
                 if (profilingInfo.getDeoptimizationCount(DeoptimizationReason.LoopLimitCheck) > 1) {
                     debug.log("Preventing Speculative Guard Motion because of failed LoopLimitCheck");
                     return false;

@@ -60,11 +60,6 @@ public class HotSpotManagedFailedSpeculationListTest extends HotSpotGraalCompile
 
     InstalledCode compiledMethod;
 
-    @Override
-    protected SpeculationLog getSpeculationLog() {
-        return getCodeCache().createSpeculationLog();
-    }
-
     /**
      * Determines if {@link HotSpotNmethod} declares
      * {@code setSpeculationLog(HotSpotSpeculationLog)}. Only such versions properly add a tether

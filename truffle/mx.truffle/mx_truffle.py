@@ -44,8 +44,7 @@ import shutil
 import tempfile
 import difflib
 import zipfile
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from collections import OrderedDict
+from argparse import Action, ArgumentParser, RawDescriptionHelpFormatter
 from os.path import exists, isdir, join, abspath
 from urllib.parse import urljoin # pylint: disable=unused-import,no-name-in-module
 
@@ -58,7 +57,6 @@ import mx_sdk_vm
 import mx_unittest
 import mx_jardistribution
 import mx_pomdistribution
-import tck
 from mx_gate import Task
 from mx_javamodules import as_java_module, get_module_name
 from mx_sigtest import sigtest
@@ -187,30 +185,108 @@ def _open_module_exports_args():
         args.append('--add-exports=' + truffle_api_module_name + '/' + package + '=' + targets)
     return args
 
-def _unittest_config_participant(config):
-    vmArgs, mainClass, mainClassArgs = config
-    # Disable DefaultRuntime warning
-    vmArgs = vmArgs + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
-    # Assert for enter/return parity of ProbeNode
-    vmArgs = vmArgs + ['-Dpolyglot.engine.AssertProbes=true', '-Dpolyglot.engine.AllowExperimentalOptions=true']
 
-    # This is required to access jdk.internal.module.Modules which
-    # in turn allows us to dynamically open fields/methods to reflection.
-    vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
+class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
 
-    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle/*=ALL-UNNAMED'])
-    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle.compiler/*=ALL-UNNAMED'])
-    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle.runtime/*=ALL-UNNAMED'])
-    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.polyglot/*=ALL-UNNAMED'])
-    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.sl/*=ALL-UNNAMED'])
-    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle/*=org.graalvm.sl'])
+    def __init__(self):
+        super(TruffleUnittestConfig, self).__init__('truffle')
 
-    config = (vmArgs, mainClass, mainClassArgs)
-    if _shouldRunTCKParticipant:
-        config = _unittest_config_participant_tck(config)
-    return config
+    def apply(self, config):
+        vmArgs, mainClass, mainClassArgs = config
 
-mx_unittest.add_config_participant(_unittest_config_participant)
+        # This is required to access jdk.internal.module.Modules which
+        # in turn allows us to dynamically open fields/methods to reflection.
+        vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
+
+        mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle/*=ALL-UNNAMED'])
+        mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle.compiler/*=ALL-UNNAMED'])
+        mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle.runtime/*=ALL-UNNAMED'])
+        mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.polyglot/*=ALL-UNNAMED'])
+        mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.sl/*=ALL-UNNAMED'])
+        mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle/*=org.graalvm.sl'])
+        return (vmArgs, mainClass, mainClassArgs)
+
+
+mx_unittest.register_unittest_config(TruffleUnittestConfig())
+
+
+class NFITestConfig:
+
+    def __init__(self, name, runtime_deps):
+        self.name = name
+        self.runtime_deps = runtime_deps
+
+    def vm_args(self):
+        return []
+
+
+class _LibFFINFITestConfig(NFITestConfig):
+
+    def __init__(self):
+        super(_LibFFINFITestConfig, self).__init__('libffi', [])
+
+
+class _PanamaNFITestConfig(NFITestConfig):
+
+    def __init__(self):
+        super(_PanamaNFITestConfig, self).__init__('panama', ['TRUFFLE_NFI_PANAMA'])
+
+    def vm_args(self):
+        testPath = mx.distribution('TRUFFLE_TEST_NATIVE').output
+        args = [
+            '-Dnative.test.backend=panama',
+            '-Dnative.test.path.panama=' + testPath
+        ]
+        return args
+
+
+_nfi_test_configs = {}
+
+
+def register_nfi_test_config(cfg):
+    name = cfg.name
+    assert not name in _nfi_test_configs, 'duplicate nfi test config'
+    _nfi_test_configs[name] = cfg
+
+
+register_nfi_test_config(_LibFFINFITestConfig())
+register_nfi_test_config(_PanamaNFITestConfig())
+
+
+class _TruffleNFIUnittestConfig(mx_unittest.MxUnittestConfig):
+
+    runtimeConfig = None
+
+    def __init__(self, name='truffle-nfi'):
+        super(_TruffleNFIUnittestConfig, self).__init__(name)
+
+    def processDeps(self, deps):
+        deps.update({mx.distribution(runtime_dep) for runtime_dep in _TruffleNFIUnittestConfig.runtimeConfig.runtime_deps})
+
+    def apply(self, config):
+        vmArgs, mainClass, mainClassArgs = config
+        # Add runtimeConfig vm args
+        vmArgs = vmArgs + _TruffleNFIUnittestConfig.runtimeConfig.vm_args()
+        return (vmArgs, mainClass, mainClassArgs)
+
+
+mx_unittest.register_unittest_config(_TruffleNFIUnittestConfig())
+
+
+class _SelectNFIConfigAction(Action):
+    def __init__(self, **kwargs):
+        kwargs['required'] = False
+        _TruffleNFIUnittestConfig.runtimeConfig = _nfi_test_configs["libffi"]
+        super(_SelectNFIConfigAction, self).__init__(**kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        if values in _nfi_test_configs:
+            _TruffleNFIUnittestConfig.runtimeConfig = _nfi_test_configs[values]
+        else:
+            mx.abort(f"NFI test config {values} unknown!")
+
+
+mx_unittest.add_unittest_argument('--nfi-config', default=None, help='Select test engine configuration for the nfi unittests.', metavar='<config>', action=_SelectNFIConfigAction)
 
 # simple utility that returns the right distribution names to use
 # for building a language module path
@@ -296,10 +372,7 @@ def _truffle_gate_runner(args, tasks):
     if jdk.javaCompliance >= '22':
         with Task('Truffle NFI tests with Panama Backend', tasks) as t:
             if t:
-                testPath = mx.distribution('TRUFFLE_TEST_NATIVE').output
-                args = ['-Dnative.test.backend=panama', '-Dnative.test.path.panama=' + testPath]
-                # testlibArg = mx_subst.path_substitutions.substitute('-Dnative.test.path.panama=<path:TRUFFLE_TEST_NATIVE>')
-                unittest(args + ['com.oracle.truffle.nfi.test', '--enable-timing', '--verbose'])
+                unittest(['com.oracle.truffle.nfi.test', '--enable-timing', '--verbose', '--nfi-config=panama'])
     with Task('TruffleString UnitTests without Java String Compaction', tasks) as t:
         if t: unittest(list(['-XX:-CompactStrings', '--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25', 'com.oracle.truffle.api.strings.test']))
     if os.getenv('DISABLE_DSL_STATE_BITS_TESTS', 'false').lower() != 'true':
@@ -518,170 +591,110 @@ def _is_graalvm(jdk):
                     return True
     return False
 
-def _collect_class_path_entries(cp_entries_filter, entries_collector, properties_collector):
-    def import_visitor(suite, suite_import, predicate, collector, javaProperties, seenSuites, **extra_args):
-        suite_collector(mx.suite(suite_import.name), predicate, collector, javaProperties, seenSuites)
+def _collect_distributions(dist_filter, dist_collector):
+    def import_visitor(suite, suite_import, predicate, collector, seenSuites, **extra_args):
+        suite_collector(mx.suite(suite_import.name), predicate, collector, seenSuites)
 
-    def suite_collector(suite, predicate, collector, javaProperties, seenSuites):
+    def suite_collector(suite, predicate, collector, seenSuites):
         if suite.name in seenSuites:
             return
         seenSuites.add(suite.name)
-        suite.visit_imports(import_visitor, predicate=predicate, collector=collector, javaProperties=javaProperties, seenSuites=seenSuites)
+        suite.visit_imports(import_visitor, predicate=predicate, collector=collector, seenSuites=seenSuites)
         for dist in suite.dists:
             if predicate(dist):
-                for distCpEntry in mx.classpath_entries(dist):
-                    if hasattr(distCpEntry, "getJavaProperties"):
-                        for key, value in distCpEntry.getJavaProperties().items():
-                            javaProperties[key] = value
-                    if distCpEntry.isJdkLibrary() or distCpEntry.isJreLibrary():
-                        cpPath = distCpEntry.classpath_repr(mx.get_jdk(), resolve=True)
-                    else:
-                        cpPath = distCpEntry.classpath_repr(resolve=True)
-                    if cpPath:
-                        collector[cpPath] = None
-    suite_collector(mx.primary_suite(), cp_entries_filter, entries_collector, properties_collector, set())
+                collector.append(dist)
+    suite_collector(mx.primary_suite(), dist_filter, dist_collector, set())
 
-def _collect_class_path_entries_by_resource(requiredResources, entries_collector, properties_collector):
+
+def _collect_distributions_by_service(required_services, entries_collector):
     """
-    Collects class path for JAR distributions containing any resource from requiredResources.
+    Collects JAR distributions providing any service from requiredServices.
 
-    :param requiredResources: an iterable of resources. At least one of them has to exist to include the
-            distribution class path entries.
-    :param entries_collector: the list to add the class paths entries into.
-    :properties_collector: the list to add the distribution Java properties into.
+    :param required_services: an iterable of service fully qualified names. At least one of them has to exist to include the JAR distribution
+    :param entries_collector: the list to add the distributions into.
     """
-    def has_resource(dist):
-        if dist.isJARDistribution() and exists(dist.path):
-            if isdir(dist.path):
-                for requiredResource in requiredResources:
-                    if exists(join(dist.path, requiredResource)):
-                        return True
-            else:
-                with zipfile.ZipFile(dist.path, "r") as zf:
-                    for requiredResource in requiredResources:
-                        try:
-                            zf.getinfo(requiredResource)
-                        except KeyError:
-                            pass
-                        else:
-                            return True
-                    return False
-        else:
-            return False
-    _collect_class_path_entries(has_resource, entries_collector, properties_collector)
-
-
-def _collect_class_path_entries_by_module_descriptor(required_services, entries_collector, properties_collector):
-    """
-    Collects class path for JAR distributions providing any service from requiredServices.
-
-    :param required_services: an iterable of service fully qualified names. At least one of them has to exist to include
-            distribution class path entries.
-    :param entries_collector: the list to add the class paths entries into.
-    :param properties_collector: the list to add the distribution Java properties into.
-    """
-    required_set = set(required_services)
+    required_services_set = set(required_services)
+    required_resources = [f'META-INF/services/{service}' for service in required_services]
 
     def provides_service(dist):
         if dist.isJARDistribution() and exists(dist.path):
             module_name = get_module_name(dist)
             if module_name:
+                # Named module - use the module-info's provides directive
                 jmd = as_java_module(dist, mx.get_jdk())
-                return len(required_set.intersection(jmd.provides.keys())) != 0
+                return len(required_services_set.intersection(jmd.provides.keys())) != 0
+            else:
+                # Unnamed or automatic module - use META-INF/services
+                if isdir(dist.path):
+                    for required_resource in required_resources:
+                        if exists(join(dist.path, required_resource)):
+                            return True
+                else:
+                    with zipfile.ZipFile(dist.path, "r") as zf:
+                        for required_resource in required_resources:
+                            try:
+                                zf.getinfo(required_resource)
+                            except KeyError:
+                                pass
+                            else:
+                                return True
         return False
-    _collect_class_path_entries(provides_service, entries_collector, properties_collector)
 
-def _collect_class_path_entries_by_name(distributionName, entries_collector, properties_collector):
-    cp_filter = lambda dist: dist.isJARDistribution() and  dist.name == distributionName and exists(dist.path)
-    _collect_class_path_entries(cp_filter, entries_collector, properties_collector)
+    _collect_distributions(provides_service, entries_collector)
 
-def _collect_languages(entries_collector, properties_collector):
-    _collect_class_path_entries_by_module_descriptor([
-        "com.oracle.truffle.api.provider.TruffleLanguageProvider"],
-        entries_collector, properties_collector)
-    _collect_class_path_entries_by_resource([
-        # GR-46292 Remove the deprecated TruffleLanguage.Provider
-        "META-INF/truffle/language",
-        # GR-46292 Remove the deprecated TruffleLanguage.Provider
-        "META-INF/services/com.oracle.truffle.api.TruffleLanguage$Provider",
-        # Not all languages are already modularized. For non-modularized languages we require
-        # a registration of the TruffleLanguageProvider in the META-INF/services
-        "META-INF/services/com.oracle.truffle.api.provider.TruffleLanguageProvider"],
-        entries_collector, properties_collector)
 
-def _collect_tck_providers(entries_collector, properties_collector):
-    _collect_class_path_entries_by_resource(["META-INF/services/org.graalvm.polyglot.tck.LanguageProvider"], entries_collector, properties_collector)
+class _TCKUnittestConfig(mx_unittest.MxUnittestConfig):
 
-def _unittest_config_participant_tck(config):
+    lookupTCKProviders = False
 
-    def find_path_arg(vmArgs, prefix):
-        for index in reversed(range(len(vmArgs) - 1)):
-            if prefix in vmArgs[index]:
-                return index, vmArgs[index][len(prefix):]
-        return None, None
+    def __init__(self):
+        super(_TCKUnittestConfig, self).__init__(name='truffle-tck')
 
-    javaPropertiesToAdd = OrderedDict()
-    providers = OrderedDict()
-    _collect_tck_providers(providers, javaPropertiesToAdd)
-    languages = OrderedDict()
-    _collect_languages(languages, javaPropertiesToAdd)
-    _collect_class_path_entries_by_name("TRUFFLE_TCK_INSTRUMENTATION", languages, javaPropertiesToAdd)
-    vmArgs, mainClass, mainClassArgs = config
-    cpIndex, cpValue = mx.find_classpath_arg(vmArgs)
-    cpBuilder = OrderedDict()
-    if cpValue:
-        for cpElement in cpValue.split(os.pathsep):
-            cpBuilder[cpElement] = None
-    for providerCpElement in providers:
-        cpBuilder[providerCpElement] = None
-
-    if _is_graalvm(mx.get_jdk()):
-        boot_cp = OrderedDict()
-        _collect_class_path_entries_by_name("TRUFFLE_TCK_COMMON", boot_cp, javaPropertiesToAdd)
-        tpIndex, tpValue = find_path_arg(vmArgs, '-Dtruffle.class.path.append=')
-        tpBuilder = OrderedDict()
-        if tpValue:
-            for cpElement in tpValue.split(os.pathsep):
-                tpBuilder[cpElement] = None
-        for langCpElement in languages:
-            tpBuilder[langCpElement] = None
-        bpIndex, bpValue = find_path_arg(vmArgs, '-Xbootclasspath/a:')
-        bpBuilder = OrderedDict()
-        if bpValue:
-            for cpElement in bpValue.split(os.pathsep):
-                bpBuilder[cpElement] = None
-        for bootCpElement in boot_cp:
-            bpBuilder[bootCpElement] = None
-            cpBuilder.pop(bootCpElement, None)
-            tpBuilder.pop(bootCpElement, None)
-        tpValue = '-Dtruffle.class.path.append=' + os.pathsep.join((e for e in tpBuilder))
-        if tpIndex:
-            vmArgs[tpIndex] = tpValue
+    def processDeps(self, deps):
+        if _TCKUnittestConfig.lookupTCKProviders:
+            tck_providers = []
+            _collect_distributions_by_service(["org.graalvm.polyglot.tck.LanguageProvider"], tck_providers)
+            truffle_runtime = [mx.distribution(n) for n in resolve_truffle_dist_names()]
+            mx.logv(f'Original unittest distributions {",".join([d.name for d in deps])}')
+            mx.logv(f'TCK providers distributions to add {",".join([d.name for d in tck_providers])}')
+            mx.logv(f'Truffle runtime used by the TCK {",".join([d.name for d in truffle_runtime])}')
+            deps.update(tck_providers)
+            deps.update(truffle_runtime)
+            mx.logv(f'Merged unittest distributions {",".join([d.name for d in deps])}')
         else:
-            vmArgs.append(tpValue)
-        bpValue = '-Xbootclasspath/a:' + os.pathsep.join((e for e in bpBuilder))
-        if bpIndex:
-            vmArgs[bpIndex] = bpValue
-        else:
-            vmArgs.append(bpValue)
-    else:
-        for langCpElement in languages:
-            cpBuilder[langCpElement] = None
-    cpValue = os.pathsep.join((e for e in cpBuilder))
-    if cpIndex:
-        vmArgs[cpIndex] = cpValue
-    else:
-        vmArgs.append("-cp")
-        vmArgs.append(cpValue)
-    for key, value in javaPropertiesToAdd.items():
-        vmArgs.append("-D" + key + "=" + value)
-    return (vmArgs, mainClass, mainClassArgs)
+            mx.logv('Truffle TCK unnittest config is ignored because _shouldRunTCKUnittestConfig is False.')
 
-_shouldRunTCKParticipant = True
+    @staticmethod
+    def _has_disable_assertions_option(vm_args):
+        for vm_arg in vm_args:
+            if vm_arg in ('-da', '-disableassertions'):
+                return True
+        return False
 
-def should_add_tck_participant(shouldInstal):
-    global _shouldRunTCKParticipant
-    _shouldRunTCKParticipant = shouldInstal
+    def apply(self, config):
+        vmArgs, mainClass, mainClassArgs = config
+        # Disable DefaultRuntime warning
+        vmArgs = vmArgs + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
+        if not _TCKUnittestConfig._has_disable_assertions_option(vmArgs):
+            # Assert for enter/return parity of ProbeNode
+            vmArgs = vmArgs + ['-Dpolyglot.engine.AssertProbes=true', '-Dpolyglot.engine.AllowExperimentalOptions=true']
+        return (vmArgs, mainClass, mainClassArgs)
+
+
+mx_unittest.register_unittest_config(_TCKUnittestConfig())
+
+
+class _EnableTCKUnittestConfigAction(Action):
+    def __init__(self, **kwargs):
+        kwargs['required'] = False
+        kwargs['nargs'] = 0
+        super(_EnableTCKUnittestConfigAction, self).__init__(**kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        _TCKUnittestConfig.lookupTCKProviders = True
+
+
+mx_unittest.add_unittest_argument('--lookup-truffle-tck-providers', default=False, help='Enables lookup of Truffle TCK providers.', action=_EnableTCKUnittestConfigAction)
 
 """
 Merges META-INF/truffle/language and META-INF/truffle/instrument files.
@@ -766,31 +779,7 @@ def _execute_debugger_test(testFilter, logFile, testEvaluation=False, unitTestOp
     args = args + testFilter
     unittest(args)
 
-def execute_tck(graalvm_home, mode='default', language_filter=None, values_filter=None, tests_filter=None, vm_args=None):
-    """
-    Executes Truffle TCK with all TCK providers reachable from the primary suite and all languages installed in the given GraalVM.
-
-    :param graalvm_home: a path to GraalVM
-    :param mode: a name of TCK mode,
-        'default' - executes the test with default GraalVM configuration,
-        'compile' - compiles the tests before execution
-    :param language_filter: the language id, limits TCK tests to certain language
-    :param values_filter: an iterable of value constructors language ids, limits TCK values to certain language(s)
-    :param tests_filter: a substring of TCK test name or an iterable of substrings of TCK test names
-    :param vm_args: iterable containing additional Java VM args
-    """
-    cp = OrderedDict()
-    _collect_tck_providers(cp, dict())
-    truffle_cp = OrderedDict()
-    _collect_class_path_entries_by_name("TRUFFLE_TCK_INSTRUMENTATION", truffle_cp, dict())
-    _collect_class_path_entries_by_name("TRUFFLE_SL", truffle_cp, dict())
-    boot_cp = OrderedDict()
-    _collect_class_path_entries_by_name("TRUFFLE_TCK_COMMON", boot_cp, dict())
-    return tck.execute_tck(graalvm_home, mode=tck.Mode.for_name(mode), language_filter=language_filter, values_filter=values_filter,
-        tests_filter=tests_filter, cp=cp.keys(), truffle_cp=truffle_cp.keys(), boot_cp=boot_cp, vm_args=vm_args)
-
-
-def _tck(args):
+def tck(args):
     """runs TCK tests"""
 
     parser = ArgumentParser(prog="mx tck", description="run the TCK tests", formatter_class=RawDescriptionHelpFormatter, epilog=_tckHelpSuffix)
@@ -815,6 +804,7 @@ def _tck(args):
             break
         index = index - 1
     unitTestOptions = args_no_tests[0:max(index - (1 if has_separator_arg else 0), 0)]
+    unitTestOptions.append('--lookup-truffle-tck-providers')
     jvmOptions = args_no_tests[index:len(args_no_tests)]
     if tckConfiguration == "default":
         unittest(unitTestOptions + ["--"] + jvmOptions + tests)
@@ -822,20 +812,26 @@ def _tck(args):
         with mx.SafeFileCreation(os.path.join(tempfile.gettempdir(), "debugalot")) as sfc:
             _execute_debugger_test(tests, sfc.tmpPath, False, unitTestOptions, jvmOptions)
     elif tckConfiguration == "compile":
-        if not _is_graalvm(mx.get_jdk()):
-            mx.abort("The 'compile' TCK configuration requires graalvm execution, run with --java-home=<path_to_graalvm>.")
+        if '--use-graalvm' in unitTestOptions:
+            jdk = mx.get_jdk(tag='graalvm')
+        else:
+            jdk = mx.get_jdk()
+        if not _is_graalvm(jdk):
+            mx.abort("The 'compile' TCK configuration requires graalvm execution, "
+                     "run with --java-home=<path_to_graalvm> or run with --use-graalvm.")
         compileOptions = [
             "-Dpolyglot.engine.AllowExperimentalOptions=true",
             "-Dpolyglot.engine.Mode=latency",
-            "-Dpolyglot.engine.CompilationFailureAction=Throw",
+            # "-Dpolyglot.engine.CompilationFailureAction=Throw", GR-49399
             "-Dpolyglot.engine.CompileImmediately=true",
             "-Dpolyglot.engine.BackgroundCompilation=false",
+            "-Dtck.inlineVerifierInstrument=false",
         ]
         unittest(unitTestOptions + ["--"] + jvmOptions + compileOptions + tests)
 
 
 mx.update_commands(_suite, {
-    'tck': [_tck, "[--tck-configuration {compile|debugger|default}] [unittest options] [--] [VM options] [filters...]", _tckHelpSuffix]
+    'tck': [tck, "[--tck-configuration {compile|debugger|default}] [unittest options] [--] [VM options] [filters...]", _tckHelpSuffix]
 })
 
 

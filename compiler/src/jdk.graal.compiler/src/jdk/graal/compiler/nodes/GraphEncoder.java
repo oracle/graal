@@ -518,7 +518,7 @@ public class GraphEncoder {
                         recordInlinedMethods(originalGraph.isRecordingInlinedMethods()).
                         build();
         // @formatter:off
-        GraphDecoder decoder = new GraphDecoder(architecture, decodedGraph);
+        GraphDecoder decoder = graphDecoderForVerification(decodedGraph);
         decoder.decode(encodedGraph);
 
         decodedGraph.verify();
@@ -532,6 +532,10 @@ public class GraphEncoder {
             throw ex;
         }
         return optimizationLogCodec.verify(originalGraph, decodedGraph) && inliningLogCodec.verify(originalGraph, decodedGraph);
+    }
+    
+    protected GraphDecoder graphDecoderForVerification(StructuredGraph decodedGraph) {
+        return new GraphDecoder(architecture, decodedGraph);
     }
 }
 
@@ -580,7 +584,7 @@ class GraphComparison {
                 for (int i = 0; i < nodeClass.getData().getCount(); i++) {
                     Object expectedProperty = nodeClass.getData().get(expectedNode, i);
                     Object actualProperty = nodeClass.getData().get(actualNode, i);
-                    assert Objects.equals(expectedProperty, actualProperty);
+                    assert Objects.equals(expectedProperty, actualProperty): "Expected " + expectedProperty + ", found " + actualProperty;
                 }
             }
 

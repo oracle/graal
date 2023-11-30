@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.sampler;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -44,10 +43,15 @@ import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.sampler.AbstractJfrExecutionSampler;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.PlatformThreads.ThreadLocalKey;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
 
 /**
  * This is the core class of the low overhead asynchronous execution sampler. It registers a SIGPROF
@@ -207,5 +211,10 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void storeIsolateThreadInNativeThreadLocal(IsolateThread isolateThread) {
         PlatformThreads.singleton().setUnmanagedThreadLocalValue(keyForNativeThreadLocal, isolateThread);
+    }
+
+    public static class Options {
+        @Option(help = "Print statistics collected during JFR-based execution sampler run.", type = OptionType.Expert)//
+        public static final RuntimeOptionKey<Boolean> JfrBasedExecutionSamplerStatistics = new RuntimeOptionKey<>(false);
     }
 }

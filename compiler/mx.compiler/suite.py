@@ -441,6 +441,7 @@ suite = {
         "JAVA_ALLOCATION_INSTRUMENTER",
       ],
       "testDistribution" : True,
+      "unittestConfig": "graal",
       "maven": False,
     },
     "GRAAL_TEST_PREVIEW_FEATURE" : {
@@ -454,6 +455,7 @@ suite = {
       "exclude" : [
       ],
       "testDistribution" : True,
+      "unittestConfig": "graal",
       "maven": False,
     },
 
@@ -462,6 +464,16 @@ suite = {
       "dependencies" : [
         "jdk.graal.compiler.processor",
        ],
+      "maven": False,
+    },
+
+    "GRAAL_VERSION": {
+      "type": "dir",
+      "platformDependent": False,
+      "layout": {
+        "META-INF/graalvm/jdk.graal.compiler/version": "dependency:sdk:VERSION/version",
+      },
+      "description": "Compiler version.",
       "maven": False,
     },
 
@@ -513,7 +525,8 @@ suite = {
       },
       "subDir" : "src",
       "dependencies" : [
-        "jdk.graal.compiler"
+        "jdk.graal.compiler",
+        "GRAAL_VERSION",
       ],
       "distDependencies" : [
         "sdk:COLLECTIONS",
@@ -621,6 +634,7 @@ suite = {
       "exclude" : [
         "mx:JUNIT",
       ],
+      "unittestConfig": "graal",
       "maven": False,
     },
   },

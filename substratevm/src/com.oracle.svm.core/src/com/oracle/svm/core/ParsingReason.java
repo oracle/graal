@@ -37,6 +37,6 @@ public enum ParsingReason {
     }
 
     public boolean duringAnalysis() {
-        return this == PointsToAnalysis || (SubstrateOptions.parseOnce() && this == JITCompilation);
+        return this == PointsToAnalysis || this == JITCompilation;
     }
 }

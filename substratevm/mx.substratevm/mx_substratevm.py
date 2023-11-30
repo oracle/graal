@@ -982,7 +982,7 @@ def benchmark(args):
 
 def mx_post_parse_cmd_line(opts):
     for dist in suite.dists:
-        if not dist.isTARDistribution():
+        if dist.isJARDistribution():
             dist.set_archiveparticipant(GraalArchiveParticipant(dist, isTest=dist.name.endswith('_TEST')))
 
 def native_image_context_run(func, func_args=None, config=None, build_if_missing=False):
@@ -990,7 +990,7 @@ def native_image_context_run(func, func_args=None, config=None, build_if_missing
     with native_image_context(config=config, build_if_missing=build_if_missing) as native_image:
         func(native_image, func_args)
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+svm = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='SubstrateVM',
     short_name='svm',
@@ -1010,9 +1010,10 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     stability="earlyadopter",
     jlink=False,
     installable=False,
-))
+)
+mx_sdk_vm.register_graalvm_component(svm)
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+svm_nfi = mx_sdk_vm.GraalVmLanguage(
     suite=suite,
     name='SVM Truffle NFI Support',
     short_name='svmnfi',
@@ -1025,9 +1026,10 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     builder_jar_distributions=[],
     support_distributions=['substratevm:SVM_NFI_GRAALVM_SUPPORT'],
     installable=False,
-))
+)
+mx_sdk_vm.register_graalvm_component(svm_nfi)
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+svm_static_libs = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='SubstrateVM Static Libraries',
     short_name='svmsl',
@@ -1037,7 +1039,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     support_distributions=['substratevm:SVM_STATIC_LIBRARIES_SUPPORT'],
     installable=False,
-))
+)
+mx_sdk_vm.register_graalvm_component(svm_static_libs)
 
 def _native_image_launcher_main_class():
     """
@@ -1087,7 +1090,7 @@ if mx.get_jdk(tag='default').javaCompliance >= '21':
     ))
     additional_ni_dependencies += ['svmforeign']
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+native_image = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='Native Image',
     short_name='ni',
@@ -1145,7 +1148,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     installable=True,
     stability="earlyadopter",
     jlink=False,
-))
+)
+mx_sdk_vm.register_graalvm_component(native_image)
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
@@ -1219,7 +1223,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     stability="supported",
 ))
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
+truffle_runtime_svm = mx_sdk_vm.GraalVmTruffleLibrary(
     suite=suite,
     name='Truffle Runtime SVM',
     short_name='svmt',
@@ -1233,7 +1237,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     support_distributions=[],
     stability="supported",
     jlink=False,
-))
+)
+mx_sdk_vm.register_graalvm_component(truffle_runtime_svm)
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,

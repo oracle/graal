@@ -27,6 +27,17 @@ package com.oracle.svm.hosted.jni;
 import java.lang.reflect.Constructor;
 import java.util.List;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
+import com.oracle.svm.core.jni.JNIJavaCallWrapperHolder;
+import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
+import com.oracle.svm.hosted.code.FactoryMethodSupport;
+import com.oracle.svm.hosted.code.NonBytecodeMethod;
+import com.oracle.svm.hosted.code.SimpleSignature;
+import com.oracle.svm.util.ReflectionUtil;
+
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
@@ -48,21 +59,6 @@ import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.word.WordTypes;
-
-import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
-import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
-import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
-import com.oracle.svm.core.jni.JNIJavaCallWrapperHolder;
-import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
-import com.oracle.svm.hosted.code.FactoryMethodSupport;
-import com.oracle.svm.hosted.code.NonBytecodeMethod;
-import com.oracle.svm.hosted.code.SimpleSignature;
-import com.oracle.svm.hosted.meta.HostedMetaAccess;
-import com.oracle.svm.util.ReflectionUtil;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -161,15 +157,10 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeMethod {
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        UniverseMetaAccess metaAccess = (UniverseMetaAccess) providers.getMetaAccess();
-        JNIGraphKit kit = new JNIGraphKit(debug, providers, method, purpose);
+        AnalysisMetaAccess aMetaAccess = (AnalysisMetaAccess) providers.getMetaAccess();
+        JNIGraphKit kit = new JNIGraphKit(debug, providers, method);
 
-        AnalysisMetaAccess aMetaAccess = (AnalysisMetaAccess) ((metaAccess instanceof AnalysisMetaAccess) ? metaAccess : metaAccess.getWrapped());
         Signature invokeSignature = aMetaAccess.getUniverse().lookup(targetSignature, getDeclaringClass());
-        if (metaAccess instanceof HostedMetaAccess) {
-            // signature might not exist in the hosted universe because it does not match any method
-            invokeSignature = new WrappedSignature(metaAccess.getUniverse(), invokeSignature, getDeclaringClass());
-        }
 
         JavaKind wordKind = providers.getWordTypes().getWordKind();
         int slotIndex = 0;
@@ -261,8 +252,8 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeMethod {
         ConstantNode abstractTypeSentinel = kit.createWord(JNIAccessibleMethod.NEW_OBJECT_INVALID_FOR_ABSTRACT_TYPE);
         kit.startIf(IntegerEqualsNode.create(newObjectAddress, abstractTypeSentinel, NodeView.DEFAULT), BranchProbabilityNode.SLOW_PATH_PROFILE);
         kit.thenPart();
-        ResolvedJavaMethod exceptionCtor = kit.getMetaAccess().lookupJavaMethod(INSTANTIATION_EXCEPTION_CONSTRUCTOR);
-        ResolvedJavaMethod throwMethod = FactoryMethodSupport.singleton().lookup((UniverseMetaAccess) kit.getMetaAccess(), exceptionCtor, true);
+        var exceptionCtor = kit.getMetaAccess().lookupJavaMethod(INSTANTIATION_EXCEPTION_CONSTRUCTOR);
+        var throwMethod = FactoryMethodSupport.singleton().lookup(kit.getMetaAccess(), exceptionCtor, true);
         kit.createInvokeWithExceptionAndUnwind(throwMethod, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci());
         kit.append(new LoweredDeadEndNode());
         kit.endIf();

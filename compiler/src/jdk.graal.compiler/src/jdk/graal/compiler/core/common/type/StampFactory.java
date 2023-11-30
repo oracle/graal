@@ -144,6 +144,10 @@ public class StampFactory {
         return IntegerStamp.create(kind.getBitCount(), lowerBound, upperBound, mustBeSet, mayBeSet);
     }
 
+    public static IntegerStamp forInteger(int bits) {
+        return IntegerStamp.create(bits, CodeUtil.minValue(bits), CodeUtil.maxValue(bits), 0, CodeUtil.mask(bits));
+    }
+
     public static IntegerStamp forInteger(JavaKind kind, long lowerBound, long upperBound) {
         return IntegerStamp.create(kind.getBitCount(), lowerBound, upperBound);
     }

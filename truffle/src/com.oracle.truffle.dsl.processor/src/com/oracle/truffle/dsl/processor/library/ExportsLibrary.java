@@ -61,6 +61,7 @@ import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.CacheExpression;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
+import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.Template;
 
 public final class ExportsLibrary extends Template {
@@ -201,12 +202,28 @@ public final class ExportsLibrary extends Template {
         return null;
     }
 
-    public boolean needsRewrites() {
+    public boolean needsState() {
+        ProcessorContext c = ProcessorContext.getInstance();
         for (ExportMessageData message : exportedMessages.values()) {
-            if (message.getSpecializedNode() != null) {
-                if (message.getSpecializedNode().needsRewrites(ProcessorContext.getInstance())) {
-                    return true;
-                }
+            NodeData node = message.getSpecializedNode();
+            if (node == null) {
+                continue;
+            }
+            if (node.needsState(c)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean needsLibraryNode() {
+        for (ExportMessageData message : exportedMessages.values()) {
+            NodeData node = message.getSpecializedNode();
+            if (node == null) {
+                continue;
+            }
+            if (node.isNodeBound()) {
+                return true;
             }
         }
         return false;

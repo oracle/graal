@@ -83,7 +83,7 @@ public final class AMD64StringUTF16CompressOp extends AMD64ComplexVectorOp {
         super(TYPE, tool, runtimeCheckedCPUFeatures,
                         supportsAVX512VLBW(tool.target(), runtimeCheckedCPUFeatures) && supports(tool.target(), runtimeCheckedCPUFeatures, CPUFeature.BMI2) ? AVXSize.ZMM : AVXSize.XMM);
 
-        assert CodeUtil.isPowerOf2(useAVX3Threshold) : "AVX3Threshold must be power of 2";
+        assert useAVX3Threshold == 0 || CodeUtil.isPowerOf2(useAVX3Threshold) : "AVX3Threshold must be 0 or a power of 2 :" + useAVX3Threshold;
         this.useAVX3Threshold = useAVX3Threshold;
 
         assert asRegister(src).equals(rsi);

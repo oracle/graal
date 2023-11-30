@@ -326,7 +326,7 @@ def measureTimeToFirstResponse(bmSuite):
 class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImageBenchmarkMixin):
     """
     Base class for Microservice benchmark suites. A Microservice is an application that opens a port that is ready to
-    receive requests. This benchmark suite runs a tester process in the background (such as JMeter or Wrk2) and run a
+    receive requests. This benchmark suite runs a tester process in the background (such as Wrk2) and run a
     Microservice application in foreground. Once the tester finishes stress testing the application, the tester process
     terminates and the application is killed with SIGTERM.
 
@@ -360,7 +360,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         Returns the microservice name. The convention here is that the benchmark name contains two elements separated
         by a hyphen ('-'):
         - the microservice name (shopcart, for example);
-        - the tester tool name (jmeter, for example).
+        - the tester tool name (wrk, for example).
 
         :return: Microservice name.
         :rtype: str
@@ -856,7 +856,6 @@ class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.Aver
         results = results[:len(results) - self.tailDatapointsToSkip(results)]
         self.addAverageAcrossLatestResults(results, "throughput")
         return results
-
 
 class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
     """Base class for Wrk based benchmark suites."""

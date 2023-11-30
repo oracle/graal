@@ -125,10 +125,12 @@ public class PointerEqualsNode extends CompareNode implements Canonicalizable.Bi
          *
          * @return {@code true} if this is an equality test that will always fail
          */
-        private static boolean isAlwaysFailingEqualityTest(CanonicalCondition condition, ValueNode forX, ValueNode forY) {
+        private static boolean isAlwaysFailingEqualityTest(CanonicalCondition condition, ValueNode originalX, ValueNode originalY) {
             if (condition != CanonicalCondition.EQ) {
                 return false;
             }
+            ValueNode forX = GraphUtil.unproxify(originalX);
+            ValueNode forY = GraphUtil.unproxify(originalY);
             if (forX != forY) {
                 boolean xIsNonVirtualAllocation = forX instanceof AbstractNewObjectNode;
                 boolean yIsNonVirtualAllocation = forY instanceof AbstractNewObjectNode;

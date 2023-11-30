@@ -35,12 +35,12 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeInputList;
-import jdk.graal.compiler.nodes.spi.Simplifiable;
-import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
@@ -55,9 +55,10 @@ import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.memory.WriteNode;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.nodes.spi.Simplifiable;
+import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.spi.VirtualizableAllocation;
 import jdk.graal.compiler.nodes.spi.VirtualizerTool;
-import org.graalvm.word.LocationIdentity;
 
 // @formatter:off
 @NodeInfo(nameTemplate = "Alloc {i#virtualObjects}",
@@ -90,8 +91,27 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
         return values;
     }
 
+    public List<MonitorIdNode> getLocks() {
+        return locks.snapshot();
+    }
+
     public List<MonitorIdNode> getLocks(int objIndex) {
         return locks.subList(lockIndexes.get(objIndex), lockIndexes.get(objIndex + 1));
+    }
+
+    public int getObjectIndex(MonitorIdNode monitorId) {
+        int monitorIndex = locks.indexOf(monitorId);
+        if (monitorIndex == -1) {
+            return -1;
+        }
+
+        for (int objIndex = 0; objIndex < virtualObjects.size(); objIndex++) {
+            if (lockIndexes.get(objIndex) <= monitorIndex && monitorIndex < lockIndexes.get(objIndex + 1)) {
+                return objIndex;
+            }
+        }
+
+        return -1;
     }
 
     public List<Boolean> getEnsureVirtual() {

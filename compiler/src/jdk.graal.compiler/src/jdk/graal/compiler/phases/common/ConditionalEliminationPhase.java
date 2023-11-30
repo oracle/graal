@@ -29,7 +29,6 @@ import static jdk.graal.compiler.nodes.StaticDeoptimizingNode.mergeActions;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
-import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -63,7 +62,6 @@ import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
-import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.GuardProxyNode;
@@ -101,8 +99,8 @@ import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
-import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
+
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 import jdk.vm.ci.meta.TriState;
@@ -146,7 +144,7 @@ import jdk.vm.ci.meta.TriState;
  *           <li>{@link ConditionAnchorNode}
  *           </ul>
  */
-public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
+public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<CoreProviders> {
 
     public static class Options {
         // @formatter:off
@@ -160,18 +158,14 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
     private final boolean fullSchedule;
     private final boolean moveGuards;
 
-    public ConditionalEliminationPhase(boolean fullSchedule) {
-        this(fullSchedule, true);
+    public ConditionalEliminationPhase(CanonicalizerPhase canonicalizer, boolean fullSchedule) {
+        this(canonicalizer, fullSchedule, true);
     }
 
-    public ConditionalEliminationPhase(boolean fullSchedule, boolean moveGuards) {
+    public ConditionalEliminationPhase(CanonicalizerPhase canonicalizer, boolean fullSchedule, boolean moveGuards) {
+        super(canonicalizer);
         this.fullSchedule = fullSchedule;
         this.moveGuards = moveGuards;
-    }
-
-    @Override
-    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
-        return ALWAYS_APPLICABLE;
     }
 
     @Override

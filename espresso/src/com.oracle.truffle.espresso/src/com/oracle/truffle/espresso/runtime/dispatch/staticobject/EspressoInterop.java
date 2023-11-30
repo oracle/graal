@@ -34,6 +34,8 @@ import static com.oracle.truffle.espresso.runtime.staticobject.StaticObject.CLAS
 import static com.oracle.truffle.espresso.runtime.staticobject.StaticObject.notNull;
 import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -94,7 +96,6 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 @GenerateInteropNodes
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 @Shareable
-@SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public class EspressoInterop extends BaseInterop {
     // region ### is/as checks/conversions
 
@@ -129,7 +130,7 @@ public class EspressoInterop extends BaseInterop {
         Meta meta = receiver.getKlass().getMeta();
         return receiver.getKlass() == meta.java_lang_Byte || receiver.getKlass() == meta.java_lang_Short || receiver.getKlass() == meta.java_lang_Integer ||
                         receiver.getKlass() == meta.java_lang_Long || receiver.getKlass() == meta.java_lang_Float ||
-                        receiver.getKlass() == meta.java_lang_Double;
+                        receiver.getKlass() == meta.java_lang_Double || receiver.getKlass() == meta.java_math_BigInteger;
     }
 
     @ExportMessage
@@ -305,6 +306,28 @@ public class EspressoInterop extends BaseInterop {
         return false;
     }
 
+    @ExportMessage
+    static boolean fitsInBigInteger(StaticObject receiver) {
+        receiver.checkNotForeign();
+        if (isNull(receiver)) {
+            return false;
+        }
+        Klass klass = receiver.getKlass();
+        Meta meta = klass.getMeta();
+        if (isAtMostLong(klass) || klass == meta.java_math_BigInteger) {
+            return true;
+        }
+        if (klass == meta.java_lang_Float) {
+            float floatValue = meta.java_lang_Float_value.getFloat(receiver);
+            return floatValue % 1 == 0 && !isNegativeZero(floatValue);
+        }
+        if (klass == meta.java_lang_Double) {
+            double doubleValue = meta.java_lang_Double_value.getDouble(receiver);
+            return doubleValue % 1 == 0 && !isNegativeZero(doubleValue);
+        }
+        return false;
+    }
+
     private static Number readNumberValue(StaticObject receiver) throws UnsupportedMessageException {
         assert receiver.isEspressoObject();
         Klass klass = receiver.getKlass();
@@ -389,6 +412,46 @@ public class EspressoInterop extends BaseInterop {
             throw UnsupportedMessageException.create();
         }
         return readNumberValue(receiver).doubleValue();
+    }
+
+    @ExportMessage
+    public static BigInteger asBigInteger(StaticObject receiver) throws UnsupportedMessageException {
+        receiver.checkNotForeign();
+        if (!fitsInBigInteger(receiver)) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedMessageException.create();
+        }
+        Meta meta = getMeta();
+        if (receiver.getKlass() == meta.java_math_BigInteger) {
+            return toHostBigInteger(receiver, meta);
+        } else if (fitsInLong(receiver)) {
+            return toBigInteger(asLong(receiver));
+        } else if (fitsInDouble(receiver)) {
+            // we know it fits in BigInteger so no need to check the double value
+            return toBigInteger(asDouble(receiver));
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @TruffleBoundary
+    private static BigInteger toHostBigInteger(StaticObject receiver, Meta meta) {
+        StaticObject guestByteArray = (StaticObject) meta.java_math_BigInteger_toByteArray.invokeDirect(receiver);
+        byte[] bytes = guestByteArray.unwrap(meta.getLanguage());
+        return new BigInteger(bytes);
+    }
+
+    @TruffleBoundary
+    private static BigInteger toBigInteger(long longValue) {
+        return BigInteger.valueOf(longValue);
+    }
+
+    @TruffleBoundary
+    private static BigInteger toBigInteger(double doubleValue) {
+        try {
+            return new BigDecimal(doubleValue).toBigIntegerExact();
+        } catch (ArithmeticException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
+        }
     }
 
     // endregion ### is/as checks/conversions
@@ -678,7 +741,7 @@ public class EspressoInterop extends BaseInterop {
                     } else {
                         CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(m, arguments, m.resolveParameterKlasses(), toEspressoNode);
                         if (matched != null) {
-                            matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
+                            matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched);
                             if (matched != null) {
                                 return invoke.execute(matched.getMethod(), receiver, matched.getConvertedArgs(), true);
                             }

@@ -116,6 +116,10 @@ public final class WindowsPlatformThreads extends PlatformThreads {
         if (SynchAPI.NoTransitions.WaitForSingleObject((WinBase.HANDLE) threadHandle, SynchAPI.INFINITE()) != SynchAPI.WAIT_OBJECT_0()) {
             return false;
         }
+        if (threadExitStatus.isNull()) {
+            return true;
+        }
+
         // Since only an int is written, first clear word
         threadExitStatus.write(WordFactory.zero());
         return Process.NoTransitions.GetExitCodeThread((WinBase.HANDLE) threadHandle, (CIntPointer) threadExitStatus) != 0;

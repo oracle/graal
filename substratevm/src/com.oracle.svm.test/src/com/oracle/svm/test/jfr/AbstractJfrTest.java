@@ -86,22 +86,22 @@ public abstract class AbstractJfrTest {
         return Configuration.getConfiguration("default");
     }
 
-    protected static void checkRecording(EventValidator validator, Path path, JfrRecordingState state) throws Throwable {
+    protected static void checkRecording(EventValidator validator, Path path, JfrRecordingState state, boolean validateTestedEventsOnly) throws Throwable {
         JfrFileParser parser = new JfrFileParser(path);
         parser.verify();
 
-        List<RecordedEvent> events = getEvents(path, state.testedEvents);
+        List<RecordedEvent> events = getEvents(path, state.testedEvents, validateTestedEventsOnly);
         checkEvents(events, state.testedEvents);
         if (validator != null) {
             validator.validate(events);
         }
     }
 
-    private static List<RecordedEvent> getEvents(Path path, String[] testedEvents) throws IOException {
+    private static List<RecordedEvent> getEvents(Path path, String[] testedEvents, boolean validateTestedEventsOnly) throws IOException {
         /* Only return events that are in the list of tested events. */
         ArrayList<RecordedEvent> result = new ArrayList<>();
         for (RecordedEvent event : RecordingFile.readAllEvents(path)) {
-            if (isTestedEvent(event, testedEvents)) {
+            if (!validateTestedEventsOnly || isTestedEvent(event, testedEvents)) {
                 result.add(event);
             }
         }

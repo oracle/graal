@@ -886,7 +886,7 @@ def _vm_options_match(vm_options, vm_options_path):
 
 def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                   root_module_names=None,
-                  missing_export_target_action='create',
+                  missing_export_target_action='none',
                   with_source=lambda x: True,
                   vendor_info=None,
                   dedup_legal_notices=True,
@@ -909,7 +909,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                        "create" - an empty module is created
                         "error" - raise an error
                          "warn" - raise a warning
-                           None - do nothing
+                         "none" - do nothing
     :param lambda with_source: returns True if the sources of a module distribution must be included in the new JDK
     :param dict vendor_info: values for the jlink vendor options added by JDK-8232080
     :param bool use_upgrade_module_path: if True, then instead of linking `module_dists` into the image, resolve
@@ -919,6 +919,11 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
     :return bool: False if use_upgrade_module_path == True and the existing image is up to date otherwise True
     """
     assert callable(with_source)
+    import mx_sdk_vm_impl
+
+    missing_export_target_action = missing_export_target_action or mx_sdk_vm_impl.default_jlink_missing_export_action()
+    allowed_actions = ('create', 'error', 'warn', 'none')
+    assert missing_export_target_action in allowed_actions, f"Unknown missing export action. Expected: {allowed_actions}. Got: {missing_export_target_action}"
 
     if jdk.javaCompliance < '9':
         mx.abort('Cannot derive a new JDK from ' + jdk.home + ' with jlink since it is not JDK 9 or later')
@@ -960,10 +965,10 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                 for target in targets:
                     if target not in all_module_names and target not in ignore_module_names and target not in hashes:
                         target_requires.setdefault(target, set()).add(jmd.name)
-        if target_requires and missing_export_target_action is not None:
+        if target_requires and missing_export_target_action != 'none':
             if missing_export_target_action in ('error', 'warn'):
                 mx.abort_or_warn('Target(s) of qualified exports cannot be resolved:\n* ' + '\n* '.join(f"{k} required by {v}" for k, v in target_requires.items()), missing_export_target_action == 'abort')
-            assert missing_export_target_action in ('create', 'warn'), 'invalid value for missing_export_target_action: ' + str(missing_export_target_action)
+            assert missing_export_target_action in ('create', 'warn'), 'invalid value for missing_export_target_action: ' + missing_export_target_action
 
             for name, requires in sorted(target_requires.items()):
                 module_jar = join(build_dir, name + '.jar')

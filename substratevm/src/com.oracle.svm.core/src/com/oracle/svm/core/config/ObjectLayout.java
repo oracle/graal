@@ -30,7 +30,6 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.deopt.DeoptimizedFrame;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.NumUtil;
@@ -43,6 +42,18 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Immutable class that holds all sizes and offsets that contribute to the object layout.
+ *
+ * Identity hashcode fields can either be:
+ * <ol type="a">
+ * <li>In the object header, at a fixed offset for all objects (see
+ * {@link #isIdentityHashFieldInObjectHeader()}).</li>
+ * <li>At a type specific offset, potentially outside the object header (see
+ * {@link #isIdentityHashFieldAtTypeSpecificOffset()}).</li>
+ * <li>Outside the object header, at a type- or object-specific offset (see
+ * {@link #isIdentityHashFieldOptional()}). Note that the field is not part of every object. When an
+ * object needs the field, the object is resized during garbage collection to accommodate the
+ * field.</li>
+ * </ol>
  */
 public final class ObjectLayout {
 
@@ -54,15 +65,17 @@ public final class ObjectLayout {
     private final int firstFieldOffset;
     private final int arrayLengthOffset;
     private final int arrayBaseOffset;
-    private final int fixedIdentityHashOffset;
+    private final int objectHeaderIdentityHashOffset;
+    private final int identityHashMode;
 
-    public ObjectLayout(SubstrateTargetDescription target, int referenceSize, int objectAlignment, int hubOffset,
-                    int firstFieldOffset, int arrayLengthOffset, int arrayBaseOffset, int fixedIdentityHashOffset) {
+    public ObjectLayout(SubstrateTargetDescription target, int referenceSize, int objectAlignment, int hubOffset, int firstFieldOffset, int arrayLengthOffset, int arrayBaseOffset,
+                    int headerIdentityHashOffset, IdentityHashMode identityHashMode) {
         assert CodeUtil.isPowerOf2(referenceSize) : referenceSize;
         assert CodeUtil.isPowerOf2(objectAlignment) : objectAlignment;
         assert arrayLengthOffset % Integer.BYTES == 0;
         assert hubOffset < firstFieldOffset && hubOffset < arrayLengthOffset : hubOffset;
-        assert fixedIdentityHashOffset == -1 || (fixedIdentityHashOffset > 0 && fixedIdentityHashOffset < arrayLengthOffset) : fixedIdentityHashOffset;
+        assert (identityHashMode != IdentityHashMode.OPTIONAL && headerIdentityHashOffset > 0 && headerIdentityHashOffset < arrayLengthOffset && headerIdentityHashOffset % Integer.BYTES == 0) ||
+                        (identityHashMode == IdentityHashMode.OPTIONAL && headerIdentityHashOffset == -1);
 
         this.target = target;
         this.referenceSize = referenceSize;
@@ -72,7 +85,8 @@ public final class ObjectLayout {
         this.firstFieldOffset = firstFieldOffset;
         this.arrayLengthOffset = arrayLengthOffset;
         this.arrayBaseOffset = arrayBaseOffset;
-        this.fixedIdentityHashOffset = fixedIdentityHashOffset;
+        this.objectHeaderIdentityHashOffset = headerIdentityHashOffset;
+        this.identityHashMode = identityHashMode.value;
     }
 
     /** The minimum alignment of objects (instances and arrays). */
@@ -90,14 +104,6 @@ public final class ObjectLayout {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getReferenceSize() {
         return referenceSize;
-    }
-
-    /**
-     * Returns the amount of scratch space which must be reserved for return value registers in
-     * {@link DeoptimizedFrame}.
-     */
-    public int getDeoptScratchSpace() {
-        return target.getDeoptScratchSpace();
     }
 
     /**
@@ -151,24 +157,33 @@ public final class ObjectLayout {
         return arrayLengthOffset;
     }
 
-    /** If {@link #hasFixedIdentityHashField()}, then returns that offset. */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int getFixedIdentityHashOffset() {
-        if (GraalDirectives.inIntrinsic()) {
-            ReplacementsUtil.dynamicAssert(hasFixedIdentityHashField(), "must check before calling");
-        } else {
-            assert hasFixedIdentityHashField();
-        }
-        return fixedIdentityHashOffset;
-    }
-
     /**
      * Indicates whether all objects, including arrays, always contain an identity hash code field
-     * at a specific offset.
+     * at a specific offset in the object header.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean hasFixedIdentityHashField() {
-        return fixedIdentityHashOffset >= 0;
+    public boolean isIdentityHashFieldInObjectHeader() {
+        return identityHashMode == IdentityHashMode.OBJECT_HEADER.value;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isIdentityHashFieldAtTypeSpecificOffset() {
+        return identityHashMode == IdentityHashMode.TYPE_SPECIFIC.value;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isIdentityHashFieldOptional() {
+        return identityHashMode == IdentityHashMode.OPTIONAL.value;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public int getObjectHeaderIdentityHashOffset() {
+        if (GraalDirectives.inIntrinsic()) {
+            ReplacementsUtil.dynamicAssert(objectHeaderIdentityHashOffset > 0, "must check before calling");
+        } else {
+            assert objectHeaderIdentityHashOffset > 0 : "must check before calling";
+        }
+        return objectHeaderIdentityHashOffset;
     }
 
     public int getArrayBaseOffset(JavaKind kind) {
@@ -176,7 +191,7 @@ public final class ObjectLayout {
     }
 
     public long getArrayElementOffset(JavaKind kind, int index) {
-        return getArrayBaseOffset(kind) + index * sizeInBytes(kind);
+        return getArrayBaseOffset(kind) + ((long) index) * sizeInBytes(kind);
     }
 
     public long getArraySize(JavaKind kind, int length, boolean withOptionalIdHashField) {
@@ -188,14 +203,14 @@ public final class ObjectLayout {
         return getArrayBaseOffset(kind) + ((long) length << getArrayIndexShift(kind));
     }
 
-    public long getArrayOptionalIdentityHashOffset(JavaKind kind, int length) {
-        return getArrayOptionalIdentityHashOffset(getArrayUnalignedSize(kind, length));
+    public long getArrayIdentityHashOffset(JavaKind kind, int length) {
+        return getArrayIdentityHashOffset(getArrayUnalignedSize(kind, length));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long getArrayOptionalIdentityHashOffset(long unalignedSize) {
-        if (hasFixedIdentityHashField()) {
-            return getFixedIdentityHashOffset();
+    public long getArrayIdentityHashOffset(long unalignedSize) {
+        if (isIdentityHashFieldInObjectHeader() || isIdentityHashFieldAtTypeSpecificOffset()) {
+            return getObjectHeaderIdentityHashOffset();
         }
         int align = Integer.BYTES;
         return ((unalignedSize + align - 1) / align) * align;
@@ -204,15 +219,15 @@ public final class ObjectLayout {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long computeArrayTotalSize(long unalignedSize, boolean withOptionalIdHashField) {
         long size = unalignedSize;
-        if (withOptionalIdHashField && !hasFixedIdentityHashField()) {
-            size = getArrayOptionalIdentityHashOffset(size) + Integer.BYTES;
+        if (withOptionalIdHashField && isIdentityHashFieldOptional()) {
+            size = getArrayIdentityHashOffset(size) + Integer.BYTES;
         }
         return alignUp(size);
     }
 
     public int getMinImageHeapInstanceSize() {
         int unalignedSize = firstFieldOffset; // assumes no always-present "synthetic fields"
-        if (!hasFixedIdentityHashField()) {
+        if (isIdentityHashFieldAtTypeSpecificOffset() || isIdentityHashFieldOptional()) {
             int idHashOffset = NumUtil.roundUp(unalignedSize, Integer.BYTES);
             unalignedSize = idHashOffset + Integer.BYTES;
         }
@@ -235,5 +250,20 @@ public final class ObjectLayout {
             return JavaKind.Int;
         }
         return type.getJavaKind();
+    }
+
+    public enum IdentityHashMode {
+        /* At a fixed offset, for all objects (part of the object header). */
+        OBJECT_HEADER(0),
+        /* At a type-specific offset (potentially outside the object header). */
+        TYPE_SPECIFIC(1),
+        /* At a type- or object-specific offset (outside the object header). */
+        OPTIONAL(2);
+
+        final int value;
+
+        IdentityHashMode(int value) {
+            this.value = value;
+        }
     }
 }

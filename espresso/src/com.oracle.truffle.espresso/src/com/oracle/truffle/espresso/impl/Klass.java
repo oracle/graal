@@ -103,9 +103,9 @@ import com.oracle.truffle.espresso.runtime.EspressoFunction;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
-import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.BaseInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.EspressoInterop;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
@@ -338,7 +338,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                         } else {
                             CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(method, arguments, method.resolveParameterKlasses(), toEspressoNode);
                             if (matched != null) {
-                                matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
+                                matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched);
                                 if (matched != null) {
                                     return invoke.execute(matched.getMethod(), null, matched.getConvertedArgs(), true);
                                 }

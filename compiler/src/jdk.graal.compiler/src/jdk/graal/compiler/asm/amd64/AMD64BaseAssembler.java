@@ -63,10 +63,25 @@ import jdk.vm.ci.code.Register.RegisterCategory;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.PlatformKind;
 
+import java.util.EnumSet;
+
 /**
  * This class implements an assembler that can encode most X86 instructions.
  */
 public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
+
+    /**
+     * If this check is false, AVX512 support is absent or incomplete, and it makes little sense to
+     * try to use AVX512 over SSE/AVX instructions.
+     *
+     * @param features feature set to check compatibility against
+     */
+    public static boolean supportsFullAVX512(EnumSet<CPUFeature> features) {
+        return features.contains(CPUFeature.AVX512F) &&
+                        features.contains(CPUFeature.AVX512BW) &&
+                        features.contains(CPUFeature.AVX512VL) &&
+                        features.contains(CPUFeature.AVX512DQ);
+    }
 
     /**
      * @see #getSimdEncoder()

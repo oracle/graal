@@ -158,7 +158,12 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
             eventType.initialize();
 
             if (JavaVersionUtil.JAVA_SPEC < 22) {
-                // It is crucial that mirror events are registered before the actual events.
+                /*
+                 * It is crucial that mirror events are registered before the actual events.
+                 * Starting with JDK 22, this is no longer necessary because
+                 * MetadataRepository.register(...) handles that directly, see code that uses
+                 * MirrorEvents.find(...).
+                 */
                 Class<? extends jdk.jfr.Event> mirrorEventClass = mirrorEventMapping.get(newEventClass.getName());
                 if (mirrorEventClass != null) {
                     registerMirror.invoke(null, mirrorEventClass);
