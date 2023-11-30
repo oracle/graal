@@ -26,10 +26,10 @@ package jdk.graal.compiler.truffle.test.strings;
 
 import java.lang.reflect.InvocationTargetException;
 
-import jdk.graal.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class TStringOpsCopyReturnValueTest extends TStringOpsTest<ArrayCopyWithConversionsNode> {

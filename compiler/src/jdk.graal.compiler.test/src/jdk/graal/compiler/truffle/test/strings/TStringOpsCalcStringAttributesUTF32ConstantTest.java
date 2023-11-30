@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,23 +31,31 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
+import jdk.graal.compiler.replacements.nodes.CalcStringAttributesNode;
 
 @RunWith(Parameterized.class)
-public class TStringOpsIndexOfTwoConsecutiveConstantTest extends TStringOpsIndexOfConstantTest<ArrayIndexOfNode> {
+public class TStringOpsCalcStringAttributesUTF32ConstantTest extends TStringOpsConstantTest<CalcStringAttributesNode> {
 
-    public TStringOpsIndexOfTwoConsecutiveConstantTest(byte[] arrayA, int offsetA, int lengthA, int strideA, int fromIndexA, int v0, int v1, int mask0, int mask1) {
-        super(ArrayIndexOfNode.class, arrayA, offsetA, lengthA, strideA, fromIndexA, new int[]{v0, v1, mask0, mask1});
+    @Parameters(name = "{index}: args: {1}, {2}")
+    public static List<Object[]> data() {
+        return reduceTestData(TStringOpsCalcStringAttributesUTF32Test.data(), 2, 1, 7, 16);
     }
 
-    @Parameters(name = "{index}: offset: {1}, length: {2}, stride: {3}, fromIndex: {4}, toIndex: {5}")
-    public static List<Object[]> data() {
-        return reduceTestData(reduceTestData(TStringOpsIndexOfTwoConsecutiveTest.data(), 2, 1, 7, 16), 4, 0, 1);
+    public TStringOpsCalcStringAttributesUTF32ConstantTest(byte[] array, int offset, int length) {
+        super(CalcStringAttributesNode.class, array, offset, length);
     }
 
     @Test
-    public void testIndexOfTwoConsecutive() {
-        setConstantArgs(DUMMY_LOCATION, arrayA, offsetA, lengthA, stride, fromIndex, values[0], values[1]);
-        test(getIndexOf2ConsecutiveWithStrideIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, stride, fromIndex, values[0], values[1]);
+    public void testUTF32() {
+        setConstantArgs(DUMMY_LOCATION, arrayA, offsetA, lengthA);
+        test(getTStringOpsMethod("calcStringAttributesUTF32", Object.class, int.class, int.class), null, DUMMY_LOCATION, arrayA, offsetA, lengthA);
     }
+
+    @Test
+    public void testUTF32I() {
+        int[] intArray = toIntArray(arrayA);
+        setConstantArgs(DUMMY_LOCATION, intArray, offsetA, lengthA);
+        test(getTStringOpsMethod("calcStringAttributesUTF32I", int[].class, int.class, int.class), null, DUMMY_LOCATION, intArray, offsetA, lengthA);
+    }
+
 }
