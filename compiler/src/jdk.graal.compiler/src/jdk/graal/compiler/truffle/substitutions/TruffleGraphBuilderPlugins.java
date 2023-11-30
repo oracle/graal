@@ -616,18 +616,7 @@ public class TruffleGraphBuilderPlugins {
         int accessTag = types.FrameSlotKind_javaKindToTagIndex.get(accessKind);
         String nameSuffix = accessKind.name();
         boolean isPrimitiveAccess = accessKind.isPrimitive();
-        r.register(new RequiredInvocationPlugin("get" + nameSuffix, Receiver.class, int.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode, ValueNode frameSlotNode) {
-                int frameSlotIndex = maybeGetConstantNumberedFrameSlotIndex(frameNode, frameSlotNode);
-                if (frameSlotIndex >= 0) {
-                    b.addPush(accessKind, new VirtualFrameGetNode(frameNode, frameSlotIndex, accessKind, accessTag, VirtualFrameAccessType.Indexed, VirtualFrameAccessFlags.NON_STATIC));
-                    return true;
-                }
-                return false;
-            }
-        });
-        String[] indexedGetPrefixes = new String[]{"get", "unsafeGet", "expect", "unsafeExpect", "unsafeUcheckedGet"};
+        String[] indexedGetPrefixes = new String[]{"get", "unsafeGet", "expect", "unsafeExpect", "unsafeUncheckedGet"};
         for (String prefix : indexedGetPrefixes) {
             r.register(new RequiredInvocationPlugin(prefix + nameSuffix, Receiver.class, int.class) {
                 @Override
@@ -641,6 +630,19 @@ public class TruffleGraphBuilderPlugins {
                 }
             });
         }
+        r.register(new RequiredInvocationPlugin("get" + nameSuffix + "Static", Receiver.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode, ValueNode frameSlotNode) {
+                int frameSlotIndex = maybeGetConstantNumberedFrameSlotIndex(frameNode, frameSlotNode);
+                if (frameSlotIndex >= 0) {
+                    b.addPush(accessKind, new VirtualFrameGetNode(frameNode, frameSlotIndex, accessKind, accessTag, VirtualFrameAccessType.Indexed,
+                                    isPrimitiveAccess ? VirtualFrameAccessFlags.STATIC_PRIMITIVE : VirtualFrameAccessFlags.STATIC_OBJECT));
+                    return true;
+                }
+                return false;
+            }
+        });
+
         String[] indexedSetPrefixes = new String[]{"set", "unsafeSet"};
         for (String prefix : indexedSetPrefixes) {
             r.register(new RequiredInvocationPlugin(prefix + nameSuffix, Receiver.class, int.class, getJavaClass(accessKind)) {
