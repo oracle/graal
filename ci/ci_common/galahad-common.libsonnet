@@ -70,6 +70,20 @@ local utils = import "common-utils.libsonnet";
       assert utils.contains(b.name, "style") || b.downloads.JAVA_HOME.name == "jpg-jdk" : "Job %s is not using a jpg-jdk: %s" % [b.name, b.downloads];
       b
   ,
+  local replace_mx(b) =
+    # Use the `galahad` branch of mx to ensure that it is sufficiently up to date.
+    if std.objectHas(b, "packages") then
+      if std.objectHas(b.packages, "mx") then
+        b + {
+          packages+: {
+            mx: "galahad"
+          }
+        }
+      else
+        b
+    else
+      b
+  ,
 
   ####### Public API
 
@@ -90,5 +104,5 @@ local utils = import "common-utils.libsonnet";
   },
 
   # only returns jobs that are relevant for galahad
-  filter_builds(builds):: [verify_galahad_job(transform_galahad_job(b)) for b in builds],
+  filter_builds(builds):: [verify_galahad_job(replace_mx(transform_galahad_job(b))) for b in builds],
 }
