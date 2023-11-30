@@ -74,7 +74,7 @@ public final class Target_java_lang_reflect_Method {
     @Substitute
     public Target_jdk_internal_reflect_MethodAccessor acquireMethodAccessor() {
         if (methodAccessor == null) {
-            MissingReflectionRegistrationUtils.forQueriedOnlyExecutable(SubstrateUtil.cast(this, Executable.class));
+            throw MissingReflectionRegistrationUtils.errorForQueriedOnlyExecutable(SubstrateUtil.cast(this, Executable.class));
         }
         return methodAccessor;
     }
