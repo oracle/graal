@@ -35,11 +35,10 @@ import subprocess
 import tempfile
 import csv
 
-import mx_java_benchmarks
+import mx
 import mx_truffle
 import mx_sdk_vm
 
-import mx
 import mx_gate
 from mx_gate import Task
 
@@ -50,14 +49,19 @@ from mx_javamodules import as_java_module
 import mx_sdk_vm_impl
 
 import mx_benchmark
-import mx_graal_benchmark #pylint: disable=unused-import
-import mx_graal_tools #pylint: disable=unused-import
 
 import argparse
 import shlex
 import json
 
+import mx_graal_tools #pylint: disable=unused-import
+
 _suite = mx.suite('compiler')
+
+if 'java-benchmarks' in (s.name for s in _suite.suite_imports):
+    # allows removing the static import of `java-benchmarks` from source code bundles
+    import mx_java_benchmarks
+    import mx_graal_benchmark #pylint: disable=unused-import
 
 """ Prefix for running the VM. """
 _vm_prefix = None

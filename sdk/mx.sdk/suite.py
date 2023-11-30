@@ -243,6 +243,7 @@ suite = {
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "17+",
       "workingSets" : "API,SDK",
+      "graalCompilerSourceEdition": "ignore",
     },
     "org.graalvm.polyglot.processor" : {
       "subDir" : "src",
@@ -270,6 +271,7 @@ suite = {
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "17+",
       "workingSets" : "API,SDK",
+      "graalCompilerSourceEdition": "ignore",
     },
 
     "org.graalvm.word" : {
@@ -312,6 +314,7 @@ suite = {
       "javaCompliance" : "17+",
       "workingSets" : "SDK",
       "checkstyle" : "org.graalvm.word",
+      "graalCompilerSourceEdition": "ignore",
     },
     "org.graalvm.launcher" : {
       "subDir" : "src",
@@ -329,6 +332,7 @@ suite = {
       "javaCompliance" : "17+",
       "workingSets" : "Truffle,Tools",
       "checkstyle" : "org.graalvm.word",
+      "graalCompilerSourceEdition": "ignore",
     },
     "org.graalvm.launcher.test" : {
       "subDir" : "src",
@@ -340,6 +344,7 @@ suite = {
       "javaCompliance" : "17+",
       "workingSets" : "Truffle,Tools,Test",
       "checkstyle" : "org.graalvm.word",
+      "graalCompilerSourceEdition": "ignore",
     },
     "org.graalvm.polyglot.tck" : {
       "subDir" : "src",
@@ -350,6 +355,7 @@ suite = {
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "17+",
       "workingSets" : "API,SDK,Test",
+      "graalCompilerSourceEdition": "ignore",
     },
     "org.graalvm.collections" : {
       "subDir" : "src",
@@ -368,6 +374,7 @@ suite = {
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "17+",
       "workingSets" : "API,SDK,Test",
+      "graalCompilerSourceEdition": "ignore",
     },
     "org.graalvm.home" : {
       "subDir" : "src",
@@ -378,6 +385,7 @@ suite = {
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
+      "graalCompilerSourceEdition": "ignore",
     },
     "org.graalvm.home.test" : {
       "subDir" : "src",
@@ -389,6 +397,7 @@ suite = {
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "17+",
       "workingSets" : "API,SDK",
+      "graalCompilerSourceEdition": "ignore",
     },
     "org.graalvm.jniutils" : {
       "subDir" : "src",
@@ -441,11 +450,13 @@ suite = {
       "workingSets" : "Graal,Test",
       "jacoco" : "exclude",
       "testProject" : True,
+      "graalCompilerSourceEdition": "ignore",
     },
     "org.graalvm.toolchain.test" : {
       "class" : "ToolchainTestProject",
       "subDir" : "src",
       "buildDependencies" : ["LLVM_TOOLCHAIN"],
+      "graalCompilerSourceEdition": "ignore",
     },
     "org.graalvm.shadowed.org.jline": {
       # shaded JLINE_*
@@ -534,6 +545,7 @@ suite = {
       "noMavenJavadoc": True,
       "javac.lint.overrides": 'none',
       "jacoco": "exclude",
+      "graalCompilerSourceEdition": "ignore",
     },
     "org.graalvm.maven.downloader" : {
       "subDir" : "src",
@@ -547,6 +559,7 @@ suite = {
         "java.logging",
         "java.xml",
       ],
+      "graalCompilerSourceEdition": "ignore",
     },
   },
   "licenses" : {
@@ -623,6 +636,7 @@ suite = {
       "maven": {
           "tag": ["default", "public"],
       },
+      "graalCompilerSourceEdition": "ignore",
     },
 
     "NATIVEIMAGE" : {
@@ -734,7 +748,8 @@ suite = {
         "groupId" : "org.graalvm.polyglot",
         "artifactId" : "polyglot",
         "tag": ["default", "public"],
-      }
+      },
+      "graalCompilerSourceEdition": "ignore",
     },
 
     "COLLECTIONS" : {
@@ -802,6 +817,7 @@ suite = {
       "maven": {
         "tag": ["default", "public"],
       },
+      "graalCompilerSourceEdition": "ignore",
     },
 
     "SDK_TEST" : {
@@ -820,6 +836,7 @@ suite = {
         "sdk:LAUNCHER_COMMON"
       ],
       "maven" : False,
+      "graalCompilerSourceEdition": "ignore",
     },
     "JLINE3": {
       # shaded JLINE_*
@@ -855,6 +872,7 @@ suite = {
         "artifactId": "jline",
         "tag": ["default", "public"],
       },
+      "graalCompilerSourceEdition": "ignore",
     },
     "LAUNCHER_COMMON" : {
       "subDir" : "src",
@@ -876,6 +894,7 @@ suite = {
       "maven": {
           "tag": ["default", "public"],
       },
+      "graalCompilerSourceEdition": "ignore",
     },
     "POLYGLOT_TCK" : {
       "subDir" : "src",
@@ -897,6 +916,7 @@ suite = {
       "maven": {
           "tag": ["default", "public"],
       },
+      "graalCompilerSourceEdition": "ignore",
     },
     "JNIUTILS" : {
       "moduleInfo" : {
@@ -954,6 +974,7 @@ suite = {
       },
       "maven": False,
       "testDistribution" : True,
+      "graalCompilerSourceEdition": "ignore",
     },
     "LLVM_TOOLCHAIN": {
       "native": True,
@@ -1072,6 +1093,7 @@ suite = {
       "platformDependent" : True,
       "maven": False,
       "license" : "Apache-2.0-LLVM",
+      "graalCompilerSourceEdition": "ignore",
     },
     "LLVM_TOOLCHAIN_FULL": {
       "description": "Distribution including all of LLVM. Use only for building/testing. Only the content of LLVM_TOOLCHAIN will be included in the llvm-toolchain installable.",
@@ -1090,6 +1112,7 @@ suite = {
       "maven": False,
       "license" : "Apache-2.0-LLVM",
       "defaultBuild" : False,
+      "graalCompilerSourceEdition": "ignore",
     },
     "LLVM_NINJA_TOOLCHAIN": {
       "native": True,
@@ -1150,6 +1173,7 @@ ML=<path:LLVM_TOOLCHAIN>\\bin\\llvm-ml
         "LLVM_TOOLCHAIN",
         "org.graalvm.toolchain.test",
       ],
+      "graalCompilerSourceEdition": "ignore",
     },
   },
 }
