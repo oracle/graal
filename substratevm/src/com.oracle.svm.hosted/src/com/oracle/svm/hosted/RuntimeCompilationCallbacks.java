@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal.isolated;
+package com.oracle.svm.hosted;
 
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.svm.graal.hosted.runtimecompilation.SubstrateProviders;
-import com.oracle.svm.graal.meta.SubstrateConstantFieldProvider;
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.hosted.code.CompileQueue;
+import com.oracle.svm.hosted.meta.HostedUniverse;
 
-public final class IsolateAwareProviders extends SubstrateProviders {
-    public IsolateAwareProviders(AnalysisMetaAccess aMetaAccess, IsolateAwareMetaAccess sMetaAccess) {
-        super(sMetaAccess, new SubstrateConstantFieldProvider(aMetaAccess), new IsolateAwareConstantReflectionProvider(sMetaAccess), new IsolateAwareSnippetReflectionProvider());
-    }
+public interface RuntimeCompilationCallbacks {
+    void onCompileQueueCreation(BigBang bb, HostedUniverse hUniverse, CompileQueue compileQueue);
+
+    void reportAnalysisError(AnalysisUniverse aUniverse, Throwable error);
 }
