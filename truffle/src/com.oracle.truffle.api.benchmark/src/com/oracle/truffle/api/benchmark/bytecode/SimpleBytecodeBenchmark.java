@@ -97,9 +97,7 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
     private static final Source SOURCE_BYTECODE_DSL = Source.create("bm", NAME_BYTECODE_DSL);
     private static final Source SOURCE_BYTECODE_DSL_UNCACHED = Source.create("bm", NAME_BYTECODE_DSL_UNCACHED);
     private static final Source SOURCE_BYTECODE_DSL_UNSAFE = Source.create("bm", NAME_BYTECODE_DSL_UNSAFE);
-    @SuppressWarnings("unused") // temporary unused
     private static final Source SOURCE_BYTECODE_DSL_BE = Source.create("bm", NAME_BYTECODE_DSL_BE);
-    @SuppressWarnings("unused") // temporary unused
     private static final Source SOURCE_BYTECODE_DSL_QUICKENED = Source.create("bm", NAME_BYTECODE_DSL_QUICKENED);
     private static final Source SOURCE_BYTECODE_DSL_ALL = Source.create("bm", NAME_BYTECODE_DSL_ALL);
     private static final Source SOURCE_MANUAL_BCI = Source.create("bm", NAME_MANUAL_BCI);
@@ -575,15 +573,15 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
         doEval(SOURCE_BYTECODE_DSL_UNSAFE);
     }
 
-// @Benchmark
-// public void bytecodeDSLBE() {
-// doEval(SOURCE_BYTECODE_DSL_BE);
-// }
-//
-// @Benchmark
-// public void bytecodeDSLQuicken() {
-// doEval(SOURCE_BYTECODE_DSL_QUICKENED);
-// }
+    @Benchmark
+    public void bytecodeDSLBE() {
+        doEval(SOURCE_BYTECODE_DSL_BE);
+    }
+
+    @Benchmark
+    public void bytecodeDSLQuicken() {
+        doEval(SOURCE_BYTECODE_DSL_QUICKENED);
+    }
 
     @Benchmark
     public void bytecodeDSLAll() {
