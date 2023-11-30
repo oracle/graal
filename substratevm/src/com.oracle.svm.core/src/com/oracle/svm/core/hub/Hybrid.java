@@ -37,9 +37,7 @@ import java.lang.annotation.Target;
  * 
  * <pre>
  *    +--------------------------------------------------+
- *    | pointer to DynamicHub                            |
- *    +--------------------------------------------------+
- *    | identity hashcode                                |
+ *    | object header (same header as for arrays)        |
  *    +--------------------------------------------------+
  *    | array length                                     |
  *    +--------------------------------------------------+

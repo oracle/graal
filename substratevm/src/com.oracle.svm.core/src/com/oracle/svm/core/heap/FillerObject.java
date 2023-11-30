@@ -24,7 +24,10 @@
  */
 package com.oracle.svm.core.heap;
 
-/** The smallest possible instance object, for filling in gaps in the heap. */
+/**
+ * The smallest possible instance object, for filling in gaps in the heap. Note that these instances
+ * may be larger than the object alignment.
+ */
 public final class FillerObject {
     /**
      * This field is registered as accessed with the analysis and ensures that the class is

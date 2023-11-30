@@ -399,7 +399,7 @@ public final class Space {
         UnsignedWord originalSize = LayoutEncoding.getSizeFromObjectInlineInGC(originalObj, false);
         UnsignedWord copySize = originalSize;
         boolean addIdentityHashField = false;
-        if (!ConfigurationValues.getObjectLayout().hasFixedIdentityHashField()) {
+        if (ConfigurationValues.getObjectLayout().isIdentityHashFieldOptional()) {
             Word header = ObjectHeader.readHeaderFromObject(originalObj);
             if (probability(SLOW_PATH_PROBABILITY, ObjectHeaderImpl.hasIdentityHashFromAddressInline(header))) {
                 addIdentityHashField = true;
@@ -424,7 +424,7 @@ public final class Space {
         if (probability(SLOW_PATH_PROBABILITY, addIdentityHashField)) {
             // Must do first: ensures correct object size below and in other places
             int value = IdentityHashCodeSupport.computeHashCodeFromAddress(originalObj);
-            int offset = LayoutEncoding.getOptionalIdentityHashOffset(copy);
+            int offset = LayoutEncoding.getIdentityHashOffset(copy);
             ObjectAccess.writeInt(copy, offset, value, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
             ObjectHeaderImpl.getObjectHeaderImpl().setIdentityHashInField(copy);
         }

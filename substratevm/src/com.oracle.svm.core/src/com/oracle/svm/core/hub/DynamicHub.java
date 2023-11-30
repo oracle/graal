@@ -116,9 +116,11 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.internal.access.JavaLangReflectAccess;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.reflect.CallerSensitive;
@@ -207,7 +209,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private short monitorOffset;
 
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
-    private short optionalIdentityHashOffset;
+    private short identityHashOffset;
 
     /**
      * Bit-set for various boolean flags, to reduce size of instances. It is important that this
@@ -447,22 +449,16 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setData(int layoutEncoding, int typeID, int monitorOffset, int optionalIdentityHashOffset, short typeCheckStart, short typeCheckRange, short typeCheckSlot,
+    public void setData(int layoutEncoding, int typeID, int monitorOffset, int identityHashOffset, short typeCheckStart, short typeCheckRange, short typeCheckSlot,
                     short[] typeCheckSlots, CFunctionPointer[] vtable, long referenceMapIndex, boolean isInstantiated, boolean canInstantiateAsInstance, boolean isProxyClass,
                     boolean isRegisteredForSerialization) {
         assert this.vtable == null : "Initialization must be called only once";
         assert !(!isInstantiated && canInstantiateAsInstance);
-        if (LayoutEncoding.isPureInstance(layoutEncoding)) {
-            ObjectLayout ol = ConfigurationValues.getObjectLayout();
-            assert ol.hasFixedIdentityHashField() ? (optionalIdentityHashOffset == ol.getFixedIdentityHashOffset()) : (optionalIdentityHashOffset > 0);
-        } else {
-            assert optionalIdentityHashOffset == -1;
-        }
 
         this.layoutEncoding = layoutEncoding;
         this.typeID = typeID;
         this.monitorOffset = NumUtil.safeToShort(monitorOffset);
-        this.optionalIdentityHashOffset = NumUtil.safeToShort(optionalIdentityHashOffset);
+        this.identityHashOffset = NumUtil.safeToShort(identityHashOffset);
         this.typeCheckStart = typeCheckStart;
         this.typeCheckRange = typeCheckRange;
         this.typeCheckSlot = typeCheckSlot;
@@ -634,13 +630,25 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return monitorOffset;
     }
 
+    /**
+     * If possible, use {@link LayoutEncoding#getIdentityHashOffset(Object)} instead. If the hash
+     * code field is optional, note that this method may return an offset that is outside the bounds
+     * of a newly allocated object.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    int getOptionalIdentityHashOffset() {
+    public int getIdentityHashOffset() {
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
-        if (ol.hasFixedIdentityHashField()) { // enable elimination of our field
-            return ol.getFixedIdentityHashOffset();
+        if (ol.isIdentityHashFieldInObjectHeader()) { // enable elimination of our field
+            return ol.getObjectHeaderIdentityHashOffset();
         }
-        return optionalIdentityHashOffset;
+
+        int result = identityHashOffset;
+        if (GraalDirectives.inIntrinsic()) {
+            ReplacementsUtil.dynamicAssert(result > 0, "must have an identity hash field");
+        } else {
+            assert result > 0 : "must have an identity hash field";
+        }
+        return result;
     }
 
     public DynamicHub getSuperHub() {

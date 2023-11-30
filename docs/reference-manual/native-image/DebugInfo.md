@@ -154,10 +154,10 @@ So, for example in the DWARF debug info model `java.lang.String` identifies a C+
 This class layout type declares the expected fields like `hash` of type `int` and `value` of type `byte[]` and methods like `String(byte[])`, `charAt(int)`, etc. However, the copy constructor which appears in Java as `String(String)` appears in `gdb` with the signature `String(java.lang.String *)`.
 
 The C++ layout class inherits fields and methods from class (layout) type `java.lang.Object` using C++ public inheritance.
-The latter in turn inherits standard oop (ordinary object pointer) header fields from a special struct class named `_objhdr` which includes two fields. The first field is called
-`hub` and its type is `java.lang.Class *` i.e. it is a pointer to the object's
-class. The second field is called `idHash` and has type `int`. It stores an
-identity hashcode for the object.
+The latter in turn inherits standard oop (ordinary object pointer) header fields from a special struct class named `_objhdr` which includes up to two fields (depending on the VM configuration).
+The first field is called `hub` and its type is `java.lang.Class *` i.e. it is a pointer to the object's class.
+The second field (optional) is called `idHash` and has type `int`.
+It stores an identity hashcode for the object.
 
 The `ptype` command can be used to print details of a specific type.
 Note that the Java type name must be specified in quotes because to escape the embedded `.` characters.
