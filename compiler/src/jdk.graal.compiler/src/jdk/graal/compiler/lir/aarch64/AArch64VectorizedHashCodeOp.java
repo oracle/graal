@@ -201,7 +201,7 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
 
         // if (cnt1 >= elementsPerIteration) && generate_vectorized_loop
         masm.compare(32, cnt1, elementsPerIteration);
-        masm.branchConditionally(ConditionFlag.LT, labelShortUnrolledBegin);
+        masm.branchConditionally(ConditionFlag.LO, labelShortUnrolledBegin);
 
         // index = 0;
         masm.mov(index, 0);
@@ -253,7 +253,7 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
 
         // index < bound;
         masm.cmp(32, index, bound);
-        masm.branchConditionally(ConditionFlag.LT, labelUnrolledVectorLoopBegin);
+        masm.branchConditionally(ConditionFlag.LO, labelUnrolledVectorLoopBegin);
         // }
 
         // assert index == bound && ary1 == &ary[bound];
@@ -291,7 +291,7 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         AArch64Address postIndexAddr = AArch64Address.createImmediateAddress(elSize.bits(), AddressingMode.IMMEDIATE_POST_INDEXED, ary1, elSize.bytes());
 
         masm.cmp(32, index, cnt1);
-        masm.branchConditionally(ConditionFlag.GE, labelShortUnrolledLoopExit);
+        masm.branchConditionally(ConditionFlag.HS, labelShortUnrolledLoopExit);
 
         try (var scratch1 = masm.getScratchRegister(); var scratch2 = masm.getScratchRegister()) {
             var tmp31 = scratch1.getRegister();
@@ -312,13 +312,13 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
             masm.add(32, index, index, 2);
 
             masm.cmp(32, index, cnt1);
-            masm.branchConditionally(ConditionFlag.LT, labelShortUnrolledLoopBegin);
+            masm.branchConditionally(ConditionFlag.LO, labelShortUnrolledLoopBegin);
 
             // }
             // if (i >= cnt1) {
             masm.bind(labelShortUnrolledLoopExit);
             // masm.cmp(32, index, cnt1); // already compared right above and before the jump here
-            masm.branchConditionally(ConditionFlag.GT, labelEnd);
+            masm.branchConditionally(ConditionFlag.HI, labelEnd);
             // result *= 31;
             // result += ary1[index - 1]
             masm.mov(tmp31, 31);
