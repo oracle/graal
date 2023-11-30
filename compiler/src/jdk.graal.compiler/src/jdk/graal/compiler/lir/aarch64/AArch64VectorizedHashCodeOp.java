@@ -242,8 +242,11 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         }
 
         // vresult[i] = vresult[i] * vnext + vtmp[i];
+        // (desugared to: vtmp[i] += vresult[i] * vnext, vresult[i] = vtmp[i])
         for (int idx = 0; idx < nRegs; idx++) {
             masm.neon.mlaVVV(ASIMDSize.FullReg, ElementSize.Word, vtmp[idx], vresult[idx], vnext);
+        }
+        for (int idx = 0; idx < nRegs; idx++) {
             masm.neon.moveVV(ASIMDSize.FullReg, vresult[idx], vtmp[idx]);
         }
 
