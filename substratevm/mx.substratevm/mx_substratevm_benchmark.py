@@ -656,7 +656,7 @@ class SpecJVM2008NativeImageBenchmarkSuite(mx_java_benchmarks.SpecJvm2008Benchma
 
     def extra_image_build_argument(self, benchmark, args):
         # Don't wrap the option `-H:-ParseRuntimeOptions` with `mx_sdk_vm_impl.svm_experimental_options`, as all args are wrapped already.
-        return super().extra_image_build_argument(benchmark, args) + ['-H:-ParseRuntimeOptions']
+        return super().extra_image_build_argument(benchmark, args) + ['-H:-ParseRuntimeOptions', '-H:CompilationExpirationPeriod=600']
 
     def extra_run_arg(self, benchmark, args, image_run_args):
         return super().extra_run_arg(benchmark, args, image_run_args) + SpecJVM2008NativeImageBenchmarkSuite.short_run_args
