@@ -100,10 +100,10 @@ local sc = (import "ci_common/sulong-common.jsonnet");
       [sc.darwin_aarch64, [sc.labsjdk21]],
     ],
     [
-      { name: "weekly-sulong-coverage-jdk21-linux-amd64",    timelimit: "1:00:00" },
-      { name: "weekly-sulong-coverage-jdk21-darwin-amd64",   timelimit: "1:00:00" },
-      { name: "weekly-sulong-coverage-jdk21-windows-amd64",  timelimit: "1:00:00" },
-      { name: "weekly-sulong-coverage-jdk21-linux-aarch64",  timelimit: "1:00:00" },
+      { name: "weekly-sulong-coverage-jdk21-linux-amd64",    timelimit: "2:00:00" },
+      { name: "weekly-sulong-coverage-jdk21-darwin-amd64",   timelimit: "1:30:00" },
+      { name: "weekly-sulong-coverage-jdk21-windows-amd64",  timelimit: "1:30:00" },
+      { name: "weekly-sulong-coverage-jdk21-linux-aarch64",  timelimit: "1:30:00" },
       { name: "weekly-sulong-coverage-jdk21-darwin-aarch64", timelimit: "1:00:00" },
     ]),
 
