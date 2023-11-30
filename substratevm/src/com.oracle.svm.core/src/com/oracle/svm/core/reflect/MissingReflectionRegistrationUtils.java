@@ -54,6 +54,17 @@ public final class MissingReflectionRegistrationUtils {
         report(exception);
     }
 
+    public static MissingReflectionRegistrationError errorForQueriedOnlyField(Field field) {
+        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("read or write field", field.toString()),
+                        field.getClass(), field.getDeclaringClass(), field.getName(), null);
+        report(exception);
+        /*
+         * If report doesn't throw, we throw the exception anyway since this is a Native
+         * Image-specific error that is unrecoverable in any case.
+         */
+        return exception;
+    }
+
     public static void forMethod(Class<?> declaringClass, String methodName, Class<?>[] paramTypes) {
         StringJoiner paramTypeNames = new StringJoiner(", ", "(", ")");
         if (paramTypes != null) {

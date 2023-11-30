@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
 
 public class ReflectionRegistryAdapter extends RegistryAdapter {
     private final RuntimeReflectionSupport reflectionSupport;
@@ -89,16 +90,12 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
 
     @Override
     public void registerPublicFields(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
-        if (!queriedOnly) {
-            reflectionSupport.registerAllFieldsQuery(condition, type);
-        }
+        ((ReflectionDataBuilder) reflectionSupport).registerAllFieldsQuery(condition, queriedOnly, type);
     }
 
     @Override
     public void registerDeclaredFields(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
-        if (!queriedOnly) {
-            reflectionSupport.registerAllDeclaredFieldsQuery(condition, type);
-        }
+        ((ReflectionDataBuilder) reflectionSupport).registerAllDeclaredFieldsQuery(condition, queriedOnly, type);
     }
 
     @Override
