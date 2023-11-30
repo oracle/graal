@@ -327,7 +327,11 @@ public abstract class NativeImageCodeCache {
     protected void buildRuntimeMetadata(DebugContext debug, SnippetReflectionProvider snippetReflection, CFunctionPointer firstMethod, UnsignedWord codeSize) {
         // Build run-time metadata.
         HostedFrameInfoCustomization frameInfoCustomization = new HostedFrameInfoCustomization();
-        CodeInfoEncoder.Encoders encoders = new CodeInfoEncoder.Encoders(true);
+        CodeInfoEncoder.Encoders encoders = new CodeInfoEncoder.Encoders(true, clazz -> {
+            if (clazz != null && !imageHeap.hMetaAccess.optionalLookupJavaType(clazz).isPresent()) {
+                throw VMError.shouldNotReachHere("Type added to the runtime metadata without being seen by the analysis: %s", clazz);
+            }
+        });
         HostedConstantAccess hostedConstantAccess = new HostedConstantAccess(snippetReflection);
         CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(frameInfoCustomization, encoders, hostedConstantAccess);
         DeadlockWatchdog watchdog = ImageSingletons.lookup(DeadlockWatchdog.class);

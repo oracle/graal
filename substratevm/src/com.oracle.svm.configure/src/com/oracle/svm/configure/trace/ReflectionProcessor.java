@@ -49,9 +49,14 @@ import jdk.vm.ci.meta.MetaUtil;
 
 class ReflectionProcessor extends AbstractProcessor {
     private final AccessAdvisor advisor;
+    private boolean trackReflectionMetadata = true;
 
     ReflectionProcessor(AccessAdvisor advisor) {
         this.advisor = advisor;
+    }
+
+    public void setTrackReflectionMetadata(boolean trackReflectionMetadata) {
+        this.trackReflectionMetadata = trackReflectionMetadata;
     }
 
     @Override
@@ -111,15 +116,15 @@ class ReflectionProcessor extends AbstractProcessor {
             }
         }
         ConfigurationMemberDeclaration declaration = ConfigurationMemberDeclaration.PUBLIC;
-        ConfigurationMemberAccessibility accessibility = Boolean.TRUE.equals(entry.get("result")) ? ConfigurationMemberAccessibility.ACCESSED : ConfigurationMemberAccessibility.QUERIED;
+        ConfigurationMemberAccessibility accessibility = ConfigurationMemberAccessibility.QUERIED;
         ConfigurationTypeDescriptor clazzOrDeclaringClass = entry.containsKey("declaring_class") ? descriptorForClass(entry.get("declaring_class")) : clazz;
         switch (function) {
             case "getDeclaredFields": {
-                configuration.getOrCreateType(condition, clazz).setAllDeclaredFields();
+                configuration.getOrCreateType(condition, clazz).setAllDeclaredFields(ConfigurationMemberAccessibility.ACCESSED);
                 break;
             }
             case "getFields": {
-                configuration.getOrCreateType(condition, clazz).setAllPublicFields();
+                configuration.getOrCreateType(condition, clazz).setAllPublicFields(ConfigurationMemberAccessibility.ACCESSED);
                 break;
             }
 
@@ -189,10 +194,10 @@ class ReflectionProcessor extends AbstractProcessor {
                 declaration = "getDeclaredMethod".equals(function) ? ConfigurationMemberDeclaration.DECLARED : ConfigurationMemberDeclaration.PRESENT;
                 // fall through
             case "getMethod": {
-                accessibility = (accessibility == ConfigurationMemberAccessibility.ACCESSED || function.equals("invokeMethod") || function.equals("findMethodHandle"))
+                expectSize(args, 2);
+                accessibility = (!trackReflectionMetadata || function.equals("invokeMethod") || function.equals("findMethodHandle"))
                                 ? ConfigurationMemberAccessibility.ACCESSED
                                 : ConfigurationMemberAccessibility.QUERIED;
-                expectSize(args, 2);
                 String name = (String) args.get(0);
                 List<?> parameterTypes = (List<?>) args.get(1);
                 if (parameterTypes == null) { // tolerated and equivalent to no parameter types
@@ -211,7 +216,7 @@ class ReflectionProcessor extends AbstractProcessor {
                 declaration = "getDeclaredConstructor".equals(function) ? ConfigurationMemberDeclaration.DECLARED : ConfigurationMemberDeclaration.PRESENT;
                 // fall through
             case "getConstructor": {
-                accessibility = (accessibility == ConfigurationMemberAccessibility.ACCESSED || function.equals("invokeConstructor") || function.equals("findConstructorHandle"))
+                accessibility = (!trackReflectionMetadata || function.equals("invokeConstructor") || function.equals("findConstructorHandle"))
                                 ? ConfigurationMemberAccessibility.ACCESSED
                                 : ConfigurationMemberAccessibility.QUERIED;
                 List<String> parameterTypes = singleElement(args);

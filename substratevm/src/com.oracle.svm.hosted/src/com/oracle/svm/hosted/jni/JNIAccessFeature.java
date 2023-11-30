@@ -220,7 +220,9 @@ public class JNIAccessFeature implements Feature {
         public void register(ConfigurationCondition condition, boolean queriedOnly, Executable... executables) {
             requireNonNull(executables, "executable");
             abortIfSealed();
-            registerConditionalConfiguration(condition, (cnd) -> newMethods.addAll(Arrays.asList(executables)));
+            if (!queriedOnly) {
+                registerConditionalConfiguration(condition, (cnd) -> newMethods.addAll(Arrays.asList(executables)));
+            }
         }
 
         @Override

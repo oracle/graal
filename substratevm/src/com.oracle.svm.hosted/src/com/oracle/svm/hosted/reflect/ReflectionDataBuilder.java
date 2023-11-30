@@ -53,6 +53,7 @@ import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -205,7 +206,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             setQueryFlag(clazz, ALL_CLASSES_FLAG);
             try {
                 for (Class<?> innerClass : clazz.getClasses()) {
-                    innerClasses.computeIfAbsent(innerClass.getDeclaringClass(), c -> ConcurrentHashMap.newKeySet()).add(innerClass);
+                    if (innerClass.getDeclaringClass() != null) {
+                        /* Malformed inner classes can have no declaring class */
+                        innerClasses.computeIfAbsent(innerClass.getDeclaringClass(), c -> ConcurrentHashMap.newKeySet()).add(innerClass);
+                    }
                     registerClass(cnd, innerClass, false, !MissingRegistrationUtils.throwMissingRegistrationErrors());
                 }
             } catch (LinkageError e) {
@@ -498,7 +502,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         registerAllFieldsQuery(condition, false, clazz);
     }
 
-    private void registerAllFieldsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz) {
+    public void registerAllFieldsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz) {
         guaranteeNotRuntimeConditionForQueries(condition, queriedOnly);
         runConditionalInAnalysisTask(condition, (cnd) -> {
             for (Class<?> current = clazz; current != null; current = current.getSuperclass()) {
@@ -517,7 +521,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         registerAllDeclaredFieldsQuery(condition, false, clazz);
     }
 
-    private void registerAllDeclaredFieldsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz) {
+    public void registerAllDeclaredFieldsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz) {
         runConditionalInAnalysisTask(condition, (cnd) -> {
             setQueryFlag(clazz, ALL_DECLARED_FIELDS_FLAG);
             try {
@@ -559,7 +563,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
 
         var cndValue = registeredFields.computeIfAbsent(analysisField, f -> new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), reflectField));
-        cndValue.getConditions().addCondition(cnd);
+        if (!queriedOnly) {
+            /* queryOnly methods are conditioned by the type itself */
+            cndValue.getConditions().addCondition(cnd);
+        }
 
         /*
          * We need to run this even if the method has already been registered, in case it was only
@@ -753,6 +760,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
 
         /*
+         * In some rare cases, the type of the field can be absent from its generic signature.
+         */
+        metaAccess.lookupJavaType(reflectField.getType()).registerAsReachable("Is present in a Field object reconstructed by reflection");
+
+        /*
          * The generic signature is parsed at run time, so we need to make all the types necessary
          * for parsing also available at run time.
          */
@@ -766,6 +778,15 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerTypesForMethod(AnalysisMethod analysisMethod, Executable reflectExecutable) {
+        /*
+         * In some rare cases, the parameter, exception or return types of the method can be absent
+         * from their generic signature.
+         */
+        Arrays.stream(reflectExecutable.getParameterTypes()).forEach(clazz -> metaAccess.lookupJavaType(clazz).registerAsReachable("Is present in an Executable object reconstructed by reflection"));
+        Arrays.stream(reflectExecutable.getExceptionTypes()).forEach(clazz -> metaAccess.lookupJavaType(clazz).registerAsReachable("Is present in an Executable object reconstructed by reflection"));
+        if (reflectExecutable instanceof Method method) {
+            metaAccess.lookupJavaType(method.getReturnType()).registerAsReachable("Is present in a Method object reconstructed by reflection");
+        }
         /*
          * The generic signature is parsed at run time, so we need to make all the types necessary
          * for parsing also available at run time.

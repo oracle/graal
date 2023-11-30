@@ -44,9 +44,13 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     }
 
     @Override
-    public TypeResult<ConfigurationType> resolveType(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives, boolean includeAllElements) {
+    public TypeResult<ConfigurationType> resolveType(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives) {
         ConfigurationType type = configuration.get(condition, typeDescriptor);
-        ConfigurationType result = type != null ? type : new ConfigurationType(condition, typeDescriptor, includeAllElements);
+        /*
+         * The type is not immediately set with all elements included. These are added afterwards
+         * when parsing the correspondind fields to check for overriding values
+         */
+        ConfigurationType result = type != null ? type : new ConfigurationType(condition, typeDescriptor, false);
         return TypeResult.forType(typeDescriptor.toString(), result);
     }
 
@@ -134,15 +138,15 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     }
 
     @Override
-    public void registerPublicFields(UnresolvedConfigurationCondition condition, ConfigurationType type) {
+    public void registerPublicFields(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is already a part of the type");
-        type.setAllPublicFields();
+        type.setAllPublicFields(queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
     }
 
     @Override
-    public void registerDeclaredFields(UnresolvedConfigurationCondition condition, ConfigurationType type) {
+    public void registerDeclaredFields(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is already a part of the type");
-        type.setAllDeclaredFields();
+        type.setAllDeclaredFields(queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
     }
 
     @Override
