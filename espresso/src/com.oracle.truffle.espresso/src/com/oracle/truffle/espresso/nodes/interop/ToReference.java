@@ -471,6 +471,16 @@ public abstract class ToReference extends ToEspressoNode {
     public abstract static class ToList extends ToReference {
         protected static final int LIMIT = 4;
 
+        @Specialization(guards = {
+                        "interop.isNull(value)",
+                        "!isStaticObject(value)"
+        })
+        public StaticObject doForeignNull(Object value,
+                        @Bind("getLanguage()") EspressoLanguage language,
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+            return StaticObject.createForeignNull(language, value);
+        }
+
         @Specialization
         public StaticObject doEspresso(StaticObject value,
                         @Cached InstanceOf.Dynamic instanceOf,
@@ -509,6 +519,16 @@ public abstract class ToReference extends ToEspressoNode {
     @GenerateUncached
     public abstract static class ToCollection extends ToReference {
         protected static final int LIMIT = 4;
+
+        @Specialization(guards = {
+                        "interop.isNull(value)",
+                        "!isStaticObject(value)"
+        })
+        public StaticObject doForeignNull(Object value,
+                        @Bind("getLanguage()") EspressoLanguage language,
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+            return StaticObject.createForeignNull(language, value);
+        }
 
         @Specialization
         public StaticObject doEspresso(StaticObject value,
@@ -549,6 +569,16 @@ public abstract class ToReference extends ToEspressoNode {
     public abstract static class ToIterable extends ToReference {
         protected static final int LIMIT = 4;
 
+        @Specialization(guards = {
+                        "interop.isNull(value)",
+                        "!isStaticObject(value)"
+        })
+        public StaticObject doForeignNull(Object value,
+                        @Bind("getLanguage()") EspressoLanguage language,
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+            return StaticObject.createForeignNull(language, value);
+        }
+
         @Specialization
         public StaticObject doEspresso(StaticObject value,
                         @Cached InstanceOf.Dynamic instanceOf,
@@ -587,6 +617,16 @@ public abstract class ToReference extends ToEspressoNode {
     @GenerateUncached
     public abstract static class ToIterator extends ToReference {
         protected static final int LIMIT = 4;
+
+        @Specialization(guards = {
+                        "interop.isNull(value)",
+                        "!isStaticObject(value)"
+        })
+        public StaticObject doForeignNull(Object value,
+                        @Bind("getLanguage()") EspressoLanguage language,
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+            return StaticObject.createForeignNull(language, value);
+        }
 
         @Specialization
         public StaticObject doEspresso(StaticObject value,
@@ -627,6 +667,16 @@ public abstract class ToReference extends ToEspressoNode {
     public abstract static class ToMap extends ToReference {
         protected static final int LIMIT = 4;
 
+        @Specialization(guards = {
+                        "interop.isNull(value)",
+                        "!isStaticObject(value)"
+        })
+        public StaticObject doForeignNull(Object value,
+                        @Bind("getLanguage()") EspressoLanguage language,
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+            return StaticObject.createForeignNull(language, value);
+        }
+
         @Specialization
         public StaticObject doEspresso(StaticObject value,
                         @Cached InstanceOf.Dynamic instanceOf,
@@ -665,6 +715,16 @@ public abstract class ToReference extends ToEspressoNode {
     @GenerateUncached
     public abstract static class ToSet extends ToReference {
         protected static final int LIMIT = 4;
+
+        @Specialization(guards = {
+                        "interop.isNull(value)",
+                        "!isStaticObject(value)"
+        })
+        public StaticObject doForeignNull(Object value,
+                        @Bind("getLanguage()") EspressoLanguage language,
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+            return StaticObject.createForeignNull(language, value);
+        }
 
         @Specialization
         public StaticObject doEspresso(StaticObject value,
@@ -1658,6 +1718,16 @@ public abstract class ToReference extends ToEspressoNode {
         protected static final int LIMIT = 4;
 
         @Specialization(guards = {
+                        "interop.isNull(value)",
+                        "!isStaticObject(value)"
+        })
+        public StaticObject doForeignNull(Object value,
+                        @Bind("getLanguage()") EspressoLanguage language,
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+            return StaticObject.createForeignNull(language, value);
+        }
+
+        @Specialization(guards = {
                         "!isStaticObject(value)",
                         "interop.isException(value)",
                         "!isEspressoException(value)"
@@ -1687,6 +1757,16 @@ public abstract class ToReference extends ToEspressoNode {
     @GenerateUncached
     public abstract static class ToThrowable extends ToReference {
         protected static final int LIMIT = 4;
+
+        @Specialization(guards = {
+                        "interop.isNull(value)",
+                        "!isStaticObject(value)"
+        })
+        public StaticObject doForeignNull(Object value,
+                        @Bind("getLanguage()") EspressoLanguage language,
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+            return StaticObject.createForeignNull(language, value);
+        }
 
         @Specialization
         public StaticObject doEspresso(StaticObject value,
@@ -1723,6 +1803,16 @@ public abstract class ToReference extends ToEspressoNode {
     @GenerateUncached
     public abstract static class ToException extends ToReference {
         protected static final int LIMIT = 4;
+
+        @Specialization(guards = {
+                        "interop.isNull(value)",
+                        "!isStaticObject(value)"
+        })
+        public StaticObject doForeignNull(Object value,
+                        @Bind("getLanguage()") EspressoLanguage language,
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+            return StaticObject.createForeignNull(language, value);
+        }
 
         @Specialization
         public StaticObject doEspresso(StaticObject value,
@@ -1763,6 +1853,16 @@ public abstract class ToReference extends ToEspressoNode {
     @GenerateUncached
     public abstract static class ToRuntimeException extends ToReference {
         protected static final int LIMIT = 4;
+
+        @Specialization(guards = {
+                        "interop.isNull(value)",
+                        "!isStaticObject(value)"
+        })
+        public StaticObject doForeignNull(Object value,
+                        @Bind("getLanguage()") EspressoLanguage language,
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+            return StaticObject.createForeignNull(language, value);
+        }
 
         @Specialization
         public StaticObject doEspresso(StaticObject value,
