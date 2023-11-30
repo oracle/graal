@@ -992,6 +992,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 targetRegister = AMD64.r10;
             }
             AllocatableValue targetAddress = targetRegister.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRGeneratorTool().getLIRKindTool()));
+            gen.emitHalt();gen.emitHalt();gen.emitHalt();
             gen.emitMove(targetAddress, operand(callTarget.computedAddress()));
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
             vzeroupperBeforeCall((SubstrateAMD64LIRGenerator) getLIRGeneratorTool(), parameters, callState, (SharedMethod) targetMethod);
