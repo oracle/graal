@@ -70,10 +70,8 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
     @Temp({OperandFlag.REG}) Value[] temp;
     @Temp({OperandFlag.REG}) Value[] vectorTemp;
 
-    /** Number of vector registers to use per loop iteration. */
-    public static int VECTOR_COUNT = 4;
-    /** If true, tries to use NEON LD1 (multiple structures) instruction, else, uses LDR or LDP. */
-    public static boolean USE_LD1 = false;
+    /** Number of vector registers to use per loop iteration (2, 4, or 8). */
+    private static final int VECTOR_COUNT = 4;
 
     public AArch64VectorizedHashCodeOp(LIRGeneratorTool tool,
                     AllocatableValue result, AllocatableValue arrayStart, AllocatableValue length, AllocatableValue initialValue, JavaKind arrayKind) {
@@ -237,7 +235,7 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         // vtmp = ary1[index:index+elementsPerIteration];
         for (int ldVi = 0; ldVi < nRegs; ldVi += regsFilledPerLoad) {
             boolean postIndex = true;
-            loadConsecutiveVectors(masm, loadVecSize, loadVecBits, elSize, ary1, vtmp, ldVi, consecutiveRegs, postIndex, USE_LD1);
+            loadConsecutiveVectors(masm, loadVecSize, loadVecBits, elSize, ary1, vtmp, ldVi, consecutiveRegs, postIndex, false);
             extendVectorsToWord(masm, unsigned, loadVecBits, elSize, vtmp, ldVi, consecutiveRegs);
         }
 
@@ -270,7 +268,7 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         masm.adrpAdd(coefAddrReg);
         for (int i = 0; i < nRegs; i += maxConsecutiveRegs) {
             boolean postIndex = maxConsecutiveRegs < nRegs;
-            loadConsecutiveVectors(masm, ASIMDSize.FullReg, ASIMDSize.FullReg.bits(), ElementSize.Word, coefAddrReg, vcoef, i, maxConsecutiveRegs, postIndex, USE_LD1);
+            loadConsecutiveVectors(masm, ASIMDSize.FullReg, ASIMDSize.FullReg.bits(), ElementSize.Word, coefAddrReg, vcoef, i, maxConsecutiveRegs, postIndex, false);
         }
 
         // vresult *= vcoef;
