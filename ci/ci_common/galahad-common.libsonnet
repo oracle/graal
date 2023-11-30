@@ -84,7 +84,7 @@ local utils = import "common-utils.libsonnet";
     # Working a round by using arrays.
     [GALAHAD_PROPERTY]:: [true]
   },
-  # Exclude a jobs in the galahad gate
+  # Exclude a job in the galahad gate
   exclude:: {
     [GALAHAD_PROPERTY]:: [false]
   },
