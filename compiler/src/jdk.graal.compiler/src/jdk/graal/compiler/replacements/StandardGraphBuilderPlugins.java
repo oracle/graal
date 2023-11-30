@@ -2525,7 +2525,6 @@ public class StandardGraphBuilderPlugins {
                         ValueNode array, ValueNode fromIndex, ValueNode length, ValueNode initialValue, ValueNode basicType) {
             try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
                 if (basicType.isConstant()) {
-                    ValueNode arrayStart;
                     int basicTypeAsInt = basicType.asJavaConstant().asInt();
                     JavaKind componentType = switch (basicTypeAsInt) {
                         case T_BOOLEAN -> JavaKind.Boolean;
@@ -2533,11 +2532,15 @@ public class StandardGraphBuilderPlugins {
                         case T_BYTE -> JavaKind.Byte;
                         case T_SHORT -> JavaKind.Short;
                         case T_INT -> JavaKind.Int;
-                        default -> throw GraalError.shouldNotReachHere("Unsupported kind " + basicTypeAsInt);
+                        default -> JavaKind.Illegal;
                     };
+                    if (componentType == JavaKind.Illegal) {
+                        // Unsupported array element type
+                        return false;
+                    }
 
                     // for T_CHAR, the intrinsic accepts both byte[] and char[]
-                    arrayStart = helper.arrayElementPointer(array, componentType, fromIndex, componentType == JavaKind.Char || componentType == JavaKind.Boolean);
+                    ValueNode arrayStart = helper.arrayElementPointer(array, componentType, fromIndex, componentType == JavaKind.Char || componentType == JavaKind.Boolean);
                     b.addPush(JavaKind.Int, new VectorizedHashCodeNode(arrayStart, length, initialValue, componentType));
                     return true;
                 }
