@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -396,13 +396,13 @@ public class SubstrateGraphKit extends GraphKit {
     }
 
     public void appendStateSplitProxy(FrameState state) {
-        StateSplitProxyNode proxy = new StateSplitProxyNode(null);
+        StateSplitProxyNode proxy = new StateSplitProxyNode();
         append(proxy);
         proxy.setStateAfter(state);
     }
 
     public void appendStateSplitProxy(FrameStateBuilder stateBuilder) {
-        StateSplitProxyNode proxy = new StateSplitProxyNode(null);
+        StateSplitProxyNode proxy = new StateSplitProxyNode();
         append(proxy);
         proxy.setStateAfter(stateBuilder.create(bci(), proxy));
     }

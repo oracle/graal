@@ -1230,7 +1230,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
              * a deopt loop by capturing a precise state.
              */
             speculation = SpeculationLog.NO_SPECULATION;
-            StateSplitProxyNode stateSplit = append(new StateSplitProxyNode(null, true));
+            StateSplitProxyNode stateSplit = append(new StateSplitProxyNode());
             stateSplit.setStateAfter(createFrameState(bci(), stateSplit));
         }
         DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved, speculation));
