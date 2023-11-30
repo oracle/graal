@@ -24,35 +24,6 @@
  */
 package jdk.graal.compiler.truffle;
 
-import static jdk.graal.compiler.core.CompilationWrapper.ExceptionAction.Diagnose;
-import static jdk.graal.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
-import static jdk.graal.compiler.phases.OptimisticOptimizations.ALL;
-import static jdk.graal.compiler.phases.OptimisticOptimizations.Optimization.RemoveNeverExecutedCode;
-import static jdk.graal.compiler.phases.OptimisticOptimizations.Optimization.UseExceptionProbability;
-import static jdk.graal.compiler.phases.OptimisticOptimizations.Optimization.UseTypeCheckHints;
-import static jdk.graal.compiler.phases.OptimisticOptimizations.Optimization.UseTypeCheckedInlining;
-import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
-
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.PrintStream;
-import java.security.Timestamp;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
-
-import jdk.graal.compiler.code.DisassemblerProvider;
-import jdk.graal.compiler.code.ObjdumpDisassemblerProvider;
-import jdk.graal.compiler.core.GraalCompilerOptions;
-import jdk.graal.compiler.core.common.GraalOptions;
-import org.graalvm.collections.EconomicMap;
-
 import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
@@ -60,7 +31,6 @@ import com.oracle.truffle.compiler.TruffleCompiler;
 import com.oracle.truffle.compiler.TruffleCompilerAssumptionDependency;
 import com.oracle.truffle.compiler.TruffleCompilerListener;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
-
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.CompilationPrinter;
@@ -116,6 +86,27 @@ import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.JavaConstant;
+import org.graalvm.collections.EconomicMap;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
+
+import static jdk.graal.compiler.core.CompilationWrapper.ExceptionAction.Diagnose;
+import static jdk.graal.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
+import static jdk.graal.compiler.phases.OptimisticOptimizations.ALL;
+import static jdk.graal.compiler.phases.OptimisticOptimizations.Optimization.RemoveNeverExecutedCode;
+import static jdk.graal.compiler.phases.OptimisticOptimizations.Optimization.UseExceptionProbability;
+import static jdk.graal.compiler.phases.OptimisticOptimizations.Optimization.UseTypeCheckHints;
+import static jdk.graal.compiler.phases.OptimisticOptimizations.Optimization.UseTypeCheckedInlining;
+import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
 
 /**
  * Coordinates partial evaluation of a Truffle AST and subsequent compilation via Graal.
