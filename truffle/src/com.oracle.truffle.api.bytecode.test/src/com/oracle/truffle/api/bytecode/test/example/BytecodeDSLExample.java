@@ -320,7 +320,7 @@ public abstract class BytecodeDSLExample extends DebugBytecodeRootNode implement
     public static final class GetSourcePosition {
         @Specialization
         public static Object doOperation(@Bind("$root") Node rootNode, @Bind("$bci") int bci) {
-            return ((BytecodeDSLExample) rootNode).getSourceSectionAtBci(bci);
+            return ((BytecodeDSLExample) rootNode).findSourceSectionAtBci(bci);
         }
     }
 

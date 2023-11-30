@@ -286,7 +286,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         ElementUtils.findMethod(types.BytecodeOSRNode, "restoreParentFrameFromArguments"),
                         ElementUtils.findMethod(types.BytecodeRootNode, "setUncachedInterpreterThreshold"),
                         ElementUtils.findMethod(types.BytecodeRootNode, "materializeInstrumentTree"),
-                        ElementUtils.findMethod(types.BytecodeRootNode, "getSourceSectionAtBci"),
+                        ElementUtils.findMethod(types.BytecodeRootNode, "findSourceSectionAtBci"),
                         ElementUtils.findMethod(types.BytecodeRootNode, "findBciOfOperationNode"),
                         ElementUtils.findMethod(types.BytecodeRootNode, "readBciFromFrame"),
                         ElementUtils.findMethod(types.BytecodeRootNode, "getLocals"),

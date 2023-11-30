@@ -89,14 +89,14 @@ public class BytecodeDSLExampleSourcesTest extends AbstractBytecodeDSLExampleTes
         assertEquals(node.getSourceSection().getCharLength(), 8);
 
         // load constant
-        assertEquals(node.getSourceSectionAtBci(0).getSource(), source);
-        assertEquals(node.getSourceSectionAtBci(0).getCharIndex(), 7);
-        assertEquals(node.getSourceSectionAtBci(0).getCharLength(), 1);
+        assertEquals(node.findSourceSectionAtBci(0).getSource(), source);
+        assertEquals(node.findSourceSectionAtBci(0).getCharIndex(), 7);
+        assertEquals(node.findSourceSectionAtBci(0).getCharLength(), 1);
 
         // return
-        assertEquals(node.getSourceSectionAtBci(2).getSource(), source);
-        assertEquals(node.getSourceSectionAtBci(2).getCharIndex(), 0);
-        assertEquals(node.getSourceSectionAtBci(2).getCharLength(), 8);
+        assertEquals(node.findSourceSectionAtBci(2).getSource(), source);
+        assertEquals(node.findSourceSectionAtBci(2).getCharIndex(), 0);
+        assertEquals(node.findSourceSectionAtBci(2).getCharLength(), 8);
     }
 
     @Test
@@ -209,12 +209,12 @@ public class BytecodeDSLExampleSourcesTest extends AbstractBytecodeDSLExampleTes
             // The source section for both should match the expected value.
             for (int j = i * 2; j < i * 2 + 2; j++) {
                 if (expected[i] == null) {
-                    assertEquals("Mismatch at bci " + j, null, root.getSourceSectionAtBci(j));
+                    assertEquals("Mismatch at bci " + j, null, root.findSourceSectionAtBci(j));
                 } else {
-                    assertNotNull("Mismatch at bci " + j, root.getSourceSectionAtBci(j));
-                    assertEquals("Mismatch at bci " + j, sources[expected[i][0]], root.getSourceSectionAtBci(j).getSource());
-                    assertEquals("Mismatch at bci " + j, expected[i][1], root.getSourceSectionAtBci(j).getCharIndex());
-                    assertEquals("Mismatch at bci " + j, expected[i][2], root.getSourceSectionAtBci(j).getCharLength());
+                    assertNotNull("Mismatch at bci " + j, root.findSourceSectionAtBci(j));
+                    assertEquals("Mismatch at bci " + j, sources[expected[i][0]], root.findSourceSectionAtBci(j).getSource());
+                    assertEquals("Mismatch at bci " + j, expected[i][1], root.findSourceSectionAtBci(j).getCharIndex());
+                    assertEquals("Mismatch at bci " + j, expected[i][2], root.findSourceSectionAtBci(j).getCharLength());
                 }
             }
         }
@@ -365,13 +365,13 @@ public class BytecodeDSLExampleSourcesTest extends AbstractBytecodeDSLExampleTes
         assertEquals(node.getSourceSection().getCharLength(), 8);
 
         // load constant
-        assertEquals(node.getSourceSectionAtBci(0).getSource(), source);
-        assertEquals(node.getSourceSectionAtBci(0).getCharIndex(), 7);
-        assertEquals(node.getSourceSectionAtBci(0).getCharLength(), 1);
+        assertEquals(node.findSourceSectionAtBci(0).getSource(), source);
+        assertEquals(node.findSourceSectionAtBci(0).getCharIndex(), 7);
+        assertEquals(node.findSourceSectionAtBci(0).getCharLength(), 1);
 
         // return
-        assertEquals(node.getSourceSectionAtBci(2).getSource(), source);
-        assertEquals(node.getSourceSectionAtBci(2).getCharIndex(), 0);
-        assertEquals(node.getSourceSectionAtBci(2).getCharLength(), 8);
+        assertEquals(node.findSourceSectionAtBci(2).getSource(), source);
+        assertEquals(node.findSourceSectionAtBci(2).getCharIndex(), 0);
+        assertEquals(node.findSourceSectionAtBci(2).getCharLength(), 8);
     }
 }

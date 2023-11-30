@@ -139,7 +139,7 @@ public abstract class AbstractCompilationTask implements TruffleCompilationTask 
         }
         SourceSection section = null;
         if (truffleNode.getRootNode() instanceof BytecodeRootNode bytecodeRootNode) {
-            section = BytecodeRootNode.getSourceSectionFromLocation(truffleNode);
+            section = BytecodeRootNode.findSourceSectionFromLocation(truffleNode);
         } else if (truffleNode instanceof DirectCallNode) {
             section = ((DirectCallNode) truffleNode).getCurrentRootNode().getSourceSection();
         }

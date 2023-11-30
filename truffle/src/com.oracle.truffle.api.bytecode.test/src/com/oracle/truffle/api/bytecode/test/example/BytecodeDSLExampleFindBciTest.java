@@ -206,7 +206,7 @@ public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTes
             // baz
             int bazBci = bytecodeIndices.get(1);
             assertNotEquals(-1, bazBci);
-            SourceSection bazSourceSection = baz.getSourceSectionAtBci(bazBci);
+            SourceSection bazSourceSection = baz.findSourceSectionAtBci(bazBci);
             assertEquals(bazSource, bazSourceSection.getSource());
             if (fooArgument) {
                 assertEquals("<trace1>", bazSourceSection.getCharacters());
@@ -217,14 +217,14 @@ public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTes
             // bar
             int barBci = bytecodeIndices.get(2);
             assertNotEquals(-1, barBci);
-            SourceSection barSourceSection = bar.getSourceSectionAtBci(barBci);
+            SourceSection barSourceSection = bar.findSourceSectionAtBci(barBci);
             assertEquals(barSource, barSourceSection.getSource());
             assertEquals("baz(arg0)", barSourceSection.getCharacters());
 
             // foo
             int fooBci = bytecodeIndices.get(3);
             assertNotEquals(-1, fooBci);
-            SourceSection fooSourceSection = foo.getSourceSectionAtBci(fooBci);
+            SourceSection fooSourceSection = foo.findSourceSectionAtBci(fooBci);
             assertEquals(fooSource, fooSourceSection.getSource());
             assertEquals("bar(arg0)", fooSourceSection.getCharacters());
         }
@@ -372,7 +372,7 @@ public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTes
             // baz
             int bazBci = bytecodeIndices.get(1);
             assertNotEquals(-1, bazBci);
-            SourceSection bazSourceSection = baz.getSourceSectionAtBci(bazBci);
+            SourceSection bazSourceSection = baz.findSourceSectionAtBci(bazBci);
             assertEquals(bazSource, bazSourceSection.getSource());
             if (continuationArgument) {
                 assertEquals("<trace1>", bazSourceSection.getCharacters());
@@ -383,14 +383,14 @@ public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTes
             // bar
             int barBci = bytecodeIndices.get(2);
             assertNotEquals(-1, barBci);
-            SourceSection barSourceSection = bar.getSourceSectionAtBci(barBci);
+            SourceSection barSourceSection = bar.findSourceSectionAtBci(barBci);
             assertEquals(barSource, barSourceSection.getSource());
             assertEquals("baz(x)", barSourceSection.getCharacters());
 
             // foo
             int fooBci = bytecodeIndices.get(3);
             assertNotEquals(-1, fooBci);
-            SourceSection fooSourceSection = foo.getSourceSectionAtBci(fooBci);
+            SourceSection fooSourceSection = foo.findSourceSectionAtBci(fooBci);
             assertEquals(fooSource, fooSourceSection.getSource());
             assertEquals("continue(c, arg0)", fooSourceSection.getCharacters());
         }

@@ -326,7 +326,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         bytecodeNodeGen.add(createGetIntrospectionData());
         bytecodeNodeGen.add(createParseInstruction());
         bytecodeNodeGen.add(createGetSourceSection());
-        bytecodeNodeGen.add(createGetSourceSectionAtBci());
+        bytecodeNodeGen.add(createFindSourceSectionAtBci());
 
         // Define methods for cloning the root node.
         bytecodeNodeGen.add(createCloneUninitializedSupported());
@@ -632,8 +632,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return ex;
     }
 
-    private CodeExecutableElement createGetSourceSectionAtBci() {
-        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeRootNode, "getSourceSectionAtBci");
+    private CodeExecutableElement createFindSourceSectionAtBci() {
+        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeRootNode, "findSourceSectionAtBci");
         ex.renameArguments("bci");
         CodeTreeBuilder b = ex.createBuilder();
 

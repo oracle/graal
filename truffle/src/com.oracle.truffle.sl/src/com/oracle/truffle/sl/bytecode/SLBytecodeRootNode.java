@@ -145,7 +145,7 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
 
     @Override
     public SourceSection getSourceSection() {
-        return getSourceSectionAtBci(0);
+        return findSourceSectionAtBci(0);
     }
 
     @Override
