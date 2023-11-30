@@ -40,6 +40,17 @@
  */
 package com.oracle.truffle.runtime.hotspot;
 
+import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.MAX_JDK_VERSION;
+import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.MIN_COMPILER_VERSION;
+import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.MIN_JDK_VERSION;
+import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.NEXT_VERSION_UPDATE;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Set;
+
+import org.graalvm.home.Version;
+
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleRuntimeAccess;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
@@ -49,21 +60,10 @@ import com.oracle.truffle.runtime.ModulesSupport;
 import com.oracle.truffle.runtime.hotspot.libgraal.LibGraal;
 import com.oracle.truffle.runtime.hotspot.libgraal.LibGraalTruffleCompilationSupport;
 
-import jdk.internal.module.Modules;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.services.Services;
-import org.graalvm.home.Version;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.util.Set;
-
-import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.MIN_JDK_VERSION;
-import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.MAX_JDK_VERSION;
-import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.MIN_COMPILER_VERSION;
-import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.NEXT_VERSION_UPDATE;
 
 public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
 
@@ -111,14 +111,24 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
          * We also need to do this for LibGraal as the truffle.compiler module may be installed as
          * part of the JDK if the JDK supports running with jar graal as well.
          */
-        ModuleLayer layer = HotSpotTruffleRuntimeAccess.class.getModule().getLayer();
+        Module runtimeModule = HotSpotTruffleRuntimeAccess.class.getModule();
+        ModuleLayer layer;
+        if (runtimeModule.isNamed()) {
+            layer = runtimeModule.getLayer();
+        } else {
+            layer = ModuleLayer.boot();
+        }
+        /*
+         * If the compiler module is installed as part of the JDK we need to explicitly export it.
+         */
         Module truffleCompilerModule = layer.findModule("org.graalvm.truffle.compiler").orElse(null);
-        if (truffleCompilerModule == null) {
-            return new DefaultTruffleRuntime("Truffle compiler module is missing. This is likely an installation error.");
+        if (truffleCompilerModule != null) {
+            ModulesSupport.exportJVMCI(truffleCompilerModule);
+            for (String pack : truffleCompilerModule.getPackages()) {
+                ModulesSupport.addExports(truffleCompilerModule, pack, runtimeModule);
+            }
         }
-        for (String pack : truffleCompilerModule.getPackages()) {
-            Modules.addExports(truffleCompilerModule, pack, HotSpotTruffleRuntimeAccess.class.getModule());
-        }
+
         TruffleCompilationSupport compilationSupport;
         if (LibGraal.isAvailable()) {
             // try LibGraal
@@ -158,12 +168,8 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
                     return new DefaultTruffleRuntime(
                                     "Libgraal compilation is not available on this JVM. Alternatively, the org.graalvm.compiler:compiler module can be put on the --upgrade-module-path.");
                 }
-                /*
-                 * That the compiler has a qualified export to Truffle may not be enough if truffle
-                 * is running in an isolated module layer.
-                 */
                 String pkg = getTruffleGraalHotSpotPackage(compilerModule);
-                Modules.addExports(compilerModule, pkg, HotSpotTruffleRuntimeAccess.class.getModule());
+                ModulesSupport.addExports(compilerModule, pkg, runtimeModule);
                 Class<?> hotspotCompilationSupport = Class.forName(compilerModule, pkg + ".HotSpotTruffleCompilationSupport");
                 compilationSupport = (TruffleCompilationSupport) hotspotCompilationSupport.getConstructor().newInstance();
                 if (!Boolean.getBoolean("polyglotimpl.DisableVersionChecks")) {

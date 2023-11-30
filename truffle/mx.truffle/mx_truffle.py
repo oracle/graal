@@ -392,15 +392,16 @@ def truffle_jvm_module_path_unit_tests_gate():
 # mx --env ce --native-images=. build
 # mx --env ce --native-images=. gate -o -s "Truffle Unchained Truffle ClassPath Unit Tests"
 def truffle_jvm_class_path_unit_tests_gate():
-    # unfortunately with class-path isolation we cannot run all the unit tests
-    # as many of the truffle unit tests expect no class loader isolation between polyglot and truffle
-    # as a starting point we list the tests we run in this mode
+    unittest(list(['--suite', 'truffle', '--use-graalvm', '--enable-timing', '--force-classpath', '--verbose', '--max-class-failures=25']))
+
+    # GR-50223 temporarily still run tests with class-path isolation. they are to be removed.
     test_classes = [
             "com.oracle.truffle.api.test.polyglot",
             "com.oracle.truffle.api.test.examples",
             "com.oracle.truffle.tck.tests",
         ]
-    unittest(list(['--suite', 'truffle', '--use-graalvm', '--enable-timing', '--force-classpath', '--verbose', '--max-class-failures=25'] + test_classes))
+    unittest(list(['--suite', 'truffle', '-Dpolyglotimpl.DisableClassPathIsolation=false', '--use-graalvm', '--enable-timing', '--force-classpath', '--verbose', '--max-class-failures=25'] + test_classes))
+
 
 # Run in VM suite with:
 # mx --env ce --native-images=. build

@@ -81,7 +81,21 @@ module com.mycompany.app {
 ```
 
 Whether your configuration can run with a Truffle runtime optimization depends on the GraalVM JDK you use.
-For further details, refer to the [Runtime Compilation section](#Runtime-Optimization-Support).
+For further details, refer to the [Runtime Compilation section](#runtime-optimization-support).
+
+We recommend configuring polyglot embeddings using modules and the module-path whenever possible. 
+Be aware that using polyglot from the class-path instead will enable access to unsafe APIs for all libraries on the class-path.
+If the application is not yet modularized, hybrid use of the class and module-path is possible.
+For example:
+```
+$JAVA_HOME/bin/java -classpath=lib --module-path=lib/polyglot --add-modules=org.graalvm.polyglot ...
+```
+In this example, `lib/polyglot` folder should contain all polyglot and language jars.
+In order to access polyglot classes from the class-path you also need to specify the `--add-modules=org.graalvm.polyglot` JVM option.
+If you are using [native-image](https://www.graalvm.org/latest/reference-manual/embed-languages/#build-native-executables-from-polyglot-applications) polyglot modules on the class-path will be automatically upgraded to the module-path.
+
+While we do support creating single uber Jars from polyglot libraries, e.g. using the Maven Assembly plugin, we do not recommend it.
+Also note that uber jars are not supported in combination with creating native-images.
 
 
 ## Compile and Run a Polyglot Application

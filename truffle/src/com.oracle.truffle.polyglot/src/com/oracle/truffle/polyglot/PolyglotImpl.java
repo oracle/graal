@@ -399,9 +399,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                             The polyglot engine uses a fallback runtime that does not support runtime compilation to native code.
                             Execution without runtime compilation will negatively impact the guest application performance.
                             The following cause was found: %s
-                            For more information see: https://www.graalvm.org/latest/reference-manual/embed-languages/.
+                            For more information see: https://www.graalvm.org/latest/reference-manual/embed-languages/#runtime-optimization-support.
                             To disable this warning use the '--engine.WarnInterpreterOnly=false' option or the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.""", reason));
         }
+
     }
 
     private void validateSandbox(SandboxPolicy sandboxPolicy) {
