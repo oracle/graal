@@ -491,8 +491,7 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization(guards = {
                         "interop.hasArrayElements(value)",
                         "interop.hasMetaObject(value)",
-                        "isHostObject(context, value)",
-                        "!isStaticObject(value)"
+                        "isHostObject(context, value)"
         })
         public StaticObject doMappedList(Object value,
                         @Bind("getContext()") EspressoContext context,
@@ -531,8 +530,7 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization(guards = {
                         "interop.hasIterator(value)",
                         "interop.hasMetaObject(value)",
-                        "isHostObject(getContext(), value)",
-                        "!isStaticObject(value)"
+                        "isHostObject(getContext(), value)"
         })
         public StaticObject doMappedCollection(Object value,
                         @Bind("getMeta()") Meta meta,
@@ -571,8 +569,7 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization(guards = {
                         "interop.hasIterator(value)",
                         "interop.hasMetaObject(value)",
-                        "isHostObject(getContext(), value)",
-                        "!isStaticObject(value)"
+                        "isHostObject(getContext(), value)"
         })
         public StaticObject doMappedIterable(Object value,
                         @Bind("getMeta()") Meta meta,
@@ -611,8 +608,7 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization(guards = {
                         "interop.isIterator(value)",
                         "interop.hasMetaObject(value)",
-                        "isHostObject(getContext(), value)",
-                        "!isStaticObject(value)"
+                        "isHostObject(getContext(), value)"
         })
         public StaticObject doMappedIterator(Object value,
                         @Bind("getMeta()") Meta meta,
@@ -651,8 +647,7 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization(guards = {
                         "interop.hasHashEntries(value)",
                         "interop.hasMetaObject(value)",
-                        "isHostObject(getContext(), value)",
-                        "!isStaticObject(value)"
+                        "isHostObject(getContext(), value)"
         })
         public StaticObject doMappedMap(Object value,
                         @Bind("getMeta()") Meta meta,
@@ -690,8 +685,7 @@ public abstract class ToReference extends ToEspressoNode {
 
         @Specialization(guards = {
                         "interop.hasMetaObject(value)",
-                        "isHostObject(getContext(), value)",
-                        "!isStaticObject(value)"
+                        "isHostObject(getContext(), value)"
         })
         public StaticObject doMappedSet(Object value,
                         @Bind("getMeta()") Meta meta,
