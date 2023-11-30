@@ -84,7 +84,7 @@ public final class HotSpotTruffleCompilationSupport extends AbstractTruffleCompi
     }
 
     public static String readCompilerVersion() {
-        InputStream in = HotSpotTruffleCompilationSupport.class.getResourceAsStream("/META-INF/graalvm/jdk.graal.compiler/version");
+        InputStream in = HotSpotTruffleCompilationSupport.class.getResourceAsStream("/META-INF/graalvm/jdk.internal.vm.compiler/version");
         if (in == null) {
             throw new InternalError("Compiler must have a version file.");
         }
