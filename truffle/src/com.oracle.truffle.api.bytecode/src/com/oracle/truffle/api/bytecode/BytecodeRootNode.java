@@ -167,7 +167,7 @@ public interface BytecodeRootNode extends BytecodeIntrospection.Provider {
      *         available
      */
     @SuppressWarnings("unused")
-    default SourceSection getSourceSectionAtBci(int bci) {
+    default SourceSection findSourceSectionAtBci(int bci) {
         throw new AbstractMethodError();
     }
 
@@ -223,11 +223,11 @@ public interface BytecodeRootNode extends BytecodeIntrospection.Provider {
      * @return a source section corresponding to the node, or {@code null} if no source section is
      *         available
      */
-    static SourceSection getSourceSectionFromLocation(Node location) {
+    static SourceSection findSourceSectionFromLocation(Node location) {
         for (Node operationNode = location; operationNode != null; operationNode = operationNode.getParent()) {
             if (operationNode.getParent() instanceof BytecodeRootNode rootNode) {
                 int bci = rootNode.findBciOfOperationNode(operationNode);
-                return rootNode.getSourceSectionAtBci(bci);
+                return rootNode.findSourceSectionAtBci(bci);
             }
         }
         return null;
