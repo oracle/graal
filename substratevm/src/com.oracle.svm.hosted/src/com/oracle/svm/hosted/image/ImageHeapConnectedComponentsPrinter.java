@@ -41,8 +41,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.svm.core.jdk.Resources;
-import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.hosted.ByteFormattingUtil;
@@ -109,7 +107,6 @@ public class ImageHeapConnectedComponentsPrinter {
                         ObjectReachabilityGroup.MethodOrStaticField
         };
 
-        markResources(heap);
         EnumMap<ObjectReachabilityGroup, GroupEntry> groups = new EnumMap<>(ObjectReachabilityGroup.class);
         for (ObjectReachabilityGroup group : objectReachabilityGroupOrder) {
             groups.put(group, new GroupEntry());
@@ -142,19 +139,6 @@ public class ImageHeapConnectedComponentsPrinter {
             objects.removeAll(groups.get(group).objects);
         }
         return groups;
-    }
-
-    private static void markResources(NativeImageHeap heap) {
-        for (ResourceStorageEntryBase value : Resources.singleton().resources()) {
-            if (value.hasData()) {
-                for (byte[] arr : value.getData()) {
-                    ObjectInfo info = heap.getObjectInfo(arr);
-                    if (info != null) {
-                        heap.objectReachabilityInfo.get(info).addReason(HeapInclusionReason.Resource);
-                    }
-                }
-            }
-        }
     }
 
     private ObjectInfoGraph constructGraph(Set<ObjectInfo> objects) {
