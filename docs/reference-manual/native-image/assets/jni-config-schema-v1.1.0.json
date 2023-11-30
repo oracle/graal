@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/jni-config-schema-v1.1.0.json",
+  "default": [],
+  "items": {
+    "properties": {
+      "condition": {
+        "$ref": "config-condition-schema-v1.0.0.json",
+        "title": "Condition under which the class should be registered for access through JNI"
+      },
+      "type": {
+        "$ref": "config-type-schema-v1.0.0.json",
+        "title": "Type descriptor of the class that should be registered for access through JNI"
+      },
+      "name": {
+        "deprecated": true,
+        "type": "string",
+        "title": "Name of the class that should be registered for access through JNI"
+      },
+      "methods": {
+        "default": [],
+        "items": {
+          "properties": {
+            "name": {
+              "type": "string",
+              "title": "Method name that should be registered for this class"
+            },
+            "parameterTypes": {
+              "default": [],
+              "items": {
+                "type": "string",
+                "title": "List of the method's parameter types"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false,
+          "type": "object",
+          "title": "List of methods from this class that are registered for access through JNI"
+        },
+        "type": "array",
+        "title": "List of methods that should be registered for the class declared in <name>"
+      },
+      "queriedMethods": {
+        "deprecated": true,
+        "default": [],
+        "items": {
+          "properties": {
+            "name": {
+              "type": "string",
+              "title": "Method name that are queried for this class"
+            },
+            "parameterTypes": {
+              "default": [],
+              "items": {
+                "type": "string",
+                "title": "List of types for the parameters of the this method"
+              },
+              "type": "array",
+              "title": "List of methods to register for this class that are only looked up but not invoked."
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false,
+          "type": "object"
+        },
+        "type": "array",
+        "title": "List of methods that are queried for the class declared in <name>"
+      },
+      "fields": {
+        "default": [],
+        "items": {
+          "properties": {
+            "name": {
+              "type": "string",
+              "title": "Name of the field that should be registered for access through JNI"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false,
+          "type": "object"
+        },
+        "type": "array",
+        "title": "List of fields that should be registered for the class declared in <name>"
+      },
+      "allDeclaredClasses": {
+        "deprecated": true,
+        "default": false,
+        "type": "boolean",
+        "title": "Register classes which would be returned by the java.lang.Class#getDeclaredClasses call"
+      },
+      "allDeclaredMethods": {
+        "default": false,
+        "type": "boolean",
+        "title": "Register methods which would be returned by the java.lang.Class#getDeclaredMethods call"
+      },
+      "allDeclaredFields": {
+        "default": false,
+        "type": "boolean",
+        "title": "Register fields which would be returned by the java.lang.Class#getDeclaredFields call"
+      },
+      "allDeclaredConstructors": {
+        "default": false,
+        "type": "boolean",
+        "title": "Register constructors which would be returned by the java.lang.Class#getDeclaredConstructors call"
+      },
+      "allPublicClasses": {
+        "deprecated": true,
+        "default": false,
+        "type": "boolean",
+        "title": "Register all public classes which would be returned by the java.lang.Class#getClasses call"
+      },
+      "allPublicMethods": {
+        "default": false,
+        "type": "boolean",
+        "title": "Register all public methods which would be returned by the java.lang.Class#getMethods call"
+      },
+      "allPublicFields": {
+        "default": false,
+        "type": "boolean",
+        "title": "Register all public fields which would be returned by the java.lang.Class#getFields call"
+      },
+      "allPublicConstructors": {
+        "default": false,
+        "type": "boolean",
+        "title": "Register all public constructors which would be returned by the java.lang.Class#getConstructors call"
+      },
+      "allRecordComponents": {
+        "deprecated": true,
+        "default": false,
+        "type": "boolean",
+        "title": "Register record components which would be returned by the java.lang.Class#getRecordComponents call"
+      },
+      "allPermittedSubclasses": {
+        "deprecated": true,
+        "default": false,
+        "type": "boolean",
+        "title": "Register permitted subclasses which would be returned by the java.lang.Class#getPermittedSubclasses call"
+      },
+      "allNestMembers": {
+        "deprecated": true,
+        "default": false,
+        "type": "boolean",
+        "title": "Register nest members which would be returned by the java.lang.Class#getNestMembers call"
+      },
+      "allSigners": {
+        "deprecated": true,
+        "default": false,
+        "type": "boolean",
+        "title": "Register signers which would be returned by the java.lang.Class#getSigners call"
+      },
+      "queryAllDeclaredMethods": {
+        "deprecated": true,
+        "default": false,
+        "type": "boolean",
+        "title": "Register methods which would be returned by the java.lang.Class#getDeclaredMethods call but only for lookup"
+      },
+      "queryAllDeclaredConstructors": {
+        "deprecated": true,
+        "default": false,
+        "type": "boolean",
+        "title": "Register constructors which would be returned by the java.lang.Class#getDeclaredConstructors call but only for lookup"
+      },
+      "queryAllPublicMethods": {
+        "deprecated": true,
+        "default": false,
+        "type": "boolean",
+        "title": "Register all public methods which would be returned by the java.lang.Class#getMethods call but only for lookup"
+      },
+      "queryAllPublicConstructors": {
+        "deprecated": true,
+        "default": false,
+        "type": "boolean",
+        "title": "Register all public constructors which would be returned by the java.lang.Class#getConstructors call but only for lookup"
+      },
+      "unsafeAllocated": {
+        "default": false,
+        "type": "boolean",
+        "title": "Allow objects of this class to be instantiated with a call to jdk.internal.misc.Unsafe#allocateInstance"
+      }
+    },
+    "additionalProperties": false,
+    "type": "object"
+  },
+  "type": "array",
+  "title": "JSON schema for the JNI configuration that GraalVM Native Image uses"
+}

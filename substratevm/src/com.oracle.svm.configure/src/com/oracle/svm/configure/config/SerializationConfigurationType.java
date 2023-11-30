@@ -67,6 +67,7 @@ public class SerializationConfigurationType implements JsonPrintable, Comparable
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('{').indent().newline();
         ConfigurationConditionPrintable.printConditionAttribute(condition, writer);
+        /* GR-50385: Replace with "type" */
         writer.quote(SerializationConfigurationParser.NAME_KEY).append(':').quote(qualifiedJavaName);
         if (qualifiedCustomTargetConstructorJavaName != null) {
             writer.append(',').newline();

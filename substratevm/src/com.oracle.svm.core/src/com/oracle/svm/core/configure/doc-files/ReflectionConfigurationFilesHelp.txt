@@ -3,7 +3,7 @@ Use a reflect-config.json in your META-INF/native-image/<groupID>/<artifactID> d
 
 The JSON object schema is described at:
 
-   https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reflect-config-schema-v1.0.0.json
+   https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reflect-config-schema-v1.1.0.json
 
 Example:
 
