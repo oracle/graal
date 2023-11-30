@@ -18,7 +18,31 @@ common + common.frequencies + {
   + (
     if (std.length(std.find('gate', build.targets)) > 0 || std.length(std.find('deploy', build.targets)) == 0) then {
       guard+: {
-        excludes+: ["**.md", "<graal>/**.md", "<graal>/docs/**", "<graal>/.devcontainer/**", "<graal>/.github/**", "<graal>/vm/ce-release-artifacts.json"]
+        excludes+: ["*.md",
+          "<graal>/*.md",
+          "<graal>/ci/**.md",
+          "<graal>/compiler/**.md",
+          "<graal>/espresso/**.md",
+          "<graal>/regex/**.md",
+          "<graal>/sdk/**.md",
+          "<graal>/substratevm/docs/**", # Substratevm includes substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/doc-files/PrintImageHeapConnectedComponents.md in the build
+          "<graal>/substratevm/CHANGELOG.md",
+          "<graal>/substratevm/README.md",
+          "<graal>/sulong/docs/**.md",  # Sulong includes its readme in a distribution
+          "<graal>/sulong/CHANGELOG.md",
+          "<graal>/tools/**.md",
+          "<graal>/truffle/**.md",
+          "<graal>/visualizer/**.md",
+          "<graal>/vm/src/**.md", # vm/GRAALVM-README.md is included in a distribution
+          "<graal>/vm/README.md",
+          "<graal>/vm/benchmarks/**.md",
+          "<graal>/vm/docs/**",
+          "<graal>/wasm/**.md",
+          "<graal>/docs/**",
+          "<graal>/.devcontainer/**",
+          "<graal>/.github/**",
+          "<graal>/vm/ce-release-artifacts.json"
+        ]
       }
     } else {}
   ),
