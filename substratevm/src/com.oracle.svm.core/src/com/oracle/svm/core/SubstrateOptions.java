@@ -921,4 +921,6 @@ public class SubstrateOptions {
     @Option(help = "file:doc-files/MissingRegistrationPathsHelp.txt")//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ThrowMissingRegistrationErrorsPaths = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
+    @Option(help = "Has no effect in this version of GraalVM. It is present for forward-compatibility with future versions of GraalVM.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL) //
+    public static final HostedOptionKey<Boolean> UnlockExperimentalVMOptions = new HostedOptionKey<>(false);
 }
