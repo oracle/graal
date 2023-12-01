@@ -41,27 +41,12 @@
 
 package org.graalvm.wasm.api;
 
-import sun.misc.Unsafe;
-
-import java.lang.reflect.Field;
+import com.oracle.truffle.api.memory.ByteArraySupport;
 
 public class Vector128 {
 
-    private static final Unsafe unsafe = initUnsafe();
-
-    private static Unsafe initUnsafe() {
-        try {
-            return Unsafe.getUnsafe();
-        } catch (SecurityException se) {
-            try {
-                Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-                theUnsafe.setAccessible(true);
-                return (Unsafe) theUnsafe.get(Unsafe.class);
-            } catch (Exception e) {
-                throw new RuntimeException("exception while trying to get Unsafe", e);
-            }
-        }
-    }
+    // v128 component values are stored in little-endian order
+    private static final ByteArraySupport byteArraySupport = ByteArraySupport.littleEndian();
 
     public static final Vector128 ZERO = new Vector128(new byte[16]);
 
@@ -83,7 +68,7 @@ public class Vector128 {
     public int[] asInts() {
         int[] ints = new int[4];
         for (int i = 0; i < 4; i++) {
-            ints[i] = unsafe.getInt(bytes, Unsafe.ARRAY_BYTE_BASE_OFFSET + i * Unsafe.ARRAY_INT_INDEX_SCALE);
+            ints[i] = byteArraySupport.getInt(bytes, i * 4);
         }
         return ints;
     }
@@ -91,8 +76,8 @@ public class Vector128 {
     public static Vector128 ofInts(int[] ints) {
         assert ints.length == 4;
         byte[] bytes = new byte[16];
-        for (int i = 0; i < 16; i++) {
-            bytes[i] = unsafe.getByte(ints, Unsafe.ARRAY_INT_BASE_OFFSET + i * Unsafe.ARRAY_BYTE_INDEX_SCALE);
+        for (int i = 0; i < 4; i++) {
+            byteArraySupport.putInt(bytes, i * 4, ints[i]);
         }
         return new Vector128(bytes);
     }
