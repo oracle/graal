@@ -29,8 +29,6 @@ import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 import java.util.Collections;
 import java.util.List;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -47,12 +45,12 @@ import com.oracle.svm.core.IsolateListenerSupport.IsolateListener;
 import com.oracle.svm.core.SubstrateSegfaultHandler.SingleIsolateSegfaultSetup;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
-import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
+import com.oracle.svm.core.graal.stackvalue.UnsafeLateStackValue;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
@@ -61,6 +59,10 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
+import com.oracle.svm.core.threadlocal.VMThreadLocalMTSupport;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.options.Option;
 
 @AutomaticallyRegisteredFeature
 class SubstrateSegfaultHandlerFeature implements InternalFeature {
@@ -124,13 +126,12 @@ public abstract class SubstrateSegfaultHandler {
 
     /** Called from the platform dependent segfault handler to enter the isolate. */
     @Uninterruptible(reason = "Thread state not set up yet.")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.")
     protected static boolean tryEnterIsolate(RegisterDumper.Context context) {
         // Check if we have sufficient information to enter the correct isolate.
         Isolate isolate = SingleIsolateSegfaultSetup.singleton().getIsolate();
         if (isolate.rawValue() != -1) {
             // There is only a single isolate, so lets attach to that isolate.
-            int error = CEntryPointActions.enterAttachThreadFromCrashHandler(isolate);
+            int error = CEntryPointSnippets.enterAttachFromCrashHandler(isolate);
             return error == CEntryPointErrors.NO_ERROR;
         } else if (!SubstrateOptions.useLLVMBackend()) {
             // Try to determine the isolate via the register information. This very likely fails if
@@ -155,29 +156,55 @@ public abstract class SubstrateSegfaultHandler {
         return false;
     }
 
-    /** Called from the platform dependent segfault handler to print diagnostics. */
-    @Uninterruptible(reason = "Must be uninterruptible until we get immune to safepoints.", calleeMustBe = false)
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.")
-    protected static void dump(PointerBase signalInfo, RegisterDumper.Context context) {
-        SafepointBehavior.preventSafepoints();
-        StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
-
-        dumpInterruptibly(signalInfo, context);
+    /**
+     * Enter the isolate in an async-signal safe way. Being async-signal-safe significantly limits
+     * what we can do (e.g., for unattached threads, we need to allocate the IsolateThread on the
+     * stack instead of on the C heap).
+     */
+    @Uninterruptible(reason = "prologue")
+    @SuppressWarnings("unused")
+    public static void enterIsolateAsyncSignalSafe(Isolate isolate) {
+        int error = CEntryPointSnippets.enterFromCrashHandler(isolate);
+        if (error != CEntryPointErrors.NO_ERROR) {
+            /*
+             * Some error occurred or this is an unattached thread. Only set up a minimal
+             * IsolateThread so that we can at least try to dump some information.
+             */
+            int isolateThreadSize = VMThreadLocalMTSupport.singleton().vmThreadSize;
+            IsolateThread structForUnattachedThread = UnsafeLateStackValue.get(isolateThreadSize);
+            UnmanagedMemoryUtil.fill((Pointer) structForUnattachedThread, WordFactory.unsigned(isolateThreadSize), (byte) 0);
+            CEntryPointSnippets.initializeIsolateThreadForCrashHandler(isolate, structForUnattachedThread);
+        }
     }
 
-    private static void dumpInterruptibly(PointerBase signalInfo, RegisterDumper.Context context) {
-        PointerBase callerIP = RegisterDumper.singleton().getIP(context);
+    /** Called from the platform dependent segfault handler to print diagnostics. */
+    @Uninterruptible(reason = "Must be uninterruptible until we get immune to safepoints.")
+    public static void dump(PointerBase signalInfo, RegisterDumper.Context context) {
+        Pointer sp = (Pointer) RegisterDumper.singleton().getSP(context);
+        CodePointer ip = (CodePointer) RegisterDumper.singleton().getIP(context);
+        dump(sp, ip, signalInfo, context);
+    }
+
+    @Uninterruptible(reason = "Must be uninterruptible until we get immune to safepoints.", calleeMustBe = false)
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.")
+    public static void dump(Pointer sp, CodePointer ip, PointerBase signalInfo, RegisterDumper.Context context) {
+        SafepointBehavior.preventSafepoints();
+        StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
+        dumpInterruptibly(sp, ip, signalInfo, context);
+    }
+
+    private static void dumpInterruptibly(Pointer sp, CodePointer ip, PointerBase signalInfo, RegisterDumper.Context context) {
         LogHandler logHandler = ImageSingletons.lookup(LogHandler.class);
-        Log log = Log.enterFatalContext(logHandler, (CodePointer) callerIP, "[ [ SubstrateSegfaultHandler caught a segfault. ] ]", null);
+        Log log = Log.enterFatalContext(logHandler, ip, "[ [ SegfaultHandler caught a segfault. ] ]", null);
         if (log != null) {
             log.newline();
-            log.string("[ [ SubstrateSegfaultHandler caught a segfault in thread ").zhex(CurrentIsolate.getCurrentThread()).string(" ] ]").newline();
-            ImageSingletons.lookup(SubstrateSegfaultHandler.class).printSignalInfo(log, signalInfo);
+            log.string("[ [ SegfaultHandler caught a segfault in thread ").zhex(CurrentIsolate.getCurrentThread()).string(" ] ]").newline();
+            if (signalInfo.isNonNull()) {
+                ImageSingletons.lookup(SubstrateSegfaultHandler.class).printSignalInfo(log, signalInfo);
+            }
 
-            PointerBase sp = RegisterDumper.singleton().getSP(context);
-            PointerBase ip = RegisterDumper.singleton().getIP(context);
-            boolean printedDiagnostics = SubstrateDiagnostics.printFatalError(log, (Pointer) sp, (CodePointer) ip, context, false);
-            if (printedDiagnostics) {
+            boolean printedDiagnostics = SubstrateDiagnostics.printFatalError(log, sp, ip, context, false);
+            if (SubstrateSegfaultHandler.isInstalled() && printedDiagnostics) {
                 log.string("Segfault detected, aborting process. ")
                                 .string("Use '-XX:-InstallSegfaultHandler' to disable the segfault handler at run time and create a core dump instead. ")
                                 .string("Rebuild with '-R:-InstallSegfaultHandler' to disable the handler permanently at build time.") //

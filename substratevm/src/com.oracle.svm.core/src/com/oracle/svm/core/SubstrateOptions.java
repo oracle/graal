@@ -958,6 +958,9 @@ public class SubstrateOptions {
         }
     };
 
+    @Option(help = "Only print diagnostic output that is async signal safe.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> AsyncSignalSafeDiagnostics = new HostedOptionKey<>(false);
+
     @Option(help = "Specifies the number of entries that diagnostic buffers have.", type = OptionType.Debug)//
     public static final HostedOptionKey<Integer> DiagnosticBufferSize = new HostedOptionKey<>(30);
 
