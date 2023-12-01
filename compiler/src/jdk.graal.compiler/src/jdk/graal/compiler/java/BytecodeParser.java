@@ -1206,6 +1206,41 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         return stateAfterStart;
     }
 
+    private static final SpeculationReasonGroup UNRESOLVED = new SpeculationReasonGroup("Unresolved", ResolvedJavaMethod.class, int.class);
+
+    public static final CounterKey unresolvedSpeculationTaken = DebugContext.counter("BytecodeParser_UnresolvedSpeculation_Taken");
+    public static final CounterKey unresolvedSpeculationNotTaken = DebugContext.counter("BytecodeParser_UnresolvedSpeculation_NotTaken");
+
+    /**
+     * Returns a speculation object if it's possible to speculate on an unresolved type or field at
+     * the current bytecode location.
+     */
+    private SpeculationLog.Speculation mayUseUnresolved(int bci) {
+        return mayUseSpeculation(bci, UNRESOLVED, unresolvedSpeculationTaken, unresolvedSpeculationNotTaken);
+    }
+
+    protected void appendUnresolvedDeopt() {
+        SpeculationLog.Speculation speculation = mayUseUnresolved(bci());
+        if (speculation == null) {
+            /*
+             * A previous speculation on this unresolved item failed. This means that we previously
+             * deopted at this position. The interpreter should have resolved the item we need here.
+             * However, due to inlining and our use of imprecise frame states, we may have deopted
+             * to and invalidated the callee of this method rather than this method itself. Prevent
+             * a deopt loop by capturing a precise state.
+             */
+            speculation = SpeculationLog.NO_SPECULATION;
+            StateSplitProxyNode stateSplit = append(new StateSplitProxyNode());
+            stateSplit.setStateAfter(createFrameState(bci(), stateSplit));
+        }
+        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved, speculation));
+        /*
+         * Track source position for deopt nodes even if
+         * GraphBuilderConfiguration.trackNodeSourcePosition is not set.
+         */
+        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
+    }
+
     /**
      * Handles loading of an unresolved constant.
      *
@@ -1215,12 +1250,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected void handleUnresolvedLoadConstant(JavaType unresolvedType) {
         assert !graphBuilderConfig.unresolvedIsError() || unresolvedType == null;
-        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-        /*
-         * Track source position for deopt nodes even if
-         * GraphBuilderConfiguration.trackNodeSourcePosition is not set.
-         */
-        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
+        appendUnresolvedDeopt();
     }
 
     /**
@@ -1264,8 +1294,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected void handleUnresolvedNewInstance(JavaType type) {
         assert !graphBuilderConfig.unresolvedIsError();
-        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
+        appendUnresolvedDeopt();
     }
 
     /**
@@ -1273,8 +1302,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected void handleIllegalNewInstance(JavaType type) {
         assert !graphBuilderConfig.unresolvedIsError();
-        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
+        appendUnresolvedDeopt();
     }
 
     /**
@@ -1283,8 +1311,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected void handleUnresolvedNewObjectArray(JavaType type, ValueNode length) {
         assert !graphBuilderConfig.unresolvedIsError();
-        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
+        appendUnresolvedDeopt();
     }
 
     /**
@@ -1293,8 +1320,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected void handleUnresolvedNewMultiArray(JavaType type, ValueNode[] dims) {
         assert !graphBuilderConfig.unresolvedIsError();
-        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
+        appendUnresolvedDeopt();
     }
 
     /**
@@ -1303,8 +1329,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected void handleUnresolvedLoadField(JavaField field, ValueNode receiver) {
         assert !graphBuilderConfig.unresolvedIsError();
-        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
+        appendUnresolvedDeopt();
     }
 
     /**
@@ -1314,8 +1339,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected void handleUnresolvedStoreField(JavaField field, ValueNode value, ValueNode receiver) {
         assert !graphBuilderConfig.unresolvedIsError();
-        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
+        appendUnresolvedDeopt();
     }
 
     /**
@@ -1323,8 +1347,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected void handleUnresolvedExceptionType(JavaType type) {
         assert !graphBuilderConfig.unresolvedIsError();
-        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
+        appendUnresolvedDeopt();
     }
 
     /**
@@ -1333,8 +1356,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected void handleUnresolvedInvoke(JavaMethod javaMethod, InvokeKind invokeKind) {
         assert !graphBuilderConfig.unresolvedIsError();
-        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
+        appendUnresolvedDeopt();
     }
 
     protected FrameStateBuilder createFrameStateForExceptionHandling(@SuppressWarnings("unused") int bci) {
@@ -4495,7 +4517,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     /**
      * Returns a speculation object if it's possible to speculate on the given {@code reason} at the
-     * bytecode location indicated by the BCI.
+     * bytecode location indicated by the BCI. Returns {@code null} otherwise.
      */
     private SpeculationLog.Speculation mayUseSpeculation(int bci, SpeculationReasonGroup reason, CounterKey speculationTaken, CounterKey speculationNotTaken) {
         SpeculationLog speculationLog = graph.getSpeculationLog();
