@@ -194,6 +194,14 @@ suite = {
                 }
             }
         },
+        "SVM_TEST_RESOURCE_WITH_SPACE": {
+            # This jar only contains a resource with a space in its path.
+            # We cannot have folder with spaces in the source tree, as it
+            # does not work well with certain build tools, for example
+            # make. [GR-50375]
+            "path": "mx.substratevm/jar-with-space-in-resource-dir.jar",
+            "digest": "sha512:270bffd158c92b04b16db147f4ef336dcb4d830bf3503cc25be1227b351597a3254544b3c4a5183dcc53f2f3ab10b282722dbf7f1b5e9d9a2741878a7057eb40",
+        },
     },
 
     "projects": {
@@ -2012,6 +2020,7 @@ suite = {
             "com.oracle.svm.test",
             "com.oracle.svm.configure.test",
             "com.oracle.svm.graal.test",
+            "SVM_TEST_RESOURCE_WITH_SPACE",
           ],
           "distDependencies": [
             "mx:JUNIT_TOOL",
