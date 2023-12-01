@@ -42,6 +42,7 @@
 package org.graalvm.wasm.api;
 
 import com.oracle.truffle.api.memory.ByteArraySupport;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 public class Vector128 {
 
@@ -65,6 +66,7 @@ public class Vector128 {
         return new Vector128(bytes);
     }
 
+    @ExplodeLoop
     public int[] asInts() {
         int[] ints = new int[4];
         for (int i = 0; i < 4; i++) {
@@ -73,6 +75,7 @@ public class Vector128 {
         return ints;
     }
 
+    @ExplodeLoop
     public static Vector128 ofInts(int[] ints) {
         assert ints.length == 4;
         byte[] bytes = new byte[16];

@@ -3832,6 +3832,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         destMemory.copyFrom(srcMemory, source, destination, length);
     }
 
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static void i32x4_all_true(VirtualFrame frame, int stackPointer) {
         int[] x = popVector128(frame, stackPointer - 1).asInts();
         int result = 1;
@@ -3844,6 +3845,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         pushInt(frame, stackPointer - 1, result);
     }
 
+    @ExplodeLoop
     private static void i32x4_add(VirtualFrame frame, int stackPointer) {
         int[] x = popVector128(frame, stackPointer - 1).asInts();
         int[] y = popVector128(frame, stackPointer - 2).asInts();
