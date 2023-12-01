@@ -2130,13 +2130,13 @@ public final class Engine implements AutoCloseable {
             if (PolyglotInvalid.class.getModule().isNamed()) {
                 return new IllegalStateException(
                                 "No language and polyglot implementation was found on the module-path. " +
-                                                "Make sure at last one language is added to the module-path. ");
+                                                "Make sure at least one language is added to the module-path. ");
             } else {
                 return new IllegalStateException(
                                 "No language and polyglot implementation was found on the class-path. " +
-                                                "Make sure at last one language is added on the class-path. " +
+                                                "Make sure at least one language is added on the class-path. " +
                                                 "If you put a language on the class-path and you encounter this error then there could be a problem with isolated class loading. " +
-                                                "Use -Dpolyglotimpl.TraceClassPathIsolation=true to debug class loader islation problems. " +
+                                                "Use -Dpolyglotimpl.TraceClassPathIsolation=true to debug class loader isolation problems. " +
                                                 "For best performance it is recommended to use polyglot from the module-path instead of the class-path.");
             }
         }
