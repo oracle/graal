@@ -36,6 +36,8 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
@@ -52,7 +54,10 @@ public class SubstrateAMD64GraphBuilderPlugins implements InternalFeature {
     @Override
     public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
         if (!SubstrateOptions.useLLVMBackend()) {
-            registerArraysSupportPlugins(plugins.getInvocationPlugins(), providers.getReplacements());
+            InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
+            Replacements replacements = providers.getReplacements();
+            registerArraysSupportPlugins(invocationPlugins, replacements);
+            registerCopyLongsPlugin(invocationPlugins, replacements);
         }
     }
 
@@ -65,6 +70,24 @@ public class SubstrateAMD64GraphBuilderPlugins implements InternalFeature {
                 ValueNode aAddr = b.add(new ComputeObjectAddressNode(aObject, aOffset));
                 ValueNode bAddr = b.add(new ComputeObjectAddressNode(bObject, bOffset));
                 b.addPush(JavaKind.Int, new VectorizedMismatchNode(aAddr, bAddr, length, log2ArrayIndexScale));
+                return true;
+            }
+        });
+    }
+
+    private static void registerCopyLongsPlugin(InvocationPlugins plugins, Replacements replacements) {
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.svm.core.UnmanagedMemoryUtil", replacements);
+        r.register(new InvocationPlugin("copyLongsForward", Pointer.class, Pointer.class, UnsignedWord.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src, ValueNode dst, ValueNode size) {
+                b.add(AMD64CopyLongsNode.forward(src, dst, size));
+                return true;
+            }
+        });
+        r.register(new InvocationPlugin("copyLongsBackward", Pointer.class, Pointer.class, UnsignedWord.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src, ValueNode dst, ValueNode size) {
+                b.add(AMD64CopyLongsNode.backward(src, dst, size));
                 return true;
             }
         });

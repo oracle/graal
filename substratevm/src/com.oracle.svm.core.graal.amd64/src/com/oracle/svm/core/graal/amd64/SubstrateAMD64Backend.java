@@ -778,6 +778,18 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             }
         }
 
+        public void emitCopyLongs(EnumSet<AMD64.CPUFeature> runtimeCheckedCPUFeatures, Value src, Value dst, Value len, boolean forward) {
+            RegisterValue rsrc = AMD64.rsi.asValue(src.getValueKind());
+            RegisterValue rdst = AMD64.rdi.asValue(dst.getValueKind());
+            RegisterValue rlen = AMD64.rdx.asValue(len.getValueKind());
+
+            emitMove(rsrc, src);
+            emitMove(rdst, dst);
+            emitMove(rlen, len);
+
+            append(new AMD64CopyLongsOp(this, runtimeCheckedCPUFeatures, getAVX3Threshold(), forward, rsrc, rdst, rlen));
+        }
+
         @Override
         public void emitProcid(AllocatableValue dst) {
             if (supportsCPUFeature(CPUFeature.RDPID)) {
