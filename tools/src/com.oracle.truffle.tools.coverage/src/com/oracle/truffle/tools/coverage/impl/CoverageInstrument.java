@@ -169,7 +169,7 @@ public class CoverageInstrument extends TruffleInstrument {
     }
 
     @Override
-    protected void onDispose(Env env) {
+    protected void onFinalize(Env env) {
         if (enabled) {
             SourceCoverage[] coverage = tracker.getCoverage();
             final OptionValues options = env.getOptions();
@@ -189,6 +189,12 @@ public class CoverageInstrument extends TruffleInstrument {
                     new LCOVPrinter(out, coverage, strictLines).print();
                     break;
             }
+        }
+    }
+
+    @Override
+    protected void onDispose(Env env) {
+        if (enabled) {
             tracker.close();
         }
     }
