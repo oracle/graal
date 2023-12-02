@@ -408,7 +408,7 @@ public class EscapeAnalysisTest extends EATestBase {
 
     @SuppressWarnings("unused")
     public static void testNewNodeSnippet() {
-        new ValueAnchorNode(null);
+        new ValueAnchorNode();
     }
 
     /**

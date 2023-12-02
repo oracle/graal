@@ -227,7 +227,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         }
     }
 
-    public static ValueNode canonical(ValueNode object, Stamp piStamp, GuardingNode guard, PiNode self) {
+    public static ValueNode canonical(ValueNode object, Stamp piStamp, GuardingNode guard, ValueNode self) {
         // Use most up to date stamp.
         Stamp computedStamp = piStamp.improveWith(object.stamp(NodeView.DEFAULT));
 
@@ -257,15 +257,16 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
                     }
                     if (otherPi.object() == self || otherPi.object() == object) {
                         // Check if other pi's stamp is more precise
-                        Stamp joinedStamp = piStamp.improveWith(otherPi.piStamp());
-                        if (joinedStamp.equals(piStamp)) {
+                        Stamp joinedPiStamp = piStamp.improveWith(otherPi.piStamp());
+                        if (joinedPiStamp.equals(piStamp)) {
                             // Stamp did not get better, nothing to do.
-                        } else if (otherPi.object() == object && joinedStamp.equals(otherPi.piStamp())) {
+                        } else if (otherPi.object() == object && joinedPiStamp.equals(otherPi.piStamp())) {
                             // We can be replaced with the other pi.
                             return otherPi;
-                        } else {
-                            // Create a new pi node with the more precise joined stamp.
-                            return new PiNode(object, joinedStamp, guard.asNode());
+                        } else if (self != null && self.hasExactlyOneUsage() && otherPi.object == self) {
+                            if (joinedPiStamp.equals(otherPi.piStamp)) {
+                                return object;
+                            }
                         }
                     }
                 }
