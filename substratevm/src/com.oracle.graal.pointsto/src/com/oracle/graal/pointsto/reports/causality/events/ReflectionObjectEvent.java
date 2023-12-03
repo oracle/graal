@@ -25,13 +25,10 @@
 package com.oracle.graal.pointsto.reports.causality.events;
 
 import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.reports.causality.ReachabilityExport;
 
@@ -44,28 +41,19 @@ abstract class ReflectionObjectEvent extends CausalityEvent {
 
     @Override
     public String toString() {
-        return reflectionObjectToString(element) + typeDescriptor().suffix;
+        return ReachabilityExport.reflectionObjectToString(element) + typeDescriptor().suffix;
     }
 
     @Override
     public String toString(AnalysisMetaAccess metaAccess) {
-        return reflectionObjectToGraalLikeString(metaAccess, element) + typeDescriptor().suffix;
-    }
-
-    private static String reflectionObjectToString(AnnotatedElement reflectionObject) {
-        if (reflectionObject instanceof Class<?> clazz) {
-            return clazz.getTypeName();
-        } else if (reflectionObject instanceof Constructor<?> c) {
-            return c.getDeclaringClass().getTypeName() + ".<init>(" + Arrays.stream(c.getParameterTypes()).map(Class::getTypeName).collect(Collectors.joining(", ")) + ')';
-        } else if (reflectionObject instanceof Method m) {
-            return m.getDeclaringClass().getTypeName() + '.' + m.getName() + '(' + Arrays.stream(m.getParameterTypes()).map(Class::getTypeName).collect(Collectors.joining(", ")) + ')';
-        } else {
-            Field f = ((Field) reflectionObject);
-            return f.getDeclaringClass().getTypeName() + '.' + f.getName();
+        try {
+            return reflectionObjectToResolvedString(metaAccess, element) + typeDescriptor().suffix;
+        } catch (UnsupportedFeatureException ex) {
+            return toString();
         }
     }
 
-    private static String reflectionObjectToGraalLikeString(AnalysisMetaAccess metaAccess, AnnotatedElement reflectionObject) {
+    private static String reflectionObjectToResolvedString(AnalysisMetaAccess metaAccess, AnnotatedElement reflectionObject) {
         if (reflectionObject instanceof Class<?> c) {
             return metaAccess.lookupJavaType(c).toJavaName();
         } else if (reflectionObject instanceof Executable e) {
@@ -77,6 +65,12 @@ abstract class ReflectionObjectEvent extends CausalityEvent {
 
     @Override
     public ReachabilityExport.HierarchyNode getParent(ReachabilityExport export, AnalysisMetaAccess metaAccess) {
-        return export.computeIfAbsent(metaAccess, element);
+        if (element instanceof Class<?> c) {
+            return export.computeIfAbsent(metaAccess, c);
+        } else if (element instanceof Executable e) {
+            return export.computeIfAbsent(metaAccess, e);
+        } else {
+            return export.computeIfAbsent(metaAccess, (Field) element);
+        }
     }
 }

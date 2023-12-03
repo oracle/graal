@@ -25,16 +25,19 @@
 package com.oracle.graal.pointsto.reports.causality;
 
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.net.URI;
 import java.net.URL;
 import java.security.CodeSource;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
@@ -65,8 +68,8 @@ public class ReachabilityExport {
         public boolean isMain;
         public int codeSize;
 
-        Method(AnalysisMethod m) {
-            synthetic = m.isSynthetic();
+        Method(boolean synthetic) {
+            this.synthetic = synthetic;
         }
 
         EconomicMap<String, Object> serialize() {
@@ -90,8 +93,8 @@ public class ReachabilityExport {
     private static class Field extends HierarchyNode {
         public final boolean synthetic;
 
-        Field(AnalysisField f) {
-            synthetic = f.isSynthetic();
+        Field(boolean synthetic) {
+            this.synthetic = synthetic;
         }
 
         EconomicMap<String, Object> serialize() {
@@ -273,12 +276,12 @@ public class ReachabilityExport {
 
     public Method computeIfAbsent(AnalysisMethod m) {
         Type t = computeIfAbsent(m.getDeclaringClass());
-        return t.methods.computeIfAbsent(m.format("%n(%P):%R"), name -> new Method(m));
+        return t.methods.computeIfAbsent(m.format("%n(%P):%R"), name -> new Method(m.isSynthetic()));
     }
 
     public Field computeIfAbsent(AnalysisField f) {
         Type t = computeIfAbsent(f.getDeclaringClass());
-        return t.fields.computeIfAbsent(f.getName(), name -> new Field(f));
+        return t.fields.computeIfAbsent(f.getName(), name -> new Field(f.isSynthetic()));
     }
 
     public Type computeIfAbsent(AnalysisMetaAccess metaAccess, Class<?> clazz) {
@@ -292,23 +295,21 @@ public class ReachabilityExport {
         }
     }
 
-    /*
-    public Method computeIfAbsent(AnalysisMetaAccess metaAccess, java.lang.reflect.Method m) {
+    public Method computeIfAbsent(AnalysisMetaAccess metaAccess, java.lang.reflect.Executable executable) {
         try {
-            return computeIfAbsent(metaAccess.lookupJavaMethod(m));
+            return computeIfAbsent(metaAccess.lookupJavaMethod(executable));
         } catch (UnsupportedFeatureException ex) {
-            return computeIfAbsent()
+            Type t = computeIfAbsent(metaAccess, executable.getDeclaringClass());
+            return t.methods.computeIfAbsent(toGraalLikeString(executable), name -> new Method(executable.isSynthetic()));
         }
     }
-    */
 
-    public HierarchyNode computeIfAbsent(AnalysisMetaAccess metaAccess, AnnotatedElement reflectionObject) {
-        if (reflectionObject instanceof Class<?> c) {
-            return computeIfAbsent(metaAccess, c);
-        } else if (reflectionObject instanceof Executable e) {
-            return computeIfAbsent(metaAccess.lookupJavaMethod(e));
-        } else {
-            return computeIfAbsent(metaAccess.lookupJavaField((java.lang.reflect.Field) reflectionObject));
+    public Field computeIfAbsent(AnalysisMetaAccess metaAccess, java.lang.reflect.Field f) {
+        try {
+            return computeIfAbsent(metaAccess.lookupJavaField(f));
+        } catch (UnsupportedFeatureException ex) {
+            Type t = computeIfAbsent(metaAccess, f.getDeclaringClass());
+            return t.fields.computeIfAbsent(toGraalLikeString(f), name -> new Field(f.isSynthetic()));
         }
     }
 
@@ -340,5 +341,38 @@ public class ReachabilityExport {
 
     public Object serialize() {
         return topLevelOrigins.values().stream().sorted(Comparator.comparing((TopLevelOrigin tlo) -> tlo.path != null ? tlo.path : "").thenComparing(tlo -> tlo.module != null ? tlo.module : "")).map(TopLevelOrigin::serialize).toArray();
+    }
+
+    public static String toGraalLikeString(java.lang.reflect.Method m) {
+        return m.getDeclaringClass().getTypeName() + '.' + m.getName() + '(' + Arrays.stream(m.getParameterTypes()).map(Class::getTypeName).collect(Collectors.joining(", ")) + "):" + m.getReturnType().getTypeName();
+    }
+
+    public static String toGraalLikeString(java.lang.reflect.Constructor<?> c) {
+        return c.getDeclaringClass().getTypeName() + ".<init>(" + Arrays.stream(c.getParameterTypes()).map(Class::getTypeName).collect(Collectors.joining(", ")) + "):void";
+    }
+
+    public static String toGraalLikeString(Executable executable) {
+        if (executable instanceof java.lang.reflect.Method m) {
+            return toGraalLikeString(m);
+        } else {
+            return toGraalLikeString((java.lang.reflect.Constructor<?>) executable);
+        }
+    }
+
+    public static String toGraalLikeString(java.lang.reflect.Field f) {
+        return f.getDeclaringClass().getTypeName() + '.' + f.getName();
+    }
+
+    public static String reflectionObjectToString(AnnotatedElement reflectionObject) {
+        if (reflectionObject instanceof Class<?> clazz) {
+            return clazz.getTypeName();
+        } else if (reflectionObject instanceof Constructor<?> c) {
+            return toGraalLikeString(c);
+        } else if (reflectionObject instanceof java.lang.reflect.Method m) {
+            return toGraalLikeString(m);
+        } else {
+            java.lang.reflect.Field f = ((java.lang.reflect.Field) reflectionObject);
+            return toGraalLikeString(f);
+        }
     }
 }
