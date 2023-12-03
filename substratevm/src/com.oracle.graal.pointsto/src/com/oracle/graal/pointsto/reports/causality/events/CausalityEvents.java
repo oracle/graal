@@ -142,7 +142,8 @@ public final class CausalityEvents {
             }
 
             if (context.isEmpty()) {
-                throw new RuntimeException();
+                System.err.println("Warning: CausalityExport observed an unknown BytecodePosition!");
+                return null;
             }
 
             return create(new InlinedMethods(context.toArray(AnalysisMethod[]::new)));

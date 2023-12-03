@@ -94,7 +94,7 @@ abstract class BasicImpl<TContext extends BasicImpl.ThreadContext> extends Causa
 
                 if (!overwriteSilently && !causes.isEmpty()) {
                     CausalityEvent top = causes.peek().event;
-                    if (top != null && top != event && event != CausalityEvents.Ignored && top != CausalityEvents.Ignored && !(top instanceof Feature) && !top.root()) {
+                    if (event != null && top != null && top != event && event != CausalityEvents.Ignored && top != CausalityEvents.Ignored && !(top instanceof Feature) && !top.root()) {
                         throw new RuntimeException("Stacking Rerooting requests!");
                     }
                 }
