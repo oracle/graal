@@ -31,13 +31,12 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.core.common.BootstrapMethodIntrospection;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.serviceprovider.GraalServices;
-
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.core.common.BootstrapMethodIntrospection;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
@@ -153,7 +152,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
     }
 
     @Override
-    public WrappedSignature lookupSignature(int cpi) {
+    public ResolvedSignature<?> lookupSignature(int cpi) {
         return universe.lookup(wrapped.lookupSignature(cpi), defaultAccessingClass);
     }
 

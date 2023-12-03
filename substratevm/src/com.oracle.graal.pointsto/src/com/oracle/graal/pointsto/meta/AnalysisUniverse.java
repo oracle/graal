@@ -37,8 +37,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.word.WordBase;
@@ -52,16 +50,18 @@ import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
+import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
-import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisType.UsageKind;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.GraalAccess;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantPool;
@@ -88,7 +88,7 @@ public class AnalysisUniverse implements Universe {
     private final ConcurrentMap<ResolvedJavaType, Object> types = new ConcurrentHashMap<>(ESTIMATED_NUMBER_OF_TYPES);
     private final ConcurrentMap<ResolvedJavaField, AnalysisField> fields = new ConcurrentHashMap<>(ESTIMATED_FIELDS_PER_TYPE * ESTIMATED_NUMBER_OF_TYPES);
     private final ConcurrentMap<ResolvedJavaMethod, AnalysisMethod> methods = new ConcurrentHashMap<>(ESTIMATED_METHODS_PER_TYPE * ESTIMATED_NUMBER_OF_TYPES);
-    private final ConcurrentMap<Signature, WrappedSignature> signatures = new ConcurrentHashMap<>(ESTIMATED_METHODS_PER_TYPE * ESTIMATED_NUMBER_OF_TYPES);
+    private final ConcurrentMap<ResolvedSignature<AnalysisType>, ResolvedSignature<AnalysisType>> uniqueSignatures = new ConcurrentHashMap<>();
     private final ConcurrentMap<ConstantPool, WrappedConstantPool> constantPools = new ConcurrentHashMap<>(ESTIMATED_NUMBER_OF_TYPES);
     private final ConcurrentHashMap<JavaConstant, BytecodePosition> embeddedRoots = new ConcurrentHashMap<>(ESTIMATED_EMBEDDED_ROOTS);
     private final ConcurrentMap<AnalysisField, Boolean> unsafeAccessedStaticFields = new ConcurrentHashMap<>();
@@ -470,16 +470,37 @@ public class AnalysisUniverse implements Universe {
     }
 
     @Override
-    public WrappedSignature lookup(Signature signature, ResolvedJavaType defaultAccessingClass) {
-        assert !(signature instanceof WrappedSignature) : signature;
+    public ResolvedSignature<AnalysisType> lookup(Signature signature, ResolvedJavaType defaultAccessingClass) {
         assert !(defaultAccessingClass instanceof WrappedJavaType) : defaultAccessingClass;
-        WrappedSignature result = signatures.get(signature);
-        if (result == null) {
-            WrappedSignature newValue = new WrappedSignature(this, signature, defaultAccessingClass);
-            WrappedSignature oldValue = signatures.putIfAbsent(signature, newValue);
-            result = oldValue != null ? oldValue : newValue;
+
+        AnalysisType[] paramTypes = new AnalysisType[signature.getParameterCount(false)];
+        for (int i = 0; i < paramTypes.length; i++) {
+            paramTypes[i] = lookup(resolveSignatureType(signature.getParameterType(i, defaultAccessingClass), defaultAccessingClass));
         }
-        return result;
+        AnalysisType returnType = lookup(resolveSignatureType(signature.getReturnType(defaultAccessingClass), defaultAccessingClass));
+        ResolvedSignature<AnalysisType> key = ResolvedSignature.fromArray(paramTypes, returnType);
+
+        return uniqueSignatures.computeIfAbsent(key, k -> k);
+    }
+
+    private ResolvedJavaType resolveSignatureType(JavaType type, ResolvedJavaType defaultAccessingClass) {
+        /*
+         * We must not invoke resolve() on an already resolved type because it can actually fail the
+         * accessibility check when synthetic methods and synthetic signatures are involved.
+         */
+        if (type instanceof ResolvedJavaType resolvedType) {
+            return resolvedType;
+        }
+
+        try {
+            return type.resolve(defaultAccessingClass);
+        } catch (LinkageError e) {
+            /*
+             * Type resolution fails if the parameter type is missing. Just erase the type by
+             * returning the Object type.
+             */
+            return objectType().getWrapped();
+        }
     }
 
     @Override

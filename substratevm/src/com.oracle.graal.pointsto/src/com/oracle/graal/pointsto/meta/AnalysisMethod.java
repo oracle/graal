@@ -53,8 +53,8 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
+import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
-import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AtomicUtils;
@@ -119,6 +119,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private final String qualifiedName;
 
     protected final AnalysisType declaringClass;
+    protected final ResolvedSignature<AnalysisType> signature;
     private final int parsingContextMaxDepth;
 
     private final MultiMethodKey multiMethodKey;
@@ -181,6 +182,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         id = universe.nextMethodId.getAndIncrement();
 
         declaringClass = universe.lookup(wrapped.getDeclaringClass());
+        signature = getUniverse().lookup(wrapped.getSignature(), wrapped.getDeclaringClass());
         hasNeverInlineDirective = universe.hostVM().hasNeverInlineDirective(wrapped);
 
         name = createName(wrapped, multiMethodKey);
@@ -228,6 +230,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         wrapped = original.wrapped;
         id = original.id;
         declaringClass = original.declaringClass;
+        signature = original.signature;
         hasNeverInlineDirective = original.hasNeverInlineDirective;
         exceptionHandlers = original.exceptionHandlers;
         localVariableTable = original.localVariableTable;
@@ -627,8 +630,8 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     @Override
-    public WrappedSignature getSignature() {
-        return getUniverse().lookup(wrapped.getSignature(), wrapped.getDeclaringClass());
+    public jdk.vm.ci.meta.Signature getSignature() {
+        return signature;
     }
 
     @Override
