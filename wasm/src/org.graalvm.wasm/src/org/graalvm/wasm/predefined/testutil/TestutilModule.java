@@ -46,52 +46,20 @@ import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
-import static org.graalvm.wasm.WasmType.I32_TYPE;
-
 public class TestutilModule extends BuiltinModule {
     private static final int NUMBER_OF_FUNCTIONS = 2;
 
-    public static class Options {
-        static final String KEEP_TEMP_FILES = System.getProperty("wasmtest.keepTempFiles", "false");
-    }
-
     public static class Names {
         public static final String RUN_CUSTOM_INITIALIZATION = "__testutil_run_custom_initialization";
-        public static final String SAVE_BINARY_FILE = "__testutil_save_binary_file";
-    }
-
-    private static Path createTemporaryDirectory() {
-        try {
-            if (Options.KEEP_TEMP_FILES.equals("true")) {
-                final Path directory = Paths.get("./test-output/");
-                directory.toFile().mkdirs();
-                return directory;
-            } else {
-                final Path tempDirectory = Files.createTempDirectory("temp-dir-");
-                tempDirectory.toFile().deleteOnExit();
-                return tempDirectory;
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     @Override
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
-        final Path temporaryDirectory = createTemporaryDirectory();
         WasmInstance instance = new WasmInstance(context, WasmModule.createBuiltin(name), NUMBER_OF_FUNCTIONS);
 
         // Note: in the following methods, the types are not important here, since these methods
         // are not accessed by Wasm code.
         defineFunction(instance, Names.RUN_CUSTOM_INITIALIZATION, types(), types(), new RunCustomInitializationNode(language));
-
-        // The following methods are exposed to the Wasm test programs.
-        defineFunction(instance, Names.SAVE_BINARY_FILE, types(I32_TYPE, I32_TYPE, I32_TYPE), types(), new SaveBinaryFileNode(language, instance, temporaryDirectory));
 
         return instance;
     }
