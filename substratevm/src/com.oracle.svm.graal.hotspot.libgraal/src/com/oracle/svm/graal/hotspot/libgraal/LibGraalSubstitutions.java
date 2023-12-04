@@ -30,7 +30,6 @@ import java.util.Map;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.heap.Heap;
 
 import jdk.vm.ci.services.Services;
 
