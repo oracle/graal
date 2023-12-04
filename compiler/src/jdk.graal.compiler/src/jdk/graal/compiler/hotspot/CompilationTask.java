@@ -77,7 +77,8 @@ import jdk.vm.ci.runtime.JVMCICompiler;
 public class CompilationTask implements CompilationWatchDog.EventHandler {
 
     static class Options {
-        @Option(help = "Perform a full GC after every compile to reduce idle heap and reclaim references", type = OptionType.Expert)//
+        @Option(help = "Perform a full GC of the libgraal heap after every compile to reduce idle heap and reclaim " +
+                        "references to the HotSpot heap.  This flag has no effect in the context of jargraal", type = OptionType.Expert)//
         public static final OptionKey<Boolean> FullGCAfterCompile = new OptionKey<>(false);
     }
 
