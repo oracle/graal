@@ -4,7 +4,7 @@ This option expects a comma separated list of key-value pairs. None of the optio
 
 globalbuffercount   (Optional) Number of global buffers. This option is a legacy
                     option: change the memorysize parameter to alter the number of
-                    global buffers. This value cannot be changed once JFR has been"
+                    global buffers. This value cannot be changed once JFR has been
                     initialized. (LONG, default determined by the value for
                     memorysize)
 
