@@ -63,6 +63,9 @@ import jdk.vm.ci.meta.JavaConstant;
 public final class AMD64FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> implements ArithmeticLIRLowerable {
     public static final NodeClass<AMD64FloatConvertNode> TYPE = NodeClass.create(AMD64FloatConvertNode.class);
 
+    /**
+     * Convert operation of this node.
+     */
     protected final FloatConvert op;
 
     public AMD64FloatConvertNode(FloatConvert op, ValueNode value) {
@@ -164,4 +167,16 @@ public final class AMD64FloatConvertNode extends UnaryArithmeticNode<FloatConver
     public void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool gen) {
         nodeValueMap.setResult(this, gen.emitFloatConvert(op, nodeValueMap.operand(getValue())));
     }
+
+    @NodeIntrinsic
+    public static native int convertToInt(@ConstantNodeParameter FloatConvert op, float input);
+
+    @NodeIntrinsic
+    public static native long convertToLong(@ConstantNodeParameter FloatConvert op, float input);
+
+    @NodeIntrinsic
+    public static native int convertToInt(@ConstantNodeParameter FloatConvert op, double input);
+
+    @NodeIntrinsic
+    public static native long convertToLong(@ConstantNodeParameter FloatConvert op, double input);
 }
