@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
@@ -65,6 +66,7 @@ public class WasiFdFilestatSetTimesNode extends WasmBuiltinRootNode {
                         (int) WasmArguments.getArgument(args, 3));
     }
 
+    @TruffleBoundary
     private int fdstatSetTime(WasmContext context, int fd, long atim, long mtim, int fstFlags) {
         final Fd handle = context.fdManager().get(fd);
         if (handle == null) {
