@@ -28,6 +28,7 @@
 
 #include <sys/syscall.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 /*
  * Based on os::Linux::gettid() from jdk-20-ga, see
