@@ -713,7 +713,7 @@ public class PolyglotIsolate {
 			  .allowHostAccess(HostAccess.SCOPED)
 			  .option("engine.SpawnIsolate", "true").build()) {
 			  
-			Value function = context.eval("js", "x => x+1")
+			Value function = context.eval("js", "x => x+1");
 			assert function.canExecute();
 			int x = function.execute(41).asInt();
 			assert x == 42;
