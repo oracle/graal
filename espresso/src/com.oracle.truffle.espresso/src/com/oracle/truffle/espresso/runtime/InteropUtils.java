@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -107,5 +109,16 @@ public class InteropUtils {
         }
         Object stack = meta.HIDDEN_FRAMES.getHiddenObject(guestException);
         return stack == VM.StackTrace.FOREIGN_MARKER_STACK_TRACE;
+    }
+
+    @TruffleBoundary
+    public static RuntimeException unwrapExceptionBoundary(EspressoLanguage language, EspressoException exception, Meta meta) {
+        if (isForeignException(exception)) {
+            StaticObject guestException = exception.getGuestException();
+            // return the original foreign exception when leaving espresso interop
+            return (AbstractTruffleException) meta.java_lang_Throwable_backtrace.getObject(guestException).rawForeignObject(language);
+        } else {
+            return exception;
+        }
     }
 }
