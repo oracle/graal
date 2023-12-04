@@ -168,13 +168,13 @@ local devkits = graal_common.devkits;
   vm_linux_aarch64_ol9: self.common_vm_linux + graal_common.linux_aarch64_ol9,
 
   vm_darwin_amd64: self.common_vm_darwin + graal_common.darwin_amd64 + {
-    capabilities+: ['darwin_mojave', 'ram16gb'],
+    capabilities+: ['darwin_bigsur', 'ram16gb'],
     packages+: {
       gcc: '==4.9.2',
     },
     environment+: {
-      # for compatibility with macOS Sierra
-      MACOSX_DEPLOYMENT_TARGET: '10.13',
+      # for compatibility with macOS BigSur
+      MACOSX_DEPLOYMENT_TARGET: '11.0',
     },
   },
 
@@ -879,7 +879,7 @@ local devkits = graal_common.devkits;
   # Darwin/AMD64
   # - JDK-Latest
   deploy_vm_base_javaLatest_darwin_amd64: vm.vm_java_Latest + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_base('latest') + {name: 'daily-deploy-vm-base-java-latest-darwin-amd64', notify_groups:: ["deploy"], timelimit: '1:45:00'},
-  deploy_vm_standalones_javaLatest_darwin_amd64: vm.vm_java_Latest + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_components('latest', installables=false, standalones=true) + {name: 'daily-deploy-vm-standalones-java-latest-darwin-amd64', diskspace_required: "31GB", notify_groups:: ["deploy"], timelimit: '3:00:00'},
+  deploy_vm_standalones_javaLatest_darwin_amd64: vm.vm_java_Latest + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_components('latest', installables=false, standalones=true) + {name: 'daily-deploy-vm-standalones-java-latest-darwin-amd64', capabilities+: ["!macmini_late_2014"], diskspace_required: "31GB", notify_groups:: ["deploy"], timelimit: '3:00:00'},
   # - JDK21
   deploy_vm_base_java21_darwin_amd64: vm.vm_java_21 + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_base("java21") + {name: 'daily-deploy-vm-base-java21-darwin-amd64', notify_groups:: ["deploy"], timelimit: '1:45:00'},
   deploy_vm_installables_java21_darwin_amd64: vm.vm_java_21_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_weekly_vm_darwin_amd64 + self.deploy_graalvm_components("java21", installables=true, standalones=false) + {name: 'weekly-deploy-vm-installables-java21-darwin-amd64', diskspace_required: "31GB", notify_groups:: ["deploy"], timelimit: '3:00:00'},

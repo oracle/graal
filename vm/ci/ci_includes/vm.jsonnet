@@ -211,9 +211,8 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
 
     # Darwin/AMD64
     # - JDK-Latest
-    # GR-49652
-    # vm_common.deploy_vm_base_javaLatest_darwin_amd64,
-    # vm_common.deploy_vm_standalones_javaLatest_darwin_amd64,
+    vm_common.deploy_vm_base_javaLatest_darwin_amd64,
+    vm_common.deploy_vm_standalones_javaLatest_darwin_amd64,
     # - JDK21
     vm_common.deploy_vm_base_java21_darwin_amd64,
     vm_common.deploy_vm_installables_java21_darwin_amd64,
