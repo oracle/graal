@@ -7,8 +7,8 @@ permalink: /security-guide/native-image/Jipher/
 
 # Jipher JCE with Native Image
 
-Jipher JCE is an Oracle-developed [Java Cryptography Architecture (JCA)](../reference-manual/native-image/JCASecurityServices.md) provider that packages a pre-configured and FIPS compliant version of OpenSSL 3.0. 
-The Jipher provider supports algorithms which are allowed by [FIPS](https://en.wikipedia.org/wiki/FIPS_140), including the OpenSSL 3.0's FIPS module. 
+Jipher JCE is an Oracle-developed [Java Cryptography Architecture (JCA)](../reference-manual/native-image/JCASecurityServices.md) provider that packages a pre-configured and FIPS validated version of OpenSSL 3.0. 
+The Jipher provider supports algorithms which are allowed by [FIPS](https://en.wikipedia.org/wiki/FIPS_140), including the OpenSSL 3.0's FIPS provider. 
 Jipher provides competitive performance compared to Bouncy Castle or the default JDK providers.
 It is recommended to enable Jipher with Native Image in contexts where only FIPS-allowed algorithms should be used. 
 Note that some algorithms are allowed by FIPS for specific use cases only. As a result, some algorithms provided by Jipher might not be allowed by FIPS for all purposes.
@@ -168,3 +168,4 @@ Jipher is recommended for GraalVM Native Image when only FIPS-allowed algorithm 
 
 * [Native Image Security Aspects](native-image.md)
 * [JCA Security Services in Native Image](../reference-manual/native-image/JCASecurityServices.md)
+* [OpenSSL FIPS Provider Security Policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp4506.pdf)
