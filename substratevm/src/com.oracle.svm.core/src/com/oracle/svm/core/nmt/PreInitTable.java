@@ -59,6 +59,7 @@ class PreInitTable extends AbstractUninterruptibleHashtable {
         return a.getHash() == b.getHash();
     }
 
+    /** This override is necessary to use LibC directly. */
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected UninterruptibleEntry copyToHeap(UninterruptibleEntry valueOnStack) {
@@ -72,6 +73,11 @@ class PreInitTable extends AbstractUninterruptibleHashtable {
         return WordFactory.nullPointer();
     }
 
+    /**
+     * Since these native memory hashtable nodes don't have headers, this is necessary to avoid
+     * re-entering NMT code. Use LibC directly.
+     */
+    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected void free(UninterruptibleEntry entry) {
         size--;
