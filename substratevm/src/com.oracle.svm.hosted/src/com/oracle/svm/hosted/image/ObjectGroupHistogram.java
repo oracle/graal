@@ -104,9 +104,9 @@ public final class ObjectGroupHistogram {
         processObject(NonmovableArrays.getHostedArray(DynamicHubSupport.getReferenceMapEncoding()), "DynamicHub", true, null, null);
         processObject(CodeInfoTable.getImageCodeCache(), "ImageCodeInfo", true, ObjectGroupHistogram::filterCodeInfoObjects, null);
 
-        processObject(readGraalSupportField("graphEncoding"), "CompressedGraph", true, ObjectGroupHistogram::filterGraalSupportObjects, null);
-        processObject(readGraalSupportField("graphObjects"), "CompressedGraph", true, ObjectGroupHistogram::filterGraalSupportObjects, null);
-        processObject(readGraalSupportField("graphNodeTypes"), "CompressedGraph", true, ObjectGroupHistogram::filterGraalSupportObjects, null);
+        processObject(readTruffleRuntimeCompilationSupportField("graphEncoding"), "CompressedGraph", true, ObjectGroupHistogram::filterGraalSupportObjects, null);
+        processObject(readTruffleRuntimeCompilationSupportField("graphObjects"), "CompressedGraph", true, ObjectGroupHistogram::filterGraalSupportObjects, null);
+        processObject(readTruffleRuntimeCompilationSupportField("graphNodeTypes"), "CompressedGraph", true, ObjectGroupHistogram::filterGraalSupportObjects, null);
 
         processType(ResolvedJavaType.class, "Graal Metadata", false, null, null);
         processType(ResolvedJavaMethod.class, "Graal Metadata", false, null, null);
@@ -142,9 +142,9 @@ public final class ObjectGroupHistogram {
         System.out.format("%s; %d; %d%n", "Total", totalHistogram.getTotalCount(), totalHistogram.getTotalSize());
     }
 
-    private static Object readGraalSupportField(String name) {
+    private static Object readTruffleRuntimeCompilationSupportField(String name) {
         try {
-            Class<?> graalSupportClass = Class.forName("com.oracle.svm.graal.GraalSupport");
+            Class<?> graalSupportClass = Class.forName("com.oracle.svm.graal.TruffleRuntimeCompilationSupport");
             Object graalSupport = ImageSingletons.lookup(graalSupportClass);
             return ReflectionUtil.readField(graalSupportClass, name, graalSupport);
         } catch (Throwable ex) {

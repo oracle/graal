@@ -410,6 +410,89 @@ public class GraphUtil {
                         // input is found
     }
 
+    /**
+     * Deletes the specified nodes in the graph and all nodes transitively, which are left without
+     * usages (except {@link GuardNode}s). This implementation is more efficient than repeated
+     * invocations of {@link GraphUtil#killWithUnusedFloatingInputs(Node, boolean)}.
+     */
+    public static void killAllWithUnusedFloatingInputs(NodeIterable<? extends Node> toKill, boolean mayKillGuard) {
+        /*
+         * Removing single nodes from a node's usage list is expensive (especially for complex
+         * graphs). This implementation works in the following:
+         *
+         * 1) If node x uses node y and y is deleted, the deletion of y from x's usages is deferred
+         * until it is known that x is not deleted as well. Thus, if both x any y are deleted, the
+         * usage is not deleted.
+         *
+         * 2) Nodes which were not deleted during the transitive deletion have their dead usages
+         * removed all at once, which yields linear complexity for removing multiple usages for one
+         * node.
+         */
+
+        // tracks the usage counts for each node instead of actually deleting usages for now
+        EconomicMap<Node, Integer> usageMap = EconomicMap.create();
+
+        EconomicSet<Node> maybeKill = EconomicSet.create();
+
+        // delete the initial set of nodes to be killed
+        for (Node n : toKill) {
+            assert checkKill(n, mayKillGuard);
+            n.markDeleted();
+            for (Node in : n.inputs()) {
+                Integer usages = usageMap.get(in);
+                if (usages == null) {
+                    usages = in.getUsageCount();
+                }
+                usageMap.put(in, usages - 1);
+                maybeKill.add(in);
+            }
+        }
+
+        // fixed point algorithm for transitive deletion of nodes which have no more usages
+        EconomicSet<Node> newMaybeKill;
+        do {
+            newMaybeKill = EconomicSet.create();
+
+            for (Node n : maybeKill) {
+                if (n.isAlive()) {
+                    if (usageMap.get(n) == 0) {
+                        n.maybeNotifyZeroUsages(n);
+                        if (!isFloatingNode(n)) {
+                            continue;
+                        }
+                        if (n instanceof GuardNode) {
+                            // Guard nodes are only killed if their anchor dies.
+                            continue;
+                        }
+                    } else if (n instanceof PhiNode phi && phi.isDegenerated()) {
+                        n.replaceAtUsages(null);
+                        n.maybeNotifyZeroUsages(n);
+                    } else {
+                        continue;
+                    }
+                    // no "checkKill" because usages were not actually removed
+                    n.markDeleted();
+                    for (Node in : n.inputs()) {
+                        Integer usages = usageMap.get(in);
+                        if (usages == null) {
+                            usages = in.usages().count();
+                        }
+                        usageMap.put(in, usages - 1);
+                        newMaybeKill.add(in);
+                    }
+                }
+            }
+            maybeKill = newMaybeKill;
+        } while (!newMaybeKill.isEmpty());
+
+        // actual removal of deleted usages for each node which is still alive
+        for (Node n : usageMap.getKeys()) {
+            if (n.isAlive() && (n.getUsageCount() != usageMap.get(n))) {
+                n.removeDeadUsages();
+            }
+        }
+    }
+
     public static void removeFixedWithUnusedInputs(FixedWithNextNode fixed) {
         if (fixed instanceof StateSplit) {
             FrameState stateAfter = ((StateSplit) fixed).stateAfter();

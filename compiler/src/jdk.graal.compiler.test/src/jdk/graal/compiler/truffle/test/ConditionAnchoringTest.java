@@ -32,6 +32,8 @@ import static org.junit.Assert.assertThat;
 
 import java.lang.reflect.Field;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.nodes.BeginNode;
@@ -56,8 +58,6 @@ import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
 import jdk.graal.compiler.phases.common.LoweringPhase;
 import jdk.graal.compiler.truffle.nodes.ObjectLocationIdentity;
 import jdk.graal.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import sun.misc.Unsafe;
@@ -134,7 +134,7 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
         NodeIterable<FloatingReadNode> floatingReads = graph.getNodes().filter(FloatingReadNode.class);
         assertThat(floatingReads, hasCount(ids + 1)); // 1 id read, 1 'field' access
 
-        new ConditionalEliminationPhase(false).apply(graph, context);
+        new ConditionalEliminationPhase(canonicalizerPhase, false).apply(graph, context);
 
         floatingReads = graph.getNodes().filter(FloatingReadNode.class).filter(n -> ((FloatingReadNode) n).getLocationIdentity() instanceof ObjectLocationIdentity);
         conditionAnchors = graph.getNodes().filter(ConditionAnchorNode.class);

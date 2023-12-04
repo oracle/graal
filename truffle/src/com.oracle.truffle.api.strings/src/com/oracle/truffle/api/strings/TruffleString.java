@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,14 +73,19 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.DenyReplace;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
@@ -2475,7 +2480,10 @@ public final class TruffleString extends AbstractTruffleString {
         }
     }
 
+    @GenerateUncached(false)
     abstract static class ToIndexableNode extends AbstractInternalNode {
+
+        private static final ToIndexableNode UNCACHED = new Uncached();
 
         abstract Object execute(Node node, AbstractTruffleString a, Object data);
 
@@ -2492,32 +2500,76 @@ public final class TruffleString extends AbstractTruffleString {
 
         @Specialization(guards = "!isSupportedEncoding(a.encoding())")
         static NativePointer doNativeUnsupported(Node node, @SuppressWarnings("unused") AbstractTruffleString a, NativePointer data,
-                        @Shared("materializeProfile") @Cached InlinedConditionProfile materializeProfile) {
+                        @Shared @Cached InlinedConditionProfile materializeProfile) {
             data.materializeByteArray(node, a, materializeProfile);
             return data;
         }
 
         @Specialization
-        byte[] doLazyConcat(AbstractTruffleString a, @SuppressWarnings("unused") LazyConcat data) {
-            return doLazyConcatIntl(this, a);
-        }
-
-        private static byte[] doLazyConcatIntl(ToIndexableNode location, AbstractTruffleString a) {
+        static byte[] doLazyConcat(Node node, AbstractTruffleString a, @SuppressWarnings("unused") LazyConcat data) {
             // note: the write to a.data is racy, and we deliberately read it from the TString
             // object again after the race to de-duplicate simultaneously generated arrays
-            a.setData(LazyConcat.flatten(location, (TruffleString) a));
+            a.setData(LazyConcat.flatten(node, (TruffleString) a));
             return (byte[]) a.data();
         }
 
         @Specialization
         static byte[] doLazyLong(Node node, AbstractTruffleString a, LazyLong data,
-                        @Shared("materializeProfile") @Cached InlinedConditionProfile materializeProfile) {
+                        @Shared @Cached InlinedConditionProfile materializeProfile) {
             // same pattern as in #doLazyConcat: racy write to data.bytes and read the result
             // again to de-duplicate
             if (materializeProfile.profile(node, data.bytes == null)) {
                 data.setBytes((TruffleString) a, NumberConversion.longToString(data.value, a.length()));
             }
             return data.bytes;
+        }
+
+        public static ToIndexableNode getUncached() {
+            return UNCACHED;
+        }
+
+        @DenyReplace
+        @GenerateCached(false)
+        @GenerateUncached(false)
+        @GenerateInline(false)
+        private static final class Uncached extends ToIndexableNode {
+
+            @Override
+            public Object execute(Node node, AbstractTruffleString a, Object data) {
+                if (data instanceof byte[] byteData) {
+                    return byteData;
+                } else {
+                    // Outlined to keep this method as trivial as possible
+                    return doNativeOrLazy(node, a, data);
+                }
+            }
+
+            private static Object doNativeOrLazy(Node node, AbstractTruffleString a, Object data) {
+                if (data instanceof NativePointer nativePointer && Encoding.isSupported(a.encoding())) {
+                    return nativePointer;
+                }
+                return doMaterialize(node, a, data);
+            }
+
+            @TruffleBoundary
+            private static Object doMaterialize(Node node, AbstractTruffleString a, Object data) {
+                if (data instanceof NativePointer nativePointer) {
+                    assert !TStringGuards.isSupportedEncoding(a.encoding());
+                    return ToIndexableNode.doNativeUnsupported(node, a, nativePointer, InlinedConditionProfile.getUncached());
+                } else if (data instanceof LazyConcat) {
+                    return doLazyConcat(node, a, (LazyConcat) data);
+                } else if (data instanceof LazyLong) {
+                    return ToIndexableNode.doLazyLong(node, a, (LazyLong) data, InlinedConditionProfile.getUncached());
+                } else {
+                    assert false : data;
+                    throw CompilerDirectives.shouldNotReachHere();
+                }
+            }
+
+            @Override
+            public boolean isAdoptable() {
+                return false;
+            }
         }
     }
 
@@ -2621,7 +2673,7 @@ public final class TruffleString extends AbstractTruffleString {
      *
      * @see CodeRange
      * @see GetCodeRangeNode
-     * 
+     *
      * @since 23.0
      */
     public abstract static class GetCodeRangeImpreciseNode extends AbstractPublicNode {
@@ -3020,11 +3072,16 @@ public final class TruffleString extends AbstractTruffleString {
             a.checkEncoding(expectedEncoding);
             int h = a.hashCode;
             if (cacheMiss.profile(this, h == 0)) {
-                h = calculateHashCodeNode.execute(this, a, toIndexableNode.execute(this, a, a.data()));
-                if (h == 0) {
-                    h--;
-                }
-                a.hashCode = h;
+                Object arrayA = toIndexableNode.execute(this, a, a.data());
+                h = a.setHashCode(maskZero(calculateHashCodeNode.execute(this, a, arrayA)));
+            }
+            return h;
+        }
+
+        private static int maskZero(int rawHashCode) {
+            int h = rawHashCode;
+            if (h == 0) {
+                h--;
             }
             return h;
         }
@@ -3046,6 +3103,15 @@ public final class TruffleString extends AbstractTruffleString {
          */
         public static HashCodeNode getUncached() {
             return TruffleStringFactory.HashCodeNodeGen.getUncached();
+        }
+
+        /**
+         * Calculates the hash code for {@link AbstractTruffleString#hashCode()}. This method is
+         * only called if the hashCode field is zero, so we don't need to check that again here.
+         */
+        static int calculateHashCodeUncached(AbstractTruffleString a) {
+            Object arrayA = ToIndexableNode.getUncached().execute(getUncached(), a, a.data());
+            return a.setHashCode(maskZero(TStringOps.hashCodeWithStride(getUncached(), a, arrayA, a.stride())));
         }
     }
 
@@ -3562,7 +3628,7 @@ public final class TruffleString extends AbstractTruffleString {
         final int indexOfRaw(AbstractTruffleString a, int fromCharIndex, int maxCharIndex, char[] values,
                         @Cached ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetCodeRangeForIndexCalculationNode getCodeRangeNode,
-                        @Cached TStringOpsNodes.IndexOfAnyCharNode indexOfNode) {
+                        @Cached TStringOpsNodes.IndexOfAnyCharUTF16Node indexOfNode) {
             a.checkEncoding(Encoding.UTF_16);
             if (a.isEmpty()) {
                 return -1;
@@ -3765,7 +3831,7 @@ public final class TruffleString extends AbstractTruffleString {
          * <p>
          * Usage example: A node that scans a string for a known set of code points and escapes them
          * with '\'.
-         * 
+         *
          * <pre>
          * {@code
          * abstract static class StringEscapeNode extends Node {
@@ -3813,7 +3879,7 @@ public final class TruffleString extends AbstractTruffleString {
          * @param codePointSet The set of codepoints to look for. This parameter is expected to be
          *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
          *            constant}.
-         * 
+         *
          * @since 23.0
          */
         public abstract int execute(AbstractTruffleString a, int fromByteIndex, int toByteIndex, CodePointSet codePointSet);
@@ -4459,7 +4525,6 @@ public final class TruffleString extends AbstractTruffleString {
         int compare(AbstractTruffleString a, AbstractTruffleString b, Encoding expectedEncoding,
                         @Cached ToIndexableNode toIndexableNodeA,
                         @Cached ToIndexableNode toIndexableNodeB) {
-            nullCheck(expectedEncoding);
             a.looseCheckEncoding(expectedEncoding, a.codeRange());
             b.looseCheckEncoding(expectedEncoding, b.codeRange());
             Object aData = toIndexableNodeA.execute(this, a, a.data());

@@ -1627,6 +1627,12 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         }
 
         @Override
+        public Variable emitReverseBits(Value operand) {
+            LLVMValueRef reversed = builder.buildBitReverse(getVal(operand));
+            return new LLVMVariable(reversed);
+        }
+
+        @Override
         public Value emitMathMax(Value a, Value b) {
             LLVMValueRef max = builder.buildMax(getVal(a), getVal(b));
             return new LLVMVariable(max);
@@ -1857,13 +1863,13 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         if (cacheLineSize == 0) {
             throw shouldNotReachHere("cache writeback with cache line size of 0"); // ExcludeFromJacocoGeneratedReport
         }
-        LLVMValueRef start = builder.buildBitcast(getVal(address), builder.rawPointerType());
+        LLVMValueRef start = builder.buildIntToPtr(getVal(address), builder.rawPointerType());
         LLVMValueRef end = builder.buildGEP(start, builder.constantInt(cacheLineSize));
         builder.buildClearCache(start, end);
     }
 
     @Override
     public void emitCacheWritebackSync(boolean isPreSync) {
-        throw unimplemented("cache sync barrier (GR-30894)"); // ExcludeFromJacocoGeneratedReport
+        builder.buildFence();
     }
 }

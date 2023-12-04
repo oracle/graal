@@ -428,13 +428,14 @@ public class UniverseBuilder {
         layoutInstanceFields(hUniverse.getObjectClass(), new HostedField[0], usedBytes);
     }
 
-    private static boolean mustReserveLengthField(HostedInstanceClass clazz) {
-        if (PodSupport.isPresent() && PodSupport.singleton().mustReserveLengthField(clazz.getJavaClass())) {
+    private static boolean mustReserveArrayFields(HostedInstanceClass clazz) {
+        if (PodSupport.isPresent() && PodSupport.singleton().mustReserveArrayFields(clazz.getJavaClass())) {
             return true;
         }
         if (HybridLayout.isHybrid(clazz)) {
-            // A pod ancestor subclassing Object must have already reserved a length field, unless
-            // the pod subclasses Object itself, in which case we would have returned true earlier.
+            // A pod ancestor subclassing Object must have already reserved memory for the array
+            // fields, unless the pod subclasses Object itself, in which case we would have returned
+            // true earlier.
             return !PodSupport.isPresent() || !PodSupport.singleton().isPodClass(clazz.getJavaClass());
         }
         return false;
@@ -458,16 +459,21 @@ public class UniverseBuilder {
 
         HostedConfiguration.instance().findAllFieldsForLayout(hUniverse, hMetaAccess, hUniverse.fields, rawFields, allFields, clazz);
 
-        if (mustReserveLengthField(clazz)) {
-            int lengthOffset = layout.getArrayLengthOffset();
-            int lengthSize = layout.sizeInBytes(JavaKind.Int);
-            reserve(usedBytes, lengthOffset, lengthSize);
+        if (mustReserveArrayFields(clazz)) {
+            int intSize = layout.sizeInBytes(JavaKind.Int);
+            int firstFieldOffset = layout.getFirstFieldOffset();
+            int afterArrayLengthOffset = layout.getArrayLengthOffset() + intSize;
 
-            // Type check fields in DynamicHub.
+            /* Reserve the extra memory that array fields may use (at least the array length). */
+            int arrayFieldBytes = afterArrayLengthOffset - firstFieldOffset;
+            assert arrayFieldBytes >= intSize;
+            reserve(usedBytes, firstFieldOffset, arrayFieldBytes);
+
+            /* Type check fields in DynamicHub. */
             if (clazz.equals(hMetaAccess.lookupJavaType(DynamicHub.class))) {
                 /* Each type check id slot is 2 bytes. */
                 int slotsSize = typeCheckBuilder.getNumTypeCheckSlots() * 2;
-                reserve(usedBytes, lengthOffset + lengthSize, slotsSize);
+                reserve(usedBytes, afterArrayLengthOffset, slotsSize);
             }
         }
 
@@ -531,28 +537,38 @@ public class UniverseBuilder {
          */
         allFields.sort(FIELD_LOCATION_COMPARATOR);
 
-        int sizeWithoutIdHashField = usedBytes.length();
+        int afterFieldsOffset = usedBytes.length();
 
         // Identity hash code
-        if (!clazz.isAbstract() && !HybridLayout.isHybrid(clazz)) {
-            int offset;
-            if (layout.hasFixedIdentityHashField()) {
-                offset = layout.getFixedIdentityHashOffset();
-            } else { // optional: place in gap if any, or append on demand during GC
-                int size = Integer.BYTES;
-                int endOffset = usedBytes.length();
-                offset = findGapForField(usedBytes, 0, size, endOffset);
-                if (offset == -1) {
-                    offset = endOffset + getAlignmentAdjustment(endOffset, size);
-                }
-                reserve(usedBytes, offset, size);
+        if (clazz.isAbstract()) {
+            /* No identity hash field needed. */
+        } else if (layout.isIdentityHashFieldInObjectHeader()) {
+            clazz.setIdentityHashOffset(layout.getObjectHeaderIdentityHashOffset());
+        } else if (HybridLayout.isHybrid(clazz)) {
+            if (layout.isIdentityHashFieldAtTypeSpecificOffset()) {
+                clazz.setIdentityHashOffset(layout.getObjectHeaderIdentityHashOffset());
+            } else {
+                /* Nothing to do - will be treated like an array. */
             }
-            clazz.setOptionalIdentityHashOffset(offset);
+        } else if (layout.isIdentityHashFieldAtTypeSpecificOffset() || layout.isIdentityHashFieldOptional()) {
+            /* Add a synthetic field (in gap if any, or append). */
+            int hashSize = Integer.BYTES;
+            int endOffset = usedBytes.length();
+            int offset = findGapForField(usedBytes, 0, hashSize, endOffset);
+            if (offset == -1) {
+                offset = endOffset + getAlignmentAdjustment(endOffset, hashSize);
+                if (layout.isIdentityHashFieldAtTypeSpecificOffset()) {
+                    /* Include the identity hashcode field in the instance size. */
+                    afterFieldsOffset = offset + hashSize;
+                }
+            }
+            reserve(usedBytes, offset, hashSize);
+            clazz.setIdentityHashOffset(offset);
         }
 
         clazz.instanceFieldsWithoutSuper = allFields.toArray(new HostedField[0]);
-        clazz.afterFieldsOffset = sizeWithoutIdHashField;
-        clazz.instanceSize = layout.alignUp(clazz.afterFieldsOffset);
+        clazz.afterFieldsOffset = afterFieldsOffset;
+        clazz.instanceSize = layout.alignUp(afterFieldsOffset);
 
         if (clazz.instanceFieldsWithoutSuper.length == 0) {
             clazz.instanceFieldsWithSuper = superFields;
@@ -1022,7 +1038,7 @@ public class UniverseBuilder {
             int layoutHelper;
             boolean canInstantiateAsInstance = false;
             int monitorOffset = 0;
-            int optionalIdHashOffset = -1;
+            int identityHashOffset = 0;
             if (type.isInstanceClass()) {
                 HostedInstanceClass instanceClass = (HostedInstanceClass) type;
                 if (instanceClass.isAbstract()) {
@@ -1038,11 +1054,14 @@ public class UniverseBuilder {
                     canInstantiateAsInstance = type.isInstantiated();
                 }
                 monitorOffset = instanceClass.getMonitorFieldOffset();
-                optionalIdHashOffset = instanceClass.getOptionalIdentityHashOffset();
+                identityHashOffset = instanceClass.getIdentityHashOffset();
             } else if (type.isArray()) {
                 JavaKind storageKind = type.getComponentType().getStorageKind();
                 boolean isObject = (storageKind == JavaKind.Object);
                 layoutHelper = LayoutEncoding.forArray(type, isObject, ol.getArrayBaseOffset(storageKind), ol.getArrayIndexShift(storageKind));
+                if (ol.isIdentityHashFieldInObjectHeader() || ol.isIdentityHashFieldAtTypeSpecificOffset()) {
+                    identityHashOffset = NumUtil.safeToInt(ol.getObjectHeaderIdentityHashOffset());
+                }
             } else if (type.isInterface()) {
                 layoutHelper = LayoutEncoding.forInterface();
             } else if (type.isPrimitive()) {
@@ -1074,7 +1093,7 @@ public class UniverseBuilder {
 
             DynamicHub hub = type.getHub();
             SerializationRegistry s = ImageSingletons.lookup(SerializationRegistry.class);
-            hub.setData(layoutHelper, type.getTypeID(), monitorOffset, optionalIdHashOffset, type.getTypeCheckStart(), type.getTypeCheckRange(),
+            hub.setData(layoutHelper, type.getTypeID(), monitorOffset, identityHashOffset, type.getTypeCheckStart(), type.getTypeCheckRange(),
                             type.getTypeCheckSlot(), type.getTypeCheckSlots(), vtable, referenceMapIndex, type.isInstantiated(), canInstantiateAsInstance, isProxyClass,
                             s.isRegisteredForSerialization(type.getJavaClass()));
         }

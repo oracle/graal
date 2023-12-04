@@ -41,6 +41,8 @@ import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import org.graalvm.collections.EconomicSet;
+
 import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -418,7 +420,7 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Gets the maximum number of usages {@code this} has had at any point in time.
+     * Gets the current number of usages {@code this} node has.
      */
     public int getUsageCount() {
         if (usage0 == null) {
@@ -558,29 +560,81 @@ public abstract class Node implements Cloneable, Formattable {
      * Removes one occurrence of a given node from this node's {@linkplain #usages() usages}.
      *
      * @param node the node to remove
-     * @return whether or not {@code usage} was in the usage list
      */
     public boolean removeUsage(Node node) {
         assert node != null;
         // For large graphs, usage removal is performance critical.
         // Furthermore, it is critical that this method maintains the invariant that the usage list
         // has no null element preceding a non-null element.
-        incUsageModCount();
         if (usage0 == node) {
             movUsageFromEndToIndexZero();
+            incUsageModCount();
             return true;
         }
         if (usage1 == node) {
             movUsageFromEndToIndexOne();
+            incUsageModCount();
             return true;
         }
         for (int i = this.extraUsagesCount - 1; i >= 0; i--) {
             if (extraUsages[i] == node) {
                 movUsageFromEndToExtraUsages(i);
+                incUsageModCount();
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * Removes all nodes in the provided set from {@code this} node's usages. This is significantly
+     * faster than repeated execution of {@link Node#removeUsage}.
+     */
+    public void removeUsages(EconomicSet<Node> toDelete) {
+        if (toDelete.size() == 0) {
+            return;
+        } else if (toDelete.size() == 1) {
+            removeUsage(toDelete.iterator().next());
+            return;
+        }
+
+        // requires iteration from back to front to check nodes prior to being moved to the front
+        for (int i = extraUsagesCount - 1; i >= 0; i--) {
+            if (toDelete.contains(extraUsages[i])) {
+                movUsageFromEndToExtraUsages(i);
+                incUsageModCount();
+            }
+        }
+        if (usage1 != null && toDelete.contains(usage1)) {
+            movUsageFromEndToIndexOne();
+            incUsageModCount();
+        }
+        if (usage0 != null && toDelete.contains(usage0)) {
+            movUsageFromEndToIndexZero();
+            incUsageModCount();
+        }
+    }
+
+    /**
+     * Removes all dead nodes from {@code this} node's usages. This is significantly faster than
+     * repeated execution of {@link Node#removeUsage}.
+     */
+    public void removeDeadUsages() {
+        // requires iteration from back to front to check nodes prior to being moved to the front
+        for (int i = extraUsagesCount - 1; i >= 0; i--) {
+            if (!extraUsages[i].isAlive()) {
+                movUsageFromEndToExtraUsages(i);
+                incUsageModCount();
+            }
+        }
+        if (usage1 != null && !usage1.isAlive()) {
+            movUsageFromEndToIndexOne();
+            incUsageModCount();
+        }
+        if (usage0 != null && !usage0.isAlive()) {
+            movUsageFromEndToIndexZero();
+            incUsageModCount();
+        }
     }
 
     public final Node predecessor() {

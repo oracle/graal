@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,6 @@ import java.util.List;
 
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
@@ -100,14 +99,10 @@ public class SubstrateGraphKit extends GraphKit {
     private final FrameStateBuilder frameState;
     private int nextBCI;
 
-    private static boolean trackNodeSourcePosition(boolean forceTrackNodeSourcePosition) {
-        return forceTrackNodeSourcePosition || SubstrateOptions.parseOnce();
-    }
-
     @SuppressWarnings("this-escape")
     public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes,
-                    GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId, boolean forceTrackNodeSourcePosition, boolean recordInlinedMethods) {
-        super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, null, trackNodeSourcePosition(forceTrackNodeSourcePosition), recordInlinedMethods);
+                    GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId, boolean recordInlinedMethods) {
+        super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, null, true, recordInlinedMethods);
         assert wordTypes != null : "Support for Word types is mandatory";
         frameState = new FrameStateBuilder(this, stubMethod, graph);
         frameState.disableKindVerification();
@@ -117,8 +112,8 @@ public class SubstrateGraphKit extends GraphKit {
     }
 
     public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes,
-                    GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId, boolean forceTrackNodeSourcePosition) {
-        this(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, forceTrackNodeSourcePosition, false);
+                    GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId) {
+        this(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, false);
     }
 
     @Override
@@ -401,13 +396,13 @@ public class SubstrateGraphKit extends GraphKit {
     }
 
     public void appendStateSplitProxy(FrameState state) {
-        StateSplitProxyNode proxy = new StateSplitProxyNode(null);
+        StateSplitProxyNode proxy = new StateSplitProxyNode();
         append(proxy);
         proxy.setStateAfter(state);
     }
 
     public void appendStateSplitProxy(FrameStateBuilder stateBuilder) {
-        StateSplitProxyNode proxy = new StateSplitProxyNode(null);
+        StateSplitProxyNode proxy = new StateSplitProxyNode();
         append(proxy);
         proxy.setStateAfter(stateBuilder.create(bci(), proxy));
     }

@@ -145,6 +145,7 @@ import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFact
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.ReadBufferFloatNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.ReadBufferIntNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.ReadBufferLongNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.ReadBufferNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.ReadBufferShortNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.RemoveArrayElementNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.RemoveHashEntryNodeGen;
@@ -313,6 +314,25 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     @TruffleBoundary
     static RuntimeException readBufferByteUnsupported(PolyglotLanguageContext context, Object receiver) {
         return unsupported(context, receiver, "readBufferByte()", "hasBufferElements()");
+    }
+
+    @Override
+    public void readBuffer(Object languageContext, Object receiver, long byteOffset, byte[] destination, int destinationOffset, int length)
+                    throws UnsupportedOperationException, IndexOutOfBoundsException {
+        PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+        final Object prev = hostEnter(context);
+        try {
+            throw readBufferUnsupported(context, receiver);
+        } catch (Throwable e) {
+            throw guestToHostException(context, e, true);
+        } finally {
+            hostLeave(context, prev);
+        }
+    }
+
+    @TruffleBoundary
+    static RuntimeException readBufferUnsupported(PolyglotLanguageContext context, Object receiver) {
+        return unsupported(context, receiver, "readBuffer()", "hasBufferElements()");
     }
 
     @Override
@@ -2186,6 +2206,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         final CallTarget isBufferWritable;
         final CallTarget getBufferSize;
         final CallTarget readBufferByte;
+        final CallTarget readBuffer;
         final CallTarget writeBufferByte;
         final CallTarget readBufferShort;
         final CallTarget writeBufferShort;
@@ -2267,6 +2288,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             this.isBufferWritable = createTarget(IsBufferWritableNodeGen.create(this));
             this.getBufferSize = createTarget(GetBufferSizeNodeGen.create(this));
             this.readBufferByte = createTarget(ReadBufferByteNodeGen.create(this));
+            this.readBuffer = createTarget(ReadBufferNodeGen.create(this));
             this.writeBufferByte = createTarget(WriteBufferByteNodeGen.create(this));
             this.readBufferShort = createTarget(ReadBufferShortNodeGen.create(this));
             this.writeBufferShort = createTarget(WriteBufferShortNodeGen.create(this));
@@ -2392,6 +2414,12 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         @Override
         public byte readBufferByte(Object languageContext, Object receiver, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
             return (byte) RUNTIME.callProfiled(this.readBufferByte, languageContext, receiver, byteOffset);
+        }
+
+        @Override
+        public void readBuffer(Object languageContext, Object receiver, long byteOffset, byte[] destination, int destinationOffset, int length)
+                        throws UnsupportedOperationException, IndexOutOfBoundsException {
+            RUNTIME.callProfiled(this.readBuffer, languageContext, receiver, byteOffset, destination, destinationOffset, length);
         }
 
         @Override
@@ -3792,6 +3820,46 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                 }
             }
 
+        }
+
+        abstract static class ReadBufferNode extends InteropNode {
+
+            protected ReadBufferNode(InteropValue interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, Long.class, byte[].class, Integer.class, Integer.class};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "readBufferInto";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @Bind("this") Node node,
+                            @CachedLibrary("receiver") InteropLibrary buffers,
+                            @Cached ToHostValueNode toHost,
+                            @Cached InlinedBranchProfile unsupported,
+                            @Cached InlinedBranchProfile unknown) {
+                final long bufferByteOffset = (long) args[ARGUMENT_OFFSET];
+                final byte[] destination = (byte[]) args[ARGUMENT_OFFSET + 1];
+                final int destinationOffset = (int) args[ARGUMENT_OFFSET + 2];
+                final int byteLength = (int) args[ARGUMENT_OFFSET + 3];
+                try {
+                    buffers.readBuffer(receiver, bufferByteOffset, destination, destinationOffset, byteLength);
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter(node);
+                    throw readBufferUnsupported(context, receiver);
+                } catch (InvalidBufferOffsetException e) {
+                    unknown.enter(node);
+                    throw invalidBufferIndex(context, receiver, e.getByteOffset(), e.getLength());
+                }
+                return null;
+            }
         }
 
         abstract static class WriteBufferByteNode extends InteropNode {

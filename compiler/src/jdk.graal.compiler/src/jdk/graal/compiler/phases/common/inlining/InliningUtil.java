@@ -433,8 +433,14 @@ public class InliningUtil extends ValueMergeUtil {
 
             @Override
             public Node replacement(Node node) {
-                if (node instanceof ParameterNode) {
-                    return parameters.get(((ParameterNode) node).index());
+                if (node instanceof ParameterNode parameterNode) {
+                    ValueNode argument = parameters.get(parameterNode.index());
+                    /*
+                     * Create Pi nodes to correct mismatches between caller argument and callee
+                     * parameter stamps, which can be caused by e.g. invokes with an unresolved
+                     * return type, or OSRLocals which always have an unrestricted stamp.
+                     */
+                    return graph.addOrUnique(PiNode.create(argument, parameterNode.stamp(NodeView.DEFAULT)));
                 } else if (node == entryPointNode) {
                     return prevBegin;
                 }
@@ -691,7 +697,7 @@ public class InliningUtil extends ValueMergeUtil {
                 StructuredGraph graph = origReturn.graph();
                 if (!(anchorCandidate instanceof AbstractBeginNode)) {
                     // Add anchor for pi after the original candidate
-                    ValueAnchorNode anchor = graph.add(new ValueAnchorNode(null));
+                    ValueAnchorNode anchor = graph.add(new ValueAnchorNode());
                     if (anchorCandidate.predecessor() == null) {
                         anchor.setNext(anchorCandidate);
                     } else {
@@ -1162,7 +1168,7 @@ public class InliningUtil extends ValueMergeUtil {
         assert frameState != null;
         ProfilingInfo profilingInfo = invoke.asNode().graph().getProfilingInfo(frameState.getCode().getMethod());
         return FALLBACK_DEOPT_SPECULATION.createSpeculationReason(frameState.getMethod(), invoke.bci(),
-                        profilingInfo == null ? TriState.FALSE : profilingInfo.getExceptionSeen(invoke.bci()),
+                        profilingInfo == null ? TriState.UNKNOWN : profilingInfo.getExceptionSeen(invoke.bci()),
                         new ReceiverTypeSpeculationContext(typeProfile));
     }
 

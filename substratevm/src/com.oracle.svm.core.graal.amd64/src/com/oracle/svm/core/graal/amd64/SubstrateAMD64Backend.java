@@ -41,7 +41,6 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.function.BiConsumer;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -109,7 +108,6 @@ import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
-import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -129,7 +127,6 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.LabelRef;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.StandardOp.BlockEndOp;
-import jdk.graal.compiler.lir.StandardOp.LabelOp;
 import jdk.graal.compiler.lir.StandardOp.LoadConstantOp;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
@@ -146,7 +143,6 @@ import jdk.graal.compiler.lir.amd64.AMD64PrefetchOp;
 import jdk.graal.compiler.lir.amd64.AMD64ReadProcid;
 import jdk.graal.compiler.lir.amd64.AMD64ReadTimestampCounterWithProcid;
 import jdk.graal.compiler.lir.amd64.AMD64VZeroUpper;
-import jdk.graal.compiler.lir.amd64.EndbranchOp;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.lir.asm.DataBuilder;
@@ -172,7 +168,6 @@ import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.SafepointNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.nodes.spi.NodeValueMap;
@@ -572,20 +567,9 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         }
 
         @Override
-        public int getFirstInsertPosition(BasicBlock<?> block) {
-            /*
-             * If control flow integrity is enabled and the block is the target of an indirect
-             * branch, the first insert position is 2, as on position 0 there is the LabelOp and on
-             * position 1 there is the EndbranchOp. The EndbranchOp has to remain the first "actual"
-             * instruction of the block.
-             *
-             */
-            if (SubstrateControlFlowIntegrity.enabled() && block.isIndirectBranchTarget()) {
-                return 2;
-            }
-            return super.getFirstInsertPosition(block);
+        public boolean emitIndirectTargetBranchMarkers() {
+            return SubstrateControlFlowIntegrity.useSoftwareCFI();
         }
-
     }
 
     /**
@@ -842,16 +826,6 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         }
 
         @Override
-        public void doBlockPrologue(@SuppressWarnings("unused") HIRBlock block, @SuppressWarnings("unused") OptionValues options) {
-            if (SubstrateControlFlowIntegrity.enabled() && block.isIndirectBranchTarget()) {
-                List<LIRInstruction> lir = gen.getResult().getLIR().getLIRforBlock(block);
-                GraalError.guarantee(lir.size() == 1 && lir.get(0) instanceof LabelOp, "block may only contain an initial LabelOp before emitting endbranch");
-                gen.append(EndbranchOp.create());
-            }
-            super.doBlockPrologue(block, options);
-        }
-
-        @Override
         public void visitSafepointNode(SafepointNode node) {
             throw shouldNotReachHere("handled by lowering");
         }
@@ -869,7 +843,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
         @Override
         protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeValueMap nodeValueMap) {
-            return new SubstrateDebugInfoBuilder(graph, getProviders().getSnippetReflection(), gen.getProviders().getMetaAccessExtensionProvider(), nodeValueMap);
+            return new SubstrateDebugInfoBuilder(graph, gen.getProviders().getMetaAccessExtensionProvider(), nodeValueMap);
         }
 
         @Override
@@ -1145,14 +1119,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             crb.recordMark(PROLOGUE_END);
         }
 
-        protected void emitEndBranch(CompilationResultBuilder crb) {
-            if (SubstrateControlFlowIntegrity.enabled()) {
-                ((AMD64Assembler) crb.asm).endbranch();
-            }
-        }
-
         protected void makeFrame(CompilationResultBuilder crb, AMD64MacroAssembler asm) {
-            emitEndBranch(crb);
+            asm.maybeEmitIndirectTargetMarker();
             reserveStackFrame(crb, asm);
         }
 
@@ -1223,6 +1191,11 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             /* Move the DeoptimizedFrame into the first calling convention register. */
             Register deoptimizedFrame = ValueUtil.asRegister(callingConvention.getArgument(0));
             assert !deoptimizedFrame.equals(gpReturnReg) : "overwriting return reg";
+            /*
+             * Since this is the target for all deoptimizations we must mark the start of this
+             * routine as an indirect target.
+             */
+            asm.maybeEmitIndirectTargetMarker();
             asm.movq(deoptimizedFrame, registerConfig.getFrameRegister());
 
             /* Copy the original return registers values into the argument registers. */
@@ -1236,6 +1209,9 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     /**
      * Generates the epilog of a {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#ExitStub}
      * method.
+     *
+     * Note no special handling is necessary for CFI as this will be a direct call from the
+     * {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#EntryStub}.
      */
     protected static class DeoptExitStubContext extends SubstrateAMD64FrameContext {
         protected DeoptExitStubContext(SharedMethod method, CallingConvention callingConvention) {

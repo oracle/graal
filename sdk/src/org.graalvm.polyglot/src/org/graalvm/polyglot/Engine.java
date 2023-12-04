@@ -40,9 +40,11 @@
  */
 package org.graalvm.polyglot;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.ModuleLayer.Controller;
@@ -66,6 +68,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.AccessController;
@@ -101,6 +104,7 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 
 import org.graalvm.home.HomeFinder;
+import org.graalvm.home.Version;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -1162,6 +1166,21 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public Object toByteSequence(Object origin) {
+            return Engine.getImpl().asByteSequence(origin);
+        }
+
+        @Override
+        public int byteSequenceLength(Object origin) {
+            return ((ByteSequence) origin).length();
+        }
+
+        @Override
+        public byte byteSequenceByteAt(Object origin, int index) {
+            return ((ByteSequence) origin).byteAt(index);
+        }
+
+        @Override
         public boolean isInstrument(Object instrument) {
             return instrument instanceof Instrument;
         }
@@ -1607,6 +1626,11 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public Class<?> getByteSequenceClass() {
+            return ByteSequence.class;
+        }
+
+        @Override
         public Object callContextAsValue(Object current, Object classOverrides) {
             return ((Context) current).asValue(classOverrides);
         }
@@ -1630,13 +1654,41 @@ public final class Engine implements AutoCloseable {
             impls.add(found);
         }
         Collections.sort(impls, Comparator.comparing(AbstractPolyglotImpl::getPriority));
+        Version polyglotVersion = Boolean.getBoolean("polyglotimpl.DisableVersionChecks") ? null : getPolyglotVersion();
         AbstractPolyglotImpl prev = null;
         for (AbstractPolyglotImpl impl : impls) {
             if (impl.getPriority() == Integer.MIN_VALUE) {
                 // disabled
                 continue;
             }
-
+            if (polyglotVersion != null) {
+                String truffleVersionString = impl.getTruffleVersion();
+                Version truffleVersion = truffleVersionString != null ? Version.parse(truffleVersionString) : Version.create(23, 1, 1);
+                if (!polyglotVersion.equals(truffleVersion)) {
+                    StringBuilder errorMessage = new StringBuilder(String.format("""
+                                    Polyglot version compatibility check failed.
+                                    The polyglot version '%s' is not compatible to the used Truffle version '%s'.
+                                    """, polyglotVersion, truffleVersion));
+                    if (polyglotVersion.compareTo(truffleVersion) < 0) {
+                        errorMessage.append(String.format("""
+                                        The polyglot version is older than the Truffle or language version in use.
+                                        The polygot and truffle version must always match.
+                                        Update the org.graalvm.polyglot versions to '%s' to resolve this.
+                                        """, truffleVersion));
+                    } else {
+                        errorMessage.append((String.format("""
+                                        The Truffle or language version is older than the polyglot version in use.
+                                        The polygot and truffle version must always match.
+                                        Update the Truffle or language versions to '%s' to resolve this.
+                                        """, polyglotVersion)));
+                    }
+                    errorMessage.append("""
+                                    To disable this version check the '-Dpolyglotimpl.DisableVersionChecks=true' system property can be used.
+                                    It is not recommended to disable version checks.
+                                    """);
+                    throw new IllegalStateException(errorMessage.toString());
+                }
+            }
             impl.setNext(prev);
             try {
                 impl.setConstructors(APIAccessImpl.INSTANCE);
@@ -1656,6 +1708,18 @@ public final class Engine implements AutoCloseable {
         }
 
         return prev;
+    }
+
+    private static Version getPolyglotVersion() {
+        InputStream in = Engine.class.getResourceAsStream("/META-INF/graalvm/org.graalvm.polyglot/version");
+        if (in == null) {
+            throw new InternalError("Polyglot must have a version file.");
+        }
+        try (BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+            return Version.parse(r.readLine());
+        } catch (IOException ioe) {
+            throw new InternalError(ioe);
+        }
     }
 
     @SuppressWarnings({"unchecked", "deprecation"})
@@ -1713,7 +1777,7 @@ public final class Engine implements AutoCloseable {
         private static final String OPTION_TRACE_CLASS_PATH_ISOLATION = "polyglotimpl.TraceClassPathIsolation";
 
         private static final boolean TRACE_CLASS_PATH_ISOLATION = Boolean.getBoolean(OPTION_TRACE_CLASS_PATH_ISOLATION);
-        private static final boolean DISABLE_CLASS_PATH_ISOLATION = Boolean.getBoolean(OPTION_DISABLE_CLASS_PATH_ISOLATION);
+        private static final boolean DISABLE_CLASS_PATH_ISOLATION = Boolean.parseBoolean(System.getProperty(OPTION_DISABLE_CLASS_PATH_ISOLATION, "true"));
 
         static boolean isEnabled() {
             return !DISABLE_CLASS_PATH_ISOLATION;
@@ -2112,6 +2176,11 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public FileSystem newNIOFileSystem(java.nio.file.FileSystem fileSystem) {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
+        public ByteSequence asByteSequence(Object object) {
             throw noPolyglotImplementationFound();
         }
 

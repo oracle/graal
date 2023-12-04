@@ -112,6 +112,10 @@ public abstract class TypeState {
         return this == NullTypeState.SINGLETON;
     }
 
+    public boolean isPrimitive() {
+        return this instanceof AnyPrimitiveTypeState;
+    }
+
     public abstract boolean canBeNull();
 
     /** Note that the objects of this type state have been merged. */
@@ -138,6 +142,14 @@ public abstract class TypeState {
 
     public static TypeState forNull() {
         return NullTypeState.SINGLETON;
+    }
+
+    public static TypeState forPrimitiveConstant(long value) {
+        return PrimitiveConstantTypeState.forValue(value);
+    }
+
+    public static TypeState anyPrimitiveState() {
+        return AnyPrimitiveTypeState.SINGLETON;
     }
 
     /** Wraps an analysis object into a non-null type state. */
@@ -184,6 +196,14 @@ public abstract class TypeState {
             return s1;
         } else if (s2.isNull()) {
             return s1.forCanBeNull(bb, true);
+        } else if (s1 instanceof PrimitiveConstantTypeState c1 && s2 instanceof PrimitiveConstantTypeState c2 && c1.getValue() == c2.getValue()) {
+            return s1;
+        } else if (s1.isPrimitive()) {
+            assert s2.isPrimitive() : s2;
+            return TypeState.anyPrimitiveState();
+        } else if (s2.isPrimitive()) {
+            assert s1.isPrimitive() : s1;
+            return TypeState.anyPrimitiveState();
         } else if (s1 instanceof SingleTypeState && s2 instanceof SingleTypeState) {
             return bb.analysisPolicy().doUnion(bb, (SingleTypeState) s1, (SingleTypeState) s2);
         } else if (s1 instanceof SingleTypeState && s2 instanceof MultiTypeState) {

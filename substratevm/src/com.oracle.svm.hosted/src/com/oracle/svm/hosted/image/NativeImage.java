@@ -49,12 +49,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
-import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
-import jdk.graal.compiler.code.CompilationResult;
-import jdk.graal.compiler.core.common.CompressEncoding;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.CHeader;
 import org.graalvm.nativeimage.c.CHeader.Header;
@@ -115,6 +109,12 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
+import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.Indent;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
@@ -419,6 +419,9 @@ public abstract class NativeImage extends AbstractImage {
             assert !hasDuplicatedObjects(heap.getObjects()) : "heap.getObjects() must not contain any duplicates";
 
             BuildPhaseProvider.markHeapLayoutFinished();
+
+            /* Re-run shadow heap verification after heap layout. */
+            universe.getBigBang().getUniverse().getHeapVerifier().checkHeapSnapshot(debug, heap.hMetaAccess, "after heap layout");
 
             imageHeapSize = heapLayout.getImageHeapSize();
 

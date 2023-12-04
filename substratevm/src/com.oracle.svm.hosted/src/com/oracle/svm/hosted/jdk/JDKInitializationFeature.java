@@ -28,8 +28,11 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
+import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
+import com.oracle.svm.hosted.ImageClassLoader;
 
 @AutomaticallyRegisteredFeature
 public class JDKInitializationFeature implements InternalFeature {
@@ -192,5 +195,19 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.rerunInitialization("sun.security.provider.certpath.ssl.SSLServerCertStore", "Stores secure random");
 
         rci.rerunInitialization("jdk.internal.foreign.SystemLookup$WindowsFallbackSymbols", "Does not work on non-Windows modular images");
+
+        /*
+         * The local class Holder in FallbackLinker#getInstance fails the build time initialization
+         * starting JDK 22. There is no way to obtain a list of local classes using reflection. They
+         * are thus accessed by name. According to the code in Check.localClassName, the identifier
+         * in the name should be continuous.
+         */
+        ImageClassLoader imageClassLoader = ((AfterRegistrationAccessImpl) access).getImageClassLoader();
+        int i = 1;
+        TypeResult<Class<?>> currentHolderClass = imageClassLoader.findClass("jdk.internal.foreign.abi.fallback.FallbackLinker$%dHolder".formatted(i));
+        while (currentHolderClass.isPresent()) {
+            rci.initializeAtRunTime(currentHolderClass.get(), "Fails build-time initialization");
+            currentHolderClass = imageClassLoader.findClass("jdk.internal.foreign.abi.fallback.FallbackLinker$%dHolder".formatted(i++));
+        }
     }
 }

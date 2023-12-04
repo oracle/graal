@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.core.heap;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.ObjectAccess;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -37,6 +34,10 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 
 /**
  * An object header is a reference-sized collection of bits in each object instance. The object
@@ -107,7 +108,7 @@ public abstract class ObjectHeader {
     public abstract Pointer extractPotentialDynamicHubFromHeader(Word header);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public abstract void initializeHeaderOfNewObject(Pointer ptr, Word header);
+    public abstract void initializeHeaderOfNewObject(Pointer ptr, Word header, boolean isArrayLike);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean pointsToObjectHeader(Pointer ptr) {

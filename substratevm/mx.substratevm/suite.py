@@ -194,6 +194,14 @@ suite = {
                 }
             }
         },
+        "SVM_TEST_RESOURCE_WITH_SPACE": {
+            # This jar only contains a resource with a space in its path.
+            # We cannot have folder with spaces in the source tree, as it
+            # does not work well with certain build tools, for example
+            # make. [GR-50375]
+            "path": "mx.substratevm/jar-with-space-in-resource-dir.jar",
+            "digest": "sha512:270bffd158c92b04b16db147f4ef336dcb4d830bf3503cc25be1227b351597a3254544b3c4a5183dcc53f2f3ab10b282722dbf7f1b5e9d9a2741878a7057eb40",
+        },
     },
 
     "projects": {
@@ -946,6 +954,24 @@ suite = {
             "jacoco" : "exclude",
         },
 
+        "com.oracle.svm.with.space.test": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "mx:JUNIT_TOOL",
+                "sdk:NATIVEIMAGE",
+            ],
+            "checkstyle": "com.oracle.svm.test",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "SVM_PROCESSOR",
+            ],
+            "javaCompliance" : "21+",
+            "spotbugs": "false",
+            "jacoco" : "exclude",
+        },
+
         "com.oracle.svm.configure.test": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -1373,6 +1399,7 @@ suite = {
             ],
             "javaCompliance" : "21+",
             "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
     },
 
@@ -1603,6 +1630,16 @@ suite = {
             },
         },
 
+        "TRUFFLE_RUNTIME_SVM_VERSION": {
+            "type": "dir",
+            "platformDependent": False,
+            "layout": {
+                "META-INF/graalvm/org.graalvm.truffle.runtime.svm/version": "dependency:sdk:VERSION/version",
+            },
+            "description": "SVM Runtime for Truffle version.",
+            "maven": False,
+        },
+
         "TRUFFLE_RUNTIME_SVM": {
             "subDir": "src",
             "description" : "SVM Runtime for Truffle languages.",
@@ -1611,6 +1648,7 @@ suite = {
                 "com.oracle.svm.truffle.nfi",
                 "com.oracle.svm.truffle.nfi.posix",
                 "com.oracle.svm.truffle.nfi.windows",
+                "TRUFFLE_RUNTIME_SVM_VERSION",
             ],
             "distDependencies": [
                 "SVM",
@@ -1982,6 +2020,7 @@ suite = {
             "com.oracle.svm.test",
             "com.oracle.svm.configure.test",
             "com.oracle.svm.graal.test",
+            "SVM_TEST_RESOURCE_WITH_SPACE",
           ],
           "distDependencies": [
             "mx:JUNIT_TOOL",
@@ -1990,6 +2029,21 @@ suite = {
             "SVM_CONFIGURE",
           ],
           "testDistribution" : True,
+        },
+
+        # Special test distribution used for testing inclusion of resources from jar files with a space in their name.
+        # The space in the distribution name is intentional.
+        "SVM_TESTS WITH SPACE" : {
+            "subDir": "src",
+            "relpath" : True,
+            "dependencies" : [
+                "com.oracle.svm.with.space.test",
+            ],
+            "distDependencies": [
+                "sdk:NATIVEIMAGE",
+                "mx:JUNIT_TOOL",
+            ],
+            "testDistribution" : True,
         },
 
         "POLYGLOT_NATIVE_API" : {

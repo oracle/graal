@@ -75,7 +75,7 @@ import jdk.internal.misc.Unsafe;
 public class SubstrateOptions {
 
     @Option(help = "Deprecated, option no longer has any effect.", deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
-    public static final HostedOptionKey<Boolean> ParseOnce = new HostedOptionKey<>(true);
+    static final HostedOptionKey<Boolean> ParseOnce = new HostedOptionKey<>(true);
     @Option(help = "Deprecated, option no longer has any effect.", deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
     static final HostedOptionKey<Boolean> ParseOnceJIT = new HostedOptionKey<>(true);
     @Option(help = "Preserve the local variable information for every Java source line to allow line-by-line stepping in the debugger. Allow the lookup of Java-level method information, e.g., in stack traces.")//
@@ -85,14 +85,6 @@ public class SubstrateOptions {
 
     @Option(help = "Image Build ID is a 128-bit UUID string generated randomly, once per bundle or digest of input args when bundles are not used.")//
     public static final HostedOptionKey<String> ImageBuildID = new HostedOptionKey<>("");
-
-    public static boolean parseOnce() {
-        /*
-         * GR-48579: Old code only reachable when this method would return false will be deleted
-         * later.
-         */
-        return true;
-    }
 
     @Option(help = "Module containing the class that contains the main entry point. Optional if --shared is used.", type = OptionType.User)//
     public static final HostedOptionKey<String> Module = new HostedOptionKey<>("");
@@ -408,7 +400,8 @@ public class SubstrateOptions {
     @Option(help = "Verify naming conventions during image construction.")//
     public static final HostedOptionKey<Boolean> VerifyNamingConventions = new HostedOptionKey<>(false);
 
-    @Option(help = "Enable support for threads and and thread-local variables (disable for single-threaded implementation)")//
+    @Option(help = "Enable support for threads and and thread-local variables (disable for single-threaded implementation)", //
+                    deprecated = true, deprecationMessage = "This special mode to build images that cannot start any additional threads has no benefits anymore and will be removed in a future release")//
     public static final HostedOptionKey<Boolean> MultiThreaded = new HostedOptionKey<>(true);
 
     @Option(help = "Use only a writable native image heap (requires ld.gold linker)")//
@@ -417,7 +410,7 @@ public class SubstrateOptions {
     @Option(help = "Force no direct relocations to be present in the text section of the generated image", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> NoDirectRelocationsInText = new HostedOptionKey<>(true);
 
-    @Option(help = "Support multiple isolates.") //
+    @Option(help = "Support multiple isolates.", deprecated = true, deprecationMessage = "This option disables a major feature of GraalVM Native Image and will be removed in a future release") //
     public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<>(true);
 
     @Option(help = "At CEntryPoints check that the passed IsolateThread is valid.") //
@@ -693,6 +686,9 @@ public class SubstrateOptions {
     @Option(help = "Common prefix used by method symbols in image.")//
     public static final HostedOptionKey<String> ImageSymbolsPrefix = new HostedOptionKey<>("");
 
+    /**
+     * Needs to be removed as part of GR-50210.
+     */
     @Option(help = "Fold SecurityManager getter.", stability = OptionStability.EXPERIMENTAL, type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> FoldSecurityManagerGetter = new HostedOptionKey<>(true);
 
@@ -962,6 +958,9 @@ public class SubstrateOptions {
         }
     };
 
+    @Option(help = "Only print diagnostic output that is async signal safe.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> AsyncSignalSafeDiagnostics = new HostedOptionKey<>(false);
+
     @Option(help = "Specifies the number of entries that diagnostic buffers have.", type = OptionType.Debug)//
     public static final HostedOptionKey<Integer> DiagnosticBufferSize = new HostedOptionKey<>(30);
 
@@ -976,7 +975,7 @@ public class SubstrateOptions {
     @Option(help = "Verify type states computed by the static analysis at run time. This is useful when diagnosing problems in the static analysis, but reduces peak performance significantly.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyTypes = new HostedOptionKey<>(false);
 
-    @Option(help = "Run reachability handlers concurrently during analysis.", type = Expert)//
+    @Option(help = "Run reachability handlers concurrently during analysis.", type = Expert, deprecated = true, deprecationMessage = "This option was introduced to simplify migration to GraalVM 22.2 and will be removed in a future release")//
     public static final HostedOptionKey<Boolean> RunReachabilityHandlersConcurrently = new HostedOptionKey<>(true);
 
     @Option(help = "Force many trampolines to be needed for inter-method calls. Normally trampolines are only used when a method destination is outside the range of a pc-relative branch instruction.", type = OptionType.Debug)//
@@ -998,7 +997,8 @@ public class SubstrateOptions {
         }
     };
 
-    @Option(help = "Instead of abort, only warn if image builder classes are found on the image class-path.", type = OptionType.Debug)//
+    @Option(help = "Instead of abort, only warn if image builder classes are found on the image class-path.", type = OptionType.Debug, //
+                    deprecated = true, deprecationMessage = "This option was introduced to simplify migration to GraalVM 23.0 and will be removed in a future release")//
     public static final HostedOptionKey<Boolean> AllowDeprecatedBuilderClassesOnImageClasspath = new HostedOptionKey<>(false);
 
     @Option(help = "file:doc-files/MissingRegistrationHelp.txt")//
@@ -1031,7 +1031,7 @@ public class SubstrateOptions {
     @Option(help = "Enable and disable normal processing of flags relating to experimental options.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL) //
     public static final HostedOptionKey<Boolean> UnlockExperimentalVMOptions = new HostedOptionKey<>(false);
 
-    @Option(help = "Force using legacy method handle intrinsics.", type = Expert) //
+    @Option(help = "Force using legacy method handle intrinsics.", type = Expert, deprecated = true, deprecationMessage = "This option was introduced to simplify migration to GraalVM 23.1 and will be removed in a future release") //
     public static final HostedOptionKey<Boolean> UseOldMethodHandleIntrinsics = new HostedOptionKey<>(false);
 
     @Option(help = "Include all classes, methods, and fields from given modules", type = OptionType.Debug) //

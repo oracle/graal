@@ -724,7 +724,7 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
         @Override
         public void delete() {
             // adjust successor and predecessor lists
-            GraalError.guarantee(getSuccessorCount() == 1, "can only delete blocks with exactly one successor");
+            GraalError.guarantee(getSuccessorCount() == 1, "can only delete blocks with exactly one successor.");
             ModifiableBlock next = (ModifiableBlock) getSuccessorAt(0);
             int predecessorCount = getPredecessorCount();
             for (int i = 0; i < getPredecessorCount(); i++) {

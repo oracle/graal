@@ -74,14 +74,6 @@ public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionP
     }
 
     @Override
-    public JavaConstant unwrapConstant(JavaConstant constant) {
-        if (constant instanceof ImageHeapConstant heapConstant && heapConstant.getHostedObject() != null) {
-            return heapConstant.getHostedObject();
-        }
-        return constant;
-    }
-
-    @Override
     public <T> T asObject(Class<T> type, JavaConstant c) {
         JavaConstant constant = c;
         if (constant instanceof RelocatableConstant relocatable) {

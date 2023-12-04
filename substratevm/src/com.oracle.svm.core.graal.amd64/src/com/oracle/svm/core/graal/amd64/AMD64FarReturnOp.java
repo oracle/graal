@@ -36,7 +36,9 @@ import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.amd64.AMD64BlockEndOp;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
@@ -88,6 +90,7 @@ public final class AMD64FarReturnOp extends AMD64BlockEndOp {
 
         if (fromMethodWithCalleeSavedRegisters) {
             if (SubstrateControlFlowIntegrity.useSoftwareCFI()) {
+                assert LIRValueUtil.differentRegisters(result, cfiTargetRegister) : Assertions.errorMessage(result, cfiTargetRegister);
                 /*
                  * The new instruction pointer (ip) must be moved to the targetRegister. Note the
                  * target register is never callee saved.

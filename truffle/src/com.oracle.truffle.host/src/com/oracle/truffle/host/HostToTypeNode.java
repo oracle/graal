@@ -54,6 +54,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Collection;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
@@ -110,6 +111,8 @@ abstract class HostToTypeNode extends Node {
     static final int LOWEST = 8;
 
     static final int[] PRIORITIES = {HIGHEST, STRICT, LOOSE, COERCE, FUNCTION_PROXY, OBJECT_PROXY_IFACE, OBJECT_PROXY_CLASS, HOST_PROXY, LOWEST};
+
+    static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
 
     public abstract Object execute(Node node, HostContext context, Object value, Class<?> targetType, Type genericType, boolean useTargetMapping);
 
@@ -293,7 +296,7 @@ abstract class HostToTypeNode extends Node {
             return interop.isTimeZone(value);
         } else if (targetType == Duration.class) {
             return interop.isDuration(value);
-        } else if (targetType == language.polyglotEngineClass) {
+        } else if (targetType == language.polyglotExceptionClass) {
             return interop.isException(value);
         }
 
@@ -425,7 +428,7 @@ abstract class HostToTypeNode extends Node {
             obj = HostObject.valueOf(hostContext.language, value);
         } else if (targetType == Object.class) {
             obj = convertToObject(node, hostContext, value, interop);
-        } else if (targetType == List.class) {
+        } else if (targetType == List.class || targetType == Collection.class) {
             if (interop.hasArrayElements(value)) {
                 if (!hostContext.getMutableTargetMappings().contains(MutableTargetMapping.ARRAY_TO_JAVA_LIST)) {
                     return null;
@@ -487,6 +490,20 @@ abstract class HostToTypeNode extends Node {
                 obj = truffleObjectToArray(hostContext, interop, value, targetType, genericType);
             } else {
                 throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have array elements.");
+            }
+        } else if (targetType == hostContext.language.byteSequenceClass) {
+            if (interop.hasBufferElements(value)) {
+                try {
+                    if (interop.getBufferSize(value) <= MAX_ARRAY_SIZE) {
+                        obj = hostContext.language.access.toByteSequence(hostContext.internalContext, value);
+                    } else {
+                        throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have buffer elements with maximum total size " + MAX_ARRAY_SIZE + " bytes.");
+                    }
+                } catch (UnsupportedMessageException e) {
+                    throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have buffer elements with known total size.");
+                }
+            } else {
+                throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have buffer elements.");
             }
         } else if (targetType == LocalDate.class) {
             if (interop.isDate(value)) {
@@ -574,7 +591,7 @@ abstract class HostToTypeNode extends Node {
             } else {
                 throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have duration information.");
             }
-        } else if (targetType == hostContext.language.polyglotEngineClass) {
+        } else if (targetType == hostContext.language.polyglotExceptionClass) {
             if (interop.isException(value)) {
                 obj = asPolyglotException(hostContext, value, interop);
             } else {

@@ -257,25 +257,6 @@ class BasePetClinicBenchmarkSuite(BaseSpringBenchmarkSuite):
         return mx.library("PETCLINIC_" + self.version(), True).get_path(True)
 
 
-class PetClinicJMeterBenchmarkSuite(BasePetClinicBenchmarkSuite, mx_sdk_benchmark.BaseJMeterBenchmarkSuite):
-    """PetClinic benchmark suite that measures throughput using JMeter."""
-
-    def name(self):
-        return "petclinic-jmeter"
-
-    def benchmarkList(self, bmSuiteArgs):
-        return ["tiny"]
-
-    def defaultWorkloadPath(self, benchmark):
-        return os.path.join(self.applicationDist(), "workloads", benchmark + ".jmx")
-
-    def rules(self, out, benchmarks, bmSuiteArgs):
-        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(PetClinicJMeterBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
-
-
-mx_benchmark.add_bm_suite(PetClinicJMeterBenchmarkSuite())
-
-
 class PetClinicWrkBenchmarkSuite(BasePetClinicBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenchmarkSuite):
     """PetClinic benchmark suite that measures throughput using Wrk."""
 
@@ -362,7 +343,6 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                 '-H:+AddAllCharsets',
                 '-H:+ReportExceptionStackTraces',
         ] + mx_sdk_vm_impl.svm_experimental_options([
-                '-H:-ParseOnce',
                 '-H:+AllowFoldMethods',
                 '-H:-UseServiceLoaderFeature',
                 '-H:+AllowDeprecatedBuilderClassesOnImageClasspath', # needs to be removed once GR-41746 is fixed
@@ -597,25 +577,6 @@ class BaseShopCartBenchmarkSuite(BaseMicronautBenchmarkSuite):
 
     def serviceEndpoint(self):
         return 'clients'
-
-
-class ShopCartJMeterBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.BaseJMeterBenchmarkSuite):
-    """ShopCart benchmark suite that measures throughput using JMeter."""
-
-    def name(self):
-        return "shopcart-jmeter"
-
-    def benchmarkList(self, bmSuiteArgs):
-        return ["tiny", "small", "large"]
-
-    def defaultWorkloadPath(self, benchmark):
-        return os.path.join(self.applicationDist(), "workloads", benchmark + ".jmx")
-
-    def rules(self, out, benchmarks, bmSuiteArgs):
-        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(ShopCartJMeterBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
-
-
-mx_benchmark.add_bm_suite(ShopCartJMeterBenchmarkSuite())
 
 
 class ShopCartWrkBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenchmarkSuite):

@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.lir.gen;
 
+import static jdk.graal.compiler.core.common.GraalOptions.LoopHeaderAlignment;
 import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isAllocatableValue;
@@ -31,7 +32,6 @@ import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isLegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
-import static jdk.graal.compiler.core.common.GraalOptions.LoopHeaderAlignment;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -65,7 +65,6 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.Register;
@@ -467,11 +466,19 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     public abstract void emitIntegerTestBranch(Value left, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability);
 
+    public abstract void emitOpMaskTestBranch(Value left, boolean negateLeft, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability);
+
+    public abstract void emitOpMaskOrTestBranch(Value left, Value right, boolean allZeros, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability);
+
     @Override
     public abstract Variable emitConditionalMove(PlatformKind cmpKind, Value leftVal, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue);
 
     @Override
     public abstract Variable emitIntegerTestMove(Value leftVal, Value right, Value trueValue, Value falseValue);
+
+    public abstract Variable emitOpMaskTestMove(Value leftVal, boolean negateLeft, Value right, Value trueValue, Value falseValue);
+
+    public abstract Variable emitOpMaskOrTestMove(Value leftVal, Value right, boolean allZeros, Value trueValue, Value falseValue);
 
     /** Loads the target address for indirect {@linkplain #emitForeignCall foreign calls}. */
     protected Value emitIndirectForeignCallAddress(@SuppressWarnings("unused") ForeignCallLinkage linkage) {

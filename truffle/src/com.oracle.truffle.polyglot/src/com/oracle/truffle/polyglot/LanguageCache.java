@@ -43,14 +43,9 @@ package com.oracle.truffle.polyglot;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.Method;
-import java.net.JarURLConnection;
-import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLConnection;
-import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.CodeSource;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -83,6 +78,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.provider.TruffleLanguageProvider;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
 import com.oracle.truffle.polyglot.EngineAccessor.StrongClassLoaderSupplier;
+import org.graalvm.home.HomeFinder;
 import org.graalvm.polyglot.SandboxPolicy;
 
 /**
@@ -357,16 +353,14 @@ final class LanguageCache implements Comparable<LanguageCache> {
                 }
             }
         }
-        String languageHome = getLanguageHomeImpl(id);
-        if (languageHome == null) {
-            URL url = providerClass.getClassLoader().getResource(className.replace('.', '/') + ".class");
-            if (url != null) {
-                try {
-                    languageHome = getLanguageHomeFromURLConnection(id, url.openConnection());
-                } catch (IOException ioe) {
-                }
-            }
-        }
+        /*
+         * We utilize the `HomeFinder#getLanguageHomes()` function because it works for legacy,
+         * standalone, and unchained builds. It's important to note that this code is never
+         * reachable during native image execution, and thus, using it doesn't introduce
+         * `ProcessProperties#getExecutableName` function in the generated native image.
+         */
+        Path languageHomePath = HomeFinder.getInstance().getLanguageHomes().get(id);
+        String languageHome = languageHomePath != null ? languageHomePath.toString() : null;
         String implementationName = reg.implementationName();
         String version = reg.version();
         TreeSet<String> characterMimes = new TreeSet<>();
@@ -400,39 +394,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
                         servicesClassNames, reg.contextPolicy(), providerAdapter, reg.website(), sandboxPolicy, Collections.unmodifiableMap(resources)));
     }
 
-    private static String getLanguageHomeFromURLConnection(String languageId, URLConnection connection) {
-        if (connection instanceof JarURLConnection) {
-            /*
-             * The previous implementation used a `URL.getPath()`, but OS Windows is offended by
-             * leading slash and maybe other irrelevant characters. Therefore, for JDK 1.7+ a
-             * preferred way to go is URL -> URI -> Path.
-             *
-             * Also, Paths are more strict than Files and URLs, so we can't create an invalid Path
-             * from a random string like "/C:/". This leads us to the `URISyntaxException` for URL
-             * -> URI conversion and `java.nio.file.InvalidPathException` for URI -> Path
-             * conversion.
-             *
-             * For fixing further bugs at this point, please read http://tools.ietf.org/html/rfc1738
-             * http://tools.ietf.org/html/rfc2396 (supersedes rfc1738)
-             * http://tools.ietf.org/html/rfc3986 (supersedes rfc2396)
-             *
-             * http://url.spec.whatwg.org/ does not contain URI interpretation. When you call
-             * `URI.toASCIIString()` all reserved and non-ASCII characters are percent-quoted.
-             */
-            try {
-                URL url = ((JarURLConnection) connection).getJarFileURL();
-                if ("file".equals(url.getProtocol())) {
-                    Path path = Paths.get(url.toURI());
-                    Path parent = path.getParent();
-                    return parent != null ? parent.toString() : null;
-                }
-            } catch (URISyntaxException | FileSystemNotFoundException | IllegalArgumentException | SecurityException e) {
-                assert false : "Cannot locate " + languageId + " language home due to " + e.getMessage();
-            }
-        }
-        return null;
-    }
-
     private static String formatLanguageLocation(LanguageCache languageCache) {
         StringBuilder sb = new StringBuilder();
         sb.append("Language class ").append(languageCache.getClassName());
@@ -445,7 +406,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return sb.toString();
     }
 
-    private static String getLanguageHomeImpl(String languageId) {
+    private static String getLanguageHomeFromSystemProperty(String languageId) {
         return toRealStringPath("org.graalvm.language." + languageId + ".home");
     }
 
@@ -620,7 +581,12 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     String getLanguageHome() {
         if (languageHome == null) {
-            languageHome = getLanguageHomeImpl(id);
+            /*
+             * In the legacy build, the language home property is set by the GraalVMLocator at
+             * startup. We cannot use the HomeFinder#getLanguageHomes() function because it would
+             * make the ProcessProperties#getExecutableName() reachable.
+             */
+            languageHome = getLanguageHomeFromSystemProperty(id);
         }
         return languageHome;
     }

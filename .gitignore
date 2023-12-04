@@ -61,3 +61,4 @@ visualizer/IdealGraphVisualizer/nbplatform/
 /.src-rev
 *.interp
 *.tokens
+/vm/tests/gh_workflows/CDTInspectorTest/target/

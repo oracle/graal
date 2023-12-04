@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.graal.pointsto.infrastructure.GraphProvider;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
@@ -57,15 +57,19 @@ import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class HostedGraphKit extends SubstrateGraphKit {
 
-    public HostedGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method, GraphProvider.Purpose purpose) {
-        super(debug, method, providers, providers.getWordTypes(), providers.getGraphBuilderPlugins(), new SubstrateCompilationIdentifier(), purpose == GraphProvider.Purpose.ANALYSIS,
+    public HostedGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method) {
+        super(debug, method, providers, providers.getWordTypes(), providers.getGraphBuilderPlugins(), new SubstrateCompilationIdentifier(),
                         SubstrateCompilationDirectives.isRuntimeCompiledMethod(method));
+    }
+
+    @Override
+    public AnalysisMetaAccess getMetaAccess() {
+        return (AnalysisMetaAccess) super.getMetaAccess();
     }
 
     public void emitEnsureInitializedCall(ResolvedJavaType type) {
@@ -85,8 +89,8 @@ public class HostedGraphKit extends SubstrateGraphKit {
 
     public LoadFieldNode createLoadFieldNode(ConstantNode receiver, Class<BoxedRelocatedPointer> clazz, String fieldName) {
         try {
-            ResolvedJavaField field = getMetaAccess().lookupJavaField(clazz.getDeclaredField(fieldName));
-            return LoadFieldNode.createOverrideStamp(StampPair.createSingle(wordStamp((ResolvedJavaType) field.getType())), receiver, field);
+            var field = getMetaAccess().lookupJavaField(clazz.getDeclaredField(fieldName));
+            return LoadFieldNode.createOverrideStamp(StampPair.createSingle(wordStamp(field.getType())), receiver, field);
         } catch (NoSuchFieldException e) {
             throw VMError.shouldNotReachHere(e);
         }

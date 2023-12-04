@@ -31,15 +31,6 @@ import java.util.Map;
 import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.core.common.FieldIntrospection;
-import jdk.graal.compiler.core.common.Fields;
-import jdk.graal.compiler.graph.Edges;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.lir.CompositeValue;
-import jdk.graal.compiler.lir.CompositeValueClass;
-import jdk.graal.compiler.lir.LIRInstruction;
-import jdk.graal.compiler.lir.LIRInstructionClass;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -49,7 +40,7 @@ import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.graal.GraalEdgeUnsafePartition;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.graal.GraalSupport;
+import com.oracle.svm.graal.GraalCompilerSupport;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -57,6 +48,15 @@ import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.util.UnsafePartitionKind;
 
+import jdk.graal.compiler.core.common.FieldIntrospection;
+import jdk.graal.compiler.core.common.Fields;
+import jdk.graal.compiler.graph.Edges;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.CompositeValue;
+import jdk.graal.compiler.lir.CompositeValueClass;
+import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -164,13 +164,13 @@ public class FieldsOffsetsFeature implements Feature {
         }
 
         if (Node.class.isAssignableFrom(newlyReachableClass) && newlyReachableClass != Node.class) {
-            FieldsOffsetsFeature.<NodeClass<?>> registerClass(newlyReachableClass, GraalSupport.get().nodeClasses, NodeClass::get, false, access);
+            FieldsOffsetsFeature.<NodeClass<?>> registerClass(newlyReachableClass, GraalCompilerSupport.get().nodeClasses, NodeClass::get, false, access);
 
         } else if (LIRInstruction.class.isAssignableFrom(newlyReachableClass) && newlyReachableClass != LIRInstruction.class) {
-            FieldsOffsetsFeature.<LIRInstructionClass<?>> registerClass(newlyReachableClass, GraalSupport.get().instructionClasses, LIRInstructionClass::get, true, access);
+            FieldsOffsetsFeature.<LIRInstructionClass<?>> registerClass(newlyReachableClass, GraalCompilerSupport.get().instructionClasses, LIRInstructionClass::get, true, access);
 
         } else if (CompositeValue.class.isAssignableFrom(newlyReachableClass) && newlyReachableClass != CompositeValue.class) {
-            FieldsOffsetsFeature.<CompositeValueClass<?>> registerClass(newlyReachableClass, GraalSupport.get().compositeValueClasses, CompositeValueClass::get, true, access);
+            FieldsOffsetsFeature.<CompositeValueClass<?>> registerClass(newlyReachableClass, GraalCompilerSupport.get().compositeValueClasses, CompositeValueClass::get, true, access);
         }
     }
 
@@ -255,7 +255,7 @@ public class FieldsOffsetsFeature implements Feature {
 
     @Override
     public void afterCompilation(AfterCompilationAccess access) {
-        access.registerAsImmutable(GraalSupport.get().nodeClasses.getValues(), o -> true);
-        access.registerAsImmutable(GraalSupport.get().instructionClasses.getValues(), o -> true);
+        access.registerAsImmutable(GraalCompilerSupport.get().nodeClasses.getValues(), o -> true);
+        access.registerAsImmutable(GraalCompilerSupport.get().instructionClasses.getValues(), o -> true);
     }
 }

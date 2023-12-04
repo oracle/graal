@@ -29,6 +29,27 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
+import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
+import com.oracle.svm.hosted.fieldfolding.MarkStaticFinalFieldInitializedNode;
+import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
+import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.phases.InlineBeforeAnalysisGraphDecoderImpl;
+import com.oracle.svm.util.ClassUtil;
+
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
@@ -52,28 +73,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.replacements.PEGraphDecoder;
-import org.graalvm.nativeimage.ImageSingletons;
-
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
-import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
-import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
-import com.oracle.svm.hosted.fieldfolding.MarkStaticFinalFieldInitializedNode;
-import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
-import com.oracle.svm.hosted.meta.HostedType;
-import com.oracle.svm.hosted.phases.InlineBeforeAnalysisGraphDecoderImpl;
-import com.oracle.svm.util.ClassUtil;
-
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
@@ -170,12 +169,7 @@ public class SimulateClassInitializerSupport {
     /** The main data structure that stores all published results of the simulation. */
     protected final ConcurrentMap<AnalysisType, SimulateClassInitializerResult> analyzedClasses = new ConcurrentHashMap<>();
 
-    /**
-     * Simulation of class initializer (like {@link InlineBeforeAnalysis}) requires ParseOnce,
-     * because otherwise graphs parsed for static analysis omits exception edges.
-     */
-    protected final boolean enabled = ClassInitializationOptions.SimulateClassInitializer.getValue() && SubstrateOptions.parseOnce();
-
+    protected final boolean enabled = ClassInitializationOptions.SimulateClassInitializer.getValue();
     /* Cached value of options to avoid frequent lookup of option values. */
     protected final boolean collectAllReasons = ClassInitializationOptions.SimulateClassInitializerCollectAllReasons.getValue();
     protected final int maxInlineDepth = ClassInitializationOptions.SimulateClassInitializerMaxInlineDepth.getValue();

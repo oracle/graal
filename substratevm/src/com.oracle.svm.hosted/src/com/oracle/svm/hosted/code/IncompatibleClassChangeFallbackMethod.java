@@ -24,18 +24,17 @@
  */
 package com.oracle.svm.hosted.code;
 
+import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
+import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.util.ReflectionUtil;
+
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.UnwindNode;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.graal.compiler.nodes.java.NewInstanceNode;
-
-import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
-import com.oracle.svm.hosted.phases.HostedGraphKit;
-import com.oracle.svm.util.ReflectionUtil;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -69,7 +68,7 @@ public final class IncompatibleClassChangeFallbackMethod extends NonBytecodeMeth
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
         ResolvedJavaMethod constructor = providers.getMetaAccess().lookupJavaMethod(ReflectionUtil.lookupConstructor(resolutionError));
 
         AbstractNewObjectNode newInstance = kit.append(new NewInstanceNode(constructor.getDeclaringClass(), true));

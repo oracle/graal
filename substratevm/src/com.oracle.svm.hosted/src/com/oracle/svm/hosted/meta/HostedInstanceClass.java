@@ -37,7 +37,7 @@ public class HostedInstanceClass extends HostedClass {
     protected int instanceSize;
     protected boolean monitorFieldNeeded = false;
     protected int monitorFieldOffset = 0;
-    protected int optionalIdentityHashOffset = -1;
+    protected int identityHashOffset = 0;
 
     public HostedInstanceClass(HostedUniverse universe, AnalysisType wrapped, JavaKind kind, JavaKind storageKind, HostedClass superClass, HostedInterface[] interfaces) {
         super(universe, wrapped, kind, storageKind, superClass, interfaces);
@@ -115,13 +115,13 @@ public class HostedInstanceClass extends HostedClass {
         this.monitorFieldOffset = monitorFieldOffset;
     }
 
-    public int getOptionalIdentityHashOffset() {
-        return optionalIdentityHashOffset;
+    public int getIdentityHashOffset() {
+        return identityHashOffset;
     }
 
-    public void setOptionalIdentityHashOffset(int offset) {
-        assert this.optionalIdentityHashOffset == -1 : "setting identity hashcode field offset more than once";
-        assert offset >= 0;
-        this.optionalIdentityHashOffset = offset;
+    public void setIdentityHashOffset(int offset) {
+        assert this.identityHashOffset == 0 : "setting identity hashcode field offset more than once";
+        assert offset > 0;
+        this.identityHashOffset = offset;
     }
 }

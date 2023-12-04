@@ -59,8 +59,10 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.graal.GraalSupport;
+import com.oracle.svm.graal.GraalCompilerSupport;
+import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
 import com.oracle.svm.graal.hosted.FieldsOffsetsFeature;
+import com.oracle.svm.graal.hosted.GraalCompilerFeature;
 import com.oracle.svm.graal.hosted.RuntimeCompilationFeature;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.util.ReflectionUtil;
@@ -102,7 +104,7 @@ import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@TargetClass(value = InvocationPlugins.class, onlyWith = RuntimeCompilationFeature.IsEnabledAndNotLibgraal.class)
+@TargetClass(value = InvocationPlugins.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
 final class Target_jdk_graal_compiler_nodes_graphbuilderconf_InvocationPlugins {
 
     @Alias//
@@ -116,21 +118,21 @@ final class Target_jdk_graal_compiler_nodes_graphbuilderconf_InvocationPlugins {
     }
 }
 
-@TargetClass(value = InlineableGraph.class, onlyWith = RuntimeCompilationFeature.IsEnabledAndNotLibgraal.class)
+@TargetClass(value = InlineableGraph.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
 @SuppressWarnings({"unused"})
 final class Target_jdk_graal_compiler_phases_common_inlining_info_elem_InlineableGraph {
 
     @Substitute
     private static StructuredGraph parseBytecodes(ResolvedJavaMethod method, HighTierContext context, CanonicalizerPhase canonicalizer, StructuredGraph caller, boolean trackNodeSourcePosition) {
         DebugContext debug = caller.getDebug();
-        StructuredGraph result = GraalSupport.decodeGraph(debug, null, CompilationIdentifier.INVALID_COMPILATION_ID, (SubstrateMethod) method, caller);
+        StructuredGraph result = TruffleRuntimeCompilationSupport.decodeGraph(debug, null, CompilationIdentifier.INVALID_COMPILATION_ID, (SubstrateMethod) method, caller);
         assert result != null : "should not try to inline method when no graph is in the native image";
         assert !trackNodeSourcePosition || result.trackNodeSourcePosition();
         return result;
     }
 }
 
-@TargetClass(value = ComputeInliningRelevance.class, onlyWith = RuntimeCompilationFeature.IsEnabledAndNotLibgraal.class)
+@TargetClass(value = ComputeInliningRelevance.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
 @SuppressWarnings({"static-method", "unused"})
 final class Target_jdk_graal_compiler_phases_common_inlining_walker_ComputeInliningRelevance {
 
@@ -148,11 +150,11 @@ final class Target_jdk_graal_compiler_phases_common_inlining_walker_ComputeInlin
     }
 }
 
-@TargetClass(value = DebugContext.class, innerClass = "Invariants", onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+@TargetClass(value = DebugContext.class, innerClass = "Invariants", onlyWith = GraalCompilerFeature.IsEnabled.class)
 final class Target_jdk_graal_compiler_debug_DebugContext_Invariants {
 }
 
-@TargetClass(value = DebugContext.class, innerClass = "Immutable", onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+@TargetClass(value = DebugContext.class, innerClass = "Immutable", onlyWith = GraalCompilerFeature.IsEnabled.class)
 final class Target_jdk_graal_compiler_debug_DebugContext_Immutable {
     static class ClearImmutableCache implements FieldValueTransformer {
         @Override
@@ -182,12 +184,12 @@ final class Target_jdk_graal_compiler_debug_DebugContext_Immutable {
     private static Target_jdk_graal_compiler_debug_DebugContext_Immutable[] CACHE;
 }
 
-@TargetClass(value = DebugHandlersFactory.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+@TargetClass(value = DebugHandlersFactory.class, onlyWith = GraalCompilerFeature.IsEnabled.class)
 final class Target_jdk_graal_compiler_debug_DebugHandlersFactory {
     static class CachedFactories implements FieldValueTransformer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
-            return GraalSupport.get().getDebugHandlersFactories();
+            return GraalCompilerSupport.get().getDebugHandlersFactories();
         }
     }
 
@@ -200,7 +202,7 @@ final class Target_jdk_graal_compiler_debug_DebugHandlersFactory {
     private static Iterable<DebugHandlersFactory> LOADER;
 }
 
-@TargetClass(value = TimeSource.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+@TargetClass(value = TimeSource.class, onlyWith = GraalCompilerFeature.IsEnabled.class)
 final class Target_jdk_graal_compiler_debug_TimeSource {
     // Checkstyle: stop
     @Alias//
@@ -209,7 +211,7 @@ final class Target_jdk_graal_compiler_debug_TimeSource {
     // Checkstyle: resume
 }
 
-@TargetClass(value = TTY.class, onlyWith = RuntimeCompilationFeature.IsEnabledAndNotLibgraal.class)
+@TargetClass(value = TTY.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
 final class Target_jdk_graal_compiler_debug_TTY {
 
     @Alias//
@@ -217,7 +219,7 @@ final class Target_jdk_graal_compiler_debug_TTY {
     private static PrintStream out = Log.logStream();
 }
 
-@TargetClass(className = "jdk.graal.compiler.serviceprovider.IsolateUtil", onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+@TargetClass(className = "jdk.graal.compiler.serviceprovider.IsolateUtil", onlyWith = GraalCompilerFeature.IsEnabled.class)
 final class Target_jdk_graal_compiler_serviceprovider_IsolateUtil {
 
     @Substitute
@@ -227,7 +229,7 @@ final class Target_jdk_graal_compiler_serviceprovider_IsolateUtil {
 
     @Substitute
     public static long getIsolateID() {
-        return ImageSingletons.lookup(GraalSupport.class).getIsolateId();
+        return ImageSingletons.lookup(GraalCompilerSupport.class).getIsolateId();
     }
 }
 
@@ -239,7 +241,7 @@ class GlobalAtomicLongAddressProvider implements FieldValueTransformer {
     }
 }
 
-@TargetClass(className = "jdk.graal.compiler.serviceprovider.GlobalAtomicLong", onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+@TargetClass(className = "jdk.graal.compiler.serviceprovider.GlobalAtomicLong", onlyWith = GraalCompilerFeature.IsEnabled.class)
 final class Target_jdk_graal_compiler_serviceprovider_GlobalAtomicLong {
 
     @Inject//
@@ -271,7 +273,7 @@ final class Target_jdk_graal_compiler_serviceprovider_GlobalAtomicLong {
  * The following substitutions replace methods where reflection is used in the Graal code.
  */
 
-@TargetClass(value = KeyRegistry.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+@TargetClass(value = KeyRegistry.class, onlyWith = GraalCompilerFeature.IsEnabled.class)
 final class Target_jdk_graal_compiler_debug_KeyRegistry {
 
     @Alias//
@@ -283,13 +285,13 @@ final class Target_jdk_graal_compiler_debug_KeyRegistry {
     private static List<MetricKey> keys = new ArrayList<>();
 }
 
-@TargetClass(value = MatchRuleRegistry.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+@TargetClass(value = MatchRuleRegistry.class, onlyWith = GraalCompilerFeature.IsEnabled.class)
 final class Target_jdk_graal_compiler_core_match_MatchRuleRegistry {
 
     @Substitute
     public static EconomicMap<Class<? extends Node>, List<MatchStatement>> lookup(Class<? extends NodeLIRBuilder> theClass, @SuppressWarnings("unused") OptionValues options,
                     @SuppressWarnings("unused") DebugContext debug) {
-        EconomicMap<Class<? extends Node>, List<MatchStatement>> result = GraalSupport.get().matchRuleRegistry.get(theClass);
+        EconomicMap<Class<? extends Node>, List<MatchStatement>> result = GraalCompilerSupport.get().matchRuleRegistry.get(theClass);
         if (result == null) {
             throw VMError.shouldNotReachHere(String.format("MatchRuleRegistry.lookup(): unexpected class %s", theClass.getName()));
         }
@@ -297,7 +299,7 @@ final class Target_jdk_graal_compiler_core_match_MatchRuleRegistry {
     }
 }
 
-@TargetClass(value = BinaryMathIntrinsicNode.class, onlyWith = RuntimeCompilationFeature.IsEnabledAndNotLibgraal.class)
+@TargetClass(value = BinaryMathIntrinsicNode.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_jdk_graal_compiler_replacements_nodes_BinaryMathIntrinsicNode {
 
@@ -313,7 +315,7 @@ final class Target_jdk_graal_compiler_replacements_nodes_BinaryMathIntrinsicNode
     }
 }
 
-@TargetClass(value = UnaryMathIntrinsicNode.class, onlyWith = RuntimeCompilationFeature.IsEnabledAndNotLibgraal.class)
+@TargetClass(value = UnaryMathIntrinsicNode.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_jdk_graal_compiler_replacements_nodes_UnaryMathIntrinsicNode {
 
@@ -323,12 +325,12 @@ final class Target_jdk_graal_compiler_replacements_nodes_UnaryMathIntrinsicNode 
     }
 }
 
-@TargetClass(value = BasePhase.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+@TargetClass(value = BasePhase.class, onlyWith = GraalCompilerFeature.IsEnabled.class)
 final class Target_jdk_graal_compiler_phases_BasePhase {
 
     @Substitute
     static BasePhase.BasePhaseStatistics getBasePhaseStatistics(Class<?> clazz) {
-        BasePhase.BasePhaseStatistics result = GraalSupport.get().getBasePhaseStatistics().get(clazz);
+        BasePhase.BasePhaseStatistics result = GraalCompilerSupport.get().getBasePhaseStatistics().get(clazz);
         if (result == null) {
             throw VMError.shouldNotReachHere(String.format("Missing statistics for phase class: %s%n", clazz.getName()));
         }
@@ -336,12 +338,12 @@ final class Target_jdk_graal_compiler_phases_BasePhase {
     }
 }
 
-@TargetClass(value = LIRPhase.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+@TargetClass(value = LIRPhase.class, onlyWith = GraalCompilerFeature.IsEnabled.class)
 final class Target_jdk_graal_compiler_lir_phases_LIRPhase {
 
     @Substitute
     static LIRPhase.LIRPhaseStatistics getLIRPhaseStatistics(Class<?> clazz) {
-        LIRPhase.LIRPhaseStatistics result = GraalSupport.get().getLirPhaseStatistics().get(clazz);
+        LIRPhase.LIRPhaseStatistics result = GraalCompilerSupport.get().getLirPhaseStatistics().get(clazz);
         if (result == null) {
             throw VMError.shouldNotReachHere(String.format("Missing statistics for phase class: %s%n", clazz.getName()));
         }
@@ -349,7 +351,7 @@ final class Target_jdk_graal_compiler_lir_phases_LIRPhase {
     }
 }
 
-@TargetClass(value = NodeClass.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+@TargetClass(value = NodeClass.class, onlyWith = GraalCompilerFeature.IsEnabled.class)
 final class Target_jdk_graal_compiler_graph_NodeClass {
 
     @Alias//
@@ -364,7 +366,7 @@ final class Target_jdk_graal_compiler_graph_NodeClass {
     @SuppressWarnings("unlikely-arg-type")
     @SuppressFBWarnings(value = {"GC_UNRELATED_TYPES"}, justification = "Class is DynamicHub")
     public static NodeClass<?> get(Class<?> clazz) {
-        NodeClass<?> nodeClass = GraalSupport.get().nodeClasses.get(clazz);
+        NodeClass<?> nodeClass = GraalCompilerSupport.get().nodeClasses.get(clazz);
         if (nodeClass == null) {
             throw VMError.shouldNotReachHere(String.format("Unknown node class: %s%n", clazz.getName()));
         }
@@ -381,14 +383,14 @@ final class Target_jdk_graal_compiler_graph_NodeClass {
     }
 }
 
-@TargetClass(value = LIRInstructionClass.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+@TargetClass(value = LIRInstructionClass.class, onlyWith = GraalCompilerFeature.IsEnabled.class)
 final class Target_jdk_graal_compiler_lir_LIRInstructionClass {
 
     @Substitute
     @SuppressWarnings("unlikely-arg-type")
     @SuppressFBWarnings(value = {"GC_UNRELATED_TYPES"}, justification = "Class is DynamicHub")
     public static LIRInstructionClass<?> get(Class<? extends LIRInstruction> clazz) {
-        LIRInstructionClass<?> instructionClass = GraalSupport.get().instructionClasses.get(clazz);
+        LIRInstructionClass<?> instructionClass = GraalCompilerSupport.get().instructionClasses.get(clazz);
         if (instructionClass == null) {
             throw VMError.shouldNotReachHere(String.format("Unknown instruction class: %s%n", clazz.getName()));
         }
@@ -396,14 +398,14 @@ final class Target_jdk_graal_compiler_lir_LIRInstructionClass {
     }
 }
 
-@TargetClass(value = CompositeValueClass.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+@TargetClass(value = CompositeValueClass.class, onlyWith = GraalCompilerFeature.IsEnabled.class)
 final class Target_jdk_graal_compiler_lir_CompositeValueClass {
 
     @Substitute
     @SuppressWarnings("unlikely-arg-type")
     @SuppressFBWarnings(value = {"GC_UNRELATED_TYPES"}, justification = "Class is DynamicHub")
     public static CompositeValueClass<?> get(Class<? extends CompositeValue> clazz) {
-        CompositeValueClass<?> compositeValueClass = GraalSupport.get().compositeValueClasses.get(clazz);
+        CompositeValueClass<?> compositeValueClass = GraalCompilerSupport.get().compositeValueClasses.get(clazz);
         if (compositeValueClass == null) {
             throw VMError.shouldNotReachHere(String.format("Unknown composite value class: %s%n", clazz.getName()));
         }
@@ -418,7 +420,7 @@ final class Target_jdk_graal_compiler_printer_NoDeadCodeVerifyHandler {
     private static Map<String, Boolean> discovered;
 }
 
-@TargetClass(value = NamedLocationIdentity.class, innerClass = "DB", onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+@TargetClass(value = NamedLocationIdentity.class, innerClass = "DB", onlyWith = GraalCompilerFeature.IsEnabled.class)
 final class Target_jdk_graal_compiler_nodes_NamedLocationIdentity_DB {
     @Alias//
     @RecomputeFieldValue(kind = FromAlias, declClass = EconomicMap.class)//
@@ -431,7 +433,7 @@ final class Target_jdk_graal_compiler_nodes_NamedLocationIdentity_DB {
  * created just once during the image build and accessed via {@link ConfigurationValues} and
  * {@link ImageSingletons} from many locations.
  */
-@TargetClass(value = TargetDescription.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+@TargetClass(value = TargetDescription.class, onlyWith = GraalCompilerFeature.IsEnabled.class)
 final class Target_jdk_vm_ci_code_TargetDescription {
     @Alias//
     @InjectAccessors(value = InlineObjectsAccessor.class) //

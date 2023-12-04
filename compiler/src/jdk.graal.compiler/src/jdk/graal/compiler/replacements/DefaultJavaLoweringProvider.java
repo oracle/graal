@@ -1038,28 +1038,29 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
          */
         ArrayList<MonitorEnterNode> enters = null;
         FrameState stateBefore = GraphUtil.findLastFrameState(insertionPoint);
-        for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
-            List<MonitorIdNode> locks = commit.getLocks(objIndex);
-            if (locks.size() > 1) {
-                // Ensure that the lock operations are performed in lock depth order
-                ArrayList<MonitorIdNode> newList = new ArrayList<>(locks);
-                newList.sort((a, b) -> Integer.compare(a.getLockDepth(), b.getLockDepth()));
-                locks = newList;
-            }
-            int lastDepth = -1;
-            for (MonitorIdNode monitorId : locks) {
-                assert lastDepth < monitorId.getLockDepth() : Assertions.errorMessage(lastDepth, monitorId, insertAfter, commit, allocations);
-                lastDepth = monitorId.getLockDepth();
-                MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[objIndex], monitorId));
-                graph.addAfterFixed(insertionPoint, enter);
-                enter.setStateAfter(stateBefore.duplicate());
-                insertionPoint = enter;
-                if (enters == null) {
-                    enters = new ArrayList<>();
-                }
-                enters.add(enter);
-            }
+
+        List<MonitorIdNode> locks = commit.getLocks();
+        if (locks.size() > 1) {
+            // Ensure that the lock operations are performed in lock depth order
+            ArrayList<MonitorIdNode> newList = new ArrayList<>(locks);
+            newList.sort((a, b) -> Integer.compare(a.getLockDepth(), b.getLockDepth()));
+            locks = newList;
         }
+
+        int lastDepth = -1;
+        for (MonitorIdNode monitorId : locks) {
+            GraalError.guarantee(lastDepth < monitorId.getLockDepth(), Assertions.errorMessage(lastDepth, monitorId, insertAfter, commit, allocations));
+            lastDepth = monitorId.getLockDepth();
+            MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[commit.getObjectIndex(monitorId)], monitorId));
+            graph.addAfterFixed(insertionPoint, enter);
+            enter.setStateAfter(stateBefore.duplicate());
+            insertionPoint = enter;
+            if (enters == null) {
+                enters = new ArrayList<>();
+            }
+            enters.add(enter);
+        }
+
         for (Node usage : commit.usages().snapshot()) {
             if (usage instanceof AllocatedObjectNode) {
                 AllocatedObjectNode addObject = (AllocatedObjectNode) usage;

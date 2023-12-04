@@ -41,13 +41,13 @@ public class AMD64ReturnOp extends AMD64BlockEndOp implements StandardOp.BlockEn
     public static final LIRInstructionClass<AMD64ReturnOp> TYPE = LIRInstructionClass.create(AMD64ReturnOp.class);
     @Use({REG, ILLEGAL}) protected Value x;
 
-    protected AMD64ReturnOp(Value x, LIRInstructionClass<? extends AMD64BlockEndOp> type) {
+    protected AMD64ReturnOp(LIRInstructionClass<? extends AMD64BlockEndOp> type, Value x) {
         super(type);
         this.x = x;
     }
 
     public AMD64ReturnOp(Value x) {
-        this(x, TYPE);
+        this(TYPE, x);
     }
 
     @Override

@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.windows;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
@@ -53,6 +53,8 @@ import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.SynchAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * Support of {@link VMMutex}, {@link VMCondition} and {@link VMSemaphore} in multithreaded
@@ -123,24 +125,6 @@ public final class WindowsVMLockSupport extends VMLockSupport {
         return (WindowsVMLockSupport) ImageSingletons.lookup(VMLockSupport.class);
     }
 
-    /**
-     * Must be called once early during startup, before any mutex or condition is used.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
-    public static void initialize() {
-        WindowsVMLockSupport support = WindowsVMLockSupport.singleton();
-        for (WindowsVMMutex mutex : support.mutexes) {
-            // critical sections on Windows always support recursive locking
-            Process.NoTransitions.InitializeCriticalSection(mutex.getStructPointer());
-        }
-        for (WindowsVMCondition condition : support.conditions) {
-            Process.NoTransitions.InitializeConditionVariable(condition.getStructPointer());
-        }
-        for (WindowsVMSemaphore semaphore : support.semaphores) {
-            semaphore.init();
-        }
-    }
-
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static void checkResult(int result, String functionName) {
         if (result == 0) {
@@ -164,16 +148,19 @@ public final class WindowsVMLockSupport extends VMLockSupport {
     }
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public VMMutex[] getMutexes() {
         return mutexes;
     }
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public VMCondition[] getConditions() {
         return conditions;
     }
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public VMSemaphore[] getSemaphores() {
         return semaphores;
     }
@@ -192,6 +179,21 @@ final class WindowsVMMutex extends VMMutex {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Process.PCRITICAL_SECTION getStructPointer() {
         return (Process.PCRITICAL_SECTION) structPointer.get();
+    }
+
+    @Override
+    @Uninterruptible(reason = "Too early for safepoints.")
+    public int initialize() {
+        /* Critical sections on Windows always support recursive locking. */
+        Process.NoTransitions.InitializeCriticalSection(getStructPointer());
+        return 0;
+    }
+
+    @Override
+    @Uninterruptible(reason = "The isolate teardown is in progress.")
+    public int destroy() {
+        Process.NoTransitions.DeleteCriticalSection(getStructPointer());
+        return 0;
     }
 
     @Override
@@ -245,6 +247,23 @@ final class WindowsVMCondition extends VMCondition {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Process.PCONDITION_VARIABLE getStructPointer() {
         return (Process.PCONDITION_VARIABLE) structPointer.get();
+    }
+
+    @Override
+    @Uninterruptible(reason = "Too early for safepoints.")
+    public int initialize() {
+        Process.NoTransitions.InitializeConditionVariable(getStructPointer());
+        return 0;
+    }
+
+    @Override
+    @Uninterruptible(reason = "The isolate teardown is in progress.")
+    public int destroy() {
+        /*
+         * Windows condition variables don't need to be destroyed, and the underlying WindowsVMMutex
+         * is freed separately.
+         */
+        return 0;
     }
 
     @Override
@@ -342,16 +361,18 @@ final class WindowsVMSemaphore extends VMSemaphore {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected int init() {
+    @Uninterruptible(reason = "Too early for safepoints.")
+    public int initialize() {
         hSemaphore = WinBase.CreateSemaphoreA(WordFactory.nullPointer(), 0, Integer.MAX_VALUE, WordFactory.nullPointer());
         return hSemaphore.isNonNull() ? 0 : 1;
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected void destroy() {
-        WinBase.CloseHandle(hSemaphore);
+    @Uninterruptible(reason = "The isolate teardown is in progress.")
+    public int destroy() {
+        int errorCode = WinBase.CloseHandle(hSemaphore);
+        hSemaphore = WordFactory.nullPointer();
+        return errorCode;
     }
 
     @Override

@@ -107,6 +107,10 @@ final class AssertUtils {
         return String.format("Invariant contract violation for receiver %s and index %s.", formatValue(receiver), arg);
     }
 
+    static String violationInvariant(Object receiver, long argOffset, long argLength) {
+        return String.format("Invariant contract violation for receiver %s, offset %s, and length %s.", formatValue(receiver), argOffset, argLength);
+    }
+
     static String violationInvariant(Object receiver, Object arg) {
         return String.format("Invariant contract violation for receiver %s and key %s.", formatValue(receiver), formatValue(arg));
     }
@@ -174,6 +178,12 @@ final class AssertUtils {
         return String.format("Pre-condition contract violation for receiver %s and argument %s. " +
                         "Argument must not be null.",
                         formatValue(receiver), formatValue(arg));
+    }
+
+    static String violationOutArrayArgument(Object receiver, int inputLength, int arrayLength, int arrayOffset) {
+        return String.format("Pre-condition contract violation for receiver %s and out array argument. " +
+                        "The input of size %s cannot fit into an array of size %s at offset %s.",
+                        formatValue(receiver), inputLength, arrayLength, arrayOffset);
     }
 
     static boolean validArguments(Object receiver, Object[] args) {

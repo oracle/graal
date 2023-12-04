@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.lir.amd64;
+package com.oracle.svm.core.c;
 
-import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
-import jdk.graal.compiler.lir.LIRInstruction;
-import jdk.graal.compiler.lir.LIRInstructionClass;
-import jdk.graal.compiler.lir.Opcode;
-import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.nativeimage.IsolateThread;
 
-@Opcode("ENDBR64")
-public final class EndbranchOp extends AMD64LIRInstruction {
-    public static final LIRInstructionClass<EndbranchOp> TYPE = LIRInstructionClass.create(EndbranchOp.class);
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
+import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
+import com.oracle.svm.core.thread.VMThreads;
 
-    private EndbranchOp() {
-        super(TYPE);
+/**
+ * Only sets the heap base and the thread register but does not do any thread transitions. Only use
+ * this prologue if {@link com.oracle.svm.core.c.function.CEntryPointSetup.EnterPrologue} can't be
+ * used.
+ */
+public class SetThreadAndHeapBasePrologue implements CEntryPointOptions.Prologue {
+    @Uninterruptible(reason = "prologue")
+    public static void enter(IsolateThread thread) {
+        WriteCurrentVMThreadNode.writeCurrentVMThread(thread);
+        if (SubstrateOptions.SpawnIsolates.getValue()) {
+            CEntryPointSnippets.setHeapBase(VMThreads.IsolateTL.get());
+        }
     }
-
-    @Override
-    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        masm.endbranch();
-    }
-
-    public static LIRInstruction create() {
-        return new EndbranchOp();
-    }
-
 }

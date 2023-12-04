@@ -45,9 +45,11 @@ import static com.oracle.truffle.api.source.Source.CONTENT_NONE;
 import static com.oracle.truffle.polyglot.EngineAccessor.INSTRUMENT;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.lang.invoke.MethodHandles.Lookup;
@@ -56,6 +58,7 @@ import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.HashMap;
@@ -73,6 +76,7 @@ import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.ModuleToUnnamedBridge;
+import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
@@ -106,6 +110,20 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     static final Object SECRET = new Object();
     static final Object[] EMPTY_ARGS = new Object[0];
+
+    static final String TRUFFLE_VERSION;
+    static {
+        InputStream in = PolyglotImpl.class.getResourceAsStream("/META-INF/graalvm/org.graalvm.truffle/version");
+        if (in == null) {
+            throw new InternalError("Truffle API must have a version file.");
+        }
+        try (BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+            TRUFFLE_VERSION = r.readLine();
+        } catch (IOException ioe) {
+            throw new InternalError(ioe);
+        }
+    }
+
     private final PolyglotSourceDispatch sourceDispatch = new PolyglotSourceDispatch(this);
     private final PolyglotSourceSectionDispatch sourceSectionDispatch = new PolyglotSourceSectionDispatch(this);
     private final PolyglotExecutionListenerDispatch executionListenerDispatch = new PolyglotExecutionListenerDispatch(this);
@@ -381,9 +399,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                             The polyglot engine uses a fallback runtime that does not support runtime compilation to native code.
                             Execution without runtime compilation will negatively impact the guest application performance.
                             The following cause was found: %s
-                            For more information see: https://www.graalvm.org/latest/reference-manual/embed-languages/.
+                            For more information see: https://www.graalvm.org/latest/reference-manual/embed-languages/#runtime-optimization-support.
                             To disable this warning use the '--engine.WarnInterpreterOnly=false' option or the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.""", reason));
         }
+
     }
 
     private void validateSandbox(SandboxPolicy sandboxPolicy) {
@@ -564,6 +583,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
+    public ByteSequence asByteSequence(Object object) {
+        return (ByteSequence) object;
+    }
+
+    @Override
     public ProcessHandler newDefaultProcessHandler() {
         if (PolyglotEngineImpl.ALLOW_CREATE_PROCESS) {
             return ProcessHandlers.newDefaultProcessHandler();
@@ -642,6 +666,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public boolean copyResources(Path targetFolder, String... components) throws IOException {
         return InternalResourceCache.copyResourcesForNativeImage(targetFolder, components);
+    }
+
+    @Override
+    public String getTruffleVersion() {
+        return TRUFFLE_VERSION;
     }
 
     @Override

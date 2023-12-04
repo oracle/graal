@@ -77,6 +77,7 @@ import jdk.graal.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -466,6 +467,9 @@ public abstract class PartialEvaluator {
                 }
             }
         }
+        if (types.Throwable_jfrTracing != null) {
+            appendJFRTracingPlugin(plugins);
+        }
     }
 
     /**
@@ -485,6 +489,22 @@ public abstract class PartialEvaluator {
                     return true;
                 }
                 return false;
+            }
+        });
+    }
+
+    /**
+     * For details see {@link KnownTruffleTypes#Throwable_jfrTracing}.
+     */
+    private void appendJFRTracingPlugin(Plugins plugins) {
+        plugins.appendNodePlugin(new NodePlugin() {
+            @Override
+            public boolean handleLoadStaticField(GraphBuilderContext b, ResolvedJavaField field) {
+                if (field.equals(types.Throwable_jfrTracing)) {
+                    b.addPush(JavaKind.Boolean, jdk.graal.compiler.nodes.ConstantNode.forBoolean(false));
+                    return true;
+                }
+                return NodePlugin.super.handleLoadStaticField(b, field);
             }
         });
     }

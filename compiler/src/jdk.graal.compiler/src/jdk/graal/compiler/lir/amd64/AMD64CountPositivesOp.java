@@ -24,13 +24,13 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexGeneralPurposeRMVOp.SHLX;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.VPBROADCASTD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPXOR;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.QWORD;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.YMM;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.ZMM;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import java.util.EnumSet;
 
@@ -46,9 +46,9 @@ import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaKind;
@@ -83,6 +83,7 @@ public final class AMD64CountPositivesOp extends AMD64ComplexVectorOp {
     public AMD64CountPositivesOp(LIRGeneratorTool tool, EnumSet<CPUFeature> runtimeCheckedCPUFeatures, int useAVX3Threshold, AllocatableValue result, AllocatableValue array, Value length) {
         super(TYPE, tool, runtimeCheckedCPUFeatures, supportsAVX512VLBW(tool.target(), runtimeCheckedCPUFeatures) && supports(tool.target(), runtimeCheckedCPUFeatures, CPUFeature.BMI2) ? ZMM : YMM);
 
+        assert useAVX3Threshold == 0 || CodeUtil.isPowerOf2(useAVX3Threshold) : "AVX3Threshold must be 0 or a power of 2: " + useAVX3Threshold;
         this.useAVX3Threshold = useAVX3Threshold;
 
         this.resultValue = result;

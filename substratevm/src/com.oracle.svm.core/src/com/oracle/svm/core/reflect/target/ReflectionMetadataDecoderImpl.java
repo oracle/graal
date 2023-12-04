@@ -34,7 +34,6 @@ import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.function.Function;
 
-import jdk.graal.compiler.core.common.util.UnsafeArrayTypeReader;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -50,6 +49,8 @@ import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.core.reflect.Target_java_lang_reflect_RecordComponent;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.core.common.util.UnsafeArrayTypeReader;
 
 /**
  * This class performs the parsing of reflection metadata at runtime. The encoding formats are
@@ -324,7 +325,13 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         if (inHeap) {
             Field field = (Field) decodeObject(buf);
             if (publicOnly && !Modifier.isPublic(field.getModifiers())) {
-                return null;
+                /*
+                 * Generate negative copy of the field. Finding a non-public field when looking for
+                 * a public one should not result in a missing registration exception.
+                 */
+                Target_java_lang_reflect_Field negativeField = new Target_java_lang_reflect_Field();
+                negativeField.constructor(declaringClass, field.getName(), Object.class, field.getModifiers() | NEGATIVE_FLAG_MASK, false, -1, null, null);
+                field = SubstrateUtil.cast(negativeField, Field.class);
             }
             if (reflectOnly) {
                 return complete ? field : null;
@@ -363,7 +370,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         int offset = buf.getSVInt();
         String deletedReason = decodeName(buf);
         if (publicOnly && !Modifier.isPublic(modifiers)) {
-            return null;
+            modifiers |= NEGATIVE_FLAG_MASK;
         }
 
         Target_java_lang_reflect_Field field = new Target_java_lang_reflect_Field();
@@ -483,7 +490,19 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         if (inHeap) {
             Executable executable = (Executable) decodeObject(buf);
             if (publicOnly && !Modifier.isPublic(executable.getModifiers())) {
-                return null;
+                /*
+                 * Generate negative copy of the executable. Finding a non-public method when
+                 * looking for a public one should not result in a missing registration exception.
+                 */
+                if (isMethod) {
+                    Target_java_lang_reflect_Method negativeMethod = new Target_java_lang_reflect_Method();
+                    negativeMethod.constructor(declaringClass, executable.getName(), executable.getParameterTypes(), Object.class, null, modifiers | NEGATIVE_FLAG_MASK, -1, null, null, null, null);
+                    executable = SubstrateUtil.cast(negativeMethod, Executable.class);
+                } else {
+                    Target_java_lang_reflect_Constructor negativeConstructor = new Target_java_lang_reflect_Constructor();
+                    negativeConstructor.constructor(declaringClass, executable.getParameterTypes(), null, modifiers | NEGATIVE_FLAG_MASK, -1, null, null, null);
+                    executable = SubstrateUtil.cast(negativeConstructor, Executable.class);
+                }
             }
             if (reflectOnly) {
                 return complete ? executable : null;
@@ -545,7 +564,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         byte[] reflectParameters = decodeByteArray(buf);
         Object accessor = decodeObject(buf);
         if (publicOnly && !Modifier.isPublic(modifiers)) {
-            return null;
+            modifiers |= NEGATIVE_FLAG_MASK;
         }
 
         Target_java_lang_reflect_Executable executable;

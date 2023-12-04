@@ -36,7 +36,6 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 @GenerateInteropNodes
 @Shareable
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
-@SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public class ForeignExceptionInterop extends ThrowableInterop {
 
     private static Object getRawForeignObject(StaticObject object) {

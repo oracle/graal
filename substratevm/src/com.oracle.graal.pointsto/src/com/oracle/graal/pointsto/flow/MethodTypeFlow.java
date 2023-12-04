@@ -235,6 +235,10 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         return flowsGraph == null ? null : flowsGraph.getParameter(idx);
     }
 
+    public TypeFlow<?> getReturn() {
+        return flowsGraph == null ? null : flowsGraph.getReturnFlow();
+    }
+
     /** Check if the type flow is saturated, i.e., any of its clones is saturated. */
     public boolean isSaturated(@SuppressWarnings("unused") PointsToAnalysis bb, TypeFlow<?> originalTypeFlow) {
         return originalTypeFlow.isSaturated();

@@ -36,16 +36,8 @@ local graal_suite_root = root_ci.graal_suite_root;
     },
   },
 
-  linux_amd64:: common.linux_amd64 + self.linux_common + {
-    packages+: {
-      devtoolset: "==11", # GCC 11.2, make 4.3, binutils 2.36, valgrind 3.17
-    },
-  },
-  linux_aarch64:: common.linux_aarch64 + self.linux_common + {
-    packages+: {
-      devtoolset: "==10", # GCC 10.2.1, make 4.2.1, binutils 2.35, valgrind 3.16.1
-    },
-  },
+  linux_amd64:: common.linux_amd64 + self.linux_common,
+  linux_aarch64:: common.linux_aarch64 + self.linux_common,
 
   darwin_aarch64:: common.darwin_aarch64,
   darwin_amd64:: common.darwin_amd64 + {

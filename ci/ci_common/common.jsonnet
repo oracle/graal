@@ -18,7 +18,31 @@ common + common.frequencies + {
   + (
     if (std.length(std.find('gate', build.targets)) > 0 || std.length(std.find('deploy', build.targets)) == 0) then {
       guard+: {
-        excludes+: ["**.md", "<graal>/**.md", "<graal>/docs/**", "<graal>/.devcontainer/**", "<graal>/.github/**", "<graal>/vm/ce-release-artifacts.json"]
+        excludes+: ["*.md",
+          "<graal>/*.md",
+          "<graal>/ci/**.md",
+          "<graal>/compiler/**.md",
+          "<graal>/espresso/**.md",
+          "<graal>/regex/**.md",
+          "<graal>/sdk/**.md",
+          "<graal>/substratevm/docs/**", # Substratevm includes substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/doc-files/PrintImageHeapConnectedComponents.md in the build
+          "<graal>/substratevm/CHANGELOG.md",
+          "<graal>/substratevm/README.md",
+          "<graal>/sulong/docs/**.md",  # Sulong includes its readme in a distribution
+          "<graal>/sulong/CHANGELOG.md",
+          "<graal>/tools/**.md",
+          "<graal>/truffle/**.md",
+          "<graal>/visualizer/**.md",
+          "<graal>/vm/src/**.md", # vm/GRAALVM-README.md is included in a distribution
+          "<graal>/vm/README.md",
+          "<graal>/vm/benchmarks/**.md",
+          "<graal>/vm/docs/**",
+          "<graal>/wasm/**.md",
+          "<graal>/docs/**",
+          "<graal>/.devcontainer/**",
+          "<graal>/.github/**",
+          "<graal>/vm/ce-release-artifacts.json"
+        ]
       }
     } else {}
   ),
@@ -77,7 +101,7 @@ common + common.frequencies + {
 
   // Hardware definitions
   // ********************
-  local graal_common_extras = common.deps.pylint + {
+  local graal_common_extras = common.deps.pylint + common.deps.black + {
     logs+: [
       "*.bgv",
       "*/graal_dumps/*/*",
@@ -90,10 +114,9 @@ common + common.frequencies + {
     },
   },
 
-  linux_amd64_common: {os:: "linux"} + graal_common_extras,
-  linux_amd64: common.linux_amd64 + self.linux_amd64_common + linux_deps_extras,
-  linux_amd64_ol9: common.linux_amd64_ol9 + self.linux_amd64_common + linux_deps_extras,
-  linux_amd64_ubuntu: common.linux_amd64_ubuntu + self.linux_amd64_common,
+  linux_amd64: common.linux_amd64 + graal_common_extras + linux_deps_extras,
+  linux_amd64_ol9: common.linux_amd64_ol9 + graal_common_extras + linux_deps_extras,
+  linux_amd64_ubuntu: common.linux_amd64_ubuntu + graal_common_extras,
   linux_aarch64: linux_deps_extras + common.linux_aarch64 + graal_common_extras,
   linux_aarch64_ol9: linux_deps_extras + common.linux_aarch64_ol9 + graal_common_extras,
   darwin_amd64: common.darwin_amd64 + graal_common_extras,

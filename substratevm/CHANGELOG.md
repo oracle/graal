@@ -13,6 +13,9 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-39407) Add support for the `NATIVE_IMAGE_OPTIONS` environment variable, which allows users and tools to pass additional arguments via the environment. Similar to `JAVA_TOOL_OPTIONS`, the value of the environment variable is prepended to the options supplied to `native-image`.
 * (GR-20827): Introduce a dedicated caller-saved branch target register for software CFI implementations.
 * (GR-47937) Make the lambda-class name format in Native-Image consistent with the JDK name format.
+* (GR-45651) Methods, fields and constructors of `Object`, primitive classes and array classes are now registered by default for reflection.
+* (GR-45651) The Native Image agent now tracks calls to `ClassLoader.findSystemClass`, `ObjectInputStream.resolveClass` and `Bundles.of`, and registers resource bundles as bundle name-locale pairs.
+* (GR-49807) Before this change the function `System#setSecurityManager` was always halting program execution with a VM error. This was inconvenient as the VM error prints an uncomprehensible error message and prevents further continuation of the program. For cases where the program is expected to throw an exception when  `System#setSecurityManager` is called, execution on Native Image was not possible. Now, `System#setSecurityManager` throws an `java.lang.UnsupportedOperationException` by default. If the property `java.security.manager` is set to anything but `disallow` at program startup this function will throw a `java.lang.SecurityException` according to the Java spec.
 
 ## GraalVM for JDK 21 (Internal Version 23.1.0)
 * (GR-35746) Lower the default aligned chunk size from 1 MB to 512 KB for the serial and epsilon GCs, reducing memory usage and image size in many cases.
