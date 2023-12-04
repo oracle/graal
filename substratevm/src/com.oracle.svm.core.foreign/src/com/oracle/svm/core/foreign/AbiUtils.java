@@ -40,9 +40,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -53,6 +50,9 @@ import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.headers.WindowsAPIs;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.ReinterpretNode;
 import jdk.internal.foreign.CABI;
 import jdk.internal.foreign.abi.Binding;
 import jdk.internal.foreign.abi.CallingSequence;
@@ -534,7 +534,7 @@ class ABIs {
         @Platforms(Platform.HOSTED_ONLY.class)
         public void checkLibrarySupport() {
             String name = "SystemV (Linux AMD64)";
-            VMError.guarantee(LibC.isSupported(), "Foreign functions feature requires LibC support on " + name);
+            VMError.guarantee(LibC.isSupported(), "Foreign functions feature requires LibC support on %s", name);
         }
 
         @Override
@@ -587,8 +587,8 @@ class ABIs {
         @Platforms(Platform.HOSTED_ONLY.class)
         public void checkLibrarySupport() {
             String name = "Win64 (Windows AMD64)";
-            VMError.guarantee(LibC.isSupported(), "Foreign functions feature requires LibC support on" + name);
-            VMError.guarantee(WindowsAPIs.isSupported(), "Foreign functions feature requires Windows APIs support on" + name);
+            VMError.guarantee(LibC.isSupported(), "Foreign functions feature requires LibC support on %s", name);
+            VMError.guarantee(WindowsAPIs.isSupported(), "Foreign functions feature requires Windows APIs support on %s", name);
         }
 
         @Override

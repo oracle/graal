@@ -66,7 +66,7 @@ import jdk.internal.reflect.Reflection;
  * succeed. See
  * {@link com.oracle.svm.core.jdk.Target_java_lang_ClassLoader#loadLibrary(java.lang.Class, java.lang.String)}
  */
-@TargetClass(className = "java.lang.foreign.SymbolLookup")
+@TargetClass(className = "java.lang.foreign.SymbolLookup", onlyWith = ForeignFunctionsEnabled.class)
 public final class Target_java_lang_foreign_SymbolLookup {
 
     @Substitute
