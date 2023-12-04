@@ -32,8 +32,8 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.DeoptimizingFixedWithNextNode;
-import org.graalvm.compiler.nodes.DeoptimizingNode.DeoptBefore;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.DeoptimizingNode.DeoptBefore;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.word.LocationIdentity;
@@ -60,31 +60,29 @@ public final class CEntryPointEnterNode extends DeoptimizingFixedWithNextNode im
     @OptionalInput protected ValueNode parameter;
     private final boolean startedByIsolate;
     private final boolean ensureJavaThread;
-    private final boolean isCrashHandler;
 
     public static CEntryPointEnterNode createIsolate(ValueNode parameters) {
-        return new CEntryPointEnterNode(EnterAction.CreateIsolate, parameters, false, false, false);
+        return new CEntryPointEnterNode(EnterAction.CreateIsolate, parameters, false, false);
     }
 
-    public static CEntryPointEnterNode attachThread(ValueNode isolate, boolean startedByIsolate, boolean ensureJavaThread, boolean inCrashHandler) {
-        return new CEntryPointEnterNode(EnterAction.AttachThread, isolate, startedByIsolate, ensureJavaThread, inCrashHandler);
+    public static CEntryPointEnterNode attachThread(ValueNode isolate, boolean startedByIsolate, boolean ensureJavaThread) {
+        return new CEntryPointEnterNode(EnterAction.AttachThread, isolate, startedByIsolate, ensureJavaThread);
     }
 
     public static CEntryPointEnterNode enter(ValueNode isolateThread) {
-        return new CEntryPointEnterNode(EnterAction.Enter, isolateThread, false, false, false);
+        return new CEntryPointEnterNode(EnterAction.Enter, isolateThread, false, false);
     }
 
     public static CEntryPointEnterNode enterByIsolate(ValueNode isolate) {
-        return new CEntryPointEnterNode(EnterAction.EnterByIsolate, isolate, false, false, false);
+        return new CEntryPointEnterNode(EnterAction.EnterByIsolate, isolate, false, false);
     }
 
-    protected CEntryPointEnterNode(EnterAction enterAction, ValueNode parameter, boolean startedByCurrentIsolate, boolean ensureJavaThread, boolean isCrashHandler) {
+    protected CEntryPointEnterNode(EnterAction enterAction, ValueNode parameter, boolean startedByCurrentIsolate, boolean ensureJavaThread) {
         super(TYPE, StampFactory.forKind(JavaKind.Int));
         this.enterAction = enterAction;
         this.parameter = parameter;
         this.startedByIsolate = startedByCurrentIsolate;
         this.ensureJavaThread = ensureJavaThread;
-        this.isCrashHandler = isCrashHandler;
     }
 
     public EnterAction getEnterAction() {
@@ -101,10 +99,6 @@ public final class CEntryPointEnterNode extends DeoptimizingFixedWithNextNode im
 
     public boolean getEnsureJavaThread() {
         return ensureJavaThread;
-    }
-
-    public boolean isCrashHandler() {
-        return isCrashHandler;
     }
 
     @Override

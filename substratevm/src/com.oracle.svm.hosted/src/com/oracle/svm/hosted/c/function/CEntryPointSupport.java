@@ -32,10 +32,10 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -85,7 +85,7 @@ public class CEntryPointSupport implements InternalFeature {
                 if (!ensureJavaThreadNode.isConstant()) {
                     b.bailout("Parameter ensureJavaThread of enterAttachThread must be a compile time constant");
                 }
-                b.addPush(JavaKind.Int, CEntryPointEnterNode.attachThread(isolate, false, ensureJavaThreadNode.asJavaConstant().asInt() != 0, false));
+                b.addPush(JavaKind.Int, CEntryPointEnterNode.attachThread(isolate, false, ensureJavaThreadNode.asJavaConstant().asInt() != 0));
                 return true;
             }
         });
@@ -95,8 +95,7 @@ public class CEntryPointSupport implements InternalFeature {
                 if (!startedByIsolate.isConstant() || !ensureJavaThread.isConstant()) {
                     b.bailout("Parameters ensureJavaThread and startedByIsolate of enterAttachThread must be a compile time constant");
                 }
-                b.addPush(JavaKind.Int, CEntryPointEnterNode.attachThread(isolate, startedByIsolate.asJavaConstant().asInt() != 0,
-                                ensureJavaThread.asJavaConstant().asInt() != 0, false));
+                b.addPush(JavaKind.Int, CEntryPointEnterNode.attachThread(isolate, startedByIsolate.asJavaConstant().asInt() != 0, ensureJavaThread.asJavaConstant().asInt() != 0));
                 return true;
             }
         });
@@ -111,13 +110,6 @@ public class CEntryPointSupport implements InternalFeature {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode isolate) {
                 b.addPush(JavaKind.Int, CEntryPointEnterNode.enterByIsolate(isolate));
-                return true;
-            }
-        });
-        r.register(new RequiredInvocationPlugin("enterAttachThreadFromCrashHandler", Isolate.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode isolate) {
-                b.addPush(JavaKind.Int, CEntryPointEnterNode.attachThread(isolate, false, false, true));
                 return true;
             }
         });

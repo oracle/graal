@@ -31,12 +31,16 @@ import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
+import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
@@ -108,25 +112,43 @@ final class StackValueSnippets extends SubstrateTemplates implements Snippets {
     StackValueSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, providers);
         this.stackValueSnippet = snippet(providers, StackValueSnippets.class, "stackValueSnippet");
-        lowerings.put(StackValueNode.class, new StackValueVirtualThreadCheckLowering());
+        lowerings.put(StackValueNode.class, new StackValueLowering());
+        lowerings.put(LateStackValueNode.class, new LateStackValueLowering());
     }
 
-    final class StackValueVirtualThreadCheckLowering implements NodeLoweringProvider<StackValueNode> {
+    private void lower(LoweringTool tool, AbstractStateSplit node, int sizeInBytes, int alignmentInBytes, StackValueNode.StackSlotIdentity slotIdentity, boolean checkVirtualThread) {
+        GraalError.guarantee(tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER, "Must lower before mid-tier StackValueRecursionDepthPhase");
+
+        StructuredGraph graph = node.graph();
+        boolean mustNotAllocate = ImageSingletons.lookup(RestrictHeapAccessCallees.class).mustNotAllocate(graph.method());
+
+        SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(stackValueSnippet, graph.getGuardsStage(), tool.getLoweringStage());
+        args.addConst("sizeInBytes", sizeInBytes);
+        args.addConst("alignmentInBytes", alignmentInBytes);
+        args.addConst("slotIdentifier", slotIdentity);
+        args.addConst("disallowVirtualThread", checkVirtualThread);
+        args.addConst("mustNotAllocate", mustNotAllocate);
+        template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+    }
+
+    final class StackValueLowering implements NodeLoweringProvider<StackValueNode> {
         @Override
         public void lower(StackValueNode node, LoweringTool tool) {
-            StructuredGraph graph = node.graph();
+            StackValueSnippets.this.lower(tool, node, node.sizeInBytes, node.alignmentInBytes, node.slotIdentity, node.checkVirtualThread);
+        }
+    }
 
-            GraalError.guarantee(tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER, "Must lower before mid-tier StackValueRecursionDepthPhase");
+    final class LateStackValueLowering implements NodeLoweringProvider<LateStackValueNode> {
+        @Override
+        public void lower(LateStackValueNode node, LoweringTool tool) {
+            ValueNode sizeNode = node.sizeInBytes;
+            if (!sizeNode.isConstant()) {
+                throw new PermanentBailoutException("%s has a size that is not a compile time constant.", node);
+            }
 
-            boolean mustNotAllocate = ImageSingletons.lookup(RestrictHeapAccessCallees.class).mustNotAllocate(graph.method());
-
-            SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(stackValueSnippet, graph.getGuardsStage(), tool.getLoweringStage());
-            args.addConst("sizeInBytes", node.sizeInBytes);
-            args.addConst("alignmentInBytes", node.alignmentInBytes);
-            args.addConst("slotIdentifier", node.slotIdentity);
-            args.addConst("disallowVirtualThread", node.checkVirtualThread);
-            args.addConst("mustNotAllocate", mustNotAllocate);
-            template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            int sizeInBytes = NumUtil.safeToInt(sizeNode.asJavaConstant().asLong());
+            GraalError.guarantee(sizeInBytes > 0, "%s: must allocate at least 1 byte.", node);
+            StackValueSnippets.this.lower(tool, node, sizeInBytes, node.alignmentInBytes, node.slotIdentity, node.checkVirtualThread);
         }
     }
 }
