@@ -53,7 +53,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.HostVM;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
@@ -282,7 +281,9 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
                         GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
 
             // Adjust graphbuilderconfig to match analysis phase
-            var newGraphBuilderConfig = graphBuilderConfig.withEagerResolving(true).withUnresolvedIsError(PointstoOptions.UnresolvedIsError.getValue(bb.getOptions()));
+            var newGraphBuilderConfig = graphBuilderConfig
+                            .withEagerResolving(true)
+                            .withUnresolvedIsError(false);
             return new RuntimeGraphBuilderPhase(providers, newGraphBuilderConfig, optimisticOpts, null, providers.getWordTypes(), (SVMHost) bb.getHostVM());
         }
 
