@@ -54,6 +54,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.Indent;
 import jdk.graal.compiler.debug.LogStream;
 import jdk.graal.compiler.debug.MemUseTrackerKey;
+import jdk.graal.compiler.debug.PathUtilities;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.debug.TimerKey;
 import jdk.graal.compiler.graph.Node;
@@ -88,9 +89,11 @@ import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.JavaConstant;
 import org.graalvm.collections.EconomicMap;
 
-import java.io.File;
-import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.WritableByteChannel;
+import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -616,24 +619,23 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
 
             if (TruffleCompilerOptions.DumpRuntimeCompiledMethods.getValue(getOrCreateCompilerOptions(compilable))) {
 
-                System.out.println("Should I export?" + TruffleCompilerOptions.DumpRuntimeCompiledMethods);
-                System.out.println("Exporting compiled result");
-                System.out.println("BCI: " + compilationResult.getEntryBCI());
-                System.out.println("Data section size: " + compilationResult.getDataSection().getSectionSize());
-
-                System.out.println("Methods in the exported code");
                 StringBuilder binName = new StringBuilder();
                 for (var method : compilationResult.getMethods()) {
-                    System.out.println("--> Method name: " + method.getName());
                     binName.append(method.getName());
                 }
-                System.out.println("Bin name: " + binName);
 
+                // Creating the WritableByteChannel, writing to dump and then closing it.
 
-                File tmp = File.createTempFile(new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date()) + binName, ".bin");
-                try (FileOutputStream fos = new FileOutputStream(tmp)) {
-                    fos.write(compilationResult.getTargetCode());
+                String path = "/tmp/" + new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date()) + binName + ".bin";
+                WritableByteChannel channel;
+                try {
+                    channel = PathUtilities.openFileChannel(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+                } catch (IOException e) {
+                    throw new IOException(String.format("Failed to open %s to dump IGV graphs", path), e);
                 }
+
+                channel.write(ByteBuffer.wrap(compilationResult.getTargetCode()));
+                channel.close();
             }
 
 
