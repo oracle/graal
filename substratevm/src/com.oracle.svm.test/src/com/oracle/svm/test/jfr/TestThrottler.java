@@ -249,7 +249,7 @@ public class TestThrottler extends JfrRecordingTest {
         throttler.setThrottle(10, 2 * SECOND_IN_MS);
         assertTrue(throttler.sample());
 
-        // Test applying throttling settings to an in-progress recording
+        // Test applying throttling settings to an actual recording
         Recording recording = new Recording();
         recording.setDestination(createTempJfrFile());
         recording.enable(JfrEvent.ObjectAllocationSample.getName()).with("throttle", "0/s");
@@ -261,7 +261,8 @@ public class TestThrottler extends JfrRecordingTest {
         recording.stop();
         recording.close();
 
-        assertTrue(getEvents(recording.getDestination(), new String[]{JfrEvent.ObjectAllocationSample.getName()}).size() == 0);
+        // Call getEvents directly because we expect zero events (which ordinarily would result in failure).
+        assertTrue(getEvents(recording.getDestination(), new String[]{JfrEvent.ObjectAllocationSample.getName()}, true).size() == 0);
     }
 
     @NeverInline("Prevent escape analysis.")
