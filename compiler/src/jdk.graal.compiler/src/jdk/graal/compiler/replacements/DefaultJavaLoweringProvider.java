@@ -427,6 +427,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 return;
             }
         }
+        lowerUnaryMathToForeignCall(math, tool);
+    }
+
+    protected void lowerUnaryMathToForeignCall(UnaryMathIntrinsicNode math, LoweringTool tool) {
         StructuredGraph graph = math.graph();
         ForeignCallDescriptor desc = foreignCalls.getDescriptor(math.getOperation().foreignCallSignature);
         Stamp s = UnaryMathIntrinsicNode.UnaryOperation.computeStamp(math.getOperation(), math.getValue().stamp(NodeView.DEFAULT));

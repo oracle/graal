@@ -153,7 +153,6 @@ public final class UnaryMathIntrinsicNode extends UnaryNode implements Arithmeti
 
     @Override
     public Stamp foldStamp(Stamp valueStamp) {
-        getOperation();
         return UnaryOperation.computeStamp(this.operation, valueStamp);
     }
 
