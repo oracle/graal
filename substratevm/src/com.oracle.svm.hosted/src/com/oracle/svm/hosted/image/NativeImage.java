@@ -420,6 +420,8 @@ public abstract class NativeImage extends AbstractImage {
 
             BuildPhaseProvider.markHeapLayoutFinished();
 
+            heap.getLayouter().afterLayout(heap);
+
             imageHeapSize = heapLayout.getImageHeapSize();
 
             // Text section (code)

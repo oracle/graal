@@ -201,7 +201,7 @@ public class HeapSnapshotVerifier {
                 Consumer<ScanReason> onAnalysisModified = analysisModified(reason, format, field, unwrappedSnapshot, fieldValue);
                 result = scanner.patchStaticField(typeData, field, fieldValue, reason, onAnalysisModified).ensureDone();
                 heapPatched = true;
-            } else if (patchPrimitiveArrayValue(fieldSnapshot, fieldValue)) {
+            } else if (patchPrimitiveArrayValue(bb, fieldSnapshot, fieldValue)) {
                 heapPatched = true;
             }
             scanner.ensureReaderInstalled(result);
@@ -215,7 +215,7 @@ public class HeapSnapshotVerifier {
                 Consumer<ScanReason> onAnalysisModified = analysisModified(reason, format, field, asString(receiver), unwrappedSnapshot, fieldValue);
                 result = scanner.patchInstanceField(receiverObject, field, fieldValue, reason, onAnalysisModified).ensureDone();
                 heapPatched = true;
-            } else if (patchPrimitiveArrayValue(fieldSnapshot, fieldValue)) {
+            } else if (patchPrimitiveArrayValue(bb, fieldSnapshot, fieldValue)) {
                 heapPatched = true;
             }
             scanner.ensureReaderInstalled(result);
@@ -260,7 +260,7 @@ public class HeapSnapshotVerifier {
                 Consumer<ScanReason> onAnalysisModified = analysisModified(reason, format, index, asString(array), elementSnapshot, elementValue);
                 result = scanner.patchArrayElement(arrayObject, index, elementValue, reason, onAnalysisModified).ensureDone();
                 heapPatched = true;
-            } else if (patchPrimitiveArrayValue(elementSnapshot, elementValue)) {
+            } else if (patchPrimitiveArrayValue(bb, elementSnapshot, elementValue)) {
                 heapPatched = true;
             }
             scanner.ensureReaderInstalled(result);
@@ -274,13 +274,13 @@ public class HeapSnapshotVerifier {
          * shadowed object did not change since if that happens then the entire constant should have
          * been patched instead.
          */
-        private boolean patchPrimitiveArrayValue(JavaConstant snapshot, JavaConstant newValue) {
+        public static boolean patchPrimitiveArrayValue(BigBang bb, JavaConstant snapshot, JavaConstant newValue) {
             if (snapshot.isNull()) {
                 AnalysisError.guarantee(newValue.isNull());
                 return false;
             }
-            if (isPrimitiveArrayConstant(snapshot)) {
-                AnalysisError.guarantee(isPrimitiveArrayConstant(newValue));
+            if (isPrimitiveArrayConstant(bb, snapshot)) {
+                AnalysisError.guarantee(isPrimitiveArrayConstant(bb, newValue));
                 Object snapshotArray = ((ImageHeapPrimitiveArray) snapshot).getArray();
                 Object newValueArray = constantAsObject(bb, newValue);
                 if (!Objects.deepEquals(snapshotArray, newValueArray)) {
@@ -295,7 +295,7 @@ public class HeapSnapshotVerifier {
             return false;
         }
 
-        private boolean isPrimitiveArrayConstant(JavaConstant snapshot) {
+        static boolean isPrimitiveArrayConstant(BigBang bb, JavaConstant snapshot) {
             if (snapshot.getJavaKind() == JavaKind.Object) {
                 AnalysisType type = bb.getMetaAccess().lookupJavaType(snapshot);
                 return type.isArray() && type.getComponentType().getJavaKind() != JavaKind.Object;
@@ -355,7 +355,7 @@ public class HeapSnapshotVerifier {
          * ImageHeapObject that are not backed by a hosted object, we need to make sure that we
          * compare it with the correct representation of the snapshot, i.e., without unwrapping it.
          */
-        private JavaConstant maybeUnwrapSnapshot(JavaConstant snapshot, boolean asImageHeapObject) {
+        public static JavaConstant maybeUnwrapSnapshot(JavaConstant snapshot, boolean asImageHeapObject) {
             if (snapshot instanceof ImageHeapConstant) {
                 return asImageHeapObject ? snapshot : ((ImageHeapConstant) snapshot).getHostedObject();
             }

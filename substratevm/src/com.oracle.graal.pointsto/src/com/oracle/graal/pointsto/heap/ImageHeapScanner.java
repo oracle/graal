@@ -44,6 +44,7 @@ import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier.ScanningObserver;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -581,13 +582,17 @@ public abstract class ImageHeapScanner {
     }
 
     public void rescanField(Object receiver, Field reflectionField) {
+        rescanField(receiver, reflectionField, OtherReason.RESCAN);
+    }
+
+    public void rescanField(Object receiver, Field reflectionField, ScanReason reason) {
         maybeRunInExecutor(unused -> {
             AnalysisType type = metaAccess.lookupJavaType(reflectionField.getDeclaringClass());
             if (type.isReachable()) {
                 AnalysisField field = metaAccess.lookupJavaField(reflectionField);
                 assert !field.isStatic() : field;
                 JavaConstant receiverConstant = asConstant(receiver);
-                Optional<JavaConstant> replaced = maybeReplace(receiverConstant, OtherReason.RESCAN);
+                Optional<JavaConstant> replaced = maybeReplace(receiverConstant, reason);
                 if (replaced.isPresent()) {
                     if (replaced.get().isNull()) {
                         /* There was some problem during replacement, bailout. */
@@ -597,12 +602,18 @@ public abstract class ImageHeapScanner {
                 }
                 JavaConstant fieldValue = readHostedFieldValue(field, universe.toHosted(receiverConstant)).get();
                 if (fieldValue != null) {
-                    ImageHeapInstance receiverObject = (ImageHeapInstance) toImageHeapObject(receiverConstant, OtherReason.RESCAN);
-                    AnalysisFuture<JavaConstant> fieldTask = patchInstanceField(receiverObject, field, fieldValue, OtherReason.RESCAN, null);
-                    if (field.isRead() || field.isFolded()) {
-                        JavaConstant constant = fieldTask.ensureDone();
-                        ensureReaderInstalled(constant);
-                        rescanCollectionElements(constant);
+                    ImageHeapInstance receiverObject = (ImageHeapInstance) toImageHeapObject(receiverConstant, reason);
+                    JavaConstant fieldSnapshot = receiverObject.readFieldValue(field);
+                    JavaConstant unwrappedSnapshot = ScanningObserver.maybeUnwrapSnapshot(fieldSnapshot, fieldValue instanceof ImageHeapConstant);
+                    if (!Objects.equals(unwrappedSnapshot, fieldValue)) {
+                        AnalysisFuture<JavaConstant> fieldTask = patchInstanceField(receiverObject, field, fieldValue, reason, null);
+                        if (field.isRead() || field.isFolded()) {
+                            JavaConstant constant = fieldTask.ensureDone();
+                            ensureReaderInstalled(constant);
+                            rescanCollectionElements(constant);
+                        }
+                    } else {
+                        ScanningObserver.patchPrimitiveArrayValue(bb, fieldSnapshot, fieldValue);
                     }
                 }
             }
