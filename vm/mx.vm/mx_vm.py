@@ -194,7 +194,7 @@ ce_components_minimal = ['bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', '
 ce_components = ce_components_minimal + ['nr_lib_jvmcicompiler', 'bnative-image-configure', 'ni', 'nic', 'nil', 'svm', 'svmt', 'svmnfi', 'svmsl', 'svmforeign']
 ce_win_complete_components = ['antlr4', 'bnative-image-configure', 'bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'gwa', 'gwal', 'icu4j', 'xz', 'ins', 'insight', 'insightheap', 'js', 'jsl', 'jss', 'lg', 'libpoly', 'llp', 'llrc', 'llrl', 'llrlf', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'ni', 'nic', 'nil', 'njs', 'njsl', 'poly', 'polynative', 'pro', 'pyn', 'pynl', 'rgx', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'spolyglot', 'svm', 'svmt', 'svmnfi', 'svmsl', 'svmforeign', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json', 'vvm']
 ce_aarch64_complete_components = ce_win_complete_components + ['rby', 'rbyl', 'svml']
-ce_complete_components = ce_aarch64_complete_components + ['R', 'bRMain', 'xz']
+ce_complete_components = ce_aarch64_complete_components + ['R', 'bRMain']
 ce_darwin_complete_components = list(ce_complete_components)
 ce_darwin_complete_components.remove('bRMain')  # GR-49842 / GR-49835
 ce_darwin_complete_components.remove('R')  # GR-49842 / GR-49835
