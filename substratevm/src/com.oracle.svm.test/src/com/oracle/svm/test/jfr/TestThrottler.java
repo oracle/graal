@@ -261,7 +261,8 @@ public class TestThrottler extends JfrRecordingTest {
         recording.stop();
         recording.close();
 
-        // Call getEvents directly because we expect zero events (which ordinarily would result in failure).
+        // Call getEvents directly because we expect zero events (which ordinarily would result in
+        // failure).
         assertTrue(getEvents(recording.getDestination(), new String[]{JfrEvent.ObjectAllocationSample.getName()}, true).size() == 0);
     }
 
