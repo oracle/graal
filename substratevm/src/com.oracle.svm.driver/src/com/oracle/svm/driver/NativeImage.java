@@ -1653,7 +1653,16 @@ public class NativeImage {
         }
         environment.put(ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM, Boolean.toString(config.modulePathBuild));
         if (!config.modulePathBuild) {
-            LogUtils.warningDeprecatedEnvironmentVariable(ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM);
+            /**
+             * The old mode of running the image generator on the class path, which was deprecated
+             * in GraalVM 22.2, is no longer allowed. Using the environment variable
+             * `USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM=false` that used to enable the
+             * class-path-mode now leads to an early image build error. We really want to report
+             * this as an error, because just ignoring the environment variable would most likely
+             * lead to obscure image build errors later on.
+             */
+            throw showError("Running the image generator on the class path is no longer possible. Setting the environment variable " +
+                            ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM + "=false is no longer supported.");
         }
 
         completeCommandList.addAll(0, environment.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).sorted().toList());
