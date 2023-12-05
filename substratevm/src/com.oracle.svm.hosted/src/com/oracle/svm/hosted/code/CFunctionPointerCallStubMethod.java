@@ -63,18 +63,22 @@ public final class CFunctionPointerCallStubMethod extends CCallStubMethod {
 
     @Override
     public Signature getSignature() {
+        /*
+         * Inject the declaring class as an additional parameter at the beginning of the parameter
+         * list, to compensate for making the method `static`.
+         */
         return new Signature() {
-            private final Signature wrapped = getOriginal().getSignature();
+            private final Signature wrapped = CFunctionPointerCallStubMethod.super.getSignature();
 
             @Override
             public int getParameterCount(boolean receiver) {
-                return wrapped.getParameterCount(true);
+                return wrapped.getParameterCount(receiver) + 1;
             }
 
             @Override
             public JavaType getParameterType(int index, ResolvedJavaType accessingClass) {
                 if (index == 0) {
-                    return getOriginal().getDeclaringClass().resolve(accessingClass);
+                    return getOriginal().getDeclaringClass();
                 }
                 return wrapped.getParameterType(index - 1, accessingClass);
             }
@@ -82,6 +86,11 @@ public final class CFunctionPointerCallStubMethod extends CCallStubMethod {
             @Override
             public JavaType getReturnType(ResolvedJavaType accessingClass) {
                 return wrapped.getReturnType(accessingClass);
+            }
+
+            @Override
+            public String toString() {
+                return "CFunctionPointerCallStubMethod.Signature<" + wrapped + ">";
             }
         };
     }

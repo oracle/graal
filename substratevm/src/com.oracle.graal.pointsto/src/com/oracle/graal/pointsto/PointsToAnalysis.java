@@ -56,7 +56,6 @@ import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.AbstractUnsafeLoadTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.AbstractUnsafeStoreTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
-import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -88,6 +87,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.Signature;
 
 public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     /** The type of {@link java.lang.Object}. */
@@ -323,7 +323,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         AnalysisError.guarantee(aMethod.isOriginalMethod());
         AnalysisType declaringClass = aMethod.getDeclaringClass();
         boolean isStatic = aMethod.isStatic();
-        WrappedSignature signature = aMethod.getSignature();
+        Signature signature = aMethod.getSignature();
         int paramCount = signature.getParameterCount(!isStatic);
         PointsToAnalysisMethod originalPTAMethod = assertPointsToAnalysisMethod(aMethod);
 

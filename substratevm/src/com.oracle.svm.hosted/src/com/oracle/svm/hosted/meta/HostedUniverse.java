@@ -38,8 +38,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.nodes.StructuredGraph;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -49,10 +47,10 @@ import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
+import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
-import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -75,6 +73,8 @@ import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
@@ -288,7 +288,7 @@ public class HostedUniverse implements Universe {
     protected final Map<AnalysisType, HostedType> types = new HashMap<>();
     protected final Map<AnalysisField, HostedField> fields = new HashMap<>();
     protected final Map<AnalysisMethod, HostedMethod> methods = new HashMap<>();
-    protected final Map<Signature, WrappedSignature> signatures = new HashMap<>();
+    protected final Map<ResolvedSignature<AnalysisType>, ResolvedSignature<HostedType>> signatures = new HashMap<>();
     protected final Map<ConstantPool, WrappedConstantPool> constantPools = new HashMap<>();
 
     protected EnumMap<JavaKind, HostedType> kindToType = new EnumMap<>(JavaKind.class);
@@ -425,7 +425,7 @@ public class HostedUniverse implements Universe {
     }
 
     @Override
-    public WrappedSignature lookup(Signature signature, ResolvedJavaType defaultAccessingClass) {
+    public ResolvedSignature<HostedType> lookup(Signature signature, ResolvedJavaType defaultAccessingClass) {
         assert signatures.containsKey(signature) : signature;
         return signatures.get(signature);
     }

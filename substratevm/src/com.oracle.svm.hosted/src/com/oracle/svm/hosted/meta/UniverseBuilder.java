@@ -52,8 +52,8 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
+import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
-import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -108,7 +108,6 @@ import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public class UniverseBuilder {
@@ -294,7 +293,8 @@ public class UniverseBuilder {
     private HostedMethod makeMethod(AnalysisMethod aMethod) {
         AnalysisType aDeclaringClass = aMethod.getDeclaringClass();
         HostedType hDeclaringClass = lookupType(aDeclaringClass);
-        Signature signature = makeSignature(aMethod.getSignature(), aDeclaringClass);
+        @SuppressWarnings("unchecked")
+        var signature = makeSignature((ResolvedSignature<AnalysisType>) aMethod.getSignature());
         ConstantPool constantPool = makeConstantPool(aMethod.getConstantPool(), aDeclaringClass);
 
         ExceptionHandler[] aHandlers = aMethod.getExceptionHandlers();
@@ -332,16 +332,17 @@ public class UniverseBuilder {
         return hMethod;
     }
 
-    private Signature makeSignature(Signature aSignature, AnalysisType aDefaultAccessingClass) {
-        WrappedSignature hSignature = hUniverse.signatures.get(aSignature);
+    private ResolvedSignature<HostedType> makeSignature(ResolvedSignature<AnalysisType> aSignature) {
+        ResolvedSignature<HostedType> hSignature = hUniverse.signatures.get(aSignature);
         if (hSignature == null) {
-            hSignature = new WrappedSignature(hUniverse, aSignature, aDefaultAccessingClass);
-            hUniverse.signatures.put(aSignature, hSignature);
-
-            for (int i = 0; i < aSignature.getParameterCount(false); i++) {
-                lookupType((AnalysisType) aSignature.getParameterType(i, null));
+            HostedType[] paramTypes = new HostedType[aSignature.getParameterCount(false)];
+            for (int i = 0; i < paramTypes.length; i++) {
+                paramTypes[i] = lookupType(aSignature.getParameterType(i));
             }
-            lookupType((AnalysisType) aSignature.getReturnType(null));
+            HostedType returnType = lookupType(aSignature.getReturnType());
+
+            hSignature = ResolvedSignature.fromArray(paramTypes, returnType);
+            hUniverse.signatures.put(aSignature, hSignature);
         }
         return hSignature;
     }
