@@ -166,9 +166,13 @@ final class EngineAccessor extends Accessor {
     }
 
     private static List<AbstractClassLoaderSupplier> defaultLoaders() {
-        return List.of(new StrongClassLoaderSupplier(EngineAccessor.class.getClassLoader()),
-                        new StrongClassLoaderSupplier(ClassLoader.getSystemClassLoader()),
-                        new WeakClassLoaderSupplier(Thread.currentThread().getContextClassLoader()));
+        ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
+        if (contextClassLoader != null) {
+            return List.of(new WeakClassLoaderSupplier(contextClassLoader));
+        } else {
+            return List.of(new StrongClassLoaderSupplier(EngineAccessor.class.getClassLoader()),
+                            new StrongClassLoaderSupplier(ClassLoader.getSystemClassLoader()));
+        }
     }
 
     static List<AbstractClassLoaderSupplier> locatorOrDefaultLoaders() {
