@@ -50,7 +50,7 @@ public final class RuntimeCodeCacheCleaner implements CodeInfoVisitor {
      * <ul>
      * <li>{@link SpeculationReason} objects are embedded in the code and only needed when a
      * deoptimization is triggered.</li>
-     * <li>{@link SharedRuntimeMethod} objects are sometimes used as artifical methods (e.g., for
+     * <li>{@link SharedRuntimeMethod} objects are sometimes used as artificial methods (e.g., for
      * adapter code) and are located in the frame info object constants.</li>
      * </ul>
      */
