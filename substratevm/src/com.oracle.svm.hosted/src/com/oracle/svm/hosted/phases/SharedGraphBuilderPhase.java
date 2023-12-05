@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import java.lang.invoke.LambdaConversionException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
@@ -239,11 +240,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             try {
                 super.maybeEagerlyResolve(cpi, bytecode);
             } catch (UnresolvedElementException e) {
-                if (e.getCause() instanceof LinkageError || e.getCause() instanceof IllegalAccessError) {
+                if (e.getCause() instanceof LambdaConversionException || e.getCause() instanceof LinkageError || e.getCause() instanceof IllegalAccessError) {
                     /*
-                     * Ignore LinkageError if thrown from eager resolution attempt. This is usually
-                     * followed by a call to ConstantPool.lookupType() which should return an
-                     * UnresolvedJavaType which we know how to deal with.
+                     * Ignore LinkageError, LambdaConversionException or IllegalAccessError if
+                     * thrown from eager resolution attempt. This is usually followed by a call to
+                     * ConstantPool.lookupType() which should return an UnresolvedJavaType which we
+                     * know how to deal with.
                      */
                 } else {
                     throw e;
