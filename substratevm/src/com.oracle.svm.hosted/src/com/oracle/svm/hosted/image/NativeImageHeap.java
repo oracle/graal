@@ -47,6 +47,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -68,6 +69,7 @@ import com.oracle.svm.core.jdk.StringInternSupport;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
 import com.oracle.svm.hosted.meta.HostedClass;
@@ -241,8 +243,16 @@ public final class NativeImageHeap implements ImageHeap {
         assert addObjectWorklist.isEmpty();
     }
 
-    private Object readObjectField(HostedField field, JavaConstant receiver) {
-        return hUniverse.getSnippetReflection().asObject(Object.class, hConstantReflection.readFieldValue(field, receiver));
+    /**
+     * Bypass shadow heap reading for hybrid fields. These fields are not actually present in the
+     * image, their value is inlined, and are not present in the shadow heap either.
+     */
+    Object readHybridField(HostedField field, JavaConstant receiver) {
+        VMError.guarantee(HybridLayout.isHybridField(field), "Expected a hybrid field, found %s", field);
+        JavaConstant hostedReceiver = ((ImageHeapInstance) receiver).getHostedObject();
+        /* Use the AnalysisConstantReflectionProvider to get direct access to hosted values. */
+        AnalysisConstantReflectionProvider analysisConstantReflection = hConstantReflection.getWrappedConstantReflection();
+        return hUniverse.getSnippetReflection().asObject(Object.class, analysisConstantReflection.readHostedFieldValue(hMetaAccess, field.getWrapped(), hostedReceiver));
     }
 
     private JavaConstant readConstantField(HostedField field, JavaConstant receiver) {
@@ -465,14 +475,14 @@ public final class NativeImageHeap implements ImageHeap {
                 boolean shouldBlacklist = !HybridLayout.canHybridFieldsBeDuplicated(clazz);
                 hybridTypeIDSlotsField = hybridLayout.getTypeIDSlotsField();
                 if (hybridTypeIDSlotsField != null && shouldBlacklist) {
-                    Object typeIDSlots = readObjectField(hybridTypeIDSlotsField, constant);
+                    Object typeIDSlots = readHybridField(hybridTypeIDSlotsField, constant);
                     if (typeIDSlots != null) {
                         blacklist.add(typeIDSlots);
                     }
                 }
 
                 hybridArrayField = hybridLayout.getArrayField();
-                hybridArray = readObjectField(hybridArrayField, constant);
+                hybridArray = readHybridField(hybridArrayField, constant);
                 if (hybridArray != null && shouldBlacklist) {
                     blacklist.add(hybridArray);
                     written = true;
