@@ -237,6 +237,11 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return tag < STATIC_TAG ? tag : STATIC_TAG;
     }
 
+    private boolean isNonStaticType(int slotIndex, byte tag) {
+        assert tag < STATIC_TAG : tag;
+        return getIndexedTags()[slotIndex] == tag;
+    }
+
     @SuppressWarnings({"unchecked", "unused"})
     private static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact) {
         return (T) value;
@@ -434,37 +439,37 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public boolean isObject(int slot) {
-        return getTag(slot) == OBJECT_TAG;
+        return isNonStaticType(slot, OBJECT_TAG);
     }
 
     @Override
     public boolean isByte(int slot) {
-        return getTag(slot) == BYTE_TAG;
+        return isNonStaticType(slot, BYTE_TAG);
     }
 
     @Override
     public boolean isBoolean(int slot) {
-        return getTag(slot) == BOOLEAN_TAG;
+        return isNonStaticType(slot, BOOLEAN_TAG);
     }
 
     @Override
     public boolean isInt(int slot) {
-        return getTag(slot) == INT_TAG;
+        return isNonStaticType(slot, INT_TAG);
     }
 
     @Override
     public boolean isLong(int slot) {
-        return getTag(slot) == LONG_TAG;
+        return isNonStaticType(slot, LONG_TAG);
     }
 
     @Override
     public boolean isFloat(int slot) {
-        return getTag(slot) == FLOAT_TAG;
+        return isNonStaticType(slot, FLOAT_TAG);
     }
 
     @Override
     public boolean isDouble(int slot) {
-        return getTag(slot) == DOUBLE_TAG;
+        return isNonStaticType(slot, DOUBLE_TAG);
     }
 
     @Override
