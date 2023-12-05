@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.heap;
 
+import java.util.Map;
+
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -41,6 +43,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 
 public class SVMImageHeapVerifier extends HeapSnapshotVerifier {
@@ -49,8 +52,8 @@ public class SVMImageHeapVerifier extends HeapSnapshotVerifier {
     }
 
     @Override
-    public boolean checkHeapSnapshot(UniverseMetaAccess metaAccess, CompletionExecutor executor, String phase, boolean forAnalysis) {
-        return super.checkHeapSnapshot(metaAccess, executor, phase, forAnalysis) || imageStateModified();
+    public boolean checkHeapSnapshot(UniverseMetaAccess metaAccess, CompletionExecutor executor, String phase, boolean forAnalysis, Map<Constant, Object> embeddedConstants) {
+        return super.checkHeapSnapshot(metaAccess, executor, phase, forAnalysis, embeddedConstants) || imageStateModified();
     }
 
     /**

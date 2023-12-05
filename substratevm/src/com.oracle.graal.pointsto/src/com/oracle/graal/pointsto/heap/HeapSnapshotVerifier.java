@@ -78,10 +78,6 @@ public class HeapSnapshotVerifier {
         verbosity = Options.HeapVerifierVerbosity.getValue(bb.getOptions());
     }
 
-    public boolean checkHeapSnapshot(DebugContext debug, UniverseMetaAccess metaAccess, String stage) {
-        return checkHeapSnapshot(debug, metaAccess, stage, bb.getUniverse().getEmbeddedRoots());
-    }
-
     public boolean checkHeapSnapshot(DebugContext debug, UniverseMetaAccess metaAccess, String stage, Map<Constant, Object> embeddedConstants) {
         CompletionExecutor executor = new CompletionExecutor(debug, bb);
         executor.init();
@@ -94,10 +90,6 @@ public class HeapSnapshotVerifier {
      * values are found then the verifier automatically patches the shadow heap. If this is during
      * analysis then the heap scanner will also notify the analysis of the new objects.
      */
-    public boolean checkHeapSnapshot(UniverseMetaAccess metaAccess, CompletionExecutor executor, String phase, boolean forAnalysis) {
-        return checkHeapSnapshot(metaAccess, executor, phase, forAnalysis, bb.getUniverse().getEmbeddedRoots());
-    }
-
     public boolean checkHeapSnapshot(UniverseMetaAccess metaAccess, CompletionExecutor executor, String phase, boolean forAnalysis, Map<Constant, Object> embeddedConstants) {
         info("Verifying the heap snapshot %s%s ...", phase, (forAnalysis ? ", iteration " + iterations : ""));
         analysisModified = false;
