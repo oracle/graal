@@ -101,7 +101,7 @@ public final class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
                 final int afterLea = asm.position();
                 asm.emitInt(pos[0] - afterLea, afterLea - 4);
                 asm.movq(new AMD64Address(r15, config.savedExceptionPCOffset), scratch);
-                AMD64Call.directJmp(crb, asm, crb.foreignCalls.lookupForeignCall(POLLING_PAGE_RETURN_HANDLER), null);
+                AMD64Call.directJmp(crb, asm, crb.getForeignCalls().lookupForeignCall(POLLING_PAGE_RETURN_HANDLER), null);
             });
         } else {
             asm.movptr(scratch, new AMD64Address(thread, config.threadPollingPageOffset));
