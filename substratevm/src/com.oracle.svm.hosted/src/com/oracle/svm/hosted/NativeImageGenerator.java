@@ -56,6 +56,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Stream;
 
+import jdk.vm.ci.meta.Constant;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -323,6 +324,7 @@ import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -684,6 +686,8 @@ public class NativeImageGenerator {
                                         nativeLibraries);
                         featureHandler.forEachFeature(feature -> feature.beforeHeapLayout(beforeLayoutConfig));
 
+                        verifyAndSealShadowHeap(codeCache, debug, heap);
+
                         buildNativeImageHeap(heap, codeCache);
 
                         AfterHeapLayoutAccessImpl config = new AfterHeapLayoutAccessImpl(featureHandler, loader, heap, hMetaAccess, debug);
@@ -738,6 +742,25 @@ public class NativeImageGenerator {
             }
             reporter.printCreationEnd(image.getImageFileSize(), heap.getObjectCount(), image.getImageHeapSize(), codeCache.getCodeAreaSize(), numCompilations, image.getDebugInfoSize());
         }
+    }
+
+    /*
+     * Re-run shadow heap verification before heap layout. This time the verification uses the
+     * embedded roots discovered after compilation.
+     */
+    private void verifyAndSealShadowHeap(NativeImageCodeCache codeCache, DebugContext debug, NativeImageHeap heap) {
+        /*
+         * Get the embedded constants after compilation to include everything, e.g., interned string
+         * from snippet lowering that would otherwise be missed.
+         */
+        Map<Constant, Object> embeddedConstants = codeCache.initAndGetEmbeddedConstants();
+        bb.getUniverse().getHeapVerifier().checkHeapSnapshot(debug, heap.hMetaAccess, "before heap layout", embeddedConstants);
+        /*
+         * Seal shadow heap after final verification. Any modification to the shadow heap after this
+         * point, i.e., registering a new ImageHeapConstant or materializing the hosted values
+         * reader of an existing ImageHeapConstant, will result in an error.
+         */
+        bb.getUniverse().getHeapScanner().seal();
     }
 
     protected void buildNativeImageHeap(NativeImageHeap heap, NativeImageCodeCache codeCache) {

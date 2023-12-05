@@ -27,6 +27,7 @@ package com.oracle.graal.pointsto.heap;
 import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import static com.oracle.graal.pointsto.ObjectScanner.constantAsObject;
 
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
@@ -42,10 +43,12 @@ import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.svm.util.LogUtils;
 
+import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -76,9 +79,13 @@ public class HeapSnapshotVerifier {
     }
 
     public boolean checkHeapSnapshot(DebugContext debug, UniverseMetaAccess metaAccess, String stage) {
+        return checkHeapSnapshot(debug, metaAccess, stage, bb.getUniverse().getEmbeddedRoots());
+    }
+
+    public boolean checkHeapSnapshot(DebugContext debug, UniverseMetaAccess metaAccess, String stage, Map<Constant, Object> embeddedConstants) {
         CompletionExecutor executor = new CompletionExecutor(debug, bb);
         executor.init();
-        return checkHeapSnapshot(metaAccess, executor, stage, false);
+        return checkHeapSnapshot(metaAccess, executor, stage, false, embeddedConstants);
     }
 
     /**
@@ -88,6 +95,10 @@ public class HeapSnapshotVerifier {
      * analysis then the heap scanner will also notify the analysis of the new objects.
      */
     public boolean checkHeapSnapshot(UniverseMetaAccess metaAccess, CompletionExecutor executor, String phase, boolean forAnalysis) {
+        return checkHeapSnapshot(metaAccess, executor, phase, forAnalysis, bb.getUniverse().getEmbeddedRoots());
+    }
+
+    public boolean checkHeapSnapshot(UniverseMetaAccess metaAccess, CompletionExecutor executor, String phase, boolean forAnalysis, Map<Constant, Object> embeddedConstants) {
         info("Verifying the heap snapshot %s%s ...", phase, (forAnalysis ? ", iteration " + iterations : ""));
         analysisModified = false;
         heapPatched = false;
@@ -97,7 +108,7 @@ public class HeapSnapshotVerifier {
         ObjectScanner objectScanner = installObjectScanner(metaAccess, executor);
         executor.start();
         scanTypes(objectScanner);
-        objectScanner.scanBootImageHeapRoots();
+        objectScanner.scanBootImageHeapRoots(embeddedConstants);
         try {
             executor.complete();
         } catch (InterruptedException e) {
@@ -314,7 +325,8 @@ public class HeapSnapshotVerifier {
                 }
             }
             if (!result.isReaderInstalled()) {
-                throw error(reason, "Reader not yet installed for constant %s.", constant);
+                /* This can be a constant discovered after compilation */
+                result.ensureReaderInstalled();
             }
             return result;
         }
@@ -326,7 +338,7 @@ public class HeapSnapshotVerifier {
             if (rootTask == null) {
                 throw error(reason, "No snapshot task found for embedded root %s %n", root);
             } else if (rootTask instanceof ImageHeapConstant snapshot) {
-                verifyEmbeddedRoot(maybeUnwrapSnapshot(snapshot, root instanceof ImageHeapConstant), root, reason);
+                verifyEmbeddedRoot(maybeUnwrapSnapshot(snapshot, root instanceof ImageHeapConstant), CompressibleConstant.uncompress(root), reason);
             } else {
                 AnalysisFuture<ImageHeapConstant> future = (AnalysisFuture<ImageHeapConstant>) rootTask;
                 if (future.isDone()) {
@@ -452,22 +464,22 @@ public class HeapSnapshotVerifier {
     }
 
     private void warning(ScanReason reason, String format, Object... args) {
-        LogUtils.warning(message(reason, format, "Value was reached by", args));
+        LogUtils.warning(formatReason(bb, reason, format, "Value was reached by", args));
     }
 
     private void analysisWarning(ScanReason reason, String format, Object... args) {
-        LogUtils.warning(message(reason, format, "This leads to an analysis state change when", args));
+        LogUtils.warning(formatReason(bb, reason, format, "This leads to an analysis state change when", args));
     }
 
     private RuntimeException error(ScanReason reason, String format, Object... args) {
-        throw AnalysisError.shouldNotReachHere(message(reason, format, args));
+        throw AnalysisError.shouldNotReachHere(formatReason(bb, reason, format, args));
     }
 
-    private String message(ScanReason reason, String format, Object... args) {
-        return message(reason, format, "", args);
+    public static String formatReason(BigBang bb, ScanReason reason, String format, Object... args) {
+        return formatReason(bb, reason, format, "", args);
     }
 
-    private String message(ScanReason reason, String format, String backtraceHeader, Object... args) {
+    private static String formatReason(BigBang bb, ScanReason reason, String format, String backtraceHeader, Object... args) {
         String message = format(bb, format, args);
         StringBuilder objectBacktrace = new StringBuilder();
         ObjectScanner.buildObjectBacktrace(bb, reason, objectBacktrace, backtraceHeader);

@@ -64,6 +64,7 @@ import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
@@ -90,7 +91,7 @@ public class AnalysisUniverse implements Universe {
     private final ConcurrentMap<ResolvedJavaMethod, AnalysisMethod> methods = new ConcurrentHashMap<>(ESTIMATED_METHODS_PER_TYPE * ESTIMATED_NUMBER_OF_TYPES);
     private final ConcurrentMap<ResolvedSignature<AnalysisType>, ResolvedSignature<AnalysisType>> uniqueSignatures = new ConcurrentHashMap<>();
     private final ConcurrentMap<ConstantPool, WrappedConstantPool> constantPools = new ConcurrentHashMap<>(ESTIMATED_NUMBER_OF_TYPES);
-    private final ConcurrentHashMap<JavaConstant, BytecodePosition> embeddedRoots = new ConcurrentHashMap<>(ESTIMATED_EMBEDDED_ROOTS);
+    private final ConcurrentHashMap<Constant, Object> embeddedRoots = new ConcurrentHashMap<>(ESTIMATED_EMBEDDED_ROOTS);
     private final ConcurrentMap<AnalysisField, Boolean> unsafeAccessedStaticFields = new ConcurrentHashMap<>();
 
     private boolean sealed;
@@ -587,7 +588,7 @@ public class AnalysisUniverse implements Universe {
         return methods.get(resolvedJavaMethod);
     }
 
-    public Map<JavaConstant, BytecodePosition> getEmbeddedRoots() {
+    public Map<Constant, Object> getEmbeddedRoots() {
         return embeddedRoots;
     }
 

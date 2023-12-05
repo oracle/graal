@@ -90,6 +90,8 @@ public abstract class ImageHeapScanner {
 
     protected ObjectScanningObserver scanningObserver;
 
+    private boolean sealed;
+
     public ImageHeapScanner(BigBang bb, ImageHeap heap, AnalysisMetaAccess aMetaAccess, SnippetReflectionProvider aSnippetReflection,
                     ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver) {
         this.bb = bb;
@@ -102,6 +104,10 @@ public abstract class ImageHeapScanner {
         scanningObserver = aScanningObserver;
         hostedConstantReflection = GraalAccess.getOriginalProviders().getConstantReflection();
         hostedSnippetReflection = GraalAccess.getOriginalProviders().getSnippetReflection();
+    }
+
+    public void seal() {
+        this.sealed = true;
     }
 
     public void scanEmbeddedRoot(JavaConstant root, BytecodePosition position) {
@@ -202,6 +208,7 @@ public abstract class ImageHeapScanner {
         ScanReason nonNullReason = Objects.requireNonNull(reason);
         Object existingTask = imageHeap.getSnapshot(javaConstant);
         if (existingTask == null) {
+            checkSealed(reason, "Trying to create a new ImageHeapConstant for %s after the ImageHeapScanner is sealed.", javaConstant);
             AnalysisFuture<ImageHeapConstant> newTask = new AnalysisFuture<>(() -> {
                 ImageHeapConstant imageHeapConstant = createImageHeapObject(javaConstant, nonNullReason);
                 /* When the image heap object is created replace the future in the map. */
@@ -214,6 +221,12 @@ public abstract class ImageHeapScanner {
             }
         }
         return existingTask instanceof ImageHeapConstant ? (ImageHeapConstant) existingTask : ((AnalysisFuture<ImageHeapConstant>) existingTask).ensureDone();
+    }
+
+    private void checkSealed(ScanReason reason, String format, Object... args) {
+        if (sealed && reason != OtherReason.LATE_SCAN) {
+            throw AnalysisError.sealedHeapError(HeapSnapshotVerifier.formatReason(bb, reason, format, args));
+        }
     }
 
     /**
@@ -255,6 +268,7 @@ public abstract class ImageHeapScanner {
         ImageHeapObjectArray array = new ImageHeapObjectArray(type, constant, length);
         /* Read hosted array element values only when the array is initialized. */
         array.constantData.hostedValuesReader = new AnalysisFuture<>(() -> {
+            checkSealed(reason, "Trying to materialize an ImageHeapObjectArray for %s after the ImageHeapScanner is sealed.", constant);
             type.registerAsReachable(reason);
             ScanReason arrayReason = new ArrayScan(type, array, reason);
             Object[] elementValues = new Object[length];
@@ -276,6 +290,7 @@ public abstract class ImageHeapScanner {
         ImageHeapInstance instance = new ImageHeapInstance(type, constant);
         /* Read hosted field values only when the receiver is initialized. */
         instance.constantData.hostedValuesReader = new AnalysisFuture<>(() -> {
+            checkSealed(reason, "Trying to materialize an ImageHeapInstance for %s after the ImageHeapScanner is sealed.", constant);
             /* If this is a Class constant register the corresponding type as reachable. */
             AnalysisType typeFromClassConstant = (AnalysisType) constantReflection.asJavaType(instance);
             if (typeFromClassConstant != null) {

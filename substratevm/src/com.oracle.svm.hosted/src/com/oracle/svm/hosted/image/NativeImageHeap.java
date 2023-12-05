@@ -46,6 +46,7 @@ import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
@@ -231,6 +232,9 @@ public final class NativeImageHeap implements ImageHeap {
             String[] imageInternedStrings = internedStrings.keySet().toArray(new String[0]);
             Arrays.sort(imageInternedStrings);
             ImageSingletons.lookup(StringInternSupport.class).setImageInternedStrings(imageInternedStrings);
+            /* Manually snapshot the interned strings array. */
+            aUniverse.getHeapScanner().rescanObject(imageInternedStrings, OtherReason.LATE_SCAN);
+
             addObject(imageInternedStrings, true, HeapInclusionReason.InternedStringsTable);
 
             // Process any objects that were transitively added to the heap.
@@ -642,6 +646,7 @@ public final class NativeImageHeap implements ImageHeap {
     public ObjectInfo addLateToImageHeap(Object object, Object reason) {
         assert !(object instanceof DynamicHub) : "needs a different identity hashcode";
         assert !(object instanceof String) : "needs String interning";
+        aUniverse.getHeapScanner().rescanObject(object, OtherReason.LATE_SCAN);
 
         final Optional<HostedType> optionalType = hMetaAccess.optionalLookupJavaType(object.getClass());
         HostedType type = requireType(optionalType, object, reason);
