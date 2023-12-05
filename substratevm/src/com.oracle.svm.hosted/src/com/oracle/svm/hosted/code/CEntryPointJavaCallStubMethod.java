@@ -27,17 +27,16 @@ package com.oracle.svm.hosted.code;
 import java.lang.reflect.AnnotatedElement;
 import java.util.List;
 
-import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
-import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -74,7 +73,7 @@ public class CEntryPointJavaCallStubMethod extends CCallStubMethod {
     }
 
     @Override
-    protected ValueNode createTargetAddressNode(HostedGraphKit kit, HostedProviders providers, List<ValueNode> arguments) {
+    protected ValueNode createTargetAddressNode(HostedGraphKit kit, List<ValueNode> arguments) {
 
         /*
          * We currently cannot handle {@link MethodPointer} as a constant in the code, so we use an
