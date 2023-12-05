@@ -64,6 +64,7 @@ import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.extended.OSRMonitorEnterNode;
 import jdk.graal.compiler.nodes.loop.LoopEx;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
@@ -268,6 +269,17 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
                     moveAsDeoptAfter((AbstractBeginNode) current, deopt);
                     return;
                 }
+            } else if (current instanceof OSRMonitorEnterNode monitorEnterNode) {
+                /*
+                 * OSR locals (including locks) need to remain in the graph and be lowered to LIR
+                 * even when a deopt floats all the way to OSRStart, so that the actions associated
+                 * with OSRStart and OSRMonitorEnter are performed and the associated FrameState is
+                 * correct. Since OSR lock nodes are only lowered along with the OSRMonitorEnter
+                 * they're used by, we must not float a deopt above a OSRMonitorEnterNode to prevent
+                 * it from being removed from the graph.
+                 */
+                moveAsDeoptAfter(monitorEnterNode, deopt);
+                return;
             }
             current = current.predecessor();
         }
