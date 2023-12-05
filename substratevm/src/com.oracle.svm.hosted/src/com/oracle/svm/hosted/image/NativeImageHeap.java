@@ -107,8 +107,11 @@ public final class NativeImageHeap implements ImageHeap {
 
     /**
      * A Map from objects at construction-time to native image objects.
-     *
+     * <p>
      * More than one host object may be represented by a single native image object.
+     * <p>
+     * The constants stored in the image heap are always uncompressed. The same object info is
+     * returned whenever the map is queried regardless of the compressed flag value.
      */
     private final HashMap<JavaConstant, ObjectInfo> objects = new HashMap<>();
 
@@ -164,12 +167,12 @@ public final class NativeImageHeap implements ImageHeap {
     public ObjectInfo getObjectInfo(Object obj) {
         JavaConstant constant = hUniverse.getSnippetReflection().forObject(obj);
         VMError.guarantee(constant instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", constant);
-        return objects.get(uncompress(constant));
+        return objects.get(CompressibleConstant.uncompress(constant));
     }
 
     public ObjectInfo getConstantInfo(JavaConstant constant) {
         VMError.guarantee(constant instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", constant);
-        return objects.get(uncompress(constant));
+        return objects.get(CompressibleConstant.uncompress(constant));
     }
 
     protected HybridLayout<?> getHybridLayout(HostedClass clazz) {
@@ -341,7 +344,7 @@ public final class NativeImageHeap implements ImageHeap {
             }
         }
 
-        JavaConstant uncompressed = uncompress(constant);
+        JavaConstant uncompressed = CompressibleConstant.uncompress(constant);
 
         int identityHashCode = computeIdentityHashCode(uncompressed);
         VMError.guarantee(identityHashCode != 0, "0 is used as a marker value for 'hash code not yet computed'");
@@ -358,27 +361,6 @@ public final class NativeImageHeap implements ImageHeap {
         } else if (objectReachabilityInfo != null) {
             objectReachabilityInfo.get(existing).addReason(reason);
         }
-    }
-
-    /**
-     * The constants stored in the image heap, i.g., the {@link #objects} map, are always
-     * uncompressed. The same object info is returned whenever the map is queried regardless of the
-     * compressed flag value.
-     */
-    private static JavaConstant uncompress(JavaConstant constant) {
-        if (constant instanceof CompressibleConstant compressible) {
-            if (compressible.isCompressed()) {
-                return compressible.uncompress();
-            }
-        }
-        return constant;
-    }
-
-    private static boolean isCompressed(JavaConstant constant) {
-        if (constant instanceof CompressibleConstant compressible) {
-            return compressible.isCompressed();
-        }
-        return false;
     }
 
     private static int computeIdentityHashCode(JavaConstant constant) {
@@ -634,7 +616,7 @@ public final class NativeImageHeap implements ImageHeap {
 
     private ObjectInfo addToImageHeap(JavaConstant add, HostedClass clazz, long size, int identityHashCode, Object reason) {
         VMError.guarantee(add instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", add);
-        VMError.guarantee(!isCompressed(add), "Constants added to the image heap must be uncompressed.");
+        VMError.guarantee(!CompressibleConstant.isCompressed(add), "Constants added to the image heap must be uncompressed.");
         ObjectInfo info = new ObjectInfo(add, size, clazz, identityHashCode, reason);
         ObjectInfo previous = objects.putIfAbsent(add, info);
         VMError.guarantee(previous == null, "Found an existing object info associated to constant %s", add);
