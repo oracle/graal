@@ -66,6 +66,7 @@ public class SLSeparatedClassLoadersTest {
         final ProtectionDomain sdkDomain = Engine.class.getProtectionDomain();
         Assume.assumeNotNull(sdkDomain);
         Assume.assumeNotNull(sdkDomain.getCodeSource());
+        Assume.assumeTrue(Engine.class.getModule().isNamed());
         URL sdkURL = sdkDomain.getCodeSource().getLocation();
         Assume.assumeNotNull(sdkURL);
 
