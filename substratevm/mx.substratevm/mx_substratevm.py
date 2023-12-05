@@ -938,7 +938,7 @@ def benchmark(args):
 
 def mx_post_parse_cmd_line(opts):
     for dist in suite.dists:
-        if not dist.isTARDistribution():
+        if dist.isJARDistribution():
             dist.set_archiveparticipant(GraalArchiveParticipant(dist, isTest=dist.name.endswith('_TEST')))
 
 def native_image_context_run(func, func_args=None, config=None, build_if_missing=False):

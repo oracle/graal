@@ -489,6 +489,16 @@ suite = {
       "maven": False,
     },
 
+    "GRAAL_VERSION": {
+      "type": "dir",
+      "platformDependent": False,
+      "layout": {
+        "META-INF/graalvm/jdk.internal.vm.compiler/version": "dependency:sdk:VERSION/version",
+      },
+      "description": "Compiler version.",
+      "maven": False,
+    },
+
     "GRAAL" : {
       # This distribution defines a module.
       "moduleInfo" : {
@@ -526,7 +536,8 @@ suite = {
       },
       "subDir" : "src",
       "dependencies" : [
-        "jdk.internal.vm.compiler"
+        "jdk.internal.vm.compiler",
+        "GRAAL_VERSION",
       ],
       "distDependencies" : [
         "sdk:COLLECTIONS",

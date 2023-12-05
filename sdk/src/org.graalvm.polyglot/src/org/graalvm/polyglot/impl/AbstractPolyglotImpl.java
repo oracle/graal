@@ -578,6 +578,10 @@ public abstract class AbstractPolyglotImpl {
         return getNext().copyResources(targetFolder, components);
     }
 
+    public String getTruffleVersion() {
+        return null;
+    }
+
     /**
      * Marker base class for native-image.
      */

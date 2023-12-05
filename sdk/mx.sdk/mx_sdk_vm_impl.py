@@ -3518,6 +3518,32 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     :type register_distribution: (mx.Distribution) -> None
     """
     with_debuginfo = []
+
+    def _release_version():
+        version = _suite.release_version()
+        if version.endswith('-dev'):
+            version = version[:-len('-dev')]
+        return version
+
+    string_substitutions = mx_subst.SubstitutionEngine(mx_subst.SubstitutionEngine(mx_subst.path_substitutions))
+    string_substitutions.register_no_arg('version', _release_version)
+    attrs = {
+        'description': 'SDK version file.',
+        'maven': False,
+    }
+    register_distribution(mx.LayoutDirDistribution(
+        suite=_suite,
+        name='VERSION',
+        deps=[],
+        layout={
+            'version': 'string:<version>'
+        },
+        path=None,
+        platformDependent=False,
+        theLicense=None,
+        string_substitutions=string_substitutions,
+        **attrs
+    ))
     with_non_rebuildable_configs = False
     _final_graalvm_distribution = get_final_graalvm_distribution()
     register_distribution(_final_graalvm_distribution)
