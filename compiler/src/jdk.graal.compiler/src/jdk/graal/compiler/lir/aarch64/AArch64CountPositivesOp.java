@@ -323,9 +323,8 @@ public final class AArch64CountPositivesOp extends AArch64ComplexVectorOp {
         // right-shift by 7 to get only the sign bits
         masm.neon.ushrVVI(FullReg, ElementSize.Byte, vtmp0, vtmp0, 7);
         // check if result is zero
-        masm.fcmpZero(64, vtmp0);
+        cbnzVector(masm, ElementSize.Byte, vtmp0, vtmp0, tmp5, false, labelRetAdjustLong);
 
-        masm.branchConditionally(ConditionFlag.NE, labelRetAdjustLong);
         masm.compare(32, len, LARGE_LOOP_SIZE);
         masm.branchConditionally(ConditionFlag.GE, labelLargeLoop);
 
