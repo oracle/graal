@@ -7,7 +7,7 @@
     "oraclejdk8Debug":    {"name": "labsjdk", "version": "ee-8u401+03-jvmci-20.3-b60-fastdebug", "platformspecific": true },
 
     "openjdk11":          {"name": "openjdk",   "version": "11.0.3+7", "platformspecific": true },
-    "oraclejdk11":        {"name": "oraclejdk", "version": "11.0.6+8", "platformspecific": true },
+    "oraclejdk11":        {"name": "jpg-jdk",   "version": "11.0.21", "build_id": "9", "release": true, "platformspecific": true, "extrabundles": ["static-libs"] },
     "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.15+10-jvmci-20.3-b33", "platformspecific": true },
     "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.22+4-jvmci-20.3-b60", "platformspecific": true },
 
