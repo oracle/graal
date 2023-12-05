@@ -27,13 +27,12 @@ package jdk.graal.compiler.nodes.java;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Node.NodeIntrinsicFactory;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
-import jdk.graal.compiler.nodes.spi.Canonicalizable;
-import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -42,16 +41,20 @@ import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.memory.MemoryAccess;
 import jdk.graal.compiler.nodes.spi.ArrayLengthProvider;
+import jdk.graal.compiler.nodes.spi.Canonicalizable;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.Lowerable;
+import jdk.graal.compiler.nodes.spi.Simplifiable;
+import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.spi.Virtualizable;
 import jdk.graal.compiler.nodes.spi.VirtualizerTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-import org.graalvm.word.LocationIdentity;
-
+import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -62,7 +65,7 @@ import jdk.vm.ci.meta.JavaKind;
  */
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
 @NodeIntrinsicFactory
-public final class ArrayLengthNode extends FixedWithNextNode implements Canonicalizable.Unary<ValueNode>, Lowerable, Virtualizable, MemoryAccess {
+public final class ArrayLengthNode extends FixedWithNextNode implements Canonicalizable.Unary<ValueNode>, Lowerable, Virtualizable, MemoryAccess, Simplifiable {
 
     public static final NodeClass<ArrayLengthNode> TYPE = NodeClass.create(ArrayLengthNode.class);
     @Input ValueNode array;
@@ -104,11 +107,49 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
         if (forValue.isNullConstant()) {
             return new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.NullCheckException);
         }
-        ValueNode length = readArrayLength(forValue, tool.getConstantReflection());
-        if (length != null) {
-            return length;
-        }
         return this;
+    }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        ValueNode length = readArrayLength(getValue(), tool.getConstantReflection());
+        if (tool.allUsagesAvailable() && length != null) {
+            /**
+             * If we are using the array length directly (for example from an allocation) instead of
+             * this array length node we must ensure we are preserving the previously used
+             * positiveInt stamp and that the positive int stamp users are not floating above the
+             * position of this array length (which is dominated by the null check & min array size
+             * check ensuring len>=0).
+             *
+             * So for code like
+             *
+             * <pre>
+             * int[] arr = new int[length];
+             * aLotOfCode();
+             * use(arr.length);
+             * aLotMoreCode();
+             * userOptimizingBasedOnPositiveIntStamp(arr.length);
+             * </pre>
+             *
+             * we must preserve the fact that only at the point of the original allocation the
+             * property that length >= 0 is guaranteed. Thus we replace this with
+             *
+             *
+             * <pre>
+             * int[] arr = new int[length];
+             * lengthPiGuardedHere = new Pi(Length >= 0);
+             * aLotOfCode();
+             * use(lengthPiGuardedHere);
+             * aLotMoreCode();
+             * userOptimizingBasedOnPositiveIntStamp(lengthPiGuardedHere);
+             * </pre>
+             */
+            StructuredGraph graph = graph();
+            BeginNode guard = graph.add(new BeginNode());
+            graph.addAfterFixed(this, guard);
+            ValueNode anchoredLengthNonNegative = graph.addWithoutUnique(new PiNode(length, StampFactory.positiveInt(), guard));
+            graph.replaceFixedWithFloating(this, anchoredLengthNonNegative);
+        }
     }
 
     /**
