@@ -313,7 +313,7 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
             return null;
         }
 
-        protected abstract LogicNode duplicateModified(ValueNode newW, ValueNode newY, boolean unorderedIsTrue, NodeView view);
+        protected abstract LogicNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue, NodeView view);
     }
 
     public static LogicNode createCompareNode(StructuredGraph graph, CanonicalCondition condition, ValueNode x, ValueNode y, ConstantReflectionProvider constantReflection, NodeView view) {
