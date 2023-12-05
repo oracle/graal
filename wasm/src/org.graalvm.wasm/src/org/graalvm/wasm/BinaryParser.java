@@ -1807,16 +1807,27 @@ public class BinaryParser extends BinaryStreamParser {
                         state.push(V128_TYPE);
                         state.addInstruction(Bytecode.VECTOR_V128_CONST_I128, value);
                         break;
+                    case Instructions.VECTOR_V128_ANY_TRUE:
                     case Instructions.VECTOR_I32X4_ALL_TRUE:
                         state.popChecked(V128_TYPE);
                         state.push(I32_TYPE);
-                        state.addInstruction(Bytecode.VECTOR_I32X4_ALL_TRUE);
+                        state.addInstruction(vectorOpcode);
                         break;
                     case Instructions.VECTOR_I32X4_ADD:
+                    case Instructions.VECTOR_I32X4_SUB:
+                    case Instructions.VECTOR_I32X4_MUL:
+                    case Instructions.VECTOR_F64X2_ADD:
+                    case Instructions.VECTOR_F64X2_SUB:
+                    case Instructions.VECTOR_F64X2_MUL:
+                    case Instructions.VECTOR_F64X2_DIV:
+                    case Instructions.VECTOR_F64X2_MIN:
+                    case Instructions.VECTOR_F64X2_MAX:
+                    case Instructions.VECTOR_F64X2_PMIN:
+                    case Instructions.VECTOR_F64X2_PMAX:
                         state.popChecked(V128_TYPE);
                         state.popChecked(V128_TYPE);
                         state.push(V128_TYPE);
-                        state.addInstruction(Bytecode.VECTOR_I32X4_ADD);
+                        state.addInstruction(vectorOpcode);
                         break;
                     default:
                         fail(Failure.UNSPECIFIED_MALFORMED, "Unknown opcode: 0xFD 0x%02x", vectorOpcode);

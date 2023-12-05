@@ -40,66 +40,29 @@
  */
 package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.memory.ByteArraySupport;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
+public class VectorOperators {
 
-public class Vector128 {
-
-    // v128 component values are stored in little-endian order
-    private static final ByteArraySupport byteArraySupport = ByteArraySupport.littleEndian();
-
-    public static final Vector128 ZERO = new Vector128(new byte[16]);
-
-    private final byte[] bytes;
-
-    public Vector128(byte[] bytes) {
-        assert bytes.length == 16;
-        this.bytes = bytes;
+    /**
+     * Vectorized integer binary operators. Corresponds to the {@code vibinop} production in the
+     * WebAssembly spec.
+     */
+    public enum VIBinOp {
+        Add,
+        Sub
     }
 
-    public byte[] asBytes() {
-        return bytes;
-    }
-
-    public static Vector128 ofBytes(byte[] bytes) {
-        return new Vector128(bytes);
-    }
-
-    @ExplodeLoop
-    public int[] asInts() {
-        int[] ints = new int[4];
-        for (int i = 0; i < 4; i++) {
-            ints[i] = byteArraySupport.getInt(bytes, i * 4);
-        }
-        return ints;
-    }
-
-    @ExplodeLoop
-    public static Vector128 ofInts(int[] ints) {
-        assert ints.length == 4;
-        byte[] bytes = new byte[16];
-        for (int i = 0; i < 4; i++) {
-            byteArraySupport.putInt(bytes, i * 4, ints[i]);
-        }
-        return new Vector128(bytes);
-    }
-
-    @ExplodeLoop
-    public double[] asDoubles() {
-        double[] doubles = new double[2];
-        for (int i = 0; i < 2; i++) {
-            doubles[i] = byteArraySupport.getDouble(bytes, i * 8);
-        }
-        return doubles;
-    }
-
-    @ExplodeLoop
-    public static Vector128 ofDoubles(double[] doubles) {
-        assert doubles.length == 2;
-        byte[] bytes = new byte[16];
-        for (int i = 0; i < 2; i++) {
-            byteArraySupport.putDouble(bytes, i * 8, doubles[i]);
-        }
-        return new Vector128(bytes);
+    /**
+     * Vectorized floating-point binary operators. Corresponds to the {@code vfbinop} production in
+     * the WebAssembly spec.
+     */
+    public enum VFBinOp {
+        Add,
+        Sub,
+        Mul,
+        Div,
+        Min,
+        Max,
+        Pmin,
+        Pmax
     }
 }

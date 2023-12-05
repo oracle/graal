@@ -348,8 +348,19 @@ public final class Instructions {
     public static final int VECTOR = 0xFD;
 
     public static final int VECTOR_V128_CONST = 0x0C;
+    public static final int VECTOR_V128_ANY_TRUE = 0x53;
     public static final int VECTOR_I32X4_ALL_TRUE = 0xA3;
     public static final int VECTOR_I32X4_ADD = 0xAE;
+    public static final int VECTOR_I32X4_SUB = 0xB1;
+    public static final int VECTOR_I32X4_MUL = 0xB5;
+    public static final int VECTOR_F64X2_ADD = 0xF0;
+    public static final int VECTOR_F64X2_SUB = 0xF1;
+    public static final int VECTOR_F64X2_MUL = 0xF2;
+    public static final int VECTOR_F64X2_DIV = 0xF3;
+    public static final int VECTOR_F64X2_MIN = 0xF4;
+    public static final int VECTOR_F64X2_MAX = 0xF5;
+    public static final int VECTOR_F64X2_PMIN = 0xF6;
+    public static final int VECTOR_F64X2_PMAX = 0xF7;
 
     // GraalWasm specific opcodes (these are reserved for future webassembly extensions and might be
     // used in other ways in the future)
