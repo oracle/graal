@@ -289,7 +289,7 @@ public class ObjectScanner {
     }
 
     public void scanConstant(JavaConstant value, ScanReason reason) {
-        if (value.isNull() || bb.getMetaAccess().isInstanceOf(value, WordBase.class)) {
+        if (value.isNull() || value.getJavaKind().isPrimitive() || bb.getMetaAccess().isInstanceOf(value, WordBase.class)) {
             return;
         }
         JavaConstant unwrappedValue = maybeUnwrap(value);
