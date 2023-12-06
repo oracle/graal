@@ -34,7 +34,6 @@ import com.oracle.truffle.espresso.impl.Method;
  */
 @GenerateWrapper
 public abstract class EspressoInstrumentableRootNode extends EspressoInstrumentableNode {
-    abstract void beforeInstumentation(VirtualFrame frame);
 
     abstract Object execute(VirtualFrame frame);
 
