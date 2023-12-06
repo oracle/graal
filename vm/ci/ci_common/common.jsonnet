@@ -264,10 +264,17 @@ local devkits = graal_common.devkits;
       local java_deps(edition) = {
         downloads+: {
           JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-' + java_version],
-        } + if (os == 'linux' || os == 'darwin') && (arch == 'amd64') && (java_version != 'latest') then {
+        } + (
+          if (os == 'linux' || os == 'darwin') && (arch == 'amd64') && (java_version != 'latest') then {
             LLVM_JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-' + java_version + '-llvm'],
-        } else {
-        }
+          } else {
+          }
+        ) + (
+          if (java_version == 'latest') then {
+            TOOLS_JAVA_HOME: graal_common.jdks_data['oraclejdk21'],
+          } else {
+          }
+        )
       };
 
       if (os == 'linux') then
