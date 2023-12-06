@@ -272,8 +272,8 @@ suite = {
             "sha1" : "a8f5b9e7387e00a57d31be320a8246a7c8128aa4",
         },
         "TruffleJSON" : {
-          "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20180813.jar"],
-          "sha1" : "c556821b83878d3a327bc07dedc1bf2998f99a8f",
+          "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20231013.jar"],
+          "sha1" : "90263049944b9827d62e2eef04327e38730b0b1a",
         },
         "TruffleJWS" : {
           "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejws-1.5.1.jar"],
