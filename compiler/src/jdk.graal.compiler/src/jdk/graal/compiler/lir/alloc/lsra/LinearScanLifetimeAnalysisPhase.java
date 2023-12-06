@@ -34,18 +34,9 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.EnumSet;
 
-import jdk.graal.compiler.lir.InstructionStateProcedure;
-import jdk.graal.compiler.lir.InstructionValueConsumer;
-import jdk.graal.compiler.lir.LIRInstruction;
-import jdk.graal.compiler.lir.LIRValueUtil;
-import jdk.graal.compiler.lir.StandardOp;
-import jdk.graal.compiler.lir.ValueConsumer;
-import jdk.graal.compiler.lir.debug.LIRGenerationDebugContext;
-import jdk.graal.compiler.lir.gen.LIRGenerationResult;
-import jdk.graal.compiler.lir.phases.AllocationPhase;
-import jdk.graal.compiler.lir.util.IndexedValueMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
@@ -54,10 +45,19 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.Indent;
+import jdk.graal.compiler.lir.InstructionStateProcedure;
+import jdk.graal.compiler.lir.InstructionValueConsumer;
+import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.graal.compiler.lir.LIRValueUtil;
+import jdk.graal.compiler.lir.StandardOp;
+import jdk.graal.compiler.lir.ValueConsumer;
 import jdk.graal.compiler.lir.alloc.lsra.Interval.RegisterPriority;
 import jdk.graal.compiler.lir.alloc.lsra.Interval.SpillState;
 import jdk.graal.compiler.lir.alloc.lsra.LinearScan.BlockData;
-
+import jdk.graal.compiler.lir.debug.LIRGenerationDebugContext;
+import jdk.graal.compiler.lir.gen.LIRGenerationResult;
+import jdk.graal.compiler.lir.phases.AllocationPhase;
+import jdk.graal.compiler.lir.util.IndexedValueMap;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.StackSlot;
@@ -333,11 +333,9 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                         if (n > 0) {
                             scratch.clear();
                             // block has successors
-                            if (n > 0) {
-                                for (int j = 0; j < block.getSuccessorCount(); j++) {
-                                    BasicBlock<?> successor = block.getSuccessorAt(j);
-                                    scratch.or(allocator.getBlockData(successor).liveIn);
-                                }
+                            for (int j = 0; j < block.getSuccessorCount(); j++) {
+                                BasicBlock<?> successor = block.getSuccessorAt(j);
+                                scratch.or(allocator.getBlockData(successor).liveIn);
                             }
 
                             if (!blockSets.liveOut.equals(scratch)) {
