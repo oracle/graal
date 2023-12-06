@@ -145,7 +145,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       notify_groups:: ['deploy'],
     },
     # Darwin/AMD64
-    vm_common.graalvm_complete_build_deps('ce', 'darwin', 'amd64', java_version='latest') + vm_common.darwin_deploy + vm_common.vm_base('darwin', 'amd64', 'gate') + vm_common.maven_deploy_base_functions.base_object('darwin', 'amd64', dry_run=true, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local') + {
+    vm_common.graalvm_complete_build_deps('ce', 'darwin', 'amd64', java_version='latest') + vm_common.darwin_deploy + vm_common.vm_base('darwin', 'amd64', 'gate', jdk_hint='Latest') + vm_common.maven_deploy_base_functions.base_object('darwin', 'amd64', dry_run=true, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local') + {
       name: 'gate-vm-maven-dry-run-darwin-amd64',
       timelimit: '1:00:00',
     },
