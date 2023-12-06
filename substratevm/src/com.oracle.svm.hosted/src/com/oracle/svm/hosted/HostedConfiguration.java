@@ -139,13 +139,13 @@ public class HostedConfiguration {
     public static ObjectLayout createObjectLayout(JavaKind referenceKind, boolean disableOptionalIdentityHash) {
         SubstrateTargetDescription target = ConfigurationValues.getTarget();
         int referenceSize = target.arch.getPlatformKind(referenceKind).getSizeInBytes();
-        int headerSize = referenceSize;
         int intSize = target.arch.getPlatformKind(JavaKind.Int).getSizeInBytes();
         int objectAlignment = 8;
 
-        int headerOffset = 0;
+        int hubOffset = 0;
+        int headerSize = hubOffset + referenceSize;
+
         int identityHashCodeOffset;
-        int firstFieldOffset;
         if (!disableOptionalIdentityHash && SubstrateOptions.SpawnIsolates.getValue() && headerSize + referenceSize <= objectAlignment) {
             /*
              * References are relative to the heap base, so we should be able to use fewer bits in
@@ -157,15 +157,18 @@ public class HostedConfiguration {
              * individual object was assigned an identity hash code after allocation.
              */
             identityHashCodeOffset = -1;
-            firstFieldOffset = headerOffset + headerSize;
         } else { // need all object header bits except for lowest-order bits freed up by alignment
-            identityHashCodeOffset = headerOffset + referenceSize;
-            firstFieldOffset = identityHashCodeOffset + intSize;
+            identityHashCodeOffset = headerSize;
+            headerSize += intSize;
         }
-        int arrayLengthOffset = firstFieldOffset;
+
+        headerSize += SubstrateOptions.AdditionalHeaderBytes.getValue();
+
+        int firstFieldOffset = headerSize;
+        int arrayLengthOffset = headerSize;
         int arrayBaseOffset = arrayLengthOffset + intSize;
 
-        return new ObjectLayout(target, referenceSize, objectAlignment, headerOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset, identityHashCodeOffset);
+        return new ObjectLayout(target, referenceSize, objectAlignment, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset, identityHashCodeOffset);
     }
 
     public SVMHost createHostVM(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
