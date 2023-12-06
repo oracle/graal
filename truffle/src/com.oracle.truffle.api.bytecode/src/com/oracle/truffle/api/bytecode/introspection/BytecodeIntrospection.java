@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.api.bytecode.introspection;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public final class BytecodeIntrospection {
 
@@ -73,18 +73,33 @@ public final class BytecodeIntrospection {
     }
 
     public List<Instruction> getInstructions() {
-        return Arrays.stream((Object[]) data[1]).map(x -> new Instruction((Object[]) x)).collect(Collectors.toUnmodifiableList());
+        Object[] instructions = (Object[]) data[1];
+        List<Instruction> result = new ArrayList<>(instructions.length);
+        for (int i = 0; i < instructions.length; i++) {
+            result.add(new Instruction((Object[]) instructions[i]));
+        }
+        return Collections.unmodifiableList(result);
     }
 
     public List<ExceptionHandler> getExceptionHandlers() {
-        return Arrays.stream((Object[]) data[2]).map(x -> new ExceptionHandler((Object[]) x)).collect(Collectors.toUnmodifiableList());
+        Object[] handlers = (Object[]) data[2];
+        List<ExceptionHandler> result = new ArrayList<>(handlers.length);
+        for (int i = 0; i < handlers.length; i++) {
+            result.add(new ExceptionHandler((Object[]) handlers[i]));
+        }
+        return Collections.unmodifiableList(result);
     }
 
     public List<SourceInformation> getSourceInformation() {
-        if (data[3] == null) {
+        Object[] sourceInfo = (Object[]) data[3];
+        if (sourceInfo == null) {
             return null;
         }
-        return Arrays.stream((Object[]) data[3]).map(x -> new SourceInformation((Object[]) x)).collect(Collectors.toUnmodifiableList());
+        List<SourceInformation> result = new ArrayList<>(sourceInfo.length);
+        for (int i = 0; i < sourceInfo.length; i++) {
+            result.add(new SourceInformation((Object[]) sourceInfo[i]));
+        }
+        return Collections.unmodifiableList(result);
     }
 
     @Override
