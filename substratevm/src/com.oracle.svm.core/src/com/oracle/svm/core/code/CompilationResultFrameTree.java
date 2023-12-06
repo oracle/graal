@@ -31,12 +31,11 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.function.Consumer;
 
+import com.oracle.svm.core.util.VMError;
+
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.code.SourceMapping;
 import jdk.graal.compiler.debug.DebugContext;
-
-import com.oracle.svm.core.util.VMError;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.site.Call;
@@ -329,7 +328,7 @@ public final class CompilationResultFrameTree {
                         sb.append(", ");
                     }
                     sb.append("li(");
-                    Local local = locals != null ? locals[i] : null;
+                    Local local = locals[i];
                     if (local != null) {
                         sb.append(local.getName());
                         sb.append("=");
