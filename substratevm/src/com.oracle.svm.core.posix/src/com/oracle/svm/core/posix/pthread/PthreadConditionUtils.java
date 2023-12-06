@@ -87,7 +87,7 @@ public final class PthreadConditionUtils {
         if (status == 0) {
             try {
                 if (useMonotonicClockForRelativeWait()) {
-                    LinuxPthread.pthread_condattr_setclock(attr, LinuxTime.CLOCK_MONOTONIC());
+                    status = LinuxPthread.pthread_condattr_setclock(attr, LinuxTime.CLOCK_MONOTONIC());
                     if (status != 0) {
                         return status;
                     }
