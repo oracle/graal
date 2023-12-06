@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -232,12 +232,9 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public byte getTag(int slotIndex) {
-        try {
-            final byte tag = getIndexedTags()[slotIndex];
-            return tag < STATIC_TAG ? tag : STATIC_TAG;
-        } catch (ArrayIndexOutOfBoundsException e) {
-            throw CompilerDirectives.shouldNotReachHere("invalid indexed slot", e);
-        }
+        // this may raise an AIOOBE
+        final byte tag = getIndexedTags()[slotIndex];
+        return tag < STATIC_TAG ? tag : STATIC_TAG;
     }
 
     @SuppressWarnings({"unchecked", "unused"})
