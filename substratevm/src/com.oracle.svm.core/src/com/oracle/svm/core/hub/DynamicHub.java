@@ -874,10 +874,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @KeepOriginal
     private native boolean isAnonymousClass();
 
-    @KeepOriginal
-    @TargetElement
-    private native boolean isUnnamedClass();
-
     @Substitute
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isHidden() {
@@ -1756,7 +1752,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private static native void addAll(Collection<Field> c, Field[] o);
 
     @KeepOriginal
-    private native Target_java_lang_PublicMethods_MethodList getMethodsRecursive(String methodName, Class<?>[] parameterTypes, boolean includeStatic);
+    private native Target_java_lang_PublicMethods_MethodList getMethodsRecursive(String methodName, Class<?>[] parameterTypes, boolean includeStatic, boolean publicOnly);
 
     @KeepOriginal
     private native Field getField0(String fieldName);
