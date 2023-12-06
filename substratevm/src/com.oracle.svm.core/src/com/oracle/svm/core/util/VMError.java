@@ -64,9 +64,6 @@ public final class VMError {
 
     }
 
-    public static final String msgShouldNotReachHere = "should not reach here";
-    public static final String msgShouldNotReachHereAtRuntime = msgShouldNotReachHere + ": this code is expected to be unreachable at runtime";
-
     public static RuntimeException shouldNotReachHere() {
         throw new HostedError("should not reach here");
     }
@@ -81,13 +78,6 @@ public final class VMError {
 
     public static RuntimeException shouldNotReachHere(String msg, Throwable cause) {
         throw new HostedError(msg, cause);
-    }
-
-    /**
-     * A hardcoded list of options (if, switch) did not handle the case actually provided.
-     */
-    public static RuntimeException shouldNotReachHereAtRuntime() {
-        throw new HostedError(msgShouldNotReachHereAtRuntime);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
