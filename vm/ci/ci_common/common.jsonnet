@@ -260,12 +260,12 @@ local devkits = graal_common.devkits;
   full_vm_build_darwin_amd64:   self.ruby_python_vm_build_darwin_amd64   + self.fastr_darwin,
   full_vm_build_darwin_aarch64: self.ruby_python_vm_build_darwin_aarch64,
 
-  graalvm_complete_build_deps(edition, os, arch):
+  graalvm_complete_build_deps(edition, os, arch, java_version):
       local java_deps(edition) = {
         downloads+: {
-          JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21'],
-        } + if (os == 'linux' || os == 'darwin') && (arch == 'amd64') then {
-            LLVM_JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21-llvm'],
+          JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-' + java_version],
+        } + if (os == 'linux' || os == 'darwin') && (arch == 'amd64') && (java_version != 'latest') then {
+            LLVM_JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-' + java_version + '-llvm'],
         } else {
         }
       };
