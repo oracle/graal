@@ -657,7 +657,7 @@ class SpecJVM2008NativeImageBenchmarkSuite(mx_java_benchmarks.SpecJvm2008Benchma
 
     def extra_image_build_argument(self, benchmark, args):
         # Don't wrap the option `-H:-ParseRuntimeOptions` with `mx_sdk_vm_impl.svm_experimental_options`, as all args are wrapped already.
-        # The reason to add `-H:CompilationExpirationPeriod` is that we encounter non-deterministic compiler crash due to expiration.
+        # The reason to add `-H:CompilationExpirationPeriod` is that we encounter non-deterministic compiler crash due to expiration (GR-50701).
         return super().extra_image_build_argument(benchmark, args) + ['-H:-ParseRuntimeOptions', '-H:CompilationExpirationPeriod=600']
 
     def extra_run_arg(self, benchmark, args, image_run_args):
