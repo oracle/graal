@@ -30,6 +30,9 @@ import java.lang.invoke.MethodType;
 import java.lang.invoke.WrongMethodTypeException;
 import java.util.List;
 
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
@@ -162,8 +165,13 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
                 return;
             }
             JavaMethod calleeMethod = lookupMethodInPool(cpi, opcode);
+            /*
+             * Bootstrap methods are executed at build time for Web Image due to an issue with
+             * BoundMethodHandle$SpeciesData
+             */
             if (bootstrap == null || calleeMethod instanceof ResolvedJavaMethod ||
-                            BootstrapMethodConfiguration.singleton().isIndyAllowedAtBuildTime(OriginalMethodProvider.getJavaMethod(bootstrap.getMethod()))) {
+                            BootstrapMethodConfiguration.singleton().isIndyAllowedAtBuildTime(OriginalMethodProvider.getJavaMethod(bootstrap.getMethod())) ||
+                            ImageSingletons.lookup(Platform.class).getOS().equals("js")) {
                 super.genInvokeDynamic(cpi, opcode);
                 return;
             }
