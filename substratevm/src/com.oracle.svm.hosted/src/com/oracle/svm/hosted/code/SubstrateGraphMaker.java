@@ -26,6 +26,8 @@ package com.oracle.svm.hosted.code;
 
 import java.util.BitSet;
 
+import com.oracle.svm.hosted.phases.SubstrateGraphBuilderPhase;
+
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.NodeSourcePosition;
@@ -37,24 +39,17 @@ import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.ReplacementsImpl;
 import jdk.graal.compiler.replacements.ReplacementsImpl.GraphMaker;
-import jdk.graal.compiler.word.WordTypes;
-
-import com.oracle.svm.hosted.phases.SubstrateGraphBuilderPhase;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SubstrateGraphMaker extends GraphMaker {
 
-    private final WordTypes wordTypes;
-
-    public SubstrateGraphMaker(ReplacementsImpl replacements, ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod, WordTypes wordTypes) {
+    public SubstrateGraphMaker(ReplacementsImpl replacements, ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod) {
         super(replacements, substitute, substitutedMethod);
-        this.wordTypes = wordTypes;
     }
 
     @Override
     protected Instance createGraphBuilder(Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
-        return new SubstrateGraphBuilderPhase(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes);
+        return new SubstrateGraphBuilderPhase(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
     }
 
     @Override
