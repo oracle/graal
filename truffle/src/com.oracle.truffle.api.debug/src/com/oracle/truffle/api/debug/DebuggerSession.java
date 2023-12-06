@@ -678,7 +678,9 @@ public final class DebuggerSession implements Closeable {
                         }
                     }
                 }, hasExpressionElement, syntaxTags);
-                allBindings.add(syntaxElementsBinding);
+                synchronized (allBindings) {
+                    allBindings.add(syntaxElementsBinding);
+                }
             }
         }
     }
@@ -706,7 +708,9 @@ public final class DebuggerSession implements Closeable {
     private void removeBindings() {
         assert Thread.holdsLock(this);
         if (syntaxElementsBinding != null) {
-            allBindings.remove(syntaxElementsBinding);
+            synchronized (allBindings) {
+                allBindings.remove(syntaxElementsBinding);
+            }
             syntaxElementsBinding.dispose();
             syntaxElementsBinding = null;
             if (Debugger.TRACE) {
@@ -1393,10 +1397,12 @@ public final class DebuggerSession implements Closeable {
 
     private List<DebuggerNode> collectDebuggerNodes(Node iNode, SuspendAnchor suspendAnchor) {
         List<DebuggerNode> nodes = new ArrayList<>();
-        for (EventBinding<?> binding : allBindings) {
-            DebuggerNode node = (DebuggerNode) debugger.getInstrumenter().lookupExecutionEventNode(iNode, binding);
-            if (node != null && node.isActiveAt(suspendAnchor)) {
-                nodes.add(node);
+        synchronized (allBindings) {
+            for (EventBinding<?> binding : allBindings) {
+                DebuggerNode node = (DebuggerNode) debugger.getInstrumenter().lookupExecutionEventNode(iNode, binding);
+                if (node != null && node.isActiveAt(suspendAnchor)) {
+                    nodes.add(node);
+                }
             }
         }
         return nodes;

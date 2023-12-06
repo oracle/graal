@@ -680,7 +680,9 @@ public class Breakpoint {
             if (newBinding != null) {
                 execBindings.add(newBinding);
                 for (DebuggerSession s : sessions) {
-                    s.allBindings.add(newBinding);
+                    synchronized (s.allBindings) {
+                        s.allBindings.add(newBinding);
+                    }
                 }
             }
             // If newBinding is null, attach has failed.
@@ -758,7 +760,9 @@ public class Breakpoint {
             for (EventBinding<? extends ExecutionEventNodeFactory> binding : execBindings) {
                 bindings.add(binding);
                 for (DebuggerSession s : sessions) {
-                    s.allBindings.remove(binding);
+                    synchronized (s.allBindings) {
+                        s.allBindings.remove(binding);
+                    }
                 }
             }
             execBindings.clear();
