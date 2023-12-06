@@ -390,28 +390,32 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public void copy(int srcSlot, int destSlot) {
         byte tag = getIndexedTagChecked(srcSlot);
-        Object value = unsafeGetObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + srcSlot * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, true, OBJECT_LOCATION);
+        final Object[] referenceLocals = getIndexedLocals();
+        final long[] primitiveLocals = getIndexedPrimitiveLocals();
+        Object value = unsafeGetObject(referenceLocals, Unsafe.ARRAY_OBJECT_BASE_OFFSET + srcSlot * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, true, OBJECT_LOCATION);
         verifyIndexedSet(destSlot, tag);
-        unsafePutObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + destSlot * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, value, OBJECT_LOCATION);
-        long primitiveValue = unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(srcSlot), true, PRIMITIVE_LOCATION);
-        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(destSlot), primitiveValue, PRIMITIVE_LOCATION);
+        unsafePutObject(referenceLocals, Unsafe.ARRAY_OBJECT_BASE_OFFSET + destSlot * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, value, OBJECT_LOCATION);
+        long primitiveValue = unsafeGetLong(primitiveLocals, getPrimitiveOffset(srcSlot), true, PRIMITIVE_LOCATION);
+        unsafePutLong(primitiveLocals, getPrimitiveOffset(destSlot), primitiveValue, PRIMITIVE_LOCATION);
     }
 
     @Override
     public void swap(int first, int second) {
         byte firstTag = getIndexedTagChecked(first);
-        Object firstValue = unsafeGetObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + first * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, true, OBJECT_LOCATION);
-        long firstPrimitiveValue = unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(first), true, PRIMITIVE_LOCATION);
+        final Object[] referenceLocals = getIndexedLocals();
+        final long[] primitiveLocals = getIndexedPrimitiveLocals();
+        Object firstValue = unsafeGetObject(referenceLocals, Unsafe.ARRAY_OBJECT_BASE_OFFSET + first * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, true, OBJECT_LOCATION);
+        long firstPrimitiveValue = unsafeGetLong(primitiveLocals, getPrimitiveOffset(first), true, PRIMITIVE_LOCATION);
         byte secondTag = getIndexedTagChecked(second);
-        Object secondValue = unsafeGetObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + second * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, true, OBJECT_LOCATION);
-        long secondPrimitiveValue = unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(second), true, PRIMITIVE_LOCATION);
+        Object secondValue = unsafeGetObject(referenceLocals, Unsafe.ARRAY_OBJECT_BASE_OFFSET + second * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, true, OBJECT_LOCATION);
+        long secondPrimitiveValue = unsafeGetLong(primitiveLocals, getPrimitiveOffset(second), true, PRIMITIVE_LOCATION);
 
         verifyIndexedSet(first, secondTag);
         verifyIndexedSet(second, firstTag);
-        unsafePutObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + first * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, secondValue, OBJECT_LOCATION);
-        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(first), secondPrimitiveValue, PRIMITIVE_LOCATION);
-        unsafePutObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + second * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, firstValue, OBJECT_LOCATION);
-        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(second), firstPrimitiveValue, PRIMITIVE_LOCATION);
+        unsafePutObject(referenceLocals, Unsafe.ARRAY_OBJECT_BASE_OFFSET + first * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, secondValue, OBJECT_LOCATION);
+        unsafePutLong(primitiveLocals, getPrimitiveOffset(first), secondPrimitiveValue, PRIMITIVE_LOCATION);
+        unsafePutObject(referenceLocals, Unsafe.ARRAY_OBJECT_BASE_OFFSET + second * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, firstValue, OBJECT_LOCATION);
+        unsafePutLong(primitiveLocals, getPrimitiveOffset(second), firstPrimitiveValue, PRIMITIVE_LOCATION);
     }
 
     private void verifyIndexedSet(int slot, byte tag) {
@@ -504,7 +508,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     public Object getObjectStatic(int slot) {
         assert indexedTags[slot] == STATIC_OBJECT_TAG : "Unexpected read of static object value";
 
-        return indexedLocals[slot];
+        return getIndexedLocals()[slot];
     }
 
     @Override
@@ -515,14 +519,14 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             indexedTags[slot] = STATIC_OBJECT_TAG;
         }
 
-        indexedLocals[slot] = value;
+        getIndexedLocals()[slot] = value;
     }
 
     @Override
     public byte getByteStatic(int slot) {
         assert indexedTags[slot] == STATIC_BYTE_TAG : "Unexpected read of static byte value";
 
-        return (byte) (int) indexedPrimitiveLocals[slot];
+        return (byte) (int) getIndexedPrimitiveLocals()[slot];
     }
 
     @Override
@@ -533,14 +537,14 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             indexedTags[slot] = STATIC_BYTE_TAG;
         }
 
-        indexedPrimitiveLocals[slot] = extend(value);
+        getIndexedPrimitiveLocals()[slot] = extend(value);
     }
 
     @Override
     public boolean getBooleanStatic(int slot) {
         assert indexedTags[slot] == STATIC_BOOLEAN_TAG : "Unexpected read of static boolean value";
 
-        return (int) indexedPrimitiveLocals[slot] != 0;
+        return (int) getIndexedPrimitiveLocals()[slot] != 0;
     }
 
     @Override
@@ -551,14 +555,14 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             indexedTags[slot] = STATIC_BOOLEAN_TAG;
         }
 
-        indexedPrimitiveLocals[slot] = value ? 1L : 0L;
+        getIndexedPrimitiveLocals()[slot] = value ? 1L : 0L;
     }
 
     @Override
     public int getIntStatic(int slot) {
         assert indexedTags[slot] == STATIC_INT_TAG : "Unexpected read of static int value";
 
-        return (int) indexedPrimitiveLocals[slot];
+        return (int) getIndexedPrimitiveLocals()[slot];
     }
 
     @Override
@@ -569,14 +573,14 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             indexedTags[slot] = STATIC_INT_TAG;
         }
 
-        indexedPrimitiveLocals[slot] = extend(value);
+        getIndexedPrimitiveLocals()[slot] = extend(value);
     }
 
     @Override
     public long getLongStatic(int slot) {
         assert indexedTags[slot] == STATIC_LONG_TAG : "Unexpected read of static long value";
 
-        return indexedPrimitiveLocals[slot];
+        return getIndexedPrimitiveLocals()[slot];
     }
 
     @Override
@@ -587,14 +591,14 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             indexedTags[slot] = STATIC_LONG_TAG;
         }
 
-        indexedPrimitiveLocals[slot] = value;
+        getIndexedPrimitiveLocals()[slot] = value;
     }
 
     @Override
     public float getFloatStatic(int slot) {
         assert indexedTags[slot] == STATIC_FLOAT_TAG : "Unexpected read of static float value";
 
-        return Float.intBitsToFloat((int) indexedPrimitiveLocals[slot]);
+        return Float.intBitsToFloat((int) getIndexedPrimitiveLocals()[slot]);
     }
 
     @Override
@@ -605,14 +609,14 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             indexedTags[slot] = STATIC_FLOAT_TAG;
         }
 
-        indexedPrimitiveLocals[slot] = extend(Float.floatToRawIntBits(value));
+        getIndexedPrimitiveLocals()[slot] = extend(Float.floatToRawIntBits(value));
     }
 
     @Override
     public double getDoubleStatic(int slot) {
         assert indexedTags[slot] == STATIC_DOUBLE_TAG : "Unexpected read of static double value";
 
-        return Double.longBitsToDouble(indexedPrimitiveLocals[slot]);
+        return Double.longBitsToDouble(getIndexedPrimitiveLocals()[slot]);
     }
 
     @Override
@@ -623,7 +627,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             indexedTags[slot] = STATIC_DOUBLE_TAG;
         }
 
-        indexedPrimitiveLocals[slot] = Double.doubleToRawLongBits(value);
+        getIndexedPrimitiveLocals()[slot] = Double.doubleToRawLongBits(value);
     }
 
     @Override
@@ -634,7 +638,8 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             indexedTags[destSlot] = indexedTags[srcSlot];
         }
 
-        indexedPrimitiveLocals[destSlot] = indexedPrimitiveLocals[srcSlot];
+        long[] primitiveLocals = getIndexedPrimitiveLocals();
+        primitiveLocals[destSlot] = primitiveLocals[srcSlot];
     }
 
     @Override
@@ -645,7 +650,8 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             indexedTags[destSlot] = indexedTags[srcSlot];
         }
 
-        indexedLocals[destSlot] = indexedLocals[srcSlot];
+        Object[] referenceLocals = getIndexedLocals();
+        referenceLocals[destSlot] = referenceLocals[srcSlot];
     }
 
     @Override
@@ -656,8 +662,10 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             indexedTags[destSlot] = indexedTags[srcSlot];
         }
 
-        indexedLocals[destSlot] = indexedLocals[srcSlot];
-        indexedPrimitiveLocals[destSlot] = indexedPrimitiveLocals[srcSlot];
+        final Object[] referenceLocals = getIndexedLocals();
+        final long[] primitiveLocals = getIndexedPrimitiveLocals();
+        referenceLocals[destSlot] = referenceLocals[srcSlot];
+        primitiveLocals[destSlot] = primitiveLocals[srcSlot];
     }
 
     @Override
@@ -670,11 +678,12 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             indexedTags[second] = swapTag;
         }
 
-        final long firstValue = indexedPrimitiveLocals[first];
-        final long secondValue = indexedPrimitiveLocals[second];
+        final long[] primitiveLocals = getIndexedPrimitiveLocals();
+        final long firstValue = primitiveLocals[first];
+        final long secondValue = primitiveLocals[second];
 
-        indexedPrimitiveLocals[first] = secondValue;
-        indexedPrimitiveLocals[second] = firstValue;
+        primitiveLocals[first] = secondValue;
+        primitiveLocals[second] = firstValue;
     }
 
     @Override
@@ -688,11 +697,12 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             indexedTags[second] = swapTag;
         }
 
-        final Object firstValue = indexedLocals[first];
-        final Object secondValue = indexedLocals[second];
+        final Object[] referenceLocals = getIndexedLocals();
+        final Object firstValue = referenceLocals[first];
+        final Object secondValue = referenceLocals[second];
 
-        indexedLocals[first] = secondValue;
-        indexedLocals[second] = firstValue;
+        referenceLocals[first] = secondValue;
+        referenceLocals[second] = firstValue;
     }
 
     @Override
@@ -705,15 +715,17 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             indexedTags[second] = swapTag;
         }
 
-        final Object firstValue = indexedLocals[first];
-        final Object secondValue = indexedLocals[second];
-        final long firstPrimitiveValue = indexedPrimitiveLocals[first];
-        final long secondPrimitiveValue = indexedPrimitiveLocals[second];
+        final Object[] referenceLocals = getIndexedLocals();
+        final long[] primitiveLocals = getIndexedPrimitiveLocals();
+        final Object firstValue = referenceLocals[first];
+        final Object secondValue = referenceLocals[second];
+        final long firstPrimitiveValue = primitiveLocals[first];
+        final long secondPrimitiveValue = primitiveLocals[second];
 
-        indexedLocals[first] = secondValue;
-        indexedLocals[second] = firstValue;
-        indexedPrimitiveLocals[first] = secondPrimitiveValue;
-        indexedPrimitiveLocals[second] = firstPrimitiveValue;
+        referenceLocals[first] = secondValue;
+        referenceLocals[second] = firstValue;
+        primitiveLocals[first] = secondPrimitiveValue;
+        primitiveLocals[second] = firstPrimitiveValue;
     }
 
     @Override
@@ -726,7 +738,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
         if (CompilerDirectives.inCompiledCode()) {
             // Avoids keeping track of cleared frame slots in FrameStates
-            indexedPrimitiveLocals[slot] = 0L;
+            getIndexedPrimitiveLocals()[slot] = 0L;
         }
     }
 
@@ -738,7 +750,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             indexedTags[slot] = STATIC_ILLEGAL_TAG;
         }
 
-        indexedLocals[slot] = null;
+        getIndexedLocals()[slot] = null;
     }
 
     @Override
@@ -751,9 +763,9 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
         if (CompilerDirectives.inCompiledCode()) {
             // Avoid keeping track of cleared frame slots in FrameStates
-            indexedPrimitiveLocals[slot] = 0L;
+            getIndexedPrimitiveLocals()[slot] = 0L;
         }
-        indexedLocals[slot] = null;
+        getIndexedLocals()[slot] = null;
     }
 
     /**
