@@ -2306,9 +2306,10 @@ public class SnippetTemplate {
      * @param replacer object that replaces the usages of {@code replacee}
      * @param tool lowering tool used to insert the snippet into the control-flow
      * @param args the arguments to be bound to the flattened positional parameters of the snippet
+     * @return the return node of the inlined snippet
      */
     @SuppressWarnings("try")
-    public void instantiate(MetaAccessProvider metaAccess, FloatingNode replacee, UsageReplacer replacer, LoweringTool tool, Arguments args) {
+    public ValueNode instantiate(MetaAccessProvider metaAccess, FloatingNode replacee, UsageReplacer replacer, LoweringTool tool, Arguments args) {
         DebugContext debug = replacee.getDebug();
         assert assertSnippetKills(replacee);
         try (DebugCloseable a = args.info.instantiationTimer.start(debug);
@@ -2353,6 +2354,8 @@ public class SnippetTemplate {
             }
 
             debug.dump(DebugContext.DETAILED_LEVEL, replaceeGraph, "After lowering %s with %s", replacee, this);
+
+            return returnValue;
         }
     }
 
