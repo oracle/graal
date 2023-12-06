@@ -191,7 +191,7 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
                 if (mirrored) {
                     realCondition = realCondition.mirror();
                 }
-                return optimizeConditional(constant, (ConditionalNode) nonConstant, constantReflection, realCondition, unorderedIsTrue);
+                return optimizeConditional(constantReflection, metaAccess, constant, (ConditionalNode) nonConstant, realCondition, unorderedIsTrue);
             } else if (nonConstant instanceof AbstractNormalizeCompareNode) {
                 return optimizeNormalizeCompare(constantReflection, metaAccess, options, smallestCompareWidth, constant, (AbstractNormalizeCompareNode) nonConstant, mirrored, view);
             } else if (nonConstant instanceof ConvertNode) {
@@ -289,7 +289,8 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
             throw new PermanentBailoutException("NormalizeCompareNode connected to %s (%s %s %s)", this, constant, normalizeNode, mirrored);
         }
 
-        private static LogicNode optimizeConditional(Constant constant, ConditionalNode conditionalNode, ConstantReflectionProvider constantReflection, Condition cond, boolean unorderedIsTrue) {
+        private LogicNode optimizeConditional(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess,
+                        Constant constant, ConditionalNode conditionalNode, Condition cond, boolean unorderedIsTrue) {
             Constant trueConstant = conditionalNode.trueValue().asConstant();
             Constant falseConstant = conditionalNode.falseValue().asConstant();
 
@@ -306,6 +307,90 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
                     } else if (trueResult.isFalse() && falseResult.isTrue()) {
                         return LogicNegationNode.create(conditionalNode.condition());
 
+                    }
+                }
+            } else if ((trueConstant != null || falseConstant != null) && constantReflection != null) {
+                return tryFoldConditionalIntoConstCompare(constantReflection, metaAccess, constant, conditionalNode, cond, unorderedIsTrue);
+            }
+
+            return null;
+        }
+
+        private LogicNode tryFoldConditionalIntoConstCompare(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess,
+                        Constant constant, ConditionalNode conditionalNode, Condition cond, boolean unorderedIsTrue) {
+            // ((x < c1) ? x : c2) <== c3 where c3 < c1 <= c2 can be simplified to x <== c3.
+            // ((c1 < x) ? c2 : x) <== c3 where c3 < c1 <= c2 can be simplified to x <== c3.
+            // ((x < c1) ? c2 : x) <== c3 where c2 <= c1 < c3 can be simplified to x >== c3.
+            // ((c1 < x) ? x : c2) <== c3 where c2 <= c1 < c3 can be simplified to x >== c3.
+            // where all < and <= comparisons are either signed or unsigned, but matching.
+            // `<==` stands for either ==, <, or <=, and `>==` is the mirrored condition thereof.
+            // Note: c1 must not equal c3.
+            // e.g. (x < 8 ? x : 8) == 2 will only be true if x == 2.
+            if (conditionalNode.trueValue().isConstant() != conditionalNode.falseValue().isConstant() &&
+                            conditionalNode.condition() instanceof IntegerLowerThanNode cmp) {
+                Stamp compareStamp = conditionalNode.trueValue().stamp(NodeView.DEFAULT);
+                Condition lowerThan = cmp.condition().asCondition();
+                ValueNode condX;
+                ValueNode condY;
+                ValueNode trueValue;
+                ValueNode falseValue;
+                if (cmp.getY().isConstant() && !cmp.getX().isConstant()) {
+                    condX = cmp.getX();
+                    condY = cmp.getY();
+                    trueValue = conditionalNode.trueValue();
+                    falseValue = conditionalNode.falseValue();
+                } else if (cmp.getX().isConstant() && !cmp.getY().isConstant()) {
+                    // Mirror conditional to bring it into (value <cmp> const) order.
+                    // e.g. (c1 < x ? x : c2) => (x > c1 ? c2 : x)
+                    condX = cmp.getY();
+                    condY = cmp.getX();
+                    trueValue = conditionalNode.falseValue();
+                    falseValue = conditionalNode.trueValue();
+                    lowerThan = lowerThan.mirror();
+                } else {
+                    return null; // not applicable
+                }
+                Constant c1 = condY.asConstant();
+                Constant c2;
+                Constant trueConstant = trueValue.asConstant();
+                Constant falseConstant = falseValue.asConstant();
+                boolean mirrorConstCompare = false;
+                if (condX == trueValue && falseConstant != null) {
+                    // (x <cmp> c1 ? x : c2) == c3
+                    // if (c1 <cmp|eq> c2) && (c3 <cmp> c1) => (x == c3).
+                    // (x <cmp> c1 ? c2 : x) <cmp|eq> c3 => (x <cmp> c1 ? x : c2) <cmp|eq> c3
+                    // if (c1 <cmp|eq> c2) && (c3 <cmp> c1) => (x <cmp|eq> c3).
+                    c2 = falseConstant;
+                } else if (condX == falseValue && trueConstant != null) {
+                    // same logic as above, but using mirrored conditions.
+                    // (x <cmp> c1 ? c2 : x) == c3 => (x <icmp> c1 ? x : c2) == c3
+                    // if (c1 <icmp|eq> c2) && (c3 <icmp> c1) => (x == c3).
+                    // (x <cmp> c1 ? c2 : x) <cmp|eq> c3 => (x <icmp> c1 ? x : c2) <icmp|eq> c3
+                    // if (c1 <icmp|eq> c2) && (c3 <icmp> c1) => (x <icmp|eq> c3).
+                    c2 = trueConstant;
+                    lowerThan = lowerThan.mirror();
+                    mirrorConstCompare = true;
+                } else {
+                    return null; // not applicable
+                }
+                // The following assertion is guaranteed by instanceof IntegerLowerThanNode.
+                assert Condition.EQ.trueIsDisjoint(lowerThan) : "condition must be disjoint from EQ: " + lowerThan;
+                Condition lowerOrEqual = lowerThan.meet(Condition.EQ);
+                // for a < conditional, the rhs condition may be either ==, <, or <=.
+                if (lowerOrEqual.meet(cond) == null) {
+                    return null; // not applicable
+                }
+                if (lowerOrEqual != null && lowerOrEqual.foldCondition(compareStamp, c1, c2, constantReflection, unorderedIsTrue).isTrue()) {
+                    if (lowerThan.foldCondition(compareStamp, constant, c1, constantReflection, unorderedIsTrue).isTrue()) {
+                        ValueNode newX = condX;
+                        ValueNode newY = ConstantNode.forConstant(compareStamp, constant, metaAccess);
+                        if (cond != Condition.EQ && mirrorConstCompare) {
+                            // need to swap x and y if this is an inequality
+                            var tmp = newX;
+                            newX = newY;
+                            newY = tmp;
+                        }
+                        return duplicateModified(newX, newY, unorderedIsTrue, NodeView.DEFAULT);
                     }
                 }
             }
