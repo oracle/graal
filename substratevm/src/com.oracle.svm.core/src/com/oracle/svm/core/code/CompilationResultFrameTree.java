@@ -329,7 +329,7 @@ public final class CompilationResultFrameTree {
                         sb.append(", ");
                     }
                     sb.append("li(");
-                    Local local = locals != null ? locals[i] : null;
+                    Local local = locals[i];
                     if (local != null) {
                         sb.append(local.getName());
                         sb.append("=");
