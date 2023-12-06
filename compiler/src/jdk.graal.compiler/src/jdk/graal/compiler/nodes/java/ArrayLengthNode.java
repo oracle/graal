@@ -145,10 +145,16 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
              * </pre>
              */
             StructuredGraph graph = graph();
-            BeginNode guard = graph.add(new BeginNode());
-            graph.addAfterFixed(this, guard);
-            ValueNode anchoredLengthNonNegative = graph.addWithoutUnique(new PiNode(length, StampFactory.positiveInt(), guard));
-            graph.replaceFixedWithFloating(this, anchoredLengthNonNegative);
+            ValueNode replacee = length;
+            if (!length.isConstant()) {
+                BeginNode guard = graph.add(new BeginNode());
+                graph.addAfterFixed(this, guard);
+                replacee = graph.addWithoutUnique(new PiNode(length, StampFactory.positiveInt(), guard));
+            }
+            if (!replacee.isAlive()) {
+                replacee = graph.addOrUnique(replacee);
+            }
+            graph.replaceFixedWithFloating(this, replacee);
         }
     }
 
