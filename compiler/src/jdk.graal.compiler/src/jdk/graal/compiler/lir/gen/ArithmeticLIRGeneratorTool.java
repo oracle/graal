@@ -31,7 +31,6 @@ import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.Variable;
-
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
@@ -82,7 +81,18 @@ public interface ArithmeticLIRGeneratorTool {
 
     Value emitUShr(Value a, Value b);
 
-    Value emitFloatConvert(FloatConvert op, Value inputVal);
+    /**
+     * Emit a floating point to floating point, floating point to integer, or integer to floating
+     * point conversion.
+     *
+     * @param op the conversion to be performed
+     * @param inputVal the input value
+     * @param canBeNaN whether the input can be NaN; only relevant for floating point to integer
+     *            conversions
+     * @param canOverflow whether the input can be infinite or otherwise outside the target type's
+     *            range; only relevant for floating point to integer conversions
+     */
+    Value emitFloatConvert(FloatConvert op, Value inputVal, boolean canBeNaN, boolean canOverflow);
 
     Value emitReinterpret(LIRKind to, Value inputVal);
 

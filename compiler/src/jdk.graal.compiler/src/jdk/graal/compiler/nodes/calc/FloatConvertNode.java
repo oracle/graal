@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,17 +32,17 @@ import jdk.graal.compiler.core.common.type.ArithmeticOpTable.FloatConvertOp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.UnaryOp;
 import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.ArithmeticLIRLowerable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
-import jdk.graal.compiler.nodeinfo.NodeInfo;
-
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 
@@ -108,6 +108,16 @@ public final class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> 
         }
     }
 
+    public boolean inputCanBeNaN() {
+        Stamp inputStamp = getValue().stamp(NodeView.DEFAULT);
+        return ArithmeticOpTable.forStamp(inputStamp).getFloatConvert(op).inputCanBeNaN(inputStamp);
+    }
+
+    public boolean canOverflow() {
+        Stamp inputStamp = getValue().stamp(NodeView.DEFAULT);
+        return ArithmeticOpTable.forStamp(inputStamp).getFloatConvert(op).canOverflowInteger(inputStamp);
+    }
+
     private static boolean isLosslessIntegerToFloatingPoint(IntegerStamp inputStamp, FloatStamp resultStamp) {
         int mantissaBits;
         switch (resultStamp.getBits()) {
@@ -143,7 +153,7 @@ public final class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> 
 
     @Override
     public void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool gen) {
-        nodeValueMap.setResult(this, gen.emitFloatConvert(getFloatConvert(), nodeValueMap.operand(getValue())));
+        nodeValueMap.setResult(this, gen.emitFloatConvert(getFloatConvert(), nodeValueMap.operand(getValue()), inputCanBeNaN(), canOverflow()));
     }
 
     @Override
