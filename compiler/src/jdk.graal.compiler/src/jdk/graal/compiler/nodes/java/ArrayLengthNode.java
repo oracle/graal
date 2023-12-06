@@ -108,22 +108,35 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
         if (forValue.isNullConstant()) {
             return new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.NullCheckException);
         }
+
+        /**
+         * Normally we run replacement to any length provider node in simplify but for snippets and
+         * explode loop we run a limited form to constants before.
+         */
+        boolean foldBasedOnLowering = graph().isAfterStage(StageFlag.HIGH_TIER_LOWERING);
+        if (!foldBasedOnLowering) {
+            ValueNode len = GraphUtil.arrayLength(getValue(), ArrayLengthProvider.FindLengthMode.SEARCH_ONLY, tool.getConstantReflection());
+            if (len != null && len.isConstant()) {
+                return len;
+            }
+        }
+
         return this;
     }
 
     @Override
     public void simplify(SimplifierTool tool) {
-        boolean foldBeforeLowering = graph().isAfterStage(StageFlag.HIGH_TIER_LOWERING);
-        if (!foldBeforeLowering) {
+        boolean foldBasedOnLowering = graph().isAfterStage(StageFlag.HIGH_TIER_LOWERING);
+        if (!foldBasedOnLowering) {
             /*
              * If we are before lowering we only fold to constants: replacing the load with a length
              * guarded pi can be done in multiple places and we only want to do it once for all
              * users, so we let it be done after lowering to catch all users at once.
              */
             ValueNode len = GraphUtil.arrayLength(getValue(), ArrayLengthProvider.FindLengthMode.SEARCH_ONLY, tool.getConstantReflection());
-            foldBeforeLowering = len != null && len.isConstant();
+            foldBasedOnLowering = len != null && len.isConstant();
         }
-        if (!foldBeforeLowering) {
+        if (!foldBasedOnLowering) {
             return;
         }
         ValueNode length = readArrayLength(getValue(), tool.getConstantReflection());
