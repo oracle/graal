@@ -74,6 +74,7 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
+import com.oracle.truffle.api.Truffle;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionKey;
@@ -165,20 +166,41 @@ final class EngineAccessor extends Accessor {
         return suppliers;
     }
 
-    private static List<AbstractClassLoaderSupplier> defaultLoaders() {
+    private static AbstractClassLoaderSupplier defaultLoaders() {
         ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
-        if (contextClassLoader != null) {
-            return List.of(new WeakClassLoaderSupplier(contextClassLoader));
+        ClassLoader systemClassLoader = ClassLoader.getSystemClassLoader();
+        if (contextClassLoader != null && isValidLoader(contextClassLoader)) {
+            return new WeakClassLoaderSupplier(contextClassLoader);
+        } else if (isValidLoader(systemClassLoader)) {
+            return new StrongClassLoaderSupplier(ClassLoader.getSystemClassLoader());
         } else {
-            return List.of(new StrongClassLoaderSupplier(EngineAccessor.class.getClassLoader()),
-                            new StrongClassLoaderSupplier(ClassLoader.getSystemClassLoader()));
+            /*
+             * This class loader is necessary for classpath isolation, enabled by the
+             * `-Dpolyglotimpl.DisableClassPathIsolation=false` option. It's needed because the
+             * system classloader does not load Truffle from a new module layer but from an unnamed
+             * module.
+             */
+            return new StrongClassLoaderSupplier(EngineAccessor.class.getClassLoader());
+        }
+    }
+
+    /**
+     * Check that Truffle classes loaded by {@code loader} are the same as active Truffle runtime
+     * classes.
+     */
+    private static boolean isValidLoader(ClassLoader loader) {
+        try {
+            Class<?> truffleClassAsSeenByLoader = Class.forName(Truffle.class.getName(), true, loader);
+            return truffleClassAsSeenByLoader == Truffle.class;
+        } catch (ClassNotFoundException ex) {
+            return false;
         }
     }
 
     static List<AbstractClassLoaderSupplier> locatorOrDefaultLoaders() {
         List<AbstractClassLoaderSupplier> loaders = locatorLoaders();
         if (loaders == null) {
-            loaders = defaultLoaders();
+            loaders = List.of(defaultLoaders());
         }
         return loaders;
     }
@@ -306,7 +328,7 @@ final class EngineAccessor extends Accessor {
             }
             for (AbstractClassLoaderSupplier loaderSupplier : EngineAccessor.locatorOrDefaultLoaders()) {
                 ClassLoader loader = loaderSupplier.get();
-                if (seesTheSameClass(loader, type)) {
+                if (loader != null) {
                     // 2) Lookup implementations of a module aware interface
                     for (T service : ServiceLoader.load(type, loader)) {
                         if (loaderSupplier.accepts(service.getClass())) {
@@ -327,14 +349,6 @@ final class EngineAccessor extends Accessor {
                 }
             }
             return found.values();
-        }
-
-        private static boolean seesTheSameClass(ClassLoader loader, Class<?> type) {
-            try {
-                return loader != null && loader.loadClass(type.getName()) == type;
-            } catch (ClassNotFoundException ex) {
-                return false;
-            }
         }
 
         @Override
