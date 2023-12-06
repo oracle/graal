@@ -110,6 +110,10 @@ public class HostedConstantReflectionProvider extends SharedConstantReflectionPr
         return aConstantReflection.readValue(hMetaAccess, hField.getWrapped(), receiver, true);
     }
 
+    public AnalysisConstantReflectionProvider getWrappedConstantReflection() {
+        return aConstantReflection;
+    }
+
     @Override
     public JavaConstant forString(String value) {
         return aConstantReflection.forString(value);

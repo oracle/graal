@@ -702,6 +702,9 @@ public class UniverseBuilder {
         Object[] staticObjectFields = new Object[nextObjectField];
         byte[] staticPrimitiveFields = new byte[nextPrimitiveField];
         StaticFieldsSupport.setData(staticObjectFields, staticPrimitiveFields);
+        /* After initializing the static field arrays add them to the shadow heap. */
+        aUniverse.getHeapScanner().rescanObject(StaticFieldsSupport.getStaticObjectFields());
+        aUniverse.getHeapScanner().rescanObject(StaticFieldsSupport.getStaticPrimitiveFields());
     }
 
     @SuppressWarnings("unchecked")

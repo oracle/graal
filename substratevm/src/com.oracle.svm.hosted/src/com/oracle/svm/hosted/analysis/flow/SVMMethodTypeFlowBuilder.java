@@ -77,8 +77,8 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
         return (SVMHost) bb.getHostVM();
     }
 
-    public static void registerUsedElements(PointsToAnalysis bb, StructuredGraph graph, boolean registerEmbeddedRoots) {
-        MethodTypeFlowBuilder.registerUsedElements(bb, graph, registerEmbeddedRoots);
+    public static void registerUsedElements(PointsToAnalysis bb, StructuredGraph graph) {
+        MethodTypeFlowBuilder.registerUsedElements(bb, graph);
 
         for (Node n : graph.getNodes()) {
             if (n instanceof ConstantNode) {

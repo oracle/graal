@@ -322,6 +322,7 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -671,7 +672,7 @@ public class NativeImageGenerator {
             }
 
             /* Re-run shadow heap verification after compilation. */
-            aUniverse.getHeapVerifier().checkHeapSnapshot(debug, hMetaAccess, "after compilation");
+            aUniverse.getHeapVerifier().checkHeapSnapshot(debug, hMetaAccess, "after compilation", bb.getUniverse().getEmbeddedRoots());
 
             CodeCacheProvider codeCacheProvider = runtimeConfiguration.getBackendForNormalMethod().getProviders().getCodeCache();
             reporter.printCreationStart();
@@ -683,6 +684,8 @@ public class NativeImageGenerator {
                         BeforeHeapLayoutAccessImpl beforeLayoutConfig = new BeforeHeapLayoutAccessImpl(featureHandler, loader, aUniverse, hUniverse, heap, debug, runtimeConfiguration,
                                         nativeLibraries);
                         featureHandler.forEachFeature(feature -> feature.beforeHeapLayout(beforeLayoutConfig));
+
+                        verifyAndSealShadowHeap(codeCache, debug, heap);
 
                         buildNativeImageHeap(heap, codeCache);
 
@@ -738,6 +741,25 @@ public class NativeImageGenerator {
             }
             reporter.printCreationEnd(image.getImageFileSize(), heap.getObjectCount(), image.getImageHeapSize(), codeCache.getCodeAreaSize(), numCompilations, image.getDebugInfoSize());
         }
+    }
+
+    /*
+     * Re-run shadow heap verification before heap layout. This time the verification uses the
+     * embedded roots discovered after compilation.
+     */
+    private void verifyAndSealShadowHeap(NativeImageCodeCache codeCache, DebugContext debug, NativeImageHeap heap) {
+        /*
+         * Get the embedded constants after compilation to include everything, e.g., interned string
+         * from snippet lowering that would otherwise be missed.
+         */
+        Map<Constant, Object> embeddedConstants = codeCache.initAndGetEmbeddedConstants();
+        bb.getUniverse().getHeapVerifier().checkHeapSnapshot(debug, heap.hMetaAccess, "before heap layout", embeddedConstants);
+        /*
+         * Seal shadow heap after final verification. Any modification to the shadow heap after this
+         * point, i.e., registering a new ImageHeapConstant or materializing the hosted values
+         * reader of an existing ImageHeapConstant, will result in an error.
+         */
+        bb.getUniverse().getHeapScanner().seal();
     }
 
     protected void buildNativeImageHeap(NativeImageHeap heap, NativeImageCodeCache codeCache) {
@@ -1143,7 +1165,7 @@ public class NativeImageGenerator {
         Collection<StructuredGraph> snippetGraphs = replacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options);
         if (bb instanceof NativeImagePointsToAnalysis pointsToAnalysis) {
             for (StructuredGraph graph : snippetGraphs) {
-                HostedConfiguration.instance().registerUsedElements(pointsToAnalysis, graph, false);
+                HostedConfiguration.instance().registerUsedElements(pointsToAnalysis, graph);
             }
         } else if (bb instanceof NativeImageReachabilityAnalysisEngine reachabilityAnalysis) {
             for (StructuredGraph graph : snippetGraphs) {
