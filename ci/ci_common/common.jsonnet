@@ -47,16 +47,13 @@ common + common.frequencies + {
     } else {}
   ),
 
-  # Add the specified tags to the field `tags` of builds if `build.targets` contains "gate".
-  with_tags_for_gates(builds, tags)::
+  # Add the specified components to the field `components`.
+  with_components(builds, components)::
     [
-      if std.count(build.targets, "gate") > 0 then
-        if std.objectHas(build, "tags") then
-          build + { "tags" : std.setUnion(tags, build.tags) }
-        else
-          build + { "tags" : tags }
+      if std.objectHas(build, "components") then
+        build + { "components" : std.setUnion(components, build.components) }
       else
-        build
+        build + { "components" : components }
       for build in builds
     ],
 
