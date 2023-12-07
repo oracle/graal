@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,6 +68,20 @@ public class Assert {
     public static void assertDoubleEquals(String message, Double expected, Double actual, Double epsilon) {
         if (Math.abs(actual - expected) > epsilon) {
             fail(format("%s %s \u2209 %s +/- %s", message, actual, expected, epsilon));
+        }
+    }
+
+    public static void assertArrayEquals(String message, byte[] expected, byte[] actual) {
+        if (expected == actual) {
+            return;
+        }
+        if (expected.length != actual.length) {
+            fail(format("%s '%s.length' != '%s.length'", message, expected, actual));
+        }
+        for (int i = 0; i < expected.length; i++) {
+            if (expected[i] != actual[i]) {
+                fail(format("%s '%s[%d] { %d }' != '%s[%d] { %d }'", message, expected, i, expected[i], actual, i, actual[i]));
+            }
         }
     }
 

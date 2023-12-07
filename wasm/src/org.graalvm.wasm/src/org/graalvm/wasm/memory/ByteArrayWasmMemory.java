@@ -1049,6 +1049,14 @@ final class ByteArrayWasmMemory extends WasmMemory {
         stream.write(byteArrayBuffer.buffer(), offset, length);
     }
 
+    @Override
+    public void copyToBuffer(Node node, byte[] dst, long srcOffset, int dstOffset, int length) {
+        if (outOfBounds(srcOffset, length)) {
+            throw trapOutOfBounds(node, srcOffset, length);
+        }
+        System.arraycopy(byteArrayBuffer.buffer(), (int) srcOffset, dst, dstOffset, length);
+    }
+
     private static final class WasmByteArrayBuffer {
         private static final int MAX_CONSTANT_ATTEMPTS = 5;
 
