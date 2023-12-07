@@ -1117,6 +1117,14 @@ public class NativeImage {
         // The following two are for backwards compatibility reasons. They should be removed.
         imageBuilderJavaArgs.add("-Djdk.internal.lambda.eagerlyInitialize=false");
         imageBuilderJavaArgs.add("-Djava.lang.invoke.InnerClassLambdaMetafactory.initializeLambdas=false");
+        /*
+         * DONT_INLINE_THRESHOLD is used to set a profiling threshold for certain method handles and
+         * only allow inlining after n invocations. This is used for example in the implementation
+         * of record equals methods. We disable this behavior in the image builder because it can
+         * prevent optimizing the method handles for AOT compilation if the threshold is not
+         * reached.
+         */
+        imageBuilderJavaArgs.add("-Djava.lang.invoke.MethodHandle.DONT_INLINE_THRESHOLD=-1");
 
         /* After JavaArgs consolidation add the user provided JavaArgs */
         boolean afterOption = false;
