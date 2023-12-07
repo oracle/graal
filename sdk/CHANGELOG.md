@@ -8,6 +8,8 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * (GR-49386) Added the ability to use `Value#as(ByteSequence.class)` to map guest language byte buffers (`Value#hasBufferElements()`) to the read-only `ByteSequence` interface in order to access the bytes without copying the guest language buffer.
 * (GR-49386) Custom implementations of `ByteSequence`, like the values returned by `ByteSequence.create(byte[])`, are now interpreted by guest languages as buffers.
 * (GR-38404) Added the ability to use `Value#as(Collection.class)` to map guest language arrays (`Value#hasArrayElements()`) to the `Collection` interface in order to access the array elements without copying the guest language array.
+* (GR-50682) For languages and instruments loading, the context classloader of the thread that initiates the Engine creation is employed. The system classloader is used only if the context classloader is not set. Originally both classloaders were used.
+
 
 ## Version 23.1.0
 * (GR-43819) The GraalVM SDK was split into several more fine-grained modules. The use of the graalvm-sdk module is now deprecated. Please update your Maven and module dependencies accordingly. Note that all APIs remain compatible. The following new modules are available:
