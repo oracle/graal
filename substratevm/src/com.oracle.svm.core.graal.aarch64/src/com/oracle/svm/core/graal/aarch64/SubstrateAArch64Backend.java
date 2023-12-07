@@ -293,7 +293,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                 Register immediateScratch = sc1.getRegister();
                 Register addressScratch = sc2.getRegister();
 
-                CompressEncoding compressEncoding = ReferenceAccess.singleton().getCompressEncoding();
+                int compressionShift = ReferenceAccess.singleton().getCompressionShift();
                 Register computeRegister = asRegister(addressBase);
                 int addressBitSize = addressBase.getPlatformKind().getSizeInBytes() * Byte.SIZE;
                 boolean nextMemoryAccessNeedsDecompress = false;
@@ -317,7 +317,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                              * currently in use: references are relative to the heap base register,
                              * with an optional shift.
                              */
-                            masm.add(64, addressScratch, ReservedRegisters.singleton().getHeapBaseRegister(), computeRegister, ShiftType.LSL, compressEncoding.getShift());
+                            masm.add(64, addressScratch, ReservedRegisters.singleton().getHeapBaseRegister(), computeRegister, ShiftType.LSL, compressionShift);
                             memoryAddress = masm.makeAddress(addressBitSize, addressScratch, field.getOffset(), immediateScratch);
                         } else {
                             memoryAddress = masm.makeAddress(addressBitSize, computeRegister, field.getOffset(), immediateScratch);
@@ -346,7 +346,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                             } else {
                                 masm.mov(addressScratch, 0xDEADDEADDEADDEADL, true);
                             }
-                            masm.add(64, addressScratch, ReservedRegisters.singleton().getHeapBaseRegister(), addressScratch, ShiftType.LSL, compressEncoding.getShift());
+                            masm.add(64, addressScratch, ReservedRegisters.singleton().getHeapBaseRegister(), addressScratch, ShiftType.LSL, compressionShift);
                             memoryAddress = masm.makeAddress(addressBitSize, addressScratch, field.getOffset(), immediateScratch);
                         } else {
                             memoryAddress = masm.makeAddress(addressBitSize, ReservedRegisters.singleton().getHeapBaseRegister(), field.getOffset() + constantReflection.getImageHeapOffset(object),

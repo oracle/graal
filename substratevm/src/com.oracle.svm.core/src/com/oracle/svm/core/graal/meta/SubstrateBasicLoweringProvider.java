@@ -228,7 +228,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
             // get rid of the reserved header bits and extract the actual pointer to the hub
             assert CodeUtil.isPowerOf2(reservedBitsMask + 1) : "only the lowest bits may be set";
             int numReservedBits = CodeUtil.log2(reservedBitsMask + 1);
-            int compressionShift = ReferenceAccess.singleton().getCompressEncoding().getShift();
+            int compressionShift = ReferenceAccess.singleton().getCompressionShift();
             int numAlignmentBits = CodeUtil.log2(objectLayout.getAlignment());
             assert compressionShift <= numAlignmentBits : "compression discards bits";
             if (numReservedBits == numAlignmentBits && compressionShift == 0) {
