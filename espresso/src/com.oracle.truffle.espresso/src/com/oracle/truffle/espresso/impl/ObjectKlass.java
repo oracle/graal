@@ -253,7 +253,9 @@ public final class ObjectKlass extends Klass {
     }
 
     public void removeAsSubType() {
-        getSuperKlass().removeSubType(this);
+        if (getSuperKlass() != getMeta().java_lang_Object) {
+            getSuperKlass().removeSubType(this);
+        }
         for (ObjectKlass superInterface : getSuperInterfaces()) {
             superInterface.removeSubType(this);
         }
@@ -816,7 +818,7 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public Field[] getDeclaredFields() {
-        // Speculate that there are no hidden fields
+        // Speculate that there are no hidden nor removed fields
         Field[] declaredFields = new Field[staticFieldTable.length + fieldTable.length - localFieldTableIndex];
         int insertionIndex = 0;
         for (int i = 0; i < staticFieldTable.length; i++) {
