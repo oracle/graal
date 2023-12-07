@@ -108,38 +108,35 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
         if (forValue.isNullConstant()) {
             return new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.NullCheckException);
         }
-
         /**
          * Normally we run replacement to any length provider node in simplify but for snippets and
-         * explode loop we run a limited form to constants before.
+         * explode loop we run a limited form for constants before. This is needed for unrolling for
+         * example that uses #canonical instead of #simplify to not recompute the cfg all the time.
          */
-        boolean foldBasedOnLowering = graph().isAfterStage(StageFlag.HIGH_TIER_LOWERING);
-        if (!foldBasedOnLowering) {
-            ValueNode len = GraphUtil.arrayLength(getValue(), ArrayLengthProvider.FindLengthMode.SEARCH_ONLY, tool.getConstantReflection());
-            if (len != null && len.isConstant()) {
-                return len;
-            }
+        ValueNode len = searchForConstantLength(tool.getConstantReflection());
+        if (len != null) {
+            return len;
         }
-
         return this;
+    }
+
+    private ValueNode searchForConstantLength(ConstantReflectionProvider constantReflection) {
+        ValueNode len = GraphUtil.arrayLength(getValue(), ArrayLengthProvider.FindLengthMode.SEARCH_ONLY, constantReflection);
+        return len != null && len.isConstant() ? len : null;
     }
 
     @Override
     public void simplify(SimplifierTool tool) {
-        boolean foldBasedOnLowering = graph().isAfterStage(StageFlag.HIGH_TIER_LOWERING);
-        if (!foldBasedOnLowering) {
-            /*
-             * If we are before lowering we only fold to constants: replacing the load with a length
-             * guarded pi can be done in multiple places and we only want to do it once for all
-             * users, so we let it be done after lowering to catch all users at once.
-             */
-            ValueNode len = GraphUtil.arrayLength(getValue(), ArrayLengthProvider.FindLengthMode.SEARCH_ONLY, tool.getConstantReflection());
-            foldBasedOnLowering = len != null && len.isConstant();
-        }
-        if (!foldBasedOnLowering) {
+        /*
+         * If we are before lowering we only fold to constants: replacing the load with a length
+         * guarded pi can be done in multiple places and we only want to do it once for all users,
+         * so we let it be done after lowering to catch all users at once.
+         */
+        ValueNode constantLength = searchForConstantLength(tool.getConstantReflection());
+        if (constantLength == null && !graph().isAfterStage(StageFlag.HIGH_TIER_LOWERING)) {
             return;
         }
-        ValueNode length = readArrayLength(getValue(), tool.getConstantReflection());
+        ValueNode length = constantLength == null ? readArrayLength(getValue(), tool.getConstantReflection()) : constantLength;
         if (tool.allUsagesAvailable() && length != null) {
             /**
              * If we are using the array length directly (for example from an allocation) instead of
@@ -172,16 +169,16 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
              * </pre>
              */
             StructuredGraph graph = graph();
-            ValueNode replacee = length;
+            ValueNode replacement = length;
             if (!length.isConstant() && length.stamp(NodeView.DEFAULT).canBeImprovedWith(StampFactory.positiveInt())) {
                 BeginNode guard = graph.add(new BeginNode());
                 graph.addAfterFixed(this, guard);
-                replacee = graph.addWithoutUnique(new PiNode(length, StampFactory.positiveInt(), guard));
+                replacement = graph.addWithoutUnique(new PiNode(length, StampFactory.positiveInt(), guard));
             }
-            if (!replacee.isAlive()) {
-                replacee = graph.addOrUnique(replacee);
+            if (!replacement.isAlive()) {
+                replacement = graph.addOrUnique(replacement);
             }
-            graph.replaceFixedWithFloating(this, replacee);
+            graph.replaceFixedWithFloating(this, replacement);
         }
     }
 
