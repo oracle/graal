@@ -57,6 +57,15 @@ public class UserError {
             this.messages = messages;
         }
 
+        public UserException(String msg, Throwable throwable) {
+            this(Collections.singletonList(msg), throwable);
+        }
+
+        protected UserException(Iterable<String> messages, Throwable throwable) {
+            super(String.join(System.lineSeparator(), messages), throwable);
+            this.messages = messages;
+        }
+
         public Iterable<String> getMessages() {
             return messages;
         }
