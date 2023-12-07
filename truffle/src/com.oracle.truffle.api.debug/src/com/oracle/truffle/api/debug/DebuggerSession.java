@@ -678,9 +678,7 @@ public final class DebuggerSession implements Closeable {
                         }
                     }
                 }, hasExpressionElement, syntaxTags);
-                synchronized (allBindings) {
-                    allBindings.add(syntaxElementsBinding);
-                }
+                allBindings.add(syntaxElementsBinding);
             }
         }
     }
@@ -708,9 +706,7 @@ public final class DebuggerSession implements Closeable {
     private void removeBindings() {
         assert Thread.holdsLock(this);
         if (syntaxElementsBinding != null) {
-            synchronized (allBindings) {
-                allBindings.remove(syntaxElementsBinding);
-            }
+            allBindings.remove(syntaxElementsBinding);
             syntaxElementsBinding.dispose();
             syntaxElementsBinding = null;
             if (Debugger.TRACE) {
