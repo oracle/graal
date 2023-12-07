@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,6 +54,7 @@ import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.util.EconomicSetNodeEventListener;
 import jdk.graal.compiler.truffle.nodes.AnyExtendNode;
+import jdk.graal.compiler.truffle.nodes.AnyNarrowNode;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -137,13 +138,18 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
                     return ValidTransformation.Invalid;
                 }
                 valid = ValidTransformation.WithState;
-            } else if (usage instanceof NarrowNode) {
-                if (!(transformation instanceof NarrowNode)) {
+            } else if (usage instanceof NarrowNode n1) {
+                if (!(transformation instanceof NarrowNode n2)) {
                     return ValidTransformation.Invalid;
                 }
-                NarrowNode n1 = (NarrowNode) usage;
-                NarrowNode n2 = (NarrowNode) transformation;
                 if (n1.getInputBits() != n2.getInputBits() || n1.getResultBits() != n2.getResultBits()) {
+                    return ValidTransformation.Invalid;
+                }
+            } else if (usage instanceof AnyNarrowNode n1) {
+                if (!(transformation instanceof NarrowNode n2)) {
+                    return ValidTransformation.Invalid;
+                }
+                if (AnyNarrowNode.INPUT_BITS != n2.getInputBits() || AnyNarrowNode.OUTPUT_BITS != n2.getResultBits()) {
                     return ValidTransformation.Invalid;
                 }
             } else if (usage instanceof ReinterpretNode) {
@@ -234,11 +240,19 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
              * "transformation" is either a NarrowNode or a ReinterpretNode and represents the
              * transformation that will be applied to the whole group of nodes.
              */
+            boolean narrowUsage = false;
             UnaryNode transformation = null;
             for (Node usage : node.usages()) {
                 if (usage instanceof NarrowNode || usage instanceof ReinterpretNode) {
+                    narrowUsage = usage instanceof NarrowNode;
                     if (transformation == null) {
                         transformation = (UnaryNode) usage;
+                    } else {
+                        return false;
+                    }
+                } else if (usage instanceof AnyNarrowNode) {
+                    if (transformation == null) {
+                        transformation = new NarrowNode((ValueNode) node, AnyNarrowNode.INPUT_BITS, AnyNarrowNode.OUTPUT_BITS);
                     } else {
                         return false;
                     }
@@ -259,7 +273,7 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
                     if (reinterpret != null && convert == null) {
                         transformation = new ReinterpretNode(reinterpret.getValue().getStackKind(), (ValueNode) node);
                     } else if (reinterpret == null && convert != null) {
-                        transformation = new NarrowNode((ValueNode) node, AnyExtendNode.OUTPUT_BITS, AnyExtendNode.INPUT_BITS);
+                        transformation = new NarrowNode((ValueNode) node, AnyNarrowNode.INPUT_BITS, AnyNarrowNode.OUTPUT_BITS);
                     }
                 }
                 if (transformation == null) {
@@ -272,6 +286,17 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
             EconomicSet<ValueNode> nodes = EconomicSet.create();
             ValidTransformation valid = collectNodes((ValueNode) node, nodes, transformation, longClass);
             if (valid == ValidTransformation.Invalid) {
+                return false;
+            } else if (valid == ValidTransformation.WithState && narrowUsage) {
+                /*
+                 * Phi has both state usages and a Narrow usage that does not come from Truffle
+                 * Frame intrinsics. We need to preserve the wide value in frame states because
+                 * deoptimization may not zero-extend the narrow value but fill the upper half with
+                 * 0xdeaddeaf which the interpreted code may observe as a garbled long value.
+                 *
+                 * Implies that if the phi is associated with a Truffle frame slot, that slot is
+                 * currently holding a long or double value (narrowed by the usage).
+                 */
                 return false;
             }
 
@@ -313,7 +338,7 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
                 nodes.add(duplicate);
                 // now replace all usages of the original phi/proxy
                 for (Node usage : target.usages()) {
-                    if (usage instanceof NarrowNode || usage instanceof ReinterpretNode) {
+                    if (usage instanceof NarrowNode || usage instanceof ReinterpretNode || usage instanceof AnyNarrowNode) {
                         usage.replaceAtUsagesAndDelete(duplicate);
                         // assumption: there's at most one such usage, so we can break
                         break;
@@ -331,6 +356,12 @@ public final class PhiTransformPhase extends BasePhase<CoreProviders> {
         } else if (node.getClass() == ReinterpretNode.class) {
             if (node.hasExactlyOneUsage() && isValidStateUsage(node.singleUsage(), longClass)) {
                 node.replaceAtUsagesAndDelete(((ReinterpretNode) node).getValue());
+                return true;
+            }
+        } else if (node.getClass() == AnyNarrowNode.class) {
+            AnyNarrowNode narrow = (AnyNarrowNode) node;
+            if (node.hasExactlyOneUsage() && isValidStateUsage(node.singleUsage(), longClass)) {
+                node.replaceAtUsagesAndDelete(narrow.getValue());
                 return true;
             }
         }
