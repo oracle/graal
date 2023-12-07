@@ -117,4 +117,10 @@ public final class ReferenceAccessImpl implements ReferenceAccess {
         // Assume that 48 bit is the maximum address space that can be used.
         return WordFactory.unsigned((1L << 48) - 1);
     }
+
+    @Fold
+    @Override
+    public int getCompressionShift() {
+        return getCompressEncoding().getShift();
+    }
 }
