@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,8 +26,6 @@ package com.oracle.svm.core.graal.replacements;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
@@ -83,7 +81,6 @@ import jdk.graal.compiler.nodes.java.StoreIndexedNode;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.GraphKit;
-import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.Constant;
@@ -100,10 +97,10 @@ public class SubstrateGraphKit extends GraphKit {
     private int nextBCI;
 
     @SuppressWarnings("this-escape")
-    public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes,
+    public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers,
                     GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId, boolean recordInlinedMethods) {
-        super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, null, true, recordInlinedMethods);
-        assert wordTypes != null : "Support for Word types is mandatory";
+        super(debug, stubMethod, providers, graphBuilderPlugins, compilationId, null, true, recordInlinedMethods);
+        assert getWordTypes() != null : "Support for Word types is mandatory";
         frameState = new FrameStateBuilder(this, stubMethod, graph);
         frameState.disableKindVerification();
         frameState.disableStateVerification();
@@ -111,9 +108,8 @@ public class SubstrateGraphKit extends GraphKit {
         graph.start().setStateAfter(frameState.create(bci(), graph.start()));
     }
 
-    public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes,
-                    GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId) {
-        this(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, false);
+    public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId) {
+        this(debug, stubMethod, providers, graphBuilderPlugins, compilationId, false);
     }
 
     @Override
@@ -329,10 +325,6 @@ public class SubstrateGraphKit extends GraphKit {
         return nextBCI++;
     }
 
-    public static boolean isWord(Class<?> klass) {
-        return WordBase.class.isAssignableFrom(klass);
-    }
-
     public StructuredGraph finalizeGraph() {
         if (lastFixedNode != null) {
             throw VMError.shouldNotReachHere("Manually constructed graph does not terminate control flow properly. lastFixedNode: " + lastFixedNode);
@@ -340,7 +332,7 @@ public class SubstrateGraphKit extends GraphKit {
 
         mergeUnwinds();
         assert graph.verify();
-        assert wordTypes.ensureGraphContainsNoWordTypeReferences(graph);
+        assert getWordTypes().ensureGraphContainsNoWordTypeReferences(graph);
         return graph;
     }
 
@@ -396,13 +388,13 @@ public class SubstrateGraphKit extends GraphKit {
     }
 
     public void appendStateSplitProxy(FrameState state) {
-        StateSplitProxyNode proxy = new StateSplitProxyNode(null);
+        StateSplitProxyNode proxy = new StateSplitProxyNode();
         append(proxy);
         proxy.setStateAfter(state);
     }
 
     public void appendStateSplitProxy(FrameStateBuilder stateBuilder) {
-        StateSplitProxyNode proxy = new StateSplitProxyNode(null);
+        StateSplitProxyNode proxy = new StateSplitProxyNode();
         append(proxy);
         proxy.setStateAfter(stateBuilder.create(bci(), proxy));
     }

@@ -53,7 +53,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.HostVM;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
@@ -135,7 +134,6 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.truffle.phases.DeoptimizeOnExceptionPhase;
-import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
@@ -274,16 +272,18 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
     private static final class RuntimeGraphBuilderPhase extends AnalysisGraphBuilderPhase {
 
         private RuntimeGraphBuilderPhase(Providers providers,
-                        GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes, SVMHost hostVM) {
-            super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes, hostVM);
+                        GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, SVMHost hostVM) {
+            super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, hostVM);
         }
 
         static RuntimeGraphBuilderPhase createRuntimeGraphBuilderPhase(BigBang bb, Providers providers,
                         GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
 
             // Adjust graphbuilderconfig to match analysis phase
-            var newGraphBuilderConfig = graphBuilderConfig.withEagerResolving(true).withUnresolvedIsError(PointstoOptions.UnresolvedIsError.getValue(bb.getOptions()));
-            return new RuntimeGraphBuilderPhase(providers, newGraphBuilderConfig, optimisticOpts, null, providers.getWordTypes(), (SVMHost) bb.getHostVM());
+            var newGraphBuilderConfig = graphBuilderConfig
+                            .withEagerResolving(true)
+                            .withUnresolvedIsError(false);
+            return new RuntimeGraphBuilderPhase(providers, newGraphBuilderConfig, optimisticOpts, null, (SVMHost) bb.getHostVM());
         }
 
         @Override

@@ -29,9 +29,13 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.unknownProbability;
 
 import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
+import jdk.graal.compiler.nodes.PiNode;
+import jdk.graal.compiler.nodes.SnippetAnchorNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.calc.FloatConvertNode;
+import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
@@ -53,16 +57,18 @@ public class AMD64ConvertSnippets implements Snippets {
      * extra tests are required on the float value to return the correct int value.
      *
      * @param input the float being converted
-     * @param result the result produced by the CVTTSS2SI instruction
      */
     @Snippet
-    public static int f2i(float input, int result) {
+    public static int f2i(float input) {
+        if (probability(SLOW_PATH_PROBABILITY, Float.isNaN(input))) {
+            return 0;
+        }
+        GuardingNode guard = SnippetAnchorNode.anchor();
+        float nonNanInput = PiNode.piCastNonNanFloat(input, guard);
+        int result = AMD64FloatConvertNode.convertToInt(FloatConvert.F2I, nonNanInput);
         if (probability(SLOW_PATH_PROBABILITY, result == Integer.MIN_VALUE)) {
-            if (probability(SLOW_PATH_PROBABILITY, Float.isNaN(input))) {
-                // input is NaN -> return 0
-                return 0;
-            } else if (unknownProbability(input > 0.0f)) {
-                // input is > 0 -> return max int
+            if (unknownProbability(input > 0.0d)) {
+                // input is positive -> return maxInt
                 return Integer.MAX_VALUE;
             }
         }
@@ -78,16 +84,18 @@ public class AMD64ConvertSnippets implements Snippets {
      * long value.
      *
      * @param input the float being converted
-     * @param result the result produced by the CVTTSS2SI instruction
      */
     @Snippet
-    public static long f2l(float input, long result) {
+    public static long f2l(float input) {
+        if (probability(SLOW_PATH_PROBABILITY, Float.isNaN(input))) {
+            return 0;
+        }
+        GuardingNode guard = SnippetAnchorNode.anchor();
+        float nonNanInput = PiNode.piCastNonNanFloat(input, guard);
+        long result = AMD64FloatConvertNode.convertToLong(FloatConvert.F2L, nonNanInput);
         if (probability(SLOW_PATH_PROBABILITY, result == Long.MIN_VALUE)) {
-            if (probability(SLOW_PATH_PROBABILITY, Float.isNaN(input))) {
-                // input is NaN -> return 0
-                return 0;
-            } else if (unknownProbability(input > 0.0f)) {
-                // input is > 0 -> return max int
+            if (unknownProbability(input > 0.0d)) {
+                // input is positive -> return maxInt
                 return Long.MAX_VALUE;
             }
         }
@@ -103,15 +111,17 @@ public class AMD64ConvertSnippets implements Snippets {
      * extra tests are required on the double value to return the correct int value.
      *
      * @param input the double being converted
-     * @param result the result produced by the CVTTSS2SI instruction
      */
     @Snippet
-    public static int d2i(double input, int result) {
+    public static int d2i(double input) {
+        if (probability(SLOW_PATH_PROBABILITY, Double.isNaN(input))) {
+            return 0;
+        }
+        GuardingNode guard = SnippetAnchorNode.anchor();
+        double nonNanInput = PiNode.piCastNonNanDouble(input, guard);
+        int result = AMD64FloatConvertNode.convertToInt(FloatConvert.D2I, nonNanInput);
         if (probability(SLOW_PATH_PROBABILITY, result == Integer.MIN_VALUE)) {
-            if (probability(SLOW_PATH_PROBABILITY, Double.isNaN(input))) {
-                // input is NaN -> return 0
-                return 0;
-            } else if (unknownProbability(input > 0.0d)) {
+            if (unknownProbability(input > 0.0d)) {
                 // input is positive -> return maxInt
                 return Integer.MAX_VALUE;
             }
@@ -128,15 +138,17 @@ public class AMD64ConvertSnippets implements Snippets {
      * tests are required on the double value to return the correct long value.
      *
      * @param input the double being converted
-     * @param result the result produced by the CVTTSS2SI instruction
      */
     @Snippet
-    public static long d2l(double input, long result) {
+    public static long d2l(double input) {
+        if (probability(SLOW_PATH_PROBABILITY, Double.isNaN(input))) {
+            return 0;
+        }
+        GuardingNode guard = SnippetAnchorNode.anchor();
+        double nonNanInput = PiNode.piCastNonNanDouble(input, guard);
+        long result = AMD64FloatConvertNode.convertToLong(FloatConvert.D2L, nonNanInput);
         if (probability(SLOW_PATH_PROBABILITY, result == Long.MIN_VALUE)) {
-            if (probability(SLOW_PATH_PROBABILITY, Double.isNaN(input))) {
-                // input is NaN -> return 0
-                return 0;
-            } else if (unknownProbability(input > 0.0d)) {
+            if (unknownProbability(input > 0.0d)) {
                 // input is positive -> return maxInt
                 return Long.MAX_VALUE;
             }
@@ -167,6 +179,7 @@ public class AMD64ConvertSnippets implements Snippets {
             }
 
             SnippetTemplate.SnippetInfo key;
+            StructuredGraph graph = convert.graph();
             switch (convert.getFloatConvert()) {
                 case F2I:
                     key = f2i;
@@ -184,12 +197,8 @@ public class AMD64ConvertSnippets implements Snippets {
                     return;
             }
 
-            StructuredGraph graph = convert.graph();
-
             SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(key, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("input", convert.getValue());
-            args.add("result", graph.unique(new AMD64FloatConvertNode(convert.getFloatConvert(), convert.getValue())));
-
             SnippetTemplate template = template(tool, convert, args);
             convert.getDebug().log("Lowering %s in %s: node=%s, template=%s, arguments=%s", convert.getFloatConvert(), graph, convert, template, args);
             template.instantiate(tool.getMetaAccess(), convert, SnippetTemplate.DEFAULT_REPLACER, tool, args);

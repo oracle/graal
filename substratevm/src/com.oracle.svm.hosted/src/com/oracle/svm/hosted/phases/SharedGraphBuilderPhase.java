@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import java.lang.invoke.LambdaConversionException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
@@ -86,7 +87,6 @@ import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.replacements.SnippetTemplate;
-import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaKind;
@@ -97,18 +97,15 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance {
-    final WordTypes wordTypes;
 
-    public SharedGraphBuilderPhase(CoreProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext,
-                    WordTypes wordTypes) {
+    public SharedGraphBuilderPhase(CoreProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
         super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
-        this.wordTypes = wordTypes;
     }
 
     @Override
     protected void run(StructuredGraph graph) {
         super.run(graph);
-        assert wordTypes == null || wordTypes.ensureGraphContainsNoWordTypeReferences(graph);
+        assert providers.getWordTypes() == null || providers.getWordTypes().ensureGraphContainsNoWordTypeReferences(graph);
     }
 
     public abstract static class SharedBytecodeParser extends BytecodeParser {
@@ -176,10 +173,6 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             throw super.throwParserError(e);
         }
 
-        private WordTypes getWordTypes() {
-            return ((SharedGraphBuilderPhase) getGraphBuilderInstance()).wordTypes;
-        }
-
         private boolean checkWordTypes() {
             return getWordTypes() != null;
         }
@@ -239,11 +232,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             try {
                 super.maybeEagerlyResolve(cpi, bytecode);
             } catch (UnresolvedElementException e) {
-                if (e.getCause() instanceof LinkageError || e.getCause() instanceof IllegalAccessError) {
+                if (e.getCause() instanceof LambdaConversionException || e.getCause() instanceof LinkageError || e.getCause() instanceof IllegalAccessError) {
                     /*
-                     * Ignore LinkageError if thrown from eager resolution attempt. This is usually
-                     * followed by a call to ConstantPool.lookupType() which should return an
-                     * UnresolvedJavaType which we know how to deal with.
+                     * Ignore LinkageError, LambdaConversionException or IllegalAccessError if
+                     * thrown from eager resolution attempt. This is usually followed by a call to
+                     * ConstantPool.lookupType() which should return an UnresolvedJavaType which we
+                     * know how to deal with.
                      */
                 } else {
                     throw e;

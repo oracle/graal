@@ -261,7 +261,7 @@ public class SVMHost extends HostVM {
     @Override
     public Instance createGraphBuilderPhase(HostedProviders builderProviders, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
                     IntrinsicContext initialIntrinsicContext) {
-        return new AnalysisGraphBuilderPhase(builderProviders, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, builderProviders.getWordTypes(), this);
+        return new AnalysisGraphBuilderPhase(builderProviders, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, this);
     }
 
     @Override
@@ -328,9 +328,9 @@ public class SVMHost extends HostVM {
 
     @Override
     public GraphBuilderConfiguration updateGraphBuilderConfiguration(GraphBuilderConfiguration config, AnalysisMethod method) {
-        GraphBuilderConfiguration updatedConfig = config.withRetainLocalVariables(retainLocalVariables()).withUnresolvedIsError(linkAtBuildTimeSupport.linkAtBuildTime(method.getDeclaringClass()))
-                        .withFullInfopoints(
-                                        SubstrateOptions.getSourceLevelDebug() && SubstrateOptions.getSourceLevelDebugFilter().test(method.getDeclaringClass().toJavaName()));
+        GraphBuilderConfiguration updatedConfig = config
+                        .withRetainLocalVariables(retainLocalVariables())
+                        .withFullInfopoints(SubstrateOptions.getSourceLevelDebug() && SubstrateOptions.getSourceLevelDebugFilter().test(method.getDeclaringClass().toJavaName()));
         if (parsingSupport != null) {
             return parsingSupport.updateGraphBuilderConfiguration(updatedConfig, method);
         }

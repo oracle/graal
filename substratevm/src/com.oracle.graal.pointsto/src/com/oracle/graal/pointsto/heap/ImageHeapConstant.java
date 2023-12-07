@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -84,7 +85,7 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
         ConstantData(AnalysisType type, JavaConstant object, int identityHashCode) {
             Objects.requireNonNull(type);
             this.type = type;
-            this.hostedObject = object;
+            this.hostedObject = CompressibleConstant.uncompress(object);
             this.identityHashCode = identityHashCode;
         }
 
@@ -176,6 +177,7 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
     }
 
     public JavaConstant getHostedObject() {
+        AnalysisError.guarantee(!CompressibleConstant.isCompressed(constantData.hostedObject), "References to hosted objects should never be compressed.");
         return constantData.hostedObject;
     }
 
@@ -269,6 +271,6 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
 
     @Override
     public String toString() {
-        return "ImageHeapConstant< " + constantData.type.toJavaName() + ", reachable: " + isReachable() + ", reader installed: " + isReaderInstalled() + ">";
+        return "ImageHeapConstant<" + constantData.type.toJavaName() + ", reachable: " + isReachable() + ", reader installed: " + isReaderInstalled() + ", compressed: " + compressed + ">";
     }
 }

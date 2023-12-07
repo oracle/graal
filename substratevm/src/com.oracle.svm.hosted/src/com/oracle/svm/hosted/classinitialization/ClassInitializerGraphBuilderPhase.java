@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.classinitialization;
 
+import com.oracle.svm.hosted.phases.SharedGraphBuilderPhase;
+
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -31,19 +33,35 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
-
-import com.oracle.svm.hosted.phases.SharedGraphBuilderPhase;
-
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class ClassInitializerGraphBuilderPhase extends SharedGraphBuilderPhase {
     public ClassInitializerGraphBuilderPhase(CoreProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
-        /*
-         * We do not want any word-type checking when parsing the class initializers, because we do
-         * not have the graph builder plugins for word types installed either. Passing null as the
-         * WordTypes disables the word type checks in the bytecode parser.
-         */
-        super(providers, graphBuilderConfig, optimisticOpts, null, null);
+        super(clearWordTypes(providers), graphBuilderConfig, optimisticOpts, null);
+    }
+
+    /**
+     * We do not want any word-type checking when parsing the class initializers, because we do not
+     * have the graph builder plugins for word types installed either. Passing null as the WordTypes
+     * disables the word type checks in the bytecode parser.
+     */
+    private static Providers clearWordTypes(CoreProviders providers) {
+        WordTypes wordTypes = null;
+        return new Providers(providers.getMetaAccess(),
+                        providers.getCodeCache(),
+                        providers.getConstantReflection(),
+                        providers.getConstantFieldProvider(),
+                        providers.getForeignCalls(),
+                        providers.getLowerer(),
+                        providers.getReplacements(),
+                        providers.getStampProvider(),
+                        providers.getPlatformConfigurationProvider(),
+                        providers.getMetaAccessExtensionProvider(),
+                        providers.getSnippetReflection(),
+                        wordTypes,
+                        providers.getLoopsDataProvider());
     }
 
     @Override

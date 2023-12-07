@@ -30,7 +30,6 @@ import static jdk.graal.compiler.hotspot.stubs.StubUtil.VM_MESSAGE_C;
 import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import jdk.graal.compiler.api.replacements.Snippet;
-import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
@@ -54,14 +53,14 @@ import jdk.graal.compiler.word.Word;
 public class AssertionSnippets implements Snippets {
 
     @Snippet
-    public static void assertion(boolean condition, @ConstantParameter Word message, long l1, long l2) {
+    public static void assertion(boolean condition, Word message, long l1, long l2) {
         if (injectBranchProbability(SLOWPATH_PROBABILITY, !condition)) {
             vmMessageC(VM_MESSAGE_C, true, message, l1, l2, 0L);
         }
     }
 
     @Snippet
-    public static void stubAssertion(boolean condition, @ConstantParameter Word message, long l1, long l2) {
+    public static void stubAssertion(boolean condition, Word message, long l1, long l2) {
         if (injectBranchProbability(SLOWPATH_PROBABILITY, !condition)) {
             vmMessageStub(VM_MESSAGE_C, true, message, l1, l2, 0L);
         }
@@ -90,7 +89,7 @@ public class AssertionSnippets implements Snippets {
             StructuredGraph graph = assertionNode.graph();
             Arguments args = new Arguments(graph.start() instanceof StubStartNode ? stubAssertion : assertion, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("condition", assertionNode.condition());
-            args.addConst("message",
+            args.add("message",
                             graph.unique(new ConstantNode(new CStringConstant("failed runtime assertion in snippet/stub: " + assertionNode.message() + " (" + graph.method() + ")"),
                                             StampFactory.pointer())));
             args.add("l1", assertionNode.getL1());

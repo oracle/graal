@@ -51,7 +51,6 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -722,53 +721,81 @@ public class EspressoInterop extends BaseInterop {
     static Object invokeMember(StaticObject receiver,
                     String member,
                     Object[] arguments,
+                    @CachedLibrary("receiver") InteropLibrary receiverInterop,
                     @Exclusive @Cached LookupVirtualMethodNode lookupMethod,
                     @Exclusive @Cached OverLoadedMethodSelectorNode selectorNode,
                     @Exclusive @Cached InvokeEspressoNode invoke,
                     @Exclusive @Cached ToEspressoNode.DynamicToEspresso toEspressoNode)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
+        if (!receiverInterop.isMemberInvocable(receiver, member)) {
+            // Not invocable, no matter the arity or argument types.
+            throw UnknownIdentifierException.create(member);
+        }
+        // The member may be invocable only for a certain arity and argument types.
         Method[] candidates = lookupMethod.execute(receiver.getKlass(), member, arguments.length);
+        if (candidates != null) {
+            return invokeEspressoMethodHelper(receiver, member, arguments, selectorNode, invoke, toEspressoNode, candidates);
+        }
+        // TODO(peterssen): The expected arity is not known, only that the given one is not correct.
+        throw ArityException.create(arguments.length + 1, -1, arguments.length);
+    }
+
+    /**
+     * Invokes an Espresso method with interop conventions.
+     *
+     * <p>
+     * Espresso maintains some invariants at the boundary e.g. Foreign objects are always "wrapped"
+     * (and a class assigned) when entering into Espresso and always unwrapped when returning.
+     * Foreign exceptions (leaving this method) are always unwrapped. Besides these invariants,
+     * Espresso tries to select the (most) specific method in case of ambiguity caused by method
+     * overloads or vargars...
+     *
+     * <p>
+     * This helper method should be shared and used by all interop invocations into Espresso
+     * (instance/static methods and constructors) so the behavior is consistent.
+     *
+     * @throws UnsupportedTypeException if the arguments cannot be coerced to the target method
+     *             signature, or when a single (most) specific method cannot be disambiguated e.g.
+     *             overloads or varargs...
+     */
+    public static Object invokeEspressoMethodHelper(StaticObject receiver, String member, Object[] arguments, OverLoadedMethodSelectorNode selectorNode, InvokeEspressoNode invoke,
+                    ToEspressoNode.DynamicToEspresso toEspressoNode, Method[] candidates) throws ArityException, UnsupportedTypeException {
+        assert candidates.length > 0;
         try {
-            if (candidates != null) {
-                if (candidates.length == 1) {
-                    // common case with no overloads
-                    Method m = candidates[0];
-                    assert !m.isStatic() && m.isPublic();
-                    assert member.startsWith(m.getNameAsString());
-                    if (!m.isVarargs()) {
-                        assert m.getParameterCount() == arguments.length;
-                        return invoke.execute(m, receiver, arguments);
-                    } else {
-                        CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(m, arguments, m.resolveParameterKlasses(), toEspressoNode);
+            if (candidates.length == 1) {
+                // common case with no overloads
+                Method m = candidates[0];
+                assert m.isPublic();
+                assert member.startsWith(m.getNameAsString());
+                if (!m.isVarargs()) {
+                    assert m.getParameterCount() == arguments.length;
+                    return invoke.execute(m, receiver, arguments);
+                } else {
+                    CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(m, arguments, m.resolveParameterKlasses(), toEspressoNode);
+                    if (matched != null) {
+                        matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched);
                         if (matched != null) {
-                            matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched);
-                            if (matched != null) {
-                                return invoke.execute(matched.getMethod(), receiver, matched.getConvertedArgs(), true);
-                            }
+                            return invoke.execute(matched.getMethod(), receiver, matched.getConvertedArgs(), true);
                         }
                     }
+                    throw UnsupportedTypeException.create(arguments);
+                }
+            } else {
+                // multiple overloaded methods found
+                // find method with type matches
+                CandidateMethodWithArgs typeMatched = selectorNode.execute(candidates, arguments);
+                if (typeMatched != null) {
+                    // single match found!
+                    return invoke.execute(typeMatched.getMethod(), receiver, typeMatched.getConvertedArgs(), true);
                 } else {
-                    // multiple overloaded methods found
-                    // find method with type matches
-                    CandidateMethodWithArgs typeMatched = selectorNode.execute(candidates, arguments);
-                    if (typeMatched != null) {
-                        // single match found!
-                        return invoke.execute(typeMatched.getMethod(), receiver, typeMatched.getConvertedArgs(), true);
-                    } else {
-                        // unable to select exactly one best candidate for the input args!
-                        throw UnknownIdentifierException.create(member);
-                    }
+                    // unable to select exactly one best candidate for the input args!
+                    throw UnsupportedTypeException.create(arguments);
                 }
             }
-            throw UnknownIdentifierException.create(member);
         } catch (EspressoException e) {
-            if (InteropUtils.isForeignException(e)) {
-                EspressoLanguage language = receiver.getKlass().getContext().getLanguage();
-                Meta meta = e.getGuestException().getKlass().getMeta();
-                // rethrow the original foreign exception when leaving espresso interop
-                throw (AbstractTruffleException) meta.java_lang_Throwable_backtrace.getObject(e.getGuestException()).rawForeignObject(language);
-            }
-            throw e;
+            Meta meta = e.getGuestException().getKlass().getMeta();
+            EspressoLanguage language = meta.getLanguage();
+            throw InteropUtils.unwrapExceptionBoundary(language, e, meta);
         }
     }
 

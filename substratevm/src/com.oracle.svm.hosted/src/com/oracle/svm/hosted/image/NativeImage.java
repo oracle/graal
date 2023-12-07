@@ -420,8 +420,7 @@ public abstract class NativeImage extends AbstractImage {
 
             BuildPhaseProvider.markHeapLayoutFinished();
 
-            /* Re-run shadow heap verification after heap layout. */
-            universe.getBigBang().getUniverse().getHeapVerifier().checkHeapSnapshot(debug, heap.hMetaAccess, "after heap layout");
+            heap.getLayouter().afterLayout(heap);
 
             imageHeapSize = heapLayout.getImageHeapSize();
 

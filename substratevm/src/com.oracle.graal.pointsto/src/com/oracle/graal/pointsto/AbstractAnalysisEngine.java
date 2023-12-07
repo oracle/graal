@@ -211,7 +211,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
              * checkHeapSnapshot returns all heap scanning and verification tasks are completed.
              */
             assert executor.isBeforeStart() : executor.getState();
-            analysisModified = universe.getHeapVerifier().checkHeapSnapshot(metaAccess, executor, "during analysis", true);
+            analysisModified = universe.getHeapVerifier().checkHeapSnapshot(metaAccess, executor, "during analysis", true, universe.getEmbeddedRoots());
         }
         /* Initialize for the next iteration. */
         executor.init(getTiming());
@@ -363,6 +363,10 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     }
 
     /** Creates a synthetic position for the node in the given method. */
+    public static BytecodePosition syntheticSourcePosition(ResolvedJavaMethod method) {
+        return syntheticSourcePosition(null, method);
+    }
+
     public static BytecodePosition syntheticSourcePosition(Node node, ResolvedJavaMethod method) {
         int bci = BytecodeFrame.UNKNOWN_BCI;
         if (node instanceof DeoptBciSupplier) {

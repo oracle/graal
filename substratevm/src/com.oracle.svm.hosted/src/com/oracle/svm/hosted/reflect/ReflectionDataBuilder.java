@@ -963,7 +963,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * access to either no members or only Object methods.
          */
         if (clazz == Object.class || clazz.isPrimitive() || clazz.isArray()) {
-            enabledQueries |= ALL_DECLARED_CONSTRUCTORS_FLAG | ALL_CONSTRUCTORS_FLAG | ALL_DECLARED_METHODS_FLAG | ALL_METHODS_FLAG | ALL_DECLARED_FIELDS_FLAG | ALL_FIELDS_FLAG;
+            enabledQueries |= ALL_DECLARED_CLASSES_FLAG | ALL_CLASSES_FLAG | ALL_DECLARED_CONSTRUCTORS_FLAG | ALL_CONSTRUCTORS_FLAG | ALL_DECLARED_METHODS_FLAG | ALL_METHODS_FLAG |
+                            ALL_DECLARED_FIELDS_FLAG | ALL_FIELDS_FLAG;
         }
         return enabledQueries;
     }

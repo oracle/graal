@@ -61,7 +61,8 @@ local common_json = import "../common.json";
     [name]: jdk_base + common_json.jdks[name] + { jdk_version:: parse_labsjdk_version(self), jdk_name:: "jdk-latest"}
     for name in ["oraclejdk-latest"] + variants("labsjdk-ce-latest") + variants("labsjdk-ee-latest")
   },
-  assert std.assertEqual(std.objectFields(common_json.jdks), std.objectFields(jdks_data)),
+  # We do not want to expose galahad-jdk
+  assert std.assertEqual([x for x in std.objectFields(common_json.jdks) if x != "galahad-jdk"], std.objectFields(jdks_data)),
   # Verify oraclejdk-latest and labsjdk-ee-latest versions match
   assert
     local _labsjdk = common_json.jdks["labsjdk-ee-latest"];
@@ -213,7 +214,7 @@ local common_json = import "../common.json";
 
     truffleruby:: {
       packages+: (if self.os == "linux" && self.arch == "amd64" then {
-        ruby: "==3.1.2", # Newer version, also used for benchmarking
+        ruby: "==3.2.2", # Newer version, also used for benchmarking
       } else {
         ruby: "==3.0.2",
       }) + (if self.os == "linux" then {

@@ -43,6 +43,7 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
@@ -426,8 +427,14 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 return;
             }
         }
+        lowerUnaryMathToForeignCall(math, tool);
+    }
+
+    protected void lowerUnaryMathToForeignCall(UnaryMathIntrinsicNode math, LoweringTool tool) {
         StructuredGraph graph = math.graph();
-        ForeignCallNode call = math.graph().add(new ForeignCallNode(foreignCalls.getDescriptor(math.getOperation().foreignCallSignature), math.getValue()));
+        ForeignCallDescriptor desc = foreignCalls.getDescriptor(math.getOperation().foreignCallSignature);
+        Stamp s = UnaryMathIntrinsicNode.UnaryOperation.computeStamp(math.getOperation(), math.getValue().stamp(NodeView.DEFAULT));
+        ForeignCallNode call = graph.add(new ForeignCallNode(desc, s, List.of(math.getValue())));
         graph.addAfterFixed(tool.lastFixedNode(), call);
         math.replaceAtUsages(call);
     }

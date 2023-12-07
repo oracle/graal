@@ -44,7 +44,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
-import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -54,8 +53,8 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
     protected final SVMHost hostVM;
 
     public AnalysisGraphBuilderPhase(CoreProviders providers,
-                    GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes, SVMHost hostVM) {
-        super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes);
+                    GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, SVMHost hostVM) {
+        super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
         this.hostVM = hostVM;
     }
 

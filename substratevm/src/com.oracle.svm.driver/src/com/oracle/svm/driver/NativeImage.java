@@ -864,15 +864,17 @@ public class NativeImage {
         final String envVarName = SubstrateOptions.NATIVE_IMAGE_OPTIONS_ENV_VAR;
         String nativeImageOptionsValue = System.getenv(envVarName);
         if (nativeImageOptionsValue != null) {
-            addPlainImageBuilderArg(oHNativeImageOptionsEnvVar + nativeImageOptionsValue);
             defaultNativeImageArgs.addAll(JDKArgsUtils.parseArgsFromEnvVar(nativeImageOptionsValue, envVarName, msg -> showError(msg)));
         }
         if (!defaultNativeImageArgs.isEmpty()) {
             String buildApplyOptionName = BundleSupport.BundleOptionVariants.apply.optionName();
             if (config.getBuildArgs().stream().noneMatch(arg -> arg.startsWith(buildApplyOptionName + "="))) {
+                if (nativeImageOptionsValue != null) {
+                    addPlainImageBuilderArg(oHNativeImageOptionsEnvVar + nativeImageOptionsValue);
+                }
                 return List.copyOf(defaultNativeImageArgs);
             } else {
-                LogUtils.warning("Option " + buildApplyOptionName + " in use. Ignoring args from file specified with environment variable " + NativeImage.CONFIG_FILE_ENV_VAR_KEY + ".");
+                LogUtils.warning("Option '" + buildApplyOptionName + "' in use. Ignoring environment variables " + envVarName + " and " + NativeImage.CONFIG_FILE_ENV_VAR_KEY + ".");
             }
         }
         return List.of();
@@ -1115,6 +1117,14 @@ public class NativeImage {
         // The following two are for backwards compatibility reasons. They should be removed.
         imageBuilderJavaArgs.add("-Djdk.internal.lambda.eagerlyInitialize=false");
         imageBuilderJavaArgs.add("-Djava.lang.invoke.InnerClassLambdaMetafactory.initializeLambdas=false");
+        /*
+         * DONT_INLINE_THRESHOLD is used to set a profiling threshold for certain method handles and
+         * only allow inlining after n invocations. This is used for example in the implementation
+         * of record equals methods. We disable this behavior in the image builder because it can
+         * prevent optimizing the method handles for AOT compilation if the threshold is not
+         * reached.
+         */
+        imageBuilderJavaArgs.add("-Djava.lang.invoke.MethodHandle.DONT_INLINE_THRESHOLD=-1");
 
         /* After JavaArgs consolidation add the user provided JavaArgs */
         boolean afterOption = false;
@@ -1653,7 +1663,16 @@ public class NativeImage {
         }
         environment.put(ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM, Boolean.toString(config.modulePathBuild));
         if (!config.modulePathBuild) {
-            LogUtils.warningDeprecatedEnvironmentVariable(ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM);
+            /**
+             * The old mode of running the image generator on the class path, which was deprecated
+             * in GraalVM 22.2, is no longer allowed. Using the environment variable
+             * `USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM=false` that used to enable the
+             * class-path-mode now leads to an early image build error. We really want to report
+             * this as an error, because just ignoring the environment variable would most likely
+             * lead to obscure image build errors later on.
+             */
+            throw showError("Running the image generator on the class path is no longer possible. Setting the environment variable " +
+                            ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM + "=false is no longer supported.");
         }
 
         completeCommandList.addAll(0, environment.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).sorted().toList());
@@ -2110,12 +2129,18 @@ public class NativeImage {
 
         Path classpathEntryFinal = useBundle() ? bundleSupport.substituteClassPath(classpathEntry) : classpathEntry;
         if (!imageClasspath.contains(classpathEntryFinal) && !customImageClasspath.contains(classpathEntryFinal)) {
+            /*
+             * Maintain correct order by adding entry before processing its potential "Class-Path"
+             * attributes from META-INF/MANIFEST.MF (in case the entry is a jar-file).
+             */
+            boolean added = destination.add(classpathEntryFinal);
             if (ClasspathUtils.isJar(classpathEntryFinal)) {
                 processJarManifestMainAttributes(classpathEntryFinal, (jarFilePath, attributes) -> handleClassPathAttribute(destination, jarFilePath, attributes));
             }
-            boolean ignore = processClasspathNativeImageMetaInf(classpathEntryFinal);
-            if (!ignore) {
-                destination.add(classpathEntryFinal);
+            boolean forcedOnModulePath = processClasspathNativeImageMetaInf(classpathEntryFinal);
+            if (added && forcedOnModulePath) {
+                /* Entry makes use of ForceOnModulePath. Undo adding to classpath. */
+                destination.remove(classpathEntryFinal);
             }
         }
     }

@@ -104,7 +104,6 @@ import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
-import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.LIRKindTool;
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.graal.compiler.core.common.type.IllegalStamp;
@@ -127,11 +126,11 @@ import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
+import jdk.graal.compiler.nodes.spi.CoreProvidersDelegate;
 import jdk.graal.compiler.nodes.type.NarrowOopStamp;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.MemoryBarriers;
 import jdk.vm.ci.code.Register;
@@ -145,7 +144,6 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -156,9 +154,8 @@ import jdk.vm.ci.meta.ValueKind;
  * Contains the tools needed to emit instructions from Graal nodes into LLVM bitcode,
  * via the LLVMIRBuilder class.
  */
-public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
+public class LLVMGenerator extends CoreProvidersDelegate implements LIRGeneratorTool, SubstrateLIRGenerator {
     private static final SubstrateDataBuilder dataBuilder = new SubstrateDataBuilder();
-    private final Providers providers;
     private final CompilationResult compilationResult;
 
     private final LLVMIRBuilder builder;
@@ -179,7 +176,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     private final Map<Constant, String> constants = new HashMap<>();
 
     LLVMGenerator(Providers providers, CompilationResult result, StructuredGraph graph, ResolvedJavaMethod method, int debugLevel) {
-        this.providers = providers;
+        super(providers);
         this.compilationResult = result;
         this.builder = new LLVMIRBuilder(method.format("%H.%n"));
         this.arithmetic = new ArithmeticLLVMGenerator();
@@ -203,21 +200,6 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     }
 
     @Override
-    public Providers getProviders() {
-        return providers;
-    }
-
-    @Override
-    public MetaAccessProvider getMetaAccess() {
-        return providers.getMetaAccess();
-    }
-
-    @Override
-    public CodeCacheProvider getCodeCache() {
-        return providers.getCodeCache();
-    }
-
-    @Override
     public TargetDescription target() {
         return getCodeCache().getTarget();
     }
@@ -225,11 +207,6 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     @Override
     public SubstrateRegisterConfig getRegisterConfig() {
         return (SubstrateRegisterConfig) getCodeCache().getRegisterConfig();
-    }
-
-    @Override
-    public ForeignCallsProvider getForeignCalls() {
-        return providers.getForeignCalls();
     }
 
     CompilationResult getCompilationResult() {

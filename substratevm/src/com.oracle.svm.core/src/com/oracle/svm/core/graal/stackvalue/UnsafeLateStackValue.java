@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.word;
+package com.oracle.svm.core.graal.stackvalue;
 
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.nodes.spi.WordVerification;
+import org.graalvm.word.PointerBase;
 
-import jdk.vm.ci.meta.JavaType;
+/**
+ * Similar to {@link UnsafeStackValue} but the allocation size only needs to be constant during
+ * compilation (and not during graph building).
+ */
+public final class UnsafeLateStackValue {
 
-public final class WordVerificationImpl implements WordVerification {
-
-    private final WordTypes wordTypes;
-
-    public WordVerificationImpl(WordTypes wordTypes) {
-        this.wordTypes = wordTypes;
+    private UnsafeLateStackValue() {
     }
 
-    @Override
-    public boolean guaranteeWord(JavaType type) {
-        GraalError.guarantee(wordTypes.isWord(type), "Expected a Word but got %s", type);
-        return true;
+    @SuppressWarnings("unused")
+    public static <T extends PointerBase> T get(int size) {
+        throw new IllegalStateException("Cannot invoke method during native image generation");
     }
-
-    @Override
-    public boolean guaranteeNotWord(JavaType type) {
-        GraalError.guarantee(!wordTypes.isWord(type), "Unexpected a Word type %s", type);
-        return true;
-    }
-
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.core.common.spi;
+package com.oracle.svm.core.c;
 
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
+import org.graalvm.nativeimage.IsolateThread;
+
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
+import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
+import com.oracle.svm.core.thread.VMThreads;
 
 /**
- * A set of providers which are required for LIR and/or code generation. Some may not be present
- * (i.e., null).
+ * Only sets the heap base and the thread register but does not do any thread transitions. Only use
+ * this prologue if {@link com.oracle.svm.core.c.function.CEntryPointSetup.EnterPrologue} can't be
+ * used.
  */
-public interface CodeGenProviders {
-
-    MetaAccessProvider getMetaAccess();
-
-    CodeCacheProvider getCodeCache();
-
-    ForeignCallsProvider getForeignCalls();
-
-    ConstantReflectionProvider getConstantReflection();
-
-    MetaAccessExtensionProvider getMetaAccessExtensionProvider();
+public class SetThreadAndHeapBasePrologue implements CEntryPointOptions.Prologue {
+    @Uninterruptible(reason = "prologue")
+    public static void enter(IsolateThread thread) {
+        WriteCurrentVMThreadNode.writeCurrentVMThread(thread);
+        if (SubstrateOptions.SpawnIsolates.getValue()) {
+            CEntryPointSnippets.setHeapBase(VMThreads.IsolateTL.get());
+        }
+    }
 }

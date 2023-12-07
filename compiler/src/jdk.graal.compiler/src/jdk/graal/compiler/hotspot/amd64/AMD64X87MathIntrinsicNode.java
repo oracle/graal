@@ -56,14 +56,14 @@ public final class AMD64X87MathIntrinsicNode extends UnaryNode implements LIRLow
     protected final UnaryOperation operation;
 
     protected AMD64X87MathIntrinsicNode(ValueNode value, UnaryOperation op) {
-        super(TYPE, op.computeStamp(value.stamp(NodeView.DEFAULT)), value);
+        super(TYPE, UnaryOperation.computeStamp(op, value.stamp(NodeView.DEFAULT)), value);
         assert value.stamp(NodeView.DEFAULT) instanceof FloatStamp && PrimitiveStamp.getBits(value.stamp(NodeView.DEFAULT)) == 64 : Assertions.errorMessage(value);
         this.operation = op;
     }
 
     @Override
     public Stamp foldStamp(Stamp valueStamp) {
-        return operation.computeStamp(valueStamp);
+        return UnaryOperation.computeStamp(operation, valueStamp);
     }
 
     @Override
@@ -90,7 +90,7 @@ public final class AMD64X87MathIntrinsicNode extends UnaryNode implements LIRLow
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isConstant()) {
-            return ConstantNode.forDouble(operation.compute(forValue.asJavaConstant().asDouble()));
+            return ConstantNode.forDouble(UnaryOperation.compute(operation, forValue.asJavaConstant().asDouble()));
         }
         return this;
     }

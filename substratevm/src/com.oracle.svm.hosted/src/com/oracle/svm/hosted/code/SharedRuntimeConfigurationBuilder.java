@@ -147,7 +147,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
             }
         }
 
-        return new RuntimeConfiguration(p, snippetReflection, backends, wordTypes, handlers);
+        return new RuntimeConfiguration(p, snippetReflection, backends, handlers);
     }
 
     protected abstract Providers createProviders(CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,

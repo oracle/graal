@@ -172,9 +172,6 @@
     run+: [
       self.benchmark_cmd + ["specjvm2008:*", "--"] + self.extra_vm_args + ["--", "-ikv", "-it", "240s", "-wt", "120s"]
     ],
-    teardown+: [
-      ["rm", "-r", "${SPECJVM2008}/results"]
-    ],
     timelimit: "3:00:00",
     forks_batches:: 5,
     forks_timelimit:: "06:00:00",

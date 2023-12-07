@@ -69,7 +69,6 @@ import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -455,13 +454,13 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         private AMD64Address getFeatureMapAddress() {
-            SnippetReflectionProvider snippetReflection = ((Providers) crb.providers).getSnippetReflection();
+            SnippetReflectionProvider snippetReflection = crb.getSnippetReflection();
             JavaConstant object = snippetReflection.forObject(RuntimeCPUFeatureCheckImpl.instance());
-            int fieldOffset = fieldOffset(RuntimeCPUFeatureCheckImpl.getMaskField(crb.providers.getMetaAccess()));
+            int fieldOffset = fieldOffset(RuntimeCPUFeatureCheckImpl.getMaskField(crb.getMetaAccess()));
             GraalError.guarantee(ConfigurationValues.getTarget().inlineObjects, "Dynamic feature check for callee saved registers requires inlined objects");
             Register heapBase = ReservedRegisters.singleton().getHeapBaseRegister();
             GraalError.guarantee(heapBase != null, "Heap base register must not be null");
-            return new AMD64Address(heapBase, Register.None, Stride.S1, displacement(object, (SharedConstantReflectionProvider) crb.providers.getConstantReflection()) + fieldOffset,
+            return new AMD64Address(heapBase, Register.None, Stride.S1, displacement(object, (SharedConstantReflectionProvider) crb.getConstantReflection()) + fieldOffset,
                             displacementAnnotation(object));
         }
 

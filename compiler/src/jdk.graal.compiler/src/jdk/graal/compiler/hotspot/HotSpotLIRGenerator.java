@@ -58,7 +58,5 @@ public interface HotSpotLIRGenerator extends LIRGeneratorTool {
      */
     VirtualStackSlot getLockSlot(int lockDepth);
 
-    @Override
     HotSpotProviders getProviders();
-
 }

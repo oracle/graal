@@ -27,7 +27,6 @@ package com.oracle.svm.core.jfr;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
@@ -41,8 +40,10 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK22OrLater;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.LogTag;
 
@@ -147,12 +148,24 @@ public final class Target_jdk_jfr_internal_JVM {
     @Substitute
     @Uninterruptible(reason = "Needed for SubstrateJVM.getStackTraceId().")
     @TargetElement(onlyWith = JDK22OrLater.class)
-    public static long getStackTraceId(int skipCount) {
+    public static long getStackTraceId(int skipCount, long stackFilterId) {
         /*
          * The result is only valid until the epoch changes but this is fine because EventWriter
          * instances are invalidated when the epoch changes.
          */
         return SubstrateJVM.get().getStackTraceId(skipCount);
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK22OrLater.class)
+    public static long registerStackFilter(String[] classes, String[] methods) {
+        throw VMError.unimplemented("JFR StackFilters are not yet supported.");
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK22OrLater.class)
+    public static void unregisterStackFilter(long stackFilterId) {
+        throw VMError.unimplemented("JFR StackFilters are not yet supported.");
     }
 
     /** See {@link JVM#getThreadId}. */
