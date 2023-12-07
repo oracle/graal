@@ -25,6 +25,7 @@
 
 package com.oracle.svm.core.jdk.localization;
 
+import java.lang.reflect.Constructor;
 import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.HashMap;
@@ -209,8 +210,25 @@ public class LocalizationSupport {
     }
 
     public void prepareClassResourceBundle(@SuppressWarnings("unused") String basename, Class<?> bundleClass) {
-        RuntimeReflection.register(bundleClass);
-        RuntimeReflection.registerForReflectiveInstantiation(bundleClass);
+        registerNullaryConstructor(bundleClass);
         onClassBundlePrepared(bundleClass);
+    }
+
+    /**
+     * Bundle lookup code tries to reflectively access the default constructor of candidate bundle
+     * classes, and then tries to invoke them if they exist. We therefore need to register the
+     * default constructor as invoked if it exists, and as queried if it doesn't, which we know will
+     * result in a negative query.
+     */
+    private static void registerNullaryConstructor(Class<?> bundleClass) {
+        RuntimeReflection.register(bundleClass);
+        Constructor<?> nullaryConstructor;
+        try {
+            nullaryConstructor = bundleClass.getDeclaredConstructor();
+        } catch (NoSuchMethodException e) {
+            RuntimeReflection.registerConstructorLookup(bundleClass);
+            return;
+        }
+        RuntimeReflection.register(nullaryConstructor);
     }
 }
