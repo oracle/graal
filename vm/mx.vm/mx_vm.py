@@ -192,11 +192,6 @@ llvm_components = ['bgraalvm-native-binutil', 'bgraalvm-native-clang', 'bgraalvm
 ce_unchained_components = ['bnative-image-configure', 'cmp', 'lg', 'ni', 'nic', 'nil', 'nr_lib_jvmcicompiler', 'sdkc', 'sdkni', 'svm', 'svmforeign', 'svmsl', 'svmt', 'tflc', 'tflsm']
 ce_components_minimal = ['bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'insightheap', 'lg', 'libpoly', 'lsp', 'nfi-libffi', 'nfi', 'poly', 'polynative', 'pro', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'spolyglot', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json']
 ce_components = ce_components_minimal + ['nr_lib_jvmcicompiler', 'bnative-image-configure', 'ni', 'nic', 'nil', 'svm', 'svmt', 'svmnfi', 'svmsl', 'svmforeign']
-ce_win_complete_components = ['antlr4', 'bnative-image-configure', 'bpolyglot', 'cmp', 'cov', 'dap', 'ejvm', 'gu', 'gvm', 'gwa', 'gwal', 'icu4j', 'xz', 'ins', 'insight', 'insightheap', 'java', 'js', 'jsl', 'jss', 'lg', 'libpoly', 'llp', 'llrc', 'llrl', 'llrlf', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'ni', 'nic', 'nil', 'njs', 'njsl', 'poly', 'polynative', 'pro', 'pyn', 'pynl', 'rgx', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'spolyglot', 'svm', 'svmt', 'svmnfi', 'svmsl', 'svmforeign', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json', 'vvm']
-ce_aarch64_complete_components = ce_win_complete_components + ['rby', 'rbyl', 'svml']
-ce_complete_components = ce_aarch64_complete_components + ['ellvm', 'R', 'bRMain', 'xz']
-ce_darwin_aarch64_complete_components = list(ce_aarch64_complete_components)
-ce_darwin_aarch64_complete_components.remove('svml') # GR-34811 / GR-40147
 ce_ruby_components = ['antlr4', 'cmp', 'cov', 'dap', 'gvm', 'icu4j', 'ins', 'insight', 'insightheap', 'lg', 'llp', 'llrc', 'llrlf', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'pro', 'rby', 'rbyl', 'rgx', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json']
 ce_python_components = ['antlr4', 'sllvmvm', 'bpolybench', 'bpolyglot', 'cmp', 'cov', 'dap', 'dis', 'gu', 'gvm', 'icu4j', 'xz', 'ins', 'insight', 'insightheap', 'lg', 'libpoly', 'llp', 'llrc', 'llrl', 'llrlf', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'pbm', 'pmh', 'poly', 'polynative', 'pro', 'pyn', 'pynl', 'rgx', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'spolyglot', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json']
 ce_fastr_components = ce_components + llvm_components + ['antlr4', 'xz', 'sllvmvm', 'llp', 'bnative-image', 'snative-image-agent', 'R', 'bRMain', 'bnative-image-configure', 'llrc', 'snative-image-diagnostics-agent', 'llrn', 'llrl', 'llrlf']
@@ -215,11 +210,6 @@ mx_sdk_vm.register_vm_config('espresso-community', ['ejc', 'ejvm', 'gvm', 'java'
 mx_sdk_vm.register_vm_config('ce', ce_components + ['icu4j', 'js', 'jsl', 'jss', 'rgx', 'bnative-image', 'snative-image-agent', 'snative-image-diagnostics-agent'], _suite, dist_name='ce-js', env_file='ce-js')
 mx_sdk_vm.register_vm_config('ce', ce_components + ['icu4j', 'js', 'jsl', 'jss', 'njs', 'njsl', 'rgx', 'sjsvm'], _suite, dist_name='ce', env_file='ce-nodejs')
 mx_sdk_vm.register_vm_config('ce', ce_components_minimal + ['antlr4', 'llrn', 'llp', 'llrc', 'llrl', 'llrlf'], _suite, env_file='ce-llvm')
-mx_sdk_vm.register_vm_config('ce', ce_win_complete_components, _suite, dist_name='ce-win-complete')
-mx_sdk_vm.register_vm_config('ce', ce_aarch64_complete_components, _suite, dist_name='ce-aarch64-complete')
-mx_sdk_vm.register_vm_config('ce', ce_darwin_aarch64_complete_components, _suite, dist_name='ce-darwin-aarch64-complete')
-mx_sdk_vm.register_vm_config('ce', ce_complete_components, _suite, dist_name='ce-complete')
-mx_sdk_vm.register_vm_config('ce', ce_complete_components, _suite, dist_name='ce-complete', env_file='ce-darwin-complete')
 mx_sdk_vm.register_vm_config('ce-python', ce_python_components, _suite)
 mx_sdk_vm.register_vm_config('ce-fastr', ce_fastr_components, _suite)
 mx_sdk_vm.register_vm_config('ce-no_native', ce_no_native_components, _suite)
