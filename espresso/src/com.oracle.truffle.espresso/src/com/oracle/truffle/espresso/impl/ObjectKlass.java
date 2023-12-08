@@ -238,6 +238,10 @@ public final class ObjectKlass extends Klass {
     private void addSubType(ObjectKlass objectKlass) {
         // We only build subtypes model iff jdwp is enabled
         if (getContext().getEspressoEnv().JDWPOptions != null) {
+            if (this == getMeta().java_lang_Object) {
+                // skip collecting subtypes for j.l.Object because that can't ever change at runtime
+                return;
+            }
             if (subTypes == null) {
                 synchronized (this) {
                     // double-checked locking
@@ -254,6 +258,7 @@ public final class ObjectKlass extends Klass {
 
     public void removeAsSubType() {
         if (getSuperKlass() != getMeta().java_lang_Object) {
+            // we're not collecting subtypes of j.l.Object because that can't ever change at runtime
             getSuperKlass().removeSubType(this);
         }
         for (ObjectKlass superInterface : getSuperInterfaces()) {
