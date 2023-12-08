@@ -22,25 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.meta;
+package com.oracle.svm.core.fieldvaluetransformer;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
-@Platforms(Platform.HOSTED_ONLY.class)
-public interface FieldValueComputer {
+import com.oracle.svm.core.config.ConfigurationValues;
 
-    Class<?>[] EMPTY_TYPES = new Class<?>[0];
+import jdk.vm.ci.meta.JavaKind;
 
-    default boolean isAvailable() {
-        return true;
+public final class ArrayIndexScaleFieldValueTransformer extends BoxingTransformer implements FieldValueTransformer {
+    private final Class<?> targetClass;
+
+    public ArrayIndexScaleFieldValueTransformer(Class<?> targetClass, Class<?> returnType) {
+        super(returnType);
+        this.targetClass = targetClass;
     }
 
-    default Class<?>[] types() {
-        return EMPTY_TYPES;
-    }
-
-    default boolean canBeNull() {
-        return false;
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        return box(ConfigurationValues.getObjectLayout().getArrayIndexScale(JavaKind.fromJavaClass(targetClass.getComponentType())));
     }
 }

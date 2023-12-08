@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-import static com.oracle.graal.pointsto.util.AnalysisError.shouldNotReachHere;
-
 import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
@@ -33,8 +31,6 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
@@ -48,7 +44,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
-import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -67,7 +62,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.meta.FieldValueComputer;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
@@ -87,8 +81,6 @@ import com.oracle.svm.core.graal.thread.VMThreadLocalAccess;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.core.heap.UnknownClass;
-import com.oracle.svm.core.heap.UnknownObjectField;
-import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.ReferenceType;
@@ -99,7 +91,7 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.analysis.CustomTypeFieldHandler;
+import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.analysis.SVMParsingSupport;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -117,7 +109,8 @@ import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisGraphDecoderImpl;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyImpl;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils;
-import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
+import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.hosted.substitute.AutomaticUnsafeTransformationSupport;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -157,7 +150,7 @@ public class SVMHost extends HostVM {
     private final ClassInitializationSupport classInitializationSupport;
     private final LinkAtBuildTimeSupport linkAtBuildTimeSupport;
     private final HostedStringDeduplication stringTable;
-    private final UnsafeAutomaticSubstitutionProcessor automaticSubstitutions;
+    private final AutomaticUnsafeTransformationSupport automaticUnsafeTransformations;
 
     /**
      * Optionally keep the Graal graphs alive during analysis. This increases the memory footprint
@@ -179,15 +172,16 @@ public class SVMHost extends HostVM {
     private final SVMParsingSupport parsingSupport;
     private final InlineBeforeAnalysisPolicy inlineBeforeAnalysisPolicy;
 
+    private final FieldValueInterceptionSupport fieldValueInterceptionSupport;
+
     @SuppressWarnings("this-escape")
-    public SVMHost(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
-                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform) {
-        super(options, classLoader);
+    public SVMHost(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions) {
+        super(options, loader.getClassLoader());
         this.classInitializationSupport = classInitializationSupport;
         this.stringTable = HostedStringDeduplication.singleton();
         this.forbiddenTypes = setupForbiddenTypes(options);
-        this.automaticSubstitutions = automaticSubstitutions;
-        this.platform = platform;
+        this.automaticUnsafeTransformations = new AutomaticUnsafeTransformationSupport(options, annotationSubstitutions, loader);
+        this.platform = loader.platform;
         this.linkAtBuildTimeSupport = LinkAtBuildTimeSupport.singleton();
         if (ImageSingletons.contains(MultiMethodAnalysisPolicy.class)) {
             multiMethodAnalysisPolicy = ImageSingletons.lookup(MultiMethodAnalysisPolicy.class);
@@ -204,6 +198,8 @@ public class SVMHost extends HostVM {
         } else {
             parsingSupport = null;
         }
+        fieldValueInterceptionSupport = new FieldValueInterceptionSupport(annotationSubstitutions);
+        ImageSingletons.add(FieldValueInterceptionSupport.class, fieldValueInterceptionSupport);
     }
 
     protected InlineBeforeAnalysisPolicyUtils getInlineBeforeAnalysisPolicyUtils() {
@@ -303,7 +299,7 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public void onTypeReachable(AnalysisType analysisType) {
+    public void onTypeReachable(BigBang bb, AnalysisType analysisType) {
         if (!analysisType.isReachable()) {
             throw VMError.shouldNotReachHere("Registering and initializing a type that was not yet marked as reachable: " + analysisType);
         }
@@ -315,7 +311,7 @@ public class SVMHost extends HostVM {
         classInitializationSupport.maybeInitializeAtBuildTime(analysisType);
 
         /* Compute the automatic substitutions. */
-        automaticSubstitutions.computeSubstitutions(this, GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(analysisType.getJavaClass()));
+        automaticUnsafeTransformations.computeTransformations(bb, this, GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(analysisType.getJavaClass()));
     }
 
     @Override
@@ -482,10 +478,6 @@ public class SVMHost extends HostVM {
 
     public ClassInitializationSupport getClassInitializationSupport() {
         return classInitializationSupport;
-    }
-
-    public UnsafeAutomaticSubstitutionProcessor getAutomaticSubstitutionProcessor() {
-        return automaticSubstitutions;
     }
 
     private static int computeHubType(AnalysisType type) {
@@ -950,77 +942,6 @@ public class SVMHost extends HostVM {
          * methods.
          */
         return method.isOriginalMethod() && !SubstrateCompilationDirectives.singleton().isRegisteredForDeoptTesting(method);
-    }
-
-    @Override
-    public FieldValueComputer createFieldValueComputer(AnalysisField field) {
-        UnknownObjectField unknownObjectField = field.getAnnotation(UnknownObjectField.class);
-        if (unknownObjectField != null) {
-            return createObjectFieldValueComputer(field, unknownObjectField);
-        }
-        UnknownPrimitiveField unknownPrimitiveField = field.getAnnotation(UnknownPrimitiveField.class);
-        if (unknownPrimitiveField != null) {
-            return createPrimitiveFieldValueComputer(field, unknownPrimitiveField);
-        }
-        return null;
-    }
-
-    private static FieldValueComputer createObjectFieldValueComputer(AnalysisField field, UnknownObjectField unknownValueField) {
-        return new FieldValueComputer() {
-            final BooleanSupplier availability = ReflectionUtil.newInstance(unknownValueField.availability());
-
-            @Override
-            public boolean isAvailable() {
-                return availability.getAsBoolean();
-            }
-
-            @Override
-            public Class<?>[] types() {
-                return extractAnnotationTypes(field, unknownValueField.types(), unknownValueField.fullyQualifiedTypes());
-            }
-
-            @Override
-            public boolean canBeNull() {
-                return unknownValueField.canBeNull();
-            }
-        };
-    }
-
-    private static FieldValueComputer createPrimitiveFieldValueComputer(AnalysisField field, UnknownPrimitiveField unknownValueField) {
-        return new FieldValueComputer() {
-            final BooleanSupplier availability = ReflectionUtil.newInstance(unknownValueField.availability());
-
-            @Override
-            public boolean isAvailable() {
-                return availability.getAsBoolean();
-            }
-
-            @Override
-            public Class<?>[] types() {
-                return new Class<?>[]{field.getType().getJavaClass()};
-            }
-        };
-    }
-
-    private static Class<?>[] extractAnnotationTypes(AnalysisField field, Class<?>[] types, String[] fullyQualifiedTypes) {
-        List<Class<?>> annotationTypes = new ArrayList<>(Arrays.asList(types));
-        for (String annotationTypeName : fullyQualifiedTypes) {
-            try {
-                Class<?> annotationType = Class.forName(annotationTypeName);
-                annotationTypes.add(annotationType);
-            } catch (ClassNotFoundException e) {
-                throw shouldNotReachHere("Specified computed value type not found " + annotationTypeName);
-            }
-        }
-
-        if (annotationTypes.isEmpty()) {
-            /* If no types are specified fallback to the field declared type. */
-            AnalysisType fieldType = field.getType();
-            VMError.guarantee(CustomTypeFieldHandler.isConcreteType(fieldType), "Illegal use of @UnknownObjectField annotation on field %s. " +
-                            "The field type must be concrete or the annotation must declare a concrete type.", field);
-            annotationTypes.add(fieldType.getJavaClass());
-        }
-        return annotationTypes.toArray(new Class<?>[0]);
     }
 
     public SimulateClassInitializerSupport createSimulateClassInitializerSupport(AnalysisMetaAccess aMetaAccess) {

@@ -41,11 +41,9 @@ import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
-import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.meta.FieldValueComputer;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
@@ -155,7 +153,7 @@ public abstract class HostVM {
      * 
      * @param newValue the type to initialize
      */
-    public abstract void onTypeReachable(AnalysisType newValue);
+    public abstract void onTypeReachable(BigBang bb, AnalysisType newValue);
 
     /**
      * Check if an {@link AnalysisType} is initialized.
@@ -419,9 +417,5 @@ public abstract class HostVM {
          * support it within deoptimization targets and runtime-compiled methods.
          */
         return method.isOriginalMethod();
-    }
-
-    public FieldValueComputer createFieldValueComputer(@SuppressWarnings("unused") AnalysisField field) {
-        return null;
     }
 }

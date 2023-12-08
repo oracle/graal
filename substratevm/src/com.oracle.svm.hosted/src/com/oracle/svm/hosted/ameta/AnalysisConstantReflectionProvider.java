@@ -76,6 +76,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     private final ClassInitializationSupport classInitializationSupport;
     private final AnalysisMethodHandleAccessProvider methodHandleAccess;
     private SimulateClassInitializerSupport simulateClassInitializerSupport;
+    private final FieldValueInterceptionSupport fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
 
     public AnalysisConstantReflectionProvider(AnalysisUniverse universe, UniverseMetaAccess metaAccess, ClassInitializationSupport classInitializationSupport) {
         this.universe = universe;
@@ -227,7 +228,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         }
         if (value == null && receiver instanceof ImageHeapConstant heapConstant) {
             heapConstant.ensureReaderInstalled();
-            AnalysisError.guarantee(ReadableJavaField.isValueAvailable(field), "Value not yet available for %s", field);
+            AnalysisError.guarantee(fieldValueInterceptionSupport.isValueAvailable(field), "Value not yet available for %s", field);
             ImageHeapInstance heapObject = (ImageHeapInstance) receiver;
             value = heapObject.readFieldValue(field);
         }
@@ -245,7 +246,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
      * heap is a snapshot of the hosted state; simulated values are a level above the shadow heap.
      */
     public ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, JavaConstant receiver) {
-        if (ReadableJavaField.isValueAvailable(field)) {
+        if (fieldValueInterceptionSupport.isValueAvailable(field)) {
             /* Materialize and return the value. */
             return ValueSupplier.eagerValue(doReadValue(field, receiver));
         }
@@ -258,7 +259,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
          * during analysis or in a later phase. Attempts to materialize the value before it becomes
          * available will result in an error.
          */
-        return ValueSupplier.lazyValue(() -> doReadValue(field, receiver), () -> ReadableJavaField.isValueAvailable(field));
+        return ValueSupplier.lazyValue(() -> doReadValue(field, receiver), () -> fieldValueInterceptionSupport.isValueAvailable(field));
     }
 
     /** Returns the hosted field value. The receiver must be a hosted constant. */
@@ -268,7 +269,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     }
 
     private JavaConstant doReadValue(AnalysisField field, JavaConstant receiver) {
-        return universe.fromHosted(ReadableJavaField.readFieldValue(classInitializationSupport, field.wrapped, receiver));
+        return universe.fromHosted(fieldValueInterceptionSupport.readFieldValue(classInitializationSupport, field, receiver));
     }
 
     /**

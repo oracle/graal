@@ -50,7 +50,6 @@ import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -107,7 +106,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     private final Map<ResolvedJavaMethod, ResolvedJavaMethod> methodSubstitutions;
     private final Map<ResolvedJavaMethod, ResolvedJavaMethod> polymorphicMethodSubstitutions;
     private final Map<ResolvedJavaField, ResolvedJavaField> fieldSubstitutions;
-    private ClassInitializationSupport classInitializationSupport;
+    private final ClassInitializationSupport classInitializationSupport;
 
     public AnnotationSubstitutionProcessor(ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport) {
         this.imageClassLoader = imageClassLoader;
@@ -119,20 +118,6 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         methodSubstitutions = new ConcurrentHashMap<>();
         polymorphicMethodSubstitutions = new HashMap<>();
         fieldSubstitutions = new ConcurrentHashMap<>();
-    }
-
-    public void registerFieldValueTransformer(Field reflectionField, FieldValueTransformer transformer) {
-        ResolvedJavaField field = metaAccess.lookupJavaField(reflectionField);
-        boolean isFinal = field.isFinal();
-        ComputedValueField computedValueField = new ComputedValueField(field, field, Kind.Custom, reflectionField.getType(), transformer, null, null, isFinal, false);
-        ResolvedJavaField existingSubstitution = fieldSubstitutions.put(field, computedValueField);
-
-        if (existingSubstitution != null) {
-            String reason = existingSubstitution.equals(field)
-                            ? "The field was already accessed by the static analysis. The transformer must be registered earlier, before the static analysis sees a reference to the field for the first time."
-                            : "A field value transformer is already registered for this field.";
-            throw UserError.abort("Cannot register a field value transformer for field %s: %s", field, reason);
-        }
     }
 
     @Override
@@ -200,12 +185,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             throw new DeletedElementException(deleteErrorMessage(field, deleteAnnotation, true));
         }
 
-        /*
-         * If there is no substitution registered yet, put in the field itself as a marker that the
-         * field was used in a lookup. Registering a substitution after a lookup was done is not
-         * allowed because that means the substitution was missed in the prior lookup.
-         */
-        ResolvedJavaField existing = fieldSubstitutions.putIfAbsent(field, field);
+        ResolvedJavaField existing = fieldSubstitutions.get(field);
         return existing != null ? existing : field;
     }
 
@@ -996,12 +976,12 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         }
         Class<?> transformedValueAllowedType = getTargetClass(annotatedField.getType());
 
-        return new ComputedValueField(original, annotated, kind, transformedValueAllowedType, null, targetClass, targetName, isFinal, disableCaching);
+        return ComputedValueField.create(original, annotated, kind, transformedValueAllowedType, null, targetClass, targetName, isFinal, disableCaching);
     }
 
     protected void reinitializeField(Field annotatedField) {
         ResolvedJavaField annotated = metaAccess.lookupJavaField(annotatedField);
-        ComputedValueField alias = new ComputedValueField(annotated, annotated, Kind.Reset, annotatedField.getDeclaringClass(), "", false);
+        ComputedValueField alias = ComputedValueField.create(annotated, annotated, Kind.Reset, annotatedField.getDeclaringClass(), "", false);
         register(fieldSubstitutions, annotated, annotated, alias);
     }
 

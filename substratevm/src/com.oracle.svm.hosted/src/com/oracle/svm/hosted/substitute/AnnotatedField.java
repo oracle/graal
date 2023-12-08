@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.substitute;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.Field;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.svm.core.BuildPhaseProvider;
@@ -123,8 +122,8 @@ public class AnnotatedField implements ReadableJavaField, OriginalFieldProvider,
     }
 
     @Override
-    public Field getJavaField() {
-        return OriginalFieldProvider.getJavaField(original);
+    public ResolvedJavaField unwrapTowardsOriginalField() {
+        return original;
     }
 
     @Override

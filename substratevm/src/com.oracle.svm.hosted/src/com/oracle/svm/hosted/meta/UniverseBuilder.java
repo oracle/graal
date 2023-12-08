@@ -91,7 +91,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.hosted.ameta.ReadableJavaField;
+import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.heap.PodSupport;
@@ -1133,13 +1133,14 @@ public class UniverseBuilder {
     }
 
     private void processFieldLocations() {
+        var fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
         for (HostedField hField : hUniverse.fields.values()) {
             AnalysisField aField = hField.wrapped;
             if (aField.wrapped instanceof ComputedValueField) {
                 ((ComputedValueField) aField.wrapped).processSubstrate(hMetaAccess);
             }
 
-            if (!hField.hasLocation() && Modifier.isStatic(hField.getModifiers()) && !aField.isWritten() && ReadableJavaField.isValueAvailable(aField)) {
+            if (hField.isReachable() && !hField.hasLocation() && Modifier.isStatic(hField.getModifiers()) && !aField.isWritten() && fieldValueInterceptionSupport.isValueAvailable(aField)) {
                 hField.setUnmaterializedStaticConstant();
             }
         }
