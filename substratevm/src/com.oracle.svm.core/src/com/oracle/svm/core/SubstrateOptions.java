@@ -1040,6 +1040,10 @@ public class SubstrateOptions {
     @Option(help = "Include all classes, methods, fields, and resources from given paths", type = OptionType.Debug) //
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeAllFromPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
+    public static boolean includeAll() {
+        return IncludeAllFromPath.hasBeenSet() || IncludeAllFromPath.hasBeenSet();
+    }
+
     @Option(help = "Run layered image base layer open-world analysis. Includes all public types and methods that can be reached using normal Java access rules.")//
     public static final HostedOptionKey<Boolean> LayeredBaseImageAnalysis = new HostedOptionKey<>(false);
 

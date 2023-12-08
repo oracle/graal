@@ -1709,13 +1709,7 @@ public class NativeImageGenerator {
          * The same holds for "hotspot" elements, which come from the hosting HotSpot VM, unless
          * they are JDK internal types.
          */
-        String lname = name.toLowerCase();
-        String message = null;
-        if (lname.contains("hosted")) {
-            message = "Hosted element used at run time: " + name;
-        } else if (!name.startsWith("jdk.internal") && lname.contains("hotspot")) {
-            message = "HotSpot element used at run time: " + name;
-        }
+        String message = checkName(name);
 
         if (message != null) {
             if (bb != null) {
@@ -1724,6 +1718,17 @@ public class NativeImageGenerator {
                 throw new UnsupportedFeatureException(message);
             }
         }
+    }
+
+    public static String checkName(String name) {
+        String lname = name.toLowerCase();
+        String message = null;
+        if (lname.contains("hosted")) {
+            message = "Hosted element used at run time: " + name;
+        } else if (!name.startsWith("jdk.internal") && lname.contains("hotspot")) {
+            message = "HotSpot element used at run time: " + name;
+        }
+        return message;
     }
 
     @SuppressWarnings("try")

@@ -73,6 +73,9 @@ public abstract class ClassInclusionPolicy {
      * Determine if the given field needs to be included in the image according to the policy.
      */
     public boolean isFieldIncluded(Field field) {
+        if (!bb.getHostVM().platformSupported(field)) {
+            return false;
+        }
         return bb.getHostVM().isFieldIncluded(bb, field);
     }
 

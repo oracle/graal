@@ -27,12 +27,14 @@ package com.oracle.svm.hosted.analysis;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
 
 import com.oracle.graal.pointsto.ClassInclusionPolicy;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -40,6 +42,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.util.TimerCollection;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.CustomTypeFieldHandler;
@@ -116,7 +119,14 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
 
     @Override
     public void onTypeReachable(AnalysisType type) {
-        postTask(d -> type.getInitializeMetaDataTask().ensureDone());
+        postTask(d -> {
+            type.getInitializeMetaDataTask().ensureDone();
+            if (SubstrateOptions.includeAll()) {
+                Arrays.stream(OriginalClassProvider.getJavaClass(type).getDeclaredFields())
+                                .filter(classInclusionPolicy::isFieldIncluded)
+                                .forEach(classInclusionPolicy::includeField);
+            }
+        });
     }
 
     @Override
@@ -213,5 +223,4 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
         /* Not matching method found at all. */
         return AbstractMethodError.class;
     }
-
 }
