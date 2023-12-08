@@ -25,9 +25,16 @@
  */
 package com.oracle.svm.hosted.image;
 
+import static com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind.ADDRESS;
+import static com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind.GETTER;
+import static com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind.SETTER;
+
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.HashMap;
+
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
@@ -55,6 +62,7 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.InjectedFieldsType;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
+
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.vm.ci.code.RegisterConfig;
@@ -63,14 +71,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Signature;
-
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.word.WordBase;
-
-import static com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind.ADDRESS;
-import static com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind.GETTER;
-import static com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind.SETTER;
 
 /**
  * Abstract base class for implementation of DebugInfoProvider API providing a suite of useful
@@ -448,12 +448,12 @@ public abstract class NativeImageDebugInfoProviderBase {
         SubstrateCallingConventionKind callingConventionKind = method.getCallingConventionKind();
         HostedType declaringClass = method.getDeclaringClass();
         HostedType receiverType = method.isStatic() ? null : declaringClass;
-        Signature signature = method.getSignature();
+        var signature = method.getSignature();
         SubstrateCallingConventionType type = callingConventionKind.toType(false);
         Backend backend = runtimeConfiguration.lookupBackend(method);
         RegisterConfig registerConfig = backend.getCodeCache().getRegisterConfig();
         assert registerConfig instanceof SubstrateRegisterConfig;
-        return (SubstrateCallingConvention) registerConfig.getCallingConvention(type, signature.getReturnType(null), signature.toParameterTypes(receiverType), backend);
+        return (SubstrateCallingConvention) registerConfig.getCallingConvention(type, signature.getReturnType(), signature.toParameterTypes(receiverType), backend);
     }
 
     /*

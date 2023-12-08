@@ -25,6 +25,7 @@
 package com.oracle.svm.core.graal.replacements;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
@@ -95,6 +96,7 @@ public class SubstrateGraphKit extends GraphKit {
 
     private final FrameStateBuilder frameState;
     private int nextBCI;
+    private final List<ValueNode> arguments;
 
     @SuppressWarnings("this-escape")
     public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers,
@@ -104,7 +106,9 @@ public class SubstrateGraphKit extends GraphKit {
         frameState = new FrameStateBuilder(this, stubMethod, graph);
         frameState.disableKindVerification();
         frameState.disableStateVerification();
-        frameState.initializeForMethodStart(null, true, graphBuilderPlugins);
+        List<ValueNode> collectedArguments = new ArrayList<>();
+        frameState.initializeForMethodStart(null, true, graphBuilderPlugins, collectedArguments);
+        arguments = Collections.unmodifiableList(collectedArguments);
         graph.start().setStateAfter(frameState.create(bci(), graph.start()));
     }
 
@@ -133,21 +137,7 @@ public class SubstrateGraphKit extends GraphKit {
         frameState.storeLocal(index, slotKind, value);
     }
 
-    public List<ValueNode> loadArguments(JavaType[] paramTypes) {
-        List<ValueNode> arguments = new ArrayList<>();
-        int numOfParams = paramTypes.length;
-        int javaIndex = 0;
-
-        for (int i = 0; i < numOfParams; i++) {
-            JavaType type = paramTypes[i];
-            JavaKind kind = type.getJavaKind();
-
-            assert frameState.loadLocal(javaIndex, kind) != null;
-            arguments.add(frameState.loadLocal(javaIndex, kind));
-
-            javaIndex += kind.getSlotCount();
-        }
-
+    public List<ValueNode> getInitialArguments() {
         return arguments;
     }
 
@@ -387,15 +377,9 @@ public class SubstrateGraphKit extends GraphKit {
         return withExceptionNode;
     }
 
-    public void appendStateSplitProxy(FrameState state) {
+    public void appendStateSplitProxy() {
         StateSplitProxyNode proxy = new StateSplitProxyNode();
         append(proxy);
-        proxy.setStateAfter(state);
-    }
-
-    public void appendStateSplitProxy(FrameStateBuilder stateBuilder) {
-        StateSplitProxyNode proxy = new StateSplitProxyNode();
-        append(proxy);
-        proxy.setStateAfter(stateBuilder.create(bci(), proxy));
+        proxy.setStateAfter(frameState.create(bci(), proxy));
     }
 }

@@ -1010,7 +1010,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         }
 
         @Override
-        protected FixedWithNextNode processInvokeArgs(ResolvedJavaMethod targetMethod, FixedWithNextNode insertionPoint, ValueNode[] arguments, NodeSourcePosition sourcePosition) {
+        protected FixedWithNextNode processInvokeArgs(AnalysisMethod targetMethod, FixedWithNextNode insertionPoint, ValueNode[] arguments, NodeSourcePosition sourcePosition) {
             StructuredGraph graph = insertionPoint.graph();
             InlinedInvokeArgumentsNode newNode = graph.add(new InlinedInvokeArgumentsNode(targetMethod, arguments));
             newNode.setNodeSourcePosition(sourcePosition);
@@ -1019,7 +1019,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         }
 
         @Override
-        protected boolean shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+        protected boolean shouldInlineInvoke(GraphBuilderContext b, AnalysisMethod method, ValueNode[] args) {
             if (inliningUtils.alwaysInlineInvoke((AnalysisMetaAccess) b.getMetaAccess(), method)) {
                 return true;
             }
@@ -1042,13 +1042,13 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         }
 
         @Override
-        protected InlineInvokePlugin.InlineInfo createInvokeInfo(ResolvedJavaMethod method) {
+        protected InlineInvokePlugin.InlineInfo createInvokeInfo(AnalysisMethod method) {
             /*
              * Set this graph initially to a stub. If there are no explicit calls to this method
              * (i.e., all calls to this method are inlined), then the method's full flow will not
              * need to be created.
              */
-            AnalysisMethod runtimeMethod = ((AnalysisMethod) method).getOrCreateMultiMethod(RUNTIME_COMPILED_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
+            AnalysisMethod runtimeMethod = method.getOrCreateMultiMethod(RUNTIME_COMPILED_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
             return InlineInvokePlugin.InlineInfo.createStandardInlineInfo(runtimeMethod);
         }
 
@@ -1060,7 +1060,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
 
         @Override
         protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMetaAccess metaAccess,
-                        ResolvedJavaMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle) {
+                        AnalysisMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle) {
             if (outer instanceof AccumulativeInlineScope accOuter) {
                 /*
                  * once the accumulative policy is activated, then we cannot return to the trivial
@@ -1072,7 +1072,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
             assert outer == null || outer instanceof AlwaysInlineScope : "unexpected outer scope: " + outer;
 
             // check if trivial is possible
-            boolean trivialInlineAllowed = hostVM.isAnalysisTrivialMethod((AnalysisMethod) method);
+            boolean trivialInlineAllowed = hostVM.isAnalysisTrivialMethod(method);
             int inliningDepth = outer == null ? 1 : outer.inliningDepth + 1;
             if (trivialInlineAllowed && inliningDepth <= trivialAllowingInliningDepth) {
                 return new AlwaysInlineScope(inliningDepth);

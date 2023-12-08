@@ -293,8 +293,7 @@ public class UniverseBuilder {
     private HostedMethod makeMethod(AnalysisMethod aMethod) {
         AnalysisType aDeclaringClass = aMethod.getDeclaringClass();
         HostedType hDeclaringClass = lookupType(aDeclaringClass);
-        @SuppressWarnings("unchecked")
-        var signature = makeSignature((ResolvedSignature<AnalysisType>) aMethod.getSignature());
+        ResolvedSignature<HostedType> signature = makeSignature(aMethod.getSignature());
         ConstantPool constantPool = makeConstantPool(aMethod.getConstantPool(), aDeclaringClass);
 
         ExceptionHandler[] aHandlers = aMethod.getExceptionHandlers();

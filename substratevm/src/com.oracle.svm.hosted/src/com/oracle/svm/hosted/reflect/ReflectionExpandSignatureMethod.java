@@ -24,6 +24,15 @@
  */
 package com.oracle.svm.hosted.reflect;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
+import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointer;
+import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
+import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
+import com.oracle.svm.hosted.code.NonBytecodeMethod;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.debug.DebugContext;
@@ -33,14 +42,6 @@ import jdk.graal.compiler.nodes.IndirectCallTargetNode;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
-
-import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
-import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointer;
-import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
-import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
-import com.oracle.svm.hosted.code.NonBytecodeMethod;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -75,18 +76,18 @@ public class ReflectionExpandSignatureMethod extends NonBytecodeMethod {
      * in different classes.
      */
     @Override
-    public StructuredGraph buildGraph(DebugContext ctx, ResolvedJavaMethod m, HostedProviders providers, Purpose purpose) {
-        ReflectionGraphKit graphKit = new ReflectionGraphKit(ctx, providers, m, purpose);
+    public StructuredGraph buildGraph(DebugContext ctx, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
+        ReflectionGraphKit kit = new ReflectionGraphKit(ctx, providers, method, purpose);
 
-        ValueNode receiver = graphKit.loadLocal(0, JavaKind.Object);
-        ValueNode argumentArray = graphKit.loadLocal(1, JavaKind.Object);
+        ValueNode receiver = kit.loadLocal(0, JavaKind.Object);
+        ValueNode argumentArray = kit.loadLocal(1, JavaKind.Object);
         /* The invokedMethod is a Word type, so not yet a primitive in the signature. */
-        ValueNode invokedMethod = graphKit.loadLocal(2, JavaKind.Object);
+        ValueNode invokedMethod = kit.loadLocal(2, JavaKind.Object);
         /* Caller-sensitive-adapter methods have an additional Class parameter. */
-        ValueNode callerClass = callerSensitiveAdapter ? graphKit.loadLocal(3, JavaKind.Object) : null;
+        ValueNode callerClass = callerSensitiveAdapter ? kit.loadLocal(3, JavaKind.Object) : null;
 
         /* Clear all locals, so that they are not alive and spilled at method calls. */
-        graphKit.getFrameState().clearLocals();
+        kit.getFrameState().clearLocals();
 
         int receiverOffset = isStatic ? 0 : 1;
         int argsCount = argTypes.length + receiverOffset + (callerSensitiveAdapter ? 1 : 0);
@@ -97,42 +98,42 @@ public class ReflectionExpandSignatureMethod extends NonBytecodeMethod {
              * The receiver is already null-checked and type-checked at the call site in
              * SubstrateMethodAccessor.
              */
-            signature[0] = providers.getMetaAccess().lookupJavaType(Object.class);
+            signature[0] = kit.getMetaAccess().lookupJavaType(Object.class);
             args[0] = receiver;
         }
         if (callerSensitiveAdapter) {
-            signature[argsCount - 1] = providers.getMetaAccess().lookupJavaType(Class.class);
+            signature[argsCount - 1] = kit.getMetaAccess().lookupJavaType(Class.class);
             args[argsCount - 1] = callerClass;
         }
 
-        graphKit.fillArgsArray(argumentArray, receiverOffset, args, argTypes);
+        kit.fillArgsArray(argumentArray, receiverOffset, args, argTypes);
         for (int i = 0; i < argTypes.length; i++) {
-            signature[i + receiverOffset] = providers.getMetaAccess().lookupJavaType(argTypes[i]);
+            signature[i + receiverOffset] = kit.getMetaAccess().lookupJavaType(argTypes[i]);
         }
 
-        CallTargetNode callTarget = graphKit.append(new IndirectCallTargetNode(invokedMethod, args, StampPair.createSingle(StampFactory.forKind(returnKind)), signature, null,
+        CallTargetNode callTarget = kit.append(new IndirectCallTargetNode(invokedMethod, args, StampPair.createSingle(StampFactory.forKind(returnKind)), signature, null,
                         SubstrateCallingConventionKind.Java.toType(true), InvokeKind.Static));
 
-        InvokeWithExceptionNode invoke = graphKit.startInvokeWithException(callTarget, graphKit.getFrameState(), graphKit.bci());
-        graphKit.exceptionPart();
-        graphKit.branchToInvocationTargetException(graphKit.exceptionObject());
-        graphKit.endInvokeWithException();
+        InvokeWithExceptionNode invoke = kit.startInvokeWithException(callTarget, kit.getFrameState(), kit.bci());
+        kit.exceptionPart();
+        kit.branchToInvocationTargetException(kit.exceptionObject());
+        kit.endInvokeWithException();
 
         ValueNode returnValue;
         if (returnKind == JavaKind.Void) {
-            returnValue = graphKit.createObject(null);
+            returnValue = kit.createObject(null);
         } else {
             returnValue = invoke;
             if (returnKind.isPrimitive()) {
-                ResolvedJavaType boxedRetType = graphKit.getMetaAccess().lookupJavaType(returnKind.toBoxedJavaClass());
-                returnValue = graphKit.createBoxing(returnValue, returnKind, boxedRetType);
+                AnalysisType boxedRetType = kit.getMetaAccess().lookupJavaType(returnKind.toBoxedJavaClass());
+                returnValue = kit.createBoxing(returnValue, returnKind, boxedRetType);
             }
         }
-        graphKit.createReturn(returnValue, JavaKind.Object);
+        kit.createReturn(returnValue, JavaKind.Object);
 
-        graphKit.emitIllegalArgumentException(isStatic ? null : receiver, argumentArray);
-        graphKit.emitInvocationTargetException();
+        kit.emitIllegalArgumentException(isStatic ? null : receiver, argumentArray);
+        kit.emitInvocationTargetException();
 
-        return graphKit.finalizeGraph();
+        return kit.finalizeGraph();
     }
 }

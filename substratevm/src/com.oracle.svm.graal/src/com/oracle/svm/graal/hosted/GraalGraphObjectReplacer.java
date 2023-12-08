@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.hosted.Feature.BeforeHeapLayoutAccess;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -88,7 +89,6 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Signature;
 
 /**
  * Replaces Graal related objects during analysis in the universe.
@@ -106,7 +106,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
     private final ConcurrentMap<AnalysisField, SubstrateField> fields = new ConcurrentHashMap<>();
     private final ConcurrentMap<FieldLocationIdentity, SubstrateFieldLocationIdentity> fieldLocationIdentities = new ConcurrentHashMap<>();
     private final ConcurrentMap<AnalysisType, SubstrateType> types = new ConcurrentHashMap<>();
-    private final ConcurrentMap<Signature, SubstrateSignature> signatures = new ConcurrentHashMap<>();
+    private final ConcurrentMap<ResolvedSignature<AnalysisType>, SubstrateSignature> signatures = new ConcurrentHashMap<>();
     private final SubstrateProviders sProviders;
     private final SubstrateUniverseFactory universeFactory;
     private SubstrateGraalRuntime sGraalRuntime;
@@ -369,9 +369,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         return sFields;
     }
 
-    private synchronized SubstrateSignature createSignature(Signature original) {
-        assert !(original instanceof SubstrateSignature) : original;
-
+    private synchronized SubstrateSignature createSignature(ResolvedSignature<AnalysisType> original) {
         SubstrateSignature sSignature = signatures.get(original);
         if (sSignature == null) {
             SubstrateSignature newSignature = new SubstrateSignature();
@@ -381,13 +379,13 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
 
                 SubstrateType[] parameterTypes = new SubstrateType[original.getParameterCount(false)];
                 for (int index = 0; index < original.getParameterCount(false); index++) {
-                    parameterTypes[index] = createType(original.getParameterType(index, null));
+                    parameterTypes[index] = createType(original.getParameterType(index));
                 }
                 /*
                  * The links to other meta objects must be set after adding to the signatures to
                  * avoid infinite recursion.
                  */
-                sSignature.setTypes(parameterTypes, createType(original.getReturnType(null)));
+                sSignature.setTypes(parameterTypes, createType(original.getReturnType()));
             }
         }
         return sSignature;
