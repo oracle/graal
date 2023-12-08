@@ -79,7 +79,7 @@ final class AMD64HotSpotReturnOp extends AMD64HotSpotEpilogueBlockEndOp implemen
         if (!isStub) {
             if (requiresReservedStackAccessCheck) {
                 assert scratchForSafepointOnReturn != null;
-                HotSpotForeignCallsProvider foreignCalls = (HotSpotForeignCallsProvider) crb.foreignCalls;
+                HotSpotForeignCallsProvider foreignCalls = (HotSpotForeignCallsProvider) crb.getForeignCalls();
 
                 Label noReserved = new Label();
                 masm.cmpqAndJcc(rsp, new AMD64Address(r15, config.javaThreadReservedStackActivationOffset), ConditionFlag.Below, noReserved, true);

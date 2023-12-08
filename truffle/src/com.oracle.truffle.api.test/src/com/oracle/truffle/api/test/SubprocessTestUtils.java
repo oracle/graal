@@ -44,6 +44,10 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintStream;
+import java.lang.management.LockInfo;
+import java.lang.management.MonitorInfo;
+import java.lang.management.ThreadInfo;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -53,6 +57,9 @@ import java.util.ArrayList;
 import java.util.Formatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -60,9 +67,19 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import com.sun.tools.attach.VirtualMachine;
+import com.sun.tools.attach.VirtualMachineDescriptor;
+import org.graalvm.nativeimage.ImageInfo;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
+
+import javax.management.MBeanServerConnection;
+import javax.management.ObjectName;
+import javax.management.openmbean.CompositeData;
+import javax.management.remote.JMXConnector;
+import javax.management.remote.JMXConnectorFactory;
+import javax.management.remote.JMXServiceURL;
 
 /**
  * Support for executing Truffle tests in a sub-process with filtered compilation failure options.
@@ -85,6 +102,14 @@ import org.junit.Test;
  * </pre>
  */
 public final class SubprocessTestUtils {
+
+    /**
+     * Recommended value of the subprocess timeout. After exceeding it, the process is forcibly
+     * terminated.
+     *
+     * @see Builder#timeout(Duration)
+     */
+    public static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(5);
 
     private static final String CONFIGURED_PROPERTY = SubprocessTestUtils.class.getSimpleName() + ".configured";
 
@@ -154,14 +179,15 @@ public final class SubprocessTestUtils {
         throw new IllegalStateException("Failed to find current test method in class " + testClass);
     }
 
-    private static Subprocess execute(Method testMethod, boolean failOnNonZeroExitCode, List<String> prefixVMOptions, List<String> postfixVmOptions) throws IOException, InterruptedException {
+    private static Subprocess execute(Method testMethod, boolean failOnNonZeroExitCode, List<String> prefixVMOptions,
+                    List<String> postfixVmOptions, Duration timeout) throws IOException, InterruptedException {
         String enclosingElement = testMethod.getDeclaringClass().getName();
         String testName = testMethod.getName();
         Subprocess subprocess = javaHelper(
                         configure(getVmArgs(), prefixVMOptions, postfixVmOptions),
                         null, null,
                         List.of("com.oracle.mxtool.junit.MxJUnitWrapper", String.format("%s#%s", enclosingElement, testName)),
-                        null);
+                        timeout);
         if (failOnNonZeroExitCode && subprocess.exitCode != 0) {
             Assert.fail(String.join("\n", subprocess.output));
         }
@@ -319,6 +345,7 @@ public final class SubprocessTestUtils {
         private final List<String> prefixVmArgs = new ArrayList<>();
         private final List<String> postfixVmArgs = new ArrayList<>();
         private boolean failOnNonZeroExit = true;
+        private Duration timeout;
         private Consumer<Subprocess> onExit;
 
         private Builder(Class<?> testClass, Runnable run) {
@@ -341,6 +368,18 @@ public final class SubprocessTestUtils {
             return this;
         }
 
+        /**
+         * Sets the subprocess timeout. After its expiration, the subprocess is forcibly terminated.
+         * By default, there is no timeout and the subprocess execution time is not limited.
+         *
+         * @see SubprocessTestUtils#DEFAULT_TIMEOUT
+         *
+         */
+        public Builder timeout(Duration duration) {
+            this.timeout = Objects.requireNonNull(duration, "duration must be non null");
+            return this;
+        }
+
         public Builder onExit(Consumer<Subprocess> exit) {
             this.onExit = exit;
             return this;
@@ -350,7 +389,7 @@ public final class SubprocessTestUtils {
             if (isSubprocess()) {
                 runnable.run();
             } else {
-                Subprocess process = execute(findTestMethod(testClass), failOnNonZeroExit, prefixVmArgs, postfixVmArgs);
+                Subprocess process = execute(findTestMethod(testClass), failOnNonZeroExit, prefixVmArgs, postfixVmArgs, timeout);
                 if (onExit != null) {
                     onExit.accept(process);
                 }
@@ -539,11 +578,89 @@ public final class SubprocessTestUtils {
             outputReader.start();
             boolean finishedOnTime = process.waitFor(timeout.getSeconds(), TimeUnit.SECONDS);
             if (!finishedOnTime) {
+                dumpThreads(process.toHandle());
                 process.destroyForcibly().waitFor();
             }
             outputReader.join();
             return new Subprocess(command, env, process.exitValue(), output, !finishedOnTime);
         }
+    }
+
+    private static void dumpThreads(ProcessHandle process) {
+        if (ImageInfo.inImageCode()) {
+            // The attach API is not supported by substratevm.
+            return;
+        }
+        Optional<VirtualMachineDescriptor> vmDescriptor = VirtualMachine.list().stream().filter((d) -> {
+            try {
+                return Long.parseLong(d.id()) == process.pid();
+            } catch (NumberFormatException e) {
+                return false;
+            }
+        }).findAny();
+        if (vmDescriptor.isPresent()) {
+            try {
+                VirtualMachine vm = VirtualMachine.attach(vmDescriptor.get());
+                try {
+                    Properties props = vm.getAgentProperties();
+                    String connectorAddress = props.getProperty("com.sun.management.jmxremote.localConnectorAddress");
+                    if (connectorAddress == null) {
+                        connectorAddress = vm.startLocalManagementAgent();
+                    }
+                    JMXServiceURL url = new JMXServiceURL(connectorAddress);
+                    try (JMXConnector connector = JMXConnectorFactory.connect(url)) {
+                        MBeanServerConnection mbeanConnection = connector.getMBeanServerConnection();
+                        CompositeData[] result = (CompositeData[]) mbeanConnection.invoke(new ObjectName("java.lang:type=Threading"), "dumpAllThreads",
+                                        new Object[]{true, true}, new String[]{boolean.class.getName(), boolean.class.getName()});
+                        PrintStream out = System.err;
+                        out.printf("%nDumping subprocess threads on timeout%n");
+                        for (CompositeData element : result) {
+                            dumpThread(ThreadInfo.from(element), out);
+                        }
+                    }
+                } finally {
+                    vm.detach();
+                }
+            } catch (Exception e) {
+                // thread dump is an optional operation, just log the error
+                System.err.println("Failed to generate timed out subprocess thread dump due to");
+                e.printStackTrace(System.err);
+            }
+        }
+    }
+
+    private static void dumpThread(ThreadInfo ti, PrintStream out) {
+        long id = ti.getThreadId();
+        Thread.State state = ti.getThreadState();
+        out.printf("""
+                        "%s" %s prio=%d tid=%d %s
+                           java.lang.Thread.State: %s
+                        """,
+                        ti.getThreadName(),
+                        ti.isDaemon() ? "daemon" : "",
+                        ti.getPriority(),
+                        id,
+                        state.name().toLowerCase(),
+                        state.name());
+        StackTraceElement[] stackTrace = ti.getStackTrace();
+        MonitorInfo[] monitors = ti.getLockedMonitors();
+        LockInfo[] synchronizers = ti.getLockedSynchronizers();
+        for (int i = 0; i < stackTrace.length; i++) {
+            StackTraceElement stackTraceElement = stackTrace[i];
+            out.printf("\tat %s%n", stackTraceElement);
+            for (MonitorInfo mi : monitors) {
+                if (mi.getLockedStackDepth() == i) {
+                    out.printf("\t- locked %s%n", mi);
+                }
+            }
+        }
+        if (synchronizers.length > 0) {
+            out.printf("%n   Locked ownable synchronizers:%n");
+            for (LockInfo li : synchronizers) {
+                out.printf("\t- %s%n", li);
+            }
+        }
+        out.println();
     }
 
     private static boolean hasArg(String optionName) {

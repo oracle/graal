@@ -50,8 +50,6 @@ import jdk.graal.compiler.code.CompilationResult.JumpTable;
 import jdk.graal.compiler.code.DataSection.Data;
 import jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.core.common.spi.CodeGenProviders;
-import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.type.DataPointerConstant;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
@@ -67,12 +65,13 @@ import jdk.graal.compiler.lir.LabelRef;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.StandardOp.LabelHoldingOp;
 import jdk.graal.compiler.lir.framemap.FrameMap;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.nodes.spi.CoreProvidersDelegate;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;
@@ -93,7 +92,7 @@ import jdk.vm.ci.meta.Value;
  *
  * @see CompilationResultBuilderFactory
  */
-public class CompilationResultBuilder {
+public class CompilationResultBuilder extends CoreProvidersDelegate {
 
     public static class Options {
         @Option(help = "Include the LIR as comments with the final assembly.", type = OptionType.Debug) //
@@ -129,9 +128,6 @@ public class CompilationResultBuilder {
     public final CompilationResult compilationResult;
     public final Register uncompressedNullRegister;
     public final TargetDescription target;
-    public final CodeGenProviders providers;
-    public final CodeCacheProvider codeCache;
-    public final ForeignCallsProvider foreignCalls;
     public final FrameMap frameMap;
 
     /**
@@ -184,7 +180,7 @@ public class CompilationResultBuilder {
 
     private final List<LIRInstructionVerifier> lirInstructionVerifiers;
 
-    public CompilationResultBuilder(CodeGenProviders providers,
+    public CompilationResultBuilder(CoreProviders providers,
                     FrameMap frameMap,
                     Assembler<?> asm,
                     DataBuilder dataBuilder,
@@ -196,10 +192,8 @@ public class CompilationResultBuilder {
                     EconomicMap<Constant, Data> dataCache,
                     List<LIRInstructionVerifier> lirInstructionVerifiers,
                     LIR lir) {
+        super(providers);
         this.target = providers.getCodeCache().getTarget();
-        this.providers = providers;
-        this.codeCache = providers.getCodeCache();
-        this.foreignCalls = providers.getForeignCalls();
         this.frameMap = frameMap;
         this.asm = asm;
         this.dataBuilder = dataBuilder;

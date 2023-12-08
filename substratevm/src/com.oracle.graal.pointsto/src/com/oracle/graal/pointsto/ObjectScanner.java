@@ -48,7 +48,9 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 
+import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -85,10 +87,18 @@ public class ObjectScanner {
     }
 
     public void scanBootImageHeapRoots() {
-        scanBootImageHeapRoots(null, null);
+        scanBootImageHeapRoots(bb.getUniverse().getEmbeddedRoots());
     }
 
-    public void scanBootImageHeapRoots(Comparator<AnalysisField> fieldComparator, Comparator<BytecodePosition> embeddedRootComparator) {
+    public void scanBootImageHeapRoots(Map<Constant, Object> embeddedConstants) {
+        scanBootImageHeapRoots(null, null, embeddedConstants);
+    }
+
+    public void scanBootImageHeapRoots(Comparator<AnalysisField> fieldComparator, Comparator<Object> embeddedRootComparator) {
+        scanBootImageHeapRoots(fieldComparator, embeddedRootComparator, bb.getUniverse().getEmbeddedRoots());
+    }
+
+    public void scanBootImageHeapRoots(Comparator<AnalysisField> fieldComparator, Comparator<Object> embeddedRootComparator, Map<Constant, Object> embeddedRoots) {
         // scan the original roots
         // the original roots are all the static fields, of object type, that were accessed
         Collection<AnalysisField> fields = bb.getUniverse().getFields();
@@ -104,13 +114,15 @@ public class ObjectScanner {
         }
 
         // scan the constant nodes
-        Map<JavaConstant, BytecodePosition> embeddedRoots = bb.getUniverse().getEmbeddedRoots();
         if (embeddedRootComparator != null) {
             embeddedRoots.entrySet().stream()
                             .sorted(Map.Entry.comparingByValue(embeddedRootComparator))
-                            .forEach(entry -> execute(() -> scanEmbeddedRoot(entry.getKey(), entry.getValue())));
+                            .filter(entry -> entry.getKey() instanceof JavaConstant)
+                            .forEach(entry -> execute(() -> scanEmbeddedRoot((JavaConstant) entry.getKey(), entry.getValue())));
         } else {
-            embeddedRoots.forEach((key, value) -> execute(() -> scanEmbeddedRoot(key, value)));
+            embeddedRoots.entrySet().stream()
+                            .filter(entry -> entry.getKey() instanceof JavaConstant)
+                            .forEach(entry -> execute(() -> scanEmbeddedRoot((JavaConstant) entry.getKey(), entry.getValue())));
         }
 
         finish();
@@ -124,18 +136,17 @@ public class ObjectScanner {
         }
     }
 
-    protected void scanEmbeddedRoot(JavaConstant root, BytecodePosition position) {
+    protected void scanEmbeddedRoot(JavaConstant root, Object position) {
         if (root instanceof ImageHeapConstant ihc && ihc.getHostedObject() == null) {
             /* Skip embedded simulated constants. */
             return;
         }
+        EmbeddedRootScan reason = new EmbeddedRootScan(position, root);
         try {
-            EmbeddedRootScan reason = new EmbeddedRootScan(position, root);
             scanningObserver.forEmbeddedRoot(root, reason);
             scanConstant(root, reason);
         } catch (UnsupportedFeatureException ex) {
-            AnalysisMethod method = (AnalysisMethod) position.getMethod();
-            bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, ex.getMessage(), null, ex);
+            bb.getUnsupportedFeatures().addMessage(reason.toString(), reason.getMethod(), ex.getMessage(), null, ex);
         }
     }
 
@@ -278,7 +289,7 @@ public class ObjectScanner {
     }
 
     public void scanConstant(JavaConstant value, ScanReason reason) {
-        if (value.isNull() || bb.getMetaAccess().isInstanceOf(value, WordBase.class)) {
+        if (value.isNull() || value.getJavaKind().isPrimitive() || bb.getMetaAccess().isInstanceOf(value, WordBase.class)) {
             return;
         }
         JavaConstant unwrappedValue = maybeUnwrap(value);
@@ -520,6 +531,7 @@ public class ObjectScanner {
     }
 
     public static class OtherReason extends ScanReason {
+        public static final ScanReason LATE_SCAN = new OtherReason("late scan, after sealing heap");
         public static final ScanReason UNKNOWN = new OtherReason("manually created constant");
         public static final ScanReason RESCAN = new OtherReason("manually triggered rescan");
         public static final ScanReason HUB = new OtherReason("scanning a class constant");
@@ -673,29 +685,62 @@ public class ObjectScanner {
     }
 
     public static class EmbeddedRootScan extends ScanReason {
-        final BytecodePosition position;
+        private final BytecodePosition position;
+        private final AnalysisMethod method;
+        private final Object reason;
 
-        public EmbeddedRootScan(BytecodePosition nodeSourcePosition, JavaConstant root) {
-            this(nodeSourcePosition, root, new MethodParsing((AnalysisMethod) nodeSourcePosition.getMethod()));
+        public EmbeddedRootScan(Object reason, JavaConstant root) {
+            this(root, reason, rootScanReason(reason));
         }
 
-        public EmbeddedRootScan(BytecodePosition nodeSourcePosition, JavaConstant root, ScanReason previous) {
+        private EmbeddedRootScan(JavaConstant root, Object reason, ScanReason previous) {
             super(previous, root);
-            this.position = nodeSourcePosition;
+            this.reason = reason;
+            if (reason instanceof NodeSourcePosition src) {
+                this.position = src;
+                this.method = (AnalysisMethod) src.getMethod();
+            } else if (reason instanceof AnalysisMethod met) {
+                this.method = met;
+                this.position = null;
+            } else {
+                this.method = null;
+                this.position = null;
+            }
+        }
+
+        public Object getReason() {
+            return reason;
         }
 
         public AnalysisMethod getMethod() {
-            return (AnalysisMethod) position.getMethod();
+            return method;
         }
 
         @Override
         public String toString(BigBang bb) {
-            return "scanning root " + asString(bb, constant) + " embedded in " + System.lineSeparator() + INDENTATION_AFTER_NEWLINE + position.getMethod().asStackTraceElement(position.getBCI());
+            return "scanning root " + asString(bb, constant) + " embedded in " + System.lineSeparator() + INDENTATION_AFTER_NEWLINE + asStackTraceElement();
         }
 
         @Override
         public String toString() {
-            return position.getMethod().asStackTraceElement(position.getBCI()).toString();
+            return asStackTraceElement();
+        }
+
+        private static ScanReason rootScanReason(Object reason) {
+            if (reason instanceof NodeSourcePosition position) {
+                return new MethodParsing((AnalysisMethod) position.getMethod());
+            }
+            return new OtherReason(reason.toString());
+        }
+
+        private String asStackTraceElement() {
+            if (position != null) {
+                return String.valueOf(method.asStackTraceElement(position.getBCI()));
+            } else if (method != null) {
+                return String.valueOf(method.asStackTraceElement(0));
+            } else {
+                return "<unknown>";
+            }
         }
     }
 

@@ -227,6 +227,6 @@ public class JNIGraphKit extends HostedGraphKit {
     }
 
     public ConstantNode createWord(long value) {
-        return ConstantNode.forIntegerKind(wordTypes.getWordKind(), value, graph);
+        return ConstantNode.forIntegerKind(getWordTypes().getWordKind(), value, graph);
     }
 }

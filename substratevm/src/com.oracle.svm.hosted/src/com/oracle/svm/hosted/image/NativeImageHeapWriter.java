@@ -123,10 +123,6 @@ public final class NativeImageHeapWriter {
         }
     }
 
-    private Object readObjectField(HostedField field, JavaConstant receiver) {
-        return snippetReflection().asObject(Object.class, heap.hConstantReflection.readFieldValue(field, receiver));
-    }
-
     private int referenceSize() {
         return heap.objectLayout.getReferenceSize();
     }
@@ -343,11 +339,11 @@ public final class NativeImageHeapWriter {
             Object hybridArray = null;
             if (hybridLayout != null) {
                 hybridArrayField = hybridLayout.getArrayField();
-                hybridArray = readObjectField(hybridArrayField, con);
+                hybridArray = heap.readHybridField(hybridArrayField, con);
 
                 hybridTypeIDSlotsField = hybridLayout.getTypeIDSlotsField();
                 if (hybridTypeIDSlotsField != null) {
-                    short[] typeIDSlots = (short[]) readObjectField(hybridTypeIDSlotsField, con);
+                    short[] typeIDSlots = (short[]) heap.readHybridField(hybridTypeIDSlotsField, con);
                     if (typeIDSlots != null) {
                         int length = typeIDSlots.length;
                         for (int i = 0; i < length; i++) {
