@@ -48,6 +48,7 @@ import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.StaticFieldsSupport;
@@ -363,7 +364,10 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
             case Custom:
                 Object receiverValue = receiver == null ? null : originalSnippetReflection.asObject(Object.class, receiver);
                 originalValue = fetchOriginalValue(metaAccess, classInitializationSupport, receiver, originalSnippetReflection);
-                Object newValue = fieldValueTransformer.transform(receiverValue, originalValue);
+                Object newValue;
+                try (var ignored = CausalityExport.resetCause()) {
+                    newValue = fieldValueTransformer.transform(receiverValue, originalValue);
+                }
                 checkValue(newValue);
                 result = originalSnippetReflection.forBoxed(original.getJavaKind(), newValue);
 

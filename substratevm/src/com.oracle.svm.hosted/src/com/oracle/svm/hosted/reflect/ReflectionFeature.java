@@ -35,8 +35,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.graal.pointsto.reports.causality.CausalityExport;
-import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.phases.util.Providers;
@@ -50,6 +48,8 @@ import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Delete;
@@ -140,8 +140,9 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         if (analysisAccess == null) {
             throw VMError.shouldNotReachHere("New Method or Constructor found as reachable after static analysis: " + member);
         }
+        CausalityExport.registerEvent(CausalityEvents.ReflectionRegistration.create(member));
         return accessors.computeIfAbsent(member, m -> {
-            try (var ignored = CausalityExport.setCause(CausalityEvents.ReflectionRegistration.create(m))) {
+            try (var ignored = CausalityExport.overwriteCause(CausalityEvents.ReflectionRegistration.create(m))) {
                 return createAccessor(m);
             }
         });
