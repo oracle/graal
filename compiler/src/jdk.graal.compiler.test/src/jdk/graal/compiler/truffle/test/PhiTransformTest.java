@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,7 @@ import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.truffle.nodes.AnyExtendNode;
+import jdk.graal.compiler.truffle.nodes.AnyNarrowNode;
 import jdk.graal.compiler.truffle.phases.PhiTransformPhase;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.junit.Assert;
@@ -251,7 +252,14 @@ public class PhiTransformTest extends GraalCompilerTest {
         protected void run(StructuredGraph graph, CoreProviders context) {
             if (!graph.toString().contains("deoptSnippet")) {
                 for (ZeroExtendNode node : graph.getNodes().filter(ZeroExtendNode.class)) {
-                    node.replaceAndDelete(graph.unique(new AnyExtendNode(node.getValue())));
+                    if (node.getInputBits() == AnyExtendNode.INPUT_BITS && node.getResultBits() == AnyExtendNode.OUTPUT_BITS) {
+                        node.replaceAndDelete(graph.unique(new AnyExtendNode(node.getValue())));
+                    }
+                }
+                for (NarrowNode node : graph.getNodes().filter(NarrowNode.class)) {
+                    if (node.getInputBits() == AnyNarrowNode.INPUT_BITS && node.getResultBits() == AnyNarrowNode.OUTPUT_BITS) {
+                        node.replaceAndDelete(graph.unique(new AnyNarrowNode(node.getValue())));
+                    }
                 }
             }
         }
@@ -263,6 +271,9 @@ public class PhiTransformTest extends GraalCompilerTest {
         protected void run(StructuredGraph graph, CoreProviders context) {
             for (AnyExtendNode node : graph.getNodes().filter(AnyExtendNode.class)) {
                 node.replaceAndDelete(graph.addOrUnique(ZeroExtendNode.create(node.getValue(), 64, NodeView.DEFAULT)));
+            }
+            for (AnyNarrowNode node : graph.getNodes().filter(AnyNarrowNode.class)) {
+                node.replaceAndDelete(graph.addOrUnique(NarrowNode.create(node.getValue(), 32, NodeView.DEFAULT)));
             }
         }
     }
