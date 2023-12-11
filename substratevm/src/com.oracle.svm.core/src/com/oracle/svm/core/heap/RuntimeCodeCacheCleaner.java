@@ -72,7 +72,7 @@ public final class RuntimeCodeCacheCleaner implements CodeInfoVisitor {
         } else if (state == CodeInfo.STATE_READY_FOR_INVALIDATION) {
             // All objects that are accessed during invalidation must still be reachable.
             CodeInfoTable.invalidateNonStackCodeAtSafepoint(codeInfo);
-            assert CodeInfoAccess.getState(codeInfo) == CodeInfo.STATE_PARTIALLY_FREED;
+            assert CodeInfoAccess.getState(codeInfo) == CodeInfo.STATE_INVALIDATED;
             freeMemory(codeInfo);
         }
         return true;
@@ -82,6 +82,6 @@ public final class RuntimeCodeCacheCleaner implements CodeInfoVisitor {
         boolean removed = RuntimeCodeInfoMemory.singleton().removeDuringGC(codeInfo);
         assert removed : "must have been present";
         RuntimeCodeInfoHistory.singleton().logFree(codeInfo);
-        RuntimeCodeInfoAccess.free(codeInfo, false);
+        RuntimeCodeInfoAccess.free(codeInfo);
     }
 }
