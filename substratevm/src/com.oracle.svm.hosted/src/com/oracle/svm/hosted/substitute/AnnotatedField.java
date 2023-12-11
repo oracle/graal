@@ -37,7 +37,6 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -62,8 +61,8 @@ public class AnnotatedField implements ReadableJavaField, OriginalFieldProvider,
     }
 
     @Override
-    public JavaConstant readValue(MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport, JavaConstant receiver) {
-        return ReadableJavaField.readFieldValue(metaAccess, classInitializationSupport, original, receiver);
+    public JavaConstant readValue(ClassInitializationSupport classInitializationSupport, JavaConstant receiver) {
+        return ReadableJavaField.readFieldValue(classInitializationSupport, original, receiver);
     }
 
     @Override

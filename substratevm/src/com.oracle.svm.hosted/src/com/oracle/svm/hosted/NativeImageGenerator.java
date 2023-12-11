@@ -583,7 +583,6 @@ public class NativeImageGenerator {
 
                 hUniverse = new HostedUniverse(bb);
                 hMetaAccess = new HostedMetaAccess(hUniverse, bb.getMetaAccess());
-                ((AnalysisConstantReflectionProvider) bb.getConstantReflectionProvider()).setHostedMetaAccess(hMetaAccess);
 
                 BeforeUniverseBuildingAccessImpl beforeUniverseBuildingConfig = new BeforeUniverseBuildingAccessImpl(featureHandler, loader, debug, hMetaAccess);
                 featureHandler.forEachFeature(feature -> feature.beforeUniverseBuilding(beforeUniverseBuildingConfig));
