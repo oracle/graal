@@ -24,27 +24,13 @@
  */
 package com.oracle.svm.core.foreign;
 
-import java.lang.foreign.MemorySegment;
-import java.util.Optional;
+import java.util.function.BooleanSupplier;
 
-import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.SubstrateOptions;
 
-/**
- * System lookups allow to search for symbols in a fixed set of OS-dependent, standard, "curated"
- * libraries. The provided libraries are not really defined in the documentation, so the best we can
- * do is load the exact same libraries as HotSpot.
- */
-@TargetClass(className = "jdk.internal.foreign.SystemLookup", onlyWith = ForeignFunctionsEnabled.class)
-public final class Target_jdk_internal_foreign_SystemLookup {
-    @Substitute
-    public Optional<MemorySegment> find(String name) {
-        return RuntimeSystemLookup.INSTANCE.find(name);
+final class ForeignFunctionsEnabled implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return SubstrateOptions.ForeignAPISupport.getValue();
     }
-}
-
-@TargetClass(className = "jdk.internal.foreign.SystemLookup", innerClass = "WindowsFallbackSymbols", onlyWith = ForeignFunctionsEnabled.class)
-@Delete
-final class Target_jdk_internal_foreign_SystemLookup_WindowsFallbackSymbols {
 }

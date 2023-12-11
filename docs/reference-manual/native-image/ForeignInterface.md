@@ -7,8 +7,9 @@ permalink: /reference-manual/native-image/dynamic-features/foreign-interface/
 
 # Foreign Function & Memory API in Native Image
 
-The Foreign Function & Memory (FFM) API is a native interface that enables Java code to interact with native code and vice versa.
-As of [JEP 442](https://openjdk.org/jeps/442){:target="_blank"}, it is a preview API of the Java platform and must be enabled with `--enable-preview`.
+The Foreign Function & Memory (FFM) API is an interface that enables Java code to interact with native code and vice versa.
+It has been finalized in JDK 22 with [JEP 454](https://openjdk.org/jeps/454){:target="_blank"}.
+Support in Native Image is currently experimental and needs to be explicitly enabled with `-H:+ForeignAPISupport` (requiring `-H:+UnlockExperimentalVMOptions`).
 Modules that are permitted to perform "restricted" native operations (including creating handles for calls to or from native code) must be specified using `--enable-native-access=`.
 This page gives an overview of support for the FFM API in Native Image.
 

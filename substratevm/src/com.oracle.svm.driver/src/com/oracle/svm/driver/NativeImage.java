@@ -319,7 +319,6 @@ public class NativeImage {
         protected final Path workDir;
         protected final Path rootDir;
         protected final Path libJvmciDir;
-        protected final Path libPreviewDir;
         protected final List<String> args;
 
         BuildConfiguration(BuildConfiguration original) {
@@ -328,7 +327,6 @@ public class NativeImage {
             workDir = original.workDir;
             rootDir = original.rootDir;
             libJvmciDir = original.libJvmciDir;
-            libPreviewDir = original.libPreviewDir;
             args = original.args;
         }
 
@@ -371,8 +369,6 @@ public class NativeImage {
             }
             Path ljDir = this.rootDir.resolve(Paths.get("lib", "jvmci"));
             libJvmciDir = Files.exists(ljDir) ? ljDir : null;
-            Path lpDir = this.rootDir.resolve(Paths.get("lib", "svm-preview", "builder"));
-            libPreviewDir = Files.exists(lpDir) ? lpDir : null;
         }
 
         /**
@@ -1902,43 +1898,6 @@ public class NativeImage {
             return useBundle() ? bundleSupport.recordCanonicalization(path, realPath) : realPath;
         } catch (IOException e) {
             throw showError("Invalid Path entry " + path, e);
-        }
-    }
-
-    public enum PreviewFeatures {
-        FOREIGN(JavaVersionUtil.JAVA_SPEC >= 21, "svm-foreign");
-
-        private final boolean requirementsMet;
-        private final String libName;
-
-        PreviewFeatures(boolean requirementsMet, String libName) {
-            this.requirementsMet = requirementsMet;
-            this.libName = libName;
-        }
-
-        public boolean requirementsMet() {
-            return requirementsMet;
-        }
-
-        public String getLibName() {
-            return libName;
-        }
-    }
-
-    public void enablePreview() {
-        if (config.libPreviewDir == null && PreviewFeatures.values().length > 0) {
-            throw showError("The directory containing the preview modules was not found.");
-        }
-
-        for (var preview : PreviewFeatures.values()) {
-            if (preview.requirementsMet()) {
-                Path libPath = config.libPreviewDir == null ? null : config.libPreviewDir.resolve(preview.getLibName() + ".jar");
-                if (libPath != null && Files.exists(libPath)) {
-                    addImageBuilderModulePath(libPath);
-                } else {
-                    throw showError("Preview library " + preview.getLibName() + " should be enabled, but was not found.");
-                }
-            }
         }
     }
 

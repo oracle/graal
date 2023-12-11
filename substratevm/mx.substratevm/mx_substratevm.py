@@ -1005,7 +1005,7 @@ svm = mx_sdk_vm.GraalVmJreComponent(
         'substratevm:OBJECTFILE',
         'substratevm:POINTSTO',
         'substratevm:NATIVE_IMAGE_BASE',
-    ],
+    ] + (['substratevm:SVM_FOREIGN'] if mx_sdk_vm.base_jdk().javaCompliance >= '22' else []),
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
     stability="earlyadopter",
     jlink=False,
@@ -1073,22 +1073,6 @@ driver_exe_build_args = driver_build_args + svm_experimental_options([
 ])
 
 additional_ni_dependencies = []
-
-if mx.get_jdk(tag='default').javaCompliance >= '21':
-    mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
-        suite=suite,
-        name='SubstrateVM Foreign API Preview Feature',
-        short_name='svmforeign',
-        dir_name='svm-preview',
-        installable_id='native-image',
-        license_files=[],
-        third_party_license_files=[],
-        dependencies=['SubstrateVM'],
-        builder_jar_distributions=['substratevm:SVM_FOREIGN'],
-        installable=False,
-        jlink=False,
-    ))
-    additional_ni_dependencies += ['svmforeign']
 
 native_image = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
