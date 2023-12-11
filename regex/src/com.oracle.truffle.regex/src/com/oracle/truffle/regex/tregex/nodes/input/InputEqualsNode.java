@@ -43,22 +43,21 @@ package com.oracle.truffle.regex.tregex.nodes.input;
 import static com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 
+@GenerateInline
 public abstract class InputEqualsNode extends Node {
 
-    public static InputEqualsNode create() {
-        return InputEqualsNodeGen.create();
-    }
-
-    public abstract boolean execute(TruffleString input, TruffleString string, TruffleString.WithMask mask, Encoding encoding);
+    public abstract boolean execute(Node node, TruffleString input, TruffleString string, TruffleString.WithMask mask, Encoding encoding);
 
     @Specialization(guards = "mask == null")
     public boolean doTString(TruffleString input, TruffleString string, @SuppressWarnings("unused") TruffleString.WithMask mask, Encoding encoding,
-                    @Cached TruffleString.RegionEqualByteIndexNode equalsNode) {
+                    @Cached(inline = false) @Shared TruffleString.RegionEqualByteIndexNode equalsNode) {
         int len1 = input.byteLength(encoding.getTStringEncoding());
         int len2 = string.byteLength(encoding.getTStringEncoding());
         return len1 == len2 && equalsNode.execute(input, 0, string, 0, len2, encoding.getTStringEncoding());
@@ -66,7 +65,7 @@ public abstract class InputEqualsNode extends Node {
 
     @Fallback
     public boolean doTStringMask(TruffleString input, TruffleString string, TruffleString.WithMask mask, Encoding encoding,
-                    @Cached TruffleString.RegionEqualByteIndexNode equalsNode) {
+                    @Cached(inline = false) @Shared TruffleString.RegionEqualByteIndexNode equalsNode) {
         int len1 = input.byteLength(encoding.getTStringEncoding());
         int len2 = string.byteLength(encoding.getTStringEncoding());
         return len1 == len2 && equalsNode.execute(input, 0, mask, 0, len2, encoding.getTStringEncoding());

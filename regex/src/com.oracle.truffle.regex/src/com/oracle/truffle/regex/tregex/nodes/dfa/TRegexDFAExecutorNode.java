@@ -395,7 +395,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                         CompilerAsserts.partialEvaluationConstant(indexOfNodeId);
                         CompilerAsserts.partialEvaluationConstant(indexOfNode);
                         CompilerAsserts.partialEvaluationConstant(indexOfParameter);
-                        int indexOfResult = indexOfNode.execute(locals.getInput(), locals.getIndex(), getMaxIndex(locals), indexOfParameter, getEncoding());
+                        int indexOfResult = indexOfNode.execute(this, locals.getInput(), locals.getIndex(), getMaxIndex(locals), indexOfParameter, getEncoding());
                         int postLoopIndex = indexOfResult < 0 ? getMaxIndex(locals) : indexOfResult;
                         state.afterIndexOf(locals, this, locals.getIndex(), postLoopIndex, codeRange);
                         assert locals.getIndex() == postLoopIndex;

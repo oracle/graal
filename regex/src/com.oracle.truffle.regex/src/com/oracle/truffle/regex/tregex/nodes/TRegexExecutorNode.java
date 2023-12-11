@@ -120,7 +120,7 @@ public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             lengthNode = insert(InputLengthNode.create());
         }
-        return lengthNode.execute(locals.getInput(), getEncoding());
+        return lengthNode.execute(this, locals.getInput(), getEncoding());
     }
 
     /**
@@ -273,7 +273,7 @@ public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             charAtNode = insert(InputReadNode.create());
         }
-        return charAtNode.execute(locals.getInput(), forward ? index : index - 1, getEncoding());
+        return charAtNode.execute(this, locals.getInput(), forward ? index : index - 1, getEncoding());
     }
 
     public void inputAdvance(TRegexExecutorLocals locals) {
