@@ -51,8 +51,8 @@ public class MaterializedConstantFields {
     private boolean sealed = false;
 
     public void register(AnalysisField field) {
-        assert field.isStatic() : "Only required for static final fields:" + field;
-        assert field.isAccessed() : "Field must be accessed as read:" + field;
+        assert field.isStatic() : "Only required for static final fields: " + field;
+        assert field.isAccessed() : "Field must be accessed as read: " + field;
         assert !sealed : "Already sealed: " + field;
         fields.add(field);
     }

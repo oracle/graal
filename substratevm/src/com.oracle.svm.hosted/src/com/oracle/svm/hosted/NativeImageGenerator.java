@@ -160,6 +160,7 @@ import com.oracle.svm.core.graal.phases.SubstrateSafepointInsertionPhase;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.graal.snippets.OpenTypeWorldSnippets;
 import com.oracle.svm.core.graal.snippets.TypeSnippets;
 import com.oracle.svm.core.graal.word.SubstrateWordOperationPlugins;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
@@ -1464,7 +1465,11 @@ public class NativeImageGenerator {
             Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings = lowerer.getLowerings();
 
             lowerer.setConfiguration(runtimeConfig, options, providers);
-            TypeSnippets.registerLowerings(options, providers, lowerings);
+            if (SubstrateOptions.closedTypeWorld()) {
+                TypeSnippets.registerLowerings(options, providers, lowerings);
+            } else {
+                OpenTypeWorldSnippets.registerLowerings(options, providers, lowerings);
+            }
 
             featureHandler.forEachGraalFeature(feature -> feature.registerLowerings(runtimeConfig, options, providers, lowerings, hosted));
         } catch (Throwable e) {
@@ -1828,8 +1833,13 @@ public class NativeImageGenerator {
                 writer.print("reachable  ");
             }
 
-            writer.format("type check start %d range %d slot # %d ", type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot());
-            writer.format("type check slots %s  ", slotsToString(type.getTypeCheckSlots()));
+            if (SubstrateOptions.closedTypeWorld()) {
+                writer.format("type check start %d range %d slot # %d ", type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot());
+                writer.format("type check slots %s  ", slotsToString(type.getClosedWorldTypeCheckSlots()));
+            } else {
+                writer.format("type id %s depth %s num class types %s num interface types %s ", type.getTypeID(), type.getTypeIDDepth(), type.getNumClassTypes(), type.getNumInterfaceTypes());
+                writer.format("type check slots %s  ", String.join(" ", Arrays.stream(type.getOpenWorldTypeIDSlots()).mapToObj(Integer::toString).toArray(String[]::new)));
+            }
             // if (type.findLeafConcreteSubtype() != null) {
             // writer.format("unique %d %s ", type.findLeafConcreteSubtype().getTypeID(),
             // type.findLeafConcreteSubtype().toJavaName(false));

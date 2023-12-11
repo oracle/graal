@@ -37,18 +37,30 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 
-import jdk.graal.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.graal.snippets.OpenTypeWorldSnippets;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.core.common.calc.UnsignedMath;
+
 /**
  * This class assigns each type an id, determines stamp metadata, and generates the information
- * needed to perform type checks. Native image type checks are performed by a range check (see
- * {@link com.oracle.svm.core.graal.snippets.TypeSnippets} for specific implementation details).
+ * needed to perform type checks.
+ *
+ * <p>
+ * Within this class are two version of metadata generated depending on whether we are operating on
+ * an open- or closed-type world assumption.
+ *
+ * <h3>Closed-World Type Information</h3>
+ * 
+ * With a closed-world type world assumption, Native image type checks are performed by a range
+ * check (see {@link com.oracle.svm.core.graal.snippets.TypeSnippets} for specific implementation
+ * details).
  *
  * <p>
  * For the class hierarchy, assigning each type a unique id compatible with a range check can be
@@ -85,6 +97,17 @@ import com.oracle.svm.core.util.VMError;
  * <p>
  * Identifying strictly overlapping relations allows the C1P problem to be decomposed and solved in
  * an incremental manner.
+ * 
+ * <h3>Open-World Type Information</h3>
+ * 
+ * Under the open-world type strategy, new (currently unknown) subtypes may be created at a later
+ * point; therefore, the range check implementation described above is not possible to use. Instead,
+ * when checking against an instance class we can use a
+ * <a href="https://dl.acm.org/doi/10.1145/115372.115297">Cohen display</a> to limit the
+ * computational overhead. For checks against interfaces, in the dynamic hub we include a list of
+ * all interface ids the type implements.
+ *
+ * The implementation of the open-world typecheck can be found in {@link OpenTypeWorldSnippets}.
  */
 public class TypeCheckBuilder {
     private static final int SLOT_CAPACITY = 1 << 16;
@@ -482,13 +505,13 @@ public class TypeCheckBuilder {
     /**
      * Calculates all of the needed type check id information and stores it in the HostedTypes.
      */
-    public boolean calculateIDs() {
+    public boolean calculateClosedWorldTypeMetadata() {
         ClassIDBuilder classBuilder = new ClassIDBuilder(objectType, allIncludedRoots, heightOrderedTypes, subtypeMap);
         classBuilder.computeSlots();
         InterfaceIDBuilder interfaceBuilder = new InterfaceIDBuilder(classBuilder.numClassSlots, heightOrderedTypes, subtypeMap);
         interfaceBuilder.computeSlots();
-        generateTypeCheckSlots(classBuilder, interfaceBuilder);
-        assert TypeCheckValidator.compareTypeIDResults(heightOrderedTypes);
+        generateClosedWorldTypeMetadata(classBuilder, interfaceBuilder);
+        assert ClosedWorldTypeCheckValidator.compareTypeIDResults(heightOrderedTypes);
         return true;
     }
 
@@ -496,7 +519,7 @@ public class TypeCheckBuilder {
      * Combines the class and interface slots array into one array of shorts and sets this
      * information in the hosted type.
      */
-    private void generateTypeCheckSlots(ClassIDBuilder classBuilder, InterfaceIDBuilder interfaceBuilder) {
+    private void generateClosedWorldTypeMetadata(ClassIDBuilder classBuilder, InterfaceIDBuilder interfaceBuilder) {
         int numClassSlots = classBuilder.numClassSlots;
         int numSlots = numClassSlots + interfaceBuilder.numInterfaceSlots;
         setNumTypeCheckSlots(numSlots);
@@ -517,7 +540,7 @@ public class TypeCheckBuilder {
                 }
             }
 
-            type.setTypeCheckSlots(typeCheckSlots);
+            type.setClosedWorldTypeCheckSlots(typeCheckSlots);
         }
     }
 
@@ -1776,7 +1799,7 @@ public class TypeCheckBuilder {
         }
     }
 
-    private static final class TypeCheckValidator {
+    private static final class ClosedWorldTypeCheckValidator {
 
         static boolean compareTypeIDResults(List<HostedType> types) {
             if (!SubstrateOptions.DisableTypeIdResultVerification.getValue()) {
@@ -1809,8 +1832,182 @@ public class TypeCheckBuilder {
             int typeCheckStart = Short.toUnsignedInt(superType.getTypeCheckStart());
             int typeCheckRange = Short.toUnsignedInt(superType.getTypeCheckRange());
             int typeCheckSlot = Short.toUnsignedInt(superType.getTypeCheckSlot());
-            int checkedTypeID = Short.toUnsignedInt(checkedType.getTypeCheckSlots()[typeCheckSlot]);
+            int checkedTypeID = Short.toUnsignedInt(checkedType.getClosedWorldTypeCheckSlots()[typeCheckSlot]);
             return UnsignedMath.belowThan(checkedTypeID - typeCheckStart, typeCheckRange);
+        }
+    }
+
+    private static class OpenWorldTypeInfo {
+
+        /**
+         * Within {@link com.oracle.svm.core.hub.DynamicHub} typecheck metadata the ids of the
+         * interfaces will be appended to the end of the {@link #classDisplay}.
+         */
+        Set<HostedType> implementedInterfaces = new HashSet<>();
+
+        /**
+         * This is the <a href="https://dl.acm.org/doi/10.1145/115372.115297">Cohen display</a> used
+         * to keep track of the instance class type hierarchy.
+         */
+        int[] classDisplay;
+
+        /*
+         * When there is no parent, then there is only a single element in the display.
+         */
+        private void computeClassDisplay(int typeID) {
+            assert classDisplay == null;
+            classDisplay = new int[]{typeID};
+        }
+
+        private void computeClassDisplay(int[] parent, int typeID) {
+            assert classDisplay == null;
+            classDisplay = new int[parent.length + 1];
+            System.arraycopy(parent, 0, classDisplay, 0, parent.length);
+            classDisplay[parent.length] = typeID;
+        }
+    }
+
+    public void calculateOpenWorldTypeMetadata() {
+        Map<HostedType, OpenWorldTypeInfo> typeInfoMap = new HashMap<>();
+
+        BiFunction<HostedType, Boolean, OpenWorldTypeInfo> getTypeInfo = (type, allowMissing) -> {
+            if (allowMissing) {
+                typeInfoMap.computeIfAbsent(type, (k) -> new OpenWorldTypeInfo());
+            }
+
+            OpenWorldTypeInfo typeInfo = typeInfoMap.get(type);
+            assert typeInfo != null;
+            return typeInfo;
+        };
+
+        /*
+         * Mark all root types as singleton displays.
+         */
+        for (HostedType type : allIncludedRoots) {
+            getTypeInfo.apply(type, true).computeClassDisplay(type.typeID);
+        }
+
+        for (HostedType type : heightOrderedTypes) {
+            OpenWorldTypeInfo info = getTypeInfo.apply(type, false);
+            if (info.classDisplay == null) {
+                assert isInterface(type);
+                /*
+                 * Interfaces are all indirectly a subtype of the object type (of the corresponding
+                 * dimension).
+                 *
+                 * Because not all array types are available, we must inherit from the object
+                 * (array) type of the closest dimension.
+                 */
+                int dimension = type.getArrayDimension();
+                HostedType displayType = objectType.getArrayClass(dimension);
+                while (displayType == null) {
+                    dimension--;
+                    displayType = objectType.getArrayClass(dimension);
+                }
+                if (displayType.getArrayDimension() == 0) {
+                    info.computeClassDisplay(displayType.getTypeID());
+                } else {
+                    info.computeClassDisplay(getTypeInfo.apply(displayType, false).classDisplay, displayType.getTypeID());
+                }
+            }
+
+            if (isInterface(type)) {
+                info.implementedInterfaces.add(type);
+            }
+
+            subtypeMap.get(type).forEach(subtype -> {
+                getTypeInfo.apply(subtype, true).implementedInterfaces.addAll(info.implementedInterfaces);
+                if (!isInterface(type)) {
+                    // assign class display information to subtypes
+                    getTypeInfo.apply(subtype, true).computeClassDisplay(info.classDisplay, subtype.getTypeID());
+                }
+            });
+        }
+
+        generateOpenWorldTypeMetadata(typeInfoMap);
+        assert OpenWorldTypeCheckValidator.compareTypeIDResults(heightOrderedTypes);
+    }
+
+    /**
+     * Stores type check information in the HostedTypes.
+     */
+    private static void generateOpenWorldTypeMetadata(Map<HostedType, OpenWorldTypeInfo> typeInfoMap) {
+        for (var entry : typeInfoMap.entrySet()) {
+            HostedType type = entry.getKey();
+            OpenWorldTypeInfo info = entry.getValue();
+            int idDepth = isInterface(type) ? -1 : info.classDisplay.length - 1;
+            if (idDepth >= 0) {
+                assert info.classDisplay[idDepth] == type.typeID : String.format("Mismatch between class display and type. idDepth: %s typeID: %s info: %s ", idDepth, type.typeID, info);
+            }
+            int numInterfaceTypes = info.implementedInterfaces.size();
+            int[] interfaceTypes = info.implementedInterfaces.stream().mapToInt(HostedType::getTypeID).sorted().toArray();
+            int numClassTypes = info.classDisplay.length;
+            int[] typeIDSlots = new int[numClassTypes + numInterfaceTypes];
+            System.arraycopy(info.classDisplay, 0, typeIDSlots, 0, numClassTypes);
+            System.arraycopy(interfaceTypes, 0, typeIDSlots, numClassTypes, numInterfaceTypes);
+            type.setOpenWorldTypeIDSlots(typeIDSlots);
+            type.setTypeIDDepth(idDepth);
+            type.setNumInterfaceTypes(numInterfaceTypes);
+            type.setNumClassTypes(numClassTypes);
+        }
+    }
+
+    private static final class OpenWorldTypeCheckValidator {
+
+        static String printTypeInfo(HostedType type) {
+            return String.format("%s%ntypeID: %s, typeDepth: %s, numClasses: %s, numInterfaces: %s%nslots: %s", type, type.getTypeID(), type.getTypeIDDepth(), type.getNumClassTypes(),
+                            type.getNumInterfaceTypes(), Arrays.toString(type.getOpenWorldTypeIDSlots()));
+        }
+
+        static boolean compareTypeIDResults(List<HostedType> types) {
+            if (!SubstrateOptions.DisableTypeIdResultVerification.getValue()) {
+                Set<String> mismatchedTypes = ConcurrentHashMap.newKeySet();
+                types.parallelStream().forEach(superType -> {
+                    for (HostedType checkedType : types) {
+                        boolean hostedCheck = superType.isAssignableFrom(checkedType);
+                        boolean runtimeCheck = runtimeIsAssignableFrom(superType, checkedType);
+                        boolean checksMatch = hostedCheck == runtimeCheck;
+                        if (!checksMatch) {
+                            StringBuilder message = new StringBuilder();
+                            message.append(String.format("%n********Type checks do not match:********%n"));
+                            message.append(String.format("super type: %s%n", printTypeInfo(superType)));
+                            message.append(String.format("checked type: %s%n", printTypeInfo(checkedType)));
+                            message.append(String.format("hosted check: %s%n", hostedCheck));
+                            message.append(String.format("runtime check: %s%n", runtimeCheck));
+                            mismatchedTypes.add(message.toString());
+                        }
+                    }
+                });
+                if (!mismatchedTypes.isEmpty()) {
+                    mismatchedTypes.forEach(System.err::println);
+                    throw new AssertionError("Verification of type assignment failed");
+                }
+            }
+            return true;
+        }
+
+        static boolean runtimeIsAssignableFrom(HostedType superType, HostedType checkedType) {
+            int typeID = superType.getTypeID();
+            int typeIDDepth = superType.getTypeIDDepth();
+            int[] typeIDSlots = checkedType.getOpenWorldTypeIDSlots();
+            int numClassTypes = checkedType.getNumClassTypes();
+            if (typeIDDepth >= 0) {
+                // this is a class check
+                if (typeIDDepth < numClassTypes) {
+                    int classID = typeIDSlots[typeIDDepth];
+                    return classID == typeID;
+                }
+            } else {
+                // this is an interface
+                int numInterfaceTypes = checkedType.getNumInterfaceTypes();
+                for (int i = 0; i < numInterfaceTypes; i++) {
+                    int interfaceID = typeIDSlots[numClassTypes + i];
+                    if (interfaceID == typeID) {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
     }
 }
