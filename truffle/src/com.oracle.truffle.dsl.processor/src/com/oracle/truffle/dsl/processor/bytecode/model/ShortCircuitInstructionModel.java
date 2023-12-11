@@ -40,7 +40,47 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.model;
 
-public record ShortCircuitInstructionData(boolean continueWhen,
-                boolean returnConvertedValue,
+public record ShortCircuitInstructionModel(Operator operator,
                 InstructionModel booleanConverterInstruction) {
+
+    /**
+     * The processor cannot directly depend on the module containing
+     * ShortCircuitOperation.Operation, so the definition is mirrored here.
+     */
+    enum Operator {
+        AND_RETURN_VALUE(true, false),
+        AND_RETURN_CONVERTED(true, true),
+        OR_RETURN_VALUE(false, false),
+        OR_RETURN_CONVERTED(false, true);
+
+        boolean continueWhen;
+        boolean returnConvertedBoolean;
+
+        Operator(boolean continueWhen, boolean returnConvertedBoolean) {
+            this.continueWhen = continueWhen;
+            this.returnConvertedBoolean = returnConvertedBoolean;
+        }
+
+        static Operator parse(String value) {
+            return switch (value) {
+                case "AND_RETURN_VALUE" -> AND_RETURN_VALUE;
+                case "AND_RETURN_CONVERTED" -> AND_RETURN_CONVERTED;
+                case "OR_RETURN_VALUE" -> OR_RETURN_VALUE;
+                case "OR_RETURN_CONVERTED" -> OR_RETURN_CONVERTED;
+                default -> throw new AssertionError(value);
+            };
+        }
+    }
+
+    public boolean continueWhen() {
+        return operator.continueWhen;
+    }
+
+    public boolean returnConvertedBoolean() {
+        return operator.returnConvertedBoolean;
+    }
+
+    public static ShortCircuitInstructionModel parse(String operator, InstructionModel booleanConverterInstruction) {
+        return new ShortCircuitInstructionModel(Operator.parse(operator), booleanConverterInstruction);
+    }
 }

@@ -59,6 +59,7 @@ import com.oracle.truffle.api.bytecode.LocalSetterRange;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
+import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
 import com.oracle.truffle.api.bytecode.Variadic;
 import com.oracle.truffle.api.bytecode.test.DebugBytecodeRootNode;
 import com.oracle.truffle.api.dsl.Bind;
@@ -86,8 +87,8 @@ import com.oracle.truffle.api.nodes.Node;
                                 boxingEliminationTypes = {long.class}, decisionsFile = "bytecode_dsl_example_decisions.json"))
 })
 @GenerateAOT
-@ShortCircuitOperation(booleanConverter = BytecodeDSLExample.ToBoolean.class, name = "ScAnd", continueWhen = true, returnConvertedValue = false)
-@ShortCircuitOperation(booleanConverter = BytecodeDSLExample.ToBoolean.class, name = "ScOr", continueWhen = false, returnConvertedValue = false)
+@ShortCircuitOperation(booleanConverter = BytecodeDSLExample.ToBoolean.class, name = "ScAnd", operator = Operator.AND_RETURN_VALUE)
+@ShortCircuitOperation(booleanConverter = BytecodeDSLExample.ToBoolean.class, name = "ScOr", operator = Operator.OR_RETURN_VALUE)
 @OperationProxy(value = ContinuationResult.ContinueNode.class, name = "Continue")
 public abstract class BytecodeDSLExample extends DebugBytecodeRootNode implements BytecodeRootNode {
 

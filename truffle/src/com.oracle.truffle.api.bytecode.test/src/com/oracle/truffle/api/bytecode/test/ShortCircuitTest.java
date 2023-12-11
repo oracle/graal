@@ -63,6 +63,7 @@ import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
+import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
 import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -348,10 +349,10 @@ public class ShortCircuitTest {
  *
  * Also note that converters can be repeated without introducing duplicate operations.
  */
-@ShortCircuitOperation(name = "ObjectAnd", continueWhen = true, booleanConverter = BytecodeNodeWithShortCircuit.BooleanConverterOperation.class, returnConvertedValue = false)
-@ShortCircuitOperation(name = "ObjectOr", continueWhen = false, booleanConverter = BooleanConverterOperationProxy.class, returnConvertedValue = false)
-@ShortCircuitOperation(name = "BoolAnd", continueWhen = true, booleanConverter = BytecodeNodeWithShortCircuit.BooleanConverterNonOperation.class)
-@ShortCircuitOperation(name = "BoolOr", continueWhen = false, booleanConverter = BytecodeNodeWithShortCircuit.BooleanConverterNonOperation.class)
+@ShortCircuitOperation(name = "ObjectAnd", operator = Operator.AND_RETURN_VALUE, booleanConverter = BytecodeNodeWithShortCircuit.BooleanConverterOperation.class)
+@ShortCircuitOperation(name = "ObjectOr", operator = Operator.OR_RETURN_VALUE, booleanConverter = BooleanConverterOperationProxy.class)
+@ShortCircuitOperation(name = "BoolAnd", operator = Operator.AND_RETURN_CONVERTED, booleanConverter = BytecodeNodeWithShortCircuit.BooleanConverterNonOperation.class)
+@ShortCircuitOperation(name = "BoolOr", operator = Operator.OR_RETURN_CONVERTED, booleanConverter = BytecodeNodeWithShortCircuit.BooleanConverterNonOperation.class)
 abstract class BytecodeNodeWithShortCircuit extends RootNode implements BytecodeRootNode {
     protected BytecodeNodeWithShortCircuit(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);

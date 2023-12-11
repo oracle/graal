@@ -223,7 +223,7 @@ public final class InstructionModel implements PrettyPrintable {
      */
     public TypeMirror specializedType;
 
-    public ShortCircuitInstructionData shortCircuitData;
+    public ShortCircuitInstructionModel shortCircuitModel;
 
     public InstructionModel(InstructionKind kind, String name, Signature signature, String quickeningName) {
         this.kind = kind;

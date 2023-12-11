@@ -51,16 +51,20 @@ import java.lang.annotation.Target;
  * a short-circuiting bytecode instruction in the generated interpreter. Whereas regular operations
  * evaluate all of their operands eagerly, short-circuiting operations evaluate them one at a time.
  *
- * Semantically, a short-circuiting operation produces the first operand that, when
- * {@link #booleanConverter converted to a boolean}, does not match the {{@link #continueWhen}
- * field. If all operands are evaluated, the last operand becomes the result.
+ * A short-circuiting operation {@link #booleanConverter converts} each operand to a {@code boolean}
+ * to determine whether to continue execution. An OR operation continues until it encounters
+ * {@code true}; an AND operation continue until it encounters {@code false}.
  *
- * For example, the following code declares a short-circuiting "or" operation that continues to
+ * A short-circuiting operation produces either the last operand evaluated, or the {@code boolean}
+ * it converted to. Both the boolean operator and the return semantics are specified by the
+ * {@link #operator}.
+ *
+ * For example, the following code declares a short-circuiting "Or" operation that continues to
  * evaluate operands as long as they coerce to {@code false}:
  *
  * <pre>
  * &#64;GenerateBytecode(...)
- * &#64;ShortCircuitOperation(name = "Or", continueWhen = false, booleanConverter = CoerceBoolean.class)
+ * &#64;ShortCircuitOperation(name = "Or", operator=Operator.OR_RETURN_VALUE, booleanConverter = CoerceBoolean.class)
  * public static final class MyBytecodeNode extends RootNode implements BytecodeRootNode {
  *   &#64;Operation
  *   public static final class CoerceBoolean {
@@ -68,7 +72,7 @@ import java.lang.annotation.Target;
  *     public static boolean fromInt(int x) { return x != 0; }
  *     &#64;Specialization
  *     public static boolean fromBool(boolean x) { return x; }
- *     @Specialization
+ *     &#64;Specialization
  *     public static boolean fromObject(Object x) { return x != null; }
  *   }
  *
@@ -93,10 +97,8 @@ import java.lang.annotation.Target;
  * return value_n
  * </pre>
  *
- * Since the operand value itself gets produced, short-circuit operations can be used to implement
+ * Since the operand value itself is returned, this operation can be used to implement
  * null-coalescing operations (e.g., {@code someArray or []} in Python).
- * {{@link #returnConvertedValue} can be used to return the converted value if the boolean is
- * desired instead.
  */
 @Retention(RetentionPolicy.SOURCE)
 @Target(ElementType.TYPE)
@@ -107,17 +109,23 @@ public @interface ShortCircuitOperation {
      */
     String name();
 
+    enum Operator {
+        /** AND operator that produces the operand value. */
+        AND_RETURN_VALUE,
+        /** AND operator that produces the converted boolean value. */
+        AND_RETURN_CONVERTED,
+        /** OR operator that produces the operand value. */
+        OR_RETURN_VALUE,
+        /** AND operator that produces the converted boolean value. */
+        OR_RETURN_CONVERTED;
+    }
+
     /**
-     * The value to compare {@link #booleanConverter converted} operand values against. The operands
-     * will continue to be executed as long as their converted values match the value of
-     * {@link #continueWhen}.
-     *
-     * For example, when this field is {@code false}, each operand will be evaluated as long as its
-     * converted value is {@code false}. The first operand that gets converted to {@code true} will
-     * be returned by this operation (or, if they are all {@code false}, the last operand will be
-     * returned).
+     * The short-circuit operator to use for this operation. The operator decides whether to perform
+     * a boolean AND or OR. It also determines whether the operation produces the original operand
+     * or the boolean that results from conversion.
      */
-    boolean continueWhen();
+    Operator operator();
 
     /**
      * A node or operation class. The short-circuit operation uses this class to convert each
@@ -133,20 +141,4 @@ public @interface ShortCircuitOperation {
      * </ul>
      */
     Class<?> booleanConverter() default void.class;
-
-    /**
-     * Whether to return the boolean value produced during {@link #booleanConverter conversion}. By
-     * default, the boolean value is returned, but if the original operand value is desired (e.g.,
-     * to implement null coalescing), this field can be set to {@code false}.
-     *
-     * For example, consider a {@link ShortCircuitOperation} that implements logical "or" where
-     * certain values are "falsy" (0, the empty string, etc.):
-     * <ul>
-     * <li>If {@link #returnConvertedValue} is {@code true}, then {@code 0 or 42 or 123} will
-     * evaluate to {@code true}.
-     * <li>If {@link #returnConvertedValue} is {@code false}, then {@code 0 or 42 or 123} will
-     * evaluate to {@code 42}.
-     * </ul>
-     */
-    boolean returnConvertedValue() default true;
 }

@@ -101,7 +101,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Instruct
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
-import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionData;
+import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionModel;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.GeneratorMode;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
@@ -3139,7 +3139,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case CUSTOM_SHORT_CIRCUIT:
                     InstructionModel shortCircuitInstruction = operation.instruction;
                     emitCastOperationData(b, "CustomShortCircuitOperationData", "operationSp");
-                    if (shortCircuitInstruction.shortCircuitData.returnConvertedValue()) {
+                    if (shortCircuitInstruction.shortCircuitModel.returnConvertedBoolean()) {
                         /*
                          * All operands except the last are automatically converted when testing the
                          * short circuit condition. For the last operand we need to insert a
@@ -3639,7 +3639,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.startCase().tree(createOperationConstant(op)).end().startBlock();
 
                     b.startIf().string("childIndex != 0").end().startBlock();
-                    if (!op.instruction.shortCircuitData.returnConvertedValue()) {
+                    if (!op.instruction.shortCircuitModel.returnConvertedBoolean()) {
                         // DUP so the boolean converter doesn't clobber the original value.
                         buildEmitInstruction(b, model.dupInstruction, null);
                     }
@@ -3675,7 +3675,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private void buildEmitBooleanConverterInstruction(CodeTreeBuilder b, InstructionModel shortCircuitInstruction) {
-            InstructionModel booleanConverter = shortCircuitInstruction.shortCircuitData.booleanConverterInstruction();
+            InstructionModel booleanConverter = shortCircuitInstruction.shortCircuitModel.booleanConverterInstruction();
 
             List<InstructionImmediate> immediates = booleanConverter.getImmediates();
             String[] args = new String[immediates.size()];
@@ -3995,7 +3995,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         }
                         break;
                     case CUSTOM_SHORT_CIRCUIT:
-                        ShortCircuitInstructionData shortCircuitInstruction = op.instruction.shortCircuitData;
+                        ShortCircuitInstructionModel shortCircuitInstruction = op.instruction.shortCircuitModel;
                         if (shortCircuitInstruction.booleanConverterInstruction().needsBoxingElimination(model, 0)) {
                             emitCastOperationData(b, "CustomShortCircuitOperationData", "operationSp - 1");
                             b.statement("operationData.childBci = childBci");
@@ -4436,8 +4436,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                      * The code we generate carefully ensures that each path branching to the "end"
                      * leaves a single value on the stack.
                      */
-                    ShortCircuitInstructionData shortCircuitInstruction = instr.shortCircuitData;
-                    if (shortCircuitInstruction.returnConvertedValue()) {
+                    ShortCircuitInstructionModel shortCircuitInstruction = instr.shortCircuitModel;
+                    if (shortCircuitInstruction.returnConvertedBoolean()) {
                         // Stack: [..., convertedValue]
                         b.statement("currentStackHeight -= 1");
                     } else {
@@ -5288,7 +5288,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         results.add(buildCustomInstructionExecute(b, instr));
                         break;
                     case CUSTOM_SHORT_CIRCUIT:
-                        ShortCircuitInstructionData shortCircuitInstruction = instr.shortCircuitData;
+                        ShortCircuitInstructionModel shortCircuitInstruction = instr.shortCircuitModel;
                         /*
                          * NB: Short circuit operations can evaluate to an operand or to the boolean
                          * conversion of an operand. The stack is different in either case.
@@ -5296,7 +5296,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.declaration(context.getDeclaredType(Object.class), "booleanResult", getFrameObject("sp - 1"));
 
                         b.startIf().string("booleanResult", shortCircuitInstruction.continueWhen() ? " != " : " == ", "Boolean.TRUE").end().startBlock();
-                        if (shortCircuitInstruction.returnConvertedValue()) {
+                        if (shortCircuitInstruction.returnConvertedBoolean()) {
                             // Stack: [..., convertedValue]
                             // leave convertedValue on the top of stack
                         } else {
@@ -5308,7 +5308,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("bci = " + readBc("bci + 1"));
                         b.statement("continue loop");
                         b.end().startElseBlock();
-                        if (shortCircuitInstruction.returnConvertedValue()) {
+                        if (shortCircuitInstruction.returnConvertedBoolean()) {
                             // Stack: [..., convertedValue]
                             // clear convertedValue
                             b.statement(clearFrame("frame", "sp - 1"));
