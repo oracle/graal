@@ -8,8 +8,8 @@ local vm_common = import '../ci_common/common.jsonnet';
       ['export', 'SVM_SUITE=' + vm.svm_suite],
       ['mx', '--env', 'ce', '--native-images=lib:jvmcicompiler', 'gate', '--no-warning-as-error', '--tags', 'build,truffle-unchained'],
     ],
-    notify_emails: ["christian.humer@oracle.com", "jakub.chaloupka@oracle.com"],
-    timelimit: '30:00',
+    notify_emails: ["christian.humer@oracle.com", "tomas.zezula@oracle.com", "jakub.chaloupka@oracle.com"],
+    timelimit: '50:00',
     name: self.targets[0] + '-vm-ce-truffle-unchained-labs' + self.jdk_name + '-linux-amd64',
   },
 
