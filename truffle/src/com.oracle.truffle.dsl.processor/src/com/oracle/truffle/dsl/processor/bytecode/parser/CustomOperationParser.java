@@ -81,6 +81,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Immediat
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Signature;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
@@ -215,14 +216,13 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         operation.operationArgumentTypes = new TypeMirror[0];
         operation.childrenMustBeValues = new boolean[]{true};
 
-        boolean continueWhen = (boolean) ElementUtils.getAnnotationValue(customOperation.getTemplateTypeAnnotation(), "continueWhen").getValue();
-        boolean returnConvertedValue = (boolean) ElementUtils.getAnnotationValue(customOperation.getTemplateTypeAnnotation(), "returnConvertedValue").getValue();
         /*
          * NB: This creates a new operation for the boolean converter (or reuses one if such an
          * operation already exists).
          */
         InstructionModel booleanConverterInstruction = getOrCreateBooleanConverterInstruction(typeElement, mirror);
-        InstructionModel instruction = parent.shortCircuitInstruction("sc." + name, continueWhen, returnConvertedValue, booleanConverterInstruction);
+        String operatorName = ElementUtils.getAnnotationValue(VariableElement.class, customOperation.getTemplateTypeAnnotation(), "operator").getSimpleName().toString();
+        InstructionModel instruction = parent.shortCircuitInstruction("sc." + name, ShortCircuitInstructionModel.parse(operatorName, booleanConverterInstruction));
         operation.instruction = instruction;
 
         instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");

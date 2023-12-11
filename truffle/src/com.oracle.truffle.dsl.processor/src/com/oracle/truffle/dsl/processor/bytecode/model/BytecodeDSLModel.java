@@ -358,7 +358,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         model.variadicPopCount = base.variadicPopCount;
         model.quickeningBase = base;
         model.operation = base.operation;
-        model.shortCircuitData = base.shortCircuitData;
+        model.shortCircuitModel = base.shortCircuitModel;
         base.quickenedInstructions.add(model);
         return model;
     }
@@ -376,13 +376,14 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return instruction(kind, name, signature, null);
     }
 
-    public InstructionModel shortCircuitInstruction(String name, boolean continueWhen, boolean returnConvertedValue, InstructionModel booleanConverterInstruction) {
+    public InstructionModel shortCircuitInstruction(String name, ShortCircuitInstructionModel shortCircuitModel) {
         if (instructions.containsKey(name)) {
             throw new AssertionError(String.format("Multiple instructions declared with name %s. Instruction names must be distinct.", name));
         }
-        Signature signature = returnConvertedValue ? signature(Object.class, boolean.class, boolean.class) : signature(boolean.class, boolean.class, boolean.class);
+        // TODO: check if returning orig value
+        Signature signature = shortCircuitModel == null ? signature(Object.class, boolean.class, boolean.class) : signature(boolean.class, boolean.class, boolean.class);
         InstructionModel instr = instruction(InstructionKind.CUSTOM_SHORT_CIRCUIT, name, signature);
-        instr.shortCircuitData = new ShortCircuitInstructionData(continueWhen, returnConvertedValue, booleanConverterInstruction);
+        instr.shortCircuitModel = shortCircuitModel;
         return instr;
     }
 

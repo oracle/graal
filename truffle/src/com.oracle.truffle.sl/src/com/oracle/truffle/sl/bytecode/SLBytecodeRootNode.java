@@ -49,6 +49,7 @@ import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
+import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
 import com.oracle.truffle.api.bytecode.Variadic;
 import com.oracle.truffle.api.bytecode.debug.BytecodeDebugTraceListener;
 import com.oracle.truffle.api.dsl.Bind;
@@ -106,8 +107,8 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 @OperationProxy(SLUnboxNode.class)
 @OperationProxy(SLFunctionLiteralNode.class)
 @OperationProxy(SLToBooleanNode.class)
-@ShortCircuitOperation(name = "SLAnd", booleanConverter = SLToBooleanNode.class, continueWhen = true)
-@ShortCircuitOperation(name = "SLOr", booleanConverter = SLToBooleanNode.class, continueWhen = false)
+@ShortCircuitOperation(name = "SLAnd", booleanConverter = SLToBooleanNode.class, operator = Operator.AND_RETURN_CONVERTED)
+@ShortCircuitOperation(name = "SLOr", booleanConverter = SLToBooleanNode.class, operator = Operator.OR_RETURN_CONVERTED)
 public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeRootNode, BytecodeDebugTraceListener {
 
     protected SLBytecodeRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {

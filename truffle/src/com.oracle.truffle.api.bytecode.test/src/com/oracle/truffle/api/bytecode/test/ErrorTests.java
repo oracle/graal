@@ -50,6 +50,7 @@ import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
+import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
 import com.oracle.truffle.api.bytecode.Variadic;
 import com.oracle.truffle.api.bytecode.test.subpackage.NonPublicGuardExpressionOperationProxy;
 import com.oracle.truffle.api.bytecode.test.subpackage.NonPublicSpecializationOperationProxy;
@@ -584,8 +585,8 @@ public class ErrorTests {
                     "Specializations for boolean converter ToBooleanBadReturn must only take one value parameter and return boolean.",
                     "Encountered errors using ToBooleanBadOperation as a boolean converter. These errors must be resolved before the DSL can proceed."
     })
-    @ShortCircuitOperation(name = "Foo", continueWhen = true, booleanConverter = BadBooleanConverterTest.ToBooleanBadReturn.class)
-    @ShortCircuitOperation(name = "Bar", continueWhen = true, booleanConverter = BadBooleanConverterTest.ToBooleanBadOperation.class)
+    @ShortCircuitOperation(name = "Foo", operator = Operator.AND_RETURN_VALUE, booleanConverter = BadBooleanConverterTest.ToBooleanBadReturn.class)
+    @ShortCircuitOperation(name = "Bar", operator = Operator.AND_RETURN_VALUE, booleanConverter = BadBooleanConverterTest.ToBooleanBadOperation.class)
     public abstract static class BadBooleanConverterTest extends RootNode implements BytecodeRootNode {
         protected BadBooleanConverterTest(TruffleLanguage<?> language, FrameDescriptor builder) {
             super(language, builder);
