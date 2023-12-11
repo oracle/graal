@@ -49,7 +49,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
@@ -62,6 +64,7 @@ import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.word.Pointer;
@@ -74,7 +77,9 @@ import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -84,8 +89,8 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.option.XOptions;
@@ -144,6 +149,7 @@ import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilerImpl;
 import jdk.graal.compiler.truffle.hotspot.TruffleCallBoundaryInstrumentationFactory;
 import jdk.graal.compiler.truffle.substitutions.GraphBuilderInvocationPluginProvider;
 import jdk.graal.compiler.truffle.substitutions.GraphDecoderInvocationPluginProvider;
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
@@ -159,20 +165,21 @@ class LibGraalOptions {
     @Option(help = "Converts an exception triggered by the CrashAt option into a fatal error " +
                     "if a non-null pointer was passed in the _fatal option to JNI_CreateJavaVM. " +
                     "This option exists for the purpose of testing fatal error handling in libgraal.") //
-    static final RuntimeOptionKey<Boolean> CrashAtIsFatal = new RuntimeOptionKey<>(false);
+    static final RuntimeOptionKey<Boolean> CrashAtIsFatal = new LibGraalRuntimeOptionKey<>(false);
     @Option(help = "The fully qualified name of a no-arg, void, static method to be invoked " +
                     "in HotSpot from libgraal when the libgraal isolate is being shutdown." +
                     "This option exists for the purpose of testing callbacks in this context.") //
-    static final RuntimeOptionKey<String> OnShutdownCallback = new RuntimeOptionKey<>(null);
+    static final RuntimeOptionKey<String> OnShutdownCallback = new LibGraalRuntimeOptionKey<>(null);
     @Option(help = "Replaces first exception thrown by the CrashAt option with an OutOfMemoryError. " +
                     "Subsequently CrashAt exceptions are suppressed. " +
                     "This option exists to test HeapDumpOnOutOfMemoryError. " +
                     "See the MethodFilter option for the pattern syntax.") //
-    static final RuntimeOptionKey<Boolean> CrashAtThrowsOOME = new RuntimeOptionKey<>(false);
+    static final RuntimeOptionKey<Boolean> CrashAtThrowsOOME = new LibGraalRuntimeOptionKey<>(false);
 }
 
 public class LibGraalFeature implements InternalFeature {
 
+    private final OptionCollector optionCollector = new OptionCollector();
     private HotSpotReplacementsImpl hotSpotSubstrateReplacements;
 
     public LibGraalFeature() {
@@ -212,25 +219,36 @@ public class LibGraalFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ImageClassLoader imageClassLoader = ((DuringSetupAccessImpl) access).getImageClassLoader();
+        access.registerObjectReplacer(optionCollector);
 
+        ImageClassLoader imageClassLoader = ((DuringSetupAccessImpl) access).getImageClassLoader();
         registerJNIConfiguration(imageClassLoader);
-        EconomicMap<String, OptionDescriptor> descriptors = EconomicMap.create();
-        for (Class<? extends OptionDescriptors> optionsClass : imageClassLoader.findSubclasses(OptionDescriptors.class, false)) {
-            if (!Modifier.isAbstract(optionsClass.getModifiers()) && !OptionDescriptorsMap.class.isAssignableFrom(optionsClass)) {
-                try {
-                    ModuleSupport.accessModuleByClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, optionsClass);
-                    for (OptionDescriptor d : optionsClass.getDeclaredConstructor().newInstance()) {
-                        if (!(d.getOptionKey() instanceof HostedOptionKey)) {
-                            descriptors.put(d.getName(), d);
-                        }
-                    }
-                } catch (ReflectiveOperationException ex) {
-                    throw VMError.shouldNotReachHere(ex);
+    }
+
+    /**
+     * Collects all reachable {@link OptionKey}s. Note that this includes options where the class is
+     * only reachable at image build-time (e.g.,
+     * {@link com.oracle.svm.core.option.HostedOptionKey}).
+     */
+    private static class OptionCollector implements Function<Object, Object> {
+        final ConcurrentHashMap<OptionKey<?>, OptionKey<?>> options = new ConcurrentHashMap<>();
+        private boolean sealed;
+
+        @Override
+        public Object apply(Object source) {
+            if (source instanceof OptionKey<?> option) {
+                if (sealed) {
+                    assert options.contains(option) : "All options must have been discovered during static analysis";
+                } else {
+                    options.put(option, option);
                 }
             }
+            return source;
         }
-        OptionsParser.setCachedOptionDescriptors(Collections.singletonList(new OptionDescriptorsMap(descriptors)));
+
+        public void setSealed() {
+            sealed = true;
+        }
     }
 
     /**
@@ -434,6 +452,9 @@ public class LibGraalFeature implements InternalFeature {
         BigBang bb = impl.getBigBang();
         DebugContext debug = bb.getDebug();
 
+        /* Transform option names so that Native Image options are in a separate namespace. */
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(OptionDescriptor.class, "name"), new OptionDescriptorNameTransformer());
+
         // Services that will not be loaded if native-image is run
         // with -XX:-UseJVMCICompiler.
         GraalServices.load(TruffleCallBoundaryInstrumentationFactory.class);
@@ -534,13 +555,23 @@ public class LibGraalFeature implements InternalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
+        optionCollector.setSealed();
+
         verifyReachableTruffleClasses(access);
+        registerReachableOptions(access);
     }
 
-    @Override
-    public void afterCompilation(AfterCompilationAccess access) {
-        EncodedSnippets encodedSnippets = HotSpotReplacementsImpl.getEncodedSnippets();
-        encodedSnippets.visitImmutable(access::registerAsImmutable);
+    private void registerReachableOptions(AfterAnalysisAccess access) {
+        EconomicMap<String, OptionDescriptor> options = EconomicMap.create();
+        for (OptionKey<?> option : optionCollector.options.keySet()) {
+            // This reachability check can be removed once GR-50219 is in place.
+            if (access.isReachable(option.getClass())) {
+                String optionKey = getPrefixedOptionName(option);
+                options.put(optionKey, option.getDescriptor());
+            }
+        }
+
+        OptionsParserAccessors.optionDescriptors = options;
     }
 
     /**
@@ -605,6 +636,67 @@ public class LibGraalFeature implements InternalFeature {
         HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) HotSpotJVMCIRuntime.runtime().getCompiler();
         HotSpotProviders originalProvider = compiler.getGraalRuntime().getHostProviders();
         return (HotSpotReplacementsImpl) originalProvider.getReplacements();
+    }
+
+    static String getPrefixedOptionName(OptionKey<?> key) {
+        if (isNativeImageOption(key)) {
+            return "internal." + key.getName();
+        }
+        return key.getName();
+    }
+
+    private static boolean isNativeImageOption(OptionKey<?> key) {
+        return key instanceof RuntimeOptionKey && !(key instanceof LibGraalRuntimeOptionKey);
+    }
+}
+
+/*
+ * Transforms option names so that Native Image options are in a separate namespace, e.g.,
+ * jdk.graal.internal.MaxHeap.
+ */
+final class OptionDescriptorNameTransformer implements FieldValueTransformer {
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        OptionDescriptor desc = (OptionDescriptor) receiver;
+        return LibGraalFeature.getPrefixedOptionName(desc.getOptionKey());
+    }
+}
+
+@TargetClass(className = "jdk.graal.compiler.options.OptionsParser", onlyWith = LibGraalFeature.IsEnabled.class)
+final class Target_jdk_graal_compiler_options_OptionsParser {
+    @Alias @InjectAccessors(OptionsParserAccessors.class) //
+    private static volatile List<OptionDescriptors> cachedOptionDescriptors;
+}
+
+class OptionsParserAccessors {
+    @UnknownObjectField(fullyQualifiedTypes = "org.graalvm.collections.EconomicMapImpl") //
+    static EconomicMap<String, OptionDescriptor> optionDescriptors;
+    private static List<OptionDescriptors> cachedOptions;
+
+    @SuppressWarnings("unused")
+    static List<OptionDescriptors> getCachedOptionDescriptors() {
+        List<OptionDescriptors> result = cachedOptions;
+        if (result == null) {
+            result = initialize();
+        }
+        return result;
+    }
+
+    @SuppressWarnings("unused")
+    static void setCachedOptionDescriptors(List<OptionDescriptors> value) {
+        throw VMError.shouldNotReachHereAtRuntime();
+    }
+
+    private static synchronized List<OptionDescriptors> initialize() {
+        List<OptionDescriptors> result = cachedOptions;
+        if (result == null) {
+            result = Collections.singletonList(new OptionDescriptorsMap(optionDescriptors));
+
+            /* Ensure that all stores are visible before we publish the data. */
+            Unsafe.getUnsafe().storeFence();
+            cachedOptions = result;
+        }
+        return result;
     }
 }
 
