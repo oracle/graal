@@ -217,7 +217,7 @@ public class CodeInfoTable {
             if (CodeInfoAccess.isAlive(info)) {
                 invalidateCodeAtSafepoint0(info);
             }
-            assert CodeInfoAccess.getState(info) == CodeInfo.STATE_PARTIALLY_FREED;
+            assert CodeInfoAccess.getState(info) == CodeInfo.STATE_INVALIDATED;
         } finally {
             CodeInfoAccess.releaseTether(untetheredInfo, tether);
         }
