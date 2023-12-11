@@ -46,6 +46,7 @@ import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
+import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
@@ -57,6 +58,10 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
+// @formatter:off
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/ce8399fd6071766114f5f201b6e44a7abdba9f5a/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L8647-L8855",
+          sha1 = "3e365037f473204b3f742ab364bd9ad514e72161")
+// @formatter:on
 @Opcode("AMD64_STRING_COMPRESS")
 public final class AMD64StringUTF16CompressOp extends AMD64ComplexVectorOp {
     public static final LIRInstructionClass<AMD64StringUTF16CompressOp> TYPE = LIRInstructionClass.create(AMD64StringUTF16CompressOp.class);
