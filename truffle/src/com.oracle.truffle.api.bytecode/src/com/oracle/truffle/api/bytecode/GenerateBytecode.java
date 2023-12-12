@@ -162,12 +162,14 @@ public @interface GenerateBytecode {
      * Path to a file containing optimization decisions. This file is generated using tracing on a
      * representative corpus of code.
      */
+    // TODO keep the api but fail if it used outside tests (package)
     String decisionsFile() default "";
 
     /**
      * Path to files with manually-provided optimization decisions. These files can be used to
      * encode optimizations that are not generated automatically via tracing.
      */
+    // TODO keep the api but fail if it used outside tests (package)
     String[] decisionOverrideFiles() default {};
 
     /**
@@ -178,6 +180,7 @@ public @interface GenerateBytecode {
      * field only affects code generation: whether tracing is actually performed at run time is
      * still controlled by the aforementioned option.
      */
+    // TODO keep the api but fail if it used outside tests (package)
     boolean forceTracing() default false;
 
     /**

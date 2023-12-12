@@ -80,6 +80,7 @@ public final class ContinuationResult {
         return String.format("ContinuationResult [location=%s, result=%s]", location, result);
     }
 
+    // TODO document this instead
     @GenerateInline(true)
     @GenerateUncached
     @OperationProxy.Proxyable

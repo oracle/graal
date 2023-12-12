@@ -49,6 +49,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 
+// TODO (chumer) implement
 public class InstrumentRootNode extends Node implements InstrumentableNode {
 
     private static final InstrumentTreeNode[] EMPTY_NODE_ARRAY = new InstrumentTreeNode[0];
