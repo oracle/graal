@@ -54,6 +54,9 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ForceQuickening;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
+import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
+import com.oracle.truffle.api.bytecode.test.BoxingEliminationTest.BoxingEliminationTestRootNode.ToBoolean;
 import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -114,6 +117,78 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
         assertStable(stable, node, 42L);
         assertStable(stable, node, "42");
         assertStable(stable, node, -42L);
+    }
+
+    @Test
+    public void testArgumentAdd() {
+        // return - (arg0)
+        BoxingEliminationTestRootNode node = (BoxingEliminationTestRootNode) parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginAdd();
+            b.beginAbs();
+            b.emitLoadArgument(0);
+            b.endAbs();
+            b.beginAbs();
+            b.emitLoadArgument(1);
+            b.endAbs();
+            b.endAdd();
+            b.endReturn();
+
+            b.endRoot();
+        }).getRootNode();
+
+        assertInstructions(node,
+                        "load.argument",
+                        "c.Abs",
+                        "load.argument",
+                        "c.Abs",
+                        "c.Add",
+                        "return",
+                        "pop");
+
+        assertQuickenings(node, 0, 0);
+
+        assertEquals(42L, node.getCallTarget().call(21L, -21L));
+        assertQuickenings(node, 7, 3);
+
+        assertInstructions(node,
+                        "load.argument$Long",
+                        "c.Abs$GreaterZero$unboxed",
+                        "load.argument$Long",
+                        "c.Abs$LessThanZero$unboxed",
+                        "c.Add$Long",
+                        "return",
+                        "pop");
+
+        assertEquals(42L, node.getCallTarget().call(-21L, 21L));
+
+        assertQuickenings(node, 11, 5);
+        assertInstructions(node,
+                        "load.argument$Long",
+                        "c.Abs$GreaterZero#LessThanZero$unboxed",
+                        "load.argument$Long",
+                        "c.Abs$GreaterZero#LessThanZero$unboxed",
+                        "c.Add$Long",
+                        "return",
+                        "pop");
+
+        assertEquals("42", node.getCallTarget().call("4", "2"));
+        var stable = assertQuickenings(node, 20, 8);
+
+        assertInstructions(node,
+                        "load.argument",
+                        "c.Abs",
+                        "load.argument",
+                        "c.Abs",
+                        "c.Add",
+                        "return",
+                        "pop");
+
+        assertStable(stable, node, 21L, -21L);
+        assertStable(stable, node, -21L, 21L);
+        assertStable(stable, node, "4", "2");
     }
 
     @Test
@@ -226,7 +301,6 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
             b.endReturn();
             b.endRoot();
         });
-
         assertInstructions(node,
                         "load.argument",
                         "dup",
@@ -783,6 +857,165 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
         assertStable(quickenings, node, 2L);
     }
 
+    @Test
+    public void testShortCircuitOrNoReturn() {
+        BoxingEliminationTestRootNode node = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginAnd();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.endAnd();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertQuickenings(node, 0, 0);
+        assertInstructions(node,
+                        "load.argument",
+                        "c.ToBoolean",
+                        "sc.And",
+                        "load.argument",
+                        "c.ToBoolean",
+                        "return",
+                        "pop");
+
+        assertEquals(true, node.getCallTarget().call(1L, Boolean.TRUE));
+        assertInstructions(node,
+                        "load.argument$Long",
+                        "c.ToBoolean$Long",
+                        "sc.And",
+                        "load.argument$Boolean",
+                        "c.ToBoolean$Boolean",
+                        "return",
+                        "pop");
+
+        var quickenings = assertQuickenings(node, 4, 2);
+        assertStable(quickenings, node, 1L, Boolean.TRUE);
+        assertStable(quickenings, node, 1L, Boolean.TRUE);
+    }
+
+    @Test
+    public void testShortCircuitAndNoReturn() {
+        BoxingEliminationTestRootNode node = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginOr();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.endOr();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertQuickenings(node, 0, 0);
+        assertInstructions(node,
+                        "load.argument",
+                        "c.ToBoolean",
+                        "sc.Or",
+                        "load.argument",
+                        "c.ToBoolean",
+                        "return",
+                        "pop");
+
+        assertEquals(true, node.getCallTarget().call(Boolean.FALSE, 1L));
+        assertInstructions(node,
+                        "load.argument$Boolean",
+                        "c.ToBoolean$Boolean",
+                        "sc.Or",
+                        "load.argument$Long",
+                        "c.ToBoolean$Long",
+                        "return",
+                        "pop");
+
+        var quickenings = assertQuickenings(node, 4, 2);
+        assertStable(quickenings, node, Boolean.FALSE, 1L);
+        assertStable(quickenings, node, Boolean.FALSE, 1L);
+    }
+
+    @Test
+    public void testShortCircuitOrReturn() {
+        BoxingEliminationTestRootNode node = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginOrReturn();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.endOrReturn();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertQuickenings(node, 0, 0);
+        assertInstructions(node,
+                        "load.argument",
+                        "dup",
+                        "c.ToBoolean",
+                        "sc.OrReturn",
+                        "load.argument",
+                        "return",
+                        "pop");
+
+        assertEquals(1L, node.getCallTarget().call(Boolean.FALSE, 1L));
+        assertInstructions(node,
+                        "load.argument",
+                        "dup",
+                        "c.ToBoolean",
+                        "sc.OrReturn",
+                        "load.argument",
+                        "return",
+                        "pop");
+
+        var quickenings = assertQuickenings(node, 1, 1);
+        assertStable(quickenings, node, Boolean.FALSE, 1L);
+        assertStable(quickenings, node, Boolean.FALSE, 1L);
+    }
+
+    @Test
+    public void testShortCircuitAndReturn() {
+        BoxingEliminationTestRootNode node = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginAndReturn();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.endAndReturn();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertQuickenings(node, 0, 0);
+        assertInstructions(node,
+                        "load.argument",
+                        "dup",
+                        "c.ToBoolean",
+                        "sc.AndReturn",
+                        "load.argument",
+                        "return",
+                        "pop");
+        assertEquals(Boolean.FALSE, node.getCallTarget().call(Boolean.FALSE, 1L));
+        assertInstructions(node,
+                        "load.argument",
+                        "dup",
+                        "c.ToBoolean",
+                        "sc.AndReturn",
+                        "load.argument",
+                        "return",
+                        "pop");
+
+        var quickenings = assertQuickenings(node, 1, 1);
+        assertStable(quickenings, node, Boolean.FALSE, 1L);
+        assertStable(quickenings, node, Boolean.FALSE, 1L);
+    }
+
     private static BoxingEliminationTestRootNode parse(BytecodeParser<BoxingEliminationTestRootNodeGen.Builder> builder) {
         BytecodeNodes<BoxingEliminationTestRootNode> nodes = BoxingEliminationTestRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
         return nodes.getNodes().get(nodes.getNodes().size() - 1);
@@ -792,10 +1025,34 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                     enableYield = true, enableSerialization = true, //
                     enableQuickening = true, //
                     boxingEliminationTypes = {long.class, int.class, boolean.class})
+    @ShortCircuitOperation(name = "And", operator = Operator.AND_RETURN_CONVERTED, booleanConverter = ToBoolean.class)
+    @ShortCircuitOperation(name = "Or", operator = Operator.OR_RETURN_CONVERTED, booleanConverter = ToBoolean.class)
+    @ShortCircuitOperation(name = "AndReturn", operator = Operator.AND_RETURN_VALUE, booleanConverter = ToBoolean.class)
+    @ShortCircuitOperation(name = "OrReturn", operator = Operator.OR_RETURN_VALUE, booleanConverter = ToBoolean.class)
     public abstract static class BoxingEliminationTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
-        protected BoxingEliminationTestRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
-            super(language, frameDescriptor);
+        protected BoxingEliminationTestRootNode(TruffleLanguage<?> language,
+                        FrameDescriptor.Builder frameDescriptor) {
+            super(language, customize(frameDescriptor).build());
+        }
+
+        private static FrameDescriptor.Builder customize(FrameDescriptor.Builder b) {
+            b.defaultValue("Nil");
+            return b;
+        }
+
+        @Operation
+        static final class ToBoolean {
+            @Specialization
+            public static boolean doBoolean(boolean v) {
+                return v;
+            }
+
+            @Specialization
+            public static boolean doLong(long v) {
+                return v != 0;
+            }
+
         }
 
         @Operation

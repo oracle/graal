@@ -226,6 +226,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         operation.instruction = instruction;
 
         instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
+        instruction.addImmediate(ImmediateKind.BRANCH_PROFILE, "branch_profile");
 
         return customOperation;
     }
