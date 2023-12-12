@@ -295,6 +295,7 @@ def _test_libgraal_oome_dumping():
         vmargs = ['-Djdk.libgraal.CrashAt=*',
                   '-Djdk.libgraal.Xmx128M',
                   '-Djdk.libgraal.PrintGC=true',
+                  '-Djdk.libgraal.SystemicCompilationFailureRate=0',
                   '-Djdk.libgraal.HeapDumpOnOutOfMemoryError=true',
                   f'-Djdk.libgraal.HeapDumpPath={n}',
                   '-Djdk.libgraal.CrashAtThrowsOOME=true']
