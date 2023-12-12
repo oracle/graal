@@ -174,7 +174,7 @@ final class EngineAccessor extends Accessor {
         return suppliers;
     }
 
-    private static AbstractClassLoaderSupplier defaultLoaders() {
+    private static AbstractClassLoaderSupplier defaultLoader() {
         ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
         ClassLoader systemClassLoader = ClassLoader.getSystemClassLoader();
         if (contextClassLoader != null && isValidLoader(contextClassLoader)) {
@@ -208,7 +208,7 @@ final class EngineAccessor extends Accessor {
     static List<AbstractClassLoaderSupplier> locatorOrDefaultLoaders() {
         List<AbstractClassLoaderSupplier> loaders = locatorLoaders();
         if (loaders == null) {
-            loaders = List.of(defaultLoaders());
+            loaders = List.of(defaultLoader());
         }
         return loaders;
     }
