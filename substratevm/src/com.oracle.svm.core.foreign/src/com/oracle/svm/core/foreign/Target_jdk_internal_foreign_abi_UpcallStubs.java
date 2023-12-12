@@ -11,6 +11,7 @@ import jdk.internal.foreign.MemorySessionImpl;
 @TargetClass(className = "jdk.internal.foreign.abi.UpcallStubs")
 public final class Target_jdk_internal_foreign_abi_UpcallStubs {
     @Substitute
+    @SuppressWarnings("restricted")
     static MemorySegment makeUpcall(long entry, Arena arena) {
         MemorySessionImpl.toMemorySession(arena).addOrCleanupIfFail(new MemorySessionImpl.ResourceList.ResourceCleanup() {
             @Override

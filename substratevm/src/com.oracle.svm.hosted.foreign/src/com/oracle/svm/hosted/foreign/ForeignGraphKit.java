@@ -124,7 +124,7 @@ class ForeignGraphKit extends HostedGraphKit {
 
     public Map<Register, ValueNode> saveRegisters(Iterable<Register> registers) {
         return StreamSupport.stream(registers.spliterator(), false)
-                        .map(register -> Pair.create(register, bindRegister(register, wordTypes.getWordKind())))
+                        .map(register -> Pair.create(register, bindRegister(register, getWordTypes().getWordKind())))
                         .collect(Collectors.toMap(Pair::getLeft, Pair::getRight));
     }
 

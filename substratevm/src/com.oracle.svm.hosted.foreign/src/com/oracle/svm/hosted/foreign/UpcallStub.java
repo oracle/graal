@@ -3,8 +3,10 @@ package com.oracle.svm.hosted.foreign;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -56,7 +58,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
-import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.code.BytecodeFrame;
@@ -65,6 +66,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import static com.oracle.graal.pointsto.infrastructure.ResolvedSignature.fromMethodType;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.VERY_FAST_PATH_PROBABILITY;
 
 public abstract class UpcallStub extends NonBytecodeMethod {
@@ -75,7 +77,7 @@ public abstract class UpcallStub extends NonBytecodeMethod {
                         UpcallStubsHolder.stubName(jep, high),
                         true,
                         metaAccess.lookupJavaType(UpcallStubsHolder.class),
-                        SimpleSignature.fromMethodType(methodType, metaAccess),
+                        fromMethodType(methodType, metaAccess),
                         UpcallStubsHolder.getConstantPool(metaAccess));
         this.jep = jep;
     }
@@ -136,7 +138,7 @@ class LowUpcallStub extends UpcallStub implements CustomCallingConventionMethod 
      * and finally argument injection is not currently supported.
      */
     @Override
-    public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
+    public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         assert ExplicitCallingConvention.Util.getCallingConventionKind(method, false) == SubstrateCallingConventionKind.Custom;
         assert Uninterruptible.Utils.isUninterruptible(method);
         ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method, purpose);
@@ -150,7 +152,7 @@ class LowUpcallStub extends UpcallStub implements CustomCallingConventionMethod 
         AbiUtils.Registers registers = AbiUtils.singleton().upcallSpecialArgumentsRegisters();
         ValueNode mh = kit.bindRegister(registers.methodHandle(), JavaKind.Object);
         ValueNode isolate = kit.append(kit.bindRegister(registers.isolate(), JavaKind.Long));
-        List<ValueNode> arguments = kit.loadArguments(getSignature().toParameterTypes(null));
+        List<ValueNode> arguments = new ArrayList<>(kit.getInitialArguments());
 
         /*
          * Prologue: save function-preserved registers, allocate return space if needed, transition
@@ -161,7 +163,7 @@ class LowUpcallStub extends UpcallStub implements CustomCallingConventionMethod 
         var save = kit.saveRegisters(savedRegisters);
         //ValueNode enterResult = kit.append(CEntryPointEnterNode.enterByIsolate(isolate));
         // ensureJavaThread = true to ensure that later calls to com.oracle.svm.core.thread.PlatformThreads.currentThread return the current thread and not null.
-        ValueNode enterResult = kit.append(CEntryPointEnterNode.attachThread(isolate, false, true, false));
+        ValueNode enterResult = kit.append(CEntryPointEnterNode.attachThread(isolate, false, true));
 
         kit.startIf(IntegerEqualsNode.create(enterResult, ConstantNode.forInt(CEntryPointErrors.NO_ERROR, kit.getGraph()), NodeView.DEFAULT),
                         ProfileData.BranchProbabilityData.create(VERY_FAST_PATH_PROBABILITY, ProfileData.ProfileSource.UNKNOWN));
@@ -248,6 +250,7 @@ class LowUpcallStub extends UpcallStub implements CustomCallingConventionMethod 
                         parametersAssignment,
                         AbiUtils.singleton().toMemoryAssignment(jep.returnAssignment(), true));
     }
+
 }
 
 /**
@@ -273,12 +276,12 @@ class HighUpcallStub extends UpcallStub {
     }
 
     @Override
-    public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
+    public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method, purpose);
         MetaAccessProvider metaAccess = kit.getMetaAccess();
         FrameStateBuilder frame = kit.getFrameState();
 
-        List<ValueNode> allArguments = kit.loadArguments(getSignature().toParameterTypes(null));
+        List<ValueNode> allArguments = new ArrayList<>(kit.getInitialArguments());
 
         ValueNode mh = allArguments.remove(0);
         /* If adaptations are ever needed for upcall, they should most likely be applied here */
