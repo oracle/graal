@@ -68,5 +68,6 @@ public @interface OperationProxy {
      * @see GenerateBytecode#enableRootTagging()
      * @see OperationProxy#tags()
      */
+    // TODO (chumer) implement
     Class<? extends Tag>[] tags() default {};
 }

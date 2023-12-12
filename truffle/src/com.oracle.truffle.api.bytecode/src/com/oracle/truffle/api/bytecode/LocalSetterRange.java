@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
+//TODO (chumer)investigate whether this works with boxing elimination
 public final class LocalSetterRange {
     /**
      * LocalSetterRanges are not specific to any {@link BytecodeRootNode}, since they just

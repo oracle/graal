@@ -75,6 +75,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 @Target({ElementType.TYPE})
 public @interface Operation {
 
+    // TODO (chumer) implement
     Class<? extends Tag>[] tags() default {};
 
 }

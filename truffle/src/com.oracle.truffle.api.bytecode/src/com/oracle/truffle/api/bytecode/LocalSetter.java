@@ -48,6 +48,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
+//TODO (chumer) investigate whether this works with boxing elimination
 public final class LocalSetter {
 
     /**
