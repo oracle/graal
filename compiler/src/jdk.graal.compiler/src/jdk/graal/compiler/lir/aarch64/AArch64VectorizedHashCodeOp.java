@@ -135,6 +135,62 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
                     1,
     };
 
+    /**
+     * Emits an unrolled x16 vector loop + an unrolled x2 scalar loop + a final single scalar case
+     * to compute the array or string hash code.
+     *
+     * Roughly equivalent to the following vector pseudo code:
+     *
+     * <pre>
+     * final var I128 = VectorSpecies.of(int.class, VectorShape.S_128_BIT);
+     * final int vlen = vspecies.length();
+     * final int N = 4 * vlen;
+     * final int[] POW31BW = new int[N]{31**(N-1), ..., 31**1, 31**0};
+     * assert N == 16;
+     *
+     * int result = initialValue;
+     * int bound = data.length & ~(N - 1);
+     * // UNROLLED (x16) VECTOR LOOP
+     * if (data.length >= N) {
+     *     var vresult1 = IntVector.zero(I128);
+     *     var vresult2 = IntVector.zero(I128);
+     *     var vresult3 = IntVector.zero(I128);
+     *     var vresult4 = IntVector.zero(I128);
+     *     int inext = 31 ** N;
+     *     var vnext = IntVector.broadcast(I128, inext);
+     *     for (int i = 0; i < bound; i += N) {
+     *         result *= inext;
+     *         // load 4x4 zero-extended-to-32-bit int values
+     *         var vtmp1 = IntVector.fromArray(I128, data, i + 0 * vlen);
+     *         var vtmp2 = IntVector.fromArray(I128, data, i + 1 * vlen);
+     *         var vtmp3 = IntVector.fromArray(I128, data, i + 2 * vlen);
+     *         var vtmp4 = IntVector.fromArray(I128, data, i + 3 * vlen);
+     *         vresult1 = vresult1.mul(vnext).add(vtmp1);
+     *         vresult2 = vresult2.mul(vnext).add(vtmp2);
+     *         vresult3 = vresult3.mul(vnext).add(vtmp3);
+     *         vresult4 = vresult4.mul(vnext).add(vtmp4);
+     *     }
+     *     vresult1 = vresult1.mul(IntVector.fromArray(I128, POW31BW, 0 * vlen));
+     *     vresult2 = vresult2.mul(IntVector.fromArray(I128, POW31BW, 1 * vlen));
+     *     vresult3 = vresult3.mul(IntVector.fromArray(I128, POW31BW, 2 * vlen));
+     *     vresult4 = vresult4.mul(IntVector.fromArray(I128, POW31BW, 3 * vlen));
+     *     var vresult = vresult1.add(vresult2).add(vresult3).add(vresult4);
+     *     result += vresult.reduceLanes(ADD);
+     * }
+     * // UNROLLED (x2) SCALAR LOOP
+     * int i = 1;
+     * for (; i < data.length - bound; i += 2) {
+     *     result *= 31 * 31;
+     *     result += data[i - 1] * 31 + data[i];
+     * }
+     * // LAST REMAINING SCALAR (if length is odd)
+     * if (i == data.length - bound) {
+     *     result *= 31;
+     *     result += data[i - 1];
+     * }
+     * return result;
+     * </pre>
+     */
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         Label labelShortUnrolledBegin = new Label();
@@ -187,17 +243,6 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         // i.e. byte: 1 full or 2 half, halfword: 2 full or 4 half, word: 4 full.
         int consecutiveRegs = Math.max(maxConsecutiveRegs / extensionFactor, 1);
         int regsFilledPerLoad = consecutiveRegs * extensionFactor;
-
-        // @formatter:off
-        // elementsPerIteration = 16;
-        // if (cnt1 >= elementsPerIteration) {
-        //   UNROLLED VECTOR LOOP
-        // }
-        // if (cnt1 >= 2) {
-        //   UNROLLED SCALAR LOOP
-        // }
-        // SINGLE SCALAR
-        // @formatter:on
 
         // if (cnt1 >= elementsPerIteration) && generate_vectorized_loop
         masm.compare(32, cnt1, elementsPerIteration);
