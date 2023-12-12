@@ -1006,7 +1006,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         if (outOfBounds(srcOffset, length)) {
             throw trapOutOfBounds(node, srcOffset, length);
         }
-        unsafe.copyMemory(null, startAddress + srcOffset, dst, Unsafe.ARRAY_BYTE_BASE_OFFSET + dstOffset * Unsafe.ARRAY_BYTE_INDEX_SCALE, length);
+        unsafe.copyMemory(null, startAddress + srcOffset, dst, Unsafe.ARRAY_BYTE_BASE_OFFSET + (long) dstOffset * Unsafe.ARRAY_BYTE_INDEX_SCALE, length);
     }
 
     @Override

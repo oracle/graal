@@ -48,10 +48,10 @@ import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -1001,10 +1001,7 @@ class NativeWasmMemory extends WasmMemory {
         if (outOfBounds(srcOffset, length)) {
             throw trapOutOfBounds(node, srcOffset, length);
         }
-        for (int i = 0; i < length; i++) {
-            byte b = unsafe.getByte(startAddress + srcOffset + i);
-            dst[dstOffset + i] = b;
-        }
+        unsafe.copyMemory(null, startAddress + srcOffset, dst, Unsafe.ARRAY_BYTE_BASE_OFFSET + (long) dstOffset * Unsafe.ARRAY_BYTE_INDEX_SCALE, length);
     }
 
     @Override
