@@ -67,8 +67,13 @@ import jdk.vm.ci.meta.SpeculationLog;
 
 public class LoopPartialUnrollTest extends GraalCompilerTest {
 
+    boolean check = true;
+
     @Override
     protected void checkMidTierGraph(StructuredGraph graph) {
+        if (!check) {
+            return;
+        }
         NodeIterable<LoopBeginNode> loops = graph.getNodes().filter(LoopBeginNode.class);
         for (LoopBeginNode loop : loops) {
             if (loop.isMainLoop()) {
@@ -382,7 +387,6 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
 
         return res;
     }
-
 
     static int rr = 0;
 

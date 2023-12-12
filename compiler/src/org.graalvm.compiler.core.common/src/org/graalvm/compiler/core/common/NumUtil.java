@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.core.common;
 
-import java.nio.charset.StandardCharsets;
-
 import jdk.vm.ci.code.CodeUtil;
 
 import org.graalvm.compiler.debug.GraalError;
