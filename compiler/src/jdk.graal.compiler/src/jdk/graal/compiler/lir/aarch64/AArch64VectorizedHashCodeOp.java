@@ -316,13 +316,19 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
             loadConsecutiveVectors(masm, ASIMDSize.FullReg, ASIMDSize.FullReg.bits(), ElementSize.Word, coefAddrReg, vcoef, i, maxConsecutiveRegs, postIndex, false);
         }
 
-        // vresult *= vcoef;
-        for (int idx = 0; idx < nRegs; idx++) {
-            masm.neon.mulVVV(ASIMDSize.FullReg, ElementSize.Word, vresult[idx], vresult[idx], vcoef[idx]);
+        // fused multiply (vresult[i] * vcoef[i]) and vertical add reduction
+        // vresult[0] = vresult[0] * vcoef[0];
+        // vresult[0] += vresult[i] * vcoef[i] for i > 0;
+        for (int i = 0; i < nRegs; i++) {
+            if (i == 0) {
+                masm.neon.mulVVV(ASIMDSize.FullReg, ElementSize.Word, vresult[0], vresult[i], vcoef[i]);
+            } else {
+                masm.neon.mlaVVV(ASIMDSize.FullReg, ElementSize.Word, vresult[0], vresult[i], vcoef[i]);
+            }
         }
 
-        // accumulate horizontal vector sum in result
-        reduceVectorLanes(masm, ASIMDSize.FullReg, vresult, nRegs);
+        // result += vresult[0].reduceLanes(ADD); (horizontal lane-wise add reduction)
+        masm.neon.addvSV(ASIMDSize.FullReg, ElementSize.Word, vresult[0], vresult[0]);
         masm.fmov(32, tmp2, vresult[0]); // umovGX(Word, tmp2, vresult[0], 0);
         masm.add(32, result, result, tmp2);
 
@@ -494,24 +500,6 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
             xtl2VV(masm, unsigned, srcElSize, vtmp[dsti], vtmp[srci]);
             xtlVV(masm, unsigned, srcElSize, vtmp[dsti - 1], vtmp[srci]);
         }
-    }
-
-    /**
-     * Reduces elements from multiple vectors to a single vector and then reduces that vector's
-     * lanes to a single scalar value in {@code vresult[0]}.
-     */
-    private static void reduceVectorLanes(AArch64MacroAssembler masm, ASIMDSize vsize, Register[] vresult, int vresultLen) {
-        // reduce vectors pairwise until there's only a single vector left
-        for (int nRegs = vresultLen, stride = 1; nRegs >= 2; nRegs /= 2, stride *= 2) {
-            for (int i = 0; i < vresult.length - stride; i += 2 * stride) {
-                masm.neon.addVVV(vsize, ElementSize.Word, vresult[i], vresult[i], vresult[i + stride]);
-            }
-            if (nRegs % 2 != 0) {
-                masm.neon.addVVV(vsize, ElementSize.Word, vresult[0], vresult[0], vresult[(nRegs - 1) * stride]);
-            }
-        }
-        // reduce vector lanes horizontally to a scalar value (vresult.reduceLanes(ADD))
-        masm.neon.addvSV(vsize, ElementSize.Word, vresult[0], vresult[0]);
     }
 
     private static void xtlVV(AArch64MacroAssembler masm, boolean unsigned, ElementSize elementSize, Register dst, Register src) {
