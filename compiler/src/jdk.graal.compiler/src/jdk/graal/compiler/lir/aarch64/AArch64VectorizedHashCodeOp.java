@@ -36,7 +36,9 @@ import jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
 import jdk.graal.compiler.asm.aarch64.AArch64Address;
 import jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode;
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
+import jdk.graal.compiler.asm.aarch64.AArch64Assembler.ShiftType;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
+import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
@@ -199,6 +201,11 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         Label labelUnrolledVectorLoopBegin = new Label();
         Label labelEnd = new Label();
 
+        // Parameters (immutable, alive)
+        Register lengthParam = asRegister(length);
+        Register arrayStartParam = asRegister(arrayStart);
+        Register initialValueParam = asRegister(initialValue);
+        // Result (def) and temp registers
         Register result = asRegister(resultValue);
         Register ary1 = asRegister(temp[0]);
         Register cnt1 = asRegister(temp[1]);
@@ -206,9 +213,9 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         Register tmp3 = asRegister(temp[3]);
         Register index = asRegister(temp[4]);
 
-        masm.mov(64, ary1, asRegister(arrayStart));
-        masm.mov(32, cnt1, asRegister(length));
-        masm.mov(32, result, asRegister(initialValue));
+        masm.mov(64, ary1, arrayStartParam);
+        masm.mov(32, cnt1, lengthParam);
+        masm.mov(32, result, initialValueParam);
 
         Register vnext = asRegister(vectorTemp[0]);
         Register[] vcoef = IntStream.range(1, 1 + nRegs).mapToObj(i -> asRegister(vectorTemp[i])).toArray(Register[]::new);
@@ -222,6 +229,7 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
             case Int -> ElementSize.Word;
             default -> throw GraalError.shouldNotReachHereUnexpectedValue(arrayKind);
         };
+        final Stride stride = Stride.fromJavaKind(arrayKind);
 
         GraalError.guarantee(nRegs == 2 || nRegs == 4 || nRegs == 8, "number of vectors must be either 2, 4, or 8");
         final int elementsPerVector = ASIMDSize.FullReg.bytes() / ElementSize.Word.bytes();
@@ -244,19 +252,18 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         int consecutiveRegs = Math.max(maxConsecutiveRegs / extensionFactor, 1);
         int regsFilledPerLoad = consecutiveRegs * extensionFactor;
 
-        // if (cnt1 >= elementsPerIteration) && generate_vectorized_loop
-        masm.compare(32, cnt1, elementsPerIteration);
-        masm.branchConditionally(ConditionFlag.LO, labelShortUnrolledBegin);
+        Register bound = tmp2;
+        Register next = tmp3;
 
-        // index = 0;
-        masm.mov(index, 0);
+        // bound = length & ~(N - 1);
+        masm.ands(32, bound, cnt1, ~(elementsPerIteration - 1));
+        // if (bound != 0) { // (EQ = Z flag set)
+        masm.branchConditionally(ConditionFlag.EQ, labelShortUnrolledBegin);
+
         // vresult[i] = IntVector.zero(I128);
         for (int idx = 0; idx < nRegs; idx++) {
             masm.neon.moviVI(ASIMDSize.FullReg, vresult[idx], 0);
         }
-
-        Register bound = tmp2;
-        Register next = tmp3;
 
         // vnext = IntVector.broadcast(I128, power_of_31_backwards[0]);
         // Throws AIOOBE if there are not enough elements in the array but allows more.
@@ -265,8 +272,10 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         masm.mov(next, nextPow31);
         masm.neon.dupVG(ASIMDSize.FullReg, ElementSize.Word, vnext, next);
 
-        // bound = cnt1 & ~(elementsPerIteration - 1);
-        masm.and(32, bound, cnt1, ~(elementsPerIteration - 1));
+        // cnt1 -= bound;
+        masm.sub(32, cnt1, cnt1, bound);
+        // bound = arrayStart + bound * elSize.bytes();
+        masm.add(64, bound, ary1, bound, ShiftType.LSL, stride.log2);
 
         // for (; index < bound; index += elementsPerIteration) {
         masm.align(AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT);
@@ -293,17 +302,10 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
             masm.neon.moveVV(ASIMDSize.FullReg, vresult[idx], vtmp[idx]);
         }
 
-        // increment index by the number of elements read in this iteration
-        masm.add(32, index, index, elementsPerIteration);
-
-        // index < bound;
-        masm.cmp(32, index, bound);
+        // if (ary1 |<| bound) continue; else break;
+        masm.cmp(64, ary1, bound);
         masm.branchConditionally(ConditionFlag.LO, labelUnrolledVectorLoopBegin);
         // }
-
-        // assert index == bound && ary1 == &ary[bound];
-        // cnt1 -= bound;
-        masm.sub(32, cnt1, cnt1, bound);
         // release bound
 
         // vcoef = IntVector.fromArray(I128, power_of_31_backwards, 1);
@@ -331,16 +333,15 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         masm.neon.addvSV(ASIMDSize.FullReg, ElementSize.Word, vresult[0], vresult[0]);
         masm.fmov(32, tmp2, vresult[0]); // umovGX(Word, tmp2, vresult[0], 0);
         masm.add(32, result, result, tmp2);
-
-        // } else if (cnt1 < elementsPerIteration) {
+        // }
 
         masm.align(AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT);
         masm.bind(labelShortUnrolledBegin);
-        // int i = 1;
-        masm.mov(index, 1);
 
         AArch64Address postIndexAddr = AArch64Address.createImmediateAddress(elSize.bits(), AddressingMode.IMMEDIATE_POST_INDEXED, ary1, elSize.bytes());
 
+        // int i = 1;
+        masm.mov(index, 1);
         masm.cmp(32, index, cnt1);
         masm.branchConditionally(ConditionFlag.HS, labelShortUnrolledLoopExit);
 
@@ -375,8 +376,8 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
             masm.mov(tmp31, 31);
             arraysHashcodeElload(masm, tmp3, postIndexAddr, arrayKind); // index-1
             masm.madd(32, result, result, tmp31, tmp3);
+            // }
         }
-        // }
         masm.bind(labelEnd);
     }
 
