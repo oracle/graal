@@ -111,6 +111,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.wasm",
         "truffle:TRUFFLE_API",
+        "mx:JUNIT",
       ],
       "checkstyle" : "org.graalvm.wasm",
       "javaCompliance" : "17+",

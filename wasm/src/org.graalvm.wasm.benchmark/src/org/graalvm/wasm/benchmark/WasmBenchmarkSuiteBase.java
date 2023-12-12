@@ -50,7 +50,6 @@ import java.util.Objects;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.utils.Assert;
 import org.graalvm.wasm.utils.WasmBinaryTools;
 import org.graalvm.wasm.utils.cases.WasmCase;
 import org.openjdk.jmh.annotations.Fork;
@@ -99,7 +98,9 @@ public abstract class WasmBenchmarkSuiteBase {
             benchmarkSetupEach = benchmarkModule.getMember("benchmarkSetupEach");
             benchmarkTeardownEach = benchmarkModule.getMember("benchmarkTeardownEach");
             benchmarkRun = benchmarkModule.getMember("benchmarkRun");
-            Assert.assertNotNull(String.format("No benchmarkRun method in %s.", benchmarkCase.name()), benchmarkRun);
+            if (benchmarkRun == null) {
+                throw new RuntimeException(String.format("No benchmarkRun method in %s.", benchmarkCase.name()));
+            }
 
             if (benchmarkSetupOnce != null) {
                 benchmarkSetupOnce.execute();

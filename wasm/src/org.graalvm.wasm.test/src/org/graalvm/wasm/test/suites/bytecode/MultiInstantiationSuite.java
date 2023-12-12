@@ -67,8 +67,8 @@ import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
-import org.graalvm.wasm.utils.Assert;
 import org.graalvm.wasm.utils.WasmBinaryTools;
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.ArityException;

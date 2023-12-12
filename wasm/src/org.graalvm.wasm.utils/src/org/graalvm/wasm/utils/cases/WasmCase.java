@@ -58,10 +58,10 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.utils.Assert;
 import org.graalvm.wasm.utils.SystemProperties;
 import org.graalvm.wasm.utils.WasmBinaryTools;
 import org.graalvm.wasm.utils.WasmResource;
+import org.junit.Assert;
 
 /**
  * Instances of this class are used for WebAssembly test/benchmark cases.
@@ -131,11 +131,11 @@ public abstract class WasmCase {
     }
 
     public static WasmCaseData expectedFloat(float expectedValue, float delta) {
-        return new WasmCaseData((Value result, String output) -> Assert.assertFloatEquals("Failure: result:", expectedValue, result.as(Float.class), delta));
+        return new WasmCaseData((Value result, String output) -> Assert.assertEquals("Failure: result:", expectedValue, result.as(Float.class), delta));
     }
 
     public static WasmCaseData expectedDouble(double expectedValue, double delta) {
-        return new WasmCaseData((Value result, String output) -> Assert.assertDoubleEquals("Failure: result:", expectedValue, result.as(Double.class), delta));
+        return new WasmCaseData((Value result, String output) -> Assert.assertEquals("Failure: result:", expectedValue, result.as(Double.class), delta));
     }
 
     public static WasmCaseData expectedThrows(String expectedErrorMessage, WasmCaseData.ErrorType phase) {
@@ -245,7 +245,7 @@ public abstract class WasmCase {
                 caseData = WasmCase.expectedThrows(resultValue, WasmCaseData.ErrorType.Runtime);
                 break;
             default:
-                Assert.fail(String.format("Unknown type in result specification: %s", resultType));
+                throw new RuntimeException(String.format("Unknown type in result specification: %s", resultType));
         }
 
         if (mainContents.size() == 1) {
@@ -255,7 +255,7 @@ public abstract class WasmCase {
             } else if (content instanceof byte[]) {
                 return WasmCase.create(caseName, caseData, (byte[]) content, options);
             } else {
-                Assert.fail("Unknown content type: " + content.getClass());
+                throw new RuntimeException("Unknown content type: " + content.getClass());
             }
         } else if (mainContents.size() > 1) {
             return new WasmMultiCase(caseName, caseData, mainContents, options);
@@ -268,7 +268,7 @@ public abstract class WasmCase {
         final String name = SystemProperties.BENCHMARK_NAME;
 
         Assert.assertNotNull("Please select a benchmark by setting -D" + SystemProperties.BENCHMARK_NAME_PROPERTY_NAME, name);
-        Assert.assertTrue("Benchmark name must not be empty", !name.trim().isEmpty());
+        Assert.assertFalse("Benchmark name must not be empty", name.trim().isEmpty());
 
         final WasmCase result = WasmCase.collectFileCase("bench", resource, name);
         Assert.assertNotNull(String.format("Benchmark %s.%s not found", name, name), result);
@@ -280,7 +280,7 @@ public abstract class WasmCase {
         if (validator != null) {
             validator.accept(result, capturedStdout.toString(StandardCharsets.UTF_8));
         } else {
-            Assert.fail("Test was not expected to return a value.");
+            throw new RuntimeException("Test was not expected to return a value.");
         }
     }
 
