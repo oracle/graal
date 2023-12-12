@@ -42,6 +42,7 @@ package com.oracle.truffle.api.bytecode;
 
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -424,10 +425,21 @@ public interface BytecodeRootNode extends BytecodeIntrospection.Provider {
      */
     @TruffleBoundary
     default String dump() {
+        return dump(-1);
+    }
+
+    /**
+     * Helper method to dump the root node's bytecode.
+     *
+     * @return a string representation of the bytecode
+     */
+    @TruffleBoundary
+    default String dump(int highlightedBci) {
         BytecodeIntrospection id = getIntrospectionData();
         List<Instruction> instructions = id.getInstructions();
         List<ExceptionHandler> exceptions = id.getExceptionHandlers();
         List<SourceInformation> sourceInformation = id.getSourceInformation();
+
         return String.format("""
                         %s(name=%s)[
                             instructions(%s) = %s
@@ -437,21 +449,29 @@ public interface BytecodeRootNode extends BytecodeIntrospection.Provider {
                         getClass().getSimpleName(),
                         ((RootNode) this).getQualifiedName(),
                         instructions.size(),
-                        formatList(instructions),
+                        formatList(instructions, (i) -> i.getBci() == highlightedBci),
                         exceptions.size(),
-                        formatList(exceptions),
+                        formatList(exceptions, (e) -> highlightedBci >= e.getStartIndex() && highlightedBci < e.getEndIndex()),
                         sourceInformation != null ? sourceInformation.size() : "-",
-                        formatList(sourceInformation));
+                        formatList(sourceInformation, (s) -> highlightedBci >= s.getStartBci() && highlightedBci < s.getEndBci()));
     }
 
-    private static String formatList(List<? extends Object> list) {
+    private static <T> String formatList(List<T> list, Predicate<T> highlight) {
         if (list == null) {
             return "Not Available";
         } else if (list.isEmpty()) {
             return "Empty";
         }
-        String sep = "\n        ";
-        return sep + String.join(sep, list.stream().map(element -> element.toString()).toArray(String[]::new));
+        StringBuilder b = new StringBuilder();
+        for (T o : list) {
+            if (highlight.test(o)) {
+                b.append("\n    ==> ");
+            } else {
+                b.append("\n        ");
+            }
+            b.append(o.toString());
+        }
+        return b.toString();
     }
 
 }

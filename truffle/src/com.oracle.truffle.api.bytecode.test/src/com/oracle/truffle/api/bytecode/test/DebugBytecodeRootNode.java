@@ -43,12 +43,13 @@ package com.oracle.truffle.api.bytecode.test;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.debug.BytecodeDebugListener;
 import com.oracle.truffle.api.bytecode.introspection.Instruction;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public abstract class DebugBytecodeRootNode extends RootNode implements BytecodeDebugListener {
+public abstract class DebugBytecodeRootNode extends RootNode implements BytecodeRootNode, BytecodeDebugListener {
 
     static boolean traceQuickening = false;
 
@@ -63,6 +64,7 @@ public abstract class DebugBytecodeRootNode extends RootNode implements Bytecode
     public void onQuicken(Instruction before, Instruction after) {
         if (traceQuickening) {
             System.out.printf("Quicken %s: %n     %s%n  -> %s%n", before.getName(), before, after);
+            System.out.println(this.dump(after.getBci()));
         }
         quickeningCount.incrementAndGet();
     }
@@ -71,6 +73,7 @@ public abstract class DebugBytecodeRootNode extends RootNode implements Bytecode
         if (traceQuickening) {
             System.out.printf("Quicken operand index %s for %s: %n     %s%n  -> %s%n", operandIndex, base.getName(),
                             operandBefore, operandAfter);
+            System.out.println(this.dump(operandBefore.getBci()));
         }
         quickeningCount.incrementAndGet();
     }
