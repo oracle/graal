@@ -78,7 +78,7 @@ import org.graalvm.wasm.globals.DefaultWasmGlobal;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
-import org.graalvm.wasm.utils.Assert;
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -159,7 +159,7 @@ public class WasmJsApiSuite {
 
     @Test
     public void testInstantiateWithImportMemory() throws IOException {
-        runTest(context -> {
+        runMemoryTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
             final WasmMemory memory = WebAssembly.memAlloc(4, 8, false);
             final Dictionary importObject = Dictionary.create(new Object[]{
@@ -181,7 +181,7 @@ public class WasmJsApiSuite {
 
     @Test
     public void testInstantiateWithExportMemory() throws IOException {
-        runTest(context -> {
+        runMemoryTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
             WasmInstance instance = moduleInstantiate(wasm, binaryWithMemoryExport, null);
             try {
@@ -322,7 +322,7 @@ public class WasmJsApiSuite {
 
     @Test
     public void testCreateAnyfuncGlobalRefTypesDisabled() throws IOException {
-        runTest(builder -> disableRefTypes(builder), context -> {
+        runTest(WasmJsApiSuite::disableRefTypes, context -> {
             final WebAssembly wasm = new WebAssembly(context);
             try {
                 wasm.globalAlloc(ValueType.anyfunc, false, WasmConstant.NULL);
@@ -335,7 +335,7 @@ public class WasmJsApiSuite {
 
     @Test
     public void testCreateExternrefGlobalRefTypesDisabled() throws IOException {
-        runTest(builder -> disableRefTypes(builder), context -> {
+        runTest(WasmJsApiSuite::disableRefTypes, context -> {
             final WebAssembly wasm = new WebAssembly(context);
             try {
                 wasm.globalAlloc(ValueType.externref, false, WasmConstant.NULL);
@@ -481,7 +481,7 @@ public class WasmJsApiSuite {
 
     @Test
     public void testGlobalWriteAnyfuncRefTypesDisabled() throws IOException {
-        runTest(builder -> disableRefTypes(builder), context -> {
+        runTest(WasmJsApiSuite::disableRefTypes, context -> {
             final WebAssembly wasm = new WebAssembly(context);
             final WasmGlobal global = new DefaultWasmGlobal(ValueType.anyfunc, true, WasmConstant.NULL);
             try {
@@ -495,7 +495,7 @@ public class WasmJsApiSuite {
 
     @Test
     public void testGlobalWriteExternrefRefTypesDisabled() throws IOException {
-        runTest(builder -> disableRefTypes(builder), context -> {
+        runTest(WasmJsApiSuite::disableRefTypes, context -> {
             final WebAssembly wasm = new WebAssembly(context);
             final WasmGlobal global = new DefaultWasmGlobal(ValueType.externref, true, WasmConstant.NULL);
             try {
@@ -576,7 +576,7 @@ public class WasmJsApiSuite {
     @Test
     public void testExportMemoryTwice() throws IOException, InterruptedException {
         final byte[] exportMemoryTwice = compileWat("exportMemoryTwice", "(memory 1) (export \"a\" (memory 0)) (export \"b\" (memory 0))");
-        runTest(context -> {
+        runMemoryTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
             final WasmInstance instance = moduleInstantiate(wasm, exportMemoryTwice, null);
             try {
@@ -628,7 +628,7 @@ public class WasmJsApiSuite {
             final WasmInstance instance = moduleInstantiate(wasm, sameFunctionWithDifferentNames, null);
             final Object f1 = WebAssembly.instanceExport(instance, "f1");
             final Object f2 = WebAssembly.instanceExport(instance, "f2");
-            Assert.assertTrue("Returned function instances must be reference equal", f1 == f2);
+            Assert.assertSame("Returned function instances must be reference equal", f1, f2);
         });
     }
 
@@ -642,7 +642,7 @@ public class WasmJsApiSuite {
             final Object f = WebAssembly.instanceExport(instance, "f");
             final WasmTable t = (WasmTable) WebAssembly.instanceExport(instance, "t");
             final Object fInTable = WebAssembly.tableRead(t, 0);
-            Assert.assertTrue("Returned function instances must be reference equal", f == fInTable);
+            Assert.assertSame("Returned function instances must be reference equal", f, fInTable);
         });
     }
 
@@ -656,7 +656,7 @@ public class WasmJsApiSuite {
             final WasmTable t = (WasmTable) WebAssembly.instanceExport(instance, "t");
             final Object f1 = WebAssembly.tableRead(t, 0);
             final Object f2 = WebAssembly.tableRead(t, 1);
-            Assert.assertTrue("Returned function instances must be reference equal", f1 == f2);
+            Assert.assertSame("Returned function instances must be reference equal", f1, f2);
         });
     }
 
@@ -676,7 +676,7 @@ public class WasmJsApiSuite {
                 }));
                 final WasmInstance m2Instance = moduleInstantiate(wasm, m2, d);
                 final Object m2Function = WebAssembly.instanceExport(m2Instance, "f");
-                Assert.assertTrue("Returned function instances must be reference equal", m1Function == m2Function);
+                Assert.assertSame("Returned function instances must be reference equal", m1Function, m2Function);
                 final Object m1Value = lib.execute(m1Function);
                 final Object m2Value = lib.execute(m2Function);
                 Assert.assertEquals("Return value of functions is equal", m1Value, m2Value);
@@ -706,7 +706,7 @@ public class WasmJsApiSuite {
                 }));
                 final WasmInstance m2Instance = moduleInstantiate(wasm, m2, d);
                 final Object m2Function = WebAssembly.instanceExport(m2Instance, "f");
-                Assert.assertTrue("Returned function instances must be reference equal", m1Function == m2Function);
+                Assert.assertSame("Returned function instances must be reference equal", m1Function, m2Function);
                 final Object m1Value = lib.execute(m1Function);
                 final Object m2Value = lib.execute(m2Function);
                 Assert.assertEquals("Return value of functions is equal", m1Value, m2Value);
@@ -734,7 +734,7 @@ public class WasmJsApiSuite {
                 final WasmInstance m2Instance = moduleInstantiate(wasm, m2, d);
                 final Object m2Table = WebAssembly.instanceExport(m2Instance, "t");
                 final Object m2Function = WebAssembly.tableRead((WasmTable) m2Table, 0);
-                Assert.assertTrue("Returned function instances must be reference equal", m1Function == m2Function);
+                Assert.assertSame("Returned function instances must be reference equal", m1Function, m2Function);
                 final Object m1Value = lib.execute(m1Function);
                 final Object m2Value = lib.execute(m2Function);
                 Assert.assertEquals("Return value of functions is equal", m1Value, m2Value);
@@ -761,7 +761,7 @@ public class WasmJsApiSuite {
                 final WasmInstance m2Instance = moduleInstantiate(wasm, m2, d);
                 final Object m2Table = WebAssembly.instanceExport(m2Instance, "t");
                 final Object m2Function = WebAssembly.tableRead((WasmTable) m2Table, 0);
-                Assert.assertTrue("Returned function instances must be reference equal", m1Function == m2Function);
+                Assert.assertSame("Returned function instances must be reference equal", m1Function, m2Function);
                 final Object m1Value = lib.execute(m1Function);
                 final Object m2Value = lib.execute(m2Function);
                 Assert.assertEquals("Return value of functions is equal", m1Value, m2Value);
@@ -787,7 +787,7 @@ public class WasmJsApiSuite {
                 final Object m1Function = WebAssembly.instanceExport(m1Instance, "f");
                 final Object m1Table = WebAssembly.instanceExport(m1Instance, "t");
                 final Object m1TableFunction = WebAssembly.tableRead((WasmTable) m1Table, 0);
-                Assert.assertTrue("Returned function instances must be reference equal", m1Function == m1TableFunction);
+                Assert.assertSame("Returned function instances must be reference equal", m1Function, m1TableFunction);
                 Object m1Value = lib.execute(m1Function);
                 final Object m1TableValue = lib.execute(m1TableFunction);
                 Assert.assertEquals("Return value of functions is equal", m1Value, m1TableValue);
@@ -799,7 +799,7 @@ public class WasmJsApiSuite {
                 final WasmInstance m2Instance = moduleInstantiate(wasm, m2, d);
                 final Object m2Table = WebAssembly.instanceExport(m2Instance, "t");
                 final Object m2Function = WebAssembly.tableRead((WasmTable) m2Table, 0);
-                Assert.assertTrue("Returned function instances must be reference equal", m1Function == m2Function);
+                Assert.assertSame("Returned function instances must be reference equal", m1Function, m2Function);
                 m1Value = lib.execute(m1Function);
                 final Object m2Value = lib.execute(m2Function);
                 Assert.assertEquals("Return value of functions is equal", m1Value, m2Value);
@@ -975,7 +975,7 @@ public class WasmJsApiSuite {
                 Object customSection = WebAssembly.customSections(module, "test").readArrayElement(0);
                 InteropLibrary interop = InteropLibrary.getUncached(customSection);
                 Assert.assertTrue("Custom section should have buffer elements", interop.hasBufferElements(customSection));
-                Assert.assertTrue("Custom section should not have writable buffer", !interop.isBufferWritable(customSection));
+                Assert.assertFalse("Custom section should not have writable buffer", interop.isBufferWritable(customSection));
                 Assert.assertEquals("Custom section should have correct buffer size", 16L, interop.getBufferSize(customSection));
                 Assert.assertEquals("Read first byte", (byte) 0x01, interop.readBufferByte(customSection, 0));
                 Assert.assertEquals("Read last byte", (byte) 0x16, interop.readBufferByte(customSection, bufferSize - 1));
@@ -991,14 +991,14 @@ public class WasmJsApiSuite {
                 Assert.assertEquals("Read first long BE", 0x0102030405060708L, interop.readBufferLong(customSection, ByteOrder.BIG_ENDIAN, 0));
                 Assert.assertEquals("Read last long LE", 0x1615141312111009L, interop.readBufferLong(customSection, ByteOrder.LITTLE_ENDIAN, bufferSize - 8));
                 Assert.assertEquals("Read last long BE", 0x0910111213141516L, interop.readBufferLong(customSection, ByteOrder.BIG_ENDIAN, bufferSize - 8));
-                Assert.assertEquals("Read first float LE", Float.intBitsToFloat(0x04030201), interop.readBufferFloat(customSection, ByteOrder.LITTLE_ENDIAN, 0));
-                Assert.assertEquals("Read first float BE", Float.intBitsToFloat(0x01020304), interop.readBufferFloat(customSection, ByteOrder.BIG_ENDIAN, 0));
-                Assert.assertEquals("Read last float LE", Float.intBitsToFloat(0x16151413), interop.readBufferFloat(customSection, ByteOrder.LITTLE_ENDIAN, bufferSize - 4));
-                Assert.assertEquals("Read last float BE", Float.intBitsToFloat(0x13141516), interop.readBufferFloat(customSection, ByteOrder.BIG_ENDIAN, bufferSize - 4));
-                Assert.assertEquals("Read first long LE", Double.longBitsToDouble(0x0807060504030201L), interop.readBufferDouble(customSection, ByteOrder.LITTLE_ENDIAN, 0));
-                Assert.assertEquals("Read first long BE", Double.longBitsToDouble(0x0102030405060708L), interop.readBufferDouble(customSection, ByteOrder.BIG_ENDIAN, 0));
-                Assert.assertEquals("Read last long LE", Double.longBitsToDouble(0x1615141312111009L), interop.readBufferDouble(customSection, ByteOrder.LITTLE_ENDIAN, bufferSize - 8));
-                Assert.assertEquals("Read last long BE", Double.longBitsToDouble(0x0910111213141516L), interop.readBufferDouble(customSection, ByteOrder.BIG_ENDIAN, bufferSize - 8));
+                Assert.assertEquals("Read first float LE", Float.intBitsToFloat(0x04030201), interop.readBufferFloat(customSection, ByteOrder.LITTLE_ENDIAN, 0), 0.001f);
+                Assert.assertEquals("Read first float BE", Float.intBitsToFloat(0x01020304), interop.readBufferFloat(customSection, ByteOrder.BIG_ENDIAN, 0), 0.001f);
+                Assert.assertEquals("Read last float LE", Float.intBitsToFloat(0x16151413), interop.readBufferFloat(customSection, ByteOrder.LITTLE_ENDIAN, bufferSize - 4), 0.001f);
+                Assert.assertEquals("Read last float BE", Float.intBitsToFloat(0x13141516), interop.readBufferFloat(customSection, ByteOrder.BIG_ENDIAN, bufferSize - 4), 0.001f);
+                Assert.assertEquals("Read first long LE", Double.longBitsToDouble(0x0807060504030201L), interop.readBufferDouble(customSection, ByteOrder.LITTLE_ENDIAN, 0), 0.001);
+                Assert.assertEquals("Read first long BE", Double.longBitsToDouble(0x0102030405060708L), interop.readBufferDouble(customSection, ByteOrder.BIG_ENDIAN, 0), 0.001);
+                Assert.assertEquals("Read last long LE", Double.longBitsToDouble(0x1615141312111009L), interop.readBufferDouble(customSection, ByteOrder.LITTLE_ENDIAN, bufferSize - 8), 0.001);
+                Assert.assertEquals("Read last long BE", Double.longBitsToDouble(0x0910111213141516L), interop.readBufferDouble(customSection, ByteOrder.BIG_ENDIAN, bufferSize - 8), 0.001);
                 final byte[] b = new byte[12];
                 interop.readBuffer(customSection, 0, b, 0, 12);
                 Assert.assertArrayEquals("Read first 12 bytes", new byte[]{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12}, b);
@@ -1087,7 +1087,7 @@ public class WasmJsApiSuite {
 
     @Test
     public void testMemoryBufferMessages() throws IOException {
-        runTest(context -> {
+        runMemoryTest(context -> {
             WebAssembly wasm = new WebAssembly(context);
             WasmModule module = wasm.moduleDecode(binaryWithMemoryExport);
             WasmInstance instance = wasm.moduleInstantiate(module, new Dictionary());
@@ -1113,14 +1113,14 @@ public class WasmJsApiSuite {
                 Assert.assertEquals("Read first long BE", 0L, interop.readBufferLong(buffer, ByteOrder.BIG_ENDIAN, 0));
                 Assert.assertEquals("Read last long LE", 0L, interop.readBufferLong(buffer, ByteOrder.LITTLE_ENDIAN, bufferSize - 8));
                 Assert.assertEquals("Read last long BE", 0L, interop.readBufferLong(buffer, ByteOrder.BIG_ENDIAN, bufferSize - 8));
-                Assert.assertEquals("Read first float LE", (float) 0, interop.readBufferFloat(buffer, ByteOrder.LITTLE_ENDIAN, 0));
-                Assert.assertEquals("Read first float BE", (float) 0, interop.readBufferFloat(buffer, ByteOrder.BIG_ENDIAN, 0));
-                Assert.assertEquals("Read last float LE", (float) 0, interop.readBufferFloat(buffer, ByteOrder.LITTLE_ENDIAN, bufferSize - 4));
-                Assert.assertEquals("Read last float BE", (float) 0, interop.readBufferFloat(buffer, ByteOrder.BIG_ENDIAN, bufferSize - 4));
-                Assert.assertEquals("Read first double LE", 0d, interop.readBufferDouble(buffer, ByteOrder.LITTLE_ENDIAN, 0));
-                Assert.assertEquals("Read first double BE", 0d, interop.readBufferDouble(buffer, ByteOrder.BIG_ENDIAN, 0));
-                Assert.assertEquals("Read last double LE", 0d, interop.readBufferDouble(buffer, ByteOrder.LITTLE_ENDIAN, bufferSize - 8));
-                Assert.assertEquals("Read last double BE", 0d, interop.readBufferDouble(buffer, ByteOrder.BIG_ENDIAN, bufferSize - 8));
+                Assert.assertEquals("Read first float LE", 0f, interop.readBufferFloat(buffer, ByteOrder.LITTLE_ENDIAN, 0), 0.001f);
+                Assert.assertEquals("Read first float BE", 0f, interop.readBufferFloat(buffer, ByteOrder.BIG_ENDIAN, 0), 0.001f);
+                Assert.assertEquals("Read last float LE", 0f, interop.readBufferFloat(buffer, ByteOrder.LITTLE_ENDIAN, bufferSize - 4), 0.001f);
+                Assert.assertEquals("Read last float BE", 0f, interop.readBufferFloat(buffer, ByteOrder.BIG_ENDIAN, bufferSize - 4), 0.001f);
+                Assert.assertEquals("Read first double LE", 0d, interop.readBufferDouble(buffer, ByteOrder.LITTLE_ENDIAN, 0), 0.001);
+                Assert.assertEquals("Read first double BE", 0d, interop.readBufferDouble(buffer, ByteOrder.BIG_ENDIAN, 0), 0.001);
+                Assert.assertEquals("Read last double LE", 0d, interop.readBufferDouble(buffer, ByteOrder.LITTLE_ENDIAN, bufferSize - 8), 0.001);
+                Assert.assertEquals("Read last double BE", 0d, interop.readBufferDouble(buffer, ByteOrder.BIG_ENDIAN, bufferSize - 8), 0.001);
 
                 final byte[] b = new byte[12];
                 interop.readBuffer(buffer, 0, b, 0, 12);
@@ -1179,14 +1179,14 @@ public class WasmJsApiSuite {
 
                 float f = Float.intBitsToFloat(0x01020304);
                 interop.writeBufferFloat(buffer, ByteOrder.LITTLE_ENDIAN, 0, f);
-                Assert.assertEquals("Read written float LE", f, interop.readBufferFloat(buffer, ByteOrder.LITTLE_ENDIAN, 0));
+                Assert.assertEquals("Read written float LE", f, interop.readBufferFloat(buffer, ByteOrder.LITTLE_ENDIAN, 0), 0.001f);
                 Assert.assertEquals("Read byte 0 of float LE", (byte) 0x04, interop.readBufferByte(buffer, 0));
                 Assert.assertEquals("Read byte 1 of float LE", (byte) 0x03, interop.readBufferByte(buffer, 1));
                 Assert.assertEquals("Read byte 2 of float LE", (byte) 0x02, interop.readBufferByte(buffer, 2));
                 Assert.assertEquals("Read byte 3 of float LE", (byte) 0x01, interop.readBufferByte(buffer, 3));
 
                 interop.writeBufferFloat(buffer, ByteOrder.BIG_ENDIAN, 0, f);
-                Assert.assertEquals("Read written float BE", f, interop.readBufferFloat(buffer, ByteOrder.BIG_ENDIAN, 0));
+                Assert.assertEquals("Read written float BE", f, interop.readBufferFloat(buffer, ByteOrder.BIG_ENDIAN, 0), 0.001f);
                 Assert.assertEquals("Read byte 0 of float BE", (byte) 0x01, interop.readBufferByte(buffer, 0));
                 Assert.assertEquals("Read byte 1 of float BE", (byte) 0x02, interop.readBufferByte(buffer, 1));
                 Assert.assertEquals("Read byte 2 of float BE", (byte) 0x03, interop.readBufferByte(buffer, 2));
@@ -1194,7 +1194,7 @@ public class WasmJsApiSuite {
 
                 double d = Double.longBitsToDouble(0x0102030405060708L);
                 interop.writeBufferDouble(buffer, ByteOrder.LITTLE_ENDIAN, 0, d);
-                Assert.assertEquals("Read written double LE", d, interop.readBufferDouble(buffer, ByteOrder.LITTLE_ENDIAN, 0));
+                Assert.assertEquals("Read written double LE", d, interop.readBufferDouble(buffer, ByteOrder.LITTLE_ENDIAN, 0), 0.001);
                 Assert.assertEquals("Read byte 0 of double LE", (byte) 0x08, interop.readBufferByte(buffer, 0));
                 Assert.assertEquals("Read byte 1 of double LE", (byte) 0x07, interop.readBufferByte(buffer, 1));
                 Assert.assertEquals("Read byte 2 of double LE", (byte) 0x06, interop.readBufferByte(buffer, 2));
@@ -1205,7 +1205,7 @@ public class WasmJsApiSuite {
                 Assert.assertEquals("Read byte 7 of double LE", (byte) 0x01, interop.readBufferByte(buffer, 7));
 
                 interop.writeBufferDouble(buffer, ByteOrder.BIG_ENDIAN, 0, d);
-                Assert.assertEquals("Read written double BE", d, interop.readBufferDouble(buffer, ByteOrder.BIG_ENDIAN, 0));
+                Assert.assertEquals("Read written double BE", d, interop.readBufferDouble(buffer, ByteOrder.BIG_ENDIAN, 0), 0.001);
                 Assert.assertEquals("Read byte 0 of double BE", (byte) 0x01, interop.readBufferByte(buffer, 0));
                 Assert.assertEquals("Read byte 1 of double BE", (byte) 0x02, interop.readBufferByte(buffer, 1));
                 Assert.assertEquals("Read byte 2 of double BE", (byte) 0x03, interop.readBufferByte(buffer, 2));
@@ -1322,7 +1322,7 @@ public class WasmJsApiSuite {
     public void testMemoryAllocationFailure() throws IOException {
         // Memory allocation should either succeed or throw an interop
         // exception (not an internal error like OutOfMemoryError).
-        runTest(context -> {
+        runMemoryTest(context -> {
             try {
                 Object[] memories = new Object[5];
                 for (int i = 0; i < memories.length; i++) {
@@ -1406,9 +1406,7 @@ public class WasmJsApiSuite {
                         """);
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final var func = new Executable((args) -> {
-                return 0;
-            });
+            final var func = new Executable((args) -> 0);
             final var f = new Executable((args) -> {
                 final Object[] result = new Object[2];
                 result[0] = func;
@@ -1434,7 +1432,7 @@ public class WasmJsApiSuite {
 
     @Test
     public void testInitialMemorySizeOutOfBounds() throws IOException {
-        runTest(context -> {
+        runMemoryTest(context -> {
             try {
                 WebAssembly.memAlloc(32768, 32770, false);
                 Assert.fail("Should have failed - initial memory size exceeds implementation limit");
@@ -1446,7 +1444,7 @@ public class WasmJsApiSuite {
 
     @Test
     public void testMinMemorySizeExceedsMaxSize() throws IOException {
-        runTest(context -> {
+        runMemoryTest(context -> {
             try {
                 WebAssembly.memAlloc(2, 1, false);
                 Assert.fail("Should have failed - min memory size bigger than max size");
@@ -1458,7 +1456,7 @@ public class WasmJsApiSuite {
 
     @Test
     public void testMemoryGrowLimit() throws IOException {
-        runTest(context -> {
+        runMemoryTest(context -> {
             try {
                 WasmMemory memory = WebAssembly.memAlloc(1, 1, false);
                 WebAssembly.memGrow(memory, 1);
@@ -1540,7 +1538,7 @@ public class WasmJsApiSuite {
 
     @Test
     public void testTableAlloc1Param() throws IOException {
-        runTest(builder -> disableRefTypes(builder), context -> {
+        runTest(WasmJsApiSuite::disableRefTypes, context -> {
             final WebAssembly wasm = new WebAssembly(context);
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
@@ -1688,7 +1686,7 @@ public class WasmJsApiSuite {
 
     @Test
     public void testMemoryEmbedderData() throws IOException {
-        runTest(context -> {
+        runMemoryTest(context -> {
             WasmMemory memory = WebAssembly.memAlloc(1, 1, false);
             checkEmbedderData(memory);
         });
@@ -1775,9 +1773,7 @@ public class WasmJsApiSuite {
                         """);
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Object f = new Executable((args) -> {
-                return 0;
-            });
+            final Object f = new Executable((args) -> 0);
             final Dictionary d = new Dictionary();
             d.addMember("m", Dictionary.create(new Object[]{
                             "f", f
@@ -1813,9 +1809,7 @@ public class WasmJsApiSuite {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
 
-            final Object f = new Executable((args) -> {
-                return InteropArray.create(new Object[]{1, 2});
-            });
+            final Object f = new Executable((args) -> InteropArray.create(new Object[]{1, 2}));
             final Dictionary d = new Dictionary();
             d.addMember("m", Dictionary.create(new Object[]{
                             "f", f
@@ -1851,9 +1845,7 @@ public class WasmJsApiSuite {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
 
-            final Object f = new Executable((args) -> {
-                return InteropArray.create(new Object[]{0, 1.1, 2});
-            });
+            final Object f = new Executable((args) -> InteropArray.create(new Object[]{0, 1.1, 2}));
             final Dictionary d = new Dictionary();
             d.addMember("m", Dictionary.create(new Object[]{
                             "f", f
@@ -2063,7 +2055,7 @@ public class WasmJsApiSuite {
     private static void runValidationInvalid(byte[] data) throws IOException {
         runTest(context -> {
             WebAssembly wasm = new WebAssembly(context);
-            Assert.assertTrue("Should have failed - invalid module", !wasm.moduleValidate(data));
+            Assert.assertFalse("Should have failed - invalid module", wasm.moduleValidate(data));
         });
     }
 
@@ -2277,6 +2269,11 @@ public class WasmJsApiSuite {
             }
             wasm.moduleInstantiate(module, importObject);
         });
+    }
+
+    private static void runMemoryTest(Consumer<WasmContext> testCase) throws IOException {
+        runTest(null, testCase);
+        runTest(options -> options.option("wasm.UseUnsafeMemory", "true"), testCase);
     }
 
     private static void runTest(Consumer<WasmContext> testCase) throws IOException {
