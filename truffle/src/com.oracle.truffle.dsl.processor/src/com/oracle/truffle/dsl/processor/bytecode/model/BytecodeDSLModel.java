@@ -383,10 +383,14 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         if (instructions.containsKey(name)) {
             throw new AssertionError(String.format("Multiple instructions declared with name %s. Instruction names must be distinct.", name));
         }
-        // TODO: check if returning orig value
         Signature signature = shortCircuitModel == null ? signature(Object.class, boolean.class, boolean.class) : signature(boolean.class, boolean.class, boolean.class);
         InstructionModel instr = instruction(InstructionKind.CUSTOM_SHORT_CIRCUIT, name, signature);
         instr.shortCircuitModel = shortCircuitModel;
+
+        // may be null only for error declarations
+        if (shortCircuitModel.booleanConverterInstruction() != null) {
+            shortCircuitModel.booleanConverterInstruction().shortCircuitInstructions.add(instr);
+        }
         return instr;
     }
 

@@ -319,8 +319,6 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             return;
         }
 
-        // TODO metadata
-
         // find and bind type system
         AnnotationMirror typeSystemRefMirror = ElementUtils.findAnnotationMirror(typeElement, types.TypeSystemReference);
         if (typeSystemRefMirror != null) {
@@ -638,7 +636,13 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         }
                         break;
                     case CUSTOM_SHORT_CIRCUIT:
-                        // should be supported in the future
+                        /*
+                         * This is currently not supported because short circuits produces values
+                         * that can be consumed by instructions. We would need to remember the
+                         * branch we entered to properly boxing eliminate it.
+                         *
+                         * We are not doing this yet, and it might also not be worth it.
+                         */
                         break;
                     case LOAD_ARGUMENT:
                     case LOAD_CONSTANT:

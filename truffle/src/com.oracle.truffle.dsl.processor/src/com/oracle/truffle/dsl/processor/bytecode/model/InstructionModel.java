@@ -225,11 +225,20 @@ public final class InstructionModel implements PrettyPrintable {
 
     public ShortCircuitInstructionModel shortCircuitModel;
 
+    /*
+     * Contains all short circuit instructions used by converters.
+     */
+    public final List<InstructionModel> shortCircuitInstructions = new ArrayList<>();
+
     public InstructionModel(InstructionKind kind, String name, Signature signature, String quickeningName) {
         this.kind = kind;
         this.name = name;
         this.signature = signature;
         this.quickeningName = quickeningName;
+    }
+
+    public boolean isShortCircuitConverter() {
+        return !shortCircuitInstructions.isEmpty();
     }
 
     public int getId() {
@@ -387,6 +396,10 @@ public final class InstructionModel implements PrettyPrintable {
             throw new AssertionError("Too many immediates of kind " + immediateKind + ". Use getImmediates() instead.");
         }
         return filteredImmediates.get(0);
+    }
+
+    public InstructionImmediate getImmediate(String immediateName) {
+        return immediates.stream().filter(imm -> imm.name.equals(immediateName)).findAny().get();
     }
 
     public int getInstructionLength() {

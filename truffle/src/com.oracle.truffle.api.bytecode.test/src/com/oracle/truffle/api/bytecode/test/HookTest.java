@@ -48,13 +48,12 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.bytecode.GenerateBytecode;
-import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
-import com.oracle.truffle.api.bytecode.test.BytecodeNodeWithHooks.ControlFlowTruffleException;
+import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.test.BytecodeNodeWithHooks.MyException;
 import com.oracle.truffle.api.bytecode.test.BytecodeNodeWithHooks.ThrowStackOverflow;
 import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleLanguage;

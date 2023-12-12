@@ -1520,6 +1520,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     }
 
     private CodeExecutableElement createCreateCachedData() {
+        record CachedInitializationKey(int instructionLength, List<InstructionImmediate> immediates, String nodeName) {
+
+            CachedInitializationKey(InstructionModel instr) {
+                this(instr.getInstructionLength(), instr.getImmediates().stream().filter((i) -> needsCachedInitialization(i)).toList(), cachedDataClassName(instr));
+            }
+
+        }
+
         TypeMirror nodeArrayType = new ArrayCodeTypeMirror(types.Node);
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), nodeArrayType, "createCachedData");
 
@@ -1535,57 +1543,41 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.statement("int bci = 0");
         b.statement("int numConditionalBranches = 0");
         b.string("loop: ").startWhile().string("bci < bc.length").end().startBlock();
-        b.statement("int nodeIndex");
-        b.statement("Node node");
         b.startSwitch().string(readBc("bci")).end().startBlock();
 
-        Map<Boolean, List<InstructionModel>> instructionsGroupedByHasConditionalBranch = model.getInstructions().stream() //
+        Map<CachedInitializationKey, List<InstructionModel>> grouped = model.getInstructions().stream()//
                         .filter((i -> !i.isQuickening())) //
-                        .collect(Collectors.partitioningBy(InstructionModel::hasConditionalBranch));
-        Map<Boolean, List<InstructionModel>> instructionsGroupedByHasNode = instructionsGroupedByHasConditionalBranch.get(false).stream() //
-                        .collect(Collectors.partitioningBy(InstructionModel::hasNodeImmediate));
-        Map<Integer, List<InstructionModel>> nodelessGroupedByLength = instructionsGroupedByHasNode.get(false).stream() //
-                        .collect(Collectors.groupingBy(InstructionModel::getInstructionLength));
+                        .collect(Collectors.groupingBy(CachedInitializationKey::new));
 
-        // 1. Instructions with conditional branches
-        List<InstructionModel> hasConditionalBranch = instructionsGroupedByHasConditionalBranch.get(true);
-        if (hasConditionalBranch.size() != 1 || hasConditionalBranch.get(0) != model.branchFalseInstruction) {
-            throw new AssertionError("Unexpected list of instructions with a conditional branch profile. Expected {BRANCH_FALSE}, but was " + hasConditionalBranch);
-        }
-        b.startCase().tree(createInstructionConstant(model.branchFalseInstruction)).end().startBlock();
-        b.statement("numConditionalBranches++");
-        b.statement("bci += " + model.branchFalseInstruction.getInstructionLength());
-        b.statement("continue loop");
-        b.end();
-
-        // 2. Instructions without nodes. Group by size to reduce generated code size.
-        for (Map.Entry<Integer, List<InstructionModel>> entry : nodelessGroupedByLength.entrySet()) {
-            for (InstructionModel instr : entry.getValue()) {
+        for (var entry : grouped.entrySet()) {
+            CachedInitializationKey key = entry.getKey();
+            List<InstructionModel> instructions = entry.getValue();
+            for (InstructionModel instr : instructions) {
                 b.startCase().tree(createInstructionConstant(instr)).end();
                 for (InstructionModel quick : instr.getFlattenedQuickenedInstructions()) {
                     b.startCase().tree(createInstructionConstant(quick)).end();
                 }
             }
-            b.startBlock();
-            b.statement("bci += " + entry.getKey());
-            b.statement("continue loop");
-            b.end();
-        }
 
-        for (InstructionModel instr : instructionsGroupedByHasNode.get(true)) {
-            b.startCase().tree(createInstructionConstant(instr)).end();
-            for (InstructionModel quick : instr.quickenedInstructions) {
-                b.startCase().tree(createInstructionConstant(quick)).end();
+            b.startCaseBlock();
+            for (InstructionImmediate immediate : key.immediates()) {
+                switch (immediate.kind()) {
+                    case BRANCH_PROFILE:
+                        b.statement("numConditionalBranches++");
+                        break;
+                    case NODE_PROFILE:
+                        b.startStatement().string("result[");
+                        b.tree(readImmediate("bc", "bci", immediate)).string("] = ");
+                        b.string("insert(new " + key.nodeName() + "())");
+                        b.end();
+                        break;
+                    default:
+                        break;
+                }
             }
 
-            b.startBlock();
-            InstructionImmediate imm = instr.getImmediate(ImmediateKind.NODE_PROFILE);
-            b.startStatement().string("nodeIndex = ");
-            b.tree(readImmediate("bc", "bci", imm));
-            b.end();
-            b.statement("node = new " + cachedDataClassName(instr) + "()");
-            b.statement("bci += " + instr.getInstructionLength());
-            b.statement("break");
+            b.statement("bci += " + key.instructionLength());
+            b.statement("continue loop");
             b.end();
         }
 
@@ -1594,11 +1586,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.end();
 
         b.end(); // } switch
-
-        // node and nodeIndex are guaranteed to be set, since we continue to the top of the loop
-        // when there's no node.
-        b.startAssert().string("result[nodeIndex] == null").end();
-        b.statement("result[nodeIndex] = insert(node)");
         b.end(); // } while
 
         b.startAssert().string("bci == bc.length").end();
@@ -1606,6 +1593,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.startReturn().string("result").end();
 
         return ex;
+    }
+
+    private static boolean needsCachedInitialization(InstructionImmediate immediate) {
+        return switch (immediate.kind()) {
+            case BRANCH_PROFILE, NODE_PROFILE -> true;
+            default -> false;
+        };
     }
 
     private CodeExecutableElement createInitializeCachedData() {
@@ -1667,18 +1661,35 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     }
 
     void emitQuickening(CodeTreeBuilder b, String root, String bc, String bci, CodeTree oldInstruction, CodeTree newInstruction) {
-        if (model.specializationDebugListener) {
-            b.startStatement();
-            b.startCall(root, "onQuicken");
-            CodeTree old = oldInstruction == null ? CodeTreeBuilder.singleString(bc + "[" + bci + "]") : oldInstruction;
-            emitParseInstruction(b, root, bci, old);
-            emitParseInstruction(b, root, bci, newInstruction);
-            b.end().end();
+
+        if (model.specializationDebugListener && oldInstruction == null) {
+            b.startBlock();
+            b.startDeclaration(types.Instruction, "oldInstruction");
+            String old = bc + "[" + bci + "]";
+            emitParseInstruction(b, root, bci, CodeTreeBuilder.singleString(old));
+            b.end();
         }
 
         b.startStatement().startCall("ACCESS.shortArrayWrite");
         b.string(bc).string(bci).tree(newInstruction);
         b.end().end();
+
+        if (model.specializationDebugListener) {
+            b.startStatement();
+            b.startCall(root, "onQuicken");
+            if (oldInstruction == null) {
+                b.string("oldInstruction");
+            } else {
+                emitParseInstruction(b, root, bci, oldInstruction);
+            }
+            emitParseInstruction(b, root, bci, newInstruction);
+            b.end().end();
+
+            if (oldInstruction == null) {
+                b.end(); // block
+            }
+        }
+
     }
 
     void emitQuickening(CodeTreeBuilder b, String root, String bc, String bci, String oldInstruction, String newInstruction) {
@@ -1691,21 +1702,38 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     int operandIndex,
                     String operandBci,
                     String oldInstruction, String newInstruction) {
+
+        if (model.specializationDebugListener && oldInstruction == null) {
+            b.startBlock();
+            b.startDeclaration(types.Instruction, "oldInstruction");
+            String old = bc + "[" + operandBci + "]";
+            emitParseInstruction(b, root, operandBci, CodeTreeBuilder.singleString(old));
+            b.end();
+        }
+
+        b.startStatement().startCall("ACCESS.shortArrayWrite");
+        b.string(bc).string(operandBci).string(newInstruction);
+        b.end().end();
+
         if (model.specializationDebugListener) {
             b.startStatement();
             b.startCall(root, "onQuickenOperand");
             String base = baseInstruction == null ? bc + "[" + baseBci + "]" : baseInstruction;
             emitParseInstruction(b, root, baseBci, CodeTreeBuilder.singleString(base));
             b.string(operandIndex);
-            String old = oldInstruction == null ? bc + "[" + operandBci + "]" : oldInstruction;
-            emitParseInstruction(b, root, operandBci, CodeTreeBuilder.singleString(old));
+            if (oldInstruction == null) {
+                b.string("oldInstruction");
+            } else {
+                emitParseInstruction(b, root, operandBci, CodeTreeBuilder.singleString(oldInstruction));
+            }
             emitParseInstruction(b, root, operandBci, CodeTreeBuilder.singleString(newInstruction));
             b.end().end();
+
+            if (oldInstruction == null) {
+                b.end(); // block
+            }
         }
 
-        b.startStatement().startCall("ACCESS.shortArrayWrite");
-        b.string(bc).string(operandBci).string(newInstruction);
-        b.end().end();
     }
 
     void emitOnSpecialize(CodeTreeBuilder b, String root, String bci, String instruction, String specializationName) {
@@ -1966,9 +1994,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                                 field(arrayOf(context.getType(int.class)), "childBcis").asFinal(),
                                                 field(arrayOf(context.getDeclaredType(Object.class)), "locals").asFinal().asVarArgs()));
 
-                result.add(createDataClass("CustomShortCircuitOperationData",
-                                field(context.getType(int.class), "childBci"),
-                                field(generic(List.class, Integer.class), "branchFixupBcis").withInitializer("new ArrayList<>(4)")));
+                if (model.isBoxingEliminated(type(boolean.class))) {
+                    result.add(createDataClass("CustomShortCircuitOperationData",
+                                    field(context.getType(int.class), "childBci"),
+                                    field(generic(List.class, Integer.class), "branchFixupBcis").withInitializer("new ArrayList<>(4)")));
+                } else {
+                    result.add(createDataClass("CustomShortCircuitOperationData",
+                                    field(generic(List.class, Integer.class), "branchFixupBcis").withInitializer("new ArrayList<>(4)")));
+                }
 
                 return result;
             }
@@ -3031,7 +3064,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     yield createOperationData("CustomOperationData", args);
                 }
                 case CUSTOM_SHORT_CIRCUIT -> {
-                    yield createOperationData("CustomShortCircuitOperationData", UNINIT);
+                    if (model.isBoxingEliminated(type(boolean.class))) {
+                        yield createOperationData("CustomShortCircuitOperationData", UNINIT);
+                    } else {
+                        yield createOperationData("CustomShortCircuitOperationData");
+                    }
                 }
                 default -> CodeTreeBuilder.singleString("null");
             };
@@ -3294,7 +3331,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.declaration(types.TruffleLanguage, "language", "operationData.language");
 
             b.startIf().string("operationData.mayFallThrough").end().startBlock();
-            buildEmitInstruction(b, model.trapInstruction, null);
+            buildEmitInstruction(b, model.trapInstruction);
             b.end();
 
             // Allocate stack space in the frame descriptor.
@@ -3641,13 +3678,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.startIf().string("childIndex != 0").end().startBlock();
                     if (!op.instruction.shortCircuitModel.returnConvertedBoolean()) {
                         // DUP so the boolean converter doesn't clobber the original value.
-                        buildEmitInstruction(b, model.dupInstruction, null);
+                        buildEmitInstruction(b, model.dupInstruction);
                     }
                     emitCastOperationData(b, "CustomShortCircuitOperationData", "operationSp - 1");
+
+                    b.declaration(type(int.class), "converterBci", "bci");
+
                     buildEmitBooleanConverterInstruction(b, op.instruction);
-                    InstructionImmediate branchIndex = op.instruction.getImmediate(ImmediateKind.BYTECODE_INDEX);
-                    b.statement("operationData.branchFixupBcis.add(bci + " + branchIndex.offset() + ")");
-                    buildEmitInstruction(b, op.instruction, new String[]{UNINIT});
+                    b.statement("operationData.branchFixupBcis.add(bci + " + op.instruction.getImmediate("branch_target").offset() + ")");
+                    buildEmitInstruction(b, op.instruction, emitShortCircuitArguments(op.instruction));
                     b.end();
 
                     b.statement("break");
@@ -3683,10 +3722,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 InstructionImmediate immediate = immediates.get(i);
                 args[i] = switch (immediate.kind()) {
                     case BYTECODE_INDEX -> {
-                        b.statement("int childBci = operationData.childBci");
-                        b.startAssert();
-                        b.string("childBci != " + UNINIT);
-                        b.end();
+                        if (shortCircuitInstruction.shortCircuitModel.returnConvertedBoolean()) {
+                            b.statement("int childBci = operationData.childBci");
+                            b.startAssert();
+                            b.string("childBci != " + UNINIT);
+                            b.end();
+                        } else {
+                            b.lineComment("Boxing elimination not supported for converter operations if the value is returned.");
+                            b.statement("int childBci = -1");
+                        }
                         yield "childBci";
                     }
                     case NODE_PROFILE -> "allocateNode()";
@@ -3832,7 +3876,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.startIf().string("childIndex == 0").end().startBlock();
                         b.statement("operationData.falseBranchFixupBci = bci + " + model.branchFalseInstruction.getImmediates(ImmediateKind.BYTECODE_INDEX).get(0).offset());
                         emitFinallyRelativeBranchCheck(b, 1);
-                        buildEmitInstruction(b, model.branchFalseInstruction, emitBranchFalseArguments());
+                        buildEmitInstruction(b, model.branchFalseInstruction, emitBranchArguments(model.branchFalseInstruction));
                         b.end().startElseBlock();
                         b.statement("int toUpdate = operationData.falseBranchFixupBci");
                         b.statement(writeBc("toUpdate", "(short) bci"));
@@ -3847,7 +3891,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("operationData.falseBranchFixupBci = bci + 1");
                         emitFinallyRelativeBranchCheck(b, 1);
 
-                        buildEmitInstruction(b, model.branchFalseInstruction, emitBranchFalseArguments());
+                        buildEmitInstruction(b, model.branchFalseInstruction, emitBranchArguments(model.branchFalseInstruction));
                         b.end().startElseIf().string("childIndex == 1").end().startBlock();
                         b.statement("operationData.endBranchFixupBci = bci + 1");
                         emitFinallyRelativeBranchCheck(b, 1);
@@ -3871,7 +3915,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("operationData.falseBranchFixupBci = bci + 1");
                         emitFinallyRelativeBranchCheck(b, 1);
 
-                        buildEmitInstruction(b, model.branchFalseInstruction, emitBranchFalseArguments());
+                        buildEmitInstruction(b, model.branchFalseInstruction, emitBranchArguments(model.branchFalseInstruction));
                         b.end().startElseIf().string("childIndex == 1").end().startBlock();
                         if (model.usesBoxingElimination()) {
                             b.statement("operationData.child0Bci = childBci");
@@ -3901,7 +3945,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("operationData.endBranchFixupBci = bci + 1");
                         emitFinallyRelativeBranchCheck(b, 1);
 
-                        buildEmitInstruction(b, model.branchFalseInstruction, emitBranchFalseArguments());
+                        buildEmitInstruction(b, model.branchFalseInstruction, emitBranchArguments(model.branchFalseInstruction));
                         b.end().startElseBlock();
                         emitFinallyRelativeBranchCheck(b, 1);
                         buildEmitInstruction(b, model.branchBackwardInstruction, new String[]{"(short) operationData.whileStartBci"});
@@ -3996,7 +4040,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         break;
                     case CUSTOM_SHORT_CIRCUIT:
                         ShortCircuitInstructionModel shortCircuitInstruction = op.instruction.shortCircuitModel;
-                        if (shortCircuitInstruction.booleanConverterInstruction().needsBoxingElimination(model, 0)) {
+                        if (model.isBoxingEliminated(type(boolean.class)) && shortCircuitInstruction.booleanConverterInstruction().needsBoxingElimination(model, 0)) {
                             emitCastOperationData(b, "CustomShortCircuitOperationData", "operationSp - 1");
                             b.statement("operationData.childBci = childBci");
                         }
@@ -4014,8 +4058,22 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private String[] emitBranchFalseArguments() {
-            List<InstructionImmediate> immedates = model.branchFalseInstruction.getImmediates();
+        private String[] emitShortCircuitArguments(InstructionModel instruction) {
+            List<InstructionImmediate> immedates = instruction.getImmediates();
+            String[] branchArguments = new String[immedates.size()];
+            for (int index = 0; index < branchArguments.length; index++) {
+                InstructionImmediate immediate = immedates.get(index);
+                branchArguments[index] = switch (immediate.kind()) {
+                    case BYTECODE_INDEX -> (index == 0) ? UNINIT : "converterBci";
+                    case BRANCH_PROFILE -> "allocateBranchProfile()";
+                    default -> throw new AssertionError("Unexpected immediate: " + immediate);
+                };
+            }
+            return branchArguments;
+        }
+
+        private String[] emitBranchArguments(InstructionModel instruction) {
+            List<InstructionImmediate> immedates = instruction.getImmediates();
             String[] branchArguments = new String[immedates.size()];
             for (int index = 0; index < branchArguments.length; index++) {
                 InstructionImmediate immediate = immedates.get(index);
@@ -4943,14 +5001,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             b.tree(readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BRANCH_PROFILE)));
                             if (model.isBoxingEliminated(context.getType(boolean.class))) {
                                 if (instr.isQuickening()) {
-                                    b.startCall(lookupDoBranchFalse(instr).getSimpleName().toString());
+                                    b.startCall(lookupDoBranch(instr).getSimpleName().toString());
                                     if (model.specializationDebugListener) {
                                         b.string("$this");
                                     }
                                     b.string("frame").string("bc").string("bci").string("sp");
                                     b.end();
                                 } else {
-                                    b.startCall(lookupDoSpecializeBranchFalse(instr).getSimpleName().toString());
+                                    b.startCall(lookupDoSpecializeBranch(instr).getSimpleName().toString());
                                     if (model.specializationDebugListener) {
                                         b.string("$this");
                                     }
@@ -4971,6 +5029,49 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.end().startElseBlock();
                         b.statement("sp -= 1");
                         b.statement("bci = " + readBc("bci + 1"));
+                        b.statement("continue loop");
+                        b.end();
+                        break;
+                    case CUSTOM_SHORT_CIRCUIT:
+                        ShortCircuitInstructionModel shortCircuitInstruction = instr.shortCircuitModel;
+
+                        b.startIf();
+
+                        if (shortCircuitInstruction.continueWhen()) {
+                            b.string("!");
+                        }
+                        /*
+                         * NB: Short circuit operations can evaluate to an operand or to the boolean
+                         * conversion of an operand. The stack is different in either case.
+                         */
+                        b.string("(boolean) ").string(getFrameObject("sp - 1"));
+
+                        b.end().startBlock();
+                        if (shortCircuitInstruction.returnConvertedBoolean()) {
+                            // Stack: [..., convertedValue]
+                            // leave convertedValue on the top of stack
+                        } else {
+                            // Stack: [..., value, convertedValue]
+                            // pop convertedValue
+                            b.statement(clearFrame("frame", "sp - 1"));
+                            b.statement("sp -= 1");
+                        }
+                        b.statement("bci = " + readBc("bci + 1"));
+                        b.statement("continue loop");
+                        b.end().startElseBlock();
+                        if (shortCircuitInstruction.returnConvertedBoolean()) {
+                            // Stack: [..., convertedValue]
+                            // clear convertedValue
+                            b.statement(clearFrame("frame", "sp - 1"));
+                            b.statement("sp -= 1");
+                        } else {
+                            // Stack: [..., value, convertedValue]
+                            // clear convertedValue and value
+                            b.statement(clearFrame("frame", "sp - 1"));
+                            b.statement(clearFrame("frame", "sp - 2"));
+                            b.statement("sp -= 2");
+                        }
+                        b.statement("bci += " + instr.getInstructionLength());
                         b.statement("continue loop");
                         b.end();
                         break;
@@ -5277,43 +5378,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case CUSTOM:
                         results.add(buildCustomInstructionExecute(b, instr));
                         break;
-                    case CUSTOM_SHORT_CIRCUIT:
-                        ShortCircuitInstructionModel shortCircuitInstruction = instr.shortCircuitModel;
-                        /*
-                         * NB: Short circuit operations can evaluate to an operand or to the boolean
-                         * conversion of an operand. The stack is different in either case.
-                         */
-                        b.declaration(context.getDeclaredType(Object.class), "booleanResult", getFrameObject("sp - 1"));
-
-                        b.startIf().string("booleanResult", shortCircuitInstruction.continueWhen() ? " != " : " == ", "Boolean.TRUE").end().startBlock();
-                        if (shortCircuitInstruction.returnConvertedBoolean()) {
-                            // Stack: [..., convertedValue]
-                            // leave convertedValue on the top of stack
-                        } else {
-                            // Stack: [..., value, convertedValue]
-                            // pop convertedValue
-                            b.statement(clearFrame("frame", "sp - 1"));
-                            b.statement("sp -= 1");
-                        }
-                        b.statement("bci = " + readBc("bci + 1"));
-                        b.statement("continue loop");
-                        b.end().startElseBlock();
-                        if (shortCircuitInstruction.returnConvertedBoolean()) {
-                            // Stack: [..., convertedValue]
-                            // clear convertedValue
-                            b.statement(clearFrame("frame", "sp - 1"));
-                            b.statement("sp -= 1");
-                        } else {
-                            // Stack: [..., value, convertedValue]
-                            // clear convertedValue and value
-                            b.statement(clearFrame("frame", "sp - 1"));
-                            b.statement(clearFrame("frame", "sp - 2"));
-                            b.statement("sp -= 2");
-                        }
-                        b.statement("bci += " + instr.getInstructionLength());
-                        b.statement("continue loop");
-                        b.end();
-                        break;
                     case SUPERINSTRUCTION:
                         // not implemented yet
                         break;
@@ -5493,7 +5557,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 b.startIf().string("frame.getTag(sp - 1) != ").staticReference(frameSlotKindConstant.get(inputType)).end().startBlock();
                 b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                b.startStatement().startCall(lookupDoSpecializeBranchFalse(instr.getQuickeningRoot()).getSimpleName().toString());
+                b.startStatement().startCall(lookupDoSpecializeBranch(instr.getQuickeningRoot()).getSimpleName().toString());
                 if (model.specializationDebugListener) {
                     b.string("root");
                 }
@@ -5583,7 +5647,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return method;
         }
 
-        private CodeExecutableElement lookupDoBranchFalse(InstructionModel instr) {
+        private CodeExecutableElement lookupDoBranch(InstructionModel instr) {
             CodeExecutableElement method = doInstructionMethods.get(instr);
             if (method != null) {
                 return method;
@@ -5621,7 +5685,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.end().startCatchBlock(types.UnexpectedResultException, "ex");
 
-            b.startReturn().startCall(lookupDoSpecializeBranchFalse(instr.getQuickeningRoot()).getSimpleName().toString());
+            b.startReturn().startCall(lookupDoSpecializeBranch(instr.getQuickeningRoot()).getSimpleName().toString());
             if (model.specializationDebugListener) {
                 b.string("root");
             }
@@ -5635,7 +5699,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         }
 
-        private CodeExecutableElement lookupDoSpecializeBranchFalse(InstructionModel instr) {
+        private CodeExecutableElement lookupDoSpecializeBranch(InstructionModel instr) {
             CodeExecutableElement method = doInstructionMethods.get(instr);
             if (method != null) {
                 return method;
@@ -7173,6 +7237,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     }
 
     private static String cachedDataClassName(InstructionModel instr) {
+        if (!instr.isCustomInstruction()) {
+            return null;
+        }
         if (instr.quickeningBase != null) {
             return cachedDataClassName(instr.quickeningBase);
         }

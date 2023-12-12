@@ -246,11 +246,31 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             b.string(" = ");
             b.string("ACCESS.shortArrayRead($bc, $bci + " + immediate.offset() + ")");
             b.end();
-            b.startStatement();
-            b.string("short oldOperand" + valueIndex);
-            b.string(" = ");
-            b.string("ACCESS.shortArrayRead($bc, oldOperandIndex" + valueIndex + ")");
-            b.end();
+
+            if (instruction.isShortCircuitConverter()) {
+                b.declaration(context.getType(short.class), "oldOperand" + valueIndex);
+
+                b.startIf().string("oldOperandIndex" + valueIndex).string(" != -1").end().startBlock();
+                b.startStatement();
+                b.string("oldOperand" + valueIndex);
+                b.string(" = ");
+                b.string("ACCESS.shortArrayRead($bc, oldOperandIndex" + valueIndex + ")");
+                b.end(); // statement
+                b.end().startElseBlock();
+                b.startStatement();
+                b.string("oldOperand" + valueIndex);
+                b.string(" = ");
+                b.string("-1");
+                b.end(); // statement
+                b.end(); // if
+            } else {
+                b.startStatement();
+                b.string("short oldOperand" + valueIndex);
+                b.string(" = ");
+                b.string("ACCESS.shortArrayRead($bc, oldOperandIndex" + valueIndex + ")");
+                b.end(); // statement
+            }
+
             b.declaration(context.getType(short.class), "newOperand" + valueIndex);
         }
 
@@ -339,8 +359,15 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         b.end(); // else block
 
         for (int valueIndex : boxingEliminated) {
-            bytecodeFactory.emitQuickeningOperand(b, "$root", "$bc", "$bci", null, valueIndex, "oldOperandIndex" + valueIndex, "oldOperand" + valueIndex, "newOperand" + valueIndex);
+            if (instruction.isShortCircuitConverter()) {
+                b.startIf().string("newOperand" + valueIndex).string(" != -1").end().startBlock();
+                bytecodeFactory.emitQuickeningOperand(b, "$root", "$bc", "$bci", null, valueIndex, "oldOperandIndex" + valueIndex, "oldOperand" + valueIndex, "newOperand" + valueIndex);
+                b.end(); // if
+            } else {
+                bytecodeFactory.emitQuickeningOperand(b, "$root", "$bc", "$bci", null, valueIndex, "oldOperandIndex" + valueIndex, "oldOperand" + valueIndex, "newOperand" + valueIndex);
+            }
         }
+
         bytecodeFactory.emitQuickening(b, "$root", "$bc", "$bci", null, "newInstruction");
 
         return method;
