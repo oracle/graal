@@ -117,7 +117,6 @@ import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.VMConstant;
@@ -382,13 +381,11 @@ public abstract class NativeImageCodeCache {
             if (includedMethods.add(analysisMethod)) {
                 HostedType declaringType = hUniverse.lookup(analysisMethod.getDeclaringClass());
                 String name = analysisMethod.getName();
-                JavaType[] analysisParameterTypes = analysisMethod.getSignature().toParameterTypes(null);
-                HostedType[] parameterTypes = new HostedType[analysisParameterTypes.length];
-                for (int i = 0; i < analysisParameterTypes.length; ++i) {
-                    parameterTypes[i] = hUniverse.lookup(analysisParameterTypes[i]);
-                }
+                HostedType[] parameterTypes = analysisMethod.getSignature().toParameterList(null).stream()
+                                .map(aType -> hUniverse.lookup(aType))
+                                .toArray(HostedType[]::new);
                 int modifiers = analysisMethod.getModifiers();
-                HostedType returnType = hUniverse.lookup(analysisMethod.getSignature().getReturnType(null));
+                HostedType returnType = hUniverse.lookup(analysisMethod.getSignature().getReturnType());
                 reflectionMetadataEncoder.addHidingMethodMetadata(analysisMethod, declaringType, name, parameterTypes, modifiers, returnType);
             }
         }

@@ -39,7 +39,7 @@ import jdk.internal.foreign.MemorySessionImpl;
  * <p>
  * It seems like this could be easily supported once thread-local handshakes are supported.
  */
-@TargetClass(className = "jdk.internal.misc.ScopedMemoryAccess")
+@TargetClass(className = "jdk.internal.misc.ScopedMemoryAccess", onlyWith = ForeignFunctionsEnabled.class)
 public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @Substitute
     static void registerNatives() {
@@ -80,6 +80,6 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     }
 }
 
-@TargetClass(className = "jdk.internal.misc.ScopedMemoryAccess$ScopedAccessError", onlyWith = JDK22OrLater.class)
+@TargetClass(className = "jdk.internal.misc.ScopedMemoryAccess$ScopedAccessError", onlyWith = {JDK22OrLater.class, ForeignFunctionsEnabled.class})
 final class Target_jdk_internal_misc_ScopedMemoryAccess_ScopedAccessError {
 }

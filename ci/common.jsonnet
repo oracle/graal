@@ -229,6 +229,9 @@ local common_json = import "../common.json";
     },
 
     svm:: {
+      packages+: {
+        cmake: "==3.22.2",
+      },
       environment+: {
         DEFAULT_VM: "server",
         LANG: "en_US.UTF-8",

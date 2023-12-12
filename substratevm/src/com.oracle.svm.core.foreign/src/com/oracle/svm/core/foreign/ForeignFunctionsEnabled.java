@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.infrastructure;
+package com.oracle.svm.core.foreign;
 
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.HostedProviders;
+import java.util.function.BooleanSupplier;
 
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.StructuredGraph;
+import com.oracle.svm.core.SubstrateOptions;
 
-public interface GraphProvider {
-    enum Purpose {
-        ANALYSIS,
-        PREPARE_RUNTIME_COMPILATION,
+final class ForeignFunctionsEnabled implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return SubstrateOptions.ForeignAPISupport.getValue();
     }
-
-    StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose);
-
-    /**
-     * Returns true if a graph can be provided for {@link Purpose#PREPARE_RUNTIME_COMPILATION}. Note
-     * that a manually generated graph must be able to provide the proper deoptimization entry
-     * points and deoptimization frame states.
-     */
-    boolean allowRuntimeCompilation();
 }

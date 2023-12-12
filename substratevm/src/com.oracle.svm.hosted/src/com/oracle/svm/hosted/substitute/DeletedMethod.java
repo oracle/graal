@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.substitute;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -38,7 +39,6 @@ import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.java.FrameStateBuilder;
 import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -78,26 +78,18 @@ public class DeletedMethod extends CustomSubstitutionMethod {
     }
 
     @Override
-    public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        return buildGraph(debug, method, providers, message, purpose);
+    public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
+        return buildGraph(debug, method, providers, message);
     }
 
-    public static StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, String message, Purpose purpose) {
+    public static StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, String message) {
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
-        StructuredGraph graph = kit.getGraph();
-        FrameStateBuilder state = new FrameStateBuilder(null, method, graph);
-        state.initializeForMethodStart(null, true, providers.getGraphBuilderPlugins());
 
-        /*
-         * A random, but unique and consistent, number for every invoke. This is necessary because
-         * we, e.g., look up static analysis results by bci.
-         */
-        int bci = 0;
-        graph.start().setStateAfter(state.create(bci++, graph.start()));
+        kit.getGraph().start().setStateAfter(kit.getFrameState().create(kit.bci(), kit.getGraph().start()));
 
         String msg = AnnotationSubstitutionProcessor.deleteErrorMessage(method, message, false);
-        ValueNode msgNode = ConstantNode.forConstant(providers.getConstantReflection().forString(msg), providers.getMetaAccess(), graph);
-        ValueNode exceptionNode = kit.createInvokeWithExceptionAndUnwind(providers.getMetaAccess().lookupJavaMethod(reportErrorMethod), InvokeKind.Static, state, bci++, msgNode);
+        ValueNode msgNode = ConstantNode.forConstant(kit.getConstantReflection().forString(msg), kit.getMetaAccess(), kit.getGraph());
+        ValueNode exceptionNode = kit.createInvokeWithExceptionAndUnwind(kit.getMetaAccess().lookupJavaMethod(reportErrorMethod), InvokeKind.Static, kit.getFrameState(), kit.bci(), msgNode);
         kit.append(new UnwindNode(exceptionNode));
 
         return kit.finalizeGraph();

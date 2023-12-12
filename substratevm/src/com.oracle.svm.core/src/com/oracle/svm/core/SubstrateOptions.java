@@ -1040,6 +1040,9 @@ public class SubstrateOptions {
     @Option(help = "Include all classes, methods, fields, and resources from given paths", type = OptionType.Debug) //
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeAllFromPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
+    @Option(help = "Support for calls via the Java Foreign Function and Memory API", type = Expert) //
+    public static final HostedOptionKey<Boolean> ForeignAPISupport = new HostedOptionKey<>(false);
+
     public static class TruffleStableOptions {
 
         @Option(help = "Automatically copy the necessary language resources to the resources/languages directory next to the produced image." +
