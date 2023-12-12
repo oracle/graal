@@ -3559,26 +3559,7 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
-     * C7.2.362 Unsigned maximum across vector.<br>
-     *
-     * <code>dst = uint_max(src[0], ..., src[n]).</code>
-     *
-     * @param size register size.
-     * @param elementSize width of each operand.
-     * @param dst SIMD register.
-     * @param src SIMD register.
-     */
-    public void umaxvSV(ASIMDSize size, ElementSize elementSize, Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(SIMD) : dst;
-        assert src.getRegisterCategory().equals(SIMD) : src;
-        assert !(size == ASIMDSize.HalfReg && elementSize == ElementSize.Word) : "Invalid size and lane combination for umaxv";
-        assert elementSize != ElementSize.DoubleWord : "Invalid lane width for umaxv";
-
-        acrossLanesEncoding(ASIMDInstruction.UMAXV, size, elemSizeXX(elementSize), dst, src);
-    }
-
-    /**
-     * C7.2.344 Unsigned maximum pairwise.<br>
+     * C7.2.361 Unsigned maximum pairwise.<br>
      *
      * <code>
      *     concat = src2:src1
@@ -3600,6 +3581,25 @@ public abstract class AArch64ASIMDAssembler {
         assert eSize != ElementSize.DoubleWord : "Invalid lane width for umaxp";
 
         threeSameEncoding(ASIMDInstruction.UMAXP, size, elemSizeXX(eSize), dst, src1, src2);
+    }
+
+    /**
+     * C7.2.362 Unsigned maximum across vector.<br>
+     *
+     * <code>dst = uint_max(src[0], ..., src[n]).</code>
+     *
+     * @param size register size.
+     * @param elementSize width of each operand.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void umaxvSV(ASIMDSize size, ElementSize elementSize, Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
+        assert !(size == ASIMDSize.HalfReg && elementSize == ElementSize.Word) : "Invalid size and lane combination for umaxv";
+        assert elementSize != ElementSize.DoubleWord : "Invalid lane width for umaxv";
+
+        acrossLanesEncoding(ASIMDInstruction.UMAXV, size, elemSizeXX(elementSize), dst, src);
     }
 
     /**
@@ -3625,7 +3625,7 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
-     * C7.2.347 Unsigned minimum pairwise.<br>
+     * C7.2.364 Unsigned minimum pairwise.<br>
      *
      * <code>
      *     concat = src2:src1
