@@ -29,6 +29,7 @@ import static com.oracle.truffle.api.bytecode.test.example.AbstractBytecodeDSLEx
 import java.util.List;
 import java.util.function.Supplier;
 
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -224,6 +225,9 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
             b.endRoot();
         });
 
+        // Conditional uses quickening for BE. Call once to trigger quickening.
+        Assert.assertEquals(42L, root.getCallTarget().call());
+
         assertPartialEvalEquals(RootNode.createConstantNode(42L), root);
     }
 
@@ -242,6 +246,30 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
             b.endConditional();
             b.endReturn();
 
+            b.endRoot();
+        });
+
+        // Conditional uses quickening for BE. Call once to trigger quickening.
+        Assert.assertEquals(42L, root.getCallTarget().call());
+
+        assertPartialEvalEquals(RootNode.createConstantNode(42L), root);
+    }
+
+    @Test
+    public void testEarlyReturn() {
+        BytecodeDSLExample root = parseNodeForPE(interpreterClass, "earlyReturn", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginBlock();
+
+            b.beginEarlyReturn();
+            b.emitLoadConstant(42L);
+            b.endEarlyReturn();
+
+            b.beginReturn();
+            b.emitLoadConstant(123L);
+            b.endReturn();
+
+            b.endBlock();
             b.endRoot();
         });
 

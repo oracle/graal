@@ -66,10 +66,12 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -125,6 +127,32 @@ public abstract class BytecodeDSLExample extends DebugBytecodeRootNode implement
         TestException(String string, Node node, int bci, long value) {
             super(string, node, bci);
             this.value = value;
+        }
+    }
+
+    @Override
+    public Object interceptControlFlowException(ControlFlowException ex, VirtualFrame frame, int bci) throws Throwable {
+        if (ex instanceof EarlyReturnException ret) {
+            return ret.result;
+        }
+        throw ex;
+    }
+
+    protected static class EarlyReturnException extends ControlFlowException {
+        private static final long serialVersionUID = 3637685681756424058L;
+
+        public final Object result;
+
+        EarlyReturnException(Object result) {
+            this.result = result;
+        }
+    }
+
+    @Operation
+    static final class EarlyReturn {
+        @Specialization
+        public static void perform(Object result) {
+            throw new EarlyReturnException(result);
         }
     }
 

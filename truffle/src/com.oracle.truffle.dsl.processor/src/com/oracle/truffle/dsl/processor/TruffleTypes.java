@@ -113,6 +113,7 @@ public class TruffleTypes {
     public static final String Assumption_Name = "com.oracle.truffle.api.Assumption";
     public static final String BytecodeOSRNode_Name = "com.oracle.truffle.api.nodes.BytecodeOSRNode";
     public static final String ContextThreadLocal_Name = "com.oracle.truffle.api.ContextThreadLocal";
+    public static final String ControlFlowException_Name = "com.oracle.truffle.api.nodes.ControlFlowException";
     public static final String CompilerAsserts_Name = "com.oracle.truffle.api.CompilerAsserts";
     public static final String CompilerDirectives_CompilationFinal_Name = "com.oracle.truffle.api.CompilerDirectives.CompilationFinal";
     public static final String CompilerDirectives_Name = "com.oracle.truffle.api.CompilerDirectives";
@@ -168,6 +169,7 @@ public class TruffleTypes {
     public final DeclaredType Assumption = c.getDeclaredType(Assumption_Name);
     public final DeclaredType BytecodeOSRNode = c.getDeclaredType(BytecodeOSRNode_Name);
     public final DeclaredType ContextThreadLocal = c.getDeclaredType(ContextThreadLocal_Name);
+    public final DeclaredType ControlFlowException = c.getDeclaredType(ControlFlowException_Name);
     public final DeclaredType CompilerAsserts = c.getDeclaredType(CompilerAsserts_Name);
     public final DeclaredType CompilerDirectives = c.getDeclaredType(CompilerDirectives_Name);
     public final DeclaredType CompilerDirectives_CompilationFinal = c.getDeclaredType(CompilerDirectives_CompilationFinal_Name);

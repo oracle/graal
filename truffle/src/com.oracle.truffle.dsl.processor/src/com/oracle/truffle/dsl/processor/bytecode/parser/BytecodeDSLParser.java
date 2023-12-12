@@ -275,6 +275,9 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         // Extract hook implementations.
         model.executeProlog = ElementUtils.findMethod(typeElement, "executeProlog");
         model.executeEpilog = ElementUtils.findMethod(typeElement, "executeEpilog");
+        model.interceptControlFlowException = ElementUtils.findMethod(typeElement, "interceptControlFlowException");
+        model.interceptInternalException = ElementUtils.findMethod(typeElement, "interceptInternalException");
+        model.interceptTruffleException = ElementUtils.findMethod(typeElement, "interceptTruffleException");
 
         // Detect method implementations that will be overridden by the generated class.
         List<ExecutableElement> overrides = List.of(

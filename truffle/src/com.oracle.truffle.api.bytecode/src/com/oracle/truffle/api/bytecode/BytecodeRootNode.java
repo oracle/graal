@@ -57,6 +57,7 @@ import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
@@ -103,9 +104,35 @@ public interface BytecodeRootNode extends BytecodeIntrospection.Provider {
     }
 
     /**
+     * Optional hook invoked when a {@link ControlFlowException} is thrown during execution. This
+     * hook can do one of four things:
+     *
+     * <ol>
+     * <li>It can return a value. The value will be returned from the root node (this can be used to
+     * implement early returns).
+     * <li>It can throw the same or a different {@link ControlFlowException}. The thrown exception
+     * will be thrown from the root node.
+     * <li>It can throw an {@link AbstractTruffleException}. The thrown exception will be forwarded
+     * to the guest code for handling.
+     * <li>It can throw an internal error, which will be intercepted by
+     * {@link #interceptInternalException}.
+     * </ol>
+     *
+     * @param ex the control flow exception
+     * @param frame the frame at the point the exception was thrown
+     * @param bci the bytecode index of the instruction that caused the exception
+     * @return the Truffle exception to be handled by guest code
+     */
+    @SuppressWarnings("unused")
+    default Object interceptControlFlowException(ControlFlowException ex, VirtualFrame frame, int bci) throws Throwable {
+        throw ex;
+    }
+
+    /**
      * Optional hook invoked when an internal exception (i.e., anything other than
-     * {@link AbstractTruffleException}) is thrown during execution. This hook can be used to
-     * convert such exceptions into guest-language exceptions that can be handled by guest code.
+     * {@link AbstractTruffleException} or {@link ControlFlowException}) is thrown during execution.
+     * This hook can be used to convert such exceptions into guest-language exceptions that can be
+     * handled by guest code.
      *
      * <p>
      * For example, if a Java {@link StackOverflowError} is thrown, this hook can be used to return
@@ -129,10 +156,12 @@ public interface BytecodeRootNode extends BytecodeIntrospection.Provider {
     }
 
     /**
-     * Optional hook invoked when a Truffle exception is thrown during execution. This hook can be
-     * used to preprocess the exception or replace it with another exception before it is handled.
+     * Optional hook invoked when an {@link AbstractTruffleException} is thrown during execution.
+     * This hook can be used to preprocess the exception or replace it with another exception before
+     * it is handled.
      *
      * @param ex the Truffle exception
+     * @param frame the frame at the point the exception was thrown
      * @param bci the bytecode index of the instruction that caused the exception
      * @return the Truffle exception to be handled by guest code
      */

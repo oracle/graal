@@ -4924,7 +4924,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             b.startIf().string("osrResult != null").end().startBlock();
                             b.statement(setFrameObject("sp", "osrResult"));
                             b.statement("sp++");
-                            b.startReturn().string("((sp - 1) << 16) | 0xffff").end();
+                            emitReturnTopOfStack(b);
                             b.end();
 
                             b.end();
@@ -5072,19 +5072,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         emitThrowAssertionError(b, "\"Control reached past the end of the bytecode.\"");
                         break;
                     case RETURN:
-                        if (tier.isUncached) {
-                            b.startIf().string("uncachedExecuteCount-- <= 0").end().startBlock();
-                            b.tree(createTransferToInterpreterAndInvalidate("$this"));
-                            b.statement("$this.changeInterpreters(CACHED)");
-                            b.end().startElseBlock();
-                            b.statement("$this.uncachedExecuteCount = uncachedExecuteCount");
-                            b.end();
-                        } else {
-                            emitReportLoopCount(b, CodeTreeBuilder.singleString("loopCounter.value > 0"), false);
-                        }
                         storeBciInFrameIfNecessary(b);
-
-                        b.statement("return ((sp - 1) << 16) | 0xffff");
+                        emitBeforeReturnProfiling(b);
+                        emitReturnTopOfStack(b);
                         break;
                     case LOAD_LOCAL:
                         if (model.usesBoxingElimination()) {
@@ -5253,11 +5243,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         break;
                     case YIELD:
                         storeBciInFrameIfNecessary(b);
-                        emitReportLoopCount(b, CodeTreeBuilder.singleString("loopCounter.value > 0"), false);
+                        emitBeforeReturnProfiling(b);
                         b.statement("int numLocals = $this.numLocals");
                         b.statement(copyFrameTo("frame", "numLocals", "localFrame", "numLocals", "(sp - 1 - numLocals)"));
                         b.statement(setFrameObject("sp - 1", "((ContinuationLocation) " + readConst(readBc("bci + 1")) + ").createResult(localFrame, " + getFrameObject("sp - 1") + ")"));
-                        b.statement("return (((sp - 1) << 16) | 0xffff)");
+                        emitReturnTopOfStack(b);
                         break;
                     case STORE_NULL:
                         b.statement(setFrameObject("sp", "null"));
@@ -5341,27 +5331,90 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.end(); // try
 
+            DeclaredType throwable = context.getDeclaredType("java.lang.Throwable");
             DeclaredType abstractTruffleException = types.AbstractTruffleException;
-            b.startCatchBlock(context.getDeclaredType("java.lang.Throwable"), "throwable");
+            DeclaredType controlFlowException = types.ControlFlowException;
+            b.startCatchBlock(throwable, "throwable");
 
             storeBciInFrameIfNecessary(b);
             /*
-             * We can handle throwable if it's an AbstractTruffleException or
-             * interceptInternalException converts it to one.
+             * Three kinds of exceptions are supported: AbstractTruffleException,
+             * ControlFlowException, and internal error (anything else). All of these can be
+             * intercepted by user-provided hooks.
+             *
+             * The interception order is ControlFlowException -> internal error ->
+             * AbstractTruffleException. An intercept method can produce a new exception that can be
+             * intercepted by a subsequent intercept method.
              */
             b.declaration(abstractTruffleException, "ex");
             b.startIf().startGroup().string("throwable instanceof ").type(abstractTruffleException).string(" ate").end(2).startBlock();
             b.startAssign("ex").string("ate").end();
-            b.end().startElseBlock();
-            b.startTryBlock(); // nested try
-            b.tree(createTransferToInterpreterAndInvalidate("$this"));
-            b.startThrow().string("sneakyThrow($this.interceptInternalException(throwable, bci))").end();
-            b.end().startCatchBlock(abstractTruffleException, "ate");
-            b.startAssign("ex").string("ate").end();
-            b.end(); // nested try
-            b.end(); // else
+            b.end();
 
-            b.statement("ex = $this.interceptTruffleException(ex, " + localFrame() + ", bci)");
+            if (model.interceptControlFlowException == null && model.interceptInternalException == null) {
+                // Special case: no handlers for non-Truffle exceptions. Just rethrow.
+                b.startElseBlock();
+                b.startThrow().string("sneakyThrow(throwable)").end();
+                b.end();
+            } else {
+                if (model.interceptControlFlowException != null) {
+                    // @formatter:off
+                    b.startElseIf().startGroup().string("throwable instanceof ").type(controlFlowException).string(" cfe").end(2).startBlock();
+                        b.startTryBlock();
+                            b.startAssign("Object result").startCall("$this", model.interceptControlFlowException).string("cfe").string("frame").string("bci").end(2);
+                            emitBeforeReturnProfiling(b);
+                            // There may not be room above the sp. Just use the first stack slot.
+                            b.statement(setFrameObject("$this.numLocals", "result"));
+                            b.startAssign("sp").string("$this.numLocals + 1").end();
+                            emitReturnTopOfStack(b);
+                        b.end().startCatchBlock(controlFlowException, "rethrownCfe");
+                            b.startThrow().string("rethrownCfe").end();
+                        b.end().startCatchBlock(abstractTruffleException, "ate");
+                            b.statement("ex = ate");
+                        b.end().startCatchBlock(throwable, "e");
+                            b.startTryBlock();
+                                b.tree(createTransferToInterpreterAndInvalidate("$this"));
+                                b.startThrow().string("sneakyThrow(");
+                                if (model.interceptInternalException != null) {
+                                    b.startCall("$this", model.interceptInternalException).string("e").string("bci").end();
+                                } else {
+                                    b.string("e");
+                                }
+                                b.string(")").end();
+                            b.end().startCatchBlock(abstractTruffleException, "ate");
+                                b.startAssign("ex").string("ate").end();
+                            b.end();
+
+                        b.end();
+                    b.end();
+                    // @formatter:on
+                }
+                // @formatter:off
+                b.startElseBlock();
+                    b.startTryBlock();
+                        b.tree(createTransferToInterpreterAndInvalidate("$this"));
+                        if (model.interceptInternalException != null) {
+                            if (model.interceptControlFlowException == null) {
+                                // If there was no handler, we need to ensure throwable is not a ControlFlowException
+                                b.startIf().string("!(throwable instanceof ").type(controlFlowException).string(")").end().startBlock();
+                            }
+                            b.startAssign("throwable").startCall("$this", model.interceptInternalException).string("throwable").string("bci").end(2);
+                            if (model.interceptControlFlowException == null) {
+                                // If there was no handler, we need to ensure throwable is not a ControlFlowException
+                                b.end();
+                            }
+                        }
+                        b.startThrow().startCall("sneakyThrow").string("throwable").end(2);
+                    b.end().startCatchBlock(abstractTruffleException, "ate");
+                        b.startAssign("ex").string("ate").end();
+                    b.end();
+                b.end();
+                // @formatter:on
+            }
+
+            if (model.interceptTruffleException != null) {
+                b.startAssign("ex").startCall("$this", model.interceptTruffleException).string("ex").string(localFrame()).string("bci").end(2);
+            }
 
             b.statement("int[] handlers = $this.handlers");
             b.startFor().string("int idx = 0; idx < handlers.length; idx += 5").end().startBlock();
@@ -5386,7 +5439,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
              * bubbles up. Loop counts may be lost when host exceptions are thrown (a compromise to
              * avoid complicating the generated code too much).
              */
-            emitReportLoopCount(b, CodeTreeBuilder.singleString("loopCounter.value > 0"), false);
+            emitBeforeReturnProfiling(b);
             b.statement("throw ex");
 
             b.end(); // catch
@@ -6455,6 +6508,23 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private void storeBciInFrameIfNecessary(CodeTreeBuilder b) {
             if (tier.isUncached || model.storeBciInFrame) {
                 b.statement("ACCESS.setInt(" + localFrame() + ", " + BCI_IDX + ", bci)");
+            }
+        }
+
+        private static void emitReturnTopOfStack(CodeTreeBuilder b) {
+            b.startReturn().string("((sp - 1) << 16) | 0xffff").end();
+        }
+
+        private void emitBeforeReturnProfiling(CodeTreeBuilder b) {
+            if (tier.isUncached) {
+                b.startIf().string("uncachedExecuteCount-- <= 0").end().startBlock();
+                b.tree(createTransferToInterpreterAndInvalidate("$this"));
+                b.statement("$this.changeInterpreters(CACHED)");
+                b.end().startElseBlock();
+                b.statement("$this.uncachedExecuteCount = uncachedExecuteCount");
+                b.end();
+            } else {
+                emitReportLoopCount(b, CodeTreeBuilder.singleString("loopCounter.value > 0"), false);
             }
         }
 

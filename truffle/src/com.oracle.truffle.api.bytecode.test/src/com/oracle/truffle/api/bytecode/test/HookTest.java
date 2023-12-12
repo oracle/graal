@@ -42,6 +42,7 @@ package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -53,6 +54,7 @@ import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.test.BytecodeNodeWithHooks.ControlFlowTruffleException;
 import com.oracle.truffle.api.bytecode.test.BytecodeNodeWithHooks.MyException;
 import com.oracle.truffle.api.bytecode.test.BytecodeNodeWithHooks.ThrowStackOverflow;
 import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleLanguage;
@@ -60,6 +62,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class HookTest {
@@ -228,6 +231,176 @@ public class HookTest {
 
         assertNotEquals(childThrowBci, rootThrowBci);
     }
+
+    @Test
+    public void testControlFlowEarlyReturn() {
+        // The early return value should be returned.
+        BytecodeNodeWithHooks root = parseNode(b -> {
+            b.beginRoot(null);
+            b.beginBlock();
+            b.beginThrowEarlyReturn();
+            b.emitLoadConstant(42);
+            b.endThrowEarlyReturn();
+            b.beginReturn();
+            b.emitLoadConstant(123);
+            b.endReturn();
+            b.endBlock();
+            b.endRoot();
+        });
+        root.setRefs(new Object[2]);
+
+        assertEquals(42, root.getCallTarget().call(42));
+    }
+
+    @Test
+    public void testControlFlowUnhandled() {
+        // The control flow exception should go unhandled.
+        BytecodeNodeWithHooks root = parseNode(b -> {
+            b.beginRoot(null);
+            b.beginBlock();
+            b.emitThrowUnhandledControlFlowException();
+            b.beginReturn();
+            b.emitLoadConstant(123);
+            b.endReturn();
+            b.endBlock();
+            b.endRoot();
+        });
+        root.setRefs(new Object[2]);
+
+        try {
+            root.getCallTarget().call(42);
+            Assert.fail("call should have thrown an exception");
+        } catch (ControlFlowException ex) {
+            // pass
+        }
+    }
+
+    @Test
+    public void testControlFlowInternalError() {
+        // The control flow exception should be intercepted by the internal handler and then the
+        // Truffle handler.
+        BytecodeNodeWithHooks root = parseNode(b -> {
+            b.beginRoot(null);
+            b.beginBlock();
+            b.emitThrowControlFlowInternalError();
+            b.beginReturn();
+            b.emitLoadConstant(123);
+            b.endReturn();
+            b.endBlock();
+            b.endRoot();
+        });
+        root.setRefs(new Object[2]);
+
+        try {
+            root.getCallTarget().call(42);
+            Assert.fail("call should have thrown an exception");
+        } catch (MyException ex) {
+            assertEquals("internal error", ex.result);
+            assertNotEquals(-1, ex.bci);
+        }
+    }
+
+    @Test
+    public void testControlFlowTruffleException() {
+        // The control flow exception should be intercepted by the Truffle handler.
+        BytecodeNodeWithHooks root = parseNode(b -> {
+            b.beginRoot(null);
+            b.beginBlock();
+            b.beginThrowControlFlowTruffleException();
+            b.emitLoadConstant(42);
+            b.endThrowControlFlowTruffleException();
+            b.beginReturn();
+            b.emitLoadConstant(123);
+            b.endReturn();
+            b.endBlock();
+            b.endRoot();
+        });
+        root.setRefs(new Object[2]);
+
+        try {
+            root.getCallTarget().call(42);
+            Assert.fail("call should have thrown an exception");
+        } catch (MyException ex) {
+            assertEquals(42, ex.result);
+            assertNotEquals(-1, ex.bci);
+        }
+    }
+
+    @Test
+    public void testInterceptsNothing() {
+        BytecodeNodeInterceptsNothing root = BytecodeNodeInterceptsNothingGen.create(BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot(null);
+            b.beginIfThenElse();
+            b.emitLoadArgument(0);
+            b.emitThrowUnhandledControlFlowException();
+            b.emitThrowStackOverflow();
+            b.endIfThenElse();
+            b.endRoot();
+        }).getNodes().get(0);
+
+        try {
+            root.getCallTarget().call(true);
+            Assert.fail("call should have thrown an exception");
+        } catch (ControlFlowException ex) {
+            // expected
+        }
+
+        try {
+            root.getCallTarget().call(false);
+            Assert.fail("call should have thrown an exception");
+        } catch (StackOverflowError ex) {
+            // expected
+        }
+    }
+
+    @Test
+    public void testInterceptsCF() {
+        BytecodeNodeInterceptsCF root = BytecodeNodeInterceptsCFGen.create(BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot(null);
+            b.beginIfThenElse();
+            b.emitLoadArgument(0);
+            b.emitThrowUnhandledControlFlowException();
+            b.emitThrowStackOverflow();
+            b.endIfThenElse();
+            b.endRoot();
+        }).getNodes().get(0);
+
+        assertEquals(42, root.getCallTarget().call(true));
+
+        try {
+            root.getCallTarget().call(false);
+            Assert.fail("call should have thrown an exception");
+        } catch (StackOverflowError ex) {
+            // expected
+        }
+    }
+
+    @Test
+    public void testInterceptsInternal() {
+        BytecodeNodeInterceptsInternal root = BytecodeNodeInterceptsInternalGen.create(BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot(null);
+            b.beginIfThenElse();
+            b.emitLoadArgument(0);
+            b.emitThrowUnhandledControlFlowException();
+            b.emitThrowStackOverflow();
+            b.endIfThenElse();
+            b.endRoot();
+        }).getNodes().get(0);
+
+        try {
+            root.getCallTarget().call(true);
+            Assert.fail("call should have thrown an exception");
+        } catch (ControlFlowException ex) {
+            // expected
+        }
+
+        try {
+            root.getCallTarget().call(false);
+            Assert.fail("call should have thrown an exception");
+        } catch (RuntimeException ex) {
+            assertTrue(ex.getCause() instanceof StackOverflowError);
+        }
+    }
 }
 
 @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class)
@@ -257,6 +430,23 @@ abstract class BytecodeNodeWithHooks extends RootNode implements BytecodeRootNod
             }
         } else {
             refs[1] = returnValue;
+        }
+    }
+
+    @Override
+    public Object interceptControlFlowException(ControlFlowException ex, VirtualFrame frame, int bci) throws Throwable {
+        if (ex instanceof EarlyReturnException er) {
+            // Return a result
+            return er.result;
+        } else if (ex instanceof ControlFlowInternalError err) {
+            // Rethrow an internal error
+            throw err.error;
+        } else if (ex instanceof ControlFlowTruffleException tex) {
+            // Rethrow a Truffle error
+            throw tex.ex;
+        } else {
+            // Rethrow a control flow exception
+            throw ex;
         }
     }
 
@@ -310,11 +500,158 @@ abstract class BytecodeNodeWithHooks extends RootNode implements BytecodeRootNod
         }
     }
 
+    @SuppressWarnings("serial")
+    public static final class EarlyReturnException extends ControlFlowException {
+        public final Object result;
+
+        EarlyReturnException(Object result) {
+            this.result = result;
+        }
+    }
+
+    @Operation
+    public static final class ThrowEarlyReturn {
+        @Specialization
+        public static Object perform(Object result) {
+            throw new EarlyReturnException(result);
+        }
+    }
+
+    @Operation
+    public static final class ThrowUnhandledControlFlowException {
+        @Specialization
+        public static Object perform() {
+            throw new ControlFlowException();
+        }
+    }
+
+    @SuppressWarnings("serial")
+    public static final class ControlFlowInternalError extends ControlFlowException {
+        public final Throwable error;
+
+        ControlFlowInternalError(Throwable error) {
+            this.error = error;
+        }
+    }
+
+    @Operation
+    public static final class ThrowControlFlowInternalError {
+        @Specialization
+        public static Object perform() {
+            throw new ControlFlowInternalError(new RuntimeException("internal error"));
+        }
+    }
+
+    @SuppressWarnings("serial")
+    public static final class ControlFlowTruffleException extends ControlFlowException {
+        public final AbstractTruffleException ex;
+
+        ControlFlowTruffleException(AbstractTruffleException ex) {
+            this.ex = ex;
+        }
+    }
+
+    @Operation
+    public static final class ThrowControlFlowTruffleException {
+        @Specialization
+        public static Object perform(Object value) {
+            throw new ControlFlowTruffleException(new MyException(value));
+        }
+    }
+
     @Operation
     public static final class Invoke {
         @Specialization
         public static Object perform(VirtualFrame frame, BytecodeNodeWithHooks callee) {
             return callee.getCallTarget().call(frame.getArguments());
+        }
+    }
+}
+
+@GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class)
+abstract class BytecodeNodeInterceptsNothing extends RootNode implements BytecodeRootNode {
+
+    protected BytecodeNodeInterceptsNothing(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        super(language, frameDescriptor);
+    }
+
+    @Operation
+    public static final class ThrowUnhandledControlFlowException {
+        @Specialization
+        public static Object perform() {
+            throw new ControlFlowException();
+        }
+    }
+
+    @Operation
+    public static final class ThrowStackOverflow {
+        public static final String MESSAGE = "unbounded recursion";
+
+        @Specialization
+        public static Object perform() {
+            throw new StackOverflowError(MESSAGE);
+        }
+    }
+}
+
+@GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class)
+abstract class BytecodeNodeInterceptsCF extends RootNode implements BytecodeRootNode {
+
+    protected BytecodeNodeInterceptsCF(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        super(language, frameDescriptor);
+    }
+
+    @Override
+    public Object interceptControlFlowException(ControlFlowException ex, VirtualFrame frame, int bci) throws Throwable {
+        return 42;
+    }
+
+    @Operation
+    public static final class ThrowUnhandledControlFlowException {
+        @Specialization
+        public static Object perform() {
+            throw new ControlFlowException();
+        }
+    }
+
+    @Operation
+    public static final class ThrowStackOverflow {
+        public static final String MESSAGE = "unbounded recursion";
+
+        @Specialization
+        public static Object perform() {
+            throw new StackOverflowError(MESSAGE);
+        }
+    }
+}
+
+@GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class)
+abstract class BytecodeNodeInterceptsInternal extends RootNode implements BytecodeRootNode {
+
+    protected BytecodeNodeInterceptsInternal(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        super(language, frameDescriptor);
+    }
+
+    @Override
+    public Throwable interceptInternalException(Throwable t, int bci) {
+        return new RuntimeException(t);
+    }
+
+    @Operation
+    public static final class ThrowUnhandledControlFlowException {
+        @Specialization
+        public static Object perform() {
+            throw new ControlFlowException();
+        }
+    }
+
+    @Operation
+    public static final class ThrowStackOverflow {
+        public static final String MESSAGE = "unbounded recursion";
+
+        @Specialization
+        public static Object perform() {
+            throw new StackOverflowError(MESSAGE);
         }
     }
 }
