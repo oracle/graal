@@ -297,6 +297,7 @@ def _test_libgraal_oome_dumping():
                   '-Djdk.libgraal.internal.PrintGC=true',
                   '-Djdk.libgraal.internal.HeapDumpOnOutOfMemoryError=true',
                   f'-Djdk.libgraal.internal.HeapDumpPath={n}',
+                  '-Djdk.libgraal.SystemicCompilationFailureRate=0',
                   '-Djdk.libgraal.CrashAtThrowsOOME=true']
         cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + _get_CountUppercase_vmargs()
         mx.run(cmd, cwd=scratch_dir)
