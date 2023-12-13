@@ -79,6 +79,7 @@ import jdk.graal.compiler.graph.NodeMap;
 import jdk.graal.compiler.hotspot.HotSpotGraphBuilderPhase;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
+import jdk.graal.compiler.java.StableMethodNameFormatter;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
@@ -486,6 +487,11 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     /**
+     * Asserts that two graphs are equal.
+     * <p>
+     * If the {@link jdk.graal.compiler.nodes.OptimizationLog} is enabled, the logs of the "actual"
+     * graph are emitted.
+     *
      * @param addGaphsToDebugContext if true, a scope is opened that contains {@code expected} and
      *            {@code actual} in its context so that these graphs are dumped when the comparison
      *            fails and {@code DumpOnError=true}
@@ -496,12 +502,14 @@ public abstract class GraalCompilerTest extends GraalTest {
                     boolean excludeVirtual,
                     boolean checkConstants,
                     boolean addGaphsToDebugContext) {
+        DebugContext debug = actual.getDebug();
+        actual.getOptimizationLog().emit(new StableMethodNameFormatter(getProviders(), debug));
+
         String expectedString = getCanonicalGraphString(expected, excludeVirtual, checkConstants);
         String actualString = getCanonicalGraphString(actual, excludeVirtual, checkConstants);
         String mismatchString = compareGraphStrings(expected, expectedString, actual, actualString);
 
         // Open a scope so that `expected` and `actual` are dumped if DumpOnError=true
-        DebugContext debug = actual.getDebug();
         try (DebugContext.Scope scope = addGaphsToDebugContext ? debug.scope("GraphEqualsTest", expected, actual) : null) {
             if (!excludeVirtual && getNodeCountExcludingUnusedConstants(expected) != getNodeCountExcludingUnusedConstants(actual)) {
                 debug.dump(DebugContext.BASIC_LEVEL, expected, "Node count not matching - expected");
@@ -1229,6 +1237,9 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     /**
      * Compiles a given method.
+     * <p>
+     * Emits the {@link jdk.graal.compiler.nodes.OptimizationLog} of the compilation if the log is
+     * enabled.
      *
      * @param installedCodeOwner the method the compiled code will be associated with when installed
      * @param graph the graph to be compiled for {@code installedCodeOwner}. If null, a graph will
@@ -1251,7 +1262,9 @@ public abstract class GraalCompilerTest extends GraalTest {
 
             Request<CompilationResult> request = new Request<>(graphToCompile, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), getOptimisticOptimizations(),
                             graphToCompile.getProfilingInfo(), suites, createLIRSuites(options), compilationResult, CompilationResultBuilderFactory.Default, null, true);
-            return GraalCompiler.compile(request);
+            CompilationResult result = GraalCompiler.compile(request);
+            graphToCompile.getOptimizationLog().emit(new StableMethodNameFormatter(getProviders(), graphToCompile.getDebug()));
+            return result;
         } catch (Throwable e) {
             throw debug.handle(e);
         }
