@@ -44,7 +44,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assume.assumeFalse;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -57,14 +56,9 @@ import com.oracle.truffle.api.source.SourceSection;
 
 @RunWith(Parameterized.class)
 public class BytecodeDSLExampleSourcesTest extends AbstractBytecodeDSLExampleTest {
-    public void assumeTestIsApplicable() {
-        // TODO: we currently do not have a way to serialize Sources.
-        assumeFalse(testSerialize);
-    }
 
     @Test
     public void testSource() {
-        assumeTestIsApplicable();
         Source source = Source.newBuilder("test", "return 1", "test.test").build();
         BytecodeDSLExample node = parseNodeWithSource("source", b -> {
             b.beginRoot(LANGUAGE);
@@ -101,7 +95,6 @@ public class BytecodeDSLExampleSourcesTest extends AbstractBytecodeDSLExampleTes
 
     @Test
     public void testSourceNoSourceSet() {
-        assumeTestIsApplicable();
         thrown.expect(IllegalStateException.class);
         thrown.expectMessage("No enclosing Source operation found - each SourceSection must be enclosed in a Source operation.");
         parseNodeWithSource("sourceNoSourceSet", b -> {
@@ -123,7 +116,6 @@ public class BytecodeDSLExampleSourcesTest extends AbstractBytecodeDSLExampleTes
 
     @Test
     public void testSourceMultipleSources() {
-        assumeTestIsApplicable();
         Source source1 = Source.newBuilder("test", "This is just a piece of test source.", "test1.test").build();
         Source source2 = Source.newBuilder("test", "This is another test source.", "test2.test").build();
         BytecodeDSLExample root = parseNodeWithSource("sourceMultipleSources", b -> {
@@ -222,7 +214,6 @@ public class BytecodeDSLExampleSourcesTest extends AbstractBytecodeDSLExampleTes
 
     @Test
     public void testGetSourcePosition() {
-        assumeTestIsApplicable();
         Source source = Source.newBuilder("test", "return 1", "testGetSourcePosition").build();
         BytecodeDSLExample node = parseNodeWithSource("source", b -> {
             b.beginRoot(LANGUAGE);
@@ -252,7 +243,6 @@ public class BytecodeDSLExampleSourcesTest extends AbstractBytecodeDSLExampleTes
 
     @Test
     public void testSourceFinallyTry() {
-        assumeTestIsApplicable();
         // Finally handlers get emitted multiple times. Each handler's source info should be emitted
         // as expected.
 
@@ -333,7 +323,6 @@ public class BytecodeDSLExampleSourcesTest extends AbstractBytecodeDSLExampleTes
 
     @Test
     public void testSourceReparse() {
-        assumeTestIsApplicable();
         // Test input taken from testSource above.
         Source source = Source.newBuilder("test", "return 1", "test.test").build();
         BytecodeNodes<BytecodeDSLExample> nodes = createNodes(BytecodeConfig.DEFAULT, b -> {
