@@ -319,7 +319,6 @@ public class NativeImage {
         protected final Path workDir;
         protected final Path rootDir;
         protected final Path libJvmciDir;
-        protected final Path libPreviewDir;
         protected final List<String> args;
 
         BuildConfiguration(BuildConfiguration original) {
@@ -328,7 +327,6 @@ public class NativeImage {
             workDir = original.workDir;
             rootDir = original.rootDir;
             libJvmciDir = original.libJvmciDir;
-            libPreviewDir = original.libPreviewDir;
             args = original.args;
         }
 
@@ -371,8 +369,6 @@ public class NativeImage {
             }
             Path ljDir = this.rootDir.resolve(Paths.get("lib", "jvmci"));
             libJvmciDir = Files.exists(ljDir) ? ljDir : null;
-            Path lpDir = this.rootDir.resolve(Paths.get("lib", "svm-preview", "builder"));
-            libPreviewDir = Files.exists(lpDir) ? lpDir : null;
         }
 
         /**
@@ -864,15 +860,17 @@ public class NativeImage {
         final String envVarName = SubstrateOptions.NATIVE_IMAGE_OPTIONS_ENV_VAR;
         String nativeImageOptionsValue = System.getenv(envVarName);
         if (nativeImageOptionsValue != null) {
-            addPlainImageBuilderArg(oHNativeImageOptionsEnvVar + nativeImageOptionsValue);
             defaultNativeImageArgs.addAll(JDKArgsUtils.parseArgsFromEnvVar(nativeImageOptionsValue, envVarName, msg -> showError(msg)));
         }
         if (!defaultNativeImageArgs.isEmpty()) {
             String buildApplyOptionName = BundleSupport.BundleOptionVariants.apply.optionName();
             if (config.getBuildArgs().stream().noneMatch(arg -> arg.startsWith(buildApplyOptionName + "="))) {
+                if (nativeImageOptionsValue != null) {
+                    addPlainImageBuilderArg(oHNativeImageOptionsEnvVar + nativeImageOptionsValue);
+                }
                 return List.copyOf(defaultNativeImageArgs);
             } else {
-                LogUtils.warning("Option " + buildApplyOptionName + " in use. Ignoring args from file specified with environment variable " + NativeImage.CONFIG_FILE_ENV_VAR_KEY + ".");
+                LogUtils.warning("Option '" + buildApplyOptionName + "' in use. Ignoring environment variables " + envVarName + " and " + NativeImage.CONFIG_FILE_ENV_VAR_KEY + ".");
             }
         }
         return List.of();
@@ -1115,6 +1113,14 @@ public class NativeImage {
         // The following two are for backwards compatibility reasons. They should be removed.
         imageBuilderJavaArgs.add("-Djdk.internal.lambda.eagerlyInitialize=false");
         imageBuilderJavaArgs.add("-Djava.lang.invoke.InnerClassLambdaMetafactory.initializeLambdas=false");
+        /*
+         * DONT_INLINE_THRESHOLD is used to set a profiling threshold for certain method handles and
+         * only allow inlining after n invocations. This is used for example in the implementation
+         * of record equals methods. We disable this behavior in the image builder because it can
+         * prevent optimizing the method handles for AOT compilation if the threshold is not
+         * reached.
+         */
+        imageBuilderJavaArgs.add("-Djava.lang.invoke.MethodHandle.DONT_INLINE_THRESHOLD=-1");
 
         /* After JavaArgs consolidation add the user provided JavaArgs */
         boolean afterOption = false;
@@ -1892,43 +1898,6 @@ public class NativeImage {
             return useBundle() ? bundleSupport.recordCanonicalization(path, realPath) : realPath;
         } catch (IOException e) {
             throw showError("Invalid Path entry " + path, e);
-        }
-    }
-
-    public enum PreviewFeatures {
-        FOREIGN(JavaVersionUtil.JAVA_SPEC >= 21, "svm-foreign");
-
-        private final boolean requirementsMet;
-        private final String libName;
-
-        PreviewFeatures(boolean requirementsMet, String libName) {
-            this.requirementsMet = requirementsMet;
-            this.libName = libName;
-        }
-
-        public boolean requirementsMet() {
-            return requirementsMet;
-        }
-
-        public String getLibName() {
-            return libName;
-        }
-    }
-
-    public void enablePreview() {
-        if (config.libPreviewDir == null && PreviewFeatures.values().length > 0) {
-            throw showError("The directory containing the preview modules was not found.");
-        }
-
-        for (var preview : PreviewFeatures.values()) {
-            if (preview.requirementsMet()) {
-                Path libPath = config.libPreviewDir == null ? null : config.libPreviewDir.resolve(preview.getLibName() + ".jar");
-                if (libPath != null && Files.exists(libPath)) {
-                    addImageBuilderModulePath(libPath);
-                } else {
-                    throw showError("Preview library " + preview.getLibName() + " should be enabled, but was not found.");
-                }
-            }
         }
     }
 

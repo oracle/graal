@@ -34,6 +34,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import org.graalvm.collections.EconomicMap;
+
 import jdk.graal.compiler.options.EnumMultiOptionKey;
 import jdk.graal.compiler.options.EnumOptionKey;
 import jdk.graal.compiler.options.Option;
@@ -122,7 +123,7 @@ public class DebugOptions {
     @Option(help = "Pattern for specifying scopes in which logging is enabled. " +
                    "See the Dump option for the pattern syntax.", type = OptionType.Debug)
     public static final OptionKey<String> Log = new OptionKey<>(null);
-    @Option(help = "file:doc-files/MethodFilterHelp.txt", stability = OptionStability.STABLE)
+    @Option(help = "file:doc-files/MethodFilterHelp.txt")
     public static final OptionKey<String> MethodFilter = new OptionKey<>(null);
     @Option(help = "Only check MethodFilter against the root method in the context if true, otherwise check all methods", type = OptionType.Debug)
     public static final OptionKey<Boolean> MethodFilterRootOnly = new OptionKey<>(false);

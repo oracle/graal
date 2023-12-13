@@ -73,6 +73,6 @@ final class AMD64HotSpotDeoptimizeWithExceptionCallerOp extends AMD64HotSpotEpil
 
         // Remove return address.
         masm.addq(stackPointer, crb.target.arch.getReturnAddressSize());
-        AMD64Call.directJmp(crb, masm, crb.foreignCalls.lookupForeignCall(DEOPT_BLOB_UNPACK_WITH_EXCEPTION_IN_TLS), null);
+        AMD64Call.directJmp(crb, masm, crb.getForeignCalls().lookupForeignCall(DEOPT_BLOB_UNPACK_WITH_EXCEPTION_IN_TLS), null);
     }
 }

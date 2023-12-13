@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.substitute;
 
+import static com.oracle.svm.core.SubstrateUtil.toUnboxedClass;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.AtomicFieldUpdaterOffset;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.FieldOffset;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.StaticFieldBase;
@@ -42,7 +43,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
@@ -65,6 +65,7 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.JavaConstant;
@@ -393,28 +394,6 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
         if (!transformedValueAllowedType.isAssignableFrom(actualType)) {
             throw UserError.abort("Field value transformer returned value of type `%s` that is not assignable to declared type `%s` of %s",
                             actualType.getTypeName(), transformedValueAllowedType.getTypeName(), fieldFormat());
-        }
-    }
-
-    private static Class<?> toUnboxedClass(Class<?> clazz) {
-        if (clazz == Boolean.class) {
-            return boolean.class;
-        } else if (clazz == Byte.class) {
-            return byte.class;
-        } else if (clazz == Short.class) {
-            return short.class;
-        } else if (clazz == Character.class) {
-            return char.class;
-        } else if (clazz == Integer.class) {
-            return int.class;
-        } else if (clazz == Long.class) {
-            return long.class;
-        } else if (clazz == Float.class) {
-            return float.class;
-        } else if (clazz == Double.class) {
-            return double.class;
-        } else {
-            return clazz;
         }
     }
 

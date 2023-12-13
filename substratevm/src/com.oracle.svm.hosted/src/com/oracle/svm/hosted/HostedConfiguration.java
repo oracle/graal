@@ -177,8 +177,8 @@ public class HostedConfiguration {
         return new SVMMethodTypeFlowBuilder(bb, method, flowsGraph, graphKind);
     }
 
-    public void registerUsedElements(PointsToAnalysis bb, StructuredGraph graph, boolean registerEmbeddedRoots) {
-        SVMMethodTypeFlowBuilder.registerUsedElements(bb, graph, registerEmbeddedRoots);
+    public void registerUsedElements(PointsToAnalysis bb, StructuredGraph graph) {
+        SVMMethodTypeFlowBuilder.registerUsedElements(bb, graph);
     }
 
     public MetaAccessExtensionProvider createAnalysisMetaAccessExtensionProvider() {

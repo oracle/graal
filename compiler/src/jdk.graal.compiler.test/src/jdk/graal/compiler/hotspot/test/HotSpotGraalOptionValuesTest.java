@@ -30,10 +30,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.options.OptionsParser;
 import org.junit.Assert;
 import org.junit.Test;
+
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.options.OptionsParser;
 
 public class HotSpotGraalOptionValuesTest extends HotSpotGraalCompilerTest {
 

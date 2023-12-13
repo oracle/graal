@@ -46,7 +46,9 @@ import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -68,6 +70,7 @@ import com.oracle.svm.core.jdk.StringInternSupport;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
 import com.oracle.svm.hosted.meta.HostedClass;
@@ -107,8 +110,11 @@ public final class NativeImageHeap implements ImageHeap {
 
     /**
      * A Map from objects at construction-time to native image objects.
-     *
+     * <p>
      * More than one host object may be represented by a single native image object.
+     * <p>
+     * The constants stored in the image heap are always uncompressed. The same object info is
+     * returned whenever the map is queried regardless of the compressed flag value.
      */
     private final HashMap<JavaConstant, ObjectInfo> objects = new HashMap<>();
 
@@ -164,12 +170,12 @@ public final class NativeImageHeap implements ImageHeap {
     public ObjectInfo getObjectInfo(Object obj) {
         JavaConstant constant = hUniverse.getSnippetReflection().forObject(obj);
         VMError.guarantee(constant instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", constant);
-        return objects.get(uncompress(constant));
+        return objects.get(CompressibleConstant.uncompress(constant));
     }
 
     public ObjectInfo getConstantInfo(JavaConstant constant) {
         VMError.guarantee(constant instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", constant);
-        return objects.get(uncompress(constant));
+        return objects.get(CompressibleConstant.uncompress(constant));
     }
 
     protected HybridLayout<?> getHybridLayout(HostedClass clazz) {
@@ -226,6 +232,9 @@ public final class NativeImageHeap implements ImageHeap {
             String[] imageInternedStrings = internedStrings.keySet().toArray(new String[0]);
             Arrays.sort(imageInternedStrings);
             ImageSingletons.lookup(StringInternSupport.class).setImageInternedStrings(imageInternedStrings);
+            /* Manually snapshot the interned strings array. */
+            aUniverse.getHeapScanner().rescanObject(imageInternedStrings, OtherReason.LATE_SCAN);
+
             addObject(imageInternedStrings, true, HeapInclusionReason.InternedStringsTable);
 
             // Process any objects that were transitively added to the heap.
@@ -238,8 +247,16 @@ public final class NativeImageHeap implements ImageHeap {
         assert addObjectWorklist.isEmpty();
     }
 
-    private Object readObjectField(HostedField field, JavaConstant receiver) {
-        return hUniverse.getSnippetReflection().asObject(Object.class, hConstantReflection.readFieldValue(field, receiver));
+    /**
+     * Bypass shadow heap reading for hybrid fields. These fields are not actually present in the
+     * image, their value is inlined, and are not present in the shadow heap either.
+     */
+    Object readHybridField(HostedField field, JavaConstant receiver) {
+        VMError.guarantee(HybridLayout.isHybridField(field), "Expected a hybrid field, found %s", field);
+        JavaConstant hostedReceiver = ((ImageHeapInstance) receiver).getHostedObject();
+        /* Use the AnalysisConstantReflectionProvider to get direct access to hosted values. */
+        AnalysisConstantReflectionProvider analysisConstantReflection = hConstantReflection.getWrappedConstantReflection();
+        return hUniverse.getSnippetReflection().asObject(Object.class, analysisConstantReflection.readHostedFieldValue(hMetaAccess, field.getWrapped(), hostedReceiver));
     }
 
     private JavaConstant readConstantField(HostedField field, JavaConstant receiver) {
@@ -341,7 +358,7 @@ public final class NativeImageHeap implements ImageHeap {
             }
         }
 
-        JavaConstant uncompressed = uncompress(constant);
+        JavaConstant uncompressed = CompressibleConstant.uncompress(constant);
 
         int identityHashCode = computeIdentityHashCode(uncompressed);
         VMError.guarantee(identityHashCode != 0, "0 is used as a marker value for 'hash code not yet computed'");
@@ -358,27 +375,6 @@ public final class NativeImageHeap implements ImageHeap {
         } else if (objectReachabilityInfo != null) {
             objectReachabilityInfo.get(existing).addReason(reason);
         }
-    }
-
-    /**
-     * The constants stored in the image heap, i.g., the {@link #objects} map, are always
-     * uncompressed. The same object info is returned whenever the map is queried regardless of the
-     * compressed flag value.
-     */
-    private static JavaConstant uncompress(JavaConstant constant) {
-        if (constant instanceof CompressibleConstant compressible) {
-            if (compressible.isCompressed()) {
-                return compressible.uncompress();
-            }
-        }
-        return constant;
-    }
-
-    private static boolean isCompressed(JavaConstant constant) {
-        if (constant instanceof CompressibleConstant compressible) {
-            return compressible.isCompressed();
-        }
-        return false;
     }
 
     private static int computeIdentityHashCode(JavaConstant constant) {
@@ -483,14 +479,14 @@ public final class NativeImageHeap implements ImageHeap {
                 boolean shouldBlacklist = !HybridLayout.canHybridFieldsBeDuplicated(clazz);
                 hybridTypeIDSlotsField = hybridLayout.getTypeIDSlotsField();
                 if (hybridTypeIDSlotsField != null && shouldBlacklist) {
-                    Object typeIDSlots = readObjectField(hybridTypeIDSlotsField, constant);
+                    Object typeIDSlots = readHybridField(hybridTypeIDSlotsField, constant);
                     if (typeIDSlots != null) {
                         blacklist.add(typeIDSlots);
                     }
                 }
 
                 hybridArrayField = hybridLayout.getArrayField();
-                hybridArray = readObjectField(hybridArrayField, constant);
+                hybridArray = readHybridField(hybridArrayField, constant);
                 if (hybridArray != null && shouldBlacklist) {
                     blacklist.add(hybridArray);
                     written = true;
@@ -634,7 +630,7 @@ public final class NativeImageHeap implements ImageHeap {
 
     private ObjectInfo addToImageHeap(JavaConstant add, HostedClass clazz, long size, int identityHashCode, Object reason) {
         VMError.guarantee(add instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", add);
-        VMError.guarantee(!isCompressed(add), "Constants added to the image heap must be uncompressed.");
+        VMError.guarantee(!CompressibleConstant.isCompressed(add), "Constants added to the image heap must be uncompressed.");
         ObjectInfo info = new ObjectInfo(add, size, clazz, identityHashCode, reason);
         ObjectInfo previous = objects.putIfAbsent(add, info);
         VMError.guarantee(previous == null, "Found an existing object info associated to constant %s", add);
@@ -650,6 +646,7 @@ public final class NativeImageHeap implements ImageHeap {
     public ObjectInfo addLateToImageHeap(Object object, Object reason) {
         assert !(object instanceof DynamicHub) : "needs a different identity hashcode";
         assert !(object instanceof String) : "needs String interning";
+        aUniverse.getHeapScanner().rescanObject(object, OtherReason.LATE_SCAN);
 
         final Optional<HostedType> optionalType = hMetaAccess.optionalLookupJavaType(object.getClass());
         HostedType type = requireType(optionalType, object, reason);

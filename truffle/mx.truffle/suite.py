@@ -365,6 +365,7 @@ suite = {
         "java.sql",
         "jdk.management",
         "jdk.unsupported", # sun.misc.Unsafe
+        "jdk.attach", # required by SubprocessTestUtils
       ],
       "requiresConcealed" : {
         "java.base" : [

@@ -928,11 +928,11 @@ class NativeImageVM(GraalVm):
                     if file.endswith(".json"):
                         zipf.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), os.path.join(path, '..')))
 
-    def run_stage_instrument_image(self, config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations):
+    def run_stage_instrument_image(self, config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations, profile_path):
         executable_name_args = ['-o', instrumentation_image_name]
         pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += svm_experimental_options(['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled'])
-        instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
+        instrument_args = ['--pgo-instrument', '-R:ProfilesDumpFile=' + profile_path] + ([] if i == 0 else pgo_args)
         if self.jdk_profiles_collect:
             instrument_args += svm_experimental_options(['-H:+ProfilingEnabled', '-H:+AOTPriorityInline', '-H:-SamplingCollect', f'-H:ProfilingPackagePrefixes={self.generate_profiling_package_prefixes()}'])
 
@@ -963,7 +963,7 @@ class NativeImageVM(GraalVm):
                     assert sample["records"][0] > 0, "Sampling profiles seem to have a 0 in records in file " + profile_path
 
     def run_stage_instrument_run(self, config, stages, image_path, profile_path):
-        image_run_cmd = [image_path, '-XX:ProfilesDumpFile=' + profile_path]
+        image_run_cmd = [image_path]
         image_run_cmd += config.extra_jvm_args
         image_run_cmd += config.extra_profile_run_args
         with stages.set_command(image_run_cmd) as s:
@@ -1080,7 +1080,7 @@ class NativeImageVM(GraalVm):
             image_path = os.path.join(config.output_dir, instrumentation_image_name)
             image_path_latest = os.path.join(config.output_dir, instrumentation_image_latest)
             if stages.change_stage('instrument-image', str(i)):
-                self.run_stage_instrument_image(config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations)
+                self.run_stage_instrument_image(config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations, profile_path)
 
             if stages.change_stage('instrument-run', str(i)):
                 self.run_stage_instrument_run(config, stages, image_path, profile_path)

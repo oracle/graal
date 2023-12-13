@@ -168,6 +168,12 @@ public final class Target_jdk_jfr_internal_JVM {
         throw VMError.unimplemented("JFR StackFilters are not yet supported.");
     }
 
+    @Substitute
+    @TargetElement(onlyWith = JDK22OrLater.class)
+    public static void setMiscellaneous(long eventTypeId, long value) {
+        throw VMError.unimplemented("@Deprecated JFR events are not yet supported.");
+    }
+
     /** See {@link JVM#getThreadId}. */
     @Substitute
     @TargetElement(onlyWith = JDK22OrLater.class)

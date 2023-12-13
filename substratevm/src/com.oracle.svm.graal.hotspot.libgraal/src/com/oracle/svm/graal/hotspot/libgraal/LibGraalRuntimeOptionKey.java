@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.word;
+package com.oracle.svm.graal.hotspot.libgraal;
 
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.nodes.spi.WordVerification;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 
-import jdk.vm.ci.meta.JavaType;
-
-public final class WordVerificationImpl implements WordVerification {
-
-    private final WordTypes wordTypes;
-
-    public WordVerificationImpl(WordTypes wordTypes) {
-        this.wordTypes = wordTypes;
+/**
+ * Libgraal-specific subclass so that we can distinguish between Native Image and libgraal runtime
+ * options.
+ */
+public class LibGraalRuntimeOptionKey<T> extends RuntimeOptionKey<T> {
+    LibGraalRuntimeOptionKey(T defaultValue, RuntimeOptionKeyFlag... flags) {
+        super(defaultValue, flags);
     }
-
-    @Override
-    public boolean guaranteeWord(JavaType type) {
-        GraalError.guarantee(wordTypes.isWord(type), "Expected a Word but got %s", type);
-        return true;
-    }
-
-    @Override
-    public boolean guaranteeNotWord(JavaType type) {
-        GraalError.guarantee(!wordTypes.isWord(type), "Unexpected a Word type %s", type);
-        return true;
-    }
-
 }

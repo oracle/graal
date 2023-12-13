@@ -50,7 +50,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.GraphKit;
 import jdk.graal.compiler.replacements.nodes.ReadRegisterNode;
-import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotSignature;
 import jdk.vm.ci.meta.JavaMethod;
@@ -225,7 +224,6 @@ public abstract class AbstractForeignCallStub extends Stub {
     @Override
     @SuppressWarnings("try")
     protected final StructuredGraph getGraph(DebugContext debug, CompilationIdentifier compilationId) {
-        WordTypes wordTypes = providers.getWordTypes();
         boolean isObjectResult = returnsObject();
         // Do we want to clear the pending exception?
         boolean shouldClearException = shouldClearException();
@@ -235,10 +233,10 @@ public abstract class AbstractForeignCallStub extends Stub {
             ResolvedJavaMethod handlePendingException = foreignCallSnippets.handlePendingException.getMethod();
             ResolvedJavaMethod getAndClearObjectResult = foreignCallSnippets.getAndClearObjectResult.getMethod();
             ResolvedJavaMethod thisMethod = getGraphMethod();
-            HotSpotGraphKit kit = new HotSpotGraphKit(debug, thisMethod, providers, wordTypes, providers.getGraphBuilderPlugins(), compilationId, toString(), false, true);
+            HotSpotGraphKit kit = new HotSpotGraphKit(debug, thisMethod, providers, providers.getGraphBuilderPlugins(), compilationId, toString(), false, true);
             StructuredGraph graph = kit.getGraph();
             graph.getGraphState().forceDisableFrameStateVerification();
-            ReadRegisterNode thread = kit.append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), wordTypes.getWordKind(), true, false));
+            ReadRegisterNode thread = kit.append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), providers.getWordTypes().getWordKind(), true, false));
             ValueNode result = createTargetCall(kit, thread);
             if (linkage.getDescriptor().getTransition() == HotSpotForeignCallDescriptor.Transition.SAFEPOINT) {
                 kit.createIntrinsicInvoke(handlePendingException, thread, forBoolean(shouldClearException, graph), forBoolean(isObjectResult, graph));
