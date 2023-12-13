@@ -180,6 +180,21 @@ public final class RuntimeCodeInfoAccess {
     }
 
     /**
+     * This method only walks the tether. You typically want to use {@link #walkStrongReferences}
+     * and/or {@link #walkWeakReferences} instead.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean walkTether(CodeInfo info, ObjectReferenceVisitor visitor) {
+        Pointer address = NonmovableArrays.addressOf(cast(info).getObjectFields(), CodeInfoImpl.TETHER_OBJFIELD);
+        return callVisitor(visitor, address);
+    }
+
+    @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
+    private static boolean callVisitor(ObjectReferenceVisitor visitor, Pointer address) {
+        return visitor.visitObjectReference(address, true, null);
+    }
+
+    /**
      * This method only visits a very specific subset of all the references, so you typically want
      * to use {@link #walkStrongReferences} and/or {@link #walkWeakReferences} instead.
      */
