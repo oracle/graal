@@ -57,10 +57,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: browser-actions/setup-chrome@v1
-      with:
-        chrome-version: dev
-      id: setup-chrome
     - name: Checkout oracle/graal
       uses: actions/checkout@v4
       with:
@@ -90,10 +86,8 @@ jobs:
         mkdir jdk-dl
         ${MX_PATH}/mx --java-home= fetch-jdk --jdk-id labsjdk-ce-${JDK_VERSION} --to jdk-dl --alias ${JAVA_HOME}
     - run: |
-        echo Installed chromium version: ${{ steps.setup-chrome.outputs.chrome-version }}
-        ${{ steps.setup-chrome.outputs.chrome-path }} --version
         cd ${{ github.workspace }}/graal/vm
         ${MX_PATH}/mx --dy /tools,graal-js build
         cd tests/gh_workflows/CDTInspectorTest
         mvn -q compile
-        mvn -q exec:exec -Dtestargs="${{ github.workspace }}/graal/sdk/latest_graalvm_home/bin/js scripts/StepTest.js ${{ steps.setup-chrome.outputs.chrome-path }} ${{ steps.setup-chrome.outputs.chrome-version }}"
+        mvn -q exec:exec -Dtestargs="${{ github.workspace }}/graal/sdk/latest_graalvm_home/bin/js scripts/StepTest.js"
