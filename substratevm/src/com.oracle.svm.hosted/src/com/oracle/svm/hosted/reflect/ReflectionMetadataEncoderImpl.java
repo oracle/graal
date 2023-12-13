@@ -403,7 +403,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         HostedType[] parameterTypes = getParameterTypes(hostedMethod);
         /* Reflect method because substitution of Object.hashCode() is private */
         int modifiers = reflectMethod.getModifiers();
-        HostedType returnType = (HostedType) hostedMethod.getSignature().getReturnType(null);
+        HostedType returnType = hostedMethod.getSignature().getReturnType();
         HostedType[] exceptionTypes = getExceptionTypes(metaAccess, reflectMethod);
         String signature = getSignature(reflectMethod);
 
@@ -636,7 +636,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
     private static HostedType[] getParameterTypes(HostedMethod method) {
         HostedType[] parameterTypes = new HostedType[method.getSignature().getParameterCount(false)];
         for (int i = 0; i < parameterTypes.length; ++i) {
-            parameterTypes[i] = (HostedType) method.getSignature().getParameterType(i, null);
+            parameterTypes[i] = method.getSignature().getParameterType(i);
         }
         return parameterTypes;
     }
@@ -644,7 +644,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
     private static String[] getParameterTypeNames(HostedMethod method) {
         String[] parameterTypeNames = new String[method.getSignature().getParameterCount(false)];
         for (int i = 0; i < parameterTypeNames.length; ++i) {
-            parameterTypeNames[i] = method.getSignature().getParameterType(i, null).toJavaName();
+            parameterTypeNames[i] = method.getSignature().getParameterType(i).toJavaName();
         }
         return parameterTypeNames;
     }

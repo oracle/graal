@@ -1022,7 +1022,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     @SuppressWarnings("try")
     protected void buildRootMethod() {
         FrameStateBuilder startFrameState = new FrameStateBuilder(this, code, graph, graphBuilderConfig.retainLocalVariables());
-        startFrameState.initializeForMethodStart(graph.getAssumptions(), graphBuilderConfig.eagerResolving() || intrinsicContext != null, graphBuilderConfig.getPlugins());
+        startFrameState.initializeForMethodStart(graph.getAssumptions(), graphBuilderConfig.eagerResolving() || intrinsicContext != null, graphBuilderConfig.getPlugins(), null);
 
         try (IntrinsicScope s = intrinsicContext != null ? new IntrinsicScope(this) : null) {
             build(graph.start(), startFrameState);
@@ -1792,7 +1792,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
         }
 
-        boolean hasReceiver = (opcode == INVOKEDYNAMIC) ? false : !target.isStatic();
+        boolean hasReceiver = opcode != INVOKEDYNAMIC && !target.isStatic();
         ValueNode[] args = frameState.popArguments(target.getSignature().getParameterCount(hasReceiver));
         if (hasReceiver) {
             appendInvoke(InvokeKind.Virtual, target, args, null);
@@ -2089,12 +2089,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     protected Invoke createNonInlinedInvoke(ExceptionEdgeAction exceptionEdge, int invokeBci, ValueNode[] invokeArgs, ResolvedJavaMethod targetMethod,
                     InvokeKind invokeKind, JavaKind resultType, JavaType returnType, JavaTypeProfile profile) {
 
-        StampPair returnStamp = graphBuilderConfig.getPlugins().getOverridingStamp(this, returnType, false);
-        if (returnStamp == null) {
-            returnStamp = StampFactory.forDeclaredType(graph.getAssumptions(), returnType, false);
-        }
-
-        MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, targetMethod, invokeArgs, returnStamp, profile));
+        MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, targetMethod, invokeArgs, returnType, profile));
         Invoke invoke = createNonInlinedInvoke(exceptionEdge, invokeBci, callTarget, resultType);
 
         for (InlineInvokePlugin plugin : graphBuilderConfig.getPlugins().getInlineInvokePlugins()) {
@@ -2105,11 +2100,14 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     protected Invoke createNonInlinedInvoke(ExceptionEdgeAction exceptionEdge, int invokeBci, CallTargetNode callTarget, JavaKind resultType) {
+        Invoke invoke;
         if (exceptionEdge == ExceptionEdgeAction.OMIT) {
-            return createInvoke(invokeBci, callTarget, resultType);
+            invoke = append(createInvoke(invokeBci, callTarget, resultType));
         } else {
-            return createInvokeWithException(invokeBci, callTarget, resultType, exceptionEdge);
+            invoke = append(createInvokeWithException(invokeBci, callTarget, resultType, exceptionEdge));
         }
+        invoke.setStateAfter(createFrameState(stream.nextBCI(), invoke));
+        return invoke;
     }
 
     /**
@@ -2675,14 +2673,22 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         return null;
     }
 
+    public MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, JavaType returnType, JavaTypeProfile profile) {
+        StampPair returnStamp = graphBuilderConfig.getPlugins().getOverridingStamp(this, returnType, false);
+        if (returnStamp == null) {
+            returnStamp = StampFactory.forDeclaredType(graph.getAssumptions(), returnType, false);
+        }
+
+        return createMethodCallTarget(invokeKind, targetMethod, args, returnStamp, profile);
+    }
+
     public MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, JavaTypeProfile profile) {
         return new MethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, profile);
     }
 
     protected InvokeNode createInvoke(int invokeBci, CallTargetNode callTarget, JavaKind resultType) {
-        InvokeNode invoke = append(new InvokeNode(callTarget, invokeBci));
+        InvokeNode invoke = new InvokeNode(callTarget, invokeBci);
         frameState.pushReturn(resultType, invoke);
-        invoke.setStateAfter(createFrameState(stream.nextBCI(), invoke));
         return invoke;
     }
 
@@ -2696,9 +2702,8 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         }
 
         AbstractBeginNode exceptionEdge = handleException(null, bci(), exceptionEdgeAction == ExceptionEdgeAction.INCLUDE_AND_DEOPTIMIZE);
-        InvokeWithExceptionNode invoke = append(new InvokeWithExceptionNode(callTarget, exceptionEdge, invokeBci));
+        InvokeWithExceptionNode invoke = new InvokeWithExceptionNode(callTarget, exceptionEdge, invokeBci);
         frameState.pushReturn(resultType, invoke);
-        invoke.setStateAfter(createFrameState(stream.nextBCI(), invoke));
         return invoke;
     }
 
@@ -3939,7 +3944,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         throw GraphUtil.createBailoutException(string, bailout, elements);
     }
 
-    private FrameState createFrameState(int bci, StateSplit forStateSplit) {
+    protected FrameState createFrameState(int bci, StateSplit forStateSplit) {
         assert !(forStateSplit instanceof BytecodeExceptionNode) : Assertions.errorMessageContext("forStateSplit", forStateSplit);
         if (currentBlock != null && bci > currentBlock.getEndBci()) {
             frameState.clearNonLiveLocals(currentBlock, liveness, false);
@@ -4023,19 +4028,24 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     protected void genLoadConstant(int cpi, int opcode) {
         Object con = lookupConstant(cpi, opcode, false);
+        genLoadConstantHelper(con, opcode);
+    }
+
+    protected void genLoadConstantHelper(Object con, int opcode) {
         if (con == null) {
             handleUnresolvedLoadConstant(null);
-        } else if (con instanceof JavaType) {
+        } else if (con instanceof JavaType type) {
             // this is a load of class constant which might be unresolved
-            JavaType type = (JavaType) con;
             if (typeIsResolved(type)) {
+                assert opcode != LDC2_W : "Type cannot use two slots";
                 frameState.push(JavaKind.Object, appendConstant(getConstantReflection().asJavaClass((ResolvedJavaType) type)));
             } else {
                 handleUnresolvedLoadConstant(type);
             }
-        } else if (con instanceof JavaConstant) {
-            JavaConstant constant = (JavaConstant) con;
-            frameState.push(constant.getJavaKind(), appendConstant(constant));
+        } else if (con instanceof JavaConstant constant) {
+            JavaKind javaKind = constant.getJavaKind();
+            assert (opcode == LDC2_W) == javaKind.needsTwoSlots() : "Constant required incorrect number of slots: needsTwoSlots is " + javaKind.needsTwoSlots();
+            frameState.push(javaKind, appendConstant(constant));
         } else if (!(con instanceof Throwable)) {
             /**
              * We use the exceptional return value of {@link #lookupConstant(int, int)} as sentinel

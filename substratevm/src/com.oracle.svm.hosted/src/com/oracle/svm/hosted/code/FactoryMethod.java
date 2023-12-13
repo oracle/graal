@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.code;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.NeverInlineTrivial;
@@ -81,16 +80,15 @@ public final class FactoryMethod extends NonBytecodeMethod {
     }
 
     @Override
-    public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
+    public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
         FactoryMethodSupport support = ImageSingletons.lookup(FactoryMethodSupport.class);
 
-        AnalysisMetaAccess aMetaAccess = (AnalysisMetaAccess) providers.getMetaAccess();
-        AnalysisMethod aTargetConstructor = aMetaAccess.getUniverse().lookup(targetConstructor);
-        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
+        AnalysisMethod aTargetConstructor = kit.getMetaAccess().getUniverse().lookup(targetConstructor);
 
         AbstractNewObjectNode newInstance = support.createNewInstance(kit, aTargetConstructor.getDeclaringClass(), true);
 
-        ValueNode[] originalArgs = kit.loadArguments(method.toParameterTypes()).toArray(ValueNode.EMPTY_ARRAY);
+        ValueNode[] originalArgs = kit.getInitialArguments().toArray(ValueNode.EMPTY_ARRAY);
         ValueNode[] invokeArgs = new ValueNode[originalArgs.length + 1];
         invokeArgs[0] = newInstance;
         System.arraycopy(originalArgs, 0, invokeArgs, 1, originalArgs.length);
@@ -106,10 +104,5 @@ public final class FactoryMethod extends NonBytecodeMethod {
 
     public ResolvedJavaMethod getTargetConstructor() {
         return targetConstructor;
-    }
-
-    @Override
-    public ResolvedJavaType getDeclaringClass() {
-        return super.getDeclaringClass();
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.core.common.spi;
+package com.oracle.svm.core.foreign;
 
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
+import java.util.function.BooleanSupplier;
 
-/**
- * A set of providers which are required for LIR and/or code generation. Some may not be present
- * (i.e., null).
- */
-public interface CodeGenProviders {
+import com.oracle.svm.core.SubstrateOptions;
 
-    MetaAccessProvider getMetaAccess();
-
-    CodeCacheProvider getCodeCache();
-
-    ForeignCallsProvider getForeignCalls();
-
-    ConstantReflectionProvider getConstantReflection();
-
-    MetaAccessExtensionProvider getMetaAccessExtensionProvider();
+final class ForeignFunctionsEnabled implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return SubstrateOptions.ForeignAPISupport.getValue();
+    }
 }

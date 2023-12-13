@@ -24,8 +24,8 @@
  */
 package jdk.graal.compiler.truffle.hotspot.amd64;
 
-import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 import static jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.Z_FIELD_BARRIER;
+import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
@@ -42,10 +42,9 @@ import jdk.graal.compiler.lir.amd64.AMD64Move;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.asm.EntryPointDecorator;
 import jdk.graal.compiler.serviceprovider.ServiceProvider;
+import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
 import jdk.graal.compiler.truffle.hotspot.TruffleCallBoundaryInstrumentationFactory;
 import jdk.graal.compiler.truffle.hotspot.TruffleEntryPointDecorator;
-import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaKind;
@@ -59,7 +58,7 @@ public class AMD64TruffleCallBoundaryInstrumentationFactory extends TruffleCallB
             @Override
             public void emitEntryPoint(CompilationResultBuilder crb) {
                 AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
-                Register thisRegister = crb.codeCache.getRegisterConfig().getCallingConventionRegisters(JavaCall, JavaKind.Object).get(0);
+                Register thisRegister = crb.getCodeCache().getRegisterConfig().getCallingConventionRegisters(JavaCall, JavaKind.Object).get(0);
                 Register spillRegister = AMD64.r10;
                 Label doProlog = new Label();
                 int pos = masm.position();
@@ -79,7 +78,7 @@ public class AMD64TruffleCallBoundaryInstrumentationFactory extends TruffleCallB
                     masm.movq(spillRegister, address, true);
                     assert masm.position() - pos >= AMD64HotSpotBackend.PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE : masm.position() + "-" + pos;
                     if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
-                        ForeignCallLinkage callTarget = crb.providers.getForeignCalls().lookupForeignCall(Z_FIELD_BARRIER);
+                        ForeignCallLinkage callTarget = crb.getForeignCalls().lookupForeignCall(Z_FIELD_BARRIER);
                         AMD64HotSpotZBarrierSetLIRGenerator.emitBarrier(crb, masm, null, spillRegister, config, callTarget, address, null,
                                         (AMD64HotSpotBackend.HotSpotFrameContext) crb.frameContext);
                     }

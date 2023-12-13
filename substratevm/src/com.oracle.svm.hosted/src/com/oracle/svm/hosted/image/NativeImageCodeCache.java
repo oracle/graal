@@ -55,6 +55,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -64,6 +65,7 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -107,6 +109,7 @@ import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.options.Option;
 import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataPatch;
@@ -114,12 +117,13 @@ import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.VMConstant;
 
 public abstract class NativeImageCodeCache {
+
+    private final Map<Constant, Object> embeddedConstants = new HashMap<>();
 
     public static class Options {
         @Option(help = "Verify that all possible deoptimization entry points have been properly compiled and registered in the metadata")//
@@ -216,27 +220,38 @@ public abstract class NativeImageCodeCache {
         dataSection.close(HostedOptionValues.singleton(), 1);
     }
 
-    public void addConstantsToHeap() {
+    /** Get constants embedded in the data section and compilation results. */
+    public Map<Constant, Object> initAndGetEmbeddedConstants() {
+        VMError.guarantee(BuildPhaseProvider.isCompilationFinished(), "Code cache embedded constants are available only after compilation.");
+        VMError.guarantee(embeddedConstants.isEmpty(), "Embedded constants are already computed.");
+
         for (DataSection.Data data : dataSection) {
-            if (data instanceof SubstrateDataBuilder.ObjectData) {
-                JavaConstant constant = ((SubstrateDataBuilder.ObjectData) data).getConstant();
-                addConstantToHeap(constant, NativeImageHeap.HeapInclusionReason.DataSection);
+            if (data instanceof SubstrateDataBuilder.ObjectData objectData) {
+                embeddedConstants.put(objectData.getConstant(), NativeImageHeap.HeapInclusionReason.DataSection);
             }
         }
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
+            BytecodePosition position = AbstractAnalysisEngine.syntheticSourcePosition(pair.getLeft().getWrapped());
             CompilationResult compilationResult = pair.getRight();
             for (DataPatch patch : compilationResult.getDataPatches()) {
-                if (patch.reference instanceof ConstantReference) {
-                    addConstantToHeap(((ConstantReference) patch.reference).getConstant(), compilationResult.getName());
+                if (patch.reference instanceof ConstantReference ref) {
+                    embeddedConstants.put(ref.getConstant(), position);
                 }
             }
-
             for (CompilationResult.CodeAnnotation codeAnnotation : compilationResult.getCodeAnnotations()) {
-                if (codeAnnotation instanceof HostedImageHeapConstantPatch) {
-                    addConstantToHeap(((HostedImageHeapConstantPatch) codeAnnotation).constant, compilationResult.getName());
+                if (codeAnnotation instanceof HostedImageHeapConstantPatch patch) {
+                    embeddedConstants.put(patch.constant, position);
                 }
             }
         }
+        return embeddedConstants;
+    }
+
+    public void addConstantsToHeap() {
+        VMError.guarantee(!embeddedConstants.isEmpty(), "Embedded constants should already be computed.");
+        embeddedConstants.forEach((constant, reason) -> {
+            addConstantToHeap(constant, reason instanceof BytecodePosition position ? position.getMethod().getName() : reason);
+        });
     }
 
     private void addConstantToHeap(Constant constant, Object reason) {
@@ -366,13 +381,11 @@ public abstract class NativeImageCodeCache {
             if (includedMethods.add(analysisMethod)) {
                 HostedType declaringType = hUniverse.lookup(analysisMethod.getDeclaringClass());
                 String name = analysisMethod.getName();
-                JavaType[] analysisParameterTypes = analysisMethod.getSignature().toParameterTypes(null);
-                HostedType[] parameterTypes = new HostedType[analysisParameterTypes.length];
-                for (int i = 0; i < analysisParameterTypes.length; ++i) {
-                    parameterTypes[i] = hUniverse.lookup(analysisParameterTypes[i]);
-                }
+                HostedType[] parameterTypes = analysisMethod.getSignature().toParameterList(null).stream()
+                                .map(aType -> hUniverse.lookup(aType))
+                                .toArray(HostedType[]::new);
                 int modifiers = analysisMethod.getModifiers();
-                HostedType returnType = hUniverse.lookup(analysisMethod.getSignature().getReturnType(null));
+                HostedType returnType = hUniverse.lookup(analysisMethod.getSignature().getReturnType());
                 reflectionMetadataEncoder.addHidingMethodMetadata(analysisMethod, declaringType, name, parameterTypes, modifiers, returnType);
             }
         }

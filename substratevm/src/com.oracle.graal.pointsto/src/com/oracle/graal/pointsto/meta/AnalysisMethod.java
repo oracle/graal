@@ -72,6 +72,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
@@ -221,7 +222,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         if (PointstoOptions.TrackAccessChain.getValue(declaringClass.universe.hostVM().options())) {
             startTrackInvocations();
         }
-        registerSignatureTypes();
         parsingContextMaxDepth = PointstoOptions.ParsingContextMaxDepth.getValue(declaringClass.universe.hostVM.options());
     }
 
@@ -255,22 +255,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             aName += StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR + multiMethodKey;
         }
         return aName;
-    }
-
-    /**
-     * Lookup the parameters and return type so that they are added to the universe even if the
-     * method is never linked and parsed.
-     */
-    private void registerSignatureTypes() {
-        boolean isStatic = Modifier.isStatic(getModifiers());
-        int parameterCount = getSignature().getParameterCount(!isStatic);
-
-        int offset = isStatic ? 0 : 1;
-        for (int i = offset; i < parameterCount; i++) {
-            getSignature().getParameterType(i - offset, getDeclaringClass());
-        }
-
-        getSignature().getReturnType(getDeclaringClass());
     }
 
     public String getQualifiedName() {
@@ -630,22 +614,31 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     @Override
-    public jdk.vm.ci.meta.Signature getSignature() {
+    public ResolvedSignature<AnalysisType> getSignature() {
         return signature;
     }
 
     @Override
-    public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        if (wrapped instanceof GraphProvider) {
-            return ((GraphProvider) wrapped).buildGraph(debug, method, providers, purpose);
+    public JavaType[] toParameterTypes() {
+        throw JVMCIError.shouldNotReachHere("ResolvedJavaMethod.toParameterTypes returns the wrong result for constructors. Use toParameterList instead.");
+    }
+
+    public List<AnalysisType> toParameterList() {
+        return getSignature().toParameterList(isStatic() ? null : getDeclaringClass());
+    }
+
+    @Override
+    public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
+        if (wrapped instanceof GraphProvider graphProvider) {
+            return graphProvider.buildGraph(debug, method, providers, purpose);
         }
         return null;
     }
 
     @Override
     public boolean allowRuntimeCompilation() {
-        if (wrapped instanceof GraphProvider) {
-            return ((GraphProvider) wrapped).allowRuntimeCompilation();
+        if (wrapped instanceof GraphProvider graphProvider) {
+            return graphProvider.allowRuntimeCompilation();
         }
         return true;
     }

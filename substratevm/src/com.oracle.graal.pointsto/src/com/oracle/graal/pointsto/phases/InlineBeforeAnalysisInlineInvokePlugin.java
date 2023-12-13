@@ -24,10 +24,11 @@
  */
 package com.oracle.graal.pointsto.phases;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 final class InlineBeforeAnalysisInlineInvokePlugin implements InlineInvokePlugin {
@@ -39,7 +40,8 @@ final class InlineBeforeAnalysisInlineInvokePlugin implements InlineInvokePlugin
     }
 
     @Override
-    public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+    public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod m, ValueNode[] args) {
+        AnalysisMethod method = (AnalysisMethod) m;
         if (policy.shouldInlineInvoke(b, method, args)) {
             return policy.createInvokeInfo(method);
         } else {

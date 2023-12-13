@@ -93,6 +93,11 @@ public final class ResolvedSignature<T extends ResolvedJavaType> implements Sign
         return parameterTypes.size() + (withReceiver ? 1 : 0);
     }
 
+    /*
+     * Use the version without the accessingClass when calling methods directly on
+     * ResolvedSignature.
+     */
+    @Deprecated
     @Override
     public T getParameterType(int index, ResolvedJavaType accessingClass) {
         return getParameterType(index);
@@ -102,6 +107,11 @@ public final class ResolvedSignature<T extends ResolvedJavaType> implements Sign
         return parameterTypes.get(index);
     }
 
+    /*
+     * Use the version without the accessingClass when calling methods directly on
+     * ResolvedSignature.
+     */
+    @Deprecated
     @Override
     public T getReturnType(ResolvedJavaType accessingClass) {
         return getReturnType();

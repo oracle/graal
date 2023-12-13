@@ -24,9 +24,15 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import static com.oracle.svm.core.SubstrateUtil.toUnboxedClass;
+import static jdk.graal.compiler.bytecode.Bytecodes.LDC2_W;
+
 import java.lang.invoke.LambdaConversionException;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
@@ -35,81 +41,118 @@ import java.util.List;
 import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.heap.ImageHeapInstance;
+import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.bootstrap.BootstrapMethodConfiguration;
+import com.oracle.svm.core.bootstrap.BootstrapMethodConfiguration.BootstrapMethodRecord;
+import com.oracle.svm.core.bootstrap.BootstrapMethodInfo;
+import com.oracle.svm.core.bootstrap.BootstrapMethodInfo.ExceptionWrapper;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.graal.nodes.DeoptEntryBeginNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntrySupport;
 import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
+import com.oracle.svm.core.graal.nodes.LazyConstantNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
+import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
+import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins.FieldOffsetConstantProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.BootstrapMethodIntrospection;
 import jdk.graal.compiler.core.common.calc.Condition;
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.java.BciBlockMapping;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.FrameStateBuilder;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.BeginNode;
+import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.EndNode;
+import jdk.graal.compiler.nodes.FieldLocationIdentity;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.MergeNode;
+import jdk.graal.compiler.nodes.StateSplit;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.UnreachableBeginNode;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
+import jdk.graal.compiler.nodes.extended.BoxNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.extended.UnboxNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
+import jdk.graal.compiler.nodes.java.InstanceOfNode;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.java.NewArrayNode;
+import jdk.graal.compiler.nodes.java.NewInstanceNode;
+import jdk.graal.compiler.nodes.java.StoreIndexedNode;
+import jdk.graal.compiler.nodes.java.UnsafeCompareAndSwapNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.replacements.SnippetTemplate;
-import jdk.graal.compiler.word.WordTypes;
+import jdk.internal.org.objectweb.asm.Opcodes;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.PrimitiveConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance {
-    final WordTypes wordTypes;
 
-    public SharedGraphBuilderPhase(CoreProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext,
-                    WordTypes wordTypes) {
+    public SharedGraphBuilderPhase(CoreProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
         super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
-        this.wordTypes = wordTypes;
     }
 
     @Override
     protected void run(StructuredGraph graph) {
         super.run(graph);
-        assert wordTypes == null || wordTypes.ensureGraphContainsNoWordTypeReferences(graph);
+        assert providers.getWordTypes() == null || providers.getWordTypes().ensureGraphContainsNoWordTypeReferences(graph);
     }
 
     public abstract static class SharedBytecodeParser extends BytecodeParser {
@@ -118,6 +161,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
         private final boolean explicitExceptionEdges;
         private final boolean linkAtBuildTime;
+        protected final BootstrapMethodHandler bootstrapMethodHandler;
 
         protected SharedBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
                         IntrinsicContext intrinsicContext, boolean explicitExceptionEdges) {
@@ -129,6 +173,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext);
             this.explicitExceptionEdges = explicitExceptionEdges;
             this.linkAtBuildTime = linkAtBuildTime;
+            this.bootstrapMethodHandler = new BootstrapMethodHandler();
         }
 
         @Override
@@ -177,10 +222,6 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             throw super.throwParserError(e);
         }
 
-        private WordTypes getWordTypes() {
-            return ((SharedGraphBuilderPhase) getGraphBuilderInstance()).wordTypes;
-        }
-
         private boolean checkWordTypes() {
             return getWordTypes() != null;
         }
@@ -210,18 +251,22 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
-        protected Object lookupConstant(int cpi, int opcode, boolean allowBootstrapMethodInvocation) {
+        protected void genLoadConstant(int cpi, int opcode) {
             try {
-                // Native Image forces bootstrap method invocation at build time
-                // until support has been added for doing the invocation at runtime (GR-45806)
-                return super.lookupConstant(cpi, opcode, true);
-            } catch (BootstrapMethodError | IncompatibleClassChangeError | IllegalArgumentException ex) {
-                if (linkAtBuildTime) {
-                    reportUnresolvedElement("constant", method.format("%H.%n(%P)"), ex);
-                } else {
-                    replaceWithThrowingAtRuntime(this, ex);
+                if (super.lookupConstant(cpi, opcode, false) == null) {
+                    Object resolvedObject = bootstrapMethodHandler.loadConstantDynamic(cpi, opcode);
+                    if (resolvedObject instanceof ValueNode valueNode) {
+                        JavaKind javaKind = valueNode.getStackKind();
+                        assert (opcode == LDC2_W) == javaKind.needsTwoSlots();
+                        frameState.push(javaKind, valueNode);
+                    } else {
+                        super.genLoadConstantHelper(resolvedObject, opcode);
+                    }
+                    return;
                 }
-                return ex;
+                super.genLoadConstant(cpi, opcode);
+            } catch (BootstrapMethodError | IncompatibleClassChangeError | IllegalArgumentException | NoClassDefFoundError ex) {
+                bootstrapMethodHandler.handleBootstrapException(ex, "constant");
             }
         }
 
@@ -374,15 +419,25 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             Throwable cause = throwable.getCause();
             if (cause != null) {
                 var metaAccess = (AnalysisMetaAccess) b.getMetaAccess();
-                /* Invoke method that creates a cause-instance with cause-message */
-                var causeCtor = ReflectionUtil.lookupConstructor(cause.getClass(), String.class);
-                ResolvedJavaMethod causeCtorMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(causeCtor), false);
-                ValueNode causeMessageNode = ConstantNode.forConstant(b.getConstantReflection().forString(cause.getMessage()), metaAccess, b.getGraph());
-                Invoke causeCtorInvoke = (Invoke) b.appendInvoke(InvokeKind.Static, causeCtorMethod, new ValueNode[]{causeMessageNode}, null);
                 /*
                  * Invoke method that creates and throws throwable-instance with message and cause
                  */
-                var errorCtor = ReflectionUtil.lookupConstructor(throwable.getClass(), String.class, Throwable.class);
+                var errorCtor = ReflectionUtil.lookupConstructor(true, throwable.getClass(), String.class, Throwable.class);
+                boolean hasCause = errorCtor != null;
+                Invoke causeCtorInvoke = null;
+                if (!hasCause) {
+                    /*
+                     * Invoke method that creates and throws throwable-instance with message
+                     */
+                    errorCtor = ReflectionUtil.lookupConstructor(throwable.getClass(), String.class);
+                } else {
+                    /* Invoke method that creates a cause-instance with cause-message */
+                    var causeCtor = ReflectionUtil.lookupConstructor(cause.getClass(), String.class);
+                    ResolvedJavaMethod causeCtorMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(causeCtor), false);
+                    ValueNode causeMessageNode = ConstantNode.forConstant(b.getConstantReflection().forString(cause.getMessage()), metaAccess, b.getGraph());
+                    causeCtorInvoke = (Invoke) b.appendInvoke(InvokeKind.Static, causeCtorMethod, new ValueNode[]{causeMessageNode}, null);
+                }
+
                 ResolvedJavaMethod throwingMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);
                 ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(throwable.getMessage()), metaAccess, b.getGraph());
                 /*
@@ -390,7 +445,8 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                  * stack effect.
                  */
                 boolean verifyStates = b.getFrameStateBuilder().disableStateVerification();
-                b.appendInvoke(InvokeKind.Static, throwingMethod, new ValueNode[]{messageNode, causeCtorInvoke.asNode()}, null);
+                ValueNode[] args = hasCause ? new ValueNode[]{messageNode, causeCtorInvoke.asNode()} : new ValueNode[]{messageNode};
+                b.appendInvoke(InvokeKind.Static, throwingMethod, args, null);
                 b.getFrameStateBuilder().setStateVerification(verifyStates);
                 b.add(new LoweredDeadEndNode());
             } else {
@@ -422,7 +478,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             b.add(new LoweredDeadEndNode());
         }
 
-        private void handleUnresolvedType(JavaType type) {
+        protected void handleUnresolvedType(JavaType type) {
             /*
              * If linkAtBuildTime was set for type, report the error during image building,
              * otherwise defer the error reporting to runtime.
@@ -527,7 +583,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             int paramCount = method.getSignature().getParameterCount(false);
             Class<?>[] result = new Class<?>[paramCount];
             for (int i = 0; i < paramCount; i++) {
-                JavaType parameterType = method.getSignature().getParameterType(0, null);
+                JavaType parameterType = method.getSignature().getParameterType(i, null);
                 if (parameterType instanceof ResolvedJavaType) {
                     result[i] = OriginalClassProvider.getJavaClass((ResolvedJavaType) parameterType);
                 }
@@ -578,6 +634,11 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             }
 
             return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp);
+        }
+
+        public MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, Class<?> returnClass, JavaTypeProfile profile) {
+            JavaType returnType = getMetaAccess().lookupJavaType(returnClass);
+            return createMethodCallTarget(invokeKind, targetMethod, args, returnType, profile);
         }
 
         @Override
@@ -835,6 +896,432 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         @Override
         public boolean allowDeoptInPlugins() {
             return super.allowDeoptInPlugins();
+        }
+
+        public class BootstrapMethodHandler {
+
+            private Object loadConstantDynamic(int cpi, int opcode) {
+                BootstrapMethodIntrospection bootstrap;
+                try {
+                    bootstrap = ((AnalysisConstantPool) constantPool).lookupBootstrapMethodIntrospection(cpi, -1);
+                } catch (Throwable ex) {
+                    handleBootstrapException(ex, "constant");
+                    return ex;
+                }
+                if (bootstrap != null && !BootstrapMethodConfiguration.singleton().isCondyAllowedAtBuildTime(OriginalMethodProvider.getJavaMethod(bootstrap.getMethod()))) {
+                    int parameterLength = bootstrap.getMethod().getParameters().length;
+                    List<JavaConstant> staticArguments = bootstrap.getStaticArguments();
+                    boolean isVarargs = bootstrap.getMethod().isVarArgs();
+                    JavaConstant type = ((ImageHeapInstance) bootstrap.getType()).getHostedObject();
+                    DynamicHub typeClass = (DynamicHub) ((DirectSubstrateObjectConstant) type).getObject();
+                    boolean isPrimitive = typeClass.isPrimitive();
+
+                    for (JavaConstant argument : staticArguments) {
+                        if (argument instanceof ImageHeapInstance imageHeapInstance) {
+                            Object arg = ((DirectSubstrateObjectConstant) imageHeapInstance.getHostedObject()).getObject();
+                            if (arg instanceof UnresolvedJavaType) {
+                                return arg;
+                            }
+                        }
+                    }
+
+                    if (isBootstrapInvocationInvalid(bootstrap, parameterLength, staticArguments, isVarargs, typeClass.getHostedJavaClass())) {
+                        /*
+                         * The number of provided arguments does not match the signature of the
+                         * bootstrap method or the provided type does not match the return type of
+                         * the bootstrap method. Calling lookupConstant with
+                         * allowBootstrapMethodInvocation set to true correctly throws the intended
+                         * BootstrapMethodError.
+                         */
+                        return SharedBytecodeParser.super.lookupConstant(cpi, opcode, true);
+                    }
+
+                    Object resolvedObject = resolveLinkedObject(bci(), cpi, opcode, bootstrap, parameterLength, staticArguments, isVarargs, isPrimitive);
+                    if (resolvedObject instanceof Throwable) {
+                        return resolvedObject;
+                    }
+                    ValueNode resolvedObjectNode = (ValueNode) resolvedObject;
+
+                    if (typeClass.isPrimitive()) {
+                        JavaKind constantKind = getMetaAccessExtensionProvider().getStorageKind(getMetaAccess().lookupJavaType(typeClass.getHostedJavaClass()));
+                        resolvedObjectNode = append(UnboxNode.create(getMetaAccess(), getConstantReflection(), resolvedObjectNode, constantKind));
+                    }
+
+                    return resolvedObjectNode;
+                }
+                return SharedBytecodeParser.super.lookupConstant(cpi, opcode, true);
+            }
+
+            /**
+             * Produces a graph executing the given bootstrap method and linking the result if it is
+             * the first execution. This corresponds to the following code:
+             *
+             * <pre>
+             * if (bootstrapMethodInfo.object == null) {
+             *     MethodHandles.Lookup lookup = MethodHandles.lookup();
+             *     try {
+             *         bootstrapMethodInfo.object = bootstrapMethod(lookup, name, type, staticArguments);
+             *     } catch (Throwable throwable) {
+             *         bootstrapMethodInfo.object = new ExceptionWrapper(throwable);
+             *     }
+             * }
+             * Object result = bootstrapMethodInfo.object;
+             * if (result instanceOf ExceptionWrapper exceptionWrapper) {
+             *     throw exceptionWrapper.throwable;
+             * }
+             * return result;
+             * </pre>
+             */
+            protected Object resolveLinkedObject(int bci, int cpi, int opcode, BootstrapMethodIntrospection bootstrap, int parameterLength, List<JavaConstant> staticArgumentsList,
+                            boolean isVarargs, boolean isPrimitiveConstant) {
+                AnalysisConstantReflectionProvider analysisConstantReflection = (AnalysisConstantReflectionProvider) getConstantReflection();
+                ResolvedJavaMethod bootstrapMethod = bootstrap.getMethod();
+
+                /* Step 1: Initialize the BootstrapMethodInfo. */
+
+                BootstrapMethodRecord bootstrapMethodRecord = new BootstrapMethodRecord(bci, cpi, ((AnalysisMethod) method).getMultiMethod(MultiMethod.ORIGINAL_METHOD));
+                BootstrapMethodInfo bootstrapMethodInfo = BootstrapMethodConfiguration.singleton().getBootstrapMethodInfoCache().computeIfAbsent(bootstrapMethodRecord,
+                                key -> new BootstrapMethodInfo());
+                ConstantNode bootstrapMethodInfoNode = ConstantNode.forConstant(analysisConstantReflection.forObject(bootstrapMethodInfo), getMetaAccess(), getGraph());
+
+                /*
+                 * Step 2: Check if the call site or the constant is linked or if it previously
+                 * threw an exception to rethrow it.
+                 */
+
+                Field bootstrapObjectField = ReflectionUtil.lookupField(BootstrapMethodInfo.class, "object");
+                AnalysisField bootstrapObjectResolvedField = (AnalysisField) getMetaAccess().lookupJavaField(bootstrapObjectField);
+                LoadFieldNode bootstrapObjectFieldNode = append(LoadFieldNode.create(getAssumptions(), bootstrapMethodInfoNode, bootstrapObjectResolvedField, MemoryOrderMode.ACQUIRE));
+
+                ValueNode[] arguments = new ValueNode[parameterLength];
+
+                /*
+                 * The bootstrap method can be VarArgs, which means we have to group the last static
+                 * arguments in an array.
+                 */
+                if (isVarargs) {
+                    JavaType varargClass = bootstrapMethod.getParameters()[parameterLength - 1].getType().getComponentType();
+                    arguments[arguments.length - 1] = append(new NewArrayNode(((AnalysisMetaAccess) getMetaAccess()).getUniverse().lookup(varargClass),
+                                    ConstantNode.forInt(staticArgumentsList.size() - arguments.length + 4, getGraph()), true));
+                }
+
+                /*
+                 * Prepare the static arguments before continuing as an exception in a nested
+                 * constant dynamic aborts the graph generation.
+                 */
+                for (int i = 0; i < staticArgumentsList.size(); ++i) {
+                    JavaConstant constant = staticArgumentsList.get(i);
+                    ValueNode currentNode;
+                    if (constant instanceof PrimitiveConstant primitiveConstant) {
+                        int argCpi = primitiveConstant.asInt();
+                        Object argConstant = loadConstantDynamic(argCpi, opcode == Opcodes.INVOKEDYNAMIC ? Opcodes.LDC : opcode);
+                        if (argConstant instanceof ValueNode valueNode) {
+                            currentNode = valueNode;
+                        } else if (argConstant instanceof Throwable || argConstant instanceof UnresolvedJavaType) {
+                            /* A nested constant dynamic threw. */
+                            return argConstant;
+                        } else {
+                            currentNode = ConstantNode.forConstant(analysisConstantReflection.forObject(argConstant), getMetaAccess(), getGraph());
+                        }
+                    } else {
+                        /*
+                         * Primitive arguments in the non vararg area have to be unboxed to match
+                         * the parameters of the bootstrap method, which is handled by
+                         * createConstant. The arguments in the vararg area have to stay boxed as
+                         * they are passed as Objects.
+                         */
+                        currentNode = (isVarargs && i + 4 >= parameterLength) ? ConstantNode.forConstant(constant, getMetaAccess(), getGraph()) : createConstant(constant);
+                    }
+                    addArgument(isVarargs, arguments, i + 3, currentNode);
+                }
+
+                LogicNode condition = graph.unique(IsNullNode.create(bootstrapObjectFieldNode));
+
+                EndNode falseEnd = graph.add(new EndNode());
+
+                /*
+                 * Step 3: If the call site or the constant is not linked, execute the bootstrap
+                 * method and link the outputted call site or constant to the constant pool index.
+                 * Otherwise, go to step 4.
+                 */
+
+                InvokeWithExceptionNode lookup = invokeMethodAndAdd(bci, MethodHandles.class, MethodHandles.Lookup.class, "lookup", InvokeKind.Static, ValueNode.EMPTY_ARRAY);
+                ValueNode lookupNode = frameState.pop(JavaKind.Object);
+
+                /*
+                 * Step 3.1: Prepare the arguments for the bootstrap method. The first three are
+                 * always the same. The other ones are the static arguments.
+                 */
+
+                addArgument(isVarargs, arguments, 0, lookupNode);
+                ConstantNode bootstrapName = ConstantNode.forConstant(analysisConstantReflection.forString(bootstrap.getName()), getMetaAccess(), getGraph());
+                addArgument(isVarargs, arguments, 1, bootstrapName);
+                addArgument(isVarargs, arguments, 2, ConstantNode.forConstant(bootstrap.getType(), getMetaAccess(), getGraph()));
+
+                if (bootstrapMethod.isConstructor()) {
+                    ValueNode[] oldArguments = arguments;
+                    arguments = new ValueNode[arguments.length + 1];
+                    arguments[0] = graph.add(new NewInstanceNode(bootstrapMethod.getDeclaringClass(), true));
+                    System.arraycopy(oldArguments, 0, arguments, 1, oldArguments.length);
+                }
+
+                Class<?> returnClass = OriginalClassProvider.getJavaClass((ResolvedJavaType) bootstrapMethod.getSignature().getReturnType(null));
+
+                InvokeWithExceptionNode bootstrapObject;
+                ValueNode bootstrapObjectNode;
+                /* A bootstrap method can only be either static or a constructor. */
+                if (bootstrapMethod.isConstructor()) {
+                    bootstrapObject = invokeMethodAndAddCustomExceptionHandler(bci, void.class, InvokeKind.Special, arguments, bootstrapMethod);
+                    bootstrapObjectNode = arguments[0];
+                } else {
+                    bootstrapObject = invokeMethodAndAddCustomExceptionHandler(bci, returnClass, InvokeKind.Static, arguments, bootstrapMethod);
+                    bootstrapObjectNode = frameState.pop(bootstrapObject.getStackKind());
+                }
+                ValueNode finalBootstrapObjectNode = bootstrapObjectNode;
+                FixedWithNextNode fixedFinalBootstrapObjectNode = null;
+                if (isPrimitiveConstant) {
+                    fixedFinalBootstrapObjectNode = graph.add(
+                                    BoxNode.create(bootstrapObjectNode, getMetaAccess().lookupJavaType(bootstrapObjectNode.getStackKind().toBoxedJavaClass()), bootstrapObjectNode.getStackKind()));
+                    finalBootstrapObjectNode = fixedFinalBootstrapObjectNode;
+                }
+
+                /*
+                 * If an exception occurs during the bootstrap method execution, store it in the
+                 * BootstrapMethodInfo instead of directly throwing.
+                 */
+                InvokeWithExceptionNode exceptionWrapperNode = wrapException(bci, bootstrapObject.exceptionEdge());
+                bootstrapObject.exceptionEdge().setNext(exceptionWrapperNode);
+                MergeNode linkMerge = graph.add(new MergeNode());
+                linkMerge.setStateAfter(createFrameState(stream.nextBCI(), linkMerge));
+                EndNode n = graph.add(new EndNode());
+                exceptionWrapperNode.setNext(n);
+                linkMerge.addForwardEnd(n);
+
+                EndNode noExceptionEnd = graph.add(new EndNode());
+                finalBootstrapObjectNode = graph.unique(new ValuePhiNode(StampFactory.object(), linkMerge, exceptionWrapperNode, finalBootstrapObjectNode));
+
+                /*
+                 * Step 3.2: Link the call site or the constant outputted by the bootstrap method.
+                 */
+
+                ConstantNode nullConstant = ConstantNode.forConstant(JavaConstant.NULL_POINTER, getMetaAccess(), getGraph());
+                ValueNode offset = graph.addOrUniqueWithInputs(
+                                LazyConstantNode.create(StampFactory.forKind(JavaKind.Long), new FieldOffsetConstantProvider(bootstrapObjectField), SharedBytecodeParser.this));
+                FieldLocationIdentity fieldLocationIdentity = new FieldLocationIdentity(bootstrapObjectResolvedField);
+                FixedWithNextNode linkBootstrapObject = graph.add(
+                                new UnsafeCompareAndSwapNode(bootstrapMethodInfoNode, offset, nullConstant, finalBootstrapObjectNode, JavaKind.Object, fieldLocationIdentity, MemoryOrderMode.RELEASE));
+                ((StateSplit) linkBootstrapObject).setStateAfter(createFrameState(stream.nextBCI(), (StateSplit) linkBootstrapObject));
+
+                NodeSourcePosition nodeSourcePosition = getGraph().currentNodeSourcePosition();
+                Object reason = nodeSourcePosition == null ? "Unknown graph builder location." : nodeSourcePosition;
+                bootstrapObjectResolvedField.registerAsAccessed(reason);
+                bootstrapObjectResolvedField.registerAsUnsafeAccessed(reason);
+
+                EndNode trueEnd = graph.add(new EndNode());
+
+                if (bootstrapMethod.isConstructor()) {
+                    lookup.setNext((FixedNode) bootstrapObjectNode);
+                    ((FixedWithNextNode) bootstrapObjectNode).setNext(bootstrapObject);
+                } else {
+                    lookup.setNext(bootstrapObject);
+                }
+                if (isPrimitiveConstant) {
+                    bootstrapObject.setNext(fixedFinalBootstrapObjectNode);
+                    fixedFinalBootstrapObjectNode.setNext(noExceptionEnd);
+                } else {
+                    bootstrapObject.setNext(noExceptionEnd);
+                }
+                linkMerge.addForwardEnd(noExceptionEnd);
+                linkMerge.setNext(linkBootstrapObject);
+                linkBootstrapObject.setNext(trueEnd);
+
+                append(new IfNode(condition, lookup, falseEnd, BranchProbabilityNode.NOT_FREQUENT_PROFILE));
+
+                MergeNode mergeNode = append(new MergeNode());
+                mergeNode.setStateAfter(createFrameState(stream.nextBCI(), mergeNode));
+                mergeNode.addForwardEnd(trueEnd);
+                mergeNode.addForwardEnd(falseEnd);
+
+                /* Step 4: Fetch the object from the BootstrapMethodInfo. */
+
+                LoadFieldNode result = append(LoadFieldNode.create(getAssumptions(), bootstrapMethodInfoNode, bootstrapObjectResolvedField, MemoryOrderMode.ACQUIRE));
+
+                /* If the object is an exception, it is thrown. */
+                TypeReference exceptionWrapper = TypeReference.create(getAssumptions(), getMetaAccess().lookupJavaType(ExceptionWrapper.class));
+                LogicNode instanceOfException = graph.unique(InstanceOfNode.create(exceptionWrapper, result));
+                EndNode checkExceptionTrueEnd = graph.add(new EndNode());
+                EndNode checkExceptionFalseEnd = graph.add(new EndNode());
+
+                Field exceptionWrapperField = ReflectionUtil.lookupField(ExceptionWrapper.class, "throwable");
+                ResolvedJavaField exceptionWrapperResolvedField = getMetaAccess().lookupJavaField(exceptionWrapperField);
+                LoadFieldNode throwable = graph.add(LoadFieldNode.create(getAssumptions(), result, exceptionWrapperResolvedField));
+                InvokeWithExceptionNode bootstrapMethodError = throwBootstrapMethodError(bci, throwable);
+                throwable.setNext(bootstrapMethodError);
+                bootstrapMethodError.setNext(checkExceptionTrueEnd);
+
+                append(new IfNode(instanceOfException, throwable, checkExceptionFalseEnd, BranchProbabilityNode.NOT_FREQUENT_PROFILE));
+
+                MergeNode checkExceptionMergeNode = append(new MergeNode());
+                checkExceptionMergeNode.setStateAfter(createFrameState(stream.nextBCI(), checkExceptionMergeNode));
+                checkExceptionMergeNode.addForwardEnd(checkExceptionTrueEnd);
+                checkExceptionMergeNode.addForwardEnd(checkExceptionFalseEnd);
+
+                return result;
+            }
+
+            private void addArgument(boolean isVarargs, ValueNode[] arguments, int i, ValueNode currentNode) {
+                if (isVarargs && i >= arguments.length - 1) {
+                    StoreIndexedNode storeIndexedNode = append(new StoreIndexedNode(arguments[arguments.length - 1], ConstantNode.forInt(i + 1 - arguments.length, getGraph()), null, null,
+                                    JavaKind.Object, currentNode));
+                    storeIndexedNode.setStateAfter(createFrameState(stream.nextBCI(), storeIndexedNode));
+                } else {
+                    arguments[i] = currentNode;
+                }
+            }
+
+            private InvokeWithExceptionNode wrapException(int bci, ValueNode exception) {
+                Constructor<?> exceptionWrapperCtor = ReflectionUtil.lookupConstructor(ExceptionWrapper.class, Throwable.class);
+                AnalysisMetaAccess metaAccess = (AnalysisMetaAccess) getMetaAccess();
+                ResolvedJavaMethod exceptionWrapperMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(exceptionWrapperCtor), false);
+                InvokeWithExceptionNode exceptionWrapper = invokeMethodAndAdd(bci, ExceptionWrapper.class, InvokeKind.Static, new ValueNode[]{exception}, exceptionWrapperMethod);
+                frameState.pop(JavaKind.Object);
+                return exceptionWrapper;
+            }
+
+            protected InvokeWithExceptionNode throwBootstrapMethodError(int bci, ValueNode exception) {
+                Constructor<?> errorCtor = ReflectionUtil.lookupConstructor(BootstrapMethodError.class, Throwable.class);
+                AnalysisMetaAccess metaAccess = (AnalysisMetaAccess) getMetaAccess();
+                ResolvedJavaMethod bootstrapMethodErrorMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);
+                return invokeMethodAndAdd(bci, void.class, InvokeKind.Static, new ValueNode[]{exception}, bootstrapMethodErrorMethod);
+            }
+
+            /**
+             * Perform checks on a bootstrap method invocation. The checks verifying the number of
+             * arguments cannot be performed at run time as they cause build time errors when not
+             * met. The type checks could be replaced by run time class casts.
+             * <p>
+             * HotSpot performs those checks in {@code ConstantBootstraps.makeConstant} and
+             * {@code CallSite.makeSite} by casting the classes and method types. Since the
+             * bootstrap method is converted to a {@link java.lang.invoke.MethodHandle}, incorrect
+             * types in the bootstrap method declaration are detected in
+             * {@link java.lang.invoke.MethodHandle#invoke(Object...)}.
+             */
+            private boolean isBootstrapInvocationInvalid(BootstrapMethodIntrospection bootstrap, int parameterLength, List<JavaConstant> staticArgumentsList, boolean isVarargs, Class<?> typeClass) {
+                ResolvedJavaMethod method = bootstrap.getMethod();
+                return (isVarargs && parameterLength > (3 + staticArgumentsList.size())) || (!isVarargs && parameterLength != (3 + staticArgumentsList.size())) ||
+                                !(OriginalClassProvider.getJavaClass((ResolvedJavaType) method.getSignature().getReturnType(null)).isAssignableFrom(typeClass) || method.isConstructor()) ||
+                                !checkBootstrapParameters(method, bootstrap.getStaticArguments(), true);
+            }
+
+            protected boolean checkBootstrapParameters(ResolvedJavaMethod bootstrapMethod, List<JavaConstant> staticArguments, boolean condy) {
+                int parametersLength = bootstrapMethod.getParameters().length;
+                Class<?>[] parameters = signatureToClasses(bootstrapMethod);
+                if (bootstrapMethod.isVarArgs()) {
+                    /*
+                     * The mismatch in the number of arguments causes a WrongMethodTypeException in
+                     * MethodHandle.invoke on the bootstrap method invocation.
+                     */
+                    parameters[parametersLength - 1] = parameters[parametersLength - 1].getComponentType();
+                }
+                if (!bootstrapMethod.isVarArgs() && 3 + staticArguments.size() != parameters.length) {
+                    return false;
+                }
+                for (int i = 0; i < parametersLength; ++i) {
+                    if (i == 0) {
+                        /* HotSpot performs this check in ConstantBootstraps#makeConstant. */
+                        if (!(condy ? parameters[i].equals(MethodHandles.Lookup.class) : parameters[i].isAssignableFrom(MethodHandles.Lookup.class))) {
+                            return false;
+                        }
+                    } else if (i == 1) {
+                        /*
+                         * This parameter is converted to a String in
+                         * MethodHandleNatives#linkCallSite and
+                         * MethodHandleNatives#linkDynamicConstant. Not having a String here causes
+                         * a ClassCastException in MethodHandle.invoke.
+                         */
+                        if (!parameters[i].isAssignableFrom(String.class)) {
+                            return false;
+                        }
+                    } else if (i == 2) {
+                        /*
+                         * This parameter is converted to a Class/MethodType in
+                         * MethodHandleNatives#linkCallSite/MethodHandleNatives#linkDynamicConstant.
+                         * Not having a Class/MethodType here causes a ClassCastException in
+                         * MethodHandle.invoke.
+                         */
+                        if (!parameters[i].isAssignableFrom(condy ? Class.class : MethodType.class)) {
+                            return false;
+                        }
+                    } else {
+                        if (!(bootstrapMethod.isVarArgs() && staticArguments.size() == i - 3) && staticArguments.get(i - 3) instanceof ImageHeapConstant imageHeapConstant) {
+                            Class<?> parameterClass = OriginalClassProvider.getJavaClass(imageHeapConstant.getType(getMetaAccess()));
+                            /*
+                             * Having incompatible types here causes a ClassCastException in
+                             * MethodHandle.invoke on the bootstrap method invocation.
+                             */
+                            if (!(parameters[i].isAssignableFrom(parameterClass) || toUnboxedClass(parameters[i]).isAssignableFrom(toUnboxedClass(parameterClass)))) {
+                                return false;
+                            }
+                        }
+                    }
+                }
+                return true;
+            }
+
+            protected void handleBootstrapException(Throwable ex, String elementKind) {
+                if (linkAtBuildTime) {
+                    reportUnresolvedElement(elementKind, method.format("%H.%n(%P)"), ex);
+                } else {
+                    replaceWithThrowingAtRuntime(SharedBytecodeParser.this, ex);
+                }
+            }
+
+            protected ConstantNode createConstant(JavaConstant constant) {
+                JavaConstant primitiveConstant = getConstantReflection().unboxPrimitive(constant);
+                return ConstantNode.forConstant(primitiveConstant == null ? constant : primitiveConstant, getMetaAccess(), getGraph());
+            }
+
+            protected Invoke invokeMethodAndAppend(int bci, Class<?> clazz, Class<?> returnClass, String name, InvokeKind invokeKind, ValueNode[] arguments, Class<?>... classes) {
+                ResolvedJavaMethod invokedMethod = lookupResolvedJavaMethod(clazz, name, classes);
+                CallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, invokedMethod, arguments, returnClass, null));
+                return createNonInlinedInvoke(ExceptionEdgeAction.INCLUDE_AND_HANDLE, bci, callTarget, callTarget.returnStamp().getTrustedStamp().getStackKind());
+            }
+
+            protected InvokeWithExceptionNode invokeMethodAndAdd(int bci, Class<?> clazz, Class<?> returnClass, String name, InvokeKind invokeKind, ValueNode[] arguments,
+                            Class<?>... classes) {
+                ResolvedJavaMethod invokedMethod = lookupResolvedJavaMethod(clazz, name, classes);
+                return invokeMethodAndAdd(bci, returnClass, invokeKind, arguments, invokedMethod);
+            }
+
+            protected InvokeWithExceptionNode invokeMethodAndAdd(int bci, Class<?> returnClass, InvokeKind invokeKind, ValueNode[] arguments, ResolvedJavaMethod invokedMethod) {
+                CallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, invokedMethod, arguments, returnClass, null));
+                InvokeWithExceptionNode invoke = graph
+                                .add(createInvokeWithException(bci, callTarget, callTarget.returnStamp().getTrustedStamp().getStackKind(), ExceptionEdgeAction.INCLUDE_AND_HANDLE));
+                invoke.setStateAfter(createFrameState(stream.nextBCI(), invoke));
+                return invoke;
+            }
+
+            protected InvokeWithExceptionNode invokeMethodAndAddCustomExceptionHandler(int bci, Class<?> returnClass, InvokeKind invokeKind, ValueNode[] arguments, ResolvedJavaMethod invokedMethod) {
+                CallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, invokedMethod, arguments, returnClass, null));
+                ExceptionObjectNode exceptionObject = graph.add(new ExceptionObjectNode(getMetaAccess()));
+                FrameStateBuilder dispatchState = frameState.copy();
+                dispatchState.clearStack();
+                dispatchState.pushReturn(JavaKind.Object, exceptionObject);
+                dispatchState.setRethrowException(true);
+                exceptionObject.setStateAfter(dispatchState.create(stream.nextBCI(), exceptionObject));
+                InvokeWithExceptionNode invoke = graph.add(new InvokeWithExceptionNode(callTarget, exceptionObject, bci));
+                frameState.pushReturn(callTarget.returnStamp().getTrustedStamp().getStackKind(), invoke);
+                invoke.setStateAfter(createFrameState(stream.nextBCI(), invoke));
+                return invoke;
+            }
+
+            private ResolvedJavaMethod lookupResolvedJavaMethod(Class<?> clazz, String name, Class<?>... classes) {
+                try {
+                    return getMetaAccess().lookupJavaMethod(clazz.getDeclaredMethod(name, classes));
+                } catch (NoSuchMethodException e) {
+                    throw GraalError.shouldNotReachHere("Could not find method in " + clazz + " named " + name);
+                }
+            }
         }
     }
 }

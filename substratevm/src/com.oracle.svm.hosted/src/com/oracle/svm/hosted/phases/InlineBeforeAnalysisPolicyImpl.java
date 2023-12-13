@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.phases;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.hosted.SVMHost;
@@ -35,7 +36,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * The defaults for node limits are very conservative. Only small methods should be inlined. The
@@ -65,7 +65,7 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy {
     }
 
     @Override
-    protected boolean shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+    protected boolean shouldInlineInvoke(GraphBuilderContext b, AnalysisMethod method, ValueNode[] args) {
         if (inliningUtils.alwaysInlineInvoke((AnalysisMetaAccess) b.getMetaAccess(), method)) {
             return true;
         }
@@ -81,7 +81,7 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy {
     }
 
     @Override
-    protected InlineInfo createInvokeInfo(ResolvedJavaMethod method) {
+    protected InlineInfo createInvokeInfo(AnalysisMethod method) {
         return InlineInfo.createStandardInlineInfo(method);
     }
 
@@ -107,17 +107,17 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy {
 
     @Override
     protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMetaAccess metaAccess,
-                    ResolvedJavaMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle) {
+                    AnalysisMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle) {
         return inliningUtils.createAccumulativeInlineScope((InlineBeforeAnalysisPolicyUtils.AccumulativeInlineScope) outer, metaAccess, method, constArgsWithReceiver, intrinsifiedMethodHandle);
     }
 
     @Override
-    protected boolean shouldOmitIntermediateMethodInState(ResolvedJavaMethod method) {
+    protected boolean shouldOmitIntermediateMethodInState(AnalysisMethod method) {
         return inliningUtils.shouldOmitIntermediateMethodInState(method);
     }
 
     @Override
-    protected FixedWithNextNode processInvokeArgs(ResolvedJavaMethod targetMethod, FixedWithNextNode insertionPoint, ValueNode[] arguments, NodeSourcePosition sourcePosition) {
+    protected FixedWithNextNode processInvokeArgs(AnalysisMethod targetMethod, FixedWithNextNode insertionPoint, ValueNode[] arguments, NodeSourcePosition sourcePosition) {
         // No action is needed
         return insertionPoint;
     }

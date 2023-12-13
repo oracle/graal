@@ -26,15 +26,14 @@ package jdk.graal.compiler.truffle.hotspot;
 
 import static jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.Z_FIELD_BARRIER;
 
-import jdk.graal.compiler.core.common.spi.CodeGenProviders;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
 import jdk.graal.compiler.hotspot.meta.HotSpotRegistersProvider;
 import jdk.graal.compiler.lir.asm.EntryPointDecorator;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
-
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
@@ -61,7 +60,7 @@ public abstract class TruffleEntryPointDecorator implements EntryPointDecorator 
     }
 
     @Override
-    public void initialize(CodeGenProviders providers, LIRGenerationResult lirGenRes) {
+    public void initialize(CoreProviders providers, LIRGenerationResult lirGenRes) {
         if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
             ForeignCallLinkage callTarget = providers.getForeignCalls().lookupForeignCall(Z_FIELD_BARRIER);
             lirGenRes.getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());

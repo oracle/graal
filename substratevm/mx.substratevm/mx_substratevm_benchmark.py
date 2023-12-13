@@ -627,6 +627,10 @@ class SpecJVM2008NativeImageBenchmarkSuite(mx_java_benchmarks.SpecJvm2008Benchma
     """
     SpecJVM2008 for Native Image
     """
+    # disables formatted report generation since chart generation with JFreeChart loads fonts from disk (from java.home) to compute string width
+    disable_rendered_report = ["-ctf", "false", "-chf", "false"]
+    short_run_args = disable_rendered_report + ["-wt", "1", "-it", "1", "-ikv"]
+    long_run_args = disable_rendered_report + ["-wt", "10", "-it", "5", "-ikv"]
 
     def name(self):
         return 'specjvm2008-native-image'
@@ -635,7 +639,8 @@ class SpecJVM2008NativeImageBenchmarkSuite(mx_java_benchmarks.SpecJvm2008Benchma
         return 'specjvm2008'
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        args = super(SpecJVM2008NativeImageBenchmarkSuite, self).createCommandLineArgs(benchmarks, bmSuiteArgs)
+        args = super().createCommandLineArgs(benchmarks, bmSuiteArgs)
+
         if benchmarks is None:
             mx.abort("Suite can only run a single benchmark per VM instance.")
         elif len(benchmarks) != 1:
@@ -644,8 +649,21 @@ class SpecJVM2008NativeImageBenchmarkSuite(mx_java_benchmarks.SpecJvm2008Benchma
             self.benchmark_name = benchmarks[0]
         return args
 
-    def extra_image_build_argument(self, benchmark, args):
-        return super(SpecJVM2008NativeImageBenchmarkSuite, self).extra_image_build_argument(benchmark, args) + mx_sdk_vm_impl.svm_experimental_options(['-H:-ParseRuntimeOptions']) + ['-Djava.awt.headless=false']
+    def extra_agent_run_arg(self, benchmark, args, image_run_args):
+        return super().extra_agent_run_arg(benchmark, args, image_run_args) + SpecJVM2008NativeImageBenchmarkSuite.short_run_args
 
+    def extra_profile_run_arg(self, benchmark, args, image_run_args, should_strip_run_args):
+        return super().extra_profile_run_arg(benchmark, args, image_run_args, should_strip_run_args) + SpecJVM2008NativeImageBenchmarkSuite.short_run_args
+
+    def extra_image_build_argument(self, benchmark, args):
+        # Don't wrap the option `-H:-ParseRuntimeOptions` with `mx_sdk_vm_impl.svm_experimental_options`, as all args are wrapped already.
+        # The reason to add `-H:CompilationExpirationPeriod` is that we encounter non-deterministic compiler crash due to expiration (GR-50701).
+        return super().extra_image_build_argument(benchmark, args) + ['-H:-ParseRuntimeOptions', '-H:CompilationExpirationPeriod=600']
+
+    def extra_run_arg(self, benchmark, args, image_run_args):
+        return super().extra_run_arg(benchmark, args, image_run_args) + SpecJVM2008NativeImageBenchmarkSuite.long_run_args
+
+    def successPatterns(self):
+        return super().successPatterns() + [_successful_stage_pattern]
 
 mx_benchmark.add_bm_suite(SpecJVM2008NativeImageBenchmarkSuite())

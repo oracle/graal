@@ -601,8 +601,8 @@ public class HostedUniverse implements Universe {
                 return result;
             }
 
-            Signature signature1 = o1.getSignature();
-            Signature signature2 = o2.getSignature();
+            ResolvedSignature<HostedType> signature1 = o1.getSignature();
+            ResolvedSignature<HostedType> signature2 = o2.getSignature();
             int parameterCount1 = signature1.getParameterCount(false);
             result = Integer.compare(parameterCount1, signature2.getParameterCount(false));
             if (result != 0) {
@@ -610,13 +610,13 @@ public class HostedUniverse implements Universe {
             }
 
             for (int i = 0; i < parameterCount1; i++) {
-                result = typeComparator.compare((HostedType) signature1.getParameterType(i, null), (HostedType) signature2.getParameterType(i, null));
+                result = typeComparator.compare(signature1.getParameterType(i), signature2.getParameterType(i));
                 if (result != 0) {
                     return result;
                 }
             }
 
-            result = typeComparator.compare((HostedType) signature1.getReturnType(null), (HostedType) signature2.getReturnType(null));
+            result = typeComparator.compare(signature1.getReturnType(), signature2.getReturnType());
             if (result != 0) {
                 return result;
             }

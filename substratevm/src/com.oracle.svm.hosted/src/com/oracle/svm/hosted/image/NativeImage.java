@@ -105,6 +105,7 @@ import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.image.RelocatableBuffer.Info;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
@@ -123,7 +124,6 @@ import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod.Parameter;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class NativeImage extends AbstractImage {
     public static final long RWDATA_CGLOBALS_PARTITION_OFFSET = 0;
@@ -323,7 +323,7 @@ public abstract class NativeImage extends AbstractImage {
 
         AnnotatedType annotatedReturnType = getAnnotatedReturnType(m);
         writer.append(CSourceCodeWriter.toCTypeName(m,
-                        (ResolvedJavaType) m.getSignature().getReturnType(m.getDeclaringClass()),
+                        m.getSignature().getReturnType(),
                         Optional.ofNullable(annotatedReturnType.getAnnotation(CTypedef.class)).map(CTypedef::name),
                         false,
                         isUnsigned(annotatedReturnType),
@@ -347,7 +347,7 @@ public abstract class NativeImage extends AbstractImage {
             writer.append(sep);
             sep = ", ";
             writer.append(CSourceCodeWriter.toCTypeName(m,
-                            (ResolvedJavaType) m.getSignature().getParameterType(i, m.getDeclaringClass()),
+                            m.getSignature().getParameterType(i),
                             Optional.ofNullable(annotatedParameterTypes[i].getAnnotation(CTypedef.class)).map(CTypedef::name),
                             annotatedParameterTypes[i].isAnnotationPresent(CConst.class),
                             isUnsigned(annotatedParameterTypes[i]),
@@ -420,8 +420,7 @@ public abstract class NativeImage extends AbstractImage {
 
             BuildPhaseProvider.markHeapLayoutFinished();
 
-            /* Re-run shadow heap verification after heap layout. */
-            universe.getBigBang().getUniverse().getHeapVerifier().checkHeapSnapshot(debug, heap.hMetaAccess, "after heap layout");
+            heap.getLayouter().afterLayout(heap);
 
             imageHeapSize = heapLayout.getImageHeapSize();
 
@@ -920,8 +919,8 @@ public abstract class NativeImage extends AbstractImage {
                          * We've hit a signature with multiple methods. Choose the "more specific"
                          * of the two methods, i.e. the overriding covariant signature.
                          */
-                        final ResolvedJavaType existingReturnType = existing.getSignature().getReturnType(null).resolve(existing.getDeclaringClass());
-                        final ResolvedJavaType currentReturnType = current.getSignature().getReturnType(null).resolve(current.getDeclaringClass());
+                        HostedType existingReturnType = existing.getSignature().getReturnType();
+                        HostedType currentReturnType = current.getSignature().getReturnType();
                         if (existingReturnType.isAssignableFrom(currentReturnType)) {
                             /* current is more specific than existing */
                             final HostedMethod replaced = methodsBySignature.put(signatureString, current);

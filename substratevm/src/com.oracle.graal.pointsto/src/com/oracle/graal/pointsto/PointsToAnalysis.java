@@ -87,7 +87,6 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.Signature;
 
 public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     /** The type of {@link java.lang.Object}. */
@@ -321,10 +320,8 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     public AnalysisMethod addRootMethod(AnalysisMethod aMethod, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
         assert !universe.sealed() : "Cannot register root methods after analysis universe is sealed.";
         AnalysisError.guarantee(aMethod.isOriginalMethod());
-        AnalysisType declaringClass = aMethod.getDeclaringClass();
         boolean isStatic = aMethod.isStatic();
-        Signature signature = aMethod.getSignature();
-        int paramCount = signature.getParameterCount(!isStatic);
+        int paramCount = aMethod.getSignature().getParameterCount(!isStatic);
         PointsToAnalysisMethod originalPTAMethod = assertPointsToAnalysisMethod(aMethod);
 
         if (isStatic) {
@@ -339,7 +336,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                     pointsToMethod.registerAsImplementationInvoked(reason.toString());
                     MethodFlowsGraphInfo flowInfo = analysisPolicy.staticRootMethodGraph(this, pointsToMethod);
                     for (int idx = 0; idx < paramCount; idx++) {
-                        AnalysisType declaredParamType = (AnalysisType) signature.getParameterType(idx, declaringClass);
+                        AnalysisType declaredParamType = aMethod.getSignature().getParameterType(idx);
                         FormalParamTypeFlow parameter = flowInfo.getParameter(idx);
                         processParam(declaredParamType, parameter);
                     }
@@ -399,7 +396,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                      * type below we use idx-1 but when accessing the actual parameter flow we
                      * simply use idx.
                      */
-                    AnalysisType declaredParamType = (AnalysisType) signature.getParameterType(idx - 1, declaringClass);
+                    AnalysisType declaredParamType = aMethod.getSignature().getParameterType(idx - 1);
                     TypeFlow<?> actualParameterFlow = invoke.getActualParameter(idx);
                     processParam(declaredParamType, actualParameterFlow);
                 }

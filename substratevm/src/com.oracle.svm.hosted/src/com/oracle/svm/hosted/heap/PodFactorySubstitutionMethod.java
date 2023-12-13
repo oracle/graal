@@ -32,6 +32,9 @@ import java.util.concurrent.ConcurrentMap;
 import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.deopt.DeoptTest;
@@ -65,9 +68,7 @@ import jdk.graal.compiler.nodes.UnwindNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 final class PodFactorySubstitutionProcessor extends SubstitutionProcessor {
     private final ConcurrentMap<ResolvedJavaMethod, PodFactorySubstitutionMethod> substitutions = new ConcurrentHashMap<>();
@@ -119,17 +120,17 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
     }
 
     @Override
-    public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
+    public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
         DeoptInfoProvider deoptInfo = null;
         if (MultiMethod.isDeoptTarget(method)) {
-            deoptInfo = new DeoptInfoProvider((MultiMethod) method);
+            deoptInfo = new DeoptInfoProvider(method);
         }
 
-        ResolvedJavaType factoryType = method.getDeclaringClass();
+        AnalysisType factoryType = method.getDeclaringClass();
         PodFactory annotation = factoryType.getAnnotation(PodFactory.class);
-        ResolvedJavaType podConcreteType = kit.getMetaAccess().lookupJavaType(annotation.podClass());
-        ResolvedJavaMethod targetCtor = findMatchingConstructor(method, podConcreteType.getSuperclass());
+        AnalysisType podConcreteType = kit.getMetaAccess().lookupJavaType(annotation.podClass());
+        AnalysisMethod targetCtor = findMatchingConstructor(method, podConcreteType.getSuperclass());
 
         /*
          * The graph must be safe for runtime compilation and so for compilation as a deoptimization
@@ -138,11 +139,11 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
          */
         int instanceLocal = kit.getFrameState().localsSize() - 1; // reserved when generating class
         int nextDeoptIndex = startMethod(kit, deoptInfo, 0);
-        instantiatePod(kit, providers, factoryType, podConcreteType, instanceLocal);
+        instantiatePod(kit, factoryType, podConcreteType, instanceLocal);
         if (isAnnotationPresent(DeoptTest.class)) {
             kit.append(new TestDeoptimizeNode());
         }
-        nextDeoptIndex = invokeConstructor(kit, method, deoptInfo, nextDeoptIndex, targetCtor, instanceLocal);
+        nextDeoptIndex = invokeConstructor(kit, deoptInfo, nextDeoptIndex, targetCtor, instanceLocal);
 
         kit.createReturn(kit.loadLocal(instanceLocal, JavaKind.Object), JavaKind.Object);
         return kit.finalizeGraph();
@@ -154,8 +155,8 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
      *
      * @throws GraalError if no matching constructor found
      */
-    private ResolvedJavaMethod findMatchingConstructor(ResolvedJavaMethod method, ResolvedJavaType typeToSearch) {
-        for (ResolvedJavaMethod ctor : typeToSearch.getDeclaredConstructors(false)) {
+    private AnalysisMethod findMatchingConstructor(AnalysisMethod method, AnalysisType typeToSearch) {
+        for (AnalysisMethod ctor : typeToSearch.getDeclaredConstructors(false)) {
             if (parameterTypesMatch(method, ctor)) {
                 return ctor;
             }
@@ -180,31 +181,31 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
         return nextDeoptIndex;
     }
 
-    private static void instantiatePod(HostedGraphKit kit, HostedProviders providers, ResolvedJavaType factoryType, ResolvedJavaType podConcreteType, int instanceLocal) {
-        ResolvedJavaType podType = kit.getMetaAccess().lookupJavaType(Pod.class);
+    private static void instantiatePod(HostedGraphKit kit, AnalysisType factoryType, AnalysisType podConcreteType, int instanceLocal) {
+        AnalysisType podType = kit.getMetaAccess().lookupJavaType(Pod.class);
         ValueNode receiver = kit.loadLocal(0, JavaKind.Object);
         ValueNode pod = loadNonNullField(kit, receiver, findField(factoryType, "pod"));
         ValueNode arrayLength = kit.createLoadField(pod, findField(podType, "arrayLength"));
         ValueNode refMap = loadNonNullField(kit, pod, findField(podType, "referenceMap"));
-        ConstantNode hub = kit.createConstant(providers.getConstantReflection().asObjectHub(podConcreteType), JavaKind.Object);
+        ConstantNode hub = kit.createConstant(kit.getConstantReflection().asObjectHub(podConcreteType), JavaKind.Object);
         ValueNode instance = kit.append(new NewPodInstanceNode(podConcreteType, hub, arrayLength, refMap));
         kit.storeLocal(instanceLocal, JavaKind.Object, instance);
     }
 
-    private static ValueNode loadNonNullField(HostedGraphKit kit, ValueNode object, ResolvedJavaField field) {
+    private static ValueNode loadNonNullField(HostedGraphKit kit, ValueNode object, AnalysisField field) {
         return kit.append(PiNode.create(kit.createLoadField(object, field), StampFactory.objectNonNull()));
     }
 
-    private static int invokeConstructor(HostedGraphKit kit, ResolvedJavaMethod method, DeoptInfoProvider deoptInfo, int nextDeoptIndex, ResolvedJavaMethod targetCtor, int instanceLocal) {
+    private static int invokeConstructor(HostedGraphKit kit, DeoptInfoProvider deoptInfo, int nextDeoptIndex, AnalysisMethod targetCtor, int instanceLocal) {
         ValueNode instance = kit.loadLocal(instanceLocal, JavaKind.Object);
-        ValueNode[] originalArgs = kit.loadArguments(method.toParameterTypes()).toArray(ValueNode.EMPTY_ARRAY);
+        ValueNode[] originalArgs = kit.getInitialArguments().toArray(ValueNode.EMPTY_ARRAY);
         ValueNode[] invokeArgs = Arrays.copyOf(originalArgs, originalArgs.length);
         invokeArgs[0] = instance;
         return invokeWithDeoptAndExceptionUnwind(kit, deoptInfo, nextDeoptIndex, targetCtor, InvokeKind.Special, invokeArgs);
     }
 
     /** @see com.oracle.svm.hosted.phases.SharedGraphBuilderPhase */
-    private static int invokeWithDeoptAndExceptionUnwind(HostedGraphKit kit, DeoptInfoProvider deoptInfo, int initialNextDeoptIndex, ResolvedJavaMethod target, InvokeKind invokeKind,
+    private static int invokeWithDeoptAndExceptionUnwind(HostedGraphKit kit, DeoptInfoProvider deoptInfo, int initialNextDeoptIndex, AnalysisMethod target, InvokeKind invokeKind,
                     ValueNode... args) {
         int bci = kit.bci();
         InvokeWithExceptionNode invoke = kit.startInvokeWithException(target, invokeKind, kit.getFrameState(), bci, args);
@@ -293,22 +294,22 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
         return kit.getGraph().addOrUniqueWithInputs(DeoptProxyNode.create(value, deoptTarget, nextDeoptIndex));
     }
 
-    private static boolean parameterTypesMatch(ResolvedJavaMethod method, ResolvedJavaMethod ctor) {
+    private static boolean parameterTypesMatch(AnalysisMethod method, AnalysisMethod ctor) {
         int paramsCount = method.getSignature().getParameterCount(false);
         if (paramsCount != ctor.getSignature().getParameterCount(false)) {
             return false;
         }
         for (int i = 0; i < paramsCount; i++) {
-            if (!ctor.getSignature().getParameterType(i, ctor.getDeclaringClass())
-                            .equals(method.getSignature().getParameterType(i, method.getDeclaringClass()))) {
+            if (!ctor.getSignature().getParameterType(i).equals(method.getSignature().getParameterType(i))) {
                 return false;
             }
         }
         return true;
     }
 
-    private static ResolvedJavaField findField(ResolvedJavaType type, String name) {
-        for (ResolvedJavaField field : type.getInstanceFields(false)) {
+    private static AnalysisField findField(AnalysisType type, String name) {
+        for (var f : type.getInstanceFields(false)) {
+            AnalysisField field = (AnalysisField) f;
             if (field.getName().equals(name)) {
                 return field;
             }

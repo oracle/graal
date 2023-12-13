@@ -100,6 +100,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDK22OrLater;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.meta.SharedType;
@@ -873,6 +874,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @KeepOriginal
     private native boolean isAnonymousClass();
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
+    private native boolean isUnnamedClass();
 
     @Substitute
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -1746,12 +1751,21 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private native GenericsFactory getFactory();
 
     @KeepOriginal
+    @TargetElement(onlyWith = JDK22OrLater.class)
+    native Method findMethod(boolean publicOnly, String name, Class<?>... parameterTypes);
+
+    @KeepOriginal
     private native Method getMethod0(String methodName, Class<?>[] parameterTypes);
 
     @KeepOriginal
     private static native void addAll(Collection<Field> c, Field[] o);
 
     @KeepOriginal
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
+    private native Target_java_lang_PublicMethods_MethodList getMethodsRecursive(String methodName, Class<?>[] parameterTypes, boolean includeStatic);
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK22OrLater.class)
     private native Target_java_lang_PublicMethods_MethodList getMethodsRecursive(String methodName, Class<?>[] parameterTypes, boolean includeStatic, boolean publicOnly);
 
     @KeepOriginal
