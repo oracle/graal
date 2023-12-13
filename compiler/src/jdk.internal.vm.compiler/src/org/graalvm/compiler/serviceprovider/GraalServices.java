@@ -40,6 +40,8 @@ import java.util.Map;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 
+import org.graalvm.compiler.debug.GraalError;
+
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.EncodedSpeculationReason;
 import jdk.vm.ci.meta.JavaMethod;
@@ -453,15 +455,11 @@ public final class GraalServices {
     public static JavaMethod lookupMethodWithCaller(ConstantPool constantPool, int cpi, int opcode, ResolvedJavaMethod caller) {
         if (constantPoolLookupMethodWithCaller != null) {
             try {
-                try {
-                    return (JavaMethod) constantPoolLookupMethodWithCaller.invoke(constantPool, cpi, opcode, caller);
-                } catch (InvocationTargetException e) {
-                    throw e.getCause();
-                }
-            } catch (Error e) {
-                throw e;
-            } catch (Throwable throwable) {
-                throw new InternalError(throwable);
+                return (JavaMethod) constantPoolLookupMethodWithCaller.invoke(constantPool, cpi, opcode, caller);
+            } catch (InvocationTargetException e) {
+                throw rethrow(e.getCause());
+            } catch (IllegalAccessException e) {
+                throw GraalError.shouldNotReachHere(e, "The method lookupMethod should be accessible.");
             }
         }
         throw new InternalError("This JVMCI version doesn't support ConstantPool.lookupMethod(int, int, ResolvedJavaMethod)");
@@ -470,18 +468,19 @@ public final class GraalServices {
     public static Object lookupConstant(ConstantPool constantPool, int cpi, boolean resolve) {
         if (constantPoolLookupConstantWithResolve != null) {
             try {
-                try {
-                    return constantPoolLookupConstantWithResolve.invoke(constantPool, cpi, resolve);
-                } catch (InvocationTargetException e) {
-                    throw e.getCause();
-                }
-            } catch (Error e) {
-                throw e;
-            } catch (Throwable throwable) {
-                throw new InternalError(throwable);
+                return constantPoolLookupConstantWithResolve.invoke(constantPool, cpi, resolve);
+            } catch (InvocationTargetException e) {
+                throw rethrow(e.getCause());
+            } catch (IllegalAccessException e) {
+                throw GraalError.shouldNotReachHere(e, "The method lookupConstant should be accessible.");
             }
         }
         return constantPool.lookupConstant(cpi);
+    }
+
+    @SuppressWarnings("unchecked")
+    static <E extends Throwable> RuntimeException rethrow(Throwable ex) throws E {
+        throw (E) ex;
     }
 
     /**
