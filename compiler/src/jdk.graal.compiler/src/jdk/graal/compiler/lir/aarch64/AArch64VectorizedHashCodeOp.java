@@ -200,12 +200,10 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
      * return result;
      * </pre>
      */
+    @SuppressWarnings("unused") // unused block labels
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         Label labelShortUnrolledBegin = new Label();
-        Label labelShortUnrolledLoopBegin = new Label();
-        Label labelShortUnrolledLoopExit = new Label();
-        Label labelUnrolledVectorLoopBegin = new Label();
         Label labelEnd = new Label();
 
         // Parameters (immutable, alive)
@@ -260,130 +258,140 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         int regsFilledPerLoad = consecutiveRegs * extensionFactor;
 
         Register bound = tmp2;
-        Register next = tmp3;
-
         // bound = length & ~(N - 1);
         masm.ands(32, bound, cnt1, ~(elementsPerIteration - 1));
         // if (bound != 0) { // (EQ = Z flag set)
         masm.branchConditionally(ConditionFlag.EQ, labelShortUnrolledBegin);
-
-        // vresult[i] = IntVector.zero(I128);
-        for (int idx = 0; idx < nRegs; idx++) {
-            masm.neon.moviVI(ASIMDSize.FullReg, vresult[idx], 0);
-        }
-
-        // vnext = IntVector.broadcast(I128, power_of_31_backwards[0]);
-        // Throws AIOOBE if there are not enough elements in the array but allows more.
-        int powersOf31Start = POWERS_OF_31_BACKWARDS.length - elementsPerIteration;
-        int nextPow31 = POWERS_OF_31_BACKWARDS[powersOf31Start - 1];
-        masm.mov(next, nextPow31);
-        masm.neon.dupVG(ASIMDSize.FullReg, ElementSize.Word, vnext, next);
-
-        // cnt1 -= bound;
-        masm.sub(32, cnt1, cnt1, bound);
-        // bound = arrayStart + bound * elSize.bytes();
-        masm.add(64, bound, ary1, bound, ShiftType.LSL, stride.log2);
-
-        // for (; index < bound; index += elementsPerIteration) {
-        masm.align(AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT);
-        masm.bind(labelUnrolledVectorLoopBegin);
-        // result *= next;
-        masm.mul(32, result, result, next);
-
-        // loop fission to upfront the cost of fetching from memory,
-        // OOO execution can then hopefully do a better job of prefetching
-        // load next 16 elements into 4 data vector registers
-        // vtmp = ary1[index:index+elementsPerIteration];
-        for (int ldVi = 0; ldVi < nRegs; ldVi += regsFilledPerLoad) {
-            boolean postIndex = true;
-            loadConsecutiveVectors(masm, loadVecSize, loadVecBits, elSize, ary1, vtmp, ldVi, consecutiveRegs, postIndex, false);
-            extendVectorsToWord(masm, unsigned, loadVecBits, elSize, vtmp, ldVi, consecutiveRegs);
-        }
-
-        // vresult[i] = vresult[i] * vnext + vtmp[i];
-        // (desugared to: vtmp[i] += vresult[i] * vnext, vresult[i] = vtmp[i])
-        for (int idx = 0; idx < nRegs; idx++) {
-            masm.neon.mlaVVV(ASIMDSize.FullReg, ElementSize.Word, vtmp[idx], vresult[idx], vnext);
-        }
-        for (int idx = 0; idx < nRegs; idx++) {
-            masm.neon.moveVV(ASIMDSize.FullReg, vresult[idx], vtmp[idx]);
-        }
-
-        // if (ary1 |<| bound) continue; else break;
-        masm.cmp(64, ary1, bound);
-        masm.branchConditionally(ConditionFlag.LO, labelUnrolledVectorLoopBegin);
-        // }
-        // release bound
-
-        // vcoef = IntVector.fromArray(I128, power_of_31_backwards, 1);
-        var powersOf31 = new ArrayDataPointerConstant(Arrays.copyOfRange(POWERS_OF_31_BACKWARDS, powersOf31Start, POWERS_OF_31_BACKWARDS.length), 16);
-        crb.recordDataReferenceInCode(powersOf31);
-        Register coefAddrReg = tmp2;
-        masm.adrpAdd(coefAddrReg);
-        for (int i = 0; i < nRegs; i += maxConsecutiveRegs) {
-            boolean postIndex = maxConsecutiveRegs < nRegs;
-            loadConsecutiveVectors(masm, ASIMDSize.FullReg, ASIMDSize.FullReg.bits(), ElementSize.Word, coefAddrReg, vcoef, i, maxConsecutiveRegs, postIndex, false);
-        }
-
-        // fused multiply (vresult[i] * vcoef[i]) and vertical add reduction
-        // vresult[0] = vresult[0] * vcoef[0];
-        // vresult[0] += vresult[i] * vcoef[i] for i > 0;
-        for (int i = 0; i < nRegs; i++) {
-            if (i == 0) {
-                masm.neon.mulVVV(ASIMDSize.FullReg, ElementSize.Word, vresult[0], vresult[i], vcoef[i]);
-            } else {
-                masm.neon.mlaVVV(ASIMDSize.FullReg, ElementSize.Word, vresult[0], vresult[i], vcoef[i]);
+        vectorBranch: {
+            // vresult[i] = IntVector.zero(I128);
+            for (int idx = 0; idx < nRegs; idx++) {
+                masm.neon.moviVI(ASIMDSize.FullReg, vresult[idx], 0);
             }
-        }
 
-        // result += vresult[0].reduceLanes(ADD); (horizontal lane-wise add reduction)
-        masm.neon.addvSV(ASIMDSize.FullReg, ElementSize.Word, vresult[0], vresult[0]);
-        masm.fmov(32, tmp2, vresult[0]); // umovGX(Word, tmp2, vresult[0], 0);
-        masm.add(32, result, result, tmp2);
-        // }
+            // vnext = IntVector.broadcast(I128, power_of_31_backwards[0]);
+            // Throws AIOOBE if there are not enough elements in the array but allows more.
+            int powersOf31Start = POWERS_OF_31_BACKWARDS.length - elementsPerIteration;
+            int nextPow31 = POWERS_OF_31_BACKWARDS[powersOf31Start - 1];
+            Register next = tmp3;
+            masm.mov(next, nextPow31);
+            masm.neon.dupVG(ASIMDSize.FullReg, ElementSize.Word, vnext, next);
+
+            // cnt1 -= bound;
+            masm.sub(32, cnt1, cnt1, bound);
+            // bound = arrayStart + bound * elSize.bytes();
+            masm.add(64, bound, ary1, bound, ShiftType.LSL, stride.log2);
+
+            vectorLoop: { // for (; index |<| (length & ~(N - 1)); index += N) {
+                Label labelUnrolledVectorLoopBegin = new Label();
+                masm.align(AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT);
+                masm.bind(labelUnrolledVectorLoopBegin);
+
+                // result *= next;
+                masm.mul(32, result, result, next);
+
+                /*
+                 * Load the next 16 data elements, zero-extended to 32-bit, into 4 vector registers.
+                 * By grouping the loads and fetching from memory up front (loop fission), we can
+                 * combine multiple loads into one instruction, and out-of-order execution can
+                 * hopefully do a better job of prefetching, while also allowing subsequent
+                 * instructions to be executed while data are still being fetched.
+                 */
+                // vtmp = ary1[index:index+elementsPerIteration];
+                for (int ldVi = 0; ldVi < nRegs; ldVi += regsFilledPerLoad) {
+                    boolean postIndex = true;
+                    loadConsecutiveVectors(masm, loadVecSize, loadVecBits, elSize, ary1, vtmp, ldVi, consecutiveRegs, postIndex, false);
+                    extendVectorsToWord(masm, unsigned, loadVecBits, elSize, vtmp, ldVi, consecutiveRegs);
+                }
+
+                // vresult[i] = vresult[i] * vnext + vtmp[i];
+                // (desugared to: vtmp[i] += vresult[i] * vnext, vresult[i] = vtmp[i])
+                for (int idx = 0; idx < nRegs; idx++) {
+                    masm.neon.mlaVVV(ASIMDSize.FullReg, ElementSize.Word, vtmp[idx], vresult[idx], vnext);
+                }
+                for (int idx = 0; idx < nRegs; idx++) {
+                    masm.neon.moveVV(ASIMDSize.FullReg, vresult[idx], vtmp[idx]);
+                }
+
+                // if (ary1 |<| bound) continue; else break;
+                masm.cmp(64, ary1, bound);
+                masm.branchConditionally(ConditionFlag.LO, labelUnrolledVectorLoopBegin);
+            }
+            // release bound/tmp2
+
+            // vcoef = IntVector.fromArray(I128, power_of_31_backwards, 1);
+            var powersOf31 = new ArrayDataPointerConstant(Arrays.copyOfRange(POWERS_OF_31_BACKWARDS, powersOf31Start, POWERS_OF_31_BACKWARDS.length), 16);
+            crb.recordDataReferenceInCode(powersOf31);
+            Register coefAddrReg = tmp2;
+            masm.adrpAdd(coefAddrReg);
+            for (int i = 0; i < nRegs; i += maxConsecutiveRegs) {
+                boolean postIndex = maxConsecutiveRegs < nRegs;
+                loadConsecutiveVectors(masm, ASIMDSize.FullReg, ASIMDSize.FullReg.bits(), ElementSize.Word, coefAddrReg, vcoef, i, maxConsecutiveRegs, postIndex, false);
+            }
+
+            // fused multiply (vresult[i] * vcoef[i]) and vertical add reduction
+            // vresult[0] = vresult[0] * vcoef[0];
+            // vresult[0] += vresult[i] * vcoef[i] for i > 0;
+            for (int i = 0; i < nRegs; i++) {
+                if (i == 0) {
+                    masm.neon.mulVVV(ASIMDSize.FullReg, ElementSize.Word, vresult[0], vresult[i], vcoef[i]);
+                } else {
+                    masm.neon.mlaVVV(ASIMDSize.FullReg, ElementSize.Word, vresult[0], vresult[i], vcoef[i]);
+                }
+            }
+
+            // result += vresult[0].reduceLanes(ADD); (horizontal lane-wise add reduction)
+            masm.neon.addvSV(ASIMDSize.FullReg, ElementSize.Word, vresult[0], vresult[0]);
+            masm.fmov(32, tmp2, vresult[0]); // umovGX(Word, tmp2, vresult[0], 0);
+            masm.add(32, result, result, tmp2);
+        }
 
         masm.align(AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT);
         masm.bind(labelShortUnrolledBegin);
+        shortUnrolledBranch: {
+            Label labelShortUnrolledLoopExit = new Label();
+            AArch64Address postIndexAddr = AArch64Address.createImmediateAddress(elSize.bits(), AddressingMode.IMMEDIATE_POST_INDEXED, ary1, elSize.bytes());
 
-        AArch64Address postIndexAddr = AArch64Address.createImmediateAddress(elSize.bits(), AddressingMode.IMMEDIATE_POST_INDEXED, ary1, elSize.bytes());
-
-        // int i = 1;
-        masm.mov(index, 1);
-        masm.cmp(32, index, cnt1);
-        masm.branchConditionally(ConditionFlag.HS, labelShortUnrolledLoopExit);
-
-        try (var scratch1 = masm.getScratchRegister(); var scratch2 = masm.getScratchRegister()) {
-            var tmp31 = scratch1.getRegister();
-            var tmp961 = scratch2.getRegister();
-            masm.mov(tmp31, 31);
-            masm.mov(tmp961, 961);
-
-            // for (; i < cnt1 ; i += 2) {
-            masm.align(AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT);
-            masm.bind(labelShortUnrolledLoopBegin);
-            // result *= 31**2;
-            // result += ary1[index-1] * 31 + ary1[index]
-            arraysHashcodeElload(masm, tmp2, postIndexAddr, arrayKind); // index-1
-            arraysHashcodeElload(masm, tmp3, postIndexAddr, arrayKind); // index
-            masm.madd(32, tmp3, tmp2, tmp31, tmp3);
-            masm.madd(32, result, result, tmp961, tmp3);
-            // i += 2
-            masm.add(32, index, index, 2);
-
+            // int index = 1;
+            masm.mov(index, 1);
             masm.cmp(32, index, cnt1);
-            masm.branchConditionally(ConditionFlag.LO, labelShortUnrolledLoopBegin);
+            masm.branchConditionally(ConditionFlag.HS, labelShortUnrolledLoopExit);
+            try (var scratch1 = masm.getScratchRegister(); var scratch2 = masm.getScratchRegister()) {
+                var tmp31 = scratch1.getRegister();
+                var tmp961 = scratch2.getRegister();
+                masm.mov(tmp31, 31);
+                masm.mov(tmp961, 961);
 
-            // }
-            // if (i >= cnt1) {
-            masm.bind(labelShortUnrolledLoopExit);
-            // masm.cmp(32, index, cnt1); // already compared right above and before the jump here
-            masm.branchConditionally(ConditionFlag.HI, labelEnd);
-            // result *= 31;
-            // result += ary1[index - 1]
-            masm.mov(tmp31, 31);
-            arraysHashcodeElload(masm, tmp3, postIndexAddr, arrayKind); // index-1
-            masm.madd(32, result, result, tmp31, tmp3);
-            // }
+                shortUnrolledLoop: { // for (; index < cnt1; index += 2) {
+                    Label labelShortUnrolledLoopBegin = new Label();
+                    masm.align(AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT);
+                    masm.bind(labelShortUnrolledLoopBegin);
+
+                    // result *= 31**2;
+                    // result += ary1[index-1] * 31 + ary1[index]
+                    arraysHashcodeElload(masm, tmp2, postIndexAddr, arrayKind); // index-1
+                    arraysHashcodeElload(masm, tmp3, postIndexAddr, arrayKind); // index
+                    masm.madd(32, tmp3, tmp2, tmp31, tmp3);
+                    masm.madd(32, result, result, tmp961, tmp3);
+                    // i += 2
+                    masm.add(32, index, index, 2);
+
+                    masm.cmp(32, index, cnt1);
+                    masm.branchConditionally(ConditionFlag.LO, labelShortUnrolledLoopBegin);
+                }
+
+                // if (index >= cnt1) {
+                masm.bind(labelShortUnrolledLoopExit);
+                // already compared right above and before the jump here, no need to repeat:
+                // masm.cmp(32, index, cnt1);
+                masm.branchConditionally(ConditionFlag.HI, labelEnd);
+                lastElementBranch: { // if (index == cnt1) {
+                    // result *= 31;
+                    // result += ary1[index - 1]
+                    masm.mov(tmp31, 31);
+                    arraysHashcodeElload(masm, tmp3, postIndexAddr, arrayKind); // index-1
+                    masm.madd(32, result, result, tmp31, tmp3);
+                }
+            }
         }
         masm.bind(labelEnd);
     }
