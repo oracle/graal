@@ -206,7 +206,6 @@ public abstract class AbstractBytecodeDSLExampleTest {
             BytecodeNodes<BytecodeDSLExample> deserialized = invokeDeserialize(interpreterClass, LANGUAGE, config, input, DESERIALIZER);
 
             assertBytecodeNodesEqual(result, deserialized);
-            return deserialized;
         }
         return result;
     }

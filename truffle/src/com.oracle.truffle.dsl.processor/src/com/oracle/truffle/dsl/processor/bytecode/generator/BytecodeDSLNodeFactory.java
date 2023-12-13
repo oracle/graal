@@ -1211,10 +1211,25 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.statement("exHandlersInfo[idx] = new Object[]{ handlers[idx * 5], handlers[idx * 5 + 1], handlers[idx * 5 + 2], handlers[idx * 5 + 4] }");
         b.end();
 
-        // todo: source info
+        b.declaration(generic(type(List.class), type(Object[].class)), "sourceData", "new ArrayList<>()");
+        b.startIf().string("sourceInfo != null").end().startBlock();
+        b.declaration(arrayOf(types.Source), "sources", "nodes.getSources()");
+        b.startFor().string("int idx = 0; idx < sourceInfo.length; idx += 3").end().startBlock();
+
+        // we encode ranges with no SourceSection using (-1, -1)
+        b.startIf().string("sourceInfo[idx + 1] == -1").end().startBlock();
+        b.statement("continue");
+        b.end();
+
+        b.statement("int startIndex = sourceInfo[idx] & 0xffff");
+        b.statement("int endIndex = (idx + 3 == sourceInfo.length) ? bc.length : sourceInfo[idx + 3] & 0xffff");
+        b.declaration(types.SourceSection, "section", "sources[(sourceInfo[idx] >> 16) & 0xffff].createSection(sourceInfo[idx + 1], sourceInfo[idx + 2])");
+        b.statement("sourceData.add(new Object[]{startIndex, endIndex, section})");
+        b.end();
+        b.end();
 
         b.startReturn().startStaticCall(types.BytecodeIntrospection_Provider, "create");
-        b.string("new Object[]{0, instructions.toArray(), exHandlersInfo, null}");
+        b.string("new Object[]{0, instructions.toArray(), exHandlersInfo, sourceData.toArray()}");
         b.end(2);
 
         return ex;

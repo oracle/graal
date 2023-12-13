@@ -42,6 +42,9 @@ package com.oracle.truffle.api.bytecode.test.example;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.util.List;
 
 import org.junit.Ignore;
 import org.junit.Test;
@@ -52,9 +55,12 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.introspection.Instruction;
+import com.oracle.truffle.api.bytecode.introspection.SourceInformation;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.bytecode.introspection.BytecodeIntrospection;
+import com.oracle.truffle.api.bytecode.introspection.ExceptionHandler;
 
 @RunWith(Parameterized.class)
 public class BytecodeDSLExampleGeneralTest extends AbstractBytecodeDSLExampleTest {
@@ -897,10 +903,9 @@ public class BytecodeDSLExampleGeneralTest extends AbstractBytecodeDSLExampleTes
         root.call(false);
     }
 
-
     @Test
-    public void testIntrospectionData() {
-        BytecodeDSLExample node = parseNode("introspectionData", b -> {
+    public void testIntrospectionDataInstructions() {
+        BytecodeDSLExample node = parseNode("introspectionDataInstructions", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -924,6 +929,117 @@ public class BytecodeDSLExampleGeneralTest extends AbstractBytecodeDSLExampleTes
         assertInstructionEquals(data.getInstructions().get(3), 6 + beOffset, "return");
         assertInstructionEquals(data.getInstructions().get(4), 7 + beOffset, "pop");
 
+    }
+
+    @Test
+    public void testIntrospectionDataExceptionHandlers() {
+        BytecodeDSLExample node = parseNode("introspectionDataExceptionHandlers", b -> {
+            // @formatter:off
+            b.beginRoot(LANGUAGE);
+            b.beginBlock();
+            BytecodeLocal exceptionLocal = b.createLocal();
+
+                b.beginTryCatch(exceptionLocal); // h1
+                    b.beginBlock();
+                        b.emitVoidOperation();
+                        // shares the local, and it should be entirely within the range of the outer handler
+                        b.beginTryCatch(exceptionLocal); // h2
+                            b.emitVoidOperation();
+                            b.emitVoidOperation();
+                        b.endTryCatch();
+                    b.endBlock();
+
+                    b.emitVoidOperation();
+                b.endTryCatch();
+
+                b.beginTryCatch(b.createLocal()); // h3
+                    b.emitVoidOperation();
+                    b.emitVoidOperation();
+                b.endTryCatch();
+
+            b.endBlock();
+            b.endRoot();
+            // @formatter:on
+        });
+
+        BytecodeIntrospection data = node.getIntrospectionData();
+        List<ExceptionHandler> handlers = data.getExceptionHandlers();
+
+        assertEquals(3, handlers.size());
+        // note: handlers get emitted in order of endTryCatch()
+        ExceptionHandler h1 = handlers.get(1);
+        ExceptionHandler h2 = handlers.get(0);
+        ExceptionHandler h3 = handlers.get(2);
+
+        // h1 and h2 share an exception local. h3 does not
+        assertEquals(h1.getExceptionVariableIndex(), h2.getExceptionVariableIndex());
+        assertNotEquals(h1.getExceptionVariableIndex(), h3.getExceptionVariableIndex());
+
+        // they all have unique handler bci's
+        assertNotEquals(h1.getHandlerIndex(), h2.getHandlerIndex());
+        assertNotEquals(h2.getHandlerIndex(), h3.getHandlerIndex());
+        assertNotEquals(h1.getHandlerIndex(), h3.getHandlerIndex());
+
+        // h2's guarded range and handler are both contained within h1's guarded range
+        assertTrue(h1.getStartIndex() < h2.getStartIndex());
+        assertTrue(h2.getEndIndex() < h1.getEndIndex());
+        assertTrue(h1.getStartIndex() < h2.getHandlerIndex());
+        assertTrue(h2.getHandlerIndex() < h1.getEndIndex());
+
+        // h1 and h3 are independent
+        assertTrue(h1.getEndIndex() < h3.getStartIndex());
+    }
+
+    @Test
+    public void testIntrospectionDataSourceInformation() {
+        Source source = Source.newBuilder("test", "return 1 + 2", "test.test").build();
+        BytecodeDSLExample node = parseNodeWithSource("introspectionDataSourceInformation", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginSource(source);
+            b.beginSourceSection(0, 12);
+            b.beginReturn();
+
+            b.beginSourceSection(7, 5);
+            b.beginAddOperation();
+
+            b.beginSourceSection(7, 1);
+            b.emitLoadConstant(1L);
+            b.endSourceSection();
+
+            b.beginSourceSection(11, 1);
+            b.emitLoadConstant(2L);
+            b.endSourceSection();
+
+            b.endAddOperation();
+            b.endSourceSection();
+
+            b.endReturn();
+            b.endSourceSection();
+            b.endSource();
+            b.endRoot();
+        });
+
+        BytecodeIntrospection data = node.getIntrospectionData();
+        List<SourceInformation> sourceInformation = data.getSourceInformation();
+
+        assertEquals(5, sourceInformation.size());
+        SourceInformation s1 = sourceInformation.get(0); // return 1 + 2 (bci 0)
+        SourceInformation s2 = sourceInformation.get(1); // 1
+        SourceInformation s3 = sourceInformation.get(2); // 2
+        SourceInformation s4 = sourceInformation.get(3); // 1 + 2
+        SourceInformation s5 = sourceInformation.get(4); // return 1 + 2
+
+        assertEquals("return 1 + 2", s1.getSourceSection().getCharacters().toString());
+        assertEquals("1", s2.getSourceSection().getCharacters().toString());
+        assertEquals("2", s3.getSourceSection().getCharacters().toString());
+        assertEquals("1 + 2", s4.getSourceSection().getCharacters().toString());
+        assertEquals("return 1 + 2", s5.getSourceSection().getCharacters().toString());
+
+        assertEquals(0, s1.getStartBci());
+        assertEquals(0, s1.getEndBci());
+        for (int i = 1; i < sourceInformation.size(); i++) {
+            assertTrue(sourceInformation.get(i - 1).getEndBci() <= sourceInformation.get(i).getStartBci());
+        }
     }
 
     @Test
@@ -978,7 +1094,8 @@ public class BytecodeDSLExampleGeneralTest extends AbstractBytecodeDSLExampleTes
         assertNotEquals(node.getCallTarget(), cloned.getCallTarget());
         root = cloned.getCallTarget();
 
-        // Run enough times to trigger cached execution again. The transition should work without crashing.
+        // Run enough times to trigger cached execution again. The transition should work without
+        // crashing.
         for (int i = 0; i < 16; i++) {
             assertEquals(42L, root.call(20L, 22L));
             assertEquals("foobar", root.call("foo", "bar"));
