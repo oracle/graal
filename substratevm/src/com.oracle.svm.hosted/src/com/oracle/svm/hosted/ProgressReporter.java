@@ -685,8 +685,8 @@ public class ProgressReporter {
         }
     }
 
-    public void printEpilog(Optional<String> optionalImageName, Optional<NativeImageGenerator> optionalGenerator, ImageClassLoader classLoader, Optional<Throwable> optionalError,
-                    OptionValues parsedHostedOptions) {
+    public void printEpilog(Optional<String> optionalImageName, Optional<NativeImageGenerator> optionalGenerator, ImageClassLoader classLoader, boolean wasSuccessfulBuild,
+                    Optional<Throwable> optionalError, OptionValues parsedHostedOptions) {
         executor.shutdown();
 
         if (optionalError.isPresent()) {
@@ -712,7 +712,7 @@ public class ProgressReporter {
         double totalSeconds = Utils.millisToSeconds(getTimer(TimerCollection.Registry.TOTAL).getTotalTime());
         recordJsonMetric(ResourceUsageKey.TOTAL_SECS, totalSeconds);
 
-        createAdditionalArtifacts(imageName, generator, optionalError, parsedHostedOptions);
+        createAdditionalArtifacts(imageName, generator, wasSuccessfulBuild, parsedHostedOptions);
         printArtifacts(generator.getBuildArtifacts());
 
         l().printHeadlineSeparator();
@@ -753,19 +753,23 @@ public class ProgressReporter {
         }
     }
 
-    private void createAdditionalArtifacts(String imageName, NativeImageGenerator generator, Optional<Throwable> error, OptionValues parsedHostedOptions) {
+    private void createAdditionalArtifacts(String imageName, NativeImageGenerator generator, boolean wasSuccessfulBuild, OptionValues parsedHostedOptions) {
         BuildArtifacts artifacts = BuildArtifacts.singleton();
+        if (wasSuccessfulBuild) {
+            createAdditionalArtifactsOnSuccess(artifacts, generator, parsedHostedOptions);
+        }
+        BuildArtifactsExporter.run(imageName, artifacts, generator.getBuildArtifacts());
+    }
+
+    private void createAdditionalArtifactsOnSuccess(BuildArtifacts artifacts, NativeImageGenerator generator, OptionValues parsedHostedOptions) {
         Optional<Path> buildOutputJSONFile = SubstrateOptions.BuildOutputJSONFile.getValue(parsedHostedOptions).lastValue();
-        if (error.isEmpty() && buildOutputJSONFile.isPresent()) {
+        if (buildOutputJSONFile.isPresent()) {
             artifacts.add(ArtifactType.BUILD_INFO, reportBuildOutput(buildOutputJSONFile.get()));
         }
         if (generator.getBigbang() != null && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
             artifacts.add(ArtifactType.BUILD_INFO, reportImageBuildStatistics());
         }
-        if (error.isEmpty()) {
-            ImageSingletons.lookup(ProgressReporterFeature.class).createAdditionalArtifacts(artifacts);
-        }
-        BuildArtifactsExporter.run(imageName, artifacts, generator.getBuildArtifacts());
+        ImageSingletons.lookup(ProgressReporterFeature.class).createAdditionalArtifactsOnSuccess(artifacts);
     }
 
     private void printArtifacts(Map<ArtifactType, List<Path>> artifacts) {
