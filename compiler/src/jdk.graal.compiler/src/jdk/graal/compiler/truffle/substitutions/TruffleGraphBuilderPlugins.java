@@ -752,6 +752,8 @@ public class TruffleGraphBuilderPlugins {
     }
 
     private static void registerFrameMethods(Registration r, KnownTruffleTypes types) {
+        final int illegalTag = types.FrameSlotKind_javaKindToTagIndex.get(JavaKind.Illegal);
+
         r.register(new RequiredInvocationPlugin("getArguments", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frame) {
@@ -789,19 +791,74 @@ public class TruffleGraphBuilderPlugins {
             }
         });
 
-        final int illegalTag = types.FrameSlotKind_javaKindToTagIndex.get(JavaKind.Illegal);
-        r.register(new RequiredInvocationPlugin("clear", Receiver.class, int.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode frameSlot) {
-                int frameSlotIndex = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot);
-                if (frameSlotIndex >= 0) {
-                    b.add(new VirtualFrameClearNode(receiver, frameSlotIndex, illegalTag, VirtualFrameAccessType.Indexed,
-                                    VirtualFrameAccessFlags.NON_STATIC_UPDATE));
-                    return true;
+        for (String prefix : new String[]{"", "unsafe"}) {
+            r.register(new RequiredInvocationPlugin(buildCamelCaseName(prefix, "swap"), Receiver.class, int.class, int.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode frameSlot1, ValueNode frameSlot2) {
+                    int frameSlot1Index = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot1);
+                    int frameSlot2Index = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot2);
+                    if (frameSlot1Index >= 0 && frameSlot2Index >= 0) {
+                        b.add(new VirtualFrameSwapNode(receiver, frameSlot1Index, frameSlot2Index, VirtualFrameAccessType.Indexed, VirtualFrameAccessFlags.NON_STATIC_UPDATE));
+                        return true;
+                    }
+                    return false;
                 }
-                return false;
-            }
-        });
+            });
+
+            r.register(new RequiredInvocationPlugin(buildCamelCaseName(prefix, "copy"), Receiver.class, int.class, int.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode frameSlot1, ValueNode frameSlot2) {
+                    int frameSlot1Index = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot1);
+                    int frameSlot2Index = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot2);
+                    if (frameSlot1Index >= 0 && frameSlot2Index >= 0) {
+                        b.add(new VirtualFrameCopyNode(receiver, frameSlot1Index, frameSlot2Index, VirtualFrameAccessType.Indexed, VirtualFrameAccessFlags.NON_STATIC_UPDATE));
+                        return true;
+                    }
+                    return false;
+                }
+            });
+
+            r.register(new RequiredInvocationPlugin(buildCamelCaseName(prefix, "copyPrimitive"), Receiver.class, int.class, int.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode frameSlot1, ValueNode frameSlot2) {
+                    int frameSlot1Index = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot1);
+                    int frameSlot2Index = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot2);
+                    if (frameSlot1Index >= 0 && frameSlot2Index >= 0) {
+                        b.add(new VirtualFrameCopyNode(receiver, frameSlot1Index, frameSlot2Index, VirtualFrameAccessType.Indexed, VirtualFrameAccessFlags.NON_STATIC_UPDATE));
+                        return true;
+                    }
+                    return false;
+                }
+            });
+
+            r.register(new RequiredInvocationPlugin(buildCamelCaseName(prefix, "copyObject"), Receiver.class, int.class, int.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode frameSlot1, ValueNode frameSlot2) {
+                    int frameSlot1Index = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot1);
+                    int frameSlot2Index = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot2);
+                    if (frameSlot1Index >= 0 && frameSlot2Index >= 0) {
+                        b.add(new VirtualFrameCopyNode(receiver, frameSlot1Index, frameSlot2Index, VirtualFrameAccessType.Indexed, VirtualFrameAccessFlags.NON_STATIC_UPDATE));
+                        return true;
+                    }
+                    return false;
+                }
+            });
+
+            r.register(new RequiredInvocationPlugin(buildCamelCaseName(prefix, "clear"), Receiver.class, int.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode frameSlot) {
+                    int frameSlotIndex = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot);
+                    if (frameSlotIndex >= 0) {
+                        b.add(new VirtualFrameClearNode(receiver, frameSlotIndex, illegalTag, VirtualFrameAccessType.Indexed,
+                                        VirtualFrameAccessFlags.NON_STATIC_UPDATE));
+                        return true;
+                    }
+                    return false;
+                }
+            });
+
+        }
+
         r.register(new RequiredInvocationPlugin("clearPrimitiveStatic", Receiver.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode frameSlot) {
@@ -838,18 +895,7 @@ public class TruffleGraphBuilderPlugins {
                 return false;
             }
         });
-        r.register(new RequiredInvocationPlugin("swap", Receiver.class, int.class, int.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode frameSlot1, ValueNode frameSlot2) {
-                int frameSlot1Index = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot1);
-                int frameSlot2Index = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot2);
-                if (frameSlot1Index >= 0 && frameSlot2Index >= 0) {
-                    b.add(new VirtualFrameSwapNode(receiver, frameSlot1Index, frameSlot2Index, VirtualFrameAccessType.Indexed, VirtualFrameAccessFlags.NON_STATIC_UPDATE));
-                    return true;
-                }
-                return false;
-            }
-        });
+
         r.register(new RequiredInvocationPlugin("swapPrimitiveStatic", Receiver.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode frameSlot1, ValueNode frameSlot2) {
@@ -881,18 +927,6 @@ public class TruffleGraphBuilderPlugins {
                 int frameSlot2Index = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot2);
                 if (frameSlot1Index >= 0 && frameSlot2Index >= 0) {
                     b.add(new VirtualFrameSwapNode(receiver, frameSlot1Index, frameSlot2Index, VirtualFrameAccessType.Indexed, VirtualFrameAccessFlags.STATIC_BOTH_UPDATE));
-                    return true;
-                }
-                return false;
-            }
-        });
-        r.register(new RequiredInvocationPlugin("copy", Receiver.class, int.class, int.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode frameSlot1, ValueNode frameSlot2) {
-                int frameSlot1Index = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot1);
-                int frameSlot2Index = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot2);
-                if (frameSlot1Index >= 0 && frameSlot2Index >= 0) {
-                    b.add(new VirtualFrameCopyNode(receiver, frameSlot1Index, frameSlot2Index, VirtualFrameAccessType.Indexed, VirtualFrameAccessFlags.NON_STATIC_UPDATE));
                     return true;
                 }
                 return false;
@@ -934,6 +968,7 @@ public class TruffleGraphBuilderPlugins {
                 return false;
             }
         });
+
         r.register(new RequiredInvocationPlugin("extend", int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
@@ -948,6 +983,21 @@ public class TruffleGraphBuilderPlugins {
                 return true;
             }
         });
+    }
+
+    private static String buildCamelCaseName(String prefix, String name) {
+        if (prefix.isEmpty()) {
+            return name;
+        } else {
+            return prefix + firstLetterUpperCase(name);
+        }
+    }
+
+    private static String firstLetterUpperCase(String name) {
+        if (name == null || name.isEmpty()) {
+            return name;
+        }
+        return Character.toUpperCase(name.charAt(0)) + name.substring(1, name.length());
     }
 
     public static void registerNodePlugins(InvocationPlugins plugins, KnownTruffleTypes types, MetaAccessProvider metaAccess, boolean canDelayIntrinsification,
