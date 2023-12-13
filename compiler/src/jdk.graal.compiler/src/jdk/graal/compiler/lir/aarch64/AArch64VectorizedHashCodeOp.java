@@ -27,7 +27,6 @@ package jdk.graal.compiler.lir.aarch64;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import java.util.Arrays;
-import java.util.stream.IntStream;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction;
@@ -88,6 +87,14 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         this.temp = allocateTempRegisters(tool, 5);
         // (1 * vnext + n * vresult + n * vtmp/vcoef)
         this.vectorTemp = allocateVectorRegisters(tool, 1 + 2 * nRegs);
+    }
+
+    private static Register[] asRegisterSlice(Value[] registerValues, int start, int end) {
+        Register[] regs = new Register[end - start];
+        for (int fromIndex = start, toIndex = 0; fromIndex < end; fromIndex++, toIndex++) {
+            regs[toIndex] = asRegister(registerValues[fromIndex]);
+        }
+        return regs;
     }
 
     private static void arraysHashcodeElload(AArch64MacroAssembler masm, Register dst, AArch64Address src, JavaKind eltype) {
@@ -218,8 +225,8 @@ public final class AArch64VectorizedHashCodeOp extends AArch64ComplexVectorOp {
         masm.mov(32, result, initialValueParam);
 
         Register vnext = asRegister(vectorTemp[0]);
-        Register[] vcoef = IntStream.range(1, 1 + nRegs).mapToObj(i -> asRegister(vectorTemp[i])).toArray(Register[]::new);
-        Register[] vresult = IntStream.range(1 + nRegs, 1 + 2 * nRegs).mapToObj(i -> asRegister(vectorTemp[i])).toArray(Register[]::new);
+        Register[] vcoef = asRegisterSlice(vectorTemp, 1, 1 + nRegs);
+        Register[] vresult = asRegisterSlice(vectorTemp, 1 + nRegs, 1 + 2 * nRegs);
         Register[] vtmp = vcoef;
 
         final boolean unsigned = arrayKind == JavaKind.Boolean || arrayKind == JavaKind.Char;
