@@ -135,7 +135,7 @@ public class DevirtualizeCallsPhase extends Phase {
          * not hold. Since we do not know where in the caller a possible type check is performed, we
          * anchor the receiver to the place of the original invoke.
          */
-        ValueAnchorNode anchor = graph.add(new ValueAnchorNode(null));
+        ValueAnchorNode anchor = graph.add(new ValueAnchorNode());
         graph.addBeforeFixed(invoke.asFixedNode(), anchor);
         Stamp anchoredReceiverStamp = StampFactory.object(TypeReference.createWithoutAssumptions(singleCallee.getDeclaringClass()));
         ValueNode anchoredReceiver = graph.unique(new PiNode(invoke.getReceiver(), anchoredReceiverStamp, anchor));
