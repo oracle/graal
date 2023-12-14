@@ -85,6 +85,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
 import com.oracle.svm.hosted.annotation.AnnotationMemberValue;
 import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
@@ -195,7 +196,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 registerClass(innerClass, false, !MissingRegistrationUtils.throwMissingRegistrationErrors());
             }
         } catch (LinkageError e) {
-            classLookupExceptions.put(clazz, e);
+            registerLinkageError(clazz, e, classLookupExceptions);
         }
     }
 
@@ -209,7 +210,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 registerClass(innerClass, false, !MissingRegistrationUtils.throwMissingRegistrationErrors());
             }
         } catch (LinkageError e) {
-            classLookupExceptions.put(clazz, e);
+            registerLinkageError(clazz, e, classLookupExceptions);
         }
     }
 
@@ -332,7 +333,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         try {
             register(condition, queriedOnly, clazz.getMethods());
         } catch (LinkageError e) {
-            methodLookupExceptions.put(clazz, e);
+            registerLinkageError(clazz, e, methodLookupExceptions);
         }
     }
 
@@ -343,7 +344,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         try {
             register(condition, queriedOnly, clazz.getDeclaredMethods());
         } catch (LinkageError e) {
-            methodLookupExceptions.put(clazz, e);
+            registerLinkageError(clazz, e, methodLookupExceptions);
         }
     }
 
@@ -357,7 +358,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         try {
             register(condition, queriedOnly, clazz.getConstructors());
         } catch (LinkageError e) {
-            constructorLookupExceptions.put(clazz, e);
+            registerLinkageError(clazz, e, constructorLookupExceptions);
         }
     }
 
@@ -368,7 +369,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         try {
             register(condition, queriedOnly, clazz.getDeclaredConstructors());
         } catch (LinkageError e) {
-            constructorLookupExceptions.put(clazz, e);
+            registerLinkageError(clazz, e, constructorLookupExceptions);
         }
     }
 
@@ -465,7 +466,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         try {
             registerInternal(condition, clazz.getFields());
         } catch (LinkageError e) {
-            fieldLookupExceptions.put(clazz, e);
+            registerLinkageError(clazz, e, fieldLookupExceptions);
         }
     }
 
@@ -476,7 +477,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         try {
             registerInternal(condition, clazz.getDeclaredFields());
         } catch (LinkageError e) {
-            fieldLookupExceptions.put(clazz, e);
+            registerLinkageError(clazz, e, fieldLookupExceptions);
         }
     }
 
@@ -936,6 +937,14 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         unregisteredAccessors.removeIf(accessor -> registeredMethods.containsKey(metaAccess.lookupJavaMethod(accessor)));
         if (unregisteredAccessors.isEmpty()) {
             registerRecordComponents(clazz);
+        }
+    }
+
+    private void registerLinkageError(Class<?> clazz, LinkageError error, Map<Class<?>, Throwable> errorMap) {
+        if (LinkAtBuildTimeSupport.singleton().linkAtBuildTime(clazz)) {
+            throw error;
+        } else {
+            errorMap.put(clazz, error);
         }
     }
 
