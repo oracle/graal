@@ -934,7 +934,7 @@ class NativeImageVM(GraalVm):
         pgo_args += svm_experimental_options(['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled'])
         instrument_args = ['--pgo-instrument', '-R:ProfilesDumpFile=' + profile_path] + ([] if i == 0 else pgo_args)
         if self.jdk_profiles_collect:
-            instrument_args += svm_experimental_options(['-H:+ProfilingEnabled', '-H:+AOTPriorityInline', '-H:-SamplingCollect', f'-H:ProfilingPackagePrefixes={self.generate_profiling_package_prefixes()}'])
+            instrument_args += svm_experimental_options(['-H:+AOTPriorityInline', '-H:-SamplingCollect', f'-H:ProfilingPackagePrefixes={self.generate_profiling_package_prefixes()}'])
 
         with stages.set_command(config.base_image_build_args + executable_name_args + instrument_args) as s:
             s.execute_command()
@@ -994,10 +994,7 @@ class NativeImageVM(GraalVm):
             jdk_profiles = f"JDK{jdk_version}_PROFILES"
             adopted_profiles_lib = mx.library(jdk_profiles, fatalIfMissing=False)
             if adopted_profiles_lib:
-                adopted_profiles_zip = adopted_profiles_lib.get_path(True)
-                adopted_profiles_dir = os.path.dirname(adopted_profiles_zip)
-                with zipfile.ZipFile(adopted_profiles_zip, 'r') as zip_ref:
-                    zip_ref.extractall(adopted_profiles_dir)
+                adopted_profiles_dir = adopted_profiles_lib.get_path(True)
                 adopted_profile = os.path.join(adopted_profiles_dir, 'jdk_profile.iprof')
             else:
                 mx.warn(f'SubstrateVM Enterprise with JDK{jdk_version} does not contain JDK profiles.')
