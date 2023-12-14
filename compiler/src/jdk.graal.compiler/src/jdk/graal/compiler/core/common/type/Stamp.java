@@ -219,6 +219,13 @@ public abstract class Stamp implements SpeculationContextObject {
     public abstract Stamp improveWith(Stamp other);
 
     /**
+     * @return if this stamp can be improved by the other stamp, i.e., it can be made more precise.
+     */
+    public boolean canBeImprovedWith(Stamp other) {
+        return !improveWith(other).equals(this);
+    }
+
+    /**
      * Tries to improve this stamp with the stamp given as parameter. If successful, returns the new
      * improved stamp. Otherwise, returns null.
      *
