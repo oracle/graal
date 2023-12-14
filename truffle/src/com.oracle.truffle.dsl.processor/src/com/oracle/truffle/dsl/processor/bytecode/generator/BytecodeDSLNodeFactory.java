@@ -4484,12 +4484,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case THROW:
                 case YIELD:
                 case RETURN:
-                case MERGE_CONDITIONAL:
                 case TRAP:
                     break;
                 case BRANCH_FALSE:
                 case POP:
                 case STORE_LOCAL:
+                case MERGE_CONDITIONAL:
                     b.statement("currentStackHeight -= 1");
                     break;
                 case CUSTOM:
