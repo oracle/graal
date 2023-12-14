@@ -129,9 +129,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // of the mark word.
     public final int lockingMode = getFlag("LockingMode", Integer.class);
 
-    public final int lockingModeMonitor = getConstant("LockingMode::LM_MONITOR", Integer.class, 0, JDK >= 22 && JDK_BUILD >= 18);
-    public final int lockingModeStack = getConstant("LockingMode::LM_LEGACY", Integer.class, 1, JDK >= 22 && JDK_BUILD >= 18);
-    public final int lockingModeLightweight = getConstant("LockingMode::LM_LIGHTWEIGHT", Integer.class, 2, JDK >= 22 && JDK_BUILD >= 18);
+    public final int lockingModeMonitor = getConstant("LockingMode::LM_MONITOR", Integer.class, 0, JDK >= 22);
+    public final int lockingModeStack = getConstant("LockingMode::LM_LEGACY", Integer.class, 1, JDK >= 22);
+    public final int lockingModeLightweight = getConstant("LockingMode::LM_LIGHTWEIGHT", Integer.class, 2, JDK >= 22);
 
     public final boolean foldStableValues = getFlag("FoldStableValues", Boolean.class);
     public final int maxVectorSize = getFlag("MaxVectorSize", Integer.class);
@@ -350,7 +350,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int objectMonitorEntryList = getFieldOffset("ObjectMonitor::_EntryList", Integer.class, "ObjectWaiter*");
     public final int objectMonitorSucc = getFieldOffset("ObjectMonitor::_succ", Integer.class, "JavaThread*");
 
-    public final long objectMonitorAnonymousOwner = getConstant("ObjectMonitor::ANONYMOUS_OWNER", Long.class, 1L, JDK >= 22 && JDK_BUILD >= 18);
+    public final long objectMonitorAnonymousOwner = getConstant("ObjectMonitor::ANONYMOUS_OWNER", Long.class, 1L, JDK >= 22);
 
     public final int markWordNoHashInPlace = getConstant("markWord::no_hash_in_place", Integer.class);
     public final int markWordNoLockInPlace = getConstant("markWord::no_lock_in_place", Integer.class);
@@ -598,9 +598,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // Tracking of the number of monitors held by the current thread. This is used by loom but in
     // JDK 20 was enabled by default to ensure it was correctly implemented.
     public final int threadHeldMonitorCountOffset = getFieldOffset("JavaThread::_held_monitor_count", Integer.class, JDK >= 22 ? "intx" : "int64_t");
-    public final int threadLockStackOffset = getFieldOffset("JavaThread::_lock_stack", Integer.class, "LockStack", -1, JDK >= 22 && JDK_BUILD >= 18);
-    public final int lockStackTopOffset = getFieldOffset("LockStack::_top", Integer.class, "uint32_t", -1, JDK >= 22 && JDK_BUILD >= 18);
-    public final int lockStackEndOffset = getConstant("LockStack::_end_offset", Integer.class, -1, JDK >= 22 && JDK_BUILD >= 18);
+    public final int threadLockStackOffset = getFieldOffset("JavaThread::_lock_stack", Integer.class, "LockStack", -1, JDK >= 22);
+    public final int lockStackTopOffset = getFieldOffset("LockStack::_top", Integer.class, "uint32_t", -1, JDK >= 22);
+    public final int lockStackEndOffset = getConstant("LockStack::_end_offset", Integer.class, -1, JDK >= 22);
 
     public final long throwAndPostJvmtiExceptionAddress = getAddress("JVMCIRuntime::throw_and_post_jvmti_exception");
     public final long throwKlassExternalNameExceptionAddress = getAddress("JVMCIRuntime::throw_klass_external_name_exception");
