@@ -162,6 +162,7 @@ public final class JNIFunctions {
             case 21:
                 return JNIVersion.JNI_VERSION_21();
             case 22:
+            case 23:
                 return JNIVersionJDK22OrLater.JNI_VERSION_22();
             default:
                 throw VMError.shouldNotReachHere("Unsupported Java version " + JavaVersionUtil.JAVA_SPEC);
