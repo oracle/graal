@@ -24,10 +24,6 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
-import static jdk.vm.ci.amd64.AMD64.rcx;
-import static jdk.vm.ci.amd64.AMD64.rdx;
-import static jdk.vm.ci.amd64.AMD64.rsi;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Equal;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Less;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.NotEqual;
@@ -37,6 +33,10 @@ import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.DWORD;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.QWORD;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.XMM;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.YMM;
+import static jdk.vm.ci.amd64.AMD64.rcx;
+import static jdk.vm.ci.amd64.AMD64.rdx;
+import static jdk.vm.ci.amd64.AMD64.rsi;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -56,7 +56,6 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
@@ -172,7 +171,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
      * @param array arbitrary array.
      * @param byteOffset byteOffset to start from. Must include array base byteOffset!
      * @param length length of the array region to consider, scaled to
-     *            {@link LIRGeneratorTool.CalcStringAttributesEncoding#stride}.
+     *            {@link jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding#stride}.
      * @param assumeValid assume that the string is encoded correctly.
      */
     public static AMD64CalcStringAttributesOp movParamsAndCreate(LIRGeneratorTool tool, LIRGeneratorTool.CalcStringAttributesEncoding encoding, EnumSet<CPUFeature> runtimeCheckedCPUFeatures,

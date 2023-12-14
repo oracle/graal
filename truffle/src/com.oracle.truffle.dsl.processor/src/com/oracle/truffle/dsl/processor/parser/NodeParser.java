@@ -299,7 +299,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             return null;
         }
 
-        List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<TypeElement>(), templateType);
+        List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<>(), templateType);
 
         NodeData node = parseNodeData(templateType, lookupTypes);
 
@@ -1103,7 +1103,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
                 TypeMirror type = cache.getParameter().getType();
                 if (NodeCodeGenerator.isSpecializedNode(type)) {
-                    List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<TypeElement>(), ElementUtils.castTypeElement(type));
+                    List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<>(), ElementUtils.castTypeElement(type));
                     AnnotationMirror generateAOT = findFirstAnnotation(lookupTypes, types.GenerateAOT);
                     if (generateAOT == null) {
                         cache.addError("Failed to generate code for @%s: " + //
@@ -2538,7 +2538,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             return null;
         }
 
-        List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<TypeElement>(), templateType);
+        List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<>(), templateType);
 
         // Declaration order is not required for child nodes.
         List<? extends Element> members = processingEnv.getElementUtils().getAllMembers(templateType);
@@ -2835,7 +2835,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
             // transitively resolve includes
             Set<SpecializationData> foundSpecializations = new LinkedHashSet<>();
-            collectIncludes(specialization, foundSpecializations, new HashSet<SpecializationData>());
+            collectIncludes(specialization, foundSpecializations, new HashSet<>());
             specialization.getReplaces().addAll(foundSpecializations);
         }
 

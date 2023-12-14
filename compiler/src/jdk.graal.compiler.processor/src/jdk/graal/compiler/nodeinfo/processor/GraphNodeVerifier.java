@@ -82,7 +82,7 @@ public class GraphNodeVerifier {
     /**
      * Returns a type element given a canonical name.
      *
-     * @throws {@link NoClassDefFoundError} if a type element does not exist for {@code name}
+     * @throws NoClassDefFoundError if a type element does not exist for {@code name}
      */
     public TypeElement getTypeElement(String name) {
         return processor.getTypeElement(name);

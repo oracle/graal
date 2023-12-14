@@ -78,7 +78,7 @@ public class PolymorphicTest {
     }
 
     public static void assertNoDuplicates(Node node, Node... ignored) {
-        assertNoDuplicatesRec(new HashSet<>(Arrays.asList(ignored)), new HashSet<Class<?>>(), node);
+        assertNoDuplicatesRec(new HashSet<>(Arrays.asList(ignored)), new HashSet<>(), node);
     }
 
     private static void assertNoDuplicatesRec(Set<Node> ignored, Set<Class<?>> seenClasses, Node current) {

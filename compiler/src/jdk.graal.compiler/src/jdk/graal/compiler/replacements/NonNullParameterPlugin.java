@@ -26,7 +26,6 @@ package jdk.graal.compiler.replacements;
 
 import java.util.BitSet;
 
-import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
@@ -38,7 +37,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.ParameterPlugin;
 
 /**
  * A {@link ParameterPlugin} that sets non-null stamps for parameters annotated with
- * {@link Snippet.NonNullParameter}.
+ * {@link jdk.graal.compiler.api.replacements.Snippet.NonNullParameter}.
  */
 public class NonNullParameterPlugin implements ParameterPlugin {
     private final BitSet nonNullParameters;

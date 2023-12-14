@@ -33,7 +33,7 @@ import jdk.graal.compiler.nodes.spi.LoweringTool;
 
 /**
  * A {@link LoweringPhase} used to lower {@link Lowerable} nodes when the graph is in
- * {@link LoweringTool.StandardLoweringStage#LOW_TIER} stage.
+ * {@link jdk.graal.compiler.nodes.spi.LoweringTool.StandardLoweringStage#LOW_TIER} stage.
  */
 public class LowTierLoweringPhase extends LoweringPhase {
 
