@@ -450,6 +450,118 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
 
     }
 
+    @Test
+    public void testLocalSet() {
+        // return - (arg0)
+        BoxingEliminationTestRootNode node = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            BytecodeLocal local = b.createLocal();
+
+            b.beginStoreLocal(local);
+            b.emitLoadArgument(0);
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.beginAbs();
+            b.emitLoadLocal(local);
+            b.endAbs();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "load.argument",
+                        "store.local",
+                        "load.local",
+                        "c.Abs",
+                        "return",
+                        "pop");
+
+        assertEquals(42L, node.getCallTarget().call(-42L));
+
+        assertInstructions(node,
+                        "load.argument$Long",
+                        "store.local$Long$unboxed",
+                        "load.local$Long$unboxed",
+                        "c.Abs$LessThanZero",
+                        "return",
+                        "pop");
+
+        assertEquals("42", node.getCallTarget().call("42"));
+
+        assertInstructions(node,
+                        "load.argument",
+                        "store.local$generic",
+                        "load.local$generic",
+                        "c.Abs",
+                        "return",
+                        "pop");
+
+    }
+
+    @Test
+    public void testLocalSet2() {
+        // return - (arg0)
+        BoxingEliminationTestRootNode node = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            BytecodeLocal local = b.createLocal();
+
+            b.beginStoreLocal(local);
+            b.emitLoadArgument(0);
+            b.endStoreLocal();
+
+            b.beginStoreLocal(local);
+            b.emitLoadArgument(1);
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.beginAbs();
+            b.emitLoadLocal(local);
+            b.endAbs();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "load.argument",
+                        "store.local",
+                        "load.argument",
+                        "store.local",
+                        "load.local",
+                        "c.Abs",
+                        "return",
+                        "pop");
+
+        assertEquals(42L, node.getCallTarget().call(Boolean.TRUE, -42L));
+
+        assertInstructions(node,
+                        "load.argument$Boolean",
+                        "store.local$Boolean$unboxed",
+                        "load.argument",
+                        "store.local$generic",
+                        "load.local$generic",
+                        "c.Abs",
+                        "return",
+                        "pop");
+
+        assertEquals("42", node.getCallTarget().call(Boolean.TRUE, "42"));
+
+        assertInstructions(node,
+                        "load.argument",
+                        "store.local$generic",
+                        "load.argument",
+                        "store.local$generic",
+                        "load.local$generic",
+                        "c.Abs",
+                        "return",
+                        "pop");
+
+    }
+
     /*
      * Test that if the generic type of a custom node uses boxing eliminate type we automatically
      * quicken.

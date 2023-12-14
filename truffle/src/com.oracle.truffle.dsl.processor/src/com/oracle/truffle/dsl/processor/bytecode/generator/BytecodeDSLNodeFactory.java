@@ -6297,6 +6297,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.statement("break");
                 b.end();
 
+                for (TypeMirror otherType : model.boxingEliminatedTypes) {
+                    if (ElementUtils.typeEquals(otherType, boxingType)) {
+                        continue;
+                    }
+                    b.startCase().string(ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(otherType))).end();
+                }
+
                 b.startCase().string("Object").end();
                 b.startCaseBlock();
                 b.startStatement().string("newInstruction = ").tree(createInstructionConstant(genericInstruction)).end();
