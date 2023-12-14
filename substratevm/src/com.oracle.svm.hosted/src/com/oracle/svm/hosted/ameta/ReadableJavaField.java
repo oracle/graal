@@ -33,7 +33,6 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedField;
 
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public interface ReadableJavaField extends ResolvedJavaField {
@@ -45,7 +44,7 @@ public interface ReadableJavaField extends ResolvedJavaField {
         return field.isValueAvailable();
     }
 
-    static JavaConstant readFieldValue(MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport, ResolvedJavaField field, JavaConstant receiver) {
+    static JavaConstant readFieldValue(ClassInitializationSupport classInitializationSupport, ResolvedJavaField field, JavaConstant receiver) {
         assert !(field instanceof AnalysisField) && !(field instanceof HostedField) : "must have been unwrapped";
 
         if (field instanceof ReadableJavaField readableField) {
@@ -55,7 +54,7 @@ public interface ReadableJavaField extends ResolvedJavaField {
              * below.
              */
             assert readableField.isValueAvailable() : "Field " + readableField.format("%H.%n") + " value not available for reading.";
-            return readableField.readValue(metaAccess, classInitializationSupport, receiver);
+            return readableField.readValue(classInitializationSupport, receiver);
 
         } else if (!classInitializationSupport.maybeInitializeAtBuildTime(field.getDeclaringClass())) {
             /*
@@ -94,7 +93,7 @@ public interface ReadableJavaField extends ResolvedJavaField {
         }
     }
 
-    JavaConstant readValue(MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport, JavaConstant receiver);
+    JavaConstant readValue(ClassInitializationSupport classInitializationSupport, JavaConstant receiver);
 
     /**
      * When this method returns true, image heap snapshotting can access the value before analysis.
