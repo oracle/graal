@@ -92,6 +92,7 @@ public class AbstractQuickeningTest {
     }
 
     private static AssertionError throwBytecodeNodeAssertion(BytecodeRootNode node, String[] expectedInstructions, String message) {
+        printInstructions(node);
         return new AssertionError(String.format("%s %nExpected instructions(%s): %n    %s %nActual instructions: %s", message,
                         expectedInstructions.length, String.join("\n    ", expectedInstructions), node.dump()));
     }
