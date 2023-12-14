@@ -216,6 +216,7 @@ local common_json = import "../common.json";
   },
 
   local linux   = deps_linux   + common + { os:: "linux",   capabilities+: [self.os] },
+  # Run darwin jobs on Big Sur or later by excluding all older versions
   local darwin  = deps_darwin  + common + { os:: "darwin",  capabilities+: [self.os, "!darwin_sierra", "!darwin_mojave", "!darwin_catalina"] },
   local windows = deps_windows + common + { os:: "windows", capabilities+: [self.os] },
   local windows_server_2016 = windows + { capabilities+: ["windows_server_2016"] },

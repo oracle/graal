@@ -21,7 +21,7 @@
     common.linux_amd64  + common.oraclejdk20 + sdk_gate + common.deps.eclipse + common.deps.jdt,
     common.linux_amd64  + common.oraclejdk17 + sdk_gate + common.deps.eclipse + common.deps.jdt + common.mach5_target,
     common.darwin_amd64 + common.oraclejdk20 + sdk_gate,
-    common.darwin_aarch64 + common.oraclejdk20 + sdk_gate,
+    common.darwin_aarch64 + common.oraclejdk17 + sdk_gate,
     common.darwin_amd64 + common.oraclejdk17 + sdk_gate + common.mach5_target,
   ]
 }
