@@ -92,7 +92,7 @@ public class VMFeature implements InternalFeature {
     public void afterAnalysis(AfterAnalysisAccess access) {
         CGlobalDataFeature.singleton().registerWithGlobalSymbol(
                         CGlobalDataFactory.createCString(VM.class.getName() + valueSeparator +
-                                        ImageSingletons.lookup(VM.class).version, VERSION_INFO_SYMBOL_NAME));
+                                        ImageSingletons.lookup(VM.class).vendorVersion, VERSION_INFO_SYMBOL_NAME));
 
         addCGlobalDataString("Target.Platform", ImageSingletons.lookup(Platform.class).getClass().getName());
         addCGlobalDataString("Target.LibC", ImageSingletons.lookup(LibCBase.class).getClass().getName());
