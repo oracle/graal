@@ -198,6 +198,43 @@ public class BytecodeDSLExampleGeneralTest extends AbstractBytecodeDSLExampleTes
     }
 
     @Test
+    public void testConditionalBranchSpBalancing() {
+        // For conditionals, we use a special merge instruction for BE. The builder needs to
+        // correctly update the stack height at the merge. Currently, we only validate that the sp
+        // is balanced between branches and labels, so we use those to check that the sp is
+        // correctly updated.
+
+        // goto lbl;
+        // arg0 ? 1 else 2
+        // lbl:
+        // return 0
+        RootCallTarget root = parse("conditional", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginBlock();
+
+            BytecodeLabel lbl = b.createLabel();
+
+            b.emitBranch(lbl);
+
+            b.beginConditional();
+                b.emitLoadArgument(0);
+                b.emitLoadConstant(1L);
+                b.emitLoadConstant(2L);
+            b.endConditional();
+
+            b.emitLabel(lbl);
+
+            emitReturn(b, 0L);
+
+            b.endBlock();
+            b.endRoot();
+        });
+
+        assertEquals(0L, root.call(true));
+        assertEquals(0L, root.call(false));
+    }
+
+    @Test
     public void testSumLoop() {
         // i = 0; j = 0;
         // while (i < arg0) { j = j + i; i = i + 1; }
