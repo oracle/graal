@@ -608,7 +608,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     private CodeTree createFastAccessFieldInitializer() {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        b.startStaticCall(types.BytecodeDSLAccess, "lookup").string("BytecodeNodesImpl.VISIBLE_TOKEN").end();
+        b.startStaticCall(types.BytecodeDSLAccess, "lookup").string("BytecodeNodesImpl.VISIBLE_TOKEN").string(Boolean.toString(model.allowUnsafe)).end();
         return b.build();
     }
 

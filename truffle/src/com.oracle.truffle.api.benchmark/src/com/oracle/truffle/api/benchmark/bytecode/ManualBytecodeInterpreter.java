@@ -185,7 +185,7 @@ class ManualUnsafeBytecodeInterpreter extends BaseBytecodeNode {
         super(language, frameDescriptor, bc);
     }
 
-    private static final BytecodeDSLAccess UFA = BytecodeDSLAccess.lookup(AccessToken.PUBLIC_TOKEN);
+    private static final BytecodeDSLAccess UFA = BytecodeDSLAccess.lookup(AccessToken.PUBLIC_TOKEN, true);
 
     @Override
     @BytecodeInterpreterSwitch
@@ -484,7 +484,7 @@ class ManualUnsafeNodedInterpreter extends BaseBytecodeNode {
         this.nodes = nodes;
     }
 
-    private static final BytecodeDSLAccess UFA = BytecodeDSLAccess.lookup(AccessToken.PUBLIC_TOKEN);
+    private static final BytecodeDSLAccess UFA = BytecodeDSLAccess.lookup(AccessToken.PUBLIC_TOKEN, true);
 
     public abstract static class AddNode extends Node {
         public abstract int execute(int lhs, int rhs);
@@ -630,7 +630,7 @@ class ManualUnsafeNodedInterpreterWithoutBE extends BaseBytecodeNode {
         this.nodes = nodes;
     }
 
-    private static final BytecodeDSLAccess UFA = BytecodeDSLAccess.lookup(AccessToken.PUBLIC_TOKEN);
+    private static final BytecodeDSLAccess UFA = BytecodeDSLAccess.lookup(AccessToken.PUBLIC_TOKEN, true);
 
     @Override
     @BytecodeInterpreterSwitch
