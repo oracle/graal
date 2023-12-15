@@ -346,9 +346,12 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
         }
         if (destComponentType.getJavaKind() == JavaKind.Object && !destComponentType.isJavaLangObject() && !sourceComponentType.equals(destComponentType)) {
             for (int i = 0; i < length; i++) {
-                var elementValueType = ((TypedConstant) source.getElement(sourcePos + i)).getType(metaAccess);
-                if (!destComponentType.isAssignableFrom(elementValueType)) {
-                    return false;
+                var elementValue = (JavaConstant) source.getElement(sourcePos + i);
+                if (elementValue.isNonNull()) {
+                    var elementValueType = ((TypedConstant) elementValue).getType(metaAccess);
+                    if (!destComponentType.isAssignableFrom(elementValueType)) {
+                        return false;
+                    }
                 }
             }
         }
