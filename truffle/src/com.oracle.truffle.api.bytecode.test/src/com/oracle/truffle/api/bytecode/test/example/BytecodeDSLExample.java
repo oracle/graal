@@ -66,7 +66,6 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -78,14 +77,14 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 
 @GenerateBytecodeTestVariants({
-                @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableSerialization = true)),
-                @Variant(suffix = "Unsafe", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = true)),
+                @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = false)),
+                @Variant(suffix = "Unsafe", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableSerialization = true)),
                 @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableSerialization = true, enableUncachedInterpreter = true)),
                 @Variant(suffix = "WithBE", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableSerialization = true, boxingEliminationTypes = {
                                 boolean.class, long.class}, decisionsFile = "bytecode_dsl_example_quickening_only.json")),
                 @Variant(suffix = "WithOptimizations", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableSerialization = true, decisionsFile = "bytecode_dsl_example_decisions.json")),
                 // A typical "production" configuration with all of the bells and whistles.
-                @Variant(suffix = "Production", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = true, enableUncachedInterpreter = true, //
+                @Variant(suffix = "Production", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableSerialization = true, enableUncachedInterpreter = true, //
                                 boxingEliminationTypes = {long.class}, decisionsFile = "bytecode_dsl_example_decisions.json"))
 })
 @GenerateAOT

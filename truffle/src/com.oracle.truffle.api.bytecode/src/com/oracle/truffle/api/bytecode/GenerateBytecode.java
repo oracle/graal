@@ -130,7 +130,7 @@ public @interface GenerateBytecode {
      * Whether to use Unsafe array accesses. Unsafe accesses are faster, but they do not perform
      * array bounds checks.
      */
-    boolean allowUnsafe() default false;
+    boolean allowUnsafe() default true;
 
     /**
      * Whether the generated interpreter should support coroutines via a {@code yield} operation.
