@@ -1186,20 +1186,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.end();
 
         b.end().startCatchBlock(type(Throwable.class), "e");
-        b.declaration("String", "parsed", "\"\"");
-        b.declaration("boolean", "first", "true");
+        b.statement("StringBuilder b = new StringBuilder()");
+        b.declaration("String", "sep", "\"\"");
 
         b.startFor().string("Object[] instruction : instructions").end().startBlock();
-        b.startIf().string("!first").end().startBlock();
-        b.statement("parsed += \"\\n    \"");
-        b.statement("first = false");
-        b.end();
-        b.startStatement().startGroup().string("parsed += ").startNew(types.Instruction).string("instruction").end().string(".toString()").end(2);
+        b.statement("b.append(sep)");
+        b.startStatement().startCall("b.append").startGroup().startNew(types.Instruction).string("instruction").end().string(".toString()").end(3);
+        b.statement("sep = \"\\n    \"");
         b.end();
 
         b.startThrow().startNew(type(IllegalStateException.class));
         b.startGroup();
-        b.doubleQuote("Error parsing instructions at ").string(" + bci[0] + ").doubleQuote(". Parsed instructions so far: \\n    ").string(" + parsed");
+        b.doubleQuote("Error parsing instructions at ").string(" + bci[0] + ").doubleQuote(". Parsed instructions so far: \\n    ").string(" + b.toString()");
         b.end();
         b.string("e");
         b.end().end();
