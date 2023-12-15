@@ -88,6 +88,7 @@ import jdk.graal.compiler.nodes.calc.SignExtendNode;
 import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.extended.JavaReadNode;
 import jdk.graal.compiler.nodes.extended.JavaWriteNode;
+import jdk.graal.compiler.nodes.extended.SpeculationFenceNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
@@ -351,6 +352,10 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
          * check on its base address.
          */
         read.setForceFixed(true);
+
+        // Add lfence for SFI
+        b.add(new SpeculationFenceNode());
+
         return read;
     }
 
