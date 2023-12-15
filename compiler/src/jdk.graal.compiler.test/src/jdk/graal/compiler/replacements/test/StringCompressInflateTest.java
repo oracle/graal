@@ -300,13 +300,13 @@ public final class StringCompressInflateTest extends HotSpotGraalCompilerTest {
         }
 
         // Exhaustively check compress returning the correct index of the non-latin1 char.
-        final int SIZE = 48;
-        final byte FILL_BYTE = 'R';
-        char[] chars = new char[SIZE];
+        final int size = 48;
+        final byte fillByte = 'R';
+        char[] chars = new char[size];
         final byte[] bytes = new byte[chars.length];
-        Arrays.fill(bytes, FILL_BYTE);
-        for (int i = 0; i < SIZE; i++) { // Every starting index
-            for (int j = i; j < SIZE; j++) {  // Every location of non-latin1
+        Arrays.fill(bytes, fillByte);
+        for (int i = 0; i < size; i++) { // Every starting index
+            for (int j = i; j < size; j++) {  // Every location of non-latin1
                 Arrays.fill(chars, 'A');
                 chars[j] = 0xFF21;
                 byte[] dst = Arrays.copyOf(bytes, bytes.length);
@@ -316,7 +316,7 @@ public final class StringCompressInflateTest extends HotSpotGraalCompilerTest {
                 Assert.assertEquals(result, result2);
                 Assert.assertArrayEquals(dst, dst2);
                 Assert.assertEquals("compress found wrong index", j - i, result);
-                Assert.assertEquals("extra character stored", FILL_BYTE, bytes[j]);
+                Assert.assertEquals("extra character stored", fillByte, bytes[j]);
             }
         }
     }

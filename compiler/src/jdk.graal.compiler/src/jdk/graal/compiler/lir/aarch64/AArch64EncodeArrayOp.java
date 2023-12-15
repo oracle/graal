@@ -111,7 +111,7 @@ public final class AArch64EncodeArrayOp extends AArch64ComplexVectorOp {
     }
 
     public static void emitEncodeArrayOp(AArch64MacroAssembler masm, Register res, Register src, Register dst, Register len, Value[] vectorRegisters, CharsetName charset) {
-        GraalError.guarantee(charset == CharsetName.ASCII || charset == CharsetName.ISO_8859_1, charset.toString());
+        GraalError.guarantee(charset == CharsetName.ASCII || charset == CharsetName.ISO_8859_1, "unsupported charset: %s", charset);
         boolean ascii = charset == CharsetName.ASCII;
 
         Register vtmp0 = asRegister(vectorRegisters[0]);
