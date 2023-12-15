@@ -292,6 +292,8 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         ElementUtils.findMethod(types.BytecodeRootNode, "findSourceSectionAtBci"),
                         ElementUtils.findMethod(types.BytecodeRootNode, "findBciOfOperationNode"),
                         ElementUtils.findMethod(types.BytecodeRootNode, "readBciFromFrame"),
+                        ElementUtils.findMethod(types.BytecodeRootNode, "getLocalIndex"),
+                        ElementUtils.findMethod(types.BytecodeRootNode, "getLocal"),
                         ElementUtils.findMethod(types.BytecodeRootNode, "getLocals"),
                         ElementUtils.findMethod(types.BytecodeRootNode, "getLocalNames"),
                         ElementUtils.findMethod(types.BytecodeRootNode, "getLocalInfos"),

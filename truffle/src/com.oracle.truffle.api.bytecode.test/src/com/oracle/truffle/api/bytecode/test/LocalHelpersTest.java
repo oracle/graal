@@ -130,6 +130,85 @@ public class LocalHelpersTest {
     }
 
     @Test
+    public void testGetLocalSimple() {
+        /* @formatter:off
+         *
+         * foo = 42
+         * bar = arg0
+         * return getLocal(arg1)
+         *
+         * @formatter:on
+         */
+        BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
+            b.beginRoot(null);
+
+            b.beginBlock();
+            BytecodeLocal foo = makeLocal(b, "foo");
+            BytecodeLocal bar = makeLocal(b, "bar");
+
+            b.beginStoreLocal(foo);
+            b.emitLoadConstant(42);
+            b.endStoreLocal();
+
+            b.beginStoreLocal(bar);
+            b.emitLoadArgument(0);
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.beginGetLocal();
+            b.emitLoadArgument(1);
+            b.endGetLocal();
+            b.endReturn();
+
+            b.endBlock();
+
+            b.endRoot();
+        });
+
+        assertEquals(42, root.getCallTarget().call(123, 0));
+        assertEquals(123, root.getCallTarget().call(123, 1));
+    }
+
+    @Test
+    public void testGetLocalUsingBytecodeLocalIndex() {
+        /* @formatter:off
+         *
+         * foo = 42
+         * bar = arg0
+         * return getLocal(arg1)
+         *
+         * @formatter:on
+         */
+        BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
+            b.beginRoot(null);
+
+            b.beginBlock();
+            BytecodeLocal foo = makeLocal(b, "foo");
+            BytecodeLocal bar = makeLocal(b, "bar");
+
+            b.beginStoreLocal(foo);
+            b.emitLoadConstant(0);
+            b.endStoreLocal();
+
+            b.beginStoreLocal(bar);
+            b.emitLoadArgument(1);
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.emitGetLocalUsingBytecodeLocalIndex();
+            b.endReturn();
+
+            b.endBlock();
+
+            BytecodeNodeWithLocalIntrospection rootNode = b.endRoot();
+            rootNode.reservedLocalIndex = rootNode.getLocalIndex(bar);
+        });
+
+        assertEquals(42, root.getCallTarget().call(123, 42));
+        assertEquals(1024, root.getCallTarget().call(123, 1024));
+    }
+
+    @Test
     public void testGetLocalsSimple() {
         /* @formatter:off
          *
@@ -549,6 +628,9 @@ public class LocalHelpersTest {
 })
 @OperationProxy(value = ContinuationResult.ContinueNode.class, name = "Continue")
 abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode implements BytecodeRootNode {
+    // Used for testGetLocalUsingBytecodeLocalIndex
+    public int reservedLocalIndex = -1;
+
     protected BytecodeNodeWithLocalIntrospection(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
@@ -569,6 +651,23 @@ abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode 
                 result.put((String) names[i], values[i]);
             }
             return result;
+        }
+    }
+
+    @Operation
+    public static final class GetLocal {
+        @Specialization
+        public static Object perform(VirtualFrame frame, int i, @Bind("$root") BytecodeNodeWithLocalIntrospection bytecodeRootNode) {
+            return bytecodeRootNode.getLocal(frame, i);
+        }
+    }
+
+    @Operation
+    public static final class GetLocalUsingBytecodeLocalIndex {
+        @Specialization
+        public static Object perform(VirtualFrame frame, @Bind("$root") BytecodeNodeWithLocalIntrospection bytecodeRootNode) {
+            assert bytecodeRootNode.reservedLocalIndex != -1;
+            return bytecodeRootNode.getLocal(frame, bytecodeRootNode.reservedLocalIndex);
         }
     }
 

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.bytecode.test;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
@@ -58,8 +59,10 @@ import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
 import com.oracle.truffle.api.bytecode.test.BoxingEliminationTest.BoxingEliminationTestRootNode.ToBoolean;
 import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleLanguage;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 public class BoxingEliminationTest extends AbstractQuickeningTest {
@@ -560,6 +563,132 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "return",
                         "pop");
 
+    }
+
+    @Test
+    public void testGetLocals() {
+        // local0 = arg0
+        // local1 = arg1
+        // local2 = arg2
+        // return getLocals()
+        BoxingEliminationTestRootNode node = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginStoreLocal(b.createLocal());
+            b.emitLoadArgument(0);
+            b.endStoreLocal();
+
+            b.beginStoreLocal(b.createLocal());
+            b.emitLoadArgument(1);
+            b.endStoreLocal();
+
+            b.beginStoreLocal(b.createLocal());
+            b.emitLoadArgument(2);
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.emitGetLocals();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "load.argument",
+                        "store.local",
+                        "load.argument",
+                        "store.local",
+                        "load.argument",
+                        "store.local",
+                        "c.GetLocals",
+                        "return",
+                        "pop");
+
+        assertArrayEquals(new Object[]{42L, 123, true}, (Object[]) node.getCallTarget().call(42L, 123, true));
+
+        assertInstructions(node,
+                        "load.argument$Long",
+                        "store.local$Long$unboxed",
+                        "load.argument$Int",
+                        "store.local$Int$unboxed",
+                        "load.argument$Boolean",
+                        "store.local$Boolean$unboxed",
+                        "c.GetLocals",
+                        "return",
+                        "pop");
+
+        assertArrayEquals(new Object[]{"42", 123, 1024}, (Object[]) node.getCallTarget().call("42", 123, 1024));
+
+        assertInstructions(node,
+                        "load.argument",
+                        "store.local$generic",
+                        "load.argument$Int",
+                        "store.local$Int$unboxed",
+                        "load.argument",
+                        "store.local$generic",
+                        "c.GetLocals",
+                        "return",
+                        "pop");
+    }
+
+    @Test
+    public void testGetLocal() {
+        // local0 = arg0
+        // local1 = arg1
+        // return getLocal(arg2)
+        BoxingEliminationTestRootNode node = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginStoreLocal(b.createLocal());
+            b.emitLoadArgument(0);
+            b.endStoreLocal();
+
+            b.beginStoreLocal(b.createLocal());
+            b.emitLoadArgument(1);
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.beginGetLocal();
+            b.emitLoadArgument(2);
+            b.endGetLocal();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "load.argument",
+                        "store.local",
+                        "load.argument",
+                        "store.local",
+                        "load.argument",
+                        "c.GetLocal",
+                        "return",
+                        "pop");
+
+        assertEquals(42L, node.getCallTarget().call(42L, 123, 0));
+
+        assertInstructions(node,
+                        "load.argument$Long",
+                        "store.local$Long$unboxed",
+                        "load.argument$Int",
+                        "store.local$Int$unboxed",
+                        "load.argument$Int",
+                        "c.GetLocal$Perform",
+                        "return",
+                        "pop");
+
+        assertEquals(1024, node.getCallTarget().call(true, 1024, 1));
+
+        assertInstructions(node,
+                        "load.argument",
+                        "store.local$generic",
+                        "load.argument$Int",
+                        "store.local$Int$unboxed",
+                        "load.argument$Int",
+                        "c.GetLocal$Perform",
+                        "return",
+                        "pop");
     }
 
     /*
@@ -1345,6 +1474,21 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
 
         }
 
+        @Operation
+        static final class GetLocals {
+            @Specialization
+            static Object[] perform(VirtualFrame frame, @Bind("$root") BoxingEliminationTestRootNode root) {
+                return root.getLocals(frame);
+            }
+        }
+
+        @Operation
+        static final class GetLocal {
+            @Specialization
+            static Object perform(VirtualFrame frame, int i, @Bind("$root") BoxingEliminationTestRootNode root) {
+                return root.getLocal(frame, i);
+            }
+        }
     }
 
 }

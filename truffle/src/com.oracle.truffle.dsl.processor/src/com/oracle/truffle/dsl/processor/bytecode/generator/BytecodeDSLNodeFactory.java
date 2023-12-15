@@ -337,6 +337,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         bytecodeNodeGen.add(createMergeVariadic());
 
         // Define helpers for locals.
+        bytecodeNodeGen.add(createGetLocalIndex());
+        bytecodeNodeGen.add(createGetLocal());
         bytecodeNodeGen.add(createGetLocals());
         bytecodeNodeGen.add(createGetLocalNames());
         bytecodeNodeGen.add(createGetLocalInfos());
@@ -1287,58 +1289,75 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return ex;
     }
 
+    private CodeExecutableElement createGetLocalIndex() {
+        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeRootNode, "getLocalIndex");
+
+        CodeTreeBuilder b = ex.createBuilder();
+        b.startReturn();
+        b.startParantheses();
+        b.cast(bytecodeLocalImpl.asType(), "local");
+        b.end();
+        b.string(".index - " + USER_LOCALS_START_IDX);
+        b.end();
+
+        return ex;
+    }
+
+    private CodeExecutableElement createGetLocal() {
+        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeRootNode, "getLocal");
+
+        CodeTreeBuilder b = ex.createBuilder();
+
+        String index = "localIndex + " + USER_LOCALS_START_IDX;
+
+        if (model.usesBoxingElimination()) {
+            b.startTryBlock();
+            b.startSwitch().string("getFrameDescriptor().getSlotKind(" + index + ")").end().startBlock();
+            for (TypeMirror type : model.boxingEliminatedTypes) {
+                b.startCase().string(ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(type))).end();
+                b.startCaseBlock();
+                b.startReturn();
+                startExpectFrame(b, "frame", type, false).string(index).end();
+                b.end(); // return
+                b.end(); // case block
+            }
+
+            b.startCase().string("Object").end();
+            b.startCase().string("Illegal").end();
+            b.startCaseBlock();
+            b.startReturn();
+            startExpectFrame(b, "frame", context.getType(Object.class), false).string(index).end();
+            b.end(); // return
+            b.end(); // case block
+
+            b.caseDefault().startCaseBlock();
+            b.tree(GeneratorUtils.createShouldNotReachHere("unexpected slot"));
+            b.end();
+
+            b.end(); // switch block
+
+            b.end().startCatchBlock(types.UnexpectedResultException, "ex");
+            b.startReturn().string("ex.getResult()").end();
+
+            b.end(); // catch
+        } else {
+            b.startReturn().string("frame.getObject(" + index + ")").end();
+        }
+
+        return ex;
+    }
+
     private CodeExecutableElement createGetLocals() {
         CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeRootNode, "getLocals");
         ex.addAnnotationMirror(createExplodeLoopAnnotation(null));
 
         CodeTreeBuilder b = ex.createBuilder();
 
-        String index = "i + " + USER_LOCALS_START_IDX;
-
         b.declaration(context.getType(Object[].class), "result", "new Object[numLocals - " + USER_LOCALS_START_IDX + "]");
 
-        if (model.usesBoxingElimination()) {
-            b.declaration(types.FrameDescriptor, "frameDescriptor", "getFrameDescriptor()");
-            b.startFor().string("int i = 0; i < numLocals - " + USER_LOCALS_START_IDX + "; i++").end().startBlock();
-
-            b.startTryBlock();
-            b.startSwitch().string("frameDescriptor.getSlotKind(i)").end().startBlock();
-            for (TypeMirror type : model.boxingEliminatedTypes) {
-                b.startCase().string(ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(type))).end();
-                b.startCaseBlock();
-                b.startStatement().string("result[i] = ");
-                startExpectFrame(b, "frame", type, false).string(index).end();
-                b.end(); // statement
-                b.statement("break");
-                b.end(); // case block
-            }
-            b.startCase().string("Object").end();
-            b.startCase().string("Illegal").end();
-            b.startCaseBlock();
-
-            b.startStatement().string("result[i] = ");
-            startExpectFrame(b, "frame", context.getType(Object.class), false).string(index).end();
-            b.end(); // statement
-            b.statement("break");
-
-            b.end();
-
-            b.caseDefault().startCaseBlock();
-            b.tree(GeneratorUtils.createShouldNotReachHere("unexpected slot"));
-            b.end();
-            b.end(); // switch block
-
-            b.end().startCatchBlock(types.UnexpectedResultException, "ex");
-            b.statement("result[i] = ex.getResult()");
-
-            b.end(); // catch
-
-            b.end(); // for
-        } else {
-            b.startFor().string("int i = 0; i < numLocals - " + USER_LOCALS_START_IDX + "; i++").end().startBlock();
-            b.statement("result[i] = frame.getObject(" + index + ")");
-            b.end();
-        }
+        b.startFor().string("int i = 0; i < numLocals - " + USER_LOCALS_START_IDX + "; i++").end().startBlock();
+        b.statement("result[i] = getLocal(frame, i)");
+        b.end(); // for
 
         b.startReturn().string("result").end();
 
