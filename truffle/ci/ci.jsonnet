@@ -55,7 +55,7 @@
     packages+: {
       maven: "==3.3.9"
     },
-    mx_cmd: ["mx", "-p", "../vm", "--dynamicimports", "/graal-js"],
+    mx_cmd: ["mx", "-p", "../vm", "--env", "ce", "--dynamicimports", "/graal-js", "--native-images=none"],
     run+: [
       ["set-export", "ROOT_DIR", ["pwd"]],
       self.mx_cmd + ["build"],
@@ -76,12 +76,12 @@
       maven: "==3.3.9",
       ruby: ">=2.1.0",
     },
-    mx_cmd: ["mx", "-p", "../vm", "--dynamicimports", "/substratevm", "--native-images=none"],
+    mx_cmd: ["mx", "-p", "../vm", "--env", "ce", "--native-images=none"],
     run+: [
       ["set-export", "ROOT_DIR", ["pwd"]],
       self.mx_cmd + ["build"],
       ["mkdir", "mxbuild/tmp_mvn_repo"],
-      ["mx", "maven-install", "--all-suites", "--repo", "mxbuild/tmp_mvn_repo", "--version-string", self.mx_cmd + ["graalvm-version"]],
+      self.mx_cmd + ["maven-deploy", "--tags=public", "--all-suites", "--all-distribution-types", "--validate=full", "--licenses=EPL-2.0,PSF-License,GPLv2-CPE,ICU,GPLv2,BSD-simplified,BSD-new,UPL,MIT", "--version-string", self.mx_cmd + ["graalvm-version"], "--suppress-javadoc", "local", "file://$ROOT_DIR/mxbuild/tmp_mvn_repo"],
       ["set-export", "JAVA_HOME", self.mx_cmd + ["--quiet", "--no-warning", "graalvm-home"]],
       ["cd", "external_repos"],
       ["python", "populate.py"],
@@ -105,7 +105,6 @@
   builds: std.flattenArrays([
       [
         linux_amd64  + jdk + sigtest + guard,
-        linux_amd64  + jdk + simple_tool_maven_project_gate + common.mach5_target,
         # JDK latest only works on MacOS Ventura (GR-49652)
         # darwin_amd64 + jdk + truffle_weekly + gate_lite + guard,
         darwin_aarch64 + jdk + truffle_weekly + gate_lite + guard,
@@ -117,6 +116,9 @@
     # The simple_language_maven_project_gate uses native-image, so we must run on labsjdk rather than oraclejdk
     linux_amd64  + common.labsjdk21 + simple_language_maven_project_gate,
     linux_amd64  + common.labsjdkLatest + simple_language_maven_project_gate,
+    # The simple_tool_maven_project_gate builds compiler, so we must run on labsjdk rather than oraclejdk because of compiler module rename
+    linux_amd64  + common.labsjdk21 + simple_tool_maven_project_gate,
+    linux_amd64  + common.labsjdkLatest + simple_tool_maven_project_gate,
 
     linux_amd64 + common.oraclejdk21 + truffle_gate + guard + {timelimit: "45:00"},
     linux_amd64 + common.oraclejdkLatest + truffle_gate + guard + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
