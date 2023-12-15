@@ -391,7 +391,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                          * anchor the PiNode at the BeginNode of the preceding block, because at
                          * that point the condition is not proven yet.
                          */
-                        ValueAnchorNode anchor = graph.add(new ValueAnchorNode(null));
+                        ValueAnchorNode anchor = graph.add(new ValueAnchorNode());
                         graph.addAfterFixed(survivingBegin, anchor);
                         survivingBegin.replaceAtUsages(anchor, InputType.Guard, InputType.Anchor);
                     }
@@ -699,7 +699,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 return null;
             }
 
-            ValueAnchorNode anchor = graph.add(new ValueAnchorNode(null));
+            ValueAnchorNode anchor = graph.add(new ValueAnchorNode());
             graph.addAfterFixed(anchorPoint, anchor);
             return graph.unique(new PiNode(input, piStamp, anchor));
         }

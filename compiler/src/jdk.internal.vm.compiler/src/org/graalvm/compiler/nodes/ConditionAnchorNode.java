@@ -86,7 +86,7 @@ public final class ConditionAnchorNode extends FixedWithNextNode implements Cano
             if (c.getValue() != negated) {
                 return null;
             } else {
-                return new ValueAnchorNode(null);
+                return new ValueAnchorNode();
             }
         }
         if (tool.allUsagesAvailable() && this.hasNoUsages()) {
@@ -98,7 +98,7 @@ public final class ConditionAnchorNode extends FixedWithNextNode implements Cano
     @Override
     public void lower(LoweringTool tool) {
         if (graph().getGuardsStage() == GraphState.GuardsStage.FIXED_DEOPTS) {
-            ValueAnchorNode newAnchor = graph().add(new ValueAnchorNode(null));
+            ValueAnchorNode newAnchor = graph().add(new ValueAnchorNode());
             graph().replaceFixedWithFixed(this, newAnchor);
         }
     }

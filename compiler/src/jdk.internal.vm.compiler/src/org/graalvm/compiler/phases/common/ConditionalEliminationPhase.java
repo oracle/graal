@@ -440,7 +440,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                     GraphUtil.unlinkFixedNode(node);
                     GraphUtil.killWithUnusedFloatingInputs(node);
                 } else {
-                    ValueAnchorNode valueAnchor = node.graph().add(new ValueAnchorNode(null));
+                    ValueAnchorNode valueAnchor = node.graph().add(new ValueAnchorNode());
                     node.replaceAtUsages(valueAnchor);
                     node.graph().replaceFixedWithFixed(node, valueAnchor);
                 }
@@ -452,7 +452,11 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
         protected void processGuard(GuardNode node) {
             if (!tryProveGuardCondition(node, node.getCondition(), (guard, result, guardedValueStamp, newInput) -> {
                 if (result != node.isNegated()) {
+                    ValueNode condition = node.getCondition();
                     node.replaceAndDelete(guard.asNode());
+                    if (condition.hasNoUsages()) {
+                        GraphUtil.killWithUnusedFloatingInputs(condition);
+                    }
                     if (guard instanceof DeoptimizingGuard && !((DeoptimizingGuard) guard).isNegated()) {
                         rebuildPiNodes((DeoptimizingGuard) guard);
                     }
