@@ -68,14 +68,6 @@ public class JfrEventFeature implements InternalFeature {
     }
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JfrEventFeature.class, false, "jdk.jfr", "jdk.jfr.events");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JfrFeature.class, false, "jdk.jfr", "jdk.jfr.events");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JfrEventSubstitution.class, false, "jdk.internal.vm.ci", "jdk.vm.ci.hotspot");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JfrEventFeature.class, false, "java.base", "jdk.internal.event");
-    }
-
-    @Override
     public void duringSetup(DuringSetupAccess c) {
         FeatureImpl.DuringSetupAccessImpl config = (FeatureImpl.DuringSetupAccessImpl) c;
         MetaAccessProvider metaAccess = config.getMetaAccess().getWrapped();
