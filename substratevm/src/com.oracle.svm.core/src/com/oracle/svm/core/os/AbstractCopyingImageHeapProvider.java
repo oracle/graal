@@ -29,8 +29,6 @@ import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
 import static com.oracle.svm.core.util.PointerUtils.roundUp;
 
-import com.oracle.svm.core.code.DynamicMethodAddressResolutionHeapSupport;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -39,9 +37,12 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
+import com.oracle.svm.core.code.DynamicMethodAddressResolutionHeapSupport;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.util.UnsignedUtils;
+
+import jdk.graal.compiler.word.Word;
 
 public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeapProvider {
     @Override
@@ -108,9 +109,8 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
 
         // Protect the read-only parts at the start of the image heap.
         UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
-        int nullRegionSize = Heap.getHeap().getImageHeapNullRegionSize();
-        Pointer firstPartOfReadOnlyImageHeap = imageHeap.add(nullRegionSize);
-        UnsignedWord writableBeginPageOffset = UnsignedUtils.roundDown(IMAGE_HEAP_WRITABLE_BEGIN.get().subtract(imageHeapBegin.add(nullRegionSize)), pageSize);
+        Pointer firstPartOfReadOnlyImageHeap = imageHeap;
+        UnsignedWord writableBeginPageOffset = UnsignedUtils.roundDown(IMAGE_HEAP_WRITABLE_BEGIN.get().subtract(imageHeapBegin), pageSize);
         if (writableBeginPageOffset.aboveThan(0)) {
             if (VirtualMemoryProvider.get().protect(firstPartOfReadOnlyImageHeap, writableBeginPageOffset, Access.READ) != 0) {
                 freeImageHeap(allocatedMemory);
@@ -125,13 +125,6 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
             UnsignedWord afterWritableSize = imageHeapSizeInFile.subtract(writableEndPageOffset);
             if (VirtualMemoryProvider.get().protect(afterWritableBoundary, afterWritableSize, Access.READ) != 0) {
                 freeImageHeap(allocatedMemory);
-                return CEntryPointErrors.PROTECT_HEAP_FAILED;
-            }
-        }
-
-        // Protect the null region.
-        if (nullRegionSize > 0) {
-            if (VirtualMemoryProvider.get().protect(imageHeapBegin, WordFactory.unsigned(nullRegionSize), Access.NONE) != 0) {
                 return CEntryPointErrors.PROTECT_HEAP_FAILED;
             }
         }

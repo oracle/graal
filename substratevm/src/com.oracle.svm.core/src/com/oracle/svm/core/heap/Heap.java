@@ -29,7 +29,6 @@ import java.lang.ref.ReferenceQueue;
 import java.util.List;
 import java.util.function.Consumer;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -45,7 +44,8 @@ import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
-import com.oracle.svm.core.os.ImageHeapProvider;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 public abstract class Heap {
     @Fold
@@ -156,15 +156,6 @@ public abstract class Heap {
      */
     @Fold
     public abstract int getImageHeapOffsetInAddressSpace();
-
-    /**
-     * Returns the number of null bytes that should be prepended to the image heap during the image
-     * build. This value must be a multiple of the page size. When the image heap is mapped at
-     * runtime, this extra memory gets mapped as well but is marked as inaccessible (see
-     * {@link ImageHeapProvider} for more details).
-     */
-    @Fold
-    public abstract int getImageHeapNullRegionSize();
 
     /**
      * Returns whether the runtime page size doesn't have to match the page size set at image

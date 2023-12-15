@@ -38,7 +38,6 @@ import static org.graalvm.word.WordFactory.signed;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -66,6 +65,8 @@ import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.PointerUtils;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * An optimal image heap provider for Linux which creates isolate image heaps that retain the
@@ -169,14 +170,6 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
             UnsignedWord writableSize = IMAGE_HEAP_WRITABLE_END.get().subtract(writableBegin);
             if (VirtualMemoryProvider.get().protect(writableBegin, writableSize, Access.READ | Access.WRITE) != 0) {
                 return CEntryPointErrors.PROTECT_HEAP_FAILED;
-            }
-
-            // Protect the null region.
-            int nullRegionSize = Heap.getHeap().getImageHeapNullRegionSize();
-            if (nullRegionSize > 0) {
-                if (VirtualMemoryProvider.get().protect(imageHeapBegin, WordFactory.unsigned(nullRegionSize), Access.NONE) != 0) {
-                    return CEntryPointErrors.PROTECT_HEAP_FAILED;
-                }
             }
 
             basePointer.write(imageHeapBegin);

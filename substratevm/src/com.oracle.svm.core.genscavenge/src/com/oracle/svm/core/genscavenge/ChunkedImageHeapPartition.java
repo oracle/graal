@@ -25,6 +25,7 @@
 package com.oracle.svm.core.genscavenge;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -34,15 +35,20 @@ import java.util.Queue;
 import java.util.TreeMap;
 
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.genscavenge.AbstractImageHeapLayouter.AbstractImageHeapPartition;
 import com.oracle.svm.core.image.ImageHeapObject;
+import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 
 /**
- * An unstructured image heap partition that just contains a linear sequence of image heap objects.
+ * The image heap comes in partitions. Each partition holds objects with different properties
+ * (read-only/writable, primitives/objects).
  */
-public class ChunkedImageHeapPartition extends AbstractImageHeapPartition {
+public class ChunkedImageHeapPartition implements ImageHeapPartition {
+    private final String name;
+    private final boolean writable;
     private final boolean hugeObjects;
+    private final int minimumObjectSize;
+    private final List<ImageHeapObject> objects = new ArrayList<>();
 
     Object firstObject;
     Object lastObject;
@@ -50,18 +56,21 @@ public class ChunkedImageHeapPartition extends AbstractImageHeapPartition {
     long startOffset = -1;
     long endOffset = -1;
 
-    private final int minimumObjectSize;
+    private int startAlignment = -1;
+    private int endAlignment = -1;
 
     ChunkedImageHeapPartition(String name, boolean writable, boolean hugeObjects) {
-        super(name, writable);
+        this.name = name;
+        this.writable = writable;
         this.hugeObjects = hugeObjects;
 
         /* Cache to prevent frequent lookups of the object layout from ImageSingletons. */
         this.minimumObjectSize = ConfigurationValues.getObjectLayout().getMinImageHeapObjectSize();
     }
 
-    boolean usesUnalignedObjects() {
-        return hugeObjects;
+    public void assign(ImageHeapObject obj) {
+        assert obj.getPartition() == this : obj;
+        objects.add(obj);
     }
 
     void layout(ChunkedImageHeapAllocator allocator) {
@@ -139,6 +148,7 @@ public class ChunkedImageHeapPartition extends AbstractImageHeapPartition {
                 currentQueue = new ArrayDeque<>();
                 map.put(currentObjectsSize, currentQueue);
             }
+            assert currentQueue != null;
             currentQueue.add(obj);
         }
         return map;
@@ -170,6 +180,43 @@ public class ChunkedImageHeapPartition extends AbstractImageHeapPartition {
         }
     }
 
+    public List<ImageHeapObject> getObjects() {
+        return objects;
+    }
+
+    @Override
+    public String getName() {
+        return name;
+    }
+
+    public boolean isWritable() {
+        return writable;
+    }
+
+    boolean usesUnalignedObjects() {
+        return hugeObjects;
+    }
+
+    public final int getStartAlignment() {
+        assert startAlignment >= 0 : "Start alignment not yet assigned";
+        return startAlignment;
+    }
+
+    public void setStartAlignment(int alignment) {
+        assert this.startAlignment == -1 : "Start alignment already assigned: " + this.startAlignment;
+        this.startAlignment = alignment;
+    }
+
+    public final int getEndAlignment() {
+        assert endAlignment >= 0 : "End alignment not yet assigned";
+        return endAlignment;
+    }
+
+    public void setEndAlignment(int endAlignment) {
+        assert this.endAlignment == -1 : "End alignment already assigned: " + this.endAlignment;
+        this.endAlignment = endAlignment;
+    }
+
     @Override
     public long getStartOffset() {
         assert startOffset >= 0 : "Start offset not yet set";
@@ -184,6 +231,10 @@ public class ChunkedImageHeapPartition extends AbstractImageHeapPartition {
     @Override
     public long getSize() {
         return getEndOffset() - getStartOffset();
+    }
+
+    public String toString() {
+        return name;
     }
 
     private static class SizeComparator implements Comparator<ImageHeapObject> {
