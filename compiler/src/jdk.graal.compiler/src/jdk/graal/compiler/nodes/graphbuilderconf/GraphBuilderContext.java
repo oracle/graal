@@ -318,6 +318,11 @@ public interface GraphBuilderContext extends GraphBuilderTool {
 
     BailoutException bailout(String string);
 
+    /**
+     * Gets a version of a given value that has a non-null stamp. Emits a guard or an explicit
+     * exception check which is triggered if the value is null. Thus, <b> use only for values where
+     * the underlying bytecode can throw a {@link NullPointerException}! </b>
+     */
     default ValueNode nullCheckedValue(ValueNode value) {
         return nullCheckedValue(value, InvalidateReprofile);
     }
@@ -336,8 +341,9 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     }
 
     /**
-     * Gets a version of a given value that has a {@linkplain StampTool#isPointerNonNull(ValueNode)
-     * non-null} stamp.
+     * Gets a version of a given value that has a non-null stamp. Emits a guard or an explicit
+     * exception check which is triggered if the value is null. Thus, <b> use only for values where
+     * the underlying bytecode can throw a {@link NullPointerException}! </b>
      */
     default ValueNode nullCheckedValue(ValueNode value, DeoptimizationAction action) {
         if (!StampTool.isPointerNonNull(value)) {
