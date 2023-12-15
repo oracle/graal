@@ -45,7 +45,6 @@ import com.oracle.svm.core.jfr.traceid.JfrTraceIdMap;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.util.ModuleSupport;
 
 import jdk.internal.event.Event;
 import jdk.jfr.internal.JVM;
