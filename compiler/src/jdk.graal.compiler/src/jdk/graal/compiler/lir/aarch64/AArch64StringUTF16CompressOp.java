@@ -61,6 +61,7 @@ public final class AArch64StringUTF16CompressOp extends AArch64LIRInstruction {
     @Alive({REG}) protected AllocatableValue dst;
     @Temp({REG}) protected AllocatableValue temp1;
     @Temp({REG}) protected AllocatableValue temp2;
+    @Temp({REG}) protected AllocatableValue temp3;
     @Temp({REG}) protected AllocatableValue vectorTemp1;
     @Temp({REG}) protected AllocatableValue vectorTemp2;
     @Temp({REG}) protected AllocatableValue vectorTemp3;
@@ -79,6 +80,7 @@ public final class AArch64StringUTF16CompressOp extends AArch64LIRInstruction {
         LIRKind archWordKind = LIRKind.value(AArch64Kind.QWORD);
         temp1 = tool.newVariable(archWordKind);
         temp2 = tool.newVariable(archWordKind);
+        temp3 = tool.newVariable(archWordKind);
         LIRKind vectorKind = LIRKind.value(tool.target().arch.getLargestStorableKind(SIMD));
         vectorTemp1 = tool.newVariable(vectorKind);
         vectorTemp2 = tool.newVariable(vectorKind);
@@ -152,6 +154,7 @@ public final class AArch64StringUTF16CompressOp extends AArch64LIRInstruction {
         Register chunkPart1RegV = asRegister(vectorTemp1);
         Register chunkPart2RegV = asRegister(vectorTemp2);
         Register tmpRegV1 = asRegister(vectorTemp3);
+        Register tmp = asRegister(temp3);
 
         Label simdLoop = new Label();
         Label failToCompress = new Label();
@@ -174,8 +177,8 @@ public final class AArch64StringUTF16CompressOp extends AArch64LIRInstruction {
              */
             masm.neon.orrVVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, tmpRegV1, chunkPart1RegV, chunkPart2RegV);
             masm.neon.uzp2VVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, ElementSize.Byte, tmpRegV1, tmpRegV1, tmpRegV1);
-            masm.fcmpZero(64, tmpRegV1);
-            masm.branchConditionally(ConditionFlag.NE, failToCompress);
+            masm.neon.umovGX(ElementSize.DoubleWord, tmp, tmpRegV1, 0);
+            masm.cbnz(64, tmp, failToCompress);
 
             // compress elements
             masm.neon.xtnVV(ElementSize.Byte, tmpRegV1, chunkPart1RegV);
@@ -209,8 +212,8 @@ public final class AArch64StringUTF16CompressOp extends AArch64LIRInstruction {
          */
         masm.mov(result, 8);
         masm.neon.uzp2VVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, ElementSize.Byte, tmpRegV1, chunkPart1RegV, chunkPart1RegV);
-        masm.fcmpZero(64, tmpRegV1);
-        masm.branchConditionally(ConditionFlag.NE, redoEntireChunk);
+        masm.neon.umovGX(ElementSize.DoubleWord, tmp, tmpRegV1, 0);
+        masm.cbnz(64, tmp, redoEntireChunk);
 
         // fall-through: store chunkPart1 and start search at chunkPart2
         // note this is really CHUNK_ELEMENT_SIZE * 2 / 2

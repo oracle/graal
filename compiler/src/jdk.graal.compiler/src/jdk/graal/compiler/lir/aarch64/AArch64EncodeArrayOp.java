@@ -135,15 +135,18 @@ public final class AArch64EncodeArrayOp extends AArch64ComplexVectorOp {
         if (ascii) {
             // Check if all merged chars are <= 0x7f
             masm.neon.cmtstVVV(FullReg, ElementSize.HalfWord, vtmp0, vtmp0, vmask);
-            // Narrow result to bytes for fcmpZero
+            // Narrow result to bytes for zero check
             masm.neon.xtnVV(ElementSize.HalfWord.narrow(), vtmp0, vtmp0);
         } else {
             // Extract merged upper bytes for ISO check (all zero).
             masm.neon.uzp2VVV(FullReg, ElementSize.Byte, vtmp0, vtmp0, vtmp0);
         }
+        try (AArch64MacroAssembler.ScratchRegister sc1 = masm.getScratchRegister()) {
+            Register tmp = sc1.getRegister();
+            masm.neon.umovGX(ElementSize.DoubleWord, tmp, vtmp0, 0);
+            masm.cbnz(64, tmp, labelFail32);
+        }
 
-        masm.fcmpZero(64, vtmp0);
-        masm.branchConditionally(ConditionFlag.NE, labelFail32);
         masm.sub(32, cnt, cnt, 32);
         masm.fstp(128, vlo0, vlo1, createImmediateAddress(FullReg.bits(), AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, dst, 32));
         masm.jmp(labelLoop32);
@@ -165,15 +168,17 @@ public final class AArch64EncodeArrayOp extends AArch64ComplexVectorOp {
         if (ascii) {
             // Check if all merged chars are <= 0x7f
             masm.neon.cmtstVVV(FullReg, ElementSize.HalfWord, vtmp0, vtmp0, vmask);
-            // Narrow result to bytes for fcmpZero
+            // Narrow result to bytes for zero check
             masm.neon.xtnVV(ElementSize.HalfWord.narrow(), vtmp0, vtmp0);
         } else {
             // Extract upper bytes for ISO check (all zero).
             masm.neon.uzp2VVV(FullReg, ElementSize.Byte, vtmp0, vtmp0, vtmp0);
         }
-
-        masm.fcmpZero(64, vtmp0);
-        masm.branchConditionally(ConditionFlag.NE, labelSkip8);
+        try (AArch64MacroAssembler.ScratchRegister sc1 = masm.getScratchRegister()) {
+            Register tmp = sc1.getRegister();
+            masm.neon.umovGX(ElementSize.DoubleWord, tmp, vtmp0, 0);
+            masm.cbnz(64, tmp, labelSkip8);
+        }
         masm.fstr(64, vlo0, createImmediateAddress(64, AddressingMode.IMMEDIATE_POST_INDEXED, dst, 8));
         masm.sub(32, cnt, cnt, 8);
         masm.add(64, src, src, 16);

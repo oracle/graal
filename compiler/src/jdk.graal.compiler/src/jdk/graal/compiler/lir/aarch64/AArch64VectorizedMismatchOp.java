@@ -24,14 +24,14 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.zr;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize.FullReg;
 import static jdk.graal.compiler.asm.aarch64.AArch64Address.createBaseRegisterOnlyAddress;
 import static jdk.graal.compiler.asm.aarch64.AArch64Address.createImmediateAddress;
 import static jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT;
 import static jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.vm.ci.aarch64.AArch64.zr;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
@@ -40,11 +40,10 @@ import jdk.graal.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler.ShiftType;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -156,9 +155,9 @@ public final class AArch64VectorizedMismatchOp extends AArch64ComplexVectorOp {
         asm.neon.eorVVV(FullReg, vecArrayA1, vecArrayA1, vecArrayB1);
         asm.neon.eorVVV(FullReg, vecArrayA2, vecArrayA2, vecArrayB2);
         asm.neon.orrVVV(FullReg, vecArrayB1, vecArrayA1, vecArrayA2);
-        asm.neon.umaxvSV(FullReg, ElementSize.Word, vecArrayB1, vecArrayB1);
-        asm.fcmpZero(64, vecArrayB1);
-        asm.branchConditionally(ConditionFlag.NE, diffFound);
+        asm.neon.umaxpVVV(FullReg, ElementSize.Word, vecArrayB1, vecArrayB1, vecArrayB1);
+        asm.neon.umovGX(ElementSize.DoubleWord, tmp, vecArrayB1, 0);
+        asm.cbnz(64, tmp, diffFound);
         asm.cmp(64, arrayA, refAddress);
         asm.branchConditionally(ConditionFlag.LO, vectorLoop);
 
@@ -172,9 +171,9 @@ public final class AArch64VectorizedMismatchOp extends AArch64ComplexVectorOp {
         asm.neon.eorVVV(FullReg, vecArrayA1, vecArrayA1, vecArrayB1);
         asm.neon.eorVVV(FullReg, vecArrayA2, vecArrayA2, vecArrayB2);
         asm.neon.orrVVV(FullReg, vecArrayB1, vecArrayA1, vecArrayA2);
-        asm.neon.umaxvSV(FullReg, ElementSize.Word, vecArrayB1, vecArrayB1);
-        asm.fcmpZero(64, vecArrayB1);
-        asm.branchConditionally(ConditionFlag.EQ, retEqual);
+        asm.neon.umaxpVVV(FullReg, ElementSize.Word, vecArrayB1, vecArrayB1, vecArrayB1);
+        asm.neon.umovGX(ElementSize.DoubleWord, tmp, vecArrayB1, 0);
+        asm.cbz(64, tmp, retEqual);
 
         asm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
         asm.bind(diffFound);
