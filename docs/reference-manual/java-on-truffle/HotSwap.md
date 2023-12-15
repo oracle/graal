@@ -240,22 +240,22 @@ Download, unzip and open the project in your IDE.
 Before you proceed, make sure that you have Java on Truffle [installed](README.md#install-java-on-truffle) and set the GraalVM as the project SDK.
 
 1. In your IDE navigate to the root `build.gradle` within the sample project. Add:
-```groovy
-run.jvmArgs+="-truffle"
-```
+    ```
+    run.jvmArgs+="-truffle"
+    ```
 
 2. Also add maven local repository where we previously published the enhanced Micronaut framework. For example:
-```groovy
-repositories {
-  mavenLocal()
-  ...
-}
-```
+    ```
+    repositories {
+    mavenLocal()
+    ...
+    }
+    ```
 
 3. In `gradle.properties` update the Micronaut version that you published. For example:
-```groovy
-micronautVersion=2.5.8-SNAPSHOT
-```
+    ```
+    micronautVersion=2.5.8-SNAPSHOT
+    ```
 Now you are all setup.
 
 4. Execute`assemble` task and create a run configuration using the defined `run` gradle task.
