@@ -47,7 +47,6 @@ import com.oracle.svm.core.thread.ThreadListenerSupportFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.sun.management.HotSpotDiagnosticMXBean;
 import com.sun.management.internal.PlatformMBeanProviderImpl;
