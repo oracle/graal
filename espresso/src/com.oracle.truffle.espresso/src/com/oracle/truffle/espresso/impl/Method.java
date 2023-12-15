@@ -42,6 +42,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
 
 import java.io.PrintStream;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1076,6 +1077,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         private final ExceptionsAttribute exceptionsAttribute;
 
         @CompilationFinal private CallTarget callTarget;
+        @CompilationFinal private CallTarget callTargetNoSubstitutions;
 
         @CompilationFinal private int vtableIndex = -1;
         @CompilationFinal private int itableIndex = -1;
@@ -1228,11 +1230,22 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             return pool;
         }
 
+        @SuppressFBWarnings(value = "DC_DOUBLECHECK", //
+                        justification = "Publication uses a release fence, assuming data dependency ordering on the reader side.")
         private CallTarget getCallTargetNoSubstitution() {
             CompilerAsserts.neverPartOfCompilation();
             EspressoError.guarantee(getSubstitutions().hasSubstitutionFor(getMethod()),
                             "Using 'getCallTargetNoSubstitution' should be done only to bypass the substitution mechanism.");
-            return findCallTarget();
+            if (callTargetNoSubstitutions == null) {
+                synchronized (this) {
+                    if (callTargetNoSubstitutions == null) {
+                        CallTarget target = findCallTarget();
+                        VarHandle.releaseFence();
+                        callTargetNoSubstitutions = target;
+                    }
+                }
+            }
+            return callTargetNoSubstitutions;
         }
 
         public CallTarget getCallTarget() {
@@ -1253,26 +1266,26 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 if (callTarget != null) {
                     return;
                 }
+                CallTarget target;
                 if (proxy != Method.this) {
-                    this.callTarget = proxy.getCallTarget();
-                    return;
+                    target = proxy.getCallTarget();
+                } else {
+                    /*
+                     * The substitution factory does the validation e.g. some substitutions only
+                     * apply for classes/methods in the boot or platform class loaders. A warning is
+                     * logged if the validation fails.
+                     */
+                    EspressoRootNode redirectedMethod = getSubstitutions().get(getMethod());
+                    if (redirectedMethod != null) {
+                        target = redirectedMethod.getCallTarget();
+                    } else {
+                        assert callTargetNoSubstitutions == null;
+                        target = findCallTarget();
+                    }
                 }
-
-                /*
-                 * The substitution factory does the validation e.g. some substitutions only apply
-                 * for classes/methods in the boot or platform class loaders. A warning is logged if
-                 * the validation fails.
-                 */
-                EspressoRootNode redirectedMethod = getSubstitutions().get(getMethod());
-                if (redirectedMethod != null) {
-                    callTarget = redirectedMethod.getCallTarget();
-                    return;
-                }
-
-                CallTarget target = findCallTarget();
                 if (target != null) {
+                    VarHandle.releaseFence();
                     callTarget = target;
-                    return;
                 }
             }
         }
