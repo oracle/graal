@@ -43,7 +43,9 @@ import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.jfr.internal.JVM;
+import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
+import jdk.jfr.internal.Logger;
 
 @SuppressWarnings({"static-method", "unused"})
 @TargetClass(value = jdk.jfr.internal.JVM.class, onlyWith = HasJfrSupport.class)
