@@ -63,11 +63,17 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.SpeculationLog;
 
 public class LoopPartialUnrollTest extends GraalCompilerTest {
 
+    boolean check = true;
+
     @Override
     protected void checkMidTierGraph(StructuredGraph graph) {
+        if (!check) {
+            return;
+        }
         NodeIterable<LoopBeginNode> loops = graph.getNodes().filter(LoopBeginNode.class);
         for (LoopBeginNode loop : loops) {
             if (loop.isMainLoop()) {
@@ -346,5 +352,80 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
         canonicalizer.apply(testGraph, getDefaultMidTierContext());
         canonicalizer.apply(referenceGraph, getDefaultMidTierContext());
         assertEquals(referenceGraph, testGraph);
+    }
+
+    public static void twoUsages(int n) {
+        for (int i = 0; injectIterationCount(100, i < n); i++) {
+            GraalDirectives.blackhole(i < n ? 1 : 2);
+        }
+    }
+
+    @Test
+    public void testUsages() {
+        check = false;
+        OptionValues options = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
+        test(options, "twoUsages", 100);
+        check = true;
+    }
+
+    @Test
+    public void testIDiv() {
+        check = false;
+        for (int i = -1; i < 64; i++) {
+            test("idivSnippet", i);
+        }
+        check = true;
+    }
+
+    static int S = 100;
+
+    public static int idivSnippet(int iterations) {
+        int res = 0;
+        for (int i = 1; injectBranchProbability(0.99, i < iterations); i++) {
+            res += 100 / i;
+        }
+
+        return res;
+    }
+
+    static int rr = 0;
+
+    static int countedAfterSnippet(int i, int limit) {
+        int res = 0;
+        for (int j = i; GraalDirectives.injectIterationCount(1000, j <= limit); j += Integer.MAX_VALUE) {
+            rr += 42;
+            res += j;
+        }
+        return res;
+    }
+
+    SpeculationLog speculationLog;
+    boolean useSpeculationLog;
+
+    @Override
+    protected SpeculationLog getSpeculationLog() {
+        if (!useSpeculationLog) {
+            speculationLog = null;
+            return null;
+        }
+        if (speculationLog == null) {
+            speculationLog = getCodeCache().createSpeculationLog();
+        }
+        speculationLog.collectFailedSpeculations();
+        return speculationLog;
+    }
+
+    @Test
+    public void strideOverflow() {
+        check = false;
+        useSpeculationLog = true;
+        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
+        for (int i = -1000; i < 1000; i++) {
+            for (int j = 0; j < 100; j++) {
+                test(opt, "countedAfterSnippet", i, j);
+            }
+        }
+        check = true;
+        useSpeculationLog = false;
     }
 }
