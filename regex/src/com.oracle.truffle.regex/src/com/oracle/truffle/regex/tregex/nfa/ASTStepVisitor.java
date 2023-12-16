@@ -238,4 +238,9 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
     protected boolean isBuildingDFA() {
         return true;
     }
+
+    @Override
+    protected boolean canPruneAfterUnconditionalFinalState() {
+        return true;
+    }
 }
