@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.code;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawFieldOffset;
@@ -39,6 +38,7 @@ import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.InstalledCode;
 
 /**
@@ -49,9 +49,12 @@ import jdk.vm.ci.code.InstalledCode;
  * As {@link CodeInfo} objects have a complicated life-cycle that also involves the GC, it is
  * crucial that all places that access or use this data observe the following rules:
  * <ul>
- * <li>When heap objects are stored into native-memory that is referenced by a {@link CodeInfo}
- * object, then it is necessary to notify the GC about that (see
- * {@link RuntimeCodeInfoGCSupport}).</li>
+ * <li>{@link CodeInfo} objects use native memory and store references to Java heap objects in that
+ * native-memory. The VM must notify the GC about all Java heap references (see
+ * {@link RuntimeCodeInfoGCSupport}) so that the GC can update the references when it moves objects.
+ * Once the VM notified the GC about a Java heap reference in native memory, the VM must no longer
+ * overwrite, null-out, or free that memory (only the GC is allowed to do that during code unloading
+ * at a safepoint).</li>
  * <li><b>NEVER</b> do a direct cast from {@link UntetheredCodeInfo} or {@link CodeInfo} to
  * {@link CodeInfoImpl}. For more details, refer to the {@link CodeInfoAccess} documentation.</li>
  * </ul>

@@ -875,14 +875,11 @@ public final class GCImpl implements GC {
 
             if (RuntimeCompilation.isEnabled() && codeInfo != CodeInfoTable.getImageCodeInfo()) {
                 /*
-                 * For runtime-compiled code that is currently on the stack, we need to treat all
-                 * the references to Java heap objects as strong references. It is important that we
-                 * really walk *all* those references here. Otherwise, RuntimeCodeCacheWalker might
-                 * decide to invalidate too much code, depending on the order in which the CodeInfo
-                 * objects are visited.
+                 * Runtime-compiled code that is currently on the stack must be kept alive. So, we
+                 * mark the tether as strongly reachable. The RuntimeCodeCacheWalker will handle all
+                 * other object references later on.
                  */
-                RuntimeCodeInfoAccess.walkStrongReferences(codeInfo, greyToBlackObjRefVisitor);
-                RuntimeCodeInfoAccess.walkWeakReferences(codeInfo, greyToBlackObjRefVisitor);
+                RuntimeCodeInfoAccess.walkTether(codeInfo, greyToBlackObjRefVisitor);
             }
 
             if (!JavaStackWalker.continueWalk(walk, queryResult, deoptFrame)) {
