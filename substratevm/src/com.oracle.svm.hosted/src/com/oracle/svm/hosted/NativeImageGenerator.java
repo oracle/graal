@@ -647,8 +647,8 @@ public class NativeImageGenerator {
             CompileQueue compileQueue;
             try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.COMPILE_TOTAL)) {
                 compileQueue = HostedConfiguration.instance().createCompileQueue(debug, featureHandler, hUniverse, runtimeConfiguration, DeoptTester.enabled(), bb.getSnippetReflectionProvider());
-                if (ImageSingletons.contains(RuntimeCompilationSupport.class)) {
-                    ImageSingletons.lookup(RuntimeCompilationSupport.class).onCompileQueueCreation(bb, hUniverse, compileQueue);
+                if (ImageSingletons.contains(RuntimeCompilationCallbacks.class)) {
+                    ImageSingletons.lookup(RuntimeCompilationCallbacks.class).onCompileQueueCreation(bb, hUniverse, compileQueue);
                 }
                 compileQueue.finish(debug);
                 BuildPhaseProvider.markCompileQueueFinished();
@@ -798,8 +798,16 @@ public class NativeImageGenerator {
                         }
                         return !config.getAndResetRequireAnalysisIteration();
                     });
-                } catch (AnalysisError e) {
-                    throw UserError.abort(e, "Analysis step failed. Reason: %s.", e.getMessage());
+                } catch (Throwable t) {
+                    if (ImageSingletons.contains(RuntimeCompilationCallbacks.class)) {
+                        ImageSingletons.lookup(RuntimeCompilationCallbacks.class).reportAnalysisError(aUniverse, t);
+                    }
+
+                    if (t instanceof AnalysisError e) {
+                        throw UserError.abort(e, "Analysis step failed. Reason: %s.", e.getMessage());
+                    } else {
+                        throw t;
+                    }
                 }
                 assert verifyAssignableTypes();
 

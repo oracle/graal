@@ -22,12 +22,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted;
+package com.oracle.svm.graal.hosted.runtimecompilation;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.svm.hosted.code.CompileQueue;
-import com.oracle.svm.hosted.meta.HostedUniverse;
+import java.util.Objects;
 
-public interface RuntimeCompilationSupport {
-    void onCompileQueueCreation(BigBang bb, HostedUniverse hUniverse, CompileQueue compileQueue);
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+
+public final class RuntimeCompilationCandidate {
+    AnalysisMethod implementationMethod;
+    AnalysisMethod targetMethod;
+
+    RuntimeCompilationCandidate(AnalysisMethod implementationMethod, AnalysisMethod targetMethod) {
+        this.implementationMethod = implementationMethod;
+        this.targetMethod = targetMethod;
+    }
+
+    public AnalysisMethod getImplementationMethod() {
+        return implementationMethod;
+    }
+
+    public AnalysisMethod getTargetMethod() {
+        return targetMethod;
+    }
+
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        RuntimeCompilationCandidate that = (RuntimeCompilationCandidate) o;
+        return implementationMethod.equals(that.implementationMethod) && targetMethod.equals(that.targetMethod);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(implementationMethod, targetMethod);
+    }
 }

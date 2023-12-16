@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal.hosted;
+package com.oracle.svm.graal.hosted.runtimecompilation;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
