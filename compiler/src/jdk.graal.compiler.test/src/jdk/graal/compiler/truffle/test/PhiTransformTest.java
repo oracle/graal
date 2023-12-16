@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,9 @@ package jdk.graal.compiler.truffle.test;
 
 import java.util.ListIterator;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.nodes.NodeView;
@@ -42,10 +45,9 @@ import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.truffle.nodes.AnyExtendNode;
+import jdk.graal.compiler.truffle.nodes.AnyNarrowNode;
 import jdk.graal.compiler.truffle.phases.PhiTransformPhase;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class PhiTransformTest extends GraalCompilerTest {
 
@@ -105,6 +107,7 @@ public class PhiTransformTest extends GraalCompilerTest {
         Assert.assertTrue(graph.getNodes().filter(ReinterpretNode.class).count() + graph.getNodes().filter(NarrowNode.class).count() == 0);
     }
 
+    @BytecodeParserForceInline
     public static float deoptSnippet(int count) {
         /*
          * This test will fail with a wrong result if the phi transformation happens, since the
@@ -127,10 +130,52 @@ public class PhiTransformTest extends GraalCompilerTest {
         return s;
     }
 
+    public static float deoptSnippetKeepExtend(int count) {
+        return deoptSnippet(count);
+    }
+
+    public static float deoptSnippetKeepNarrow(int count) {
+        return deoptSnippet(count);
+    }
+
     @Test
-    public void deopt() {
-        StructuredGraph graph = createGraph("deoptSnippet");
-        Assert.assertTrue(graph.getNodes().filter(ReinterpretNode.class).count() + graph.getNodes().filter(NarrowNode.class).count() == 1);
+    public void deoptKeepExtend() {
+        StructuredGraph graph = createGraph("deoptSnippetKeepExtend");
+        Assert.assertEquals(1, graph.getNodes().filter(ReinterpretNode.class).count() + graph.getNodes().filter(NarrowNode.class).count());
+    }
+
+    @Test
+    public void deoptKeepNarrow() {
+        StructuredGraph graph = createGraph("deoptSnippetKeepNarrow");
+        Assert.assertEquals(1, graph.getNodes().filter(ReinterpretNode.class).count() + graph.getNodes().filter(NarrowNode.class).count());
+    }
+
+    public static float deoptOKSnippet(int count) {
+        /*
+         * This test will not fail with a wrong result if the phi transformation happens, since the
+         * upper 32 bits of the int-in-long are not observed after the deopt.
+         */
+        long[] values = new long[2];
+        float s = 0;
+        do {
+            values[0] = ((int) values[0] + 1) & 0xffffffffL;
+            s++;
+            GraalDirectives.sideEffect();
+            if (s > 30) {
+                // value is used as i64 after deopt:
+                GraalDirectives.deoptimize();
+                if ((int) values[0] < 0 || (int) values[0] >= count) {
+                    break;
+                }
+            }
+        } while ((int) values[0] < count);
+        return s;
+    }
+
+    @Test
+    public void deoptOK() {
+        StructuredGraph graph = createGraph("deoptOKSnippet");
+        Assert.assertEquals(0, graph.getNodes().filter(ReinterpretNode.class).count() + graph.getNodes().filter(NarrowNode.class).count());
     }
 
     public static float fail1Snippet(int count) {
@@ -249,9 +294,18 @@ public class PhiTransformTest extends GraalCompilerTest {
 
         @Override
         protected void run(StructuredGraph graph, CoreProviders context) {
-            if (!graph.toString().contains("deoptSnippet")) {
+            if (!graph.toString().contains("deoptSnippetKeepExtend")) {
                 for (ZeroExtendNode node : graph.getNodes().filter(ZeroExtendNode.class)) {
-                    node.replaceAndDelete(graph.unique(new AnyExtendNode(node.getValue())));
+                    if (node.getInputBits() == AnyExtendNode.INPUT_BITS && node.getResultBits() == AnyExtendNode.OUTPUT_BITS) {
+                        node.replaceAndDelete(graph.unique(new AnyExtendNode(node.getValue())));
+                    }
+                }
+            }
+            if (!graph.toString().contains("deoptSnippetKeepNarrow")) {
+                for (NarrowNode node : graph.getNodes().filter(NarrowNode.class)) {
+                    if (node.getInputBits() == AnyNarrowNode.INPUT_BITS && node.getResultBits() == AnyNarrowNode.OUTPUT_BITS) {
+                        node.replaceAndDelete(graph.unique(new AnyNarrowNode(node.getValue())));
+                    }
                 }
             }
         }
@@ -263,6 +317,9 @@ public class PhiTransformTest extends GraalCompilerTest {
         protected void run(StructuredGraph graph, CoreProviders context) {
             for (AnyExtendNode node : graph.getNodes().filter(AnyExtendNode.class)) {
                 node.replaceAndDelete(graph.addOrUnique(ZeroExtendNode.create(node.getValue(), 64, NodeView.DEFAULT)));
+            }
+            for (AnyNarrowNode node : graph.getNodes().filter(AnyNarrowNode.class)) {
+                node.replaceAndDelete(graph.addOrUnique(NarrowNode.create(node.getValue(), 32, NodeView.DEFAULT)));
             }
         }
     }

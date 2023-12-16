@@ -212,8 +212,14 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return this;
     }
 
+    /** Intrinsic candidate. */
     private static long extend(int value) {
         return value & INT_MASK;
+    }
+
+    /** Intrinsic candidate. */
+    private static int narrow(long value) {
+        return (int) value;
     }
 
     @Override
@@ -318,7 +324,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public byte getByte(int slot) throws FrameSlotTypeException {
         boolean condition = verifyIndexedGet(slot, BYTE_TAG);
-        return (byte) (int) unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION);
+        return (byte) narrow(unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION));
     }
 
     @Override
@@ -330,19 +336,19 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public boolean getBoolean(int slot) throws FrameSlotTypeException {
         boolean condition = verifyIndexedGet(slot, BOOLEAN_TAG);
-        return (int) unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION) != 0;
+        return narrow(unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION)) != 0;
     }
 
     @Override
     public void setBoolean(int slot, boolean value) {
         verifyIndexedSet(slot, BOOLEAN_TAG);
-        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), value ? 1L : 0L, PRIMITIVE_LOCATION);
+        unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), extend(value ? 1 : 0), PRIMITIVE_LOCATION);
     }
 
     @Override
     public float getFloat(int slot) throws FrameSlotTypeException {
         boolean condition = verifyIndexedGet(slot, FLOAT_TAG);
-        return Float.intBitsToFloat((int) unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION));
+        return Float.intBitsToFloat(narrow(unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION)));
     }
 
     @Override
@@ -366,7 +372,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public int getInt(int slot) throws FrameSlotTypeException {
         boolean condition = verifyIndexedGet(slot, INT_TAG);
-        return (int) unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION);
+        return narrow(unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION));
     }
 
     @Override
@@ -526,7 +532,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     public byte getByteStatic(int slot) {
         assert indexedTags[slot] == STATIC_BYTE_TAG : "Unexpected read of static byte value";
 
-        return (byte) (int) getIndexedPrimitiveLocals()[slot];
+        return (byte) narrow(getIndexedPrimitiveLocals()[slot]);
     }
 
     @Override
@@ -544,7 +550,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     public boolean getBooleanStatic(int slot) {
         assert indexedTags[slot] == STATIC_BOOLEAN_TAG : "Unexpected read of static boolean value";
 
-        return (int) getIndexedPrimitiveLocals()[slot] != 0;
+        return narrow(getIndexedPrimitiveLocals()[slot]) != 0;
     }
 
     @Override
@@ -555,14 +561,14 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             indexedTags[slot] = STATIC_BOOLEAN_TAG;
         }
 
-        getIndexedPrimitiveLocals()[slot] = value ? 1L : 0L;
+        getIndexedPrimitiveLocals()[slot] = extend(value ? 1 : 0);
     }
 
     @Override
     public int getIntStatic(int slot) {
         assert indexedTags[slot] == STATIC_INT_TAG : "Unexpected read of static int value";
 
-        return (int) getIndexedPrimitiveLocals()[slot];
+        return narrow(getIndexedPrimitiveLocals()[slot]);
     }
 
     @Override
@@ -598,7 +604,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     public float getFloatStatic(int slot) {
         assert indexedTags[slot] == STATIC_FLOAT_TAG : "Unexpected read of static float value";
 
-        return Float.intBitsToFloat((int) getIndexedPrimitiveLocals()[slot]);
+        return Float.intBitsToFloat(narrow(getIndexedPrimitiveLocals()[slot]));
     }
 
     @Override
