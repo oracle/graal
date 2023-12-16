@@ -334,8 +334,12 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
         masm.bind(labelUnrolledVectorLoopBegin);
         // result *= next;
         masm.imull(result, next);
-        // loop fission to upfront the cost of fetching from memory, OOO execution
-        // can then hopefully do a better job of prefetching
+        /*
+         * Load the next 32 data elements into 4 vector registers. By grouping the loads and
+         * fetching from memory up front (loop fission), out-of-order execution can hopefully do a
+         * better job of prefetching, while also allowing subsequent instructions to be executed
+         * while data are still being fetched.
+         */
         for (int idx = 0; idx < 4; idx++) {
             loadVector(masm, vtmp[idx], new AMD64Address(ary1, index, stride, 8 * idx * elsize), elsize * 8);
         }

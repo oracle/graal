@@ -3127,6 +3127,8 @@ public abstract class AArch64ASIMDAssembler {
      * vector elements are twice as long as the source vector elements. All the values in this
      * instruction are signed integer values."
      *
+     * Extracts vector elements from the lower half of the source register.
+     *
      * @param srcESize source element size. Cannot be ElementSize.DoubleWord. The destination
      *            element size will be double this width.
      * @param dst SIMD register.
@@ -3145,6 +3147,37 @@ public abstract class AArch64ASIMDAssembler {
         int imm7 = srcESize.nbits + shiftAmt;
 
         shiftByImmEncoding(ASIMDInstruction.SSHLL, false, imm7, dst, src);
+    }
+
+    /**
+     * C7.2.316 Signed shift left long (immediate).<br>
+     *
+     * <p>
+     * From the manual: "This instruction reads each vector element from the source SIMD&FP
+     * register, left shifts each vector element by the specified shift amount ... The destination
+     * vector elements are twice as long as the source vector elements. All the values in this
+     * instruction are signed integer values."
+     *
+     * Extracts vector elements from the upper half of the source register.
+     *
+     * @param srcESize source element size. Cannot be ElementSize.DoubleWord. The destination
+     *            element size will be double this width.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     * @param shiftAmt shift left amount.
+     */
+    public void sshll2VVI(ElementSize srcESize, Register dst, Register src, int shiftAmt) {
+        assert dst.getRegisterCategory().equals(SIMD) : dst;
+        assert src.getRegisterCategory().equals(SIMD) : src;
+        assert srcESize != ElementSize.DoubleWord : srcESize;
+
+        /* Accepted shift range */
+        assert shiftAmt >= 0 && shiftAmt < srcESize.nbits : shiftAmt + " " + srcESize;
+
+        /* shift = imm7 - srcESize.nbits */
+        int imm7 = srcESize.nbits + shiftAmt;
+
+        shiftByImmEncoding(ASIMDInstruction.SSHLL, true, imm7, dst, src);
     }
 
     /**
