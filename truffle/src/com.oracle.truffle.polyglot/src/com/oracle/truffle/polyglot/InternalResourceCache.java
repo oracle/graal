@@ -149,6 +149,22 @@ final class InternalResourceCache {
             case UNVERSIONED -> findStandaloneResourceRoot(root.path());
             case VERSIONED -> null;
         };
+        if (path != null && InternalResourceRoots.isTraceInternalResourceEvents()) {
+            /*
+             * The path for the VERSIONED resource is logged when the resource is requested.
+             * Computation of this path is expensive and involves a call to
+             * InternalResource#versionHash(). Additionally, we log whether the resource was
+             * unpacked or reused.
+             */
+            String hint = switch (root.kind()) {
+                case RESOURCE -> InternalResourceRoots.overriddenResourceRootProperty(id, resourceId) + " system property";
+                case COMPONENT -> InternalResourceRoots.overriddenComponentRootProperty(id) + " system property";
+                case UNVERSIONED -> "internal resource cache root directory";
+                default -> throw CompilerDirectives.shouldNotReachHere(root.kind().name());
+            };
+            InternalResourceRoots.logInternalResourceEvent("Resolved a pre-created directory for the internal resource %s::%s to: %s, determined by the %s with the value %s.",
+                            id, resourceId, path, hint, root.path());
+        }
     }
 
     /**
@@ -169,7 +185,12 @@ final class InternalResourceCache {
     static Path installRuntimeResource(InternalResource resource) throws IOException {
         InternalResourceCache cache = createRuntimeResourceCache(resource);
         synchronized (cache) {
-            return cache.installResource(InternalResourceCache::createInternalResourceEnvReflectively);
+            Path result = cache.path;
+            if (result == null) {
+                result = cache.installResource(InternalResourceCache::createInternalResourceEnvReflectively);
+                cache.path = result;
+            }
+            return result;
         }
     }
 
@@ -204,6 +225,7 @@ final class InternalResourceCache {
         }
         Path target = owningRoot.path().resolve(Path.of(sanitize(id), sanitize(resourceId), sanitize(versionHash)));
         if (!Files.exists(target)) {
+            InternalResourceRoots.logInternalResourceEvent("Resolved a directory for the internal resource %s::%s to: %s, unpacking resource files.", id, resourceId, target);
             Path parent = target.getParent();
             if (parent == null) {
                 throw CompilerDirectives.shouldNotReachHere("Target must have a parent directory but was " + target);
@@ -225,6 +247,8 @@ final class InternalResourceCache {
                 }
             }
         } else {
+            InternalResourceRoots.logInternalResourceEvent("Resolved a directory for the internal resource %s::%s to: %s, using existing resource files.",
+                            id, resourceId, target);
             verifyResourceRoot(target);
         }
         return target;
