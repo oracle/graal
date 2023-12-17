@@ -49,18 +49,18 @@ public class BytecodeBitEncoding {
 
     public static final int LABEL_U8_RESULT_MASK = 0b1100_0000;
     public static final int LABEL_U8_RESULT_NUM = 0b1000_0000;
-    public static final int LABEL_U8_RESULT_REF = 0b1100_0000;
+    public static final int LABEL_U8_RESULT_OBJ = 0b1100_0000;
     public static final int LABEL_U8_STACK_VALUE = 0b0011_1111;
 
     public static final int LABEL_U16_RESULT_TYPE_MASK = 0b1100_0000;
     public static final int LABEL_U16_RESULT_TYPE_NUM = 0b0100_0000;
-    public static final int LABEL_U16_RESULT_TYPE_REF = 0b1000_0000;
+    public static final int LABEL_U16_RESULT_TYPE_OBJ = 0b1000_0000;
     public static final int LABEL_U16_RESULT_TYPE_MIX = 0b1100_0000;
     public static final int LABEL_U16_RESULT_TYPE_SHIFT = 6;
     public static final int LABEL_U16_RESULT_VALUE = 0b0011_1111;
 
     public static final int LABEL_RESULT_TYPE_NUM = 0b0000_0001;
-    public static final int LABEL_RESULT_TYPE_REF = 0b0000_0010;
+    public static final int LABEL_RESULT_TYPE_OBJ = 0b0000_0010;
     public static final int LABEL_RESULT_TYPE_MIX = 0b0000_0011;
 
     public static final int MEMORY_64_FLAG = 0b1000_0000;

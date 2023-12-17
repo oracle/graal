@@ -76,25 +76,25 @@ public class Bytecode {
     public static final int CALL_INDIRECT_I32 = 0x14;
 
     public static final int DROP = 0x15;
-    public static final int DROP_REF = 0x16;
+    public static final int DROP_OBJ = 0x16;
 
     public static final int SELECT = 0x17;
-    public static final int SELECT_REF = 0x18;
+    public static final int SELECT_OBJ = 0x18;
 
     public static final int LOCAL_GET_U8 = 0x19;
     public static final int LOCAL_GET_I32 = 0x1A;
-    public static final int LOCAL_GET_REF_U8 = 0x1B;
-    public static final int LOCAL_GET_REF_I32 = 0x1C;
+    public static final int LOCAL_GET_OBJ_U8 = 0x1B;
+    public static final int LOCAL_GET_OBJ_I32 = 0x1C;
 
     public static final int LOCAL_SET_U8 = 0x1D;
     public static final int LOCAL_SET_I32 = 0x1E;
-    public static final int LOCAL_SET_REF_U8 = 0x1F;
-    public static final int LOCAL_SET_REF_I32 = 0x20;
+    public static final int LOCAL_SET_OBJ_U8 = 0x1F;
+    public static final int LOCAL_SET_OBJ_I32 = 0x20;
 
     public static final int LOCAL_TEE_U8 = 0x21;
     public static final int LOCAL_TEE_I32 = 0x22;
-    public static final int LOCAL_TEE_REF_U8 = 0x23;
-    public static final int LOCAL_TEE_REF_I32 = 0x24;
+    public static final int LOCAL_TEE_OBJ_U8 = 0x23;
+    public static final int LOCAL_TEE_OBJ_I32 = 0x24;
 
     public static final int GLOBAL_GET_U8 = 0x25;
     public static final int GLOBAL_GET_I32 = 0x26;

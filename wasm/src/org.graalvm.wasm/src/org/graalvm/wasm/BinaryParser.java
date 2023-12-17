@@ -744,7 +744,7 @@ public class BinaryParser extends BinaryStreamParser {
                     if (WasmType.isNumberType(type)) {
                         state.addInstruction(Bytecode.DROP);
                     } else {
-                        state.addInstruction(Bytecode.DROP_REF);
+                        state.addInstruction(Bytecode.DROP_OBJ);
                     }
                     break;
                 case Instructions.SELECT: {
@@ -769,12 +769,12 @@ public class BinaryParser extends BinaryStreamParser {
                     if (WasmType.isNumberType(t)) {
                         state.addInstruction(Bytecode.SELECT);
                     } else {
-                        state.addInstruction(Bytecode.SELECT_REF);
+                        state.addInstruction(Bytecode.SELECT_OBJ);
                     }
                     break;
                 }
                 case Instructions.LOCAL_GET:
-                case Instructions.LOCAL_GET_REF: {
+                case Instructions.LOCAL_GET_OBJ: {
                     final int localIndex = readLocalIndex();
                     assertUnsignedIntLess(localIndex, locals.length, Failure.UNKNOWN_LOCAL);
                     final byte localType = locals[localIndex];
@@ -782,12 +782,12 @@ public class BinaryParser extends BinaryStreamParser {
                     if (WasmType.isNumberType(localType)) {
                         state.addUnsignedInstruction(Bytecode.LOCAL_GET_U8, localIndex);
                     } else {
-                        state.addUnsignedInstruction(Bytecode.LOCAL_GET_REF_U8, localIndex);
+                        state.addUnsignedInstruction(Bytecode.LOCAL_GET_OBJ_U8, localIndex);
                     }
                     break;
                 }
                 case Instructions.LOCAL_SET:
-                case Instructions.LOCAL_SET_REF: {
+                case Instructions.LOCAL_SET_OBJ: {
                     final int localIndex = readLocalIndex();
                     assertUnsignedIntLess(localIndex, locals.length, Failure.UNKNOWN_LOCAL);
                     final byte localType = locals[localIndex];
@@ -795,12 +795,12 @@ public class BinaryParser extends BinaryStreamParser {
                     if (WasmType.isNumberType(localType)) {
                         state.addUnsignedInstruction(Bytecode.LOCAL_SET_U8, localIndex);
                     } else {
-                        state.addUnsignedInstruction(Bytecode.LOCAL_SET_REF_U8, localIndex);
+                        state.addUnsignedInstruction(Bytecode.LOCAL_SET_OBJ_U8, localIndex);
                     }
                     break;
                 }
                 case Instructions.LOCAL_TEE:
-                case Instructions.LOCAL_TEE_REF: {
+                case Instructions.LOCAL_TEE_OBJ: {
                     final int localIndex = readLocalIndex();
                     assertUnsignedIntLess(localIndex, locals.length, Failure.UNKNOWN_LOCAL);
                     final byte localType = locals[localIndex];
@@ -809,7 +809,7 @@ public class BinaryParser extends BinaryStreamParser {
                     if (WasmType.isNumberType(localType)) {
                         state.addUnsignedInstruction(Bytecode.LOCAL_TEE_U8, localIndex);
                     } else {
-                        state.addUnsignedInstruction(Bytecode.LOCAL_TEE_REF_U8, localIndex);
+                        state.addUnsignedInstruction(Bytecode.LOCAL_TEE_OBJ_U8, localIndex);
                     }
                     break;
                 }
