@@ -545,7 +545,7 @@ public abstract class ImageHeapScanner {
     }
 
     public boolean isValueAvailable(AnalysisField field) {
-        return field.isValueAvailable();
+        return true;
     }
 
     protected String formatReason(String message, ScanReason reason) {

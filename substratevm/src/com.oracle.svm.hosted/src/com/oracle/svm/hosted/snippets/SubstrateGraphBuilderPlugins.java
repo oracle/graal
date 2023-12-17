@@ -1340,7 +1340,7 @@ public class SubstrateGraphBuilderPlugins {
                 if (field instanceof AnalysisField) {
                     ((AnalysisField) field).registerAsUnsafeAccessed(nonNullReason(b.getGraph().currentNodeSourcePosition()));
                 }
-                return LazyConstantNode.create(StampFactory.forKind(JavaKind.Long), new FieldOffsetConstantProvider(((OriginalFieldProvider) field).getJavaField()), b);
+                return LazyConstantNode.create(StampFactory.forKind(JavaKind.Long), new FieldOffsetConstantProvider(OriginalFieldProvider.getJavaField(field)), b);
             }
 
             @Override

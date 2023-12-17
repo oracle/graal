@@ -57,7 +57,6 @@ import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisType.UsageKind;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.GraalAccess;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -356,43 +355,6 @@ public class AnalysisUniverse implements Universe {
         assert !(rawField instanceof AnalysisField) : rawField;
 
         ResolvedJavaField field = (ResolvedJavaField) rawField;
-
-        if (!sealed) {
-            /*
-             * Trigger computation of automatic substitutions. There might be an automatic
-             * substitution for the current field and we want to register it before the analysis
-             * field is created. This also ensures that the class is initialized (if the class is
-             * registered for initialization at build time) before any constant folding of static
-             * fields is attempted. Calling ensureInitialized() here at field lookup avoids calling
-             * it during constant folding.
-             */
-            AnalysisType declaringType = lookup(field.getDeclaringClass());
-            declaringType.registerAsReachable(field);
-            declaringType.ensureOnTypeReachableTaskDone();
-
-            /*
-             * Ensure that all reachability handler that were present at the time the type was
-             * marked as reachable are executed before creating the field. This allows field value
-             * transformer to be installed reliably in reachability handler.
-             *
-             * This is necessary because field value transformer are currently implemented via
-             * ComputedValueField that are injected into the substitution universe. A
-             * ComputedValueField added after the AnalysisField is created would be ignored. In the
-             * future, we want a better implementation of field value transformer that do not rely
-             * on the substitution universe, then this code can be removed.
-             */
-            List<AnalysisFuture<Void>> notifications = declaringType.scheduledTypeReachableNotifications;
-            if (notifications != null) {
-                for (var notification : notifications) {
-                    notification.ensureDone();
-                }
-                /*
-                 * Now we know all the handlers have been executed, so subsequent field lookups do
-                 * not need to check anymore.
-                 */
-                declaringType.scheduledTypeReachableNotifications = null;
-            }
-        }
 
         field = substitutions.lookup(field);
         AnalysisField result = fields.get(field);
@@ -732,7 +694,7 @@ public class AnalysisUniverse implements Universe {
     }
 
     public void onTypeReachable(AnalysisType type) {
-        hostVM.onTypeReachable(type);
+        hostVM.onTypeReachable(bb, type);
         if (bb != null) {
             bb.onTypeReachable(type);
         }

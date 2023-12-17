@@ -45,9 +45,6 @@ public class AnalysisConstantFieldProvider extends SharedConstantFieldProvider {
     @Override
     public <T> T readConstantField(ResolvedJavaField f, ConstantFieldTool<T> analysisTool) {
         AnalysisField field = (AnalysisField) f;
-        if (!ReadableJavaField.isValueAvailable(field)) {
-            return null;
-        }
 
         T foldedValue = super.readConstantField(field, analysisTool);
 

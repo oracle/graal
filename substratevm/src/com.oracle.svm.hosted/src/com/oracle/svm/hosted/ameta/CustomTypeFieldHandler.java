@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.analysis;
+package com.oracle.svm.hosted.ameta;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,11 +36,12 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
-import com.oracle.svm.hosted.substitute.ComputedValueField;
+import com.oracle.svm.hosted.analysis.FieldValueComputer;
 
 public abstract class CustomTypeFieldHandler {
     protected final BigBang bb;
     private final AnalysisMetaAccess metaAccess;
+    private final FieldValueInterceptionSupport fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
     private Set<AnalysisField> processedFields = ConcurrentHashMap.newKeySet();
 
     public CustomTypeFieldHandler(BigBang bb, AnalysisMetaAccess metaAccess) {
@@ -49,7 +50,7 @@ public abstract class CustomTypeFieldHandler {
     }
 
     public void handleField(AnalysisField field) {
-        if (processedFields.contains(field)) {
+        if (!processedFields.add(field)) {
             return;
         }
         /*
@@ -57,21 +58,20 @@ public abstract class CustomTypeFieldHandler {
          * types as allocated when the field is not yet accessed.
          */
         assert field.isAccessed();
-        if (field.wrapped instanceof ComputedValueField computedField) {
-            if (!computedField.isValueAvailableBeforeAnalysis() && field.getStorageKind().isObject()) {
+        if (fieldValueInterceptionSupport.hasFieldValueTransformer(field)) {
+            if (field.getJavaKind().isObject() && !fieldValueInterceptionSupport.isValueAvailable(field)) {
                 injectFieldTypes(field, field.getType());
             } else if (bb.trackPrimitiveValues() && field.getStorageKind().isPrimitive() && field instanceof PointsToAnalysisField ptaField) {
                 ptaField.saturatePrimitiveField();
             }
-        } else if (field.isComputedValue()) {
+        } else if (fieldValueInterceptionSupport.lookupFieldValueInterceptor(field) instanceof FieldValueComputer fieldValueComputer) {
             if (field.getStorageKind().isObject()) {
-                field.setCanBeNull(field.computedValueCanBeNull());
-                injectFieldTypes(field, transformTypes(field, field.computedValueTypes()));
+                field.setCanBeNull(fieldValueComputer.canBeNull());
+                injectFieldTypes(field, transformTypes(field, fieldValueComputer.types()));
             } else if (bb.trackPrimitiveValues() && field.getStorageKind().isPrimitive() && field instanceof PointsToAnalysisField ptaField) {
                 ptaField.saturatePrimitiveField();
             }
         }
-        processedFields.add(field);
     }
 
     private void injectFieldTypes(AnalysisField field, List<AnalysisType> customTypes) {
@@ -87,7 +87,7 @@ public abstract class CustomTypeFieldHandler {
 
     protected abstract void injectFieldTypes(AnalysisField aField, AnalysisType... customTypes);
 
-    private List<AnalysisType> transformTypes(AnalysisField field, Class<?>[] types) {
+    private List<AnalysisType> transformTypes(AnalysisField field, List<Class<?>> types) {
         List<AnalysisType> customTypes = new ArrayList<>();
         AnalysisType declaredType = field.getType();
 

@@ -51,7 +51,7 @@ import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
-import com.oracle.svm.hosted.ameta.ReadableJavaField;
+import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.methodhandles.MethodHandleFeature;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
@@ -75,6 +75,7 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     private final MethodHandleFeature methodHandleSupport;
     private final Class<?> directMethodHandleClass;
     private final VarHandleFeature varHandleSupport;
+    private final FieldValueInterceptionSupport fieldValueInterceptionSupport;
 
     @SuppressWarnings("this-escape")
     public SVMImageHeapScanner(BigBang bb, ImageHeap imageHeap, ImageClassLoader loader, AnalysisMetaAccess metaAccess,
@@ -92,6 +93,7 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
         methodHandleSupport = ImageSingletons.lookup(MethodHandleFeature.class);
         directMethodHandleClass = getClass("java.lang.invoke.DirectMethodHandle");
         varHandleSupport = ImageSingletons.lookup(VarHandleFeature.class);
+        fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
     }
 
     public static ImageHeapScanner instance() {
@@ -111,7 +113,7 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
 
     @Override
     public boolean isValueAvailable(AnalysisField field) {
-        return ReadableJavaField.isValueAvailable(field);
+        return fieldValueInterceptionSupport.isValueAvailable(field);
     }
 
     /**

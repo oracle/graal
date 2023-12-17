@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.heap.value;
+package com.oracle.svm.core.fieldvaluetransformer;
 
-import java.util.Objects;
-import java.util.function.BooleanSupplier;
-import java.util.function.Supplier;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
-import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.core.config.ConfigurationValues;
 
-public final class LazyValueSupplier<V> implements ValueSupplier<V> {
+import jdk.vm.ci.meta.JavaKind;
 
-    private final Supplier<V> valueSupplier;
-    private final BooleanSupplier isAvailable;
+public final class ArrayIndexShiftFieldValueTransformer extends BoxingTransformer implements FieldValueTransformer {
+    private final Class<?> targetClass;
 
-    LazyValueSupplier(Supplier<V> valueSupplier, BooleanSupplier isAvailable) {
-        this.valueSupplier = valueSupplier;
-        this.isAvailable = isAvailable;
+    public ArrayIndexShiftFieldValueTransformer(Class<?> targetClass, Class<?> returnType) {
+        super(returnType);
+        this.targetClass = targetClass;
     }
 
     @Override
-    public boolean isAvailable() {
-        return isAvailable.getAsBoolean();
-    }
-
-    @Override
-    public V get() {
-        AnalysisError.guarantee(isAvailable(), "Value is not yet available.");
-        return Objects.requireNonNull(valueSupplier.get());
+    public Object transform(Object receiver, Object originalValue) {
+        return box(ConfigurationValues.getObjectLayout().getArrayIndexShift(JavaKind.fromJavaClass(targetClass.getComponentType())));
     }
 }

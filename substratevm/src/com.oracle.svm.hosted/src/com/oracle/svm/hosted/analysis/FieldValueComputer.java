@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.heap.value;
+package com.oracle.svm.hosted.analysis;
 
-import java.util.Objects;
+import java.util.List;
 import java.util.function.BooleanSupplier;
-import java.util.function.Supplier;
 
-import com.oracle.graal.pointsto.util.AnalysisError;
+public final class FieldValueComputer {
+    private final BooleanSupplier availability;
+    private final List<Class<?>> types;
+    private final boolean canBeNull;
 
-public final class LazyValueSupplier<V> implements ValueSupplier<V> {
-
-    private final Supplier<V> valueSupplier;
-    private final BooleanSupplier isAvailable;
-
-    LazyValueSupplier(Supplier<V> valueSupplier, BooleanSupplier isAvailable) {
-        this.valueSupplier = valueSupplier;
-        this.isAvailable = isAvailable;
+    public FieldValueComputer(BooleanSupplier availability, List<Class<?>> types, boolean canBeNull) {
+        this.availability = availability;
+        this.types = types;
+        this.canBeNull = canBeNull;
     }
 
-    @Override
     public boolean isAvailable() {
-        return isAvailable.getAsBoolean();
+        return availability.getAsBoolean();
     }
 
-    @Override
-    public V get() {
-        AnalysisError.guarantee(isAvailable(), "Value is not yet available.");
-        return Objects.requireNonNull(valueSupplier.get());
+    public List<Class<?>> types() {
+        return types;
+    }
+
+    public boolean canBeNull() {
+        return canBeNull;
     }
 }

@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import jdk.graal.compiler.core.common.spi.JavaConstantFieldProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -32,8 +31,9 @@ import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.ameta.ReadableJavaField;
+import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 
+import jdk.graal.compiler.core.common.spi.JavaConstantFieldProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -44,19 +44,12 @@ public abstract class SharedConstantFieldProvider extends JavaConstantFieldProvi
 
     protected final UniverseMetaAccess metaAccess;
     protected final SVMHost hostVM;
+    protected final FieldValueInterceptionSupport fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
 
     public SharedConstantFieldProvider(MetaAccessProvider metaAccess, SVMHost hostVM) {
         super(metaAccess);
         this.metaAccess = (UniverseMetaAccess) metaAccess;
         this.hostVM = hostVM;
-    }
-
-    @Override
-    public <T> T readConstantField(ResolvedJavaField field, ConstantFieldTool<T> analysisTool) {
-        if (!ReadableJavaField.isValueAvailable(asAnalysisField(field))) {
-            return null;
-        }
-        return super.readConstantField(field, analysisTool);
     }
 
     protected abstract AnalysisField asAnalysisField(ResolvedJavaField field);
@@ -83,10 +76,24 @@ public abstract class SharedConstantFieldProvider extends JavaConstantFieldProvi
     }
 
     private boolean allowConstantFolding(ResolvedJavaField field) {
-        if (field.isStatic() && !isClassInitialized(field) && !(asAnalysisField(field).getWrapped() instanceof ReadableJavaField)) {
+        var aField = asAnalysisField(field);
+
+        /*
+         * This code should run as late as possible, because it has side effects. So we only do it
+         * after we have already checked that the field is `final` or `stable`. It marks the
+         * declaring class of the field as reachable, in order to trigger computation of automatic
+         * substitutions. It also ensures that the class is initialized (if the class is registered
+         * for initialization at build time) before any constant folding of static fields is
+         * attempted.
+         */
+        if (!fieldValueInterceptionSupport.isValueAvailable(aField)) {
+            return false;
+        }
+
+        if (field.isStatic() && !isClassInitialized(field) && !fieldValueInterceptionSupport.hasFieldValueTransformer(aField)) {
             /*
              * The class is not initialized at image build time, so we do not have a static field
-             * value to constant fold. Note that a ReadableJavaField is able to provide a field
+             * value to constant fold. Note that a FieldValueTransformer is able to provide a field
              * value also for non-initialized classes.
              */
             return false;

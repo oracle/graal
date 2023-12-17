@@ -681,13 +681,18 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         if (elementType == null) {
             return;
         }
-        if (processType) {
-            superTypeConsumer.accept(elementType.getArrayClass(arrayDimension));
-        }
         for (AnalysisType interf : elementType.getInterfaces()) {
             forAllSuperTypes(interf, arrayDimension, true, superTypeConsumer);
         }
         forAllSuperTypes(elementType.getSuperclass(), arrayDimension, true, superTypeConsumer);
+        /*
+         * Process the type itself only after visiting all supertypes. This ensures that, e.g., a
+         * type is never seen as reachable by another thread before all of its supertypes are
+         * already marked as reachable too.
+         */
+        if (processType) {
+            superTypeConsumer.accept(elementType.getArrayClass(arrayDimension));
+        }
     }
 
     protected synchronized void addAssignableType(BigBang bb, TypeState typeState) {

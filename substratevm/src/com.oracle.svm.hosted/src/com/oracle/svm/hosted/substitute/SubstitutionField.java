@@ -25,7 +25,6 @@
 package com.oracle.svm.hosted.substitute;
 
 import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.Field;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.svm.hosted.ameta.ReadableJavaField;
@@ -55,7 +54,7 @@ public class SubstitutionField implements ReadableJavaField, OriginalFieldProvid
     }
 
     @Override
-    public boolean isValueAvailableBeforeAnalysis() {
+    public boolean isValueAvailable() {
         return true;
     }
 
@@ -131,8 +130,8 @@ public class SubstitutionField implements ReadableJavaField, OriginalFieldProvid
     }
 
     @Override
-    public Field getJavaField() {
-        return OriginalFieldProvider.getJavaField(original);
+    public ResolvedJavaField unwrapTowardsOriginalField() {
+        return original;
     }
 
     @Override

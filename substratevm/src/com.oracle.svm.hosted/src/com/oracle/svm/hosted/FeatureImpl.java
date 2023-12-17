@@ -72,6 +72,7 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.code.CEntryPointData;
@@ -452,7 +453,7 @@ public class FeatureImpl {
 
         @Override
         public void registerFieldValueTransformer(Field field, FieldValueTransformer transformer) {
-            bb.getAnnotationSubstitutionProcessor().registerFieldValueTransformer(field, transformer);
+            FieldValueInterceptionSupport.singleton().registerFieldValueTransformer(field, transformer);
         }
 
         /**

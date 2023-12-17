@@ -1412,7 +1412,7 @@ final class ArrayBasedShapeGeneratorOffsetTransformer implements FieldValueTrans
     public Object transform(Object receiver, Object originalValue) {
         Class<?> generatedStorageClass = ReflectionUtil.readField(SHAPE_GENERATOR, "generatedStorageClass", receiver);
         Field field = ReflectionUtil.lookupField(generatedStorageClass, storageClassFieldName);
-        int offset = ImageSingletons.lookup(ReflectionSubstitutionSupport.class).getFieldOffset(field, false);
+        int offset = ReflectionSubstitutionSupport.singleton().getFieldOffset(field, false);
         if (offset <= 0) {
             throw VMError.shouldNotReachHere("Field is not marked as accessed: " + field);
         }
@@ -1537,7 +1537,7 @@ final class Target_com_oracle_truffle_api_nodes_NodeClassImpl_NodeFieldData {
             Class<?> declaringClass = ReflectionUtil.readField(receiver.getClass(), "declaringClass", receiver);
             String name = ReflectionUtil.readField(receiver.getClass(), "name", receiver);
             Field field = ReflectionUtil.lookupField(declaringClass, name);
-            int offset = ImageSingletons.lookup(ReflectionSubstitutionSupport.class).getFieldOffset(field, false);
+            int offset = ReflectionSubstitutionSupport.singleton().getFieldOffset(field, false);
             if (offset <= 0) {
                 throw VMError.shouldNotReachHere("Field is not marked as accessed: " + field);
             }
@@ -1569,7 +1569,7 @@ final class Target_com_oracle_truffle_api_dsl_InlineSupport_UnsafeField {
             Class<?> declaringClass = ReflectionUtil.readField(InlinableField.class.getSuperclass(), "declaringClass", receiver);
             String name = ReflectionUtil.readField(InlinableField.class.getSuperclass(), "name", receiver);
             Field field = ReflectionUtil.lookupField(declaringClass, name);
-            int offset = ImageSingletons.lookup(ReflectionSubstitutionSupport.class).getFieldOffset(field, false);
+            int offset = ReflectionSubstitutionSupport.singleton().getFieldOffset(field, false);
             if (offset == -1) {
                 throw VMError.shouldNotReachHere("Field is not marked as accessed: " + field);
             }

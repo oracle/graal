@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.heap.value;
+package com.oracle.svm.core.fieldvaluetransformer;
 
-import java.util.Objects;
-import java.util.function.BooleanSupplier;
-import java.util.function.Supplier;
+import java.lang.reflect.Field;
 
-import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
+import com.oracle.svm.core.util.VMError;
 
-public final class LazyValueSupplier<V> implements ValueSupplier<V> {
+public final class FieldOffsetFieldValueTransformer extends BoxingTransformer implements FieldValueTransformerWithAvailability {
+    private final Field targetField;
 
-    private final Supplier<V> valueSupplier;
-    private final BooleanSupplier isAvailable;
-
-    LazyValueSupplier(Supplier<V> valueSupplier, BooleanSupplier isAvailable) {
-        this.valueSupplier = valueSupplier;
-        this.isAvailable = isAvailable;
+    public FieldOffsetFieldValueTransformer(Field targetField, Class<?> returnType) {
+        super(returnType);
+        this.targetField = targetField;
     }
 
     @Override
-    public boolean isAvailable() {
-        return isAvailable.getAsBoolean();
+    public ValueAvailability valueAvailability() {
+        return ValueAvailability.AfterAnalysis;
     }
 
     @Override
-    public V get() {
-        AnalysisError.guarantee(isAvailable(), "Value is not yet available.");
-        return Objects.requireNonNull(valueSupplier.get());
+    public Object transform(Object receiver, Object originalValue) {
+        int offset = ReflectionSubstitutionSupport.singleton().getFieldOffset(targetField, true);
+        if (offset <= 0) {
+            throw VMError.shouldNotReachHere("Field is not marked as unsafe accessed: " + targetField);
+        }
+        return box(offset);
     }
 }
