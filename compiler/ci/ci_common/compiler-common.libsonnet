@@ -53,6 +53,7 @@
     job_prefix:: "bench-compiler",
     tags+: ["bench-compiler"],
     python_version : "3",
+    packages+: common.deps.svm.packages,
     environment+: {
       BENCH_RESULTS_FILE_PATH : "bench-results.json"
     },
