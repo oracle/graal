@@ -558,6 +558,8 @@ public class BinaryParser extends BinaryStreamParser {
                 return WasmType.F32_TYPE_ARRAY;
             case F64_TYPE:
                 return WasmType.F64_TYPE_ARRAY;
+            case V128_TYPE:
+                return WasmType.V128_TYPE_ARRAY;
             case FUNCREF_TYPE:
                 return WasmType.FUNCREF_TYPE_ARRAY;
             case EXTERNREF_TYPE:

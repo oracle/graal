@@ -41,7 +41,6 @@
 package org.graalvm.wasm;
 
 import org.graalvm.wasm.api.InteropArray;
-import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
