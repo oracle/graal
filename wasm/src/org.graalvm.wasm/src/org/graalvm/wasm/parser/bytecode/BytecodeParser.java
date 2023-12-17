@@ -464,9 +464,9 @@ public abstract class BytecodeParser {
                 case Bytecode.RETURN:
                 case Bytecode.LOOP:
                 case Bytecode.DROP:
-                case Bytecode.DROP_REF:
+                case Bytecode.DROP_OBJ:
                 case Bytecode.SELECT:
-                case Bytecode.SELECT_REF:
+                case Bytecode.SELECT_OBJ:
                 case Bytecode.I32_EQZ:
                 case Bytecode.I32_EQ:
                 case Bytecode.I32_NE:
@@ -607,11 +607,11 @@ public abstract class BytecodeParser {
                 case Bytecode.LABEL_U8:
                 case Bytecode.BR_U8:
                 case Bytecode.LOCAL_GET_U8:
-                case Bytecode.LOCAL_GET_REF_U8:
+                case Bytecode.LOCAL_GET_OBJ_U8:
                 case Bytecode.LOCAL_SET_U8:
-                case Bytecode.LOCAL_SET_REF_U8:
+                case Bytecode.LOCAL_SET_OBJ_U8:
                 case Bytecode.LOCAL_TEE_U8:
-                case Bytecode.LOCAL_TEE_REF_U8:
+                case Bytecode.LOCAL_TEE_OBJ_U8:
                 case Bytecode.GLOBAL_GET_U8:
                 case Bytecode.GLOBAL_SET_U8:
                 case Bytecode.I32_LOAD_U8:
@@ -653,11 +653,11 @@ public abstract class BytecodeParser {
                 case Bytecode.MEMORY_GROW:
                 case Bytecode.BR_I32:
                 case Bytecode.LOCAL_GET_I32:
-                case Bytecode.LOCAL_GET_REF_I32:
+                case Bytecode.LOCAL_GET_OBJ_I32:
                 case Bytecode.LOCAL_SET_I32:
-                case Bytecode.LOCAL_SET_REF_I32:
+                case Bytecode.LOCAL_SET_OBJ_I32:
                 case Bytecode.LOCAL_TEE_I32:
-                case Bytecode.LOCAL_TEE_REF_I32:
+                case Bytecode.LOCAL_TEE_OBJ_I32:
                 case Bytecode.GLOBAL_GET_I32:
                 case Bytecode.GLOBAL_SET_I32:
                 case Bytecode.I32_LOAD_I32:

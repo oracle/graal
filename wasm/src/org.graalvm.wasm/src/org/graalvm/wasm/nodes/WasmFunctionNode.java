@@ -49,7 +49,7 @@ import static org.graalvm.wasm.BinaryStreamParser.rawPeekU32;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekU8;
 import static org.graalvm.wasm.nodes.WasmFrame.drop;
 import static org.graalvm.wasm.nodes.WasmFrame.dropPrimitive;
-import static org.graalvm.wasm.nodes.WasmFrame.dropReference;
+import static org.graalvm.wasm.nodes.WasmFrame.dropObject;
 import static org.graalvm.wasm.nodes.WasmFrame.popBoolean;
 import static org.graalvm.wasm.nodes.WasmFrame.popDouble;
 import static org.graalvm.wasm.nodes.WasmFrame.popFloat;
@@ -313,8 +313,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             dropStack(frame, stackPointer, targetStackPointer + 1);
                             stackPointer = targetStackPointer + 1;
                             break;
-                        case BytecodeBitEncoding.LABEL_U8_RESULT_REF:
-                            WasmFrame.copyReference(frame, stackPointer - 1, targetStackPointer);
+                        case BytecodeBitEncoding.LABEL_U8_RESULT_OBJ:
+                            WasmFrame.copyObject(frame, stackPointer - 1, targetStackPointer);
                             dropStack(frame, stackPointer, targetStackPointer + 1);
                             stackPointer = targetStackPointer + 1;
                             break;
@@ -625,9 +625,9 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     dropPrimitive(frame, stackPointer);
                     break;
                 }
-                case Bytecode.DROP_REF: {
+                case Bytecode.DROP_OBJ: {
                     stackPointer--;
-                    dropReference(frame, stackPointer);
+                    dropObject(frame, stackPointer);
                     break;
                 }
                 case Bytecode.SELECT: {
@@ -640,12 +640,12 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     stackPointer -= 2;
                     break;
                 }
-                case Bytecode.SELECT_REF: {
+                case Bytecode.SELECT_OBJ: {
                     if (popBoolean(frame, stackPointer - 1)) {
-                        dropReference(frame, stackPointer - 2);
+                        dropObject(frame, stackPointer - 2);
                     } else {
-                        WasmFrame.copyReference(frame, stackPointer - 2, stackPointer - 3);
-                        dropReference(frame, stackPointer - 2);
+                        WasmFrame.copyObject(frame, stackPointer - 2, stackPointer - 3);
+                        dropObject(frame, stackPointer - 2);
                     }
                     stackPointer -= 2;
                     break;
@@ -664,17 +664,17 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     stackPointer++;
                     break;
                 }
-                case Bytecode.LOCAL_GET_REF_U8: {
+                case Bytecode.LOCAL_GET_OBJ_U8: {
                     final int index = rawPeekU8(bytecode, offset);
                     offset++;
-                    local_get_ref(frame, stackPointer, index);
+                    local_get_obj(frame, stackPointer, index);
                     stackPointer++;
                     break;
                 }
-                case Bytecode.LOCAL_GET_REF_I32: {
+                case Bytecode.LOCAL_GET_OBJ_I32: {
                     final int index = rawPeekI32(bytecode, offset);
                     offset += 4;
-                    local_get_ref(frame, stackPointer, index);
+                    local_get_obj(frame, stackPointer, index);
                     stackPointer++;
                     break;
                 }
@@ -692,18 +692,18 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     local_set(frame, stackPointer, index);
                     break;
                 }
-                case Bytecode.LOCAL_SET_REF_U8: {
+                case Bytecode.LOCAL_SET_OBJ_U8: {
                     final int index = rawPeekU8(bytecode, offset);
                     offset++;
                     stackPointer--;
-                    local_set_ref(frame, stackPointer, index);
+                    local_set_obj(frame, stackPointer, index);
                     break;
                 }
-                case Bytecode.LOCAL_SET_REF_I32: {
+                case Bytecode.LOCAL_SET_OBJ_I32: {
                     final int index = rawPeekI32(bytecode, offset);
                     offset += 4;
                     stackPointer--;
-                    local_set_ref(frame, stackPointer, index);
+                    local_set_obj(frame, stackPointer, index);
                     break;
                 }
                 case Bytecode.LOCAL_TEE_U8: {
@@ -718,16 +718,16 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     local_tee(frame, stackPointer - 1, index);
                     break;
                 }
-                case Bytecode.LOCAL_TEE_REF_U8: {
+                case Bytecode.LOCAL_TEE_OBJ_U8: {
                     final int index = rawPeekU8(bytecode, offset);
                     offset++;
-                    local_tee_ref(frame, stackPointer - 1, index);
+                    local_tee_obj(frame, stackPointer - 1, index);
                     break;
                 }
-                case Bytecode.LOCAL_TEE_REF_I32: {
+                case Bytecode.LOCAL_TEE_OBJ_I32: {
                     final int index = rawPeekI32(bytecode, offset);
                     offset += 4;
-                    local_tee_ref(frame, stackPointer - 1, index);
+                    local_tee_obj(frame, stackPointer - 1, index);
                     break;
                 }
                 case Bytecode.GLOBAL_GET_U8: {
@@ -2729,8 +2729,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         WasmFrame.copyPrimitive(frame, stackPointer, index);
     }
 
-    private static void local_tee_ref(VirtualFrame frame, int stackPointer, int index) {
-        WasmFrame.copyReference(frame, stackPointer, index);
+    private static void local_tee_obj(VirtualFrame frame, int stackPointer, int index) {
+        WasmFrame.copyObject(frame, stackPointer, index);
     }
 
     private static void local_set(VirtualFrame frame, int stackPointer, int index) {
@@ -2740,10 +2740,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private static void local_set_ref(VirtualFrame frame, int stackPointer, int index) {
-        WasmFrame.copyReference(frame, stackPointer, index);
+    private static void local_set_obj(VirtualFrame frame, int stackPointer, int index) {
+        WasmFrame.copyObject(frame, stackPointer, index);
         if (CompilerDirectives.inCompiledCode()) {
-            WasmFrame.dropReference(frame, stackPointer);
+            WasmFrame.dropObject(frame, stackPointer);
         }
     }
 
@@ -2751,8 +2751,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         WasmFrame.copyPrimitive(frame, index, stackPointer);
     }
 
-    private static void local_get_ref(VirtualFrame frame, int stackPointer, int index) {
-        WasmFrame.copyReference(frame, index, stackPointer);
+    private static void local_get_obj(VirtualFrame frame, int stackPointer, int index) {
+        WasmFrame.copyObject(frame, index, stackPointer);
     }
 
     private static void i32_eqz(VirtualFrame frame, int stackPointer) {
@@ -4033,7 +4033,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         CompilerAsserts.partialEvaluationConstant(stackPointer);
         CompilerAsserts.partialEvaluationConstant(targetResultCount);
         for (int i = 0; i < targetResultCount; ++i) {
-            WasmFrame.copyReference(frame, stackPointer + i - targetResultCount, targetStackPointer + i);
+            WasmFrame.copyObject(frame, stackPointer + i - targetResultCount, targetStackPointer + i);
         }
     }
 
