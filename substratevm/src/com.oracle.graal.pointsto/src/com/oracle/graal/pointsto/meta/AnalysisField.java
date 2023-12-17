@@ -40,6 +40,7 @@ import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
@@ -476,7 +477,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     public int getPosition() {
-        assert position != -1 : this;
+        AnalysisError.guarantee(position != -1, "Unknown position for field %s", this);
         return position;
     }
 

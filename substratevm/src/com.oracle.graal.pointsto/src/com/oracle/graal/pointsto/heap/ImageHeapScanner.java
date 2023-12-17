@@ -515,6 +515,10 @@ public abstract class ImageHeapScanner {
         AnalysisType objectType = metaAccess.lookupJavaType(imageHeapConstant);
         imageHeap.addReachableObject(objectType, imageHeapConstant);
 
+        AnalysisType type = imageHeapConstant.getType(metaAccess);
+        Object object = bb.getSnippetReflectionProvider().asObject(Object.class, imageHeapConstant);
+        type.notifyObjectReachable(universe.getConcurrentAnalysisAccess(), object);
+
         markTypeInstantiated(objectType, reason);
         if (imageHeapConstant instanceof ImageHeapObjectArray imageHeapArray) {
             AnalysisType arrayType = imageHeapArray.getType(metaAccess);

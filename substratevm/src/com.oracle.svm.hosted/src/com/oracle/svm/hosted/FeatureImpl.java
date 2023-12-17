@@ -46,8 +46,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
@@ -89,6 +87,8 @@ import com.oracle.svm.hosted.option.HostedOptionProvider;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.UnsafePartitionKind;
 
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 @SuppressWarnings("deprecation")
@@ -288,6 +288,16 @@ public class FeatureImpl {
         @Override
         public void registerObjectReplacer(Function<Object, Object> replacer) {
             getUniverse().registerObjectReplacer(replacer);
+        }
+
+        /**
+         * Register a callback that is executed when an object of the specified type or any of its
+         * subtypes is marked as reachable.
+         * 
+         * @since 24.0
+         */
+        public <T> void registerObjectReachableCallback(Class<T> clazz, BiConsumer<DuringAnalysisAccess, T> callback) {
+            getMetaAccess().lookupJavaType(clazz).registerObjectReachableCallback(callback);
         }
 
         public void registerSubstitutionProcessor(SubstitutionProcessor substitution) {
