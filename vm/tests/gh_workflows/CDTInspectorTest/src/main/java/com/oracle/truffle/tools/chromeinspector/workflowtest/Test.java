@@ -49,8 +49,16 @@ public class Test {
         }
         String graalLauncher = args[0];
         String scriptFile = args[1];
-        String chromeBin = args[2];
-        String chromeVersion = args[3].substring(0, args[3].indexOf('.'));
+        String chromeBin;
+        String chromeVersion;
+        if (args.length > 2) {
+            chromeBin = args[2];
+            chromeVersion = args[3].substring(0, args[3].indexOf('.'));
+        } else {
+            String[] chrome = DownloadChromiumDev.download();
+            chromeBin = chrome[0];
+            chromeVersion = chrome[1];
+        }
 
         WebDriver driver = createDriver(chromeBin, chromeVersion);
         List<String> goldenLines = Files.readAllLines(Paths.get(scriptFile + ".out"));
@@ -91,7 +99,10 @@ public class Test {
 
         @Override
         public void accept(String line) {
-            String goldenLine = goldenLines.get(index++);
+            String goldenLine;
+            do {
+                goldenLine = goldenLines.get(index++);
+            } while (goldenLine.startsWith("#") || line.isBlank());
             line = line.trim();
             if (!goldenLine.equals(line)) {
                 if (!Pattern.matches(goldenLine, line)) {
