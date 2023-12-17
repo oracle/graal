@@ -2066,7 +2066,7 @@ public class BinaryParser extends BinaryStreamParser {
                     state.push(type);
                     state.addInstruction(Bytecode.REF_NULL);
                     if (calculable) {
-                        stack.add(null);
+                        stack.add(WasmConstant.NULL);
                     }
                     break;
                 case Instructions.REF_FUNC:
