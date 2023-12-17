@@ -3999,6 +3999,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case WasmType.I64_TYPE -> popLong(frame, stackPointer);
                 case WasmType.F32_TYPE -> popFloat(frame, stackPointer);
                 case WasmType.F64_TYPE -> popDouble(frame, stackPointer);
+                case WasmType.V128_TYPE -> popVector128(frame, stackPointer);
                 case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> popReference(frame, stackPointer);
                 default -> throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown type: %d", type);
             };
@@ -4169,6 +4170,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             case WasmType.I64_TYPE -> pushLong(frame, stackPointer, (long) result);
             case WasmType.F32_TYPE -> pushFloat(frame, stackPointer, (float) result);
             case WasmType.F64_TYPE -> pushDouble(frame, stackPointer, (double) result);
+            case WasmType.V128_TYPE -> pushVector128(frame, stackPointer, (Vector128) result);
             case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> pushReference(frame, stackPointer, result);
             default -> {
                 throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
@@ -4192,6 +4194,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         assert result == WasmConstant.MULTI_VALUE : result;
         final var multiValueStack = language.multiValueStack();
         final long[] primitiveMultiValueStack = multiValueStack.primitiveStack();
+        final Object[] objectMultiValueStack = multiValueStack.objectStack();
         for (int i = 0; i < resultCount; i++) {
             final byte resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
             CompilerAsserts.partialEvaluationConstant(resultType);
@@ -4200,10 +4203,13 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case WasmType.I64_TYPE -> pushLong(frame, stackPointer + i, primitiveMultiValueStack[i]);
                 case WasmType.F32_TYPE -> pushFloat(frame, stackPointer + i, Float.intBitsToFloat((int) primitiveMultiValueStack[i]));
                 case WasmType.F64_TYPE -> pushDouble(frame, stackPointer + i, Double.longBitsToDouble(primitiveMultiValueStack[i]));
+                case WasmType.V128_TYPE -> {
+                    pushVector128(frame, stackPointer + i, (Vector128) objectMultiValueStack[i]);
+                    objectMultiValueStack[i] = null;
+                }
                 case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> {
-                    final Object[] referenceMultiValueStack = multiValueStack.referenceStack();
-                    pushReference(frame, stackPointer + i, referenceMultiValueStack[i]);
-                    referenceMultiValueStack[i] = null;
+                    pushReference(frame, stackPointer + i, objectMultiValueStack[i]);
+                    objectMultiValueStack[i] = null;
                 }
                 default -> {
                     enterErrorBranch();

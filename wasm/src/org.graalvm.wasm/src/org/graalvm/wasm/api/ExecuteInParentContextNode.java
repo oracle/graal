@@ -129,7 +129,7 @@ public class ExecuteInParentContextNode extends WasmBuiltinRootNode {
             case WasmType.I64_TYPE -> asLong(result);
             case WasmType.F32_TYPE -> asFloat(result);
             case WasmType.F64_TYPE -> asDouble(result);
-            case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> result;
+            case WasmType.V128_TYPE, WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> result;
             default -> {
                 throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
             }
@@ -152,7 +152,7 @@ public class ExecuteInParentContextNode extends WasmBuiltinRootNode {
             final var multiValueStack = WasmLanguage.get(this).multiValueStack();
             multiValueStack.resize(resultCount);
             final long[] primitiveMultiValueStack = multiValueStack.primitiveStack();
-            final Object[] referenceMultiValueStack = multiValueStack.referenceStack();
+            final Object[] objectMultiValueStack = multiValueStack.objectStack();
             for (int i = 0; i < resultCount; i++) {
                 byte resultType = module().symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
                 CompilerAsserts.partialEvaluationConstant(resultType);
@@ -162,7 +162,14 @@ public class ExecuteInParentContextNode extends WasmBuiltinRootNode {
                     case WasmType.I64_TYPE -> primitiveMultiValueStack[i] = asLong(value);
                     case WasmType.F32_TYPE -> primitiveMultiValueStack[i] = Float.floatToRawIntBits(asFloat(value));
                     case WasmType.F64_TYPE -> primitiveMultiValueStack[i] = Double.doubleToRawLongBits(asDouble(value));
-                    case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> referenceMultiValueStack[i] = value;
+                    case WasmType.V128_TYPE -> {
+                        if (!(value instanceof Vector128)) {
+                            errorBranch.enter();
+                            throw WasmException.create(Failure.INVALID_TYPE_IN_MULTI_VALUE);
+                        }
+                        objectMultiValueStack[i] = value;
+                    }
+                    case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> objectMultiValueStack[i] = value;
                     default -> {
                         errorBranch.enter();
                         throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
