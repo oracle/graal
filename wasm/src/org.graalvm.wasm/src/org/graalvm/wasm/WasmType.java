@@ -96,9 +96,8 @@ public class WasmType implements TruffleObject {
      */
     public static final int NONE_COMMON_TYPE = 0;
     public static final int NUM_COMMON_TYPE = 1;
-    public static final int VEC_COMMON_TYPE = 2;
-    public static final int REF_COMMON_TYPE = 3;
-    public static final int MIX_COMMON_TYPE = NUM_COMMON_TYPE | VEC_COMMON_TYPE | REF_COMMON_TYPE;
+    public static final int OBJ_COMMON_TYPE = 2;
+    public static final int MIX_COMMON_TYPE = NUM_COMMON_TYPE | OBJ_COMMON_TYPE;
 
     public static String toString(int valueType) {
         CompilerAsserts.neverPartOfCompilation();
@@ -140,7 +139,7 @@ public class WasmType implements TruffleObject {
         int type = 0;
         for (byte resultType : types) {
             type |= WasmType.isNumberType(resultType) ? NUM_COMMON_TYPE : 0;
-            type |= WasmType.isReferenceType(resultType) ? REF_COMMON_TYPE : 0;
+            type |= WasmType.isVectorType(resultType) || WasmType.isReferenceType(resultType) ? OBJ_COMMON_TYPE : 0;
         }
         return type;
     }

@@ -333,8 +333,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         case BytecodeBitEncoding.LABEL_U16_RESULT_TYPE_NUM:
                             unwindPrimitiveStack(frame, stackPointer, targetStackPointer, resultCount);
                             break;
-                        case BytecodeBitEncoding.LABEL_U16_RESULT_TYPE_REF:
-                            unwindReferenceStack(frame, stackPointer, targetStackPointer, resultCount);
+                        case BytecodeBitEncoding.LABEL_U16_RESULT_TYPE_OBJ:
+                            unwindObjectStack(frame, stackPointer, targetStackPointer, resultCount);
                             break;
                         case BytecodeBitEncoding.LABEL_U16_RESULT_TYPE_MIX:
                             unwindStack(frame, stackPointer, targetStackPointer, resultCount);
@@ -354,8 +354,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         case BytecodeBitEncoding.LABEL_RESULT_TYPE_NUM:
                             unwindPrimitiveStack(frame, stackPointer, targetStackPointer, resultCount);
                             break;
-                        case BytecodeBitEncoding.LABEL_RESULT_TYPE_REF:
-                            unwindReferenceStack(frame, stackPointer, targetStackPointer, resultCount);
+                        case BytecodeBitEncoding.LABEL_RESULT_TYPE_OBJ:
+                            unwindObjectStack(frame, stackPointer, targetStackPointer, resultCount);
                             break;
                         case BytecodeBitEncoding.LABEL_RESULT_TYPE_MIX:
                             unwindStack(frame, stackPointer, targetStackPointer, resultCount);
@@ -4026,7 +4026,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     @ExplodeLoop
-    private static void unwindReferenceStack(VirtualFrame frame, int stackPointer, int targetStackPointer, int targetResultCount) {
+    private static void unwindObjectStack(VirtualFrame frame, int stackPointer, int targetStackPointer, int targetResultCount) {
         CompilerAsserts.partialEvaluationConstant(stackPointer);
         CompilerAsserts.partialEvaluationConstant(targetResultCount);
         for (int i = 0; i < targetResultCount; ++i) {
