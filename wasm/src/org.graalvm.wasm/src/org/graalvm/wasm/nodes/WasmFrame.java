@@ -141,9 +141,6 @@ public abstract class WasmFrame {
     public static Vector128 popVector128(VirtualFrame frame, int slot) {
         Vector128 result = (Vector128) frame.getObjectStatic(slot);
         frame.clearObjectStatic(slot);
-        if (result == null) {
-            return Vector128.ZERO;
-        }
         return result;
     }
 
