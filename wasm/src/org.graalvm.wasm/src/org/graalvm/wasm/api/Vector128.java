@@ -66,6 +66,25 @@ public class Vector128 {
     }
 
     @ExplodeLoop
+    public short[] asShorts() {
+        short[] shorts = new short[8];
+        for (int i = 0; i < 8; i++) {
+            shorts[i] = byteArraySupport.getShort(bytes, i * 2);
+        }
+        return shorts;
+    }
+
+    @ExplodeLoop
+    public static Vector128 ofShorts(short[] shorts) {
+        assert shorts.length == 8;
+        byte[] bytes = new byte[16];
+        for (int i = 0; i < 8; i++) {
+            byteArraySupport.putShort(bytes, i * 2, shorts[i]);
+        }
+        return new Vector128(bytes);
+    }
+
+    @ExplodeLoop
     public int[] asInts() {
         int[] ints = new int[4];
         for (int i = 0; i < 4; i++) {
@@ -80,6 +99,44 @@ public class Vector128 {
         byte[] bytes = new byte[16];
         for (int i = 0; i < 4; i++) {
             byteArraySupport.putInt(bytes, i * 4, ints[i]);
+        }
+        return new Vector128(bytes);
+    }
+
+    @ExplodeLoop
+    public long[] asLongs() {
+        long[] longs = new long[2];
+        for (int i = 0; i < 2; i++) {
+            longs[i] = byteArraySupport.getLong(bytes, i * 8);
+        }
+        return longs;
+    }
+
+    @ExplodeLoop
+    public static Vector128 ofLongs(long[] longs) {
+        assert longs.length == 2;
+        byte[] bytes = new byte[16];
+        for (int i = 0; i < 2; i++) {
+            byteArraySupport.putLong(bytes, i * 8, longs[i]);
+        }
+        return new Vector128(bytes);
+    }
+
+    @ExplodeLoop
+    public float[] asFloats() {
+        float[] floats = new float[4];
+        for (int i = 0; i < 4; i++) {
+            floats[i] = byteArraySupport.getFloat(bytes, i * 4);
+        }
+        return floats;
+    }
+
+    @ExplodeLoop
+    public static Vector128 ofFloats(float[] floats) {
+        assert floats.length == 4;
+        byte[] bytes = new byte[16];
+        for (int i = 0; i < 4; i++) {
+            byteArraySupport.putFloat(bytes, i * 4, floats[i]);
         }
         return new Vector128(bytes);
     }
