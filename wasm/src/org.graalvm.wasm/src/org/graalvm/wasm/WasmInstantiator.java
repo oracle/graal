@@ -154,24 +154,16 @@ public class WasmInstantiator {
                 linkActions.add((context, instance) -> context.linker().resolveGlobalImport(context, instance, globalDescriptor, globalIndex, globalValueType, globalMutability));
             } else {
                 final boolean initialized = module.globalInitialized(globalIndex);
-                final boolean isReference = module.globalIsReference(globalIndex);
                 final byte[] initBytecode = module.globalInitializerBytecode(globalIndex);
-                final long initialValue = module.globalInitialValue(globalIndex);
+                final Object initialValue = module.globalInitialValue(globalIndex);
                 linkActions.add((context, instance) -> {
                     final GlobalRegistry registry = context.globals();
                     final int address = registry.allocateGlobal();
                     instance.setGlobalAddress(globalIndex, address);
                 });
                 linkActions.add((context, instance) -> {
-                    final GlobalRegistry registry = context.globals();
-                    final int address = instance.globalAddress(globalIndex);
                     if (initialized) {
-                        if (isReference) {
-                            // Only null is possible
-                            registry.storeReference(address, WasmConstant.NULL);
-                        } else {
-                            registry.storeLong(address, initialValue);
-                        }
+                        context.globals().store(globalValueType, instance.globalAddress(globalIndex), initialValue);
                         context.linker().resolveGlobalInitialization(instance, globalIndex);
                     } else {
                         context.linker().resolveGlobalInitialization(context, instance, globalIndex, initBytecode);

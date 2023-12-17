@@ -71,7 +71,7 @@ public final class WasmContext {
         this.env = env;
         this.language = language;
         this.contextOptions = WasmContextOptions.fromOptionValues(env.getOptions());
-        this.globals = new GlobalRegistry(contextOptions.supportBulkMemoryAndRefTypes());
+        this.globals = new GlobalRegistry();
         this.tableRegistry = new TableRegistry();
         this.memoryRegistry = new MemoryRegistry();
         this.moduleInstances = new LinkedHashMap<>();

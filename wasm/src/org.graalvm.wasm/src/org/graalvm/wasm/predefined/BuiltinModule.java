@@ -134,7 +134,7 @@ public abstract class BuiltinModule {
         return index;
     }
 
-    protected int defineGlobal(WasmModule module, String name, byte valueType, byte mutability, long value) {
+    protected int defineGlobal(WasmModule module, String name, byte valueType, byte mutability, Object value) {
         int index = module.symbolTable().numGlobals();
         module.symbolTable().declareExportedGlobalWithValue(name, index, valueType, mutability, value);
         return index;

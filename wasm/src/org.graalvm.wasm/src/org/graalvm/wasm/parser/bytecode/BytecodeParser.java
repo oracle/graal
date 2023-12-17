@@ -46,7 +46,6 @@ import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.GlobalRegistry;
 import org.graalvm.wasm.Linker;
-import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmModule;
@@ -83,14 +82,8 @@ public abstract class BytecodeParser {
             if (module.globalImported(i)) {
                 continue;
             }
-            final int address = instance.globalAddress(i);
-            final long value = module.globalInitialValue(i);
             if (module.globalInitialized(i)) {
-                if (module.globalIsReference(i)) {
-                    globals.storeReference(address, WasmConstant.NULL);
-                } else {
-                    globals.storeLong(address, value);
-                }
+                globals.store(module.globalValueType(i), instance.globalAddress(i), module.globalInitialValue(i));
             } else {
                 Linker.initializeGlobal(context, instance, i, module.globalInitializerBytecode(i));
             }
@@ -899,7 +892,7 @@ public abstract class BytecodeParser {
                     final int vectorOpcode = rawPeekU8(bytecode, offset);
                     offset++;
                     switch (vectorOpcode) {
-                        case Bytecode.VECTOR_V128_CONST_I128:
+                        case Bytecode.VECTOR_V128_CONST:
                             offset += 16;
                             break;
                         case Bytecode.VECTOR_I32X4_ALL_TRUE:

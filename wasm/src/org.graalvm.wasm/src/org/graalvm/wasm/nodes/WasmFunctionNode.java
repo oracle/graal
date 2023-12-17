@@ -1722,7 +1722,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     offset++;
                     CompilerAsserts.partialEvaluationConstant(vectorOpcode);
                     switch (vectorOpcode) {
-                        case Bytecode.VECTOR_V128_CONST_I128:
+                        case Bytecode.VECTOR_V128_CONST:
                             final Vector128 value = rawPeekI128(bytecode, offset);
                             offset += 16;
 
@@ -2682,6 +2682,9 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             case WasmType.F64_TYPE:
                 context.globals().storeLong(instance.globalAddress(index), Double.doubleToRawLongBits(popDouble(frame, stackPointer)));
                 break;
+            case WasmType.V128_TYPE:
+                context.globals().storeVector128(instance.globalAddress(index), popVector128(frame, stackPointer));
+                break;
             case WasmType.FUNCREF_TYPE:
             case WasmType.EXTERNREF_TYPE:
                 context.globals().storeReference(instance.globalAddress(index), popReference(frame, stackPointer));
@@ -2706,6 +2709,9 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 break;
             case WasmType.F64_TYPE:
                 pushDouble(frame, stackPointer, Double.longBitsToDouble(context.globals().loadAsLong(instance.globalAddress(index))));
+                break;
+            case WasmType.V128_TYPE:
+                pushVector128(frame, stackPointer, context.globals().loadAsVector128(instance.globalAddress(index)));
                 break;
             case WasmType.FUNCREF_TYPE:
             case WasmType.EXTERNREF_TYPE:
