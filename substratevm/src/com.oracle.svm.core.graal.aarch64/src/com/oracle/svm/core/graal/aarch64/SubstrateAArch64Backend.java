@@ -28,15 +28,52 @@ import static com.oracle.svm.core.graal.aarch64.SubstrateAArch64RegisterConfig.f
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_DECD_RSP;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_END;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static jdk.vm.ci.aarch64.AArch64.lr;
-import static jdk.vm.ci.aarch64.AArch64.sp;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.graal.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.graal.compiler.lir.LIRValueUtil.asConstantValue;
 import static jdk.graal.compiler.lir.LIRValueUtil.differentRegisters;
+import static jdk.vm.ci.aarch64.AArch64.lr;
+import static jdk.vm.ci.aarch64.AArch64.sp;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import java.util.function.BiConsumer;
+
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.graal.code.PatchConsumerFactory;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
+import com.oracle.svm.core.graal.code.SubstrateCompiledCode;
+import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
+import com.oracle.svm.core.graal.code.SubstrateDebugInfoBuilder;
+import com.oracle.svm.core.graal.code.SubstrateLIRGenerator;
+import com.oracle.svm.core.graal.code.SubstrateNodeLIRBuilder;
+import com.oracle.svm.core.graal.lir.VerificationMarkerOp;
+import com.oracle.svm.core.graal.meta.KnownOffsets;
+import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
+import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
+import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
+import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
+import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.heap.SubstrateReferenceMapBuilder;
+import com.oracle.svm.core.meta.CompressedNullConstant;
+import com.oracle.svm.core.meta.SharedField;
+import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.nodes.SafepointCheckNode;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.asm.BranchTargetOutOfBoundsException;
 import jdk.graal.compiler.asm.Label;
@@ -119,43 +156,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.AddressLoweringByUsePhase;
 import jdk.graal.compiler.phases.util.Providers;
-import org.graalvm.nativeimage.ImageSingletons;
-
-import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.deopt.Deoptimizer;
-import com.oracle.svm.core.graal.code.PatchConsumerFactory;
-import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
-import com.oracle.svm.core.graal.code.SubstrateCompiledCode;
-import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
-import com.oracle.svm.core.graal.code.SubstrateDebugInfoBuilder;
-import com.oracle.svm.core.graal.code.SubstrateLIRGenerator;
-import com.oracle.svm.core.graal.code.SubstrateNodeLIRBuilder;
-import com.oracle.svm.core.graal.lir.VerificationMarkerOp;
-import com.oracle.svm.core.graal.meta.KnownOffsets;
-import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
-import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
-import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
-import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
-import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
-import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.heap.SubstrateReferenceMapBuilder;
-import com.oracle.svm.core.meta.CompressedNullConstant;
-import com.oracle.svm.core.meta.SharedField;
-import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.nodes.SafepointCheckNode;
-import com.oracle.svm.core.thread.VMThreads.StatusSupport;
-import com.oracle.svm.core.util.VMError;
-
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CallingConvention;
@@ -300,7 +300,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                 Register immediateScratch = sc1.getRegister();
                 Register addressScratch = sc2.getRegister();
 
-                CompressEncoding compressEncoding = ReferenceAccess.singleton().getCompressEncoding();
+                int compressionShift = ReferenceAccess.singleton().getCompressionShift();
                 Register computeRegister = asRegister(addressBase);
                 int addressBitSize = addressBase.getPlatformKind().getSizeInBytes() * Byte.SIZE;
                 boolean nextMemoryAccessNeedsDecompress = false;
@@ -324,7 +324,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                              * currently in use: references are relative to the heap base register,
                              * with an optional shift.
                              */
-                            masm.add(64, addressScratch, ReservedRegisters.singleton().getHeapBaseRegister(), computeRegister, ShiftType.LSL, compressEncoding.getShift());
+                            masm.add(64, addressScratch, ReservedRegisters.singleton().getHeapBaseRegister(), computeRegister, ShiftType.LSL, compressionShift);
                             memoryAddress = masm.makeAddress(addressBitSize, addressScratch, field.getOffset(), immediateScratch);
                         } else {
                             memoryAddress = masm.makeAddress(addressBitSize, computeRegister, field.getOffset(), immediateScratch);
@@ -353,7 +353,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                             } else {
                                 masm.mov(addressScratch, 0xDEADDEADDEADDEADL, true);
                             }
-                            masm.add(64, addressScratch, ReservedRegisters.singleton().getHeapBaseRegister(), addressScratch, ShiftType.LSL, compressEncoding.getShift());
+                            masm.add(64, addressScratch, ReservedRegisters.singleton().getHeapBaseRegister(), addressScratch, ShiftType.LSL, compressionShift);
                             memoryAddress = masm.makeAddress(addressBitSize, addressScratch, field.getOffset(), immediateScratch);
                         } else {
                             memoryAddress = masm.makeAddress(addressBitSize, ReservedRegisters.singleton().getHeapBaseRegister(), field.getOffset() + constantReflection.getImageHeapOffset(object),
