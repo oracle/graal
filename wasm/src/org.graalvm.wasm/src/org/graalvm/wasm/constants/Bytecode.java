@@ -444,7 +444,7 @@ public class Bytecode {
     public static final int ATOMIC_WAIT64 = 0x42;
 
     // Vector opcodes
-    public static final int VECTOR_V128_CONST_I128 = 0x0C;
+    public static final int VECTOR_V128_CONST = 0x0C;
     public static final int VECTOR_V128_ANY_TRUE = 0x53;
     public static final int VECTOR_I32X4_ALL_TRUE = 0xA3;
     public static final int VECTOR_I32X4_ADD = 0xAE;

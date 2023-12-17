@@ -68,13 +68,13 @@ import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
 import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.collection.ByteArrayList;
-import org.graalvm.wasm.collection.LongArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.ExportIdentifier;
 import org.graalvm.wasm.constants.GlobalModifier;
@@ -1805,7 +1805,7 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.VECTOR_V128_CONST:
                         final Vector128 value = readUnsignedInt128();
                         state.push(V128_TYPE);
-                        state.addInstruction(Bytecode.VECTOR_V128_CONST_I128, value);
+                        state.addInstruction(Bytecode.VECTOR_V128_CONST, value);
                         break;
                     case Instructions.VECTOR_V128_ANY_TRUE:
                     case Instructions.VECTOR_I32X4_ALL_TRUE:
@@ -1983,25 +1983,30 @@ public class BinaryParser extends BinaryStreamParser {
         // Table offset expression must be a constant expression with result type i32.
         // https://webassembly.github.io/spec/core/syntax/modules.html#element-segments
         // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
-        Pair<Long, byte[]> result = readConstantExpression(I32_TYPE, false);
+        Pair<Object, byte[]> result = readConstantExpression(I32_TYPE, false);
         if (result.getRight() == null) {
-            return Pair.create((int) (long) result.getLeft(), null);
+            return Pair.create((int) result.getLeft(), null);
         } else {
             return Pair.create(-1, result.getRight());
         }
     }
 
     private Pair<Long, byte[]> readLongOffsetExpression() {
-        return readConstantExpression(I64_TYPE, false);
+        Pair<Object, byte[]> result = readConstantExpression(I64_TYPE, false);
+        if (result.getRight() == null) {
+            return Pair.create((long) result.getLeft(), null);
+        } else {
+            return Pair.create(-1L, result.getRight());
+        }
     }
 
-    private Pair<Long, byte[]> readConstantExpression(byte resultType, boolean onlyImportedGlobals) {
+    private Pair<Object, byte[]> readConstantExpression(byte resultType, boolean onlyImportedGlobals) {
         // Read the constant expression.
         // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
         final RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
         final ParserState state = new ParserState(bytecode);
 
-        final LongArrayList stack = new LongArrayList();
+        final List<Object> stack = new ArrayList<>();
         boolean calculable = true;
 
         state.enterFunction(new byte[]{resultType});
@@ -2027,18 +2032,29 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.F32_CONST: {
-                    final int value = readFloatAsInt32();
+                    final int rawValue = readFloatAsInt32();
+                    final float value = Float.intBitsToFloat(rawValue);
                     state.push(F32_TYPE);
-                    state.addInstruction(Bytecode.F32_CONST, value);
+                    state.addInstruction(Bytecode.F32_CONST, rawValue);
                     if (calculable) {
                         stack.add(value);
                     }
                     break;
                 }
                 case Instructions.F64_CONST: {
-                    final long value = readFloatAsInt64();
+                    final long rawValue = readFloatAsInt64();
+                    final double value = Double.longBitsToDouble(rawValue);
                     state.push(F64_TYPE);
-                    state.addInstruction(Bytecode.F64_CONST, value);
+                    state.addInstruction(Bytecode.F64_CONST, rawValue);
+                    if (calculable) {
+                        stack.add(value);
+                    }
+                    break;
+                }
+                case Instructions.VECTOR_V128_CONST: {
+                    final Vector128 value = readUnsignedInt128();
+                    state.push(V128_TYPE);
+                    state.addInstruction(Bytecode.VECTOR_V128_CONST, value);
                     if (calculable) {
                         stack.add(value);
                     }
@@ -2050,7 +2066,7 @@ public class BinaryParser extends BinaryStreamParser {
                     state.push(type);
                     state.addInstruction(Bytecode.REF_NULL);
                     if (calculable) {
-                        stack.add(0);
+                        stack.add(null);
                     }
                     break;
                 case Instructions.REF_FUNC:
@@ -2086,8 +2102,8 @@ public class BinaryParser extends BinaryStreamParser {
                     state.push(I32_TYPE);
                     state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                     if (calculable) {
-                        int x = (int) stack.popBack();
-                        int y = (int) stack.popBack();
+                        int x = (int) stack.removeLast();
+                        int y = (int) stack.removeLast();
                         stack.add(switch (opcode) {
                             case Instructions.I32_ADD -> y + x;
                             case Instructions.I32_SUB -> y - x;
@@ -2107,8 +2123,8 @@ public class BinaryParser extends BinaryStreamParser {
                     state.push(I64_TYPE);
                     state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                     if (calculable) {
-                        long x = stack.popBack();
-                        long y = stack.popBack();
+                        long x = (long) stack.removeLast();
+                        long y = (long) stack.removeLast();
                         stack.add(switch (opcode) {
                             case Instructions.I64_ADD -> y + x;
                             case Instructions.I64_SUB -> y - x;
@@ -2125,9 +2141,9 @@ public class BinaryParser extends BinaryStreamParser {
         assertIntEqual(state.valueStackSize(), 1, "Multiple results on stack at constant expression end", Failure.TYPE_MISMATCH);
         state.exit(multiValue);
         if (calculable) {
-            return Pair.create(stack.popBack(), null);
+            return Pair.create(stack.removeLast(), null);
         } else {
-            return Pair.create(-1L, bytecode.toArray());
+            return Pair.create(null, bytecode.toArray());
         }
     }
 
@@ -2161,6 +2177,7 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.I64_CONST:
                 case Instructions.F32_CONST:
                 case Instructions.F64_CONST:
+                case Instructions.VECTOR_V128_CONST:
                     throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid constant expression for table elem expression: 0x%02X", opcode);
                 case Instructions.I32_ADD:
                 case Instructions.I32_SUB:
@@ -2349,24 +2366,16 @@ public class BinaryParser extends BinaryStreamParser {
             final byte mutability = readMutability();
             // Global initialization expressions must be constant expressions:
             // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
-            Pair<Long, byte[]> initExpression = readConstantExpression(type, true);
-            final long value = initExpression.getLeft();
+            Pair<Object, byte[]> initExpression = readConstantExpression(type, true);
+            final Object initValue = initExpression.getLeft();
             final byte[] initBytecode = initExpression.getRight();
             final boolean isInitialized = initBytecode == null;
-            final boolean isReference = WasmType.isReferenceType(type);
 
-            module.symbolTable().declareGlobal(globalIndex, type, mutability, isInitialized, isReference, initBytecode, value);
+            module.symbolTable().declareGlobal(globalIndex, type, mutability, isInitialized, initBytecode, initValue);
             final int currentGlobalIndex = globalIndex;
             module.addLinkAction((context, instance) -> {
-                final GlobalRegistry globals = context.globals();
-                final int address = instance.globalAddress(currentGlobalIndex);
                 if (isInitialized) {
-                    if (isReference) {
-                        // Only null is possible
-                        globals.storeReference(address, WasmConstant.NULL);
-                    } else {
-                        globals.storeLong(address, value);
-                    }
+                    context.globals().store(type, instance.globalAddress(currentGlobalIndex), initValue);
                     context.linker().resolveGlobalInitialization(instance, currentGlobalIndex);
                 } else {
                     context.linker().resolveGlobalInitialization(context, instance, currentGlobalIndex, initBytecode);
@@ -2422,7 +2431,7 @@ public class BinaryParser extends BinaryStreamParser {
                         offsetBytecode = offsetExpression.getRight();
                     }
                 } else {
-                    offsetAddress = 0;
+                    offsetAddress = -1;
                     offsetBytecode = null;
                 }
             } else {
