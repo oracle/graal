@@ -284,6 +284,7 @@ public abstract class BinaryStreamParser {
             case WasmType.I64_TYPE:
             case WasmType.F32_TYPE:
             case WasmType.F64_TYPE:
+            case WasmType.V128_TYPE:
                 offset++;
                 result[0] = type;
                 result[1] = SINGLE_RESULT_VALUE;
