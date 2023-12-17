@@ -302,7 +302,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * @return The location of the label in the bytecode.
      */
     public int addLabel(int resultCount, int stackSize, int commonResultType) {
-        assert commonResultType == WasmType.NONE_COMMON_TYPE || commonResultType == WasmType.NUM_COMMON_TYPE || commonResultType == WasmType.REF_COMMON_TYPE ||
+        assert commonResultType == WasmType.NONE_COMMON_TYPE || commonResultType == WasmType.NUM_COMMON_TYPE || commonResultType == WasmType.OBJ_COMMON_TYPE ||
                         commonResultType == WasmType.MIX_COMMON_TYPE : "invalid result type";
         final int location;
         if (resultCount == 0 && stackSize <= 63) {
@@ -317,8 +317,8 @@ public class RuntimeBytecodeGen extends BytecodeGen {
             add1(Bytecode.LABEL_U8);
             if (commonResultType == BytecodeBitEncoding.LABEL_RESULT_TYPE_NUM) {
                 add1(BytecodeBitEncoding.LABEL_U8_RESULT_NUM | stackSize);
-            } else if (commonResultType == BytecodeBitEncoding.LABEL_RESULT_TYPE_REF) {
-                add1(BytecodeBitEncoding.LABEL_U8_RESULT_REF | stackSize);
+            } else if (commonResultType == BytecodeBitEncoding.LABEL_RESULT_TYPE_OBJ) {
+                add1(BytecodeBitEncoding.LABEL_U8_RESULT_OBJ | stackSize);
             }
         } else if (resultCount <= 63 && fitsIntoUnsignedByte(stackSize)) {
             add1(Bytecode.SKIP_LABEL_U16);
