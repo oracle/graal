@@ -47,6 +47,11 @@ import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
+/**
+ * A {@link DataInput} backed by a {@link ByteBuffer}.
+ *
+ * @see SerializationUtils#createDataInput(ByteBuffer)
+ */
 final class ByteBufferDataInput implements DataInput {
 
     private final ByteBuffer buffer;

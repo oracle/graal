@@ -447,6 +447,7 @@ public interface BytecodeRootNode extends BytecodeIntrospection.Provider {
         throw new AbstractMethodError();
     }
 
+    // TODO (chumer) implement / remove with instrumentation
     @SuppressWarnings("unused")
     default InstrumentableNode materializeInstrumentTree(Set<Class<? extends Tag>> materializedTags) {
         throw new AbstractMethodError();

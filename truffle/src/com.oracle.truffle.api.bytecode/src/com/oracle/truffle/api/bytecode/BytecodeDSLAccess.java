@@ -48,6 +48,11 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 import sun.misc.Unsafe;
 
+/**
+ * Accessor class used to abstract away frame and bytecode array accesses in the generated code.
+ *
+ * Do not use directly.
+ */
 public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImpl, BytecodeDSLAccess.UnsafeImpl {
 
     public static volatile BytecodeDSLAccess safeSingleton;

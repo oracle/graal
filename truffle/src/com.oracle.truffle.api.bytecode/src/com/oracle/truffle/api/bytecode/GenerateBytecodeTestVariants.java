@@ -58,7 +58,6 @@ import java.lang.annotation.Target;
  * properties are checked by the DSL.
  *
  */
-
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface GenerateBytecodeTestVariants {

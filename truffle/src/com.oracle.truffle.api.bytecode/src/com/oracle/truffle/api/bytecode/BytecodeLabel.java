@@ -40,5 +40,13 @@
  */
 package com.oracle.truffle.api.bytecode;
 
+/**
+ * Abstract definition of a label. Labels can be used to implement forward branches (for backward
+ * branches, use a {@code While} operation).
+ *
+ * The language parser can allocate labels using the builder's {@code createLabel} method, and
+ * subsequently emit it using {@code emitLabel}. Labels are specified as parameters to branch
+ * operations.
+ */
 public abstract class BytecodeLabel {
 }

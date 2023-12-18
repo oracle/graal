@@ -347,7 +347,7 @@ public class BytecodeDSLExampleSourcesTest extends AbstractBytecodeDSLExampleTes
         nodes.updateConfiguration(BytecodeConfig.WITH_SOURCE);
         assertTrue(nodes.hasSources());
 
-        BytecodeDSLExample node = nodes.getNodes().get(0);
+        BytecodeDSLExample node = nodes.getNode(0);
 
         assertEquals(node.getSourceSection().getSource(), source);
         assertEquals(node.getSourceSection().getCharIndex(), 0);

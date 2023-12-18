@@ -77,9 +77,11 @@ import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
  * contains (among other things) a full bytecode encoding, an optimizing interpreter, and a
  * {@code Builder} class to generate and validate bytecode automatically.
  *
- * A node can opt in to additional features, like an uncached interpreter, serialization and
- * deserialization, coroutines, and support for quickened instructions and superinstructions. This
- * annotation controls which features are included in the generated code.
+ * A node can opt in to additional features, like an
+ * {@code #enableUncachedInterpreter uncached interpreter},
+ * {@code #boxingEliminationTypes boxing elimination},
+ * {@code #enableQuickening quickened instructions}, and more. The fields of this annotation control
+ * which features are included in the generated interpreter.
  *
  * For information about using the Bytecode DSL, please consult the
  * <a href="https://github.com/oracle/graal/blob/master/truffle/docs/BytecodeDSL.md">tutorial</a>
@@ -95,9 +97,11 @@ public @interface GenerateBytecode {
     Class<? extends TruffleLanguage<?>> languageClass();
 
     /**
-     * Whether to generate an uncached interpreter. The uncached interpreter improves start-up
-     * performance by executing {@link com.oracle.truffle.api.dsl.GenerateUncached uncached} nodes
-     * rather than specializing nodes.
+     * Whether to generate an uncached interpreter.
+     *
+     * The uncached interpreter improves start-up performance by executing
+     * {@link com.oracle.truffle.api.dsl.GenerateUncached uncached} nodes instead of allocating and
+     * executing cached (specializing) nodes.
      *
      * The node will transition to a specializing interpreter after enough invocations/back-edges
      * (as determined by the {@link BytecodeRootNode#setUncachedInterpreterThreshold uncached
@@ -107,38 +111,72 @@ public @interface GenerateBytecode {
 
     /**
      * Whether the generated interpreter should support serialization and deserialization.
+     *
+     * When serialization is enabled, the generated class will define static {@code serialize} and
+     * {@code deserialize} methods that can be used to convert bytecode nodes to and from a
+     * serialized byte array representation.
+     *
+     * This feature can be used to avoid the overhead of reparsing source code. Note that there is
+     * still some overhead, as it does not trivially copy bytecode directly: in order to validate
+     * the bytecode (for a balanced stack pointer, valid branches, etc.), serialization encodes the
+     * calls to the builder object and deserialization replays those calls.
+     *
+     * Note that the generated {@code deserialize} method takes a {@link java.util.function.Supplier
+     * Supplier<DataInput>} rather than a {@link java.io.DataInput} directly. The supplier should
+     * produce a fresh {@link java.io.DataInput} each time because the input may be processed
+     * multiple times (due to {@link BytecodeNodes#reparse reparsing}).
+     *
+     * @see com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer
+     * @see com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer
      */
     boolean enableSerialization() default false;
 
     /**
-     * Whether the generated interpreter should support instrumentation. Only if instrumentation is
-     * enabled the <code>startTag(...)</code> <code>endTag()</code>. Disabled by default.
+     * Whether the generated interpreter should support instrumentation.
      *
-     * @see #enableAutomaticRootInstrumentation()
+     * When instrumentation is enabled, the generated builder will define <code>startTag(...)</code>
+     * and <code>endTag()</code> methods that can be used to annotate the bytecode with
+     * {@link com.oracle.truffle.api.instrumentation.Tag tags}.
+     *
+     * @see #enableRootTagging()
      */
     boolean enableInstrumentation() default false;
 
     /**
      * Enables automatic root tagging if {@link #enableInstrumentation() instrumentation} is
-     * enabled. Automatic root tagging automatically implements {@link RootTag} for each
-     *
-     * @return
+     * enabled. Automatic root tagging automatically annotates each root node with {@link RootTag}.
      */
     boolean enableRootTagging() default true;
 
     /**
-     * Whether to use Unsafe array accesses. Unsafe accesses are faster, but they do not perform
-     * array bounds checks.
+     * Whether to use unsafe array accesses.
+     *
+     * Unsafe accesses are faster, but they do not perform array bounds checks. This means it is
+     * possible (though unlikely) for unsafe accesses to cause undefined behaviour.
      */
     boolean allowUnsafe() default true;
 
     /**
      * Whether the generated interpreter should support coroutines via a {@code yield} operation.
+     *
+     * The yield operation returns a {@link ContinuationResult} from the current point in execution.
+     * The {@link ContinuationResult} saves the current state of the interpreter for resumption at a
+     * later point in time, as well as an optional return value.
+     *
+     * @see com.oracle.truffle.api.bytecode.ContinuationResult
      */
     boolean enableYield() default false;
 
     /**
-     * Whether quickening decisions should be applied.
+     * Whether quickened bytecodes should be emitted.
+     *
+     * Quickened versions of instructions support a subset of the
+     * {@link com.oracle.truffle.api.dsl.Specialization specializations} defined by an operation.
+     * They can improve interpreted performance by reducing footprint and requiring fewer guards.
+     *
+     * Quickened versions of operations can be specified using
+     * {@link com.oracle.truffle.api.bytecode.ForceQuickening}. When an instruction re-specializes
+     * itself, the interpreter attempts to automatically replace it with a quickened instruction.
      */
     boolean enableQuickening() default true;
 
@@ -161,15 +199,19 @@ public @interface GenerateBytecode {
     /**
      * Path to a file containing optimization decisions. This file is generated using tracing on a
      * representative corpus of code.
+     *
+     * This feature is not yet supported.
+     *
+     * @see #forceTracing()
      */
-    // TODO keep the api but fail if it used outside tests (package)
     String decisionsFile() default "";
 
     /**
      * Path to files with manually-provided optimization decisions. These files can be used to
      * encode optimizations that are not generated automatically via tracing.
+     *
+     * This feature is not yet supported.
      */
-    // TODO keep the api but fail if it used outside tests (package)
     String[] decisionOverrideFiles() default {};
 
     /**
@@ -179,18 +221,25 @@ public @interface GenerateBytecode {
      * Note that this is a debug option that should not be used in production. Also note that this
      * field only affects code generation: whether tracing is actually performed at run time is
      * still controlled by the aforementioned option.
+     *
+     * This feature is not yet supported.
      */
-    // TODO keep the api but fail if it used outside tests (package)
     boolean forceTracing() default false;
 
     /**
      * Primitive types for which the interpreter should attempt to avoid boxing.
+     *
+     * If boxing elimination types are provided, the cached interpreter will generate instruction
+     * variants that load/store primitive values when possible. It will automatically use these
+     * instructions in a best-effort manner (falling back on boxed representations when necessary).
      */
     Class<?>[] boxingEliminationTypes() default {};
 
     /**
-     * Generate introspection data for specializations. The data is accessible using
+     * Whether to generate introspection data for specializations. The data is accessible using
      * {@link Argument#getSpecializationInfo()}.
+     *
+     * @see com.oracle.truffle.api.bytecode.introspection.BytecodeIntrospection
      */
     boolean enableSpecializationIntrospection() default true;
 

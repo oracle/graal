@@ -122,7 +122,7 @@ public class LocalHelpersTest {
     public static <T extends BytecodeNodeWithLocalIntrospectionBuilder> BytecodeNodeWithLocalIntrospection parseNode(Class<? extends BytecodeNodeWithLocalIntrospection> interpreterClass,
                     BytecodeParser<T> builder) {
         BytecodeNodes<BytecodeNodeWithLocalIntrospection> nodes = createNodes(interpreterClass, BytecodeConfig.DEFAULT, builder);
-        return nodes.getNodes().get(nodes.getNodes().size() - 1);
+        return nodes.getNode(nodes.count() - 1);
     }
 
     public <T extends BytecodeNodeWithLocalIntrospectionBuilder> BytecodeNodeWithLocalIntrospection parseNode(BytecodeParser<T> builder) {
@@ -626,7 +626,6 @@ public class LocalHelpersTest {
                                 boolean.class, long.class}, enableYield = true)),
                 @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableUncachedInterpreter = true))
 })
-@OperationProxy(value = ContinuationResult.ContinueNode.class, name = "Continue")
 abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode implements BytecodeRootNode {
     // Used for testGetLocalUsingBytecodeLocalIndex
     public int reservedLocalIndex = -1;
@@ -696,6 +695,25 @@ abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode 
 
         protected static boolean callTargetMatches(CallTarget left, CallTarget right) {
             return left == right;
+        }
+    }
+
+    @Operation
+    public static final class ContinueNode {
+        public static final int LIMIT = 3;
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"result.getContinuationRootNode() == rootNode"}, limit = "LIMIT")
+        public static Object invokeDirect(ContinuationResult result, Object value,
+                        @Cached(value = "result.getContinuationRootNode()", inline = false) RootNode rootNode,
+                        @Cached(value = "create(rootNode.getCallTarget())", inline = false) DirectCallNode callNode) {
+            return callNode.call(result.getFrame(), value);
+        }
+
+        @Specialization(replaces = "invokeDirect")
+        public static Object invokeIndirect(ContinuationResult result, Object value,
+                        @Cached(inline = false) IndirectCallNode callNode) {
+            return callNode.call(result.getContinuationCallTarget(), result.getFrame(), value);
         }
     }
 }

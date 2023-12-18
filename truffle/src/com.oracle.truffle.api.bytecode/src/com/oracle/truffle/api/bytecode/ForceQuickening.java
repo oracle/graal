@@ -50,16 +50,53 @@ import com.oracle.truffle.api.bytecode.ForceQuickening.Repeat;
 import com.oracle.truffle.api.dsl.Specialization;
 
 /**
- * Forces quickening for a {@link Specialization specialization} method. To quicken a combination of
- * multiple specializations use the same {@link #value() name} . If no name is specified then only
- * this one specialization is quickened. It is possible to specify multiple quickenings per
- * specialization if a specialization is quickened individually or in a group of specializations.
+ * Forces quickening for an {@link Operation} {@link Specialization specialization}. To quicken a
+ * combination of specializations use the same {@link #value() name} . If no name is specified then
+ * only this one specialization is quickened. It is possible to specify multiple quickenings per
+ * specialization (e.g., if a specialization is quickened individually and in a group of
+ * specializations).
+ *
+ * For example, the following code declares two quickenings: one that supports only {@code ints}
+ * (the plain {@code @ForceQuickening} on {@code doInts}), and another that supports both
+ * {@code ints} and {@code doubles} ({@code @ForceQuickening("primitives")}):
+ *
+ * <pre>
+ * &#64;Operation
+ * public static final class Add {
+ *     &#64;Specialization
+ *     &#64;ForceQuickening
+ *     &#64;ForceQuickening("primitives")
+ *     public static int doInts(int lhs, int rhs) {
+ *         return lhs + rhs;
+ *     }
+ *
+ *     &#64;Specialization
+ *     &#64;ForceQuickening("primitives")
+ *     public static double doDoubles(double lhs, double rhs) {
+ *         return lhs + rhs;
+ *     }
+ *
+ *     &#64;Specialization
+ *     &#64;TruffleBoundary
+ *     public static String doStrings(String lhs, String rhs) {
+ *         return lhs + rhs;
+ *     }
+ * }
+ * </pre>
+ *
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
 @Repeatable(Repeat.class)
 public @interface ForceQuickening {
 
+    /**
+     * The name of the quickening group. If nonempty, all specializations annotated with the same
+     * value will be included in a quickened instruction together.
+     *
+     * By default, this value is empty, which signifies that a specialization should have its own
+     * quickened instruction.
+     */
     String value() default "";
 
     @Retention(RetentionPolicy.RUNTIME)

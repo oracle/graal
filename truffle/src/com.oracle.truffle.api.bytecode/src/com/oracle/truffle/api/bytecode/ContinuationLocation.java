@@ -43,10 +43,25 @@ package com.oracle.truffle.api.bytecode;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
+/**
+ * Abstract class to model the location a continuation was suspended at.
+ *
+ * This class should not be subclassed directly. If a bytecode interpreter
+ * {@link GenerateBytecode#enableYield supports continuations}, the DSL will generate a concrete
+ * implementation of this subclass.
+ */
 public abstract class ContinuationLocation {
 
+    /**
+     * Returns the root node that resumes execution from the given location.
+     */
     public abstract RootNode getRootNode();
 
+    /**
+     * Creates a closure out of this location and the given interpreter frame and result.
+     *
+     * This method is invoked by the generated code and should not be called directly.
+     */
     public final ContinuationResult createResult(VirtualFrame frame, Object result) {
         return new ContinuationResult(this, frame.materialize(), result);
     }

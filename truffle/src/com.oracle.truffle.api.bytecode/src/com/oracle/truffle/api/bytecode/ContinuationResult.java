@@ -51,10 +51,40 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
+/**
+ * Representation of a continuation closure, consisting of a {@link #location}, {@link #frame
+ * interpreter state}, and a {@link #result}. A {@link ContinuationResult} is returned when the
+ * interpreter yields.
+ *
+ * Below illustrates an example usage of {@link ContinuationResult}.
+ *
+ * <pre>
+ * // Assume yieldingRootNode implements the following pseudocode:
+ * //
+ * // fun f(x):
+ * //   y = yield (x + 1)
+ * //   return x + y
+ * //
+ * MyBytecodeRootNode yieldingRootNode = ...;
+ *
+ * // The result is a ContinuationResult
+ * ContinuationResult yielded = (ContinuationResult) yieldingRootNode.getCallTarget().call(42);
+ * assert yielded.getResult() == 43;
+ *
+ * // Resume the continuation using continueWith. Pass 58 as the value for yield.
+ * Integer returned = (Integer) yielded.continueWith(58);
+ * assert returned == 100;
+ * </pre>
+ *
+ * For performance reasons, a language may wish to define an inline cache over continuation
+ * locations. In such a case, they should not call {@link #continueWith}, but instead cache and call
+ * the {@link #getContinuationRootNode root node} or {@link #getContinuationCallTarget call target}
+ * directly. Be careful to conform to the {@link #getContinuationCallTarget calling convention}.
+ */
 public final class ContinuationResult {
 
-    public final ContinuationLocation location;
-    public final MaterializedFrame frame;
+    private final ContinuationLocation location;
+    private final MaterializedFrame frame;
     private final Object result;
 
     ContinuationResult(ContinuationLocation location, MaterializedFrame frame, Object result) {
@@ -63,14 +93,53 @@ public final class ContinuationResult {
         this.result = result;
     }
 
+    /**
+     * Resumes the continuation. The {@link #value} becomes the value produced by the yield
+     * operation in the resumed execution.
+     */
     public Object continueWith(Object value) {
         return getContinuationCallTarget().call(frame, value);
     }
 
+    /**
+     * Returns the root node that resumes execution.
+     *
+     * Note that the continuation root node has a specific calling convention. See
+     * {@link #getContinuationCallTarget} for more details, or invoke the root node directly using
+     * {@link #continueWith}.
+     *
+     * @see #getContinuationCallTarget()
+     */
+    public RootNode getContinuationRootNode() {
+        return location.getRootNode();
+    }
+
+    /**
+     * Returns the call target for the {@link #getContinuationRootNode continuation root node}. The
+     * call target can be invoked to resume the continuation.
+     *
+     * Languages can invoke this call target directly via {@link #continueWith}. However, they may
+     * instead choose to access and call this call target directly (e.g., to register it in an
+     * inline cache).
+     *
+     * The call target takes two parameters: the interpreter {@link #getFrame frame} and an
+     * {@code Object} to resume execution with. The {@code Object} becomes the value produced by the
+     * yield operation in the resumed execution.
+     */
     public RootCallTarget getContinuationCallTarget() {
         return location.getRootNode().getCallTarget();
     }
 
+    /**
+     * Returns the state of the interpreter at the point that it was suspended.
+     */
+    public MaterializedFrame getFrame() {
+        return frame;
+    }
+
+    /**
+     * Returns the value computed by the yield operation.
+     */
     public Object getResult() {
         return result;
     }
@@ -78,34 +147,5 @@ public final class ContinuationResult {
     @Override
     public String toString() {
         return String.format("ContinuationResult [location=%s, result=%s]", location, result);
-    }
-
-    // TODO document this instead
-    @GenerateInline(true)
-    @GenerateUncached
-    @OperationProxy.Proxyable
-    public abstract static class ContinueNode extends Node {
-
-        public final Object execute(ContinuationResult result, Object value) {
-            return execute(null, result, value);
-        }
-
-        public abstract Object execute(Node node, ContinuationResult result, Object value);
-
-        public static final int LIMIT = 3;
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"result.location.getRootNode() == rootNode"}, limit = "LIMIT")
-        public static Object invokeDirect(ContinuationResult result, Object value,
-                        @Cached(value = "result.location.getRootNode()", inline = false) RootNode rootNode,
-                        @Cached(value = "create(rootNode.getCallTarget())", inline = false) DirectCallNode callNode) {
-            return callNode.call(result.frame, value);
-        }
-
-        @Specialization(replaces = "invokeDirect")
-        public static Object invokeIndirect(ContinuationResult result, Object value,
-                        @Cached(inline = false) IndirectCallNode callNode) {
-            return callNode.call(result.location.getRootNode().getCallTarget(), result.frame, value);
-        }
     }
 }

@@ -361,8 +361,9 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.boxingEliminatedTypes = beTypes;
 
         // optimization decisions & tracing
-        AnnotationValue decisionsFileValue = ElementUtils.getAnnotationValue(generateBytecodeMirror, "decisionsFile", false);
-        AnnotationValue decisionsOverrideFilesValue = ElementUtils.getAnnotationValue(generateBytecodeMirror, "decisionsOverrideFiles", false);
+        AnnotationValue decisionsFileValue = getTruffleInternalAnnotationValue(typeElement, model, generateBytecodeMirror, "decisionsFile");
+        AnnotationValue decisionsOverrideFilesValue = getTruffleInternalAnnotationValue(typeElement, model, generateBytecodeMirror, "decisionsOverrideFiles");
+        AnnotationValue forceTracing = getTruffleInternalAnnotationValue(typeElement, model, generateBytecodeMirror, "forceTracing");
         String[] decisionsOverrideFilesPath = new String[0];
 
         if (decisionsFileValue != null) {
@@ -370,7 +371,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
             if (TruffleProcessorOptions.bytecodeEnableTracing(processingEnv)) {
                 model.enableTracing = true;
-            } else if ((boolean) ElementUtils.getAnnotationValue(generateBytecodeMirror, "forceTracing", true).getValue()) {
+            } else if (forceTracing != null && (boolean) forceTracing.getValue()) {
                 model.addWarning("Bytecode DSL execution tracing is forced on. Use this only during development.");
                 model.enableTracing = true;
             }
@@ -806,6 +807,22 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.finalizeInstructions();
 
         return;
+    }
+
+    /**
+     * Some features are not yet "public", but we still want to support them internally for testing.
+     * Throw an error if the node is not within a Truffle package.
+     */
+    private static AnnotationValue getTruffleInternalAnnotationValue(TypeElement typeElement, BytecodeDSLModel model, AnnotationMirror generateBytecodeMirror, String field) {
+        AnnotationValue value = ElementUtils.getAnnotationValue(generateBytecodeMirror, field, false);
+        if (value == null) {
+            return null;
+        }
+        String pkg = ElementUtils.getPackageName(typeElement);
+        if (!pkg.startsWith("com.oracle.truffle")) {
+            model.addError(value, "The %s field is not yet supported.", field);
+        }
+        return value;
     }
 
     private static String createChildBciName(int i) {

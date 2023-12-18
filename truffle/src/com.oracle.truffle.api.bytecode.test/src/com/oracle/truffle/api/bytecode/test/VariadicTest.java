@@ -129,7 +129,7 @@ public class VariadicTest {
     }
 
     VariadicOperationsNode parse(BytecodeParser<VariadicOperationsNodeGen.Builder> builder) {
-        VariadicOperationsNode root = VariadicOperationsNodeGen.create(BytecodeConfig.COMPLETE, builder).getNodes().get(0);
+        VariadicOperationsNode root = VariadicOperationsNodeGen.create(BytecodeConfig.COMPLETE, builder).getNode(0);
         if (TRACE) {
             System.out.println(root.dump());
             System.out.println(ROOT_OVERHEAD);

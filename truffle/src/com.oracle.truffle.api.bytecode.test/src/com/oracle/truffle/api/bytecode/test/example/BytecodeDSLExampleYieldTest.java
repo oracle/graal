@@ -296,7 +296,7 @@ public class BytecodeDSLExampleYieldTest extends AbstractBytecodeDSLExampleTest 
 
         ContinuationResult r1 = (ContinuationResult) root.call(42L);
         assertEquals(42L, r1.getResult());
-        r1.frame.getArguments()[0] = 123L;
+        r1.getFrame().getArguments()[0] = 123L;
         assertEquals(123L, r1.continueWith(null));
     }
 

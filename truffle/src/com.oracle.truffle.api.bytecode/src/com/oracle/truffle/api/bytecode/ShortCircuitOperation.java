@@ -46,6 +46,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Repeat;
+
 /**
  * Declares a short-circuiting operation. A short-circuiting operation serves as a specification for
  * a short-circuiting bytecode instruction in the generated interpreter. Whereas regular operations
@@ -102,7 +104,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.SOURCE)
 @Target(ElementType.TYPE)
-@Repeatable(ShortCircuitOperations.class)
+@Repeatable(Repeat.class)
 public @interface ShortCircuitOperation {
     /**
      * The name of this operation.
@@ -129,7 +131,7 @@ public @interface ShortCircuitOperation {
 
     /**
      * A node or operation class. The short-circuit operation uses this class to convert each
-     * operand value to a {@code boolean} value that will be compared against {@link #continueWhen}.
+     * operand value to a {@code boolean} value used by the boolean operation.
      *
      * The class can be (but does not need to be) declared as an {@link Operation} or
      * {@link OperationProxy}. If it is not declared as either, it will undergo the same validation
@@ -141,4 +143,10 @@ public @interface ShortCircuitOperation {
      * </ul>
      */
     Class<?> booleanConverter() default void.class;
+
+    @Retention(RetentionPolicy.SOURCE)
+    @Target(ElementType.TYPE)
+    public @interface Repeat {
+        ShortCircuitOperation[] value();
+    }
 }

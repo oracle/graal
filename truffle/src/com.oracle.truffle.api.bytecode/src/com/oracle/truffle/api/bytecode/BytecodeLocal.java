@@ -40,6 +40,13 @@
  */
 package com.oracle.truffle.api.bytecode;
 
+/**
+ * Abstract definition of a local.
+ *
+ * Locals are stored in (and have the same extent as) the frame. They are accessed in the bytecode
+ * using {@code StoreLocal} and {@code LoadLocal} operations. Code can also programmatically read
+ * locals from the frame using {@link BytecodeRootNode#getLocal} or
+ * {@link BytecodeRootNode#getLocals}.
+ */
 public abstract class BytecodeLocal {
-
 }

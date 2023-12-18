@@ -53,7 +53,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
 
     private static BytecodeDSLOSRTestRootNode parseNode(BytecodeParser<BytecodeDSLOSRTestRootNodeGen.Builder> builder) {
         BytecodeNodes<BytecodeDSLOSRTestRootNode> nodes = BytecodeDSLOSRTestRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
-        return nodes.getNodes().get(nodes.getNodes().size() - 1);
+        return nodes.getNode(nodes.count() - 1);
     }
 
     @Rule public TestRule timeout = GraalTest.createTimeout(30, TimeUnit.SECONDS);

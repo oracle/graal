@@ -198,7 +198,7 @@ public class QuickeningTest extends AbstractQuickeningTest {
 
     private static QuickeningTestRootNode parse(BytecodeParser<QuickeningTestRootNodeGen.Builder> builder) {
         var nodes = QuickeningTestRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
-        return nodes.getNodes().get(nodes.getNodes().size() - 1);
+        return nodes.getNode(nodes.count() - 1);
     }
 
     @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableQuickening = true)

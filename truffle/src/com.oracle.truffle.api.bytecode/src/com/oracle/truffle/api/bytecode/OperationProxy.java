@@ -46,14 +46,21 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.api.bytecode.OperationProxy.Repeat;
 import com.oracle.truffle.api.instrumentation.Tag;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
-@Repeatable(OperationProxies.class)
+@Repeatable(Repeat.class)
 public @interface OperationProxy {
+    /**
+     * The class of the {@link com.oracle.truffle.api.nodes.Node} to proxy.
+     */
     Class<?> value();
 
+    /**
+     * The name to use for the operation.
+     */
     String name() default "";
 
     @Retention(RetentionPolicy.RUNTIME)
@@ -70,4 +77,10 @@ public @interface OperationProxy {
      */
     // TODO (chumer) implement
     Class<? extends Tag>[] tags() default {};
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.TYPE)
+    public @interface Repeat {
+        OperationProxy[] value();
+    }
 }
