@@ -524,13 +524,32 @@ public final class GraalServices {
     }
 
     /**
+     * Notifies that the compiler is at a point where memory usage is expected to be minimal like
+     * after the completion of compilation.
+     *
+     * @param forceFullGC controls whether to explicitly perform a full GC
+     */
+    public static void notifyLowMemoryPoint(boolean forceFullGC) {
+        notifyLowMemoryPoint(true, forceFullGC);
+    }
+
+    /**
+     * Notifies that the compiler is at a point where memory usage is might have dropped
+     * significantly like after some major phase execution.
+     */
+    public static void notifyLowMemoryPoint() {
+        notifyLowMemoryPoint(false, false);
+    }
+
+    /**
      * Notifies that the compiler is at a point where memory usage is expected to be relatively low
      * (e.g., just before/after a compilation). The garbage collector might be able to make use of
      * such a hint to optimize its performance.
      *
-     * @param fullGC controls whether the hinted GC should be a full GC.
+     * @param hintFullGC controls whether the hinted GC should be a full GC.
+     * @param forceFullGC controls whether to explicitly perform a full GC
      */
-    public static void notifyLowMemoryPoint(@SuppressWarnings("unused") boolean fullGC) {
+    private static void notifyLowMemoryPoint(boolean hintFullGC, boolean forceFullGC) {
         // Substituted by
         // com.oracle.svm.hotspot.libgraal.Target_jdk_graal_compiler_serviceprovider_GraalServices
     }
