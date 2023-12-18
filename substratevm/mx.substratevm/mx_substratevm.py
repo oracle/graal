@@ -958,6 +958,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         'substratevm:NATIVE_IMAGE_BASE',
     ],
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
+    extra_native_targets=['linux-default-glibc', 'linux-default-musl'] if mx.is_linux() else None,
     stability="earlyadopter",
     jlink=False,
     installable=False,
