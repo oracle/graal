@@ -217,7 +217,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             if (nativeAccessModules.isEmpty()) {
                 NativeImage.showError(headArg + moduleSetModifierOptionErrorMessage);
             }
-            nativeImage.addCustomJavaArgs(headArg + ",org.graalvm.nativeimage.builder");
+            nativeImage.addCustomJavaArgs(headArg + ",org.graalvm.nativeimage.foreign");
             return true;
         }
         return false;
