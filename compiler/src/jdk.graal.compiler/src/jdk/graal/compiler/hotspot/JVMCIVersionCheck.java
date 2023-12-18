@@ -113,36 +113,11 @@ public final class JVMCIVersionCheck {
         }
 
         private Version(Runtime.Version jdkVersion, int jvmciMajor, int jvmciMinor, int jvmciBuild, boolean legacy) {
-            this.jdkVersion = stripOptional(jdkVersion);
+            this.jdkVersion = jdkVersion;
             this.jvmciMajor = jvmciMajor;
             this.jvmciMinor = jvmciMinor;
             this.jvmciBuild = jvmciBuild;
             this.legacy = legacy;
-        }
-
-        /**
-         * Gets rid of the {@link Runtime.Version#optional()} part of a version string. See
-         * {@link Runtime.Version} for details about the version string format.
-         */
-        private static Runtime.Version stripOptional(Runtime.Version jdkVersion) {
-            if (!jdkVersion.optional().isPresent()) {
-                return jdkVersion;
-            }
-            String jdkVersionStr = jdkVersion.toString();
-            final int optionalLength;
-            if (!jdkVersion.pre().isPresent() && !jdkVersion.build().isPresent()) {
-                // if we have no $PRE and no $BUILD, then the optional is delimited by "+-"
-                optionalLength = "+-".length() + jdkVersion.optional().get().length();
-            } else {
-                // else it is only delimited by "-"
-                optionalLength = "-".length() + jdkVersion.optional().get().length();
-            }
-            Runtime.Version strippedVersion = Runtime.Version.parse(jdkVersionStr.substring(0, jdkVersionStr.length() - optionalLength));
-            if (!strippedVersion.equalsIgnoreOptional(jdkVersion)) {
-                throw new RuntimeException(String.format("%s failed to strip the $OPTIONAL part from the Java Runtime Version string: %s vs %s", JVMCIVersionCheck.class.getSimpleName(), jdkVersion,
-                                strippedVersion));
-            }
-            return strippedVersion;
         }
 
         boolean isGreaterThan(Version other) {
