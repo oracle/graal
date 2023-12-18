@@ -892,11 +892,47 @@ public abstract class BytecodeParser {
                     final int vectorOpcode = rawPeekU8(bytecode, offset);
                     offset++;
                     switch (vectorOpcode) {
+                        case Bytecode.VECTOR_V128_LOAD: {
+                            final int encoding = rawPeekU8(bytecode, offset);
+                            offset++;
+                            final int indexType64 = encoding & BytecodeBitEncoding.MEMORY_64_FLAG;
+                            offset += 4;
+                            if (indexType64 == 0) {
+                                offset += 4;
+                            } else {
+                                offset += 8;
+                            }
+                            break;
+                        }
                         case Bytecode.VECTOR_V128_CONST:
                             offset += 16;
                             break;
+                        case Bytecode.VECTOR_F64X2_EQ:
+                        case Bytecode.VECTOR_F64X2_NE:
+                        case Bytecode.VECTOR_F64X2_LT:
+                        case Bytecode.VECTOR_F64X2_GT:
+                        case Bytecode.VECTOR_F64X2_LE:
+                        case Bytecode.VECTOR_F64X2_GE:
+                        case Bytecode.VECTOR_V128_ANY_TRUE:
                         case Bytecode.VECTOR_I32X4_ALL_TRUE:
                         case Bytecode.VECTOR_I32X4_ADD:
+                        case Bytecode.VECTOR_I32X4_SUB:
+                        case Bytecode.VECTOR_I32X4_MUL:
+                        case Bytecode.VECTOR_F64X2_CEIL:
+                        case Bytecode.VECTOR_F64X2_FLOOR:
+                        case Bytecode.VECTOR_F64X2_TRUNC:
+                        case Bytecode.VECTOR_F64X2_NEAREST:
+                        case Bytecode.VECTOR_F64X2_ABS:
+                        case Bytecode.VECTOR_F64X2_NEG:
+                        case Bytecode.VECTOR_F64X2_SQRT:
+                        case Bytecode.VECTOR_F64X2_ADD:
+                        case Bytecode.VECTOR_F64X2_SUB:
+                        case Bytecode.VECTOR_F64X2_MUL:
+                        case Bytecode.VECTOR_F64X2_DIV:
+                        case Bytecode.VECTOR_F64X2_MIN:
+                        case Bytecode.VECTOR_F64X2_MAX:
+                        case Bytecode.VECTOR_F64X2_PMIN:
+                        case Bytecode.VECTOR_F64X2_PMAX:
                             break;
                         default:
                             throw CompilerDirectives.shouldNotReachHere();

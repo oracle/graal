@@ -267,13 +267,13 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     }
 
     /**
-     * Adds an atomic memory access instruction to the bytecode.
+     * Adds an extended (atomic or vector) memory access instruction to the bytecode.
      *
-     * @param opcode The atomic memory opcode
+     * @param opcode The extended memory opcode
      * @param offset The offset value
      * @param indexType64 If the accessed memory has index type 64.
      */
-    public void addAtomicMemoryInstruction(int opcode, int memoryIndex, long offset, boolean indexType64) {
+    public void addExtendedMemoryInstruction(int opcode, int memoryIndex, long offset, boolean indexType64) {
         assert fitsIntoUnsignedByte(opcode) : "opcode does not fit into byte";
         if (!indexType64) {
             assert fitsIntoUnsignedInt(offset) : "offset does not fit into int";
