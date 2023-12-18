@@ -106,6 +106,16 @@ suite = {
             "license": "UPL",
         },
 
+        "com.oracle.truffle.espresso.continuations": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+            ],
+            "javaCompliance" : "21+",
+            "checkstyle": "com.oracle.truffle.espresso.polyglot",  # TODO ???
+            "license": "UPL",
+        },
+
         "com.oracle.truffle.espresso": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -462,6 +472,7 @@ suite = {
                                 "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                                 "dependency:espresso:ESPRESSO_POLYGLOT",
                                 "dependency:espresso:HOTSWAP",
+                                "dependency:espresso:CONTINUATIONS",
                             ],
                         },
                     },
@@ -475,6 +486,7 @@ suite = {
                                 "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                                 "dependency:espresso:ESPRESSO_POLYGLOT",
                                 "dependency:espresso:HOTSWAP",
+                                "dependency:espresso:CONTINUATIONS",
                             ],
                         },
                     },
@@ -488,6 +500,7 @@ suite = {
                                 "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                                 "dependency:espresso:ESPRESSO_POLYGLOT",
                                 "dependency:espresso:HOTSWAP",
+                                "dependency:espresso:CONTINUATIONS",
                             ],
                         },
                     },
@@ -513,6 +526,7 @@ suite = {
                                 "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                                 "dependency:espresso:ESPRESSO_POLYGLOT/*",
                                 "dependency:espresso:HOTSWAP/*",
+                                "dependency:espresso:CONTINUATIONS/*",
                             ],
                         },
                     },
@@ -528,6 +542,7 @@ suite = {
                                 "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                                 "dependency:espresso:ESPRESSO_POLYGLOT/*",
                                 "dependency:espresso:HOTSWAP/*",
+                                "dependency:espresso:CONTINUATIONS/*",
                             ],
                         },
                     },
@@ -543,6 +558,7 @@ suite = {
                                 "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                                 "dependency:espresso:ESPRESSO_POLYGLOT/*",
                                 "dependency:espresso:HOTSWAP/*",
+                                "dependency:espresso:CONTINUATIONS/*",
                             ],
                         },
                     },
@@ -595,6 +611,25 @@ suite = {
                 "name" : "espresso.hotswap",
                 "exports" : [
                     "com.oracle.truffle.espresso.hotswap",
+                ]
+            },
+            "maven": {
+                "tag": ["default", "public"],
+            },
+        },
+
+        "CONTINUATIONS": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.espresso.continuations"
+            ],
+            "description": "Espresso Continuations API",
+            "license": "UPL",
+            "javadocType": "api",
+            "moduleInfo" : {
+                "name" : "espresso.continuations",
+                "exports" : [
+                    "com.oracle.truffle.espresso.continuations",
                 ]
             },
             "maven": {
