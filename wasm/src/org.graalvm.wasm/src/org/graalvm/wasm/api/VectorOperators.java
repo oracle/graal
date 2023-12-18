@@ -46,16 +46,30 @@ public class VectorOperators {
      * Vectorized integer binary operators. Corresponds to the {@code vibinop} production in the
      * WebAssembly spec.
      */
-    public enum VIBinOp {
+    public enum IBinOp {
         Add,
         Sub
+    }
+
+    /**
+     * Vectorized floating-point unary operators. Corresponds to the {@code vfunop} production in
+     * the WebAssembly spec.
+     */
+    public enum FUnOp {
+        Abs,
+        Neg,
+        Sqrt,
+        Ceil,
+        Floor,
+        Trunc,
+        Nearest
     }
 
     /**
      * Vectorized floating-point binary operators. Corresponds to the {@code vfbinop} production in
      * the WebAssembly spec.
      */
-    public enum VFBinOp {
+    public enum FBinOp {
         Add,
         Sub,
         Mul,
@@ -64,5 +78,18 @@ public class VectorOperators {
         Max,
         Pmin,
         Pmax
+    }
+
+    /**
+     * Vectorized floating-point relational operators. Corresponds to the {@code vfrelop} production
+     * in the WebAssembly spec.
+     */
+    public enum FRelOp {
+        Eq,
+        Ne,
+        Lt,
+        Gt,
+        Le,
+        Ge
     }
 }

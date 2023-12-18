@@ -52,6 +52,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
@@ -232,6 +233,15 @@ final class ByteArrayWasmMemory extends WasmMemory {
             return 0x0000_0000_ffff_ffffL & ByteArraySupport.littleEndian().getInt(byteArrayBuffer.buffer(), address);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 4);
+        }
+    }
+
+    @Override
+    public Vector128 load_i128(Node node, long address) {
+        try {
+            return Vector128.ofBytes(Arrays.copyOfRange(byteArrayBuffer.buffer(), (int) address, (int) address + 16));
+        } catch (final IndexOutOfBoundsException e) {
+            throw trapOutOfBounds(node, address, 16);
         }
     }
 

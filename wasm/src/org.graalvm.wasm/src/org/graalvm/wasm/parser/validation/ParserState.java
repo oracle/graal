@@ -513,15 +513,16 @@ public class ParserState {
     }
 
     /**
-     * Adds an atomic memory instruction based on the given values and index type.
+     * Adds an extended (atomic or vector) memory instruction based on the given values and index
+     * type.
      *
-     * @param instruction The atomic memory instruction
+     * @param instruction The extended memory instruction
      * @param memoryIndex The index of the memory being accessed
      * @param value The immediate value
      * @param indexType64 If the index type is 64 bit.
      */
-    public void addAtomicMemoryInstruction(int instruction, int memoryIndex, long value, boolean indexType64) {
-        bytecode.addAtomicMemoryInstruction(instruction, memoryIndex, value, indexType64);
+    public void addExtendedMemoryInstruction(int instruction, int memoryIndex, long value, boolean indexType64) {
+        bytecode.addExtendedMemoryInstruction(instruction, memoryIndex, value, indexType64);
     }
 
     /**

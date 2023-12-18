@@ -48,6 +48,7 @@ import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
@@ -239,6 +240,14 @@ class NativeWasmMemory extends WasmMemory {
     public long load_i64_32u(Node node, long address) {
         validateAddress(node, address, 4);
         return 0x0000_0000_ffff_ffffL & unsafe.getInt(startAddress + address);
+    }
+
+    @Override
+    public Vector128 load_i128(Node node, long address) {
+        validateAddress(node, address, 16);
+        byte[] bytes = new byte[16];
+        unsafe.copyMemory(null, startAddress + address, bytes, 0, 16);
+        return Vector128.ofBytes(bytes);
     }
 
     @Override

@@ -54,6 +54,7 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
 import org.graalvm.wasm.EmbedderDataHolder;
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Sizes;
@@ -252,6 +253,8 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     public abstract long load_i64_32s(Node node, long address);
 
     public abstract long load_i64_32u(Node node, long address);
+
+    public abstract Vector128 load_i128(Node node, long address);
 
     public abstract void store_i32(Node node, long address, int value);
 
