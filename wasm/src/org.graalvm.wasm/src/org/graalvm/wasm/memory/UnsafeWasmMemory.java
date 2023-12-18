@@ -1002,6 +1002,14 @@ public final class UnsafeWasmMemory extends WasmMemory {
     }
 
     @Override
+    public void copyToBuffer(Node node, byte[] dst, long srcOffset, int dstOffset, int length) {
+        if (outOfBounds(srcOffset, length)) {
+            throw trapOutOfBounds(node, srcOffset, length);
+        }
+        unsafe.copyMemory(null, startAddress + srcOffset, dst, Unsafe.ARRAY_BYTE_BASE_OFFSET + (long) dstOffset * Unsafe.ARRAY_BYTE_INDEX_SCALE, length);
+    }
+
+    @Override
     public boolean isUnsafe() {
         return true;
     }

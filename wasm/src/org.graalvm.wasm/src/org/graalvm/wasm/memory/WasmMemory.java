@@ -624,21 +624,19 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     }
 
     @ExportMessage
+    final void readBuffer(long byteOffset, byte[] destination, int destinationOffset, int length,
+                    @Bind("$node") Node node,
+                    @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(node, byteOffset, length, errorBranch);
+        copyToBuffer(node, destination, byteOffset, destinationOffset, length);
+    }
+
+    @ExportMessage
     final byte readBufferByte(long byteOffset,
                     @Bind("$node") Node node,
                     @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch) throws InvalidBufferOffsetException {
         checkOffset(node, byteOffset, Byte.BYTES, errorBranch);
         return (byte) load_i32_8s(null, byteOffset);
-    }
-
-    @ExportMessage
-    final void readBuffer(long byteOffset, byte[] destination, int destinationOffset, int length,
-                    @Bind("$node") Node node,
-                    @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch) throws InvalidBufferOffsetException {
-        checkOffset(node, byteOffset, length, errorBranch);
-        for (long offset = byteOffset; offset < byteOffset + length; offset++) {
-            destination[destinationOffset + (int) (offset - byteOffset)] = (byte) load_i32_8s(null, offset);
-        }
     }
 
     @ExportMessage
@@ -891,6 +889,17 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * @throws IOException if writing the stream leads to an error.
      */
     public abstract void copyToStream(Node node, OutputStream stream, int offset, int length) throws IOException;
+
+    /**
+     * Copy data from memory into a byte[] array.
+     * 
+     * @param node the node used for errors
+     * @param dst the output buffer
+     * @param srcOffset the offset in the memory
+     * @param dstOffset the offset in the byte[] array
+     * @param length the length of the data
+     */
+    public abstract void copyToBuffer(Node node, byte[] dst, long srcOffset, int dstOffset, int length);
 
     public boolean isUnsafe() {
         return false;
