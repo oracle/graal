@@ -2317,8 +2317,16 @@ public class StandardGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode len, ValueNode z, ValueNode zlen) {
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                    b.add(new BigIntegerSquareToLenNode(helper.arrayStart(x, JavaKind.Int), len, helper.arrayStart(z, JavaKind.Int), zlen));
+                    /*
+                     * The intrinsified method takes the z array as a parameter, performs
+                     * side-effects on its contents, then returns the same reference to z. Our
+                     * intrinsic only performs the side-effects, we set z as the result directly.
+                     * The stateAfter for the intrinsic should include this value on the stack, so
+                     * push it first and only compute the state afterwards.
+                     */
+                    BigIntegerSquareToLenNode squareToLen = b.append(new BigIntegerSquareToLenNode(helper.arrayStart(x, JavaKind.Int), len, helper.arrayStart(z, JavaKind.Int), zlen));
                     b.push(JavaKind.Object, z);
+                    b.setStateAfter(squareToLen);
                     return true;
                 }
             }

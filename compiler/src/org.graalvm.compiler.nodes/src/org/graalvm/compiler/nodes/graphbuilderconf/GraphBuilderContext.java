@@ -112,7 +112,10 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     /**
      * Adds a node and all its inputs to the graph. If the node is in the graph, returns
      * immediately. If the node is a {@link StateSplit} with a null
-     * {@linkplain StateSplit#stateAfter() frame state} , the frame state is initialized.
+     * {@linkplain StateSplit#stateAfter() frame state} , the frame state is initialized. A
+     * {@link StateSplit} that will be pushed to the stack using
+     * {@link #addPush(JavaKind, ValueNode)} should <em>not</em> be added using this method,
+     * otherwise its frame state will be initialized with an incorrect stack effect.
      *
      * @param value the value to add to the graph. The {@code value.getJavaKind()} kind is used when
      *            type checking this operation.
@@ -123,7 +126,7 @@ public interface GraphBuilderContext extends GraphBuilderTool {
             assert !(value instanceof StateSplit) || ((StateSplit) value).stateAfter() != null;
             return value;
         }
-        return GraphBuilderContextUtil.setStateAfterIfNecessary(this, append(value));
+        return setStateAfterIfNecessary(this, append(value));
     }
 
     default ValueNode addNonNullCast(ValueNode value) {
@@ -141,7 +144,9 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     /**
      * Adds a node with a non-void kind to the graph, pushes it to the stack. If the returned node
      * is a {@link StateSplit} with a null {@linkplain StateSplit#stateAfter() frame state}, the
-     * frame state is initialized.
+     * frame state is initialized. A {@link StateSplit} added using this method should <em>not</em>
+     * be added using {@link #add(ValueNode)} beforehand, otherwise its frame state will be
+     * initialized with an incorrect stack effect.
      *
      * @param kind the kind to use when type checking this operation
      * @param value the value to add to the graph and push to the stack
@@ -150,7 +155,7 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     default <T extends ValueNode> T addPush(JavaKind kind, T value) {
         T equivalentValue = value.graph() != null ? value : append(value);
         push(kind, equivalentValue);
-        return GraphBuilderContextUtil.setStateAfterIfNecessary(this, equivalentValue);
+        return setStateAfterIfNecessary(this, equivalentValue);
     }
 
     /**
@@ -515,15 +520,18 @@ public interface GraphBuilderContext extends GraphBuilderTool {
                     PluginReplacementWithExceptionNode.ReplacementWithExceptionFunction replacementFunction) {
         throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
     }
-}
 
-class GraphBuilderContextUtil {
     static <T extends ValueNode> T setStateAfterIfNecessary(GraphBuilderContext b, T value) {
         if (value instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) value;
+            FrameState oldState = stateSplit.stateAfter();
             if (stateSplit.stateAfter() == null && (stateSplit.hasSideEffect() || stateSplit instanceof AbstractMergeNode)) {
                 b.setStateAfter(stateSplit);
             }
+            FrameState newState = stateSplit.stateAfter();
+            GraalError.guarantee(oldState == null || oldState.equals(newState),
+                            "graph builder changed existing state on %s from %s to %s, this indicates multiple calls to add() or addPush() for one node",
+                            stateSplit, oldState, newState);
         }
         return value;
     }
