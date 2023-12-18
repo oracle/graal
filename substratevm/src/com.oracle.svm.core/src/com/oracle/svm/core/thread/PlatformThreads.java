@@ -765,13 +765,14 @@ public abstract class PlatformThreads {
     @SuppressFBWarnings(value = "Ru", justification = "We really want to call Thread.run and not Thread.start because we are in the low-level thread start routine")
     protected static void threadStartRoutine(ObjectHandle threadHandle) {
         Thread thread = ObjectHandles.getGlobal().get(threadHandle);
-        assignCurrent(thread, false);
-        ObjectHandles.getGlobal().destroy(threadHandle);
-
-        singleton().unattachedStartedThreads.decrementAndGet();
-        singleton().beforeThreadRun(thread);
 
         try {
+            assignCurrent(thread, false);
+            ObjectHandles.getGlobal().destroy(threadHandle);
+
+            singleton().unattachedStartedThreads.decrementAndGet();
+            singleton().beforeThreadRun(thread);
+
             if (VMThreads.isTearingDown()) {
                 /*
                  * As a newly started thread, we might not have been interrupted like the Java
