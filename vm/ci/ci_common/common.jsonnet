@@ -47,7 +47,6 @@ local devkits = graal_common.devkits;
     },
   },
 
-  common_vm_windows_jdk17: self.common_vm_windows + devkits['windows-jdk17'],
   common_vm_windows_jdk21: self.common_vm_windows + devkits['windows-jdk21'],
   common_vm_windows_jdkLatest: self.common_vm_windows + devkits['windows-jdkLatest'],
 
@@ -192,17 +191,15 @@ local devkits = graal_common.devkits;
   },
 
   vm_windows: self.common_vm_windows + graal_common.windows_server_2016_amd64,
-  vm_windows_jdk17: self.common_vm_windows_jdk17 + graal_common.windows_server_2016_amd64,
   vm_windows_jdk21: self.common_vm_windows_jdk21 + graal_common.windows_server_2016_amd64,
   vm_windows_jdkLatest: self.common_vm_windows_jdkLatest + graal_common.windows_server_2016_amd64,
   vm_windows_amd64: self.vm_windows,
-  vm_windows_amd64_jdk17: self.vm_windows_jdk17,
   vm_windows_amd64_jdk21: self.vm_windows_jdk21,
   vm_windows_amd64_jdkLatest: self.vm_windows_jdkLatest,
 
   vm_base(os, arch, main_target, deploy=false, bench=false, os_distro=null, jdk_hint=null):
     vm.default_diskspace_required(os, arch, large=deploy)
-    + self['vm_' + os + '_' + arch + (if (os_distro != null) then '_' + os_distro else '') + (if (jdk_hint != null) then '_jdk' + jdk_hint else '')]  # examples: `self.vm_linux_amd64_ubuntu`, `self.vm_windows_amd_jdkLatest`
+    + self['vm_' + os + '_' + arch + (if (os_distro != null) then '_' + os_distro else '') + (if (jdk_hint != null) then '_jdk' + jdk_hint else '')]  # examples: `self.vm_linux_amd64_ubuntu`, `self.vm_windows_amd64_jdkLatest`
     + { targets+: [main_target] + (if (deploy) then ['deploy'] else []) + (if (bench) then ['bench'] else []) }
     + (if (bench) then { capabilities+: ['no_frequency_scaling'] } else {}),
 
@@ -290,7 +287,7 @@ local devkits = graal_common.devkits;
       else if (os == 'windows') then
         if (arch == 'amd64') then
           # Windows/AMD64
-          java_deps(edition) + self.svm_common_windows_amd64("21") + self.js_windows_common + self.sulong_windows
+          java_deps(edition) + (if (java_version == 'latest') then self.svm_common_windows_amd64("Latest") else self.svm_common_windows_amd64(java_version)) + self.js_windows_common + self.sulong_windows
         else
           error 'Unknown windows arch: ' + arch
       else
