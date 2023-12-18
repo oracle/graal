@@ -42,8 +42,22 @@ package com.oracle.truffle.api.bytecode;
 
 import com.oracle.truffle.api.frame.Frame;
 
+/**
+ * Interface to model continuations.
+ *
+ * If a bytecode interpreter {@link GenerateBytecode#enableYield supports continuations}, the DSL
+ * will generate a concrete implementation of this interface.
+ */
 public interface ContinuationRootNode {
+    /**
+     * Returns the original root node from which this continuation was created.
+     */
     BytecodeRootNode getSourceRootNode();
 
+    /**
+     * Returns the locals stored in the frame at the point that execution was suspended.
+     *
+     * @see BytecodeRootNode#getLocals
+     */
     Object[] getLocals(Frame frame);
 }

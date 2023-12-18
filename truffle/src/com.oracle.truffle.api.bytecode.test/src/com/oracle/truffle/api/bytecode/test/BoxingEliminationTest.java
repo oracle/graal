@@ -1259,7 +1259,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
 
     private static BoxingEliminationTestRootNode parse(BytecodeParser<BoxingEliminationTestRootNodeGen.Builder> builder) {
         BytecodeNodes<BoxingEliminationTestRootNode> nodes = BoxingEliminationTestRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
-        return nodes.getNodes().get(nodes.getNodes().size() - 1);
+        return nodes.getNode(nodes.count() - 1);
     }
 
     @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, //

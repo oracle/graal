@@ -67,7 +67,7 @@ class BenchmarkLanguage extends TruffleLanguage<Object> {
     public static void registerName(String name, Class<? extends BytecodeBenchmarkRootNode> cls, BiConsumer<BenchmarkLanguage, BytecodeBenchmarkRootNodeBuilder> parser) {
         registerName(name, l -> {
             BytecodeNodes<BytecodeBenchmarkRootNode> nodes = createNodes(cls, b -> parser.accept(l, b));
-            return nodes.getNodes().get(nodes.getNodes().size() - 1).getCallTarget();
+            return nodes.getNode(nodes.count() - 1).getCallTarget();
         });
     }
 

@@ -49,6 +49,13 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
+/**
+ * A {@code BytecodeNodes} instance encapsulates one or more bytecode root nodes produced from a
+ * single parse. To reduce interpreter footprint, it supports on-demand reparsing to compute source
+ * and instrumentation metadata.
+ *
+ * @param <T> the type of the bytecode root node
+ */
 public abstract class BytecodeNodes<T extends RootNode & BytecodeRootNode> {
     private final BytecodeParser<? extends BytecodeBuilder> parse;
     @CompilationFinal(dimensions = 1) protected T[] nodes;
@@ -66,20 +73,39 @@ public abstract class BytecodeNodes<T extends RootNode & BytecodeRootNode> {
         return String.format("BytecodeNodes %s", Arrays.toString(nodes));
     }
 
+    /**
+     * Returns the list of bytecode root nodes. The order of the list corresponds to the order of
+     * {@code endRoot()} calls on the builder.
+     */
     @SuppressWarnings({"unchecked", "cast", "rawtypes"})
-    public List<T> getNodes() {
+    public final List<T> getNodes() {
         return List.of(nodes);
     }
 
-    public boolean hasSources() {
+    /**
+     * Returns the bytecode root node at index {@code i}. The order of the list corresponds to the
+     * order of {@code endRoot()} calls on the builder.
+     */
+    public final T getNode(int i) {
+        return nodes[i];
+    }
+
+    /**
+     * Returns the number of root nodes produced from the parse.
+     */
+    public final int count() {
+        return nodes.length;
+    }
+
+    public final boolean hasSources() {
         return sources != null;
     }
 
-    public boolean hasInstrumentation() {
+    public final boolean hasInstrumentation() {
         return hasInstrumentation;
     }
 
-    public BytecodeParser<? extends BytecodeBuilder> getParser() {
+    public final BytecodeParser<? extends BytecodeBuilder> getParser() {
         return parse;
     }
 
@@ -93,7 +119,13 @@ public abstract class BytecodeNodes<T extends RootNode & BytecodeRootNode> {
         return false;
     }
 
-    public boolean updateConfiguration(BytecodeConfig config) {
+    /**
+     * Updates the configuration for the given bytecode nodes. If the new configuration requires
+     * more information (e.g., sources or instrumentation tags), triggers a reparse to obtain it.
+     *
+     * Returns whether a reparse was performed.
+     */
+    public final boolean updateConfiguration(BytecodeConfig config) {
         if (!checkNeedsWork(config)) {
             return false;
         }
@@ -106,13 +138,13 @@ public abstract class BytecodeNodes<T extends RootNode & BytecodeRootNode> {
     @SuppressWarnings("hiding")
     protected abstract void reparseImpl(BytecodeConfig config, BytecodeParser<? extends BytecodeBuilder> parse, T[] nodes);
 
-    void reparse(BytecodeConfig config) {
+    private final void reparse(BytecodeConfig config) {
         CompilerAsserts.neverPartOfCompilation("parsing should never be compiled");
         reparseImpl(config, parse, nodes);
     }
 
     /**
-     * Checks if the sources are present, and if not tries to reparse to get them.
+     * Checks if the sources are present, and if not, reparses to get them.
      */
     public final void ensureSources() {
         if (sources == null) {
@@ -121,6 +153,9 @@ public abstract class BytecodeNodes<T extends RootNode & BytecodeRootNode> {
         }
     }
 
+    /**
+     * Checks if instrumentation tags are present, and if not, reparses to get them.
+     */
     public final void ensureInstrumentation() {
         if (!hasInstrumentation) {
             CompilerDirectives.transferToInterpreter();

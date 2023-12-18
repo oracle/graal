@@ -100,7 +100,7 @@ public class ShortCircuitTest {
     public static <T extends BytecodeNodeWithShortCircuitBuilder> BytecodeNodeWithShortCircuit parseNode(Class<? extends BytecodeNodeWithShortCircuit> interpreterClass,
                     BytecodeParser<T> builder) {
         BytecodeNodes<BytecodeNodeWithShortCircuit> nodes = createNodes(interpreterClass, BytecodeConfig.DEFAULT, builder);
-        return nodes.getNodes().get(nodes.getNodes().size() - 1);
+        return nodes.getNode(nodes.count() - 1);
     }
 
     public <T extends BytecodeNodeWithShortCircuitBuilder> BytecodeNodeWithShortCircuit parseNode(BytecodeParser<T> builder) {

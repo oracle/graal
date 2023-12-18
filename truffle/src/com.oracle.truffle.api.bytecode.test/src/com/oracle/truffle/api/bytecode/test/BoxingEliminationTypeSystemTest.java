@@ -74,7 +74,7 @@ public class BoxingEliminationTypeSystemTest extends AbstractQuickeningTest {
 
     private static BoxingEliminationTypeSystemRootNode parse(BytecodeParser<BoxingEliminationTypeSystemRootNodeGen.Builder> builder) {
         BytecodeNodes<BoxingEliminationTypeSystemRootNode> nodes = BoxingEliminationTypeSystemRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
-        return nodes.getNodes().get(nodes.getNodes().size() - 1);
+        return nodes.getNode(nodes.count() - 1);
     }
 
     private static void testInvalidations(BoxingEliminationTypeSystemRootNode node, int invalidations, Runnable r) {

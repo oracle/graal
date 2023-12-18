@@ -73,13 +73,11 @@ public final class Argument {
     }
 
     public enum ArgumentType {
-
         CONSTANT,
         BYTECODE_INDEX,
         INTEGER,
         NODE_PROFILE,
         BRANCH_PROFILE;
-
     }
 
     public ArgumentType getKind() {

@@ -78,7 +78,7 @@ public class ReadBciFromFrameTest {
      * could @Bind("$root") and then invoke {@link BytecodeRootNode#readBciFromFrame} on $root.
      */
     public BytecodeNodeWithStoredBci parseNode(BytecodeParser<BytecodeNodeWithStoredBciGen.Builder> builder) {
-        return BytecodeNodeWithStoredBciGen.create(BytecodeConfig.WITH_SOURCE, builder).getNodes().get(0);
+        return BytecodeNodeWithStoredBciGen.create(BytecodeConfig.WITH_SOURCE, builder).getNode(0);
     }
 
     @Test

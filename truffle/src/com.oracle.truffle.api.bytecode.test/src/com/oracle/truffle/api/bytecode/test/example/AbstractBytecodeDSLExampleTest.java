@@ -218,7 +218,7 @@ public abstract class AbstractBytecodeDSLExampleTest {
     public static <T extends BytecodeDSLExampleBuilder> BytecodeDSLExample parseNode(Class<? extends BytecodeDSLExample> interpreterClass, boolean testSerialize, String rootName,
                     BytecodeParser<T> builder) {
         BytecodeNodes<BytecodeDSLExample> nodes = createNodes(interpreterClass, testSerialize, BytecodeConfig.DEFAULT, builder);
-        BytecodeDSLExample op = nodes.getNodes().get(nodes.getNodes().size() - 1);
+        BytecodeDSLExample op = nodes.getNode(nodes.count() - 1);
         op.setName(rootName);
         return op;
     }
@@ -226,7 +226,7 @@ public abstract class AbstractBytecodeDSLExampleTest {
     public static <T extends BytecodeDSLExampleBuilder> BytecodeDSLExample parseNodeWithSource(Class<? extends BytecodeDSLExample> interpreterClass, boolean testSerialize, String rootName,
                     BytecodeParser<T> builder) {
         BytecodeNodes<BytecodeDSLExample> nodes = createNodes(interpreterClass, testSerialize, BytecodeConfig.WITH_SOURCE, builder);
-        BytecodeDSLExample op = nodes.getNodes().get(nodes.getNodes().size() - 1);
+        BytecodeDSLExample op = nodes.getNode(nodes.count() - 1);
         op.setName(rootName);
         return op;
     }

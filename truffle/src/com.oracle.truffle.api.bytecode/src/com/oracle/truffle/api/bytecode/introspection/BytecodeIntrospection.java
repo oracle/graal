@@ -44,6 +44,17 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Models the introspection data for a bytecode root node.
+ *
+ * The {@link BytecodeIntrospection} data for a given bytecode interpreter can be obtained by
+ * invoking {@link Provider#getIntrospectionData} on the root node.
+ *
+ * Note: The introspection data can change over time (e.g., due to instruction rewriting or
+ * reparsing with source information), but these changes will not be picked up by any existing
+ * {@link BytecodeIntrospection} instances. For up-to-date introspection data, a new instance should
+ * be requested.
+ */
 public final class BytecodeIntrospection {
 
     public interface Provider {
@@ -66,7 +77,7 @@ public final class BytecodeIntrospection {
 
     private BytecodeIntrospection(Object[] data) {
         if (data.length == 0 || (int) data[0] != 0) {
-            throw new UnsupportedOperationException("Illegal operation introspection version");
+            throw new UnsupportedOperationException("Illegal bytecode introspection version");
         }
 
         this.data = data;
@@ -90,6 +101,10 @@ public final class BytecodeIntrospection {
         return Collections.unmodifiableList(result);
     }
 
+    /**
+     * Produces a list of {@link SourceInformation} for a root node sorted by bytecode index. If no
+     * source information is available, returns {@code null}.
+     */
     public List<SourceInformation> getSourceInformation() {
         Object[] sourceInfo = (Object[]) data[3];
         if (sourceInfo == null) {

@@ -43,11 +43,20 @@ package com.oracle.truffle.api.bytecode.serialization;
 import java.io.DataInput;
 import java.nio.ByteBuffer;
 
+/**
+ * Utility class with helpers for serialization code.
+ */
 public final class SerializationUtils {
 
     private SerializationUtils() {
     }
 
+    /**
+     * Creates a {@link DataInput} backed by a {@link ByteBuffer}. The result can be used as an
+     * input for {@code deserialize}.
+     *
+     * @see com.oracle.truffle.api.bytecode.GenerateBytecode#enableSerialization
+     */
     public static DataInput createDataInput(ByteBuffer buffer) {
         return new ByteBufferDataInput(buffer);
     }

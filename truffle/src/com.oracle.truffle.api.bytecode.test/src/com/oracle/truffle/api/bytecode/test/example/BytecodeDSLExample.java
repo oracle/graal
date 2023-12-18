@@ -57,7 +57,6 @@ import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
 import com.oracle.truffle.api.bytecode.LocalSetter;
 import com.oracle.truffle.api.bytecode.LocalSetterRange;
 import com.oracle.truffle.api.bytecode.Operation;
-import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
 import com.oracle.truffle.api.bytecode.Variadic;
@@ -75,6 +74,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
 @GenerateBytecodeTestVariants({
                 @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = false)),
@@ -90,7 +90,6 @@ import com.oracle.truffle.api.nodes.Node;
 @GenerateAOT
 @ShortCircuitOperation(booleanConverter = BytecodeDSLExample.ToBoolean.class, name = "ScAnd", operator = Operator.AND_RETURN_VALUE)
 @ShortCircuitOperation(booleanConverter = BytecodeDSLExample.ToBoolean.class, name = "ScOr", operator = Operator.OR_RETURN_VALUE)
-@OperationProxy(value = ContinuationResult.ContinueNode.class, name = "Continue")
 public abstract class BytecodeDSLExample extends DebugBytecodeRootNode implements BytecodeRootNode {
 
     protected BytecodeDSLExample(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
@@ -381,6 +380,26 @@ public abstract class BytecodeDSLExample extends DebugBytecodeRootNode implement
             return bytecodeIndices;
         }
     }
+
+    @Operation
+    public static final class ContinueNode {
+        public static final int LIMIT = 3;
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"result.getContinuationRootNode() == rootNode"}, limit = "LIMIT")
+        public static Object invokeDirect(ContinuationResult result, Object value,
+                        @Cached(value = "result.getContinuationRootNode()", inline = false) RootNode rootNode,
+                        @Cached(value = "create(rootNode.getCallTarget())", inline = false) DirectCallNode callNode) {
+            return callNode.call(result.getFrame(), value);
+        }
+
+        @Specialization(replaces = "invokeDirect")
+        public static Object invokeIndirect(ContinuationResult result, Object value,
+                        @Cached(inline = false) IndirectCallNode callNode) {
+            return callNode.call(result.getContinuationCallTarget(), result.getFrame(), value);
+        }
+    }
+
 }
 
 class TestClosure {

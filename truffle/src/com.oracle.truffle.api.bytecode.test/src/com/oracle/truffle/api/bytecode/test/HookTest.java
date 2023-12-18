@@ -68,7 +68,7 @@ public class HookTest {
 
     public static BytecodeNodeWithHooks parseNode(BytecodeParser<BytecodeNodeWithHooksGen.Builder> builder) {
         BytecodeNodes<BytecodeNodeWithHooks> nodes = BytecodeNodeWithHooksGen.create(BytecodeConfig.DEFAULT, builder);
-        return nodes.getNodes().get(0);
+        return nodes.getNode(0);
     }
 
     @Test
@@ -335,7 +335,7 @@ public class HookTest {
             b.emitThrowStackOverflow();
             b.endIfThenElse();
             b.endRoot();
-        }).getNodes().get(0);
+        }).getNode(0);
 
         try {
             root.getCallTarget().call(true);
@@ -362,7 +362,7 @@ public class HookTest {
             b.emitThrowStackOverflow();
             b.endIfThenElse();
             b.endRoot();
-        }).getNodes().get(0);
+        }).getNode(0);
 
         assertEquals(42, root.getCallTarget().call(true));
 
@@ -384,7 +384,7 @@ public class HookTest {
             b.emitThrowStackOverflow();
             b.endIfThenElse();
             b.endRoot();
-        }).getNodes().get(0);
+        }).getNode(0);
 
         try {
             root.getCallTarget().call(true);
