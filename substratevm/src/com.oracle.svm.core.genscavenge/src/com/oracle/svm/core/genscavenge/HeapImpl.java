@@ -28,13 +28,6 @@ import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
-import jdk.graal.compiler.nodes.extended.MembarNode;
-import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -91,6 +84,14 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.UserError;
+
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.nodes.extended.MembarNode;
+import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
+import jdk.graal.compiler.word.Word;
 
 public final class HeapImpl extends Heap {
     /** Synchronization means for notifying {@link #refPendingList} waiters without deadlocks. */
@@ -442,12 +443,6 @@ public final class HeapImpl extends Heap {
             return pageSize;
         }
         return 0;
-    }
-
-    @Fold
-    @Override
-    public boolean allowPageSizeMismatch() {
-        return true;
     }
 
     @Override
