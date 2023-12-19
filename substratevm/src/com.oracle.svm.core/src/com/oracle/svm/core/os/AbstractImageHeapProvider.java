@@ -37,15 +37,20 @@ import jdk.graal.compiler.word.Word;
 
 public abstract class AbstractImageHeapProvider implements ImageHeapProvider {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static UnsignedWord getImageHeapAddressSpaceSize() {
+    protected UnsignedWord getImageHeapAddressSpaceSize() {
         UnsignedWord imageHeapSizeInFile = getImageHeapSizeInFile();
         return imageHeapSizeInFile.add(Heap.getHeap().getImageHeapOffsetInAddressSpace());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected static UnsignedWord getImageHeapSizeInFile(Word beginAddress, Word endAddress) {
+        assert endAddress.aboveOrEqual(endAddress);
+        return endAddress.subtract(beginAddress);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static UnsignedWord getImageHeapSizeInFile() {
-        Word imageHeapBegin = IMAGE_HEAP_BEGIN.get();
-        return IMAGE_HEAP_END.get().subtract(imageHeapBegin);
+        return getImageHeapSizeInFile(IMAGE_HEAP_BEGIN.get(), IMAGE_HEAP_END.get());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
