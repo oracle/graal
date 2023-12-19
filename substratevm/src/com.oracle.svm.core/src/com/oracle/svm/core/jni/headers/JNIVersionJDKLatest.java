@@ -24,9 +24,10 @@
  */
 package com.oracle.svm.core.jni.headers;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
+
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
 final class JNIHeaderDirectivesJDK22OrLater extends JNIHeaderDirectives {
     @Override
@@ -36,19 +37,19 @@ final class JNIHeaderDirectivesJDK22OrLater extends JNIHeaderDirectives {
 }
 
 @CContext(JNIHeaderDirectivesJDK22OrLater.class)
-public final class JNIVersionJDK22OrLater {
+public final class JNIVersionJDKLatest {
 
     // Checkstyle: stop
 
     /*
-     * GR-48572: there is not yet a JNI_VERSION_22 constant defined. As soon as it gets available,
-     * the "value" property of the CConstant annotation below must be removed.
+     * GR-50948: there is not yet a JNI_VERSION_XX constant defined for JDK latest. As soon as it
+     * gets available, the "value" property of the CConstant annotation below must be removed.
      */
     @CConstant(value = "JNI_VERSION_21")
-    public static native int JNI_VERSION_22();
+    public static native int JNI_VERSION_LATEST();
 
     // Checkstyle: resume
 
-    private JNIVersionJDK22OrLater() {
+    private JNIVersionJDKLatest() {
     }
 }

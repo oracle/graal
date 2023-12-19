@@ -1910,12 +1910,17 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
         required_exports = mx_javamodules.requiredExports(distributions_transitive, get_jdk())
         exports_flags = mx_sdk_vm.AbstractNativeImageConfig.get_add_exports_list(required_exports)
 
-        graal_compiler_flags_map['21'] = exports_flags
-        # Currently JDK 22 has the same flags
-        graal_compiler_flags_map['22'] = graal_compiler_flags_map['21']
+        min_version = 21
+        graal_compiler_flags_map[str(min_version)] = exports_flags
+
+        feature_version = get_jdk().javaCompliance.value
+        if str(feature_version) not in graal_compiler_flags_map and feature_version > min_version:
+            # Unless specified otherwise, newer JDK versions use the same flags as JDK 21
+            graal_compiler_flags_map[str(feature_version)] = graal_compiler_flags_map[str(min_version)]
+
         # DO NOT ADD ANY NEW ADD-OPENS OR ADD-EXPORTS HERE!
         #
-        # Instead provide the correct requiresConcealed entries in the moduleInfo
+        # Instead, provide the correct requiresConcealed entries in the moduleInfo
         # section of org.graalvm.nativeimage.builder in the substratevm suite.py.
 
         graal_compiler_flags_base = [
