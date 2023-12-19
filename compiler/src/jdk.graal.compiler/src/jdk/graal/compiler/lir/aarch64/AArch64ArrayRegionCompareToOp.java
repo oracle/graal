@@ -291,11 +291,9 @@ public final class AArch64ArrayRegionCompareToOp extends AArch64ComplexVectorOp 
     private static void calcReturnValue(AArch64MacroAssembler asm, Register ret, Register vecArrayA, Register vecArrayB, Register vecTmp, Register vecIndex, Register vecMask, Stride strideMax) {
         // set all equal bytes to 0xff, others to 0x00
         asm.neon.cmeqVVV(FullReg, fromStride(strideMax), vecTmp, vecArrayA, vecArrayB);
-        // BIC with the ascending index mask, this will replace all non-equal bytes with their
-        // corresponding byte index
-        asm.neon.bicVVV(FullReg, vecIndex, vecMask, vecTmp);
-        // OR with the result of CMEQ, replacing all equal bytes with 0xff again
-        asm.neon.orrVVV(FullReg, vecIndex, vecIndex, vecTmp);
+        // OR with the ascending index mask, this will replace all non-equal bytes with their
+        // corresponding byte index, and all equal bytes with 0xff
+        asm.neon.orrVVV(FullReg, vecIndex, vecMask, vecTmp);
         // Get the unsigned minimum. This will yield the index of the first non-equal bytes, since
         // all equal ones are filled with 0xff
         asm.neon.uminvSV(FullReg, fromStride(strideMax), vecIndex, vecIndex);

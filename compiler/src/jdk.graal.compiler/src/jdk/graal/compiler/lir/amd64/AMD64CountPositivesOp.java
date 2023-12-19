@@ -55,8 +55,8 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/0a3a925ad88921d387aa851157f54ac0054d347b/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L3822-L4084",
-          sha1 = "3b48e8dac29e4f52f708d9e667eb596fca146c9a")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/486594d4273e9d5a8db43de861e3ca3ce823f0da/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L3868-L4138",
+          sha1 = "684b5353c58bbf92e4403aa985113a78a1f38930")
 // @formatter:on
 @Opcode("AMD64_COUNT_POSITIVES")
 public final class AMD64CountPositivesOp extends AMD64ComplexVectorOp {
@@ -146,9 +146,9 @@ public final class AMD64CountPositivesOp extends AMD64ComplexVectorOp {
             masm.movl(tmp1, len);
             masm.emit(VPXOR, vec2, vec2, vec2, ZMM);
             // tail count (in chars) 0x3
-            masm.andl(tmp1, 64 - 1);
+            masm.andl(tmp1, 0x0000003f);
             // vector count (in chars)
-            masm.andlAndJcc(len, ~(64 - 1), ConditionFlag.Zero, labelTestTail, true);
+            masm.andlAndJcc(len, 0xffffffc0, ConditionFlag.Zero, labelTestTail, true);
 
             masm.leaq(ary1, new AMD64Address(ary1, len, Stride.S1));
             masm.negq(len);
@@ -165,6 +165,7 @@ public final class AMD64CountPositivesOp extends AMD64ComplexVectorOp {
             // bail out when there is nothing to be done
             masm.testlAndJcc(tmp1, -1, ConditionFlag.Zero, labelDone, false);
 
+            // check the tail for absence of negatives
             // ~(~0 << len) applied up to two times (for 32-bit scenario)
             masm.movq(tmp3Aliased, 0xFFFFFFFF_FFFFFFFFL);
             masm.emit(SHLX, tmp3Aliased, tmp3Aliased, tmp1, QWORD);
@@ -176,8 +177,14 @@ public final class AMD64CountPositivesOp extends AMD64ComplexVectorOp {
             masm.ktestq(mask1, mask2);
             masm.jcc(ConditionFlag.Zero, labelDone);
 
+            // do a full check for negative registers in the tail
+            // tmp1 holds low 6-bit from original len
+            masm.movl(len, tmp1);
+            // ary1 already pointing to the right place
+            masm.jmpb(labelTailStart);
+
             masm.bind(labelBreakLoop);
-            // At least one byte in the last 64 bytes is negative.
+            // At least one byte in the last 64 byte block was negative.
             // Set up to look at the last 64 bytes as if they were a tail
             masm.leaq(ary1, new AMD64Address(ary1, len, Stride.S1));
             masm.addq(result, len);

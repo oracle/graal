@@ -24,11 +24,11 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize.FullReg;
 import static jdk.graal.compiler.asm.aarch64.AArch64Address.createBaseRegisterOnlyAddress;
 import static jdk.graal.compiler.asm.aarch64.AArch64Address.createImmediateAddress;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction;
@@ -38,21 +38,21 @@ import jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode;
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler.PrefetchMode;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
-import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.SyncPort;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool.CharsetName;
-
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/0a3a925ad88921d387aa851157f54ac0054d347b/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L5649-L5761",
-          sha1 = "95adbb3a56ad94eca2698b6fd6d8359a15069de7")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/486594d4273e9d5a8db43de861e3ca3ce823f0da/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L5666-L5779",
+          sha1 = "80e6323172af5e8a33625b4eb14629cdad500a0f")
 // @formatter:on
 @Opcode("AArch64_ENCODE_ARRAY")
 public final class AArch64EncodeArrayOp extends AArch64ComplexVectorOp {
@@ -81,31 +81,46 @@ public final class AArch64EncodeArrayOp extends AArch64ComplexVectorOp {
         this.srcValue = tool.newVariable(src.getValueKind());
         this.dstValue = tool.newVariable(dst.getValueKind());
 
-        this.vectorTempValue = allocateConsecutiveVectorRegisters(tool, charset == CharsetName.ASCII ? 7 : 6);
-
+        this.vectorTempValue = allocateVectorRegisters(tool, charset);
         this.charset = charset;
-        assert charset == CharsetName.ASCII || charset == CharsetName.ISO_8859_1 : charset;
+    }
+
+    public static Value[] allocateVectorRegisters(LIRGeneratorTool tool, CharsetName charset) {
+        switch (charset) {
+            case ASCII -> {
+                return allocateConsecutiveVectorRegisters(tool, 7);
+            }
+            case ISO_8859_1 -> {
+                return allocateConsecutiveVectorRegisters(tool, 6);
+            }
+            default -> throw GraalError.shouldNotReachHereUnexpectedValue(charset); // ExcludeFromJacocoGeneratedReport
+        }
     }
 
     @Override
     protected void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        AArch64Move.move(AArch64Kind.QWORD, crb, masm, srcValue, originSrcValue);
-        AArch64Move.move(AArch64Kind.QWORD, crb, masm, dstValue, originDstValue);
-
-        boolean ascii = charset == CharsetName.ASCII;
-
         Register src = asRegister(srcValue);
         Register dst = asRegister(dstValue);
         Register len = asRegister(lenValue);
         Register res = asRegister(resultValue);
 
-        Register vtmp0 = asRegister(vectorTempValue[0]);
-        Register vtmp1 = asRegister(vectorTempValue[1]);
-        Register vtmp2 = asRegister(vectorTempValue[2]);
-        Register vtmp3 = asRegister(vectorTempValue[3]);
-        Register vlo0 = asRegister(vectorTempValue[4]);
-        Register vlo1 = asRegister(vectorTempValue[5]);
-        Register vmask = ascii ? asRegister(vectorTempValue[6]) : null;
+        AArch64Move.move(AArch64Kind.QWORD, crb, masm, srcValue, originSrcValue);
+        AArch64Move.move(AArch64Kind.QWORD, crb, masm, dstValue, originDstValue);
+
+        emitEncodeArrayOp(masm, res, src, dst, len, vectorTempValue, charset);
+    }
+
+    public static void emitEncodeArrayOp(AArch64MacroAssembler masm, Register res, Register src, Register dst, Register len, Value[] vectorRegisters, CharsetName charset) {
+        GraalError.guarantee(charset == CharsetName.ASCII || charset == CharsetName.ISO_8859_1, "unsupported charset: %s", charset);
+        boolean ascii = charset == CharsetName.ASCII;
+
+        Register vtmp0 = asRegister(vectorRegisters[0]);
+        Register vtmp1 = asRegister(vectorRegisters[1]);
+        Register vtmp2 = asRegister(vectorRegisters[2]);
+        Register vtmp3 = asRegister(vectorRegisters[3]);
+        Register vlo0 = asRegister(vectorRegisters[4]);
+        Register vlo1 = asRegister(vectorRegisters[5]);
+        Register vmask = ascii ? asRegister(vectorRegisters[6]) : null;
 
         Register cnt = res;
 
