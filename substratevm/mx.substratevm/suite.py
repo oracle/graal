@@ -1455,6 +1455,7 @@ suite = {
                             org.graalvm.nativeimage.foreign,
                             org.graalvm.truffle.runtime.svm,
                             com.oracle.truffle.enterprise.svm""",
+                    "com.oracle.svm.hosted.c.libc to com.oracle.graal.sandbox",
                 ],
                 "opens" : [
                     "com.oracle.svm.core                          to jdk.graal.compiler",
