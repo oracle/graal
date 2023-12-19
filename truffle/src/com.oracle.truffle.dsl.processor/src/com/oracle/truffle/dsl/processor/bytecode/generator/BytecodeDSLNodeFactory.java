@@ -5147,14 +5147,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("sp += 1");
                         break;
                     case LOAD_CONSTANT:
-                        if (model.usesBoxingElimination()) {
-                            TypeMirror returnType = instr.signature.returnType;
+                        TypeMirror returnType = instr.signature.returnType;
+                        if (model.usesBoxingElimination() && !ElementUtils.isObject(returnType)) {
                             b.startStatement();
                             startSetFrame(b, returnType).string("frame").string("sp");
                             b.startGroup();
-                            if (!ElementUtils.isObject(returnType)) {
-                                b.cast(returnType);
-                            }
+                            b.cast(returnType);
                             b.string(readConst(readBc("bci + 1")));
                             b.end();
                             b.end();
