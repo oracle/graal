@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -29,7 +29,7 @@ package com.oracle.objectfile.debugentry.range;
 import com.oracle.objectfile.debugentry.MethodEntry;
 
 class LeafRange extends SubRange {
-    protected LeafRange(MethodEntry methodEntry, int lo, int hi, int line, PrimaryRange primary, Range caller) {
+    protected LeafRange(MethodEntry methodEntry, long lo, long hi, int line, PrimaryRange primary, Range caller) {
         super(methodEntry, lo, hi, line, primary, caller);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -409,7 +409,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             log(context, "  [0x%08x]     ranges  0x%x", pos, codeRangesIndex);
             pos = writeRangesSectionOffset(codeRangesIndex, buffer, pos);
             // write low_pc as well as ranges so that lcoation lists can default the base address
-            int lo = classEntry.lowpc();
+            long lo = classEntry.lowpc();
             log(context, "  [0x%08x]     low_pc  0x%x", pos, codeRangesIndex);
             pos = writeAttrAddress(lo, buffer, pos);
             int lineIndex = getLineIndex(classEntry);

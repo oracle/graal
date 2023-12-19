@@ -90,14 +90,14 @@ public class DwarfRangesSectionImpl extends DwarfSectionImpl {
             int start = pos;
             setCodeRangesIndex(classEntry, pos);
             log(context, "  [0x%08x] ranges start for class %s", pos, classEntry.getTypeName());
-            int base = classEntry.compiledEntriesBase();
+            long base = classEntry.compiledEntriesBase();
             log(context, "  [0x%08x] base 0x%x", pos, base);
             pos = writeLong(-1L, buffer, pos);
             pos = writeRelocatableCodeOffset(base, buffer, pos);
             cursor.set(pos);
             classEntry.compiledEntries().forEach(compiledMethodEntry -> {
-                int lo = compiledMethodEntry.getPrimary().getLo();
-                int hi = compiledMethodEntry.getPrimary().getHi();
+                long lo = compiledMethodEntry.getPrimary().getLo();
+                long hi = compiledMethodEntry.getPrimary().getHi();
                 log(context, "  [0x%08x] lo 0x%x (%s)", cursor.get(), lo - base, compiledMethodEntry.getPrimary().getFullMethodNameWithParams());
                 cursor.set(writeLong(lo - base, buffer, cursor.get()));
                 log(context, "  [0x%08x] hi 0x%x", cursor.get(), hi - base);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -151,7 +151,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
          * more up-front cross-referencing of CUs when it needs to resolve code addresses e.g. to
          * set a breakpoint, leading to a very slow response for the user.
          */
-        int base = primary.getLo();
+        long base = primary.getLo();
         log(context, "  [0x%08x] top level locations [0x%x, 0x%x] method %s", pos, primary.getLo(), primary.getHi(), primary.getFullMethodNameWithParams());
         pos = writeTopLevelLocations(context, compiledEntry, base, buffer, pos);
         if (!primary.isLeaf()) {
@@ -161,7 +161,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeTopLevelLocations(DebugContext context, CompiledMethodEntry compiledEntry, int base, byte[] buffer, int p) {
+    private int writeTopLevelLocations(DebugContext context, CompiledMethodEntry compiledEntry, long base, byte[] buffer, int p) {
         int pos = p;
         Range primary = compiledEntry.getPrimary();
         HashMap<DebugLocalInfo, List<SubRange>> varRangeMap = primary.getVarRangeMap();
@@ -175,7 +175,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeInlineLocations(DebugContext context, CompiledMethodEntry compiledEntry, int base, byte[] buffer, int p) {
+    private int writeInlineLocations(DebugContext context, CompiledMethodEntry compiledEntry, long base, byte[] buffer, int p) {
         int pos = p;
         Range primary = compiledEntry.getPrimary();
         assert !primary.isLeaf();
@@ -197,7 +197,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeVarLocations(DebugContext context, DebugLocalInfo local, int base, List<SubRange> rangeList, byte[] buffer, int p) {
+    private int writeVarLocations(DebugContext context, DebugLocalInfo local, long base, List<SubRange> rangeList, byte[] buffer, int p) {
         assert !rangeList.isEmpty();
         int pos = p;
         // collect ranges and values, merging adjacent ranges that have equal value
@@ -362,7 +362,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         }
 
         @SuppressWarnings("unused")
-        boolean shouldMerge(int otherLo, int otherHi, DebugLocalValueInfo otherValue) {
+        boolean shouldMerge(long otherLo, long otherHi, DebugLocalValueInfo otherValue) {
             // ranges need to be contiguous to merge
             if (hi != otherLo) {
                 return false;
@@ -370,7 +370,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
             return value.equals(otherValue);
         }
 
-        private LocalValueExtent maybeMerge(int otherLo, int otherHi, DebugLocalValueInfo otherValue) {
+        private LocalValueExtent maybeMerge(long otherLo, long otherHi, DebugLocalValueInfo otherValue) {
             if (shouldMerge(otherLo, otherHi, otherValue)) {
                 // We can extend the current extent to cover the next one.
                 this.hi = otherHi;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -55,7 +55,7 @@ final class CVLineRecord extends CVSymbolRecord {
         fileBlocks.add(new FileBlock(fileId));
     }
 
-    void addNewLine(int addr, int line) {
+    void addNewLine(long addr, int line) {
         fileBlocks.get(fileBlocks.size() - 1).addEntry(new LineEntry(addr, line));
     }
 
@@ -97,8 +97,8 @@ final class CVLineRecord extends CVSymbolRecord {
 
         /* Length of this chunk in object file (= highAddr since it's zero based. */
         assert !fileBlocks.isEmpty();
-        int length = fileBlocks.get(fileBlocks.size() - 1).getHighAddr();
-        pos = CVUtil.putInt(length, buffer, pos);
+        long length = fileBlocks.get(fileBlocks.size() - 1).getHighAddr();
+        pos = CVUtil.putLongAsInt(length, buffer, pos);
         return pos;
     }
 
@@ -161,7 +161,7 @@ final class CVLineRecord extends CVSymbolRecord {
             return initialPos + FILE_BLOCK_HEADER_SIZE + LineEntry.LINE_ENTRY_SIZE * lineEntries.size();
         }
 
-        int getHighAddr() {
+        long getHighAddr() {
             assert !lineEntries.isEmpty();
             return lineEntries.get(lineEntries.size() - 1).addr;
         }
@@ -176,10 +176,10 @@ final class CVLineRecord extends CVSymbolRecord {
         /* Entry: address(4 bytes) line number+flags (4 bytes) */
         static final int LINE_ENTRY_SIZE = 2 * Integer.BYTES;
 
-        int addr;
+        long addr;
         int lineAndFlags;
 
-        LineEntry(int addr, int line, int deltaEnd, boolean isStatement) {
+        LineEntry(long addr, int line, int deltaEnd, boolean isStatement) {
             this.addr = addr;
             assert line <= 0xffffff;
             assert line >= 0;
@@ -188,13 +188,13 @@ final class CVLineRecord extends CVSymbolRecord {
             lineAndFlags = line | (deltaEnd << 24) | (isStatement ? 0x80000000 : 0);
         }
 
-        LineEntry(int addr, int line) {
+        LineEntry(long addr, int line) {
             this(addr, line, 0, false);
         }
 
         int computeContents(byte[] buffer, int initialPos) {
             int pos = initialPos;
-            pos = CVUtil.putInt(addr, buffer, pos);
+            pos = CVUtil.putLongAsInt(addr, buffer, pos);
             pos = CVUtil.putInt(lineAndFlags, buffer, pos);
             return pos;
         }

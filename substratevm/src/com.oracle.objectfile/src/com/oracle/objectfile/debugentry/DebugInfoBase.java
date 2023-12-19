@@ -515,8 +515,8 @@ public abstract class DebugInfoBase {
         final String methodName = locationInfo.name();
         final int loOff = locationInfo.addressLo();
         final int hiOff = locationInfo.addressHi() - 1;
-        final int lo = primaryRange.getLo() + locationInfo.addressLo();
-        final int hi = primaryRange.getLo() + locationInfo.addressHi();
+        final long lo = primaryRange.getLo() + locationInfo.addressLo();
+        final long hi = primaryRange.getLo() + locationInfo.addressHi();
         final int line = locationInfo.line();
         ClassEntry subRangeClassEntry = lookupClassEntry(ownerType);
         MethodEntry subRangeMethodEntry = subRangeClassEntry.ensureMethodEntryForDebugRangeInfo(locationInfo, this, debugContext);

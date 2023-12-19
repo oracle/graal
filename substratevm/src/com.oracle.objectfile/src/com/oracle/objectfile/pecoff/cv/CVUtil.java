@@ -93,6 +93,11 @@ abstract class CVUtil {
         return pos;
     }
 
+    static int putLongAsInt(long value, byte[] buffer, int initialPos) {
+        assert Integer.MIN_VALUE <= value && value <= Integer.MAX_VALUE;
+        return putInt((int) value, buffer, initialPos);
+    }
+
     /**
      * Store a long value in the buffer.
      *
