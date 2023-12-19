@@ -1,4 +1,5 @@
 {
+  local utils = (import '../../ci/ci_common/common-utils.libsonnet'),
   local common = import '../../ci/ci_common/common.jsonnet',
 
   local regex_common = {
@@ -38,7 +39,7 @@
     targets: ["gate"],
   },
 
-  builds: std.flattenArrays([
+  builds: [utils.add_gate_predicate(b, ["sdk", "truffle", "regex", "compiler", "vm", "substratevm"]) for b in std.flattenArrays([
     [
       common.linux_amd64  + jdk + regex_gate,
       common.linux_amd64  + jdk + regex_downstream_js,
@@ -46,5 +47,5 @@
     ] for jdk in [
       common.labsjdkLatest,
     ]
-  ]),
+  ])],
 }
