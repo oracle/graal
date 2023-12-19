@@ -4015,7 +4015,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private static void f64x2_frelop(VirtualFrame frame, int stackPointer, VectorOperators.FRelOp operator) {
         double[] x = popVector128(frame, stackPointer - 1).asDoubles();
         double[] y = popVector128(frame, stackPointer - 2).asDoubles();
-        double[] result = new double[2];
+        long[] result = new long[2];
         CompilerDirectives.ensureVirtualized(x);
         CompilerDirectives.ensureVirtualized(y);
         CompilerDirectives.ensureVirtualized(result);
@@ -4027,9 +4027,9 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case Gt -> y[i] > x[i];
                 case Le -> y[i] <= x[i];
                 case Ge -> y[i] >= x[i];
-            } ? Double.longBitsToDouble(0xffff_ffff_ffff_ffffL) : Double.longBitsToDouble(0x0000_0000_0000_0000L);
+            } ? 0xffff_ffff_ffff_ffffL : 0x0000_0000_0000_0000L;
         }
-        pushVector128(frame, stackPointer - 2, Vector128.ofDoubles(result));
+        pushVector128(frame, stackPointer - 2, Vector128.ofLongs(result));
     }
 
     @ExplodeLoop
