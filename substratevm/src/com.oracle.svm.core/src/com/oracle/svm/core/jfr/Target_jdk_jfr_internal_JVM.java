@@ -27,7 +27,6 @@ package com.oracle.svm.core.jfr;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
-import jdk.jfr.internal.LogLevel;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
@@ -46,6 +45,7 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.jfr.internal.JVM;
+import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
 import jdk.jfr.internal.Logger;
 
@@ -177,9 +177,8 @@ public final class Target_jdk_jfr_internal_JVM {
     @Substitute
     @TargetElement(onlyWith = JDK22OrLater.class)
     public static void setMiscellaneous(long eventTypeId, long value) {
-        // Add logging here since JDK code obfuscates root exception message.
         Logger.log(LogTag.JFR_SETTING, LogLevel.WARN, "@Deprecated JFR events, and leak profiling are not yet supported.");
-        throw VMError.unimplemented("@Deprecated JFR events, and leak profiling are not yet supported.");
+        /* Explicitly don't throw an exception (would result in an unspecific warning). */
     }
 
     /** See {@link JVM#getThreadId}. */
