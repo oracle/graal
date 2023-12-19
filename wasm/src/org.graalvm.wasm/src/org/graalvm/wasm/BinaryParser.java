@@ -775,8 +775,7 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     break;
                 }
-                case Instructions.LOCAL_GET:
-                case Instructions.LOCAL_GET_OBJ: {
+                case Instructions.LOCAL_GET: {
                     final int localIndex = readLocalIndex();
                     assertUnsignedIntLess(localIndex, locals.length, Failure.UNKNOWN_LOCAL);
                     final byte localType = locals[localIndex];
@@ -788,8 +787,7 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     break;
                 }
-                case Instructions.LOCAL_SET:
-                case Instructions.LOCAL_SET_OBJ: {
+                case Instructions.LOCAL_SET: {
                     final int localIndex = readLocalIndex();
                     assertUnsignedIntLess(localIndex, locals.length, Failure.UNKNOWN_LOCAL);
                     final byte localType = locals[localIndex];
@@ -801,8 +799,7 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     break;
                 }
-                case Instructions.LOCAL_TEE:
-                case Instructions.LOCAL_TEE_OBJ: {
+                case Instructions.LOCAL_TEE: {
                     final int localIndex = readLocalIndex();
                     assertUnsignedIntLess(localIndex, locals.length, Failure.UNKNOWN_LOCAL);
                     final byte localType = locals[localIndex];
