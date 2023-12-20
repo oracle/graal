@@ -344,7 +344,8 @@ local common_json = import "../common.json";
     },
 
     local linux   = { os:: "linux",   capabilities+: [self.os] },
-    local darwin  = { os:: "darwin",  capabilities+: [self.os] },
+    # Run darwin jobs on Big Sur or later by excluding all older versions
+    local darwin  = { os:: "darwin",  capabilities+: [self.os, "!darwin_sierra", "!darwin_mojave", "!darwin_catalina"] },
     local windows = { os:: "windows", capabilities+: [self.os] },
 
     local amd64   = { arch:: "amd64",   capabilities+: [self.arch] },
