@@ -32,9 +32,8 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
-import jdk.graal.compiler.phases.contract.NodeCostUtil;
-import jdk.graal.compiler.phases.contract.PhaseSizeContract;
 import org.graalvm.collections.EconomicMap;
+
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugCloseable;
@@ -60,7 +59,8 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-
+import jdk.graal.compiler.phases.contract.NodeCostUtil;
+import jdk.graal.compiler.phases.contract.PhaseSizeContract;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
@@ -301,6 +301,16 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     }
 
     /**
+     * Returns false if this phase can be skipped for {@code graph}. This purely about avoiding
+     * unnecessary work such as applying loop optimization to code without loops.
+     *
+     * @param graph the graph to be processed
+     */
+    public boolean shouldApply(StructuredGraph graph) {
+        return true;
+    }
+
+    /**
      * Gets a precondition that prevents {@linkplain #apply(StructuredGraph, Object, boolean)
      * applying} this phase to a graph whose state is {@code graphState}.
      *
@@ -388,6 +398,10 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
 
     @SuppressWarnings("try")
     public final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
+        if (!shouldApply(graph)) {
+            return;
+        }
+
         OptionValues options = graph.getOptions();
 
         Optional<NotApplicable> cannotBeApplied = this.notApplicableTo(graph.getGraphState());
