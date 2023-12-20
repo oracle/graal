@@ -131,10 +131,7 @@
     max_jdk_version:: max_jdk_version
   },
 
-  renaissance: self.renaissance_template() + {
-    # [JDK-8303076] [GR-44499] requires extra stack size for C1
-    extra_vm_args+:: if self.platform == "c1" then ["-Xss1090K"] else []
-  },
+  renaissance: self.renaissance_template(),
 
   specjbb2015: cc.compiler_benchmark + c.heap.large_with_large_young_gen + {
     suite:: "specjbb2015",

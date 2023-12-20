@@ -2011,8 +2011,26 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             mx.abort("Must specify at least one benchmark.")
         else:
             benchArg = ",".join(benchmarks)
+
+        vmArgs = self.vmArgs(bmSuiteArgs)
+        sparkBenchmarks = set([
+            "als",
+            "chi-square",
+            "dec-tree",
+            "gauss-mix",
+            "log-regression",
+            "movie-lens",
+            "naive-bayes",
+            "page-rank",
+            ])
+
+        if any(benchmark in sparkBenchmarks for benchmark in benchmarks):
+            # Spark benchmarks require a higher stack size than default in some configurations.
+            # [JDK-8303076] [GR-44499] [GR-50671]
+            vmArgs.append("-Xss1090K")
+
         runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
-        return (self.vmArgs(bmSuiteArgs) + ["-jar", self.renaissancePath()] + runArgs + [benchArg])
+        return (vmArgs + ["-jar", self.renaissancePath()] + runArgs + [benchArg])
 
     def benchmarkList(self, bmSuiteArgs):
         return [b for b, it in self.renaissanceIterations().items() if it != -1]
