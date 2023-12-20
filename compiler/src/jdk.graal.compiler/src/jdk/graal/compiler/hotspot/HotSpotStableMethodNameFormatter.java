@@ -24,26 +24,26 @@
  */
 package jdk.graal.compiler.hotspot;
 
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.java.GraphBuilderPhase;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.java.StableMethodNameFormatter;
+import jdk.graal.compiler.phases.util.Providers;
 
-public class HotSpotGraphBuilderPhase extends GraphBuilderPhase {
+/**
+ * A simple wrapper that creates the right subclass of {@link GraphBuilderPhase}.
+ */
+public class HotSpotStableMethodNameFormatter extends StableMethodNameFormatter {
 
-    public HotSpotGraphBuilderPhase(GraphBuilderConfiguration config) {
-        super(config);
+    public HotSpotStableMethodNameFormatter(Providers providers, DebugContext debug) {
+        this(providers, debug, false);
+    }
+
+    public HotSpotStableMethodNameFormatter(Providers providers, DebugContext debug, boolean considerMH) {
+        super(providers, debug, considerMH);
     }
 
     @Override
-    public GraphBuilderPhase copyWithConfig(GraphBuilderConfiguration config) {
+    protected GraphBuilderPhase createGraphBuilderPhase() {
         return new HotSpotGraphBuilderPhase(config);
     }
-
-    @Override
-    protected Instance createInstance(CoreProviders providers, GraphBuilderConfiguration instanceGBConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
-        return new HotSpotGraphBuilderInstance(providers, instanceGBConfig, optimisticOpts, initialIntrinsicContext);
-    }
-
 }

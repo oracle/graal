@@ -83,6 +83,7 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
+import jdk.graal.compiler.java.DefaultGraphBuilderPhase;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -212,7 +213,7 @@ public class SerializationFeature implements InternalFeature {
 
     @SuppressWarnings("try")
     private static void registerLambdasFromMethod(ResolvedJavaMethod method, SerializationBuilder serializationBuilder, OptionValues options) {
-        GraphBuilderPhase lambdaParserPhase = new GraphBuilderPhase(buildLambdaParserConfig());
+        GraphBuilderPhase lambdaParserPhase = new DefaultGraphBuilderPhase(buildLambdaParserConfig());
         StructuredGraph graph = createMethodGraph(method, lambdaParserPhase, options);
         registerLambdasFromConstantNodesInGraph(graph, serializationBuilder);
     }

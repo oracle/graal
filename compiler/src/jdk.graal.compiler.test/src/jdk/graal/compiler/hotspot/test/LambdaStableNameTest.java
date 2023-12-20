@@ -40,7 +40,7 @@ import jdk.graal.compiler.api.runtime.GraalJVMCICompiler;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.hotspot.meta.HotSpotJITClassInitializationPlugin;
-import jdk.graal.compiler.java.GraphBuilderPhase;
+import jdk.graal.compiler.java.DefaultGraphBuilderPhase;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
@@ -57,7 +57,7 @@ public class LambdaStableNameTest {
         Providers providers = compiler.getGraalRuntime().getCapability(RuntimeProvider.class).getHostBackend().getProviders();
         final HotSpotJITClassInitializationPlugin initializationPlugin = new HotSpotJITClassInitializationPlugin();
         return LambdaUtils.findStableLambdaName(initializationPlugin, providers, type, options, debug, this,
-                        config -> new GraphBuilderPhase.Instance(providers, config, OptimisticOptimizations.NONE, null));
+                        config -> new DefaultGraphBuilderPhase.Instance(providers, config, OptimisticOptimizations.NONE, null));
     }
 
     @Test

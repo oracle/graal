@@ -35,6 +35,7 @@ import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -43,7 +44,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.util.Providers;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -92,7 +92,7 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
 
     private final Providers providers;
 
-    private GraphBuilderPhase graphBuilderPhase;
+    protected final GraphBuilderConfiguration config;
 
     private final DebugContext debug;
 
@@ -109,8 +109,14 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
 
     public StableMethodNameFormatter(Providers providers, DebugContext debug, boolean considerMH) {
         this.providers = providers;
+        GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
+        this.config = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
         this.debug = debug;
         this.considerMH = considerMH;
+    }
+
+    protected GraphBuilderPhase createGraphBuilderPhase() {
+        return new DefaultGraphBuilderPhase(config);
     }
 
     /**
@@ -161,22 +167,12 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
         return false;
     }
 
-    private GraphBuilderPhase getGraphBuilderPhase() {
-        if (graphBuilderPhase != null) {
-            return graphBuilderPhase;
-        }
-        GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
-        GraphBuilderConfiguration builderConfiguration = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
-        graphBuilderPhase = new GraphBuilderPhase(builderConfiguration);
-        return graphBuilderPhase;
-    }
-
     @SuppressWarnings("try")
     private String findStableMHName(ResolvedJavaMethod method) {
         StructuredGraph methodGraph = new StructuredGraph.Builder(debug.getOptions(), debug).method(method).build();
         try (DebugContext.Scope ignored = debug.scope("Lambda method analysis", methodGraph, method, this)) {
             HighTierContext context = new HighTierContext(providers, null, OptimisticOptimizations.NONE);
-            getGraphBuilderPhase().apply(methodGraph, context);
+            createGraphBuilderPhase().apply(methodGraph, context);
         } catch (Throwable e) {
             throw debug.handle(e);
         }
@@ -200,7 +196,7 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
         StructuredGraph methodGraph = new StructuredGraph.Builder(debug.getOptions(), debug).method(method).build();
         try (DebugContext.Scope ignored = debug.scope("Lambda method analysis", methodGraph, method, this)) {
             HighTierContext context = new HighTierContext(providers, null, OptimisticOptimizations.NONE);
-            getGraphBuilderPhase().apply(methodGraph, context);
+            createGraphBuilderPhase().apply(methodGraph, context);
         } catch (Throwable e) {
             throw debug.handle(e);
         }

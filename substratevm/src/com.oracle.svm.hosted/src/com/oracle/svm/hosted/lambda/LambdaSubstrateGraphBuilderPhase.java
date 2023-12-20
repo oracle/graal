@@ -44,6 +44,11 @@ public class LambdaSubstrateGraphBuilderPhase extends GraphBuilderPhase {
     }
 
     @Override
+    public GraphBuilderPhase copyWithConfig(GraphBuilderConfiguration config) {
+        return new LambdaSubstrateGraphBuilderPhase(config);
+    }
+
+    @Override
     protected Instance createInstance(CoreProviders providers, GraphBuilderConfiguration instanceGBConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
         return new LambdaSubstrateGraphBuilderInstance(providers, instanceGBConfig, optimisticOpts, initialIntrinsicContext);
     }

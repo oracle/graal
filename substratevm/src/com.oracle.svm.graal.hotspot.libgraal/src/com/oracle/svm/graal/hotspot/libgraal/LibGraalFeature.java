@@ -963,6 +963,11 @@ final class Target_jdk_graal_compiler_core_GraalCompiler {
 final class Target_jdk_graal_compiler_hotspot_SymbolicSnippetEncoder {
 }
 
+@TargetClass(className = "jdk.graal.compiler.java.DefaultGraphBuilderPhase$DefaultBytecodeParser", onlyWith = LibGraalFeature.IsEnabled.class)
+@Delete("shouldn't appear in libgraal")
+final class Target_jdk_graal_compiler_java_DefaultGraphBuilderPhase_DefaultBytecodeParser {
+}
+
 @TargetClass(value = HotSpotForeignCallLinkageImpl.class, onlyWith = LibGraalFeature.IsEnabled.class)
 final class Target_jdk_graal_compiler_hotspot_HotSpotForeignCallLinkageImpl {
     /**

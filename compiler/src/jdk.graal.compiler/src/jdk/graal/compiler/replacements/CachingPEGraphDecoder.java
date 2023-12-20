@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
+
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.debug.DebugCloseable;
@@ -45,18 +46,15 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
-import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;
-import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.DominatorBasedGlobalValueNumberingPhase;
 import jdk.graal.compiler.phases.util.Providers;
-
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -70,13 +68,13 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
 
     protected final Providers providers;
     protected final GraphBuilderConfiguration graphBuilderConfig;
-    protected final OptimisticOptimizations optimisticOpts;
     private final EconomicMap<ResolvedJavaMethod, EncodedGraph> persistentGraphCache;
     private final EconomicMap<ResolvedJavaMethod, EncodedGraph> localGraphCache;
     private final Supplier<AutoCloseable> createPersistentCachedGraphScope;
     private final BasePhase<? super CoreProviders> postParsingPhase;
 
     private final boolean allowAssumptionsDuringParsing;
+    private final GraphBuilderPhase.Instance graphBuilderPhaseInstance;
 
     /**
      * Creates a new CachingPEGraphDecoder.
@@ -84,11 +82,21 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
      * @param forceLink if {@code true} and the graph contains an invoke of a method from a class
      *            that has not yet been linked, linking is performed.
      */
-    public CachingPEGraphDecoder(Architecture architecture, StructuredGraph graph, Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
-                    LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins,
+    public CachingPEGraphDecoder(Architecture architecture,
+                    StructuredGraph graph,
+                    Providers providers,
+                    GraphBuilderConfiguration graphBuilderConfig,
+                    LoopExplosionPlugin loopExplosionPlugin,
+                    InvocationPlugins invocationPlugins,
+                    InlineInvokePlugin[] inlineInvokePlugins,
                     ParameterPlugin parameterPlugin,
-                    NodePlugin[] nodePlugins, ResolvedJavaMethod peRootForInlining, SourceLanguagePositionProvider sourceLanguagePositionProvider,
-                    BasePhase<? super CoreProviders> postParsingPhase, EconomicMap<ResolvedJavaMethod, EncodedGraph> persistentGraphCache, Supplier<AutoCloseable> createPersistentCachedGraphScope,
+                    NodePlugin[] nodePlugins,
+                    ResolvedJavaMethod peRootForInlining,
+                    SourceLanguagePositionProvider sourceLanguagePositionProvider,
+                    BasePhase<? super CoreProviders> postParsingPhase,
+                    EconomicMap<ResolvedJavaMethod, EncodedGraph> persistentGraphCache,
+                    Supplier<AutoCloseable> createPersistentCachedGraphScope,
+                    GraphBuilderPhase.Instance graphBuilderPhaseInstance,
                     boolean allowAssumptionsDuringParsing,
                     boolean needsExplicitException,
                     boolean forceLink) {
@@ -100,16 +108,12 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
 
         this.providers = providers;
         this.graphBuilderConfig = graphBuilderConfig;
-        this.optimisticOpts = optimisticOpts;
         this.postParsingPhase = postParsingPhase;
         this.persistentGraphCache = persistentGraphCache;
         this.createPersistentCachedGraphScope = createPersistentCachedGraphScope;
         this.localGraphCache = EconomicMap.create();
         this.allowAssumptionsDuringParsing = allowAssumptionsDuringParsing;
-    }
-
-    protected GraphBuilderPhase.Instance createGraphBuilderPhaseInstance(IntrinsicContext initialIntrinsicContext) {
-        return new GraphBuilderPhase.Instance(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
+        this.graphBuilderPhaseInstance = graphBuilderPhaseInstance;
     }
 
     @SuppressWarnings("try")
@@ -161,8 +165,6 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
             if (intrinsicBytecodeProvider != null) {
                 throw GraalError.shouldNotReachHere("isn't this dead?"); // ExcludeFromJacocoGeneratedReport
             }
-            IntrinsicContext initialIntrinsicContext = null;
-            GraphBuilderPhase.Instance graphBuilderPhaseInstance = createGraphBuilderPhaseInstance(initialIntrinsicContext);
             graphBuilderPhaseInstance.apply(graphToEncode);
             canonicalizer.apply(graphToEncode, providers);
             if (postParsingPhase != null) {
