@@ -1231,12 +1231,8 @@ public class Graph implements EventCounter {
      * @return return the first live Node with a matching iterableId starting from {@code node}
      */
     Node getIterableNodeNext(Node node) {
-        if (node == null) {
-            return null;
-        }
-        Node n = node;
-        if (n == null || !n.isDeleted()) {
-            return n;
+        if (node == null || !node.isDeleted()) {
+            return node;
         }
 
         return findNextLiveiterable(node);
