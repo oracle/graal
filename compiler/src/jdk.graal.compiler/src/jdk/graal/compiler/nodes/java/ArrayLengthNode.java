@@ -38,12 +38,13 @@ import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.GraphState.StageFlag;
+import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.memory.MemoryAccess;
 import jdk.graal.compiler.nodes.spi.ArrayLengthProvider;
@@ -171,7 +172,7 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
             StructuredGraph graph = graph();
             ValueNode replacement = length;
             if (!length.isConstant() && length.stamp(NodeView.DEFAULT).canBeImprovedWith(StampFactory.positiveInt())) {
-                BeginNode guard = graph.add(new BeginNode());
+                ValueAnchorNode guard = graph.add(new ValueAnchorNode());
                 graph.addAfterFixed(this, guard);
                 replacement = graph.addWithoutUnique(new PiNode(length, StampFactory.positiveInt(), guard));
             }
