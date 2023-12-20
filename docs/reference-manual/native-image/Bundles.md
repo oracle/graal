@@ -66,7 +66,7 @@ Then, run the Maven package command:
 ```shell
 ./mvnw -Pnative native:compile
 ```
->Note: The command to create a native executable with Maven for a Micaonut project is: `./mvnw package -Dpackaging=native-image`.
+> Note: The command to create a native executable with Maven for a Micronaut project is: `./mvnw package -Dpackaging=native-image`.
 
 You get the following build artifacts:
 ```
