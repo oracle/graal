@@ -1220,6 +1220,7 @@ AR=<path:MUSL_GCC_TOOLCHAIN>/aarch64-linux-musl-native/bin/ar
         },
       },
       "maven" : False,
+      "graalCompilerSourceEdition": "ignore",
     },
   },
 }
