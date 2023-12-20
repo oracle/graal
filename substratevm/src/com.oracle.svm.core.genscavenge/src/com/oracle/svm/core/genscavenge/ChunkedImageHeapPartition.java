@@ -68,7 +68,7 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
         this.minimumObjectSize = ConfigurationValues.getObjectLayout().getMinImageHeapObjectSize();
     }
 
-    public void assign(ImageHeapObject obj) {
+    void assign(ImageHeapObject obj) {
         assert obj.getPartition() == this : obj;
         objects.add(obj);
     }
@@ -86,7 +86,7 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
         allocator.alignBetweenChunks(getStartAlignment());
         startOffset = allocator.getPosition();
 
-        for (ImageHeapObject info : getObjects()) { // No need to sort by size
+        for (ImageHeapObject info : objects) { // No need to sort by size
             appendAllocatedObject(info, allocator.allocateUnalignedChunkForObject(info, isWritable()));
         }
 
@@ -106,9 +106,9 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
     }
 
     private void allocateObjectsInAlignedChunks(ChunkedImageHeapAllocator allocator) {
-        NavigableMap<Long, Queue<ImageHeapObject>> objects = createSortedObjectsMap(getObjects());
-        while (!objects.isEmpty()) {
-            ImageHeapObject info = dequeueBestFit(objects, allocator.getRemainingBytesInAlignedChunk());
+        NavigableMap<Long, Queue<ImageHeapObject>> sortedObjects = createSortedObjectsMap();
+        while (!sortedObjects.isEmpty()) {
+            ImageHeapObject info = dequeueBestFit(sortedObjects, allocator.getRemainingBytesInAlignedChunk());
             if (info == null) {
                 allocator.startNewAlignedChunk();
             } else {
@@ -133,7 +133,7 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
         return info;
     }
 
-    private static NavigableMap<Long, Queue<ImageHeapObject>> createSortedObjectsMap(List<ImageHeapObject> objects) {
+    private NavigableMap<Long, Queue<ImageHeapObject>> createSortedObjectsMap() {
         ImageHeapObject[] sorted = objects.toArray(new ImageHeapObject[0]);
         Arrays.sort(sorted, new SizeComparator());
 
@@ -180,16 +180,12 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
         }
     }
 
-    public List<ImageHeapObject> getObjects() {
-        return objects;
-    }
-
     @Override
     public String getName() {
         return name;
     }
 
-    public boolean isWritable() {
+    boolean isWritable() {
         return writable;
     }
 
@@ -197,22 +193,22 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
         return hugeObjects;
     }
 
-    public final int getStartAlignment() {
+    final int getStartAlignment() {
         assert startAlignment >= 0 : "Start alignment not yet assigned";
         return startAlignment;
     }
 
-    public void setStartAlignment(int alignment) {
+    void setStartAlignment(int alignment) {
         assert this.startAlignment == -1 : "Start alignment already assigned: " + this.startAlignment;
         this.startAlignment = alignment;
     }
 
-    public final int getEndAlignment() {
+    final int getEndAlignment() {
         assert endAlignment >= 0 : "End alignment not yet assigned";
         return endAlignment;
     }
 
-    public void setEndAlignment(int endAlignment) {
+    void setEndAlignment(int endAlignment) {
         assert this.endAlignment == -1 : "End alignment already assigned: " + this.endAlignment;
         this.endAlignment = endAlignment;
     }
@@ -223,7 +219,7 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
         return startOffset;
     }
 
-    public long getEndOffset() {
+    long getEndOffset() {
         assert endOffset >= 0 : "End offset not yet set";
         return endOffset;
     }

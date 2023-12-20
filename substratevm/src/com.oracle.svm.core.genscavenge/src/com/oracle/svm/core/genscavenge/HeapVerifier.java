@@ -59,14 +59,14 @@ public final class HeapVerifier {
 
     public static boolean verify(Occasion occasion) {
         boolean success = true;
-        success &= verifyChunkedImageHeap();
+        success &= verifyImageHeap();
         success &= verifyYoungGeneration(occasion);
         success &= verifyOldGeneration();
         success &= verifyRememberedSets();
         return success;
     }
 
-    private static boolean verifyChunkedImageHeap() {
+    private static boolean verifyImageHeap() {
         boolean success = true;
         ImageHeapInfo info = HeapImpl.getImageHeapInfo();
         success &= verifyAlignedChunks(null, info.getFirstWritableAlignedChunk());

@@ -232,7 +232,7 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
                         getReadOnlyHuge().firstObject, getReadOnlyHuge().lastObject, writableAligned, writableUnaligned, dynamicHubCount);
     }
 
-    protected ImageHeapLayoutInfo createLayoutInfo(long heapStartOffset, long writableBeginOffset) {
+    private ImageHeapLayoutInfo createLayoutInfo(long heapStartOffset, long writableBeginOffset) {
         long writableEnd = getWritableHuge().getStartOffset() + getWritableHuge().getSize();
         long writableSize = writableEnd - writableBeginOffset;
         long imageHeapSize = getReadOnlyHuge().getStartOffset() + getReadOnlyHuge().getSize() - heapStartOffset;
@@ -276,30 +276,30 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
     }
 
     private ChunkedImageHeapPartition getReadOnlyPrimitive() {
-        return getPartitions()[READ_ONLY_PRIMITIVE];
+        return partitions[READ_ONLY_PRIMITIVE];
     }
 
     private ChunkedImageHeapPartition getReadOnlyReference() {
-        return getPartitions()[READ_ONLY_REFERENCE];
+        return partitions[READ_ONLY_REFERENCE];
     }
 
     private ChunkedImageHeapPartition getReadOnlyRelocatable() {
-        return getPartitions()[READ_ONLY_RELOCATABLE];
+        return partitions[READ_ONLY_RELOCATABLE];
     }
 
     private ChunkedImageHeapPartition getWritablePrimitive() {
-        return getPartitions()[WRITABLE_PRIMITIVE];
+        return partitions[WRITABLE_PRIMITIVE];
     }
 
     private ChunkedImageHeapPartition getWritableReference() {
-        return getPartitions()[WRITABLE_REFERENCE];
+        return partitions[WRITABLE_REFERENCE];
     }
 
     private ChunkedImageHeapPartition getWritableHuge() {
-        return getPartitions()[WRITABLE_HUGE];
+        return partitions[WRITABLE_HUGE];
     }
 
     private ChunkedImageHeapPartition getReadOnlyHuge() {
-        return getPartitions()[READ_ONLY_HUGE];
+        return partitions[READ_ONLY_HUGE];
     }
 }
