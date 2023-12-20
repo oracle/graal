@@ -195,11 +195,6 @@ public abstract class CCompilerInvoker {
                 UserError.abort("On Windows, GraalVM Native Image for JDK %s requires %s or later (C/C++ Optimizing Compiler Version %s.%s or later).%nCompiler info detected: %s",
                                 JavaVersionUtil.JAVA_SPEC, VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION, minimumMajorVersion, minimumMinorVersion, compilerInfo.getShortDescription());
             }
-            if (guessArchitecture(compilerInfo.targetArch) != AMD64.class) {
-                String targetPrefix = compilerInfo.targetArch.matches("(.*x|i\\d)86$") ? "32-bit architecture " : "";
-                UserError.abort("Native-image building on Windows currently only supports target architecture: %s (%s%s unsupported)",
-                                AMD64.class.getSimpleName(), targetPrefix, compilerInfo.targetArch);
-            }
         }
 
         @Override
