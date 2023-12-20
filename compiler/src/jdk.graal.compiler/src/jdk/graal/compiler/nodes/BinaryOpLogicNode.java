@@ -72,11 +72,6 @@ public abstract class BinaryOpLogicNode extends LIRLowerableLogicNode implements
         this.y = y;
     }
 
-    @Override
-    public boolean verify() {
-        return super.verify();
-    }
-
     /**
      * Ensure a canonical ordering of inputs for commutative nodes to improve GVN results. Order the
      * inputs by increasing {@link Node#id} and call {@link Graph#findDuplicate(Node)} on the node

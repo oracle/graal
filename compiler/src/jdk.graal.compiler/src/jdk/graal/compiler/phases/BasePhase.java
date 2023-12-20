@@ -472,7 +472,9 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             if (debug.isVerifyEnabled()) {
                 debug.verify(graph, "%s", getName());
             }
-            assert graph.verify();
+
+            // Only verify inputs if the graph edges have changed
+            assert graph.verify(graph.getEdgeModificationCount() != edgesBefore);
             /*
              * Reset the progress-based compilation alarm to ensure that progress tracking happens
              * for each phase in isolation. This prevents false alarms where the same progress state
