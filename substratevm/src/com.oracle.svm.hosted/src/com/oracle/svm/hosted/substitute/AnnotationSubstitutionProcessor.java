@@ -841,8 +841,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 Method originalMethod = originalClass.getDeclaredMethod(originalName, originalParams);
 
                 guarantee(Modifier.isStatic(annotatedMethod.getModifiers()) == Modifier.isStatic(originalMethod.getModifiers()), "Static modifier mismatch: %s, %s", annotatedMethod, originalMethod);
-
-                guarantee(NativeImageOptions.DisableSubstitutionReturnTypeCheck.getValue() || getTargetClass(((Method) annotatedMethod).getReturnType()).equals(originalMethod.getReturnType()),
+                guarantee(getTargetClass(((Method) annotatedMethod).getReturnType()).equals(originalMethod.getReturnType()),
                                 "Return type mismatch:%n    %s%n    %s", annotatedMethod, originalMethod);
                 return metaAccess.lookupJavaMethod(originalMethod);
 
