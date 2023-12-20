@@ -72,7 +72,7 @@ To access [polyglot isolate](#polyglot-isolates) artifacts, use the `-isolate` s
 The artifacts `polyglot` and `tools` include all available languages and tools as dependencies. 
 This artifact might grow or shrink between major releases. We recommend selecting only the needed language(s) for a production deployment.
 
-> The `pom` type is a requirement for a language or tool dependency.
+> The `pom` type is a requirement for language or tool dependencies.
 
 Additionally, your _module-info.java_ file should require `org.graalvm.polyglot` when using Java modules.
 
