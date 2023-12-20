@@ -42,6 +42,7 @@ import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.replacements.StringLatin1InflateNode;
 import jdk.graal.compiler.replacements.StringUTF16CompressNode;
 import jdk.graal.compiler.replacements.amd64.AMD64GraphBuilderPlugins;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.test.AddExports;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.InvalidInstalledCodeException;
@@ -299,24 +300,26 @@ public final class StringCompressInflateTest extends HotSpotGraalCompilerTest {
             }
         }
 
-        // Exhaustively check compress returning the correct index of the non-latin1 char.
-        final int size = 48;
-        final byte fillByte = 'R';
-        char[] chars = new char[size];
-        final byte[] bytes = new byte[chars.length];
-        Arrays.fill(bytes, fillByte);
-        for (int i = 0; i < size; i++) { // Every starting index
-            for (int j = i; j < size; j++) {  // Every location of non-latin1
-                Arrays.fill(chars, 'A');
-                chars[j] = 0xFF21;
-                byte[] dst = Arrays.copyOf(bytes, bytes.length);
-                byte[] dst2 = Arrays.copyOf(bytes, bytes.length);
-                int result = (int) invokeSafe(caller, null, chars, i, dst, 0, chars.length - i);
-                int result2 = (int) executeVarargsSafe(code, chars, i, dst2, 0, chars.length - i);
-                Assert.assertEquals(result, result2);
-                Assert.assertArrayEquals(dst, dst2);
-                Assert.assertEquals("compress found wrong index", j - i, result);
-                Assert.assertEquals("extra character stored", fillByte, bytes[j]);
+        if (JavaVersionUtil.JAVA_SPEC >= 22) {
+            // Exhaustively check compress returning the correct index of the non-latin1 char.
+            final int size = 48;
+            final byte fillByte = 'R';
+            char[] chars = new char[size];
+            final byte[] bytes = new byte[chars.length];
+            Arrays.fill(bytes, fillByte);
+            for (int i = 0; i < size; i++) { // Every starting index
+                for (int j = i; j < size; j++) {  // Every location of non-latin1
+                    Arrays.fill(chars, 'A');
+                    chars[j] = 0xFF21;
+                    byte[] dst = Arrays.copyOf(bytes, bytes.length);
+                    byte[] dst2 = Arrays.copyOf(bytes, bytes.length);
+                    int result = (int) invokeSafe(caller, null, chars, i, dst, 0, chars.length - i);
+                    int result2 = (int) executeVarargsSafe(code, chars, i, dst2, 0, chars.length - i);
+                    Assert.assertEquals(result, result2);
+                    Assert.assertArrayEquals(dst, dst2);
+                    Assert.assertEquals("compress found wrong index", j - i, result);
+                    Assert.assertEquals("extra character stored", fillByte, bytes[j]);
+                }
             }
         }
     }
