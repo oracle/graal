@@ -625,8 +625,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     protected void lowerArrayLengthNode(ArrayLengthNode arrayLengthNode, LoweringTool tool) {
-        arrayLengthNode.replaceAtUsages(createReadArrayLength(arrayLengthNode.array(), arrayLengthNode, tool));
         StructuredGraph graph = arrayLengthNode.graph();
+        arrayLengthNode.replaceAtUsages(createReadArrayLength(arrayLengthNode.array(), arrayLengthNode, tool));
         graph.removeFixed(arrayLengthNode);
     }
 
@@ -635,7 +635,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
      *
      * The created node is placed before {@code before} in the CFG.
      */
-    protected ReadNode createReadArrayLength(ValueNode array, FixedNode before, LoweringTool tool) {
+    private ReadNode createReadArrayLength(ValueNode array, FixedNode before, LoweringTool tool) {
         StructuredGraph graph = array.graph();
         ValueNode canonicalArray = this.createNullCheckedValue(GraphUtil.skipPiWhileNonNullArray(array), before, tool);
         AddressNode address = createOffsetAddress(graph, canonicalArray, arrayLengthOffset());
