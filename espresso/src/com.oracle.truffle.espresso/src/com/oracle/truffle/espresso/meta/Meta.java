@@ -1210,6 +1210,13 @@ public final class Meta extends ContextAccessImpl {
                             .notRequiredMethod(java_lang_reflect_ProxyGenerator);
         }
 
+        // Espresso Continuations
+        com_oracle_truffle_espresso_continuations_SuspendedContinuation_StopReason = loadKlassWithBootClassLoader(Type.com_oracle_truffle_espresso_continuations_SuspendedContinuation_StopReason);
+        com_oracle_truffle_espresso_continuations_SuspendedContinuation_Result = loadKlassWithBootClassLoader(Type.com_oracle_truffle_espresso_continuations_SuspendedContinuation_Result);
+        com_oracle_truffle_espresso_continuations_SuspendedContinuation_Result_init_ =
+                com_oracle_truffle_espresso_continuations_SuspendedContinuation_Result.requireDeclaredMethod(Name._init_, Signature._void_StopReason_Object);
+
+
         // Load Espresso's Polyglot API.
         boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
         this.polyglot = polyglotSupport ? new PolyglotSupport() : null;
@@ -1895,6 +1902,11 @@ public final class Meta extends ContextAccessImpl {
     public final Klass jdk_internal_foreign_abi_UpcallLinker_CallRegs;
     public final Field jdk_internal_foreign_abi_UpcallLinker_CallRegs_argRegs;
     public final Field jdk_internal_foreign_abi_UpcallLinker_CallRegs_retRegs;
+
+    // Continuations
+    @CompilationFinal public ObjectKlass com_oracle_truffle_espresso_continuations_SuspendedContinuation_StopReason;
+    @CompilationFinal public ObjectKlass com_oracle_truffle_espresso_continuations_SuspendedContinuation_Result;
+    @CompilationFinal public Method com_oracle_truffle_espresso_continuations_SuspendedContinuation_Result_init_;
 
     @CompilationFinal public ObjectKlass java_lang_management_MemoryUsage;
     @CompilationFinal public ObjectKlass sun_management_ManagementFactory;

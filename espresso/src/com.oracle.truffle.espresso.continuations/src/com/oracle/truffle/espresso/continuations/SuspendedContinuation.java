@@ -35,7 +35,7 @@ package com.oracle.truffle.espresso.continuations;
 public final class SuspendedContinuation<IN, OUT> {
     // We want a compact serialized representation, so use fields judiciously here.
 
-    // The stack frame array is mutated by
+    // The stack frame array is mutated by the VM.
     private volatile Object[] stackFrames;
 
     // Usually null, used for passing objects resume<->pause. Doesn't need to partake in serialization.
@@ -51,13 +51,13 @@ public final class SuspendedContinuation<IN, OUT> {
     @FunctionalInterface
     public interface EntryPoint<IN, OUT> {
         /**
-         * Implement this method to create a new continuation.
+         * The starting point of your continuation.
          *
          * @param object Whatever was passed to the first call to {@link SuspendedContinuation#resume(Object)}. You can put whatever you
          *               want here.
          * @param pauser A capability that lets you yield control and return from {@link #resume(Object)}.
          */
-        void start(SuspendedContinuation.PauseCapability<IN, OUT> pauser, IN object);
+        OUT run(SuspendedContinuation.PauseCapability<IN, OUT> pauser, IN object);
     }
 
     /**
@@ -80,13 +80,43 @@ public final class SuspendedContinuation<IN, OUT> {
         }
     }
 
+    public enum StopReason {
+        PAUSED,
+        COMPLETED
+    }
+
+    /**
+     * The reason that {@link #resume(Object)} returned, and any data it returned with.
+     */
+    public static class Result<OUT> {
+        public final StopReason reason;
+        public final OUT object;
+
+        Result(StopReason reason, OUT object) {
+            this.reason = reason;
+            this.object = object;
+        }
+    }
+
     /**
      * Runs the continuation until it either completes or calls {@link PauseCapability#pause(Object)}. If the
      * continuation completes (returns from the entry point) then this method returns null. If it pauses then
-     * the returned object represents the suspended state.
+     * the returned object is whatever was passed to {@code pause}.
      */
     @SuppressWarnings("unchecked")
-    public OUT resume(IN objectToResumeWith) {
+    public Result<OUT> resume(IN objectToResumeWith) {
+        // Are we in the special waiting-to-start state?
+        if (stackFrames.length == 1 && stackFrames[0] instanceof SuspendedContinuation.EntryPoint<?,?> entryPoint) {
+            stackFrames = new Object[] {};
+            PauseCapability<IN, OUT> cap = new PauseCapability<>();
+            cap.continuation = this;
+
+            // Kick off the continuation.
+            // This could return either a COMPLETED if the entry point never pauses, or a PAUSED if it does.
+            return start0(entryPoint, cap, objectToResumeWith);
+        }
+
+        // No, we're resuming after a pause.
         assert exchangePoint == null;
         exchangePoint = objectToResumeWith;
 
@@ -99,13 +129,21 @@ public final class SuspendedContinuation<IN, OUT> {
         // Called pause.
         var o = exchangePoint;
         exchangePoint = null;
-        //noinspection unchecked
-        return (OUT) o;
+        return new Result<OUT>(StopReason.PAUSED, (OUT) o);
     }
 
-    // The VM will read the stackFrames array and map those objects to the real stack before continuing execution.
+    // Replaced with a substitution (intrinsic).
+    private Result<OUT> start0(EntryPoint<?, ?> entryPoint, PauseCapability<IN, OUT> pauseCapability, IN objectToResumeWith) {
+        throw unsupported();
+    }
+
+    // Replaced with a substitution (intrinsic).
     private void resume0() {
-        throw new UnsupportedOperationException("Continuations must be run on the Java on Truffle JVM.");
+        throw unsupported();
+    }
+
+    private static UnsupportedOperationException unsupported() {
+        return new UnsupportedOperationException("Continuations must be run on the Java on Truffle JVM.");
     }
 
     @SuppressWarnings("unchecked")
@@ -123,6 +161,7 @@ public final class SuspendedContinuation<IN, OUT> {
         return (IN) o;
     }
 
+    // Replaced with a substitution (intrinsic).
     // The VM will unwind the stack up to the point where resume0 was called and write an array of the frames to
     // the stackFrames variable.
     private native void pause1();
@@ -133,7 +172,7 @@ public final class SuspendedContinuation<IN, OUT> {
      * <p>
      * Pass an implementation of {@link SuspendedContinuation.EntryPoint}. The returned continuation starts in the paused state.
      * To begin execution call the {@link SuspendedContinuation#resume(Object)} method. The object you provide will be passed to
-     * {@link SuspendedContinuation.EntryPoint#start} along with a capability allowing the continuation to pause itself.
+     * {@link SuspendedContinuation.EntryPoint#run} along with a capability allowing the continuation to pause itself.
      * </p>
      *
      * <p>
@@ -145,11 +184,6 @@ public final class SuspendedContinuation<IN, OUT> {
      * @param <OUT> An arbitrary bsae type for the objects tht can returned from the continuation when pausing it.
      */
     public static <IN, OUT> SuspendedContinuation<IN, OUT> create(SuspendedContinuation.EntryPoint<IN, OUT> entryPoint) {
-        // TODO: Build a real stack frame pointing to the entry point.
-        var pauser = new PauseCapability<IN, OUT>();
-        var entryStack = new Object[] { entryPoint, pauser};
-        var continuation = new SuspendedContinuation<IN, OUT>(entryStack);
-        pauser.continuation = continuation;
-        return continuation;
+        return new SuspendedContinuation<IN, OUT>(new Object[] { entryPoint });
     }
 }

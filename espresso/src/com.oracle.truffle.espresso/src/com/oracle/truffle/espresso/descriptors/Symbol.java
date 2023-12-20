@@ -626,6 +626,10 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> ofSystem = StaticSymbols.putName("ofSystem");
         public static final Symbol<Name> defineModule = StaticSymbols.putName("defineModule");
 
+        // Continuations
+        public static final Symbol<Name> PAUSED = StaticSymbols.putName("PAUSED");
+        public static final Symbol<Name> COMPLETED = StaticSymbols.putName("COMPLETED");
+
         // Panama
         public static final Symbol<Name> segmentMaskOrSize = StaticSymbols.putName("segmentMaskOrSize");
         public static final Symbol<Name> indexOrOffset = StaticSymbols.putName("indexOrOffset");
@@ -1006,6 +1010,18 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_impl_EspressoForeignNumber = StaticSymbols.putType(
                         "Lcom/oracle/truffle/espresso/polyglot/impl/EspressoForeignNumber;");
 
+        // Continuations
+        public static final Symbol<Type> com_oracle_truffle_espresso_continuations_SuspendedContinuation = StaticSymbols.putType(
+                "Lcom/oracle/truffle/espresso/continuations/SuspendedContinuation;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_continuations_SuspendedContinuation_EntryPoint = StaticSymbols.putType(
+                "Lcom/oracle/truffle/espresso/continuations/SuspendedContinuation$EntryPoint;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_continuations_SuspendedContinuation_PauseCapability = StaticSymbols.putType(
+                "Lcom/oracle/truffle/espresso/continuations/SuspendedContinuation$PauseCapability;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_continuations_SuspendedContinuation_Result = StaticSymbols.putType(
+                "Lcom/oracle/truffle/espresso/continuations/SuspendedContinuation$Result;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_continuations_SuspendedContinuation_StopReason = StaticSymbols.putType(
+                "Lcom/oracle/truffle/espresso/continuations/SuspendedContinuation$StopReason;");
+
         // Panama
         public static final Symbol<Type> jdk_internal_foreign_abi_VMStorage = StaticSymbols.putType("Ljdk/internal/foreign/abi/VMStorage;");
         public static final Symbol<Type> jdk_internal_foreign_abi_NativeEntryPoint = StaticSymbols.putType("Ljdk/internal/foreign/abi/NativeEntryPoint;");
@@ -1306,5 +1322,9 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> Module_ClassLoader_ModuleDescriptor_URI = StaticSymbols.putSignature(Type.java_lang_Module, Type.java_lang_ClassLoader,
                         Type.java_lang_module_ModuleDescriptor, Type.java_net_URI);
         public static final Symbol<Signature> ModuleDescriptor_String_String = StaticSymbols.putSignature(Type.java_lang_module_ModuleDescriptor, Type.java_lang_String, Type.java_lang_String);
+
+        // Continuations
+        public static final Symbol<Signature> Object_PauseCapability_Object = StaticSymbols.putSignature(Type.java_lang_Object, Type.com_oracle_truffle_espresso_continuations_SuspendedContinuation_PauseCapability, Type.java_lang_Object);
+        public static final Symbol<Signature> _void_StopReason_Object = StaticSymbols.putSignature(Type._void, Type.com_oracle_truffle_espresso_continuations_SuspendedContinuation_StopReason, Type.java_lang_Object);
     }
 }
