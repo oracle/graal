@@ -1,7 +1,5 @@
 package com.oracle.truffle.espresso.continuations;
 
-import java.io.Serial;
-import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -37,6 +35,11 @@ import java.util.function.Consumer;
  * </p>
  */
 public final class Continuation {
+    // Next steps:
+    // - Implement resume by remapping FrameRecords to truffle frames.
+    // - Add more data to FrameRecord so we can do consistency checks in case the code has changed.
+
+
     // We want a compact serialized representation, so use fields judiciously here.
 
     // This field is set by the VM after a pause.
@@ -49,9 +52,7 @@ public final class Continuation {
      *
      * <p>The contents of the arrays should be treated as opaque.</p>
      */
-    public static final class FrameRecord implements Serializable {
-        @Serial
-        private static final long serialVersionUID = 0L;
+    public static final class FrameRecord {
         private final FrameRecord next;
         private final Object[] pointers;
         private final long[] primitives;
@@ -126,7 +127,7 @@ public final class Continuation {
     private static class StateHolder {
         State state = State.NEW;
     }
-    private transient StateHolder stateHolder = new StateHolder();
+    private final transient StateHolder stateHolder = new StateHolder();
 
     /**
      * <p>Creates a new paused continuation.</p>
@@ -172,7 +173,6 @@ public final class Continuation {
          * Pauses the continuation, unwinding the stack to the point at which it was previously resumed.
          */
         public void pause() {
-            //noinspection UnusedAssignment
             stateHolder.state = State.PAUSED;
             Continuation.pause0();
             stateHolder.state = State.RUNNING;

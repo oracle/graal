@@ -56,8 +56,9 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
         meta.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.setObject(continuation, nextPtr);
     }
 
-    private static StaticObject createFrameRecord(Meta meta, MaterializedFrame frame, StaticObject nextRecord) {
-        // Convert the MaterializedFrame to a guest-land Continuation.FrameRecord.
+    // Convert the MaterializedFrame to a guest-land Continuation.FrameRecord.
+    private static @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation$FrameRecord") StaticObject
+    createFrameRecord(Meta meta, MaterializedFrame frame, StaticObject nextRecord) {
         Object[] ptrs = frame.getIndexedLocals();
         long[] prims = frame.getIndexedPrimitiveLocals();
 
@@ -107,23 +108,6 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
             );
         }
     }
-
-//    private static StaticObject createResumeResult(boolean completed, StaticObject entryPointResultOrObjectForResume, Meta meta, EspressoContext ctx) {
-//        // Create a guest Continuation.Result object via its constructor.
-//        var reasonName = completed ? Symbol.Name.COMPLETED : Symbol.Name.PAUSED;
-//
-//        // Read StopReason.COMPLETED or StopReason.PAUSED
-//        // TODO: This should probably be pulled out into some other place where we can cache the results of the lookups.
-//        StaticObject reason = meta.com_oracle_truffle_espresso_continuations_Continuation_StopReason.lookupField(
-//                reasonName,
-//                Symbol.Type.com_oracle_truffle_espresso_continuations_Continuation_StopReason
-//        ).getObject(meta.com_oracle_truffle_espresso_continuations_Continuation_StopReason.tryInitializeAndGetStatics());
-//
-//        // Now create a Result object via its c'tor to wrap the status and yielded object.
-//        StaticObject r = meta.com_oracle_truffle_espresso_continuations_Continuation_Result.allocateInstance(ctx);
-//        meta.com_oracle_truffle_espresso_continuations_Continuation_Result_init_.invokeDirect(r, reason, entryPointResultOrObjectForResume);
-//        return r;
-//    }
 
     public static class Unwind extends ControlFlowException {
         public final List<MaterializedFrame> frames = new ArrayList<>();
