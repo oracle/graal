@@ -246,7 +246,7 @@ class NativeWasmMemory extends WasmMemory {
     public Vector128 load_i128(Node node, long address) {
         validateAddress(node, address, 16);
         byte[] bytes = new byte[16];
-        unsafe.copyMemory(null, startAddress + address, bytes, 0, 16);
+        unsafe.copyMemory(null, startAddress + address, bytes, Unsafe.ARRAY_BYTE_BASE_OFFSET, 16);
         return Vector128.ofBytes(bytes);
     }
 
