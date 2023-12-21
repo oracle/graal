@@ -789,4 +789,28 @@ public interface Frame {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new UnsupportedOperationException();
     }
+
+    /**
+     * Direct access to the pointers on the stack. This is a very low level interface that you should avoid using
+     * unless you are trying to bulk access untyped stack data. Prefer the typed slot accessors, which will check
+     * for mismatches when assertions are enabled. Do not modify the returned array.
+     *
+     * @since 24.1
+     */
+    default Object[] getIndexedLocals() {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Direct access to non-pointers on the stack. This is a very low level interface that you should avoid using
+     * unless you are trying to bulk access untyped stack data. Prefer the typed slot accessors, which will check
+     * for mismatches when assertions are enabled. Do not modify the returned array.
+     *
+     * @since 24.1
+     */
+    default long[] getIndexedPrimitiveLocals() {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
 }
