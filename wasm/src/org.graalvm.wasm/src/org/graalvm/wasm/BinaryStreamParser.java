@@ -465,7 +465,7 @@ public abstract class BinaryStreamParser {
      */
     public static Vector128 rawPeekI128(byte[] bytecode, int offset) {
         byte[] bytes = Arrays.copyOfRange(bytecode, offset, offset + 16);
-        return new Vector128(bytes);
+        return Vector128.ofBytes(bytes);
     }
 
     // endregion
