@@ -39,6 +39,8 @@ import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 
+import jdk.graal.compiler.debug.Assertions;
+
 /**
  * The image heap comes in partitions. Each partition holds objects with different properties
  * (read-only/writable, primitives/objects).
@@ -143,7 +145,7 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
         for (ImageHeapObject obj : sorted) {
             long objSize = obj.getSize();
             if (objSize != currentObjectsSize) {
-                assert objSize > currentObjectsSize && objSize >= ConfigurationValues.getObjectLayout().getMinImageHeapObjectSize();
+                assert objSize > currentObjectsSize && objSize >= ConfigurationValues.getObjectLayout().getMinImageHeapObjectSize() : Assertions.errorMessage(obj, objSize);
                 currentObjectsSize = objSize;
                 currentQueue = new ArrayDeque<>();
                 map.put(currentObjectsSize, currentQueue);

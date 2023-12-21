@@ -132,7 +132,10 @@ import sun.reflect.annotation.AnnotationType;
 import sun.reflect.generics.factory.GenericsFactory;
 import sun.reflect.generics.repository.ClassRepository;
 
-@Hybrid
+/**
+ * Instantiations of this class have a special layout. See {@code DynamicHubLayout} for a
+ * description of how the object is arranged.
+ */
 @Substitute
 @TargetClass(java.lang.Class.class)
 @SuppressWarnings({"static-method", "serial"})
@@ -344,10 +347,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      * match the assignee's type.
      */
     @UnknownObjectField(availability = AfterHostedUniverse.class)//
-    @Hybrid.TypeIDSlots private short[] typeCheckSlots;
+    private short[] typeCheckSlots;
 
     @UnknownObjectField(availability = AfterHostedUniverse.class)//
-    @Hybrid.Array private CFunctionPointer[] vtable;
+    private CFunctionPointer[] vtable;
 
     /** Field used for module information access at run-time. */
     private Module module;

@@ -93,6 +93,7 @@ import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
+import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
@@ -172,6 +173,8 @@ public class UniverseBuilder {
                 HostedMethod previous = hUniverse.methods.put(aMethod, origHMethod);
                 assert previous == null : "Overwriting analysis key";
             }
+
+            HostedConfiguration.initializeDynamicHubLayout(hMetaAccess);
 
             Collection<HostedType> allTypes = hUniverse.types.values();
             HostedType objectType = hUniverse.objectType();
@@ -459,22 +462,42 @@ public class UniverseBuilder {
 
         HostedConfiguration.instance().findAllFieldsForLayout(hUniverse, hMetaAccess, hUniverse.fields, rawFields, allFields, clazz);
 
-        if (mustReserveArrayFields(clazz)) {
+        int firstInstanceFieldOffset;
+        int minimumFirstFieldOffset = layout.getFirstFieldOffset();
+        DynamicHubLayout dynamicHubLayout = DynamicHubLayout.singleton();
+        if (dynamicHubLayout.isDynamicHub(clazz)) {
+            /*
+             * Reserve the vtable and typeslots
+             */
             int intSize = layout.sizeInBytes(JavaKind.Int);
-            int firstFieldOffset = layout.getFirstFieldOffset();
+            int afterVtableLengthOffset = dynamicHubLayout.getVTableLengthOffset() + intSize;
+
+            /*
+             * Reserve the extra memory that DynamicHub fields may use (at least the vtable length
+             * field).
+             */
+            int fieldBytes = afterVtableLengthOffset - minimumFirstFieldOffset;
+            assert fieldBytes >= intSize;
+            reserve(usedBytes, minimumFirstFieldOffset, fieldBytes);
+
+            /* Each type check id slot is 2 bytes. */
+            int slotsSize = typeCheckBuilder.getNumTypeCheckSlots() * 2;
+            reserve(usedBytes, dynamicHubLayout.typeIDSlotsOffset, slotsSize);
+            firstInstanceFieldOffset = dynamicHubLayout.typeIDSlotsOffset + slotsSize;
+
+        } else if (mustReserveArrayFields(clazz)) {
+            int intSize = layout.sizeInBytes(JavaKind.Int);
             int afterArrayLengthOffset = layout.getArrayLengthOffset() + intSize;
+            firstInstanceFieldOffset = afterArrayLengthOffset;
 
-            /* Reserve the extra memory that array fields may use (at least the array length). */
-            int arrayFieldBytes = afterArrayLengthOffset - firstFieldOffset;
+            /*
+             * Reserve the extra memory that array fields may use (at least the array length field).
+             */
+            int arrayFieldBytes = afterArrayLengthOffset - minimumFirstFieldOffset;
             assert arrayFieldBytes >= intSize;
-            reserve(usedBytes, firstFieldOffset, arrayFieldBytes);
-
-            /* Type check fields in DynamicHub. */
-            if (clazz.equals(hMetaAccess.lookupJavaType(DynamicHub.class))) {
-                /* Each type check id slot is 2 bytes. */
-                int slotsSize = typeCheckBuilder.getNumTypeCheckSlots() * 2;
-                reserve(usedBytes, afterArrayLengthOffset, slotsSize);
-            }
+            reserve(usedBytes, minimumFirstFieldOffset, arrayFieldBytes);
+        } else {
+            firstInstanceFieldOffset = minimumFirstFieldOffset;
         }
 
         /*
@@ -544,7 +567,7 @@ public class UniverseBuilder {
             /* No identity hash field needed. */
         } else if (layout.isIdentityHashFieldInObjectHeader()) {
             clazz.setIdentityHashOffset(layout.getObjectHeaderIdentityHashOffset());
-        } else if (HybridLayout.isHybrid(clazz)) {
+        } else if (HostedConfiguration.isArrayLikeLayout(clazz)) {
             if (layout.isIdentityHashFieldAtTypeSpecificOffset()) {
                 clazz.setIdentityHashOffset(layout.getObjectHeaderIdentityHashOffset());
             } else {
@@ -567,6 +590,7 @@ public class UniverseBuilder {
         }
 
         clazz.instanceFieldsWithoutSuper = allFields.toArray(new HostedField[0]);
+        clazz.firstInstanceFieldOffset = firstInstanceFieldOffset;
         clazz.afterFieldsOffset = afterFieldsOffset;
         clazz.instanceSize = layout.alignUp(afterFieldsOffset);
 
@@ -1035,6 +1059,7 @@ public class UniverseBuilder {
         ImageSingletons.lookup(DynamicHubSupport.class).setData(referenceMapEncoder.encodeAll());
 
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
+        DynamicHubLayout dynamicHubLayout = DynamicHubLayout.singleton();
         for (HostedType type : hUniverse.getTypes()) {
             hUniverse.hostVM().recordActivity();
 
@@ -1046,8 +1071,10 @@ public class UniverseBuilder {
                 HostedInstanceClass instanceClass = (HostedInstanceClass) type;
                 if (instanceClass.isAbstract()) {
                     layoutHelper = LayoutEncoding.forAbstract();
+                } else if (dynamicHubLayout.isDynamicHub(type)) {
+                    layoutHelper = LayoutEncoding.forDynamicHub(type, dynamicHubLayout.vTableOffset(), ol.getArrayIndexShift(dynamicHubLayout.getVTableSlotStorageKind()));
                 } else if (HybridLayout.isHybrid(type)) {
-                    HybridLayout<?> hybridLayout = new HybridLayout<>(instanceClass, ol, hMetaAccess);
+                    HybridLayout hybridLayout = new HybridLayout(instanceClass, ol, hMetaAccess);
                     JavaKind storageKind = hybridLayout.getArrayElementStorageKind();
                     boolean isObject = (storageKind == JavaKind.Object);
                     layoutHelper = LayoutEncoding.forHybrid(type, isObject, hybridLayout.getArrayBaseOffset(), ol.getArrayIndexShift(storageKind));
