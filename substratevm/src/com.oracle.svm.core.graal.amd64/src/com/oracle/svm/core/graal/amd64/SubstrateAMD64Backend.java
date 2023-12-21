@@ -233,7 +233,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
      * calls. This must be explicitly stated to ensure the register allocator knows this register
      * will be killed by the call.
      */
-    private static AllocatableValue getCFITargetRegister() {
+    protected static AllocatableValue getCFITargetRegister() {
         return SubstrateControlFlowIntegrity.useSoftwareCFI() ? SubstrateControlFlowIntegrity.singleton().getCFITargetRegister().asValue() : Value.ILLEGAL;
     }
 
@@ -430,9 +430,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                     default:
                         throw VMError.shouldNotReachHere("Kind is not supported yet: " + field.getStorageKind());
                 }
-//                masm.lfence();
-//                masm.sfence();
-                // FIXME: Masking here is needed.
+
                 AMD64Assembler.AMD64RMOp.MOV.emit(masm, lastOperandSize, computeRegister, memoryAddress);
 
                 if (done != null) {
@@ -593,7 +591,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
      * No vzeroupper is emitted for {@linkplain #isRuntimeToRuntimeCall runtime-to-runtime calls},
      * because both, the caller and the callee, have been compiled using the CPU features.
      */
-    private void vzeroupperBeforeCall(SubstrateAMD64LIRGenerator gen, Value[] arguments, LIRFrameState callState, SharedMethod targetMethod) {
+    protected void vzeroupperBeforeCall(SubstrateAMD64LIRGenerator gen, Value[] arguments, LIRFrameState callState, SharedMethod targetMethod) {
         // TODO maybe avoid vzeroupper if the callee does not use SSE (cf. hsLinkage.mayContainFP())
         if (runtimeToAOTIsAvxSseTransition(gen.target()) && gen.getDestroysCallerSavedRegisters(targetMethod) && !isRuntimeToRuntimeCall(callState)) {
             /*
@@ -928,7 +926,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
          * return register is used in {@link NodeLIRBuilder#emitReadExceptionObject} also for the
          * exception.
          */
-        private Value getExceptionTemp(CallTargetNode callTarget) {
+        protected Value getExceptionTemp(CallTargetNode callTarget) {
             return ((SubstrateAMD64LIRGenerator) gen).getExceptionTemp(callTarget.invoke() instanceof InvokeWithExceptionNode);
         }
 

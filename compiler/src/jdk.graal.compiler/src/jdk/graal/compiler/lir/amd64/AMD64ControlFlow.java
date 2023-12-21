@@ -757,6 +757,10 @@ public class AMD64ControlFlow {
             if (defaultTarget != null) {
 
                 // Move the table entry (two DWORDs) into a QWORD
+                masm.nop();
+                masm.lfence();
+                masm.nop();
+                masm.lfence();
                 masm.movq(entryScratchReg, new AMD64Address(scratchReg, indexReg, Stride.S8, 0));
 
                 // Jump to the default target if the first DWORD (original key) doesn't match the
@@ -769,6 +773,10 @@ public class AMD64ControlFlow {
 
                 // The jump table has a single DWORD with the label address if there's no
                 // default target
+                masm.nop();
+                masm.sfence();
+                masm.nop();
+                masm.lfence();
                 masm.movslq(entryScratchReg, new AMD64Address(scratchReg, indexReg, Stride.S4, 0));
             }
             masm.addq(scratchReg, entryScratchReg);

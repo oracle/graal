@@ -168,6 +168,10 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
         throw GraalError.unimplemented("Halt operation is not implemented on this architecture");  // ExcludeFromJacocoGeneratedReport
     }
 
+    default void emitTaint() {
+        throw GraalError.unimplemented("Halt operation is not implemented on this architecture");  // ExcludeFromJacocoGeneratedReport
+    }
+
     /**
      * Emits a return instruction. Implementations need to insert a move if the input is not in the
      * correct location.

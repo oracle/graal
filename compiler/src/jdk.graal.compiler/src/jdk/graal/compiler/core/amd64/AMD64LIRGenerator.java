@@ -1122,6 +1122,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public void emitTaint() {
+        append(new AMD64LFenceOp());
+        append(new AMD64LFenceOp());
+        append(new AMD64LFenceOp());
+    }
+
+    @Override
     public void emitCacheWriteback(Value address) {
         append(new AMD64CacheWritebackOp(asAddressValue(address)));
     }

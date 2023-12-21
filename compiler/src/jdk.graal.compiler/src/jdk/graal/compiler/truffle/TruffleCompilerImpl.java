@@ -132,6 +132,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
     // Effectively final, but initialized in #initialize
     private TruffleTier truffleTier;
 
+    private static int compNumber = 0;
+
     @SuppressWarnings("serial") private static final Map<Long, OptionValues> cachedOptions = Collections.synchronizedMap(new LRUCache<>(NUMBER_OF_CACHED_OPTIONS));
 
     public static final OptimisticOptimizations Optimizations = ALL.remove(
@@ -626,7 +628,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
 
                 // Creating the WritableByteChannel, writing to dump and then closing it.
 
-                String path = "/tmp/" + new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date()) + binName + ".bin";
+                String path = "/tmp/" + new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date()) + binName + compNumber + ".bin";
+                compNumber++;
                 WritableByteChannel channel;
                 try {
                     channel = PathUtilities.openFileChannel(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
