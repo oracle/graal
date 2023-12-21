@@ -79,6 +79,8 @@ The JNI functions `FromReflectedMethod` and `ToReflectedMethod` can be used to o
 The functions `FromReflectedField` and `ToReflectedField` convert between `jfieldID` and `java.lang.reflect.Field`.
 In order to use these functions, [reflection support](Reflection.md) must be enabled and the methods and fields in question must be included in the reflection configuration, which is specified with `-H:ReflectionConfigurationFiles=`.
 
+The generated configuration files can be supplied to the native-image tool by placing them in a META-INF/native-image/ directory on the class path. This directory (or any of its subdirectories) is searched for files with the names jni-config.json, reflect-config.json, proxy-config.json, resource-config.json, predefined-classes-config.json, serialization-config.json which are then automatically included in the build process. Not all of those files must be present. When multiple files with the same name are found, all of them are considered.
+
 ## Object Handles
 
 JNI does not permit direct access to Java objects.
@@ -195,3 +197,4 @@ For that reason, it can be beneficial to wrap synchronization in Java code.
 - [Interoperability with Native Code](InteropWithNativeCode.md)
 - [JNI Invocation API](JNIInvocationAPI.md)
 - [Reachability Metadata: Java Native Interface](ReachabilityMetadata.md#java-native-interface)
+- [Collect Metadata with the Tracing Agent](https://www.graalvm.org/latest/reference-manual/native-image/metadata/AutomaticMetadataCollection/)
