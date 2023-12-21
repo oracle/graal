@@ -33,7 +33,7 @@ The Native Image JNI implementation supports both approaches.
 ## Loading Native Libraries
 
 When loading native libraries using `System.loadLibrary()` (and related APIs), the native image will search the
-directory containing the native image before searching the Java library path. So as long as the native libraries
+directory containing the native library before searching the Java library path. So as long as the native libraries
 to be loaded are in the same directory as the native image, no other settings should be necessary.
 
 ## Reflection Metadata
@@ -41,18 +41,21 @@ to be loaded are in the same directory as the native image, no other settings sh
 JNI supports looking up classes by their names, and looking up methods and fields by their names and signatures.
 This requires keeping the necessary metadata for these lookups around.
 The `native-image` builder must know beforehand which items will be looked up in case they might not be reachable otherwise and therefore would not be included in a native image.
-Moreover, `native-image` must generate call wrapper code ahead-of-time for any method that can be called via JNI.
+Moreover, `native-image` must generate wrapper code ahead-of-time for any method that can be called via JNI.
 Therefore, specifying a concise list of items that need to be accessible via JNI guarantees their availability and allows for a smaller footprint.
 Such a list can be specified with the following image build argument:
 ```shell
 -H:JNIConfigurationFiles=/path/to/jniconfig
 ```
-Here, `jniconfig` is a JSON configuration file.
+Here, _jniconfig_ is a JSON configuration file.
 Check the JSON schema for specifing JNI metadata [here](ReachabilityMetadata.md#specifying-metadata-with-json).
 
 The `native-image` builder generates JNI reflection metadata for all classes, methods, and fields referenced in the configuration file.
 More than one JNI configuration can be used by specifying multiple paths for `JNIConfigurationFiles` and separating them with `,`.
 Also, `-H:JNIConfigurationResources` can be specified to load one or several configuration files from the image build's class path, such as from a JAR file.
+
+The JNI configuration can be collected automatically using the [Tracing Agent](AutomaticMetadataCollection.md), provided with GraalVM. The agent tracks all usages of dynamic features during application execution on a regular Java VM. When the application completes and the JVM exits, the agent writes configuration to JSON files in the specified output directory.
+If you move the generated configuration files from that output directory to _META-INF/native-image/_ on the class path, they are then automatically included at build time. The `native-image` builder searches for _META-INF/native-image/_ and its subdirectories for files named _jni-config.json_, _reflect-config.json_, and others.
 
 Alternatively, a custom `Feature` implementation can register program elements before and during the analysis phase of the image build using the `JNIRuntimeAccess` class. For example:
 ```java
@@ -75,11 +78,10 @@ To activate the custom feature `--features=<fully qualified name of JNIRegistrat
 [Native Image Build Configuration](BuildConfiguration.md#embed-a-configuration-file) explains how this can be automated with a `native-image.properties` file in `META-INF/native-image`.
 
 ### java.lang.reflect Support
+
 The JNI functions `FromReflectedMethod` and `ToReflectedMethod` can be used to obtain the corresponding `jmethodID` to a `java.lang.reflect.Method`, or to a `java.lang.reflect.Constructor` object, and vice versa.
 The functions `FromReflectedField` and `ToReflectedField` convert between `jfieldID` and `java.lang.reflect.Field`.
 In order to use these functions, [reflection support](Reflection.md) must be enabled and the methods and fields in question must be included in the reflection configuration, which is specified with `-H:ReflectionConfigurationFiles=`.
-
-The generated configuration files can be supplied to the native-image tool by placing them in a META-INF/native-image/ directory on the class path. This directory (or any of its subdirectories) is searched for files with the names jni-config.json, reflect-config.json, proxy-config.json, resource-config.json, predefined-classes-config.json, serialization-config.json which are then automatically included in the build process. Not all of those files must be present. When multiple files with the same name are found, all of them are considered.
 
 ## Object Handles
 
@@ -197,4 +199,4 @@ For that reason, it can be beneficial to wrap synchronization in Java code.
 - [Interoperability with Native Code](InteropWithNativeCode.md)
 - [JNI Invocation API](JNIInvocationAPI.md)
 - [Reachability Metadata: Java Native Interface](ReachabilityMetadata.md#java-native-interface)
-- [Collect Metadata with the Tracing Agent](https://www.graalvm.org/latest/reference-manual/native-image/metadata/AutomaticMetadataCollection/)
+- [Collect Metadata with the Tracing Agent](AutomaticMetadataCollection.md)
