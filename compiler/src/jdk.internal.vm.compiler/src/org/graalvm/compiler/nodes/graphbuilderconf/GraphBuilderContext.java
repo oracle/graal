@@ -142,12 +142,16 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     }
 
     default ValueNode addNonNullCast(ValueNode value) {
+        return addNonNullCast(value, DeoptimizationAction.None);
+    }
+
+    default ValueNode addNonNullCast(ValueNode value, DeoptimizationAction action) {
         AbstractPointerStamp valueStamp = (AbstractPointerStamp) value.stamp(NodeView.DEFAULT);
         if (valueStamp.nonNull()) {
             return value;
         } else {
             LogicNode isNull = add(IsNullNode.create(value));
-            FixedGuardNode fixedGuard = add(new FixedGuardNode(isNull, DeoptimizationReason.NullCheckException, DeoptimizationAction.None, true));
+            FixedGuardNode fixedGuard = add(new FixedGuardNode(isNull, DeoptimizationReason.NullCheckException, action, true));
             Stamp newStamp = valueStamp.improveWith(StampFactory.objectNonNull());
             return add(PiNode.create(value, newStamp, fixedGuard));
         }
