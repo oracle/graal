@@ -4406,7 +4406,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             if (profile.getNullSeen().isFalse()) {
                 SpeculationLog.Speculation speculation = mayUseTypeProfile();
                 if (speculation != null) {
-                    object = nullCheckedValue(object);
+                    object = addNonNullCast(object, InvalidateReprofile);
                     ResolvedJavaType singleType = profile.asSingleType();
                     if (singleType != null && checkedType.getType().isAssignableFrom(singleType)) {
                         LogicNode typeCheck = append(createInstanceOf(TypeReference.createExactTrusted(singleType), object, profile));
@@ -4469,7 +4469,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         LogicNode instanceOfNode = null;
         if (profile != null) {
             if (profile.getNullSeen().isFalse()) {
-                object = nullCheckedValue(object);
+                object = addNonNullCast(object, InvalidateReprofile);
                 boolean createGuard = true;
                 ResolvedJavaType singleType = profile.asSingleType();
                 if (singleType != null) {
