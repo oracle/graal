@@ -1,31 +1,31 @@
 package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 import java.io.Serial;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import static com.oracle.truffle.espresso.meta.EspressoError.guarantee;
+import static java.util.Arrays.stream;
 
 /**
  * VM entry point from the SuspendedContinuation class, responsible for unwinding and rewinding the stack.
  */
 @EspressoSubstitutions
-final class Target_com_oracle_truffle_espresso_continuations_SuspendedContinuation {
+public final class Target_com_oracle_truffle_espresso_continuations_SuspendedContinuation {
     // Next steps:
-    // - Study how BytecodeNode manages frames.
-    // - Figure out how to construct an artifical stack frame and invoke it from within resume0.
-    // - Figure out how to construct *two* artificial stack frames and invoke them.
-    // - Demonstrate catching an exception in resume0() thrown by pause1() and returning.
-    // - Catch/rethrow the unwind exception to build up an array of stack frames.
-
+    // - Figure out how to get enough type information back from the frame static slots to be able to print
+    //   type information (needed for serialization). Look at the bytecode verifier output?
+    // - Print out some human-meaningful info about the stack at the moment pause is called.
 
     @Substitution(hasReceiver = true)
     static void resume0(@JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/SuspendedContinuation;") StaticObject suspendedContinuation) {
@@ -34,7 +34,6 @@ final class Target_com_oracle_truffle_espresso_continuations_SuspendedContinuati
 
     @Substitution(hasReceiver = true)
     static void pause1(@JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/SuspendedContinuation;") StaticObject suspendedContinuation) {
-        System.out.println("pause1 called with " + suspendedContinuation);
         throw new Unwind();
     }
 
@@ -54,7 +53,42 @@ final class Target_com_oracle_truffle_espresso_continuations_SuspendedContinuati
             var entryPointResultObject = (StaticObject) run.invokeDirect(entryPoint, pauseCap, objectToResumeWith);
             return createResumeResult(true, entryPointResultObject, meta, ctx);
         } catch (Unwind e) {
-            return createResumeResult(false, null, meta, ctx);
+            return handleUnwind(meta, ctx, e);
+        }
+    }
+
+    private static StaticObject handleUnwind(Meta meta, EspressoContext ctx, Unwind e) {
+        //dumpStackToStdOut(e);
+        return createResumeResult(false, StaticObject.NULL, meta, ctx);
+    }
+
+    @SuppressWarnings("unused")
+    private static void dumpStackToStdOut(Unwind e) {
+        System.out.printf("Stack has %d frames\n", e.frames.size());
+        for (int i = 0; i < e.frames.size(); i++) {
+            System.out.printf("%d. ", i);
+            MaterializedFrame frame = e.frames.get(i);
+            System.out.printf("Object refs:\n%s\n   Primitives: %s\n",
+                    String.join(
+                            "\n",
+                            stream(frame.getIndexedLocals())
+                                    .map(it -> {
+                                        var obj = (StaticObject) it;
+                                        if (obj != null) {
+                                            return "   • " + obj.toVerboseString().replace("\n", "\n     ");
+                                        }
+                                        return "   null";
+                                    })
+                                    .toList()
+                    ),
+
+                    String.join(
+                            "  ",
+                            stream(frame.getIndexedPrimitiveLocals())
+                                    .mapToObj(it -> String.format("0x%x", it))
+                                    .toList()
+                    )
+            );
         }
     }
 
@@ -75,8 +109,10 @@ final class Target_com_oracle_truffle_espresso_continuations_SuspendedContinuati
         return r;
     }
 
-    static class Unwind extends ControlFlowException {
+    public static class Unwind extends ControlFlowException {
         @Serial
         private static final long serialVersionUID = 157831852637280571L;
+
+        public final List<MaterializedFrame> frames = new ArrayList<>();
     }
 }

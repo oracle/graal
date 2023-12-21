@@ -36,13 +36,42 @@ public final class SuspendedContinuation<IN, OUT> {
     // We want a compact serialized representation, so use fields judiciously here.
 
     // The stack frame array is mutated by the VM.
-    private volatile Object[] stackFrames;
+    private volatile FrameRecord stackFrameHead;
+
+    /**
+     * <p>A singly linked list of reified stack frames, from top to bottom. The arrays are of the same length but each
+     * slot is either a pointer or a primitive, in which case the same indexed entry in the other array has no
+     * meaningful content.</p>
+     *
+     * <p>The contents of the arrays should be treated as opaque.</p>
+     *
+     * @param next The next record in the list, or null if this is the last record in the stack.
+     * @param pointers A mix of nulls and object references.
+     * @param primitives Note: first entry is the program counter.
+     */
+    record FrameRecord(SuspendedContinuation.FrameRecord next, Object[] pointers, long[] primitives) {}
 
     // Usually null, used for passing objects resume<->pause. Doesn't need to partake in serialization.
+    // Will hold the entry point if the continuation hasn't been resumed yet.
     private transient volatile Object exchangePoint;
 
-    private SuspendedContinuation(Object[] stackFrames) {
-        this.stackFrames = stackFrames;
+    /**
+     * <p>Creates a new paused continuation.</p>
+     *
+     * <p>
+     * Pass an implementation of {@link SuspendedContinuation.EntryPoint}. The returned continuation starts in the
+     * paused state. To begin execution call the {@link SuspendedContinuation#resume(Object)} method. The object you
+     * provide will be passed to {@link SuspendedContinuation.EntryPoint#run} along with a capability allowing the
+     * continuation to pause itself.
+     * </p>
+     *
+     * <p>
+     * Be careful with using lambdas as the entry point. It works but you should be careful not to accidentally capture
+     * the calling object, if you intend to serialize the results and that isn't what you intended.
+     * </p>
+     */
+    public SuspendedContinuation(EntryPoint<IN, OUT> entryPoint) {
+        exchangePoint = entryPoint;
     }
 
     /**
@@ -106,8 +135,9 @@ public final class SuspendedContinuation<IN, OUT> {
     @SuppressWarnings("unchecked")
     public Result<OUT> resume(IN objectToResumeWith) {
         // Are we in the special waiting-to-start state?
-        if (stackFrames.length == 1 && stackFrames[0] instanceof SuspendedContinuation.EntryPoint<?,?> entryPoint) {
-            stackFrames = new Object[] {};
+        if (exchangePoint instanceof SuspendedContinuation.EntryPoint<?,?> entryPoint) {
+            exchangePoint = null;
+
             PauseCapability<IN, OUT> cap = new PauseCapability<>();
             cap.continuation = this;
 
@@ -120,10 +150,9 @@ public final class SuspendedContinuation<IN, OUT> {
         assert exchangePoint == null;
         exchangePoint = objectToResumeWith;
 
-        assert stackFrames != null;
+        assert stackFrameHead != null;
         resume0();
-        assert stackFrames != null;
-        if (stackFrames.length == 0)
+        if (stackFrameHead == null)
             return null;  // Done.
 
         // Called pause.
@@ -150,11 +179,12 @@ public final class SuspendedContinuation<IN, OUT> {
     private IN pause0(OUT objectToPauseWith) {
         exchangePoint = objectToPauseWith;
 
-        assert stackFrames == null;
+        assert stackFrameHead == null;
         // This writes to the stackFrames array and then unwinds the stack.
         pause1();
-        // When we get here, we have our original frames back on the stack and stackFrames is gone.
-        assert stackFrames == null;
+        // When we get here the user has called resume(), we have our original frames back on the stack and
+        // the stack frames list is gone.
+        assert stackFrameHead == null;
 
         var o = exchangePoint;
         exchangePoint = null;
@@ -165,25 +195,4 @@ public final class SuspendedContinuation<IN, OUT> {
     // The VM will unwind the stack up to the point where resume0 was called and write an array of the frames to
     // the stackFrames variable.
     private native void pause1();
-
-    /**
-     * <p>Creates a new paused continuation.</p>
-     *
-     * <p>
-     * Pass an implementation of {@link SuspendedContinuation.EntryPoint}. The returned continuation starts in the paused state.
-     * To begin execution call the {@link SuspendedContinuation#resume(Object)} method. The object you provide will be passed to
-     * {@link SuspendedContinuation.EntryPoint#run} along with a capability allowing the continuation to pause itself.
-     * </p>
-     *
-     * <p>
-     * Be careful with using lambdas as the entry point. It works but you should be careful not to accidentally capture
-     * the calling object, if you intend to serialize the results and that isn't what you intended.
-     * </p>
-     *
-     * @param <IN> An arbitrary base type for the objects that can be passed in to the continuation when resuming it.
-     * @param <OUT> An arbitrary bsae type for the objects tht can returned from the continuation when pausing it.
-     */
-    public static <IN, OUT> SuspendedContinuation<IN, OUT> create(SuspendedContinuation.EntryPoint<IN, OUT> entryPoint) {
-        return new SuspendedContinuation<IN, OUT>(new Object[] { entryPoint });
-    }
 }
