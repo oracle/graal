@@ -53,8 +53,7 @@ public final class CallTreeInfo {
     private final Map<AnalysisMethod, RuntimeCompiledMethod> runtimeCompilations;
     private Map<RuntimeCompilationCandidate, InvokeNode> runtimeCandidateMap;
     private Map<AnalysisMethod, MethodNode> analysisMethodMap;
-    private boolean callTreeInitialized = false;
-    private boolean callTraceInitialized = false;
+    private boolean initialized = false;
 
     private CallTreeInfo(Map<AnalysisMethod, RuntimeCompiledMethod> runtimeCompilations) {
         this.runtimeCompilations = runtimeCompilations;
@@ -82,12 +81,7 @@ public final class CallTreeInfo {
         return new CallTreeInfo(runtimeCompilations);
     }
 
-    private void initializeCallTraceInfo() {
-        if (callTraceInitialized) {
-            return;
-        }
-
-        callTraceInitialized = true;
+    private void initializeCallerInfo() {
         analysisMethodMap = new HashMap<>();
         runtimeCandidateMap = new HashMap<>();
 
@@ -131,22 +125,22 @@ public final class CallTreeInfo {
         }
     }
 
-    public void initializeCallTreeInfo(Set<AnalysisMethod> registeredRoots) {
-        if (callTreeInitialized) {
+    public void initialize(Set<AnalysisMethod> registeredRoots) {
+        if (initialized) {
             return;
         }
 
-        initializeCallTraceInfo();
-        callTreeInitialized = true;
+        initializeCallerInfo();
+        initialized = true;
 
         // ensure invokeInfo calculated
 
         Queue<MethodNode> worklist = new LinkedList<>();
         /*
-         * First initialize all nodes with no callers.
+         * First initialize all nodes which are registered roots
          */
         for (var methodNode : analysisMethodMap.values()) {
-            if (methodNode.getCallers().isEmpty() || registeredRoots.contains(methodNode.method.getMultiMethod(ORIGINAL_METHOD))) {
+            if (registeredRoots.contains(methodNode.method.getMultiMethod(ORIGINAL_METHOD))) {
                 worklist.add(methodNode);
                 methodNode.trace = new TraceInfo(0, new BytecodePosition(null, methodNode.method, BytecodeFrame.UNKNOWN_BCI), null);
             }
@@ -189,8 +183,8 @@ public final class CallTreeInfo {
     private static final String[] UNKNOWN_TRACE = new String[]{"Unknown"};
     private static final String[] EMPTY_STRING = new String[0];
 
-    public static String[] getCallTrace(CallTreeInfo callTreeInfo, AnalysisMethod method) {
-        callTreeInfo.initializeCallTraceInfo();
+    static String[] getCallTrace(CallTreeInfo callTreeInfo, AnalysisMethod method, Set<AnalysisMethod> registeredRuntimeCompilations) {
+        callTreeInfo.initialize(registeredRuntimeCompilations);
         MethodNode methodNode = callTreeInfo.analysisMethodMap.get(method);
         if (methodNode == null) {
             return UNKNOWN_TRACE;
@@ -201,8 +195,8 @@ public final class CallTreeInfo {
         return trace.toArray(EMPTY_STRING);
     }
 
-    public static String[] getCallTrace(CallTreeInfo callTreeInfo, RuntimeCompilationCandidate candidate) {
-        callTreeInfo.initializeCallTraceInfo();
+    static String[] getCallTrace(CallTreeInfo callTreeInfo, RuntimeCompilationCandidate candidate, Set<AnalysisMethod> registeredRuntimeCompilations) {
+        callTreeInfo.initialize(registeredRuntimeCompilations);
         InvokeNode invokeNode = callTreeInfo.runtimeCandidateMap.get(candidate);
         if (invokeNode == null) {
             return UNKNOWN_TRACE;
@@ -214,26 +208,48 @@ public final class CallTreeInfo {
     }
 
     private static void findCallTraceHelper(ArrayList<String> trace, MethodNode first) {
-        Set<MethodNode> covered = new HashSet<>();
-        MethodNode current = first;
-        covered.add(current);
-
-        while (current != null) {
-            // find parent
-            MethodNode parent = null;
-            for (InvokeNode caller : current.getCallers()) {
-                if (covered.add(caller.method)) {
+        if (first.trace != null) {
+            /*
+             * If there is a known trace from root, then we can return this
+             */
+            MethodNode current = first;
+            while (current != null) {
+                MethodNode parent = null;
+                InvokeNode caller = current.trace.invokeParent;
+                if (caller != null) {
                     parent = caller.method;
                     trace.add(caller.position.toString());
-                    break;
                 }
+                current = parent;
             }
-            current = parent;
+            trace.add("[Root]");
+
+        } else {
+            /*
+             * Otherwise we will walk an arbitrary caller until there is not a caller or we
+             * encounter a cycle.
+             */
+            Set<MethodNode> covered = new HashSet<>();
+            MethodNode current = first;
+            covered.add(current);
+
+            while (current != null) {
+                // find parent
+                MethodNode parent = null;
+                for (InvokeNode caller : current.getCallers()) {
+                    if (covered.add(caller.method)) {
+                        parent = caller.method;
+                        trace.add(caller.position.toString());
+                        break;
+                    }
+                }
+                current = parent;
+            }
         }
     }
 
     public static void printCallTree(CallTreeInfo info, Set<AnalysisMethod> registeredRuntimeCompilations) {
-        info.initializeCallTreeInfo(registeredRuntimeCompilations);
+        info.initialize(registeredRuntimeCompilations);
 
         System.out.println("depth;method;invoke position");
         for (MethodNode methodNode : info.analysisMethodMap.values()) {
@@ -255,7 +271,7 @@ public final class CallTreeInfo {
     }
 
     public static void printDeepestPath(CallTreeInfo info, Set<AnalysisMethod> registeredRuntimeCompilations) {
-        info.initializeCallTreeInfo(registeredRuntimeCompilations);
+        info.initialize(registeredRuntimeCompilations);
 
         Optional<MethodNode> deepestNode = info.analysisMethodMap.values().stream().max(Comparator.comparingInt(t -> t.trace == null ? -1 : t.trace.level));
 

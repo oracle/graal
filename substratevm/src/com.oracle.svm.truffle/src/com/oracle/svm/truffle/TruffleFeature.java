@@ -804,7 +804,7 @@ public class TruffleFeature implements InternalFeature {
                                         tempTargetAllowlistMethods.contains(candidate.getTargetMethod()) &&
                                         !isBlocklisted(candidate.getImplementationMethod());
                         if (!tempAllow) {
-                            BlocklistViolationInfo violation = new BlocklistViolationInfo(candidate, CallTreeInfo.getCallTrace(treeInfo, candidate));
+                            BlocklistViolationInfo violation = new BlocklistViolationInfo(candidate, runtimeCompilation.getCallTrace(treeInfo, candidate));
                             blocklistViolations.add(violation);
                         }
                     }
@@ -846,7 +846,7 @@ public class TruffleFeature implements InternalFeature {
             for (RuntimeCompilationCandidate violation : warnViolations) {
                 System.out.println("Suspicious method: " + violation.getImplementationMethod().format("%H.%n(%p)"));
                 System.out.println("trace:");
-                for (String item : CallTreeInfo.getCallTrace(treeInfo, violation)) {
+                for (String item : runtimeCompilation.getCallTrace(treeInfo, violation)) {
                     System.out.println("  " + item);
                 }
             }
@@ -857,7 +857,7 @@ public class TruffleFeature implements InternalFeature {
             for (Pair<ResolvedJavaMethod, String> violation : neverPartOfCompilationViolations) {
                 System.out.println("called from");
                 System.out.println("(inlined call path): " + violation.getRight());
-                for (String item : CallTreeInfo.getCallTrace(treeInfo, (AnalysisMethod) violation.getLeft())) {
+                for (String item : runtimeCompilation.getCallTrace(treeInfo, (AnalysisMethod) violation.getLeft())) {
                     System.out.println(" " + item);
                 }
             }
