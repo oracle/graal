@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.api;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -49,16 +50,17 @@ import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 @ExportLibrary(InteropLibrary.class)
-public class Vector128 implements TruffleObject {
+@CompilerDirectives.ValueType
+public final class Vector128 implements TruffleObject {
 
     // v128 component values are stored in little-endian order
     private static final ByteArraySupport byteArraySupport = ByteArraySupport.littleEndian();
 
-    public static final Vector128 ZERO = new Vector128(new byte[16]);
+    public static final Vector128 ZERO = Vector128.ofBytes(new byte[16]);
 
     private final byte[] bytes;
 
-    public Vector128(byte[] bytes) {
+    private Vector128(byte[] bytes) {
         assert bytes.length == 16;
         this.bytes = bytes;
     }
@@ -167,17 +169,17 @@ public class Vector128 implements TruffleObject {
     }
 
     @ExportMessage
-    protected boolean hasArrayElements() {
+    protected static boolean hasArrayElements(@SuppressWarnings("unused") Vector128 receiver) {
         return true;
     }
 
     @ExportMessage
-    protected int getArraySize() {
+    protected static int getArraySize(@SuppressWarnings("unused") Vector128 receiver) {
         return 16;
     }
 
     @ExportMessage
-    protected boolean isArrayElementReadable(long index) {
+    protected static boolean isArrayElementReadable(@SuppressWarnings("unused") Vector128 receiver, long index) {
         return index < 16;
     }
 

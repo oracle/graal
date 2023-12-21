@@ -2804,7 +2804,7 @@ public class BinaryParser extends BinaryStreamParser {
         for (int i = 0; i < 16; i++) {
             bytes[i] = read1();
         }
-        return new Vector128(bytes);
+        return Vector128.ofBytes(bytes);
     }
 
     /**
