@@ -28,6 +28,7 @@ import static com.oracle.svm.core.reflect.ReflectionMetadataDecoder.NO_DATA;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_FLAGS_MASK;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_NEST_MEMBERS_FLAG;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_PERMITTED_SUBCLASSES_FLAG;
+import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_SIGNERS_FLAG;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.CLASS_ACCESS_FLAGS_MASK;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.COMPLETE_FLAG_MASK;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.FIRST_ERROR_INDEX;
@@ -261,7 +262,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         RecordComponentMetadata[] recordComponents = getRecordComponents(metaAccess, type, javaClass);
         Class<?>[] permittedSubclasses = getPermittedSubclasses(metaAccess, javaClass);
         Class<?>[] nestMembers = getNestMembers(metaAccess, javaClass);
-        Object[] signers = javaClass.getSigners();
+        Object[] signers = getSigners(javaClass);
         int classAccessFlags = Reflection.getClassAccessFlags(javaClass) & CLASS_ACCESS_FLAGS_MASK;
         int enabledQueries = dataBuilder.getEnabledReflectionQueries(javaClass);
         VMError.guarantee((classAccessFlags & enabledQueries) == 0);
@@ -339,6 +340,13 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
             return null;
         }
         return filterDeletedClasses(metaAccess, clazz.getNestMembers());
+    }
+
+    private Object[] getSigners(Class<?> clazz) {
+        if ((dataBuilder.getEnabledReflectionQueries(clazz) & ALL_SIGNERS_FLAG) == 0) {
+            return null;
+        }
+        return clazz.getSigners();
     }
 
     private static Class<?>[] filterDeletedClasses(MetaAccessProvider metaAccess, Class<?>[] classes) {
