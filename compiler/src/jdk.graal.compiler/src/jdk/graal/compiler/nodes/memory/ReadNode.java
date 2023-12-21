@@ -239,32 +239,40 @@ public class ReadNode extends FloatableAccessNode
         ConstantReflectionProvider constantReflection = tool.getConstantReflection();
         Stamp resultStamp = read.stamp(view);
 
-        // NOTE: Canonicalizing array lengths are not done here but in simplify since we need to
-        // preserve the stamp and insert fixed and floating nodes
-
-        if (metaAccess != null && object.isConstant() && !object.isNullConstant() && offset.isConstant()) {
-            long displacement = offset.asJavaConstant().asLong();
-            int stableDimension = ((ConstantNode) object).getStableDimension();
-
-            if (locationIdentity.isImmutable() || stableDimension > 0) {
-                Constant constant = resultStamp.readConstant(constantReflection.getMemoryAccessProvider(), object.asConstant(), displacement, accessStamp);
-                boolean isDefaultStable = locationIdentity.isImmutable() || ((ConstantNode) object).isDefaultStable();
-                if (constant != null && (isDefaultStable || !constant.isDefaultForKind())) {
-                    return ConstantNode.forConstant(resultStamp, constant, Math.max(stableDimension - 1, 0), isDefaultStable, metaAccess);
-                }
+        // Note: readConstant cannot be used to read the array length, so in order to avoid an
+        // unnecessary CompilerToVM.readFieldValue call ending in an IllegalArgumentException,
+        // check if we are reading the array length location first.
+        if (locationIdentity.equals(ARRAY_LENGTH_LOCATION)) {
+            ValueNode length = GraphUtil.arrayLength(object, ArrayLengthProvider.FindLengthMode.CANONICALIZE_READ, constantReflection);
+            // only use length if we do not drop stamp precision here
+            if (length != null && !length.stamp(NodeView.DEFAULT).canBeImprovedWith(StampFactory.positiveInt())) {
+                assert length.stamp(view).isCompatible(accessStamp);
+                return length;
             }
-            if (locationIdentity instanceof FieldLocationIdentity && !locationIdentity.isImmutable()) {
-                // Use ConstantFoldUtil as that properly handles final Java fields which are
-                // normally not considered immutable.
-                ResolvedJavaField field = ((FieldLocationIdentity) locationIdentity).getField();
-                ConstantNode constantNode = ConstantFoldUtil.tryConstantFold(tool, field, object.asJavaConstant(), displacement, resultStamp,
-                                accessStamp, read.getOptions(), read.getNodeSourcePosition());
-                if (constantNode != null) {
-                    return constantNode;
+        } else {
+            if (metaAccess != null && object.isConstant() && !object.isNullConstant() && offset.isConstant()) {
+                long displacement = offset.asJavaConstant().asLong();
+                int stableDimension = ((ConstantNode) object).getStableDimension();
+
+                if (locationIdentity.isImmutable() || stableDimension > 0) {
+                    Constant constant = resultStamp.readConstant(constantReflection.getMemoryAccessProvider(), object.asConstant(), displacement, accessStamp);
+                    boolean isDefaultStable = locationIdentity.isImmutable() || ((ConstantNode) object).isDefaultStable();
+                    if (constant != null && (isDefaultStable || !constant.isDefaultForKind())) {
+                        return ConstantNode.forConstant(resultStamp, constant, Math.max(stableDimension - 1, 0), isDefaultStable, metaAccess);
+                    }
+                }
+                if (locationIdentity instanceof FieldLocationIdentity && !locationIdentity.isImmutable()) {
+                    // Use ConstantFoldUtil as that properly handles final Java fields which are
+                    // normally not considered immutable.
+                    ResolvedJavaField field = ((FieldLocationIdentity) locationIdentity).getField();
+                    ConstantNode constantNode = ConstantFoldUtil.tryConstantFold(tool, field, object.asJavaConstant(), displacement, resultStamp,
+                                    accessStamp, read.getOptions(), read.getNodeSourcePosition());
+                    if (constantNode != null) {
+                        return constantNode;
+                    }
                 }
             }
         }
-
         if (locationIdentity instanceof CanonicalizableLocation) {
             CanonicalizableLocation canonicalize = (CanonicalizableLocation) locationIdentity;
             ValueNode result = canonicalize.canonicalizeRead(read, object, offset, tool);
