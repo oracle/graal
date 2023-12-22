@@ -187,14 +187,14 @@ public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
                         if (init >= 0 && extremum >= 0) {
                             long shortestTrip = (extremum - init) / stride + 1;
                             if (countedLoopInfo.constantMaxTripCount().equals(shortestTrip)) {
-                                return graph.unique(new ZeroExtendNode(input, INT_BITS, ADDRESS_BITS, true));
+                                return graph.unique(new ZeroExtendNode(input, INT_BITS, ADDRESS_BITS, false));
                             }
                         }
                     }
                     if (countedLoopInfo.getLimitCheckedIV() == inductionVariable &&
                                     inductionVariable.direction() == InductionVariable.Direction.Up &&
                                     (countedLoopInfo.getOverFlowGuard() != null || countedLoopInfo.counterNeverOverflows())) {
-                        return graph.unique(new ZeroExtendNode(input, INT_BITS, ADDRESS_BITS, true));
+                        return graph.unique(new ZeroExtendNode(input, INT_BITS, ADDRESS_BITS, false));
                     }
                 }
             }

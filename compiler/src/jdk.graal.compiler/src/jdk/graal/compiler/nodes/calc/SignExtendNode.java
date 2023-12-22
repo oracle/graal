@@ -124,7 +124,7 @@ public final class SignExtendNode extends IntegerConvertNode<SignExtend> {
             if ((inputStamp.mayBeSet() & (1L << (inputBits - 1))) == 0L) {
                 // 0xxx -(sign-extend)-> 0000 0xxx
                 // ==> 0xxx -(zero-extend)-> 0000 0xxx
-                return ZeroExtendNode.create(forValue, inputBits, resultBits, view, true);
+                return ZeroExtendNode.create(forValue, inputBits, resultBits, view, false);
             }
         }
         if (forValue instanceof NarrowNode) {

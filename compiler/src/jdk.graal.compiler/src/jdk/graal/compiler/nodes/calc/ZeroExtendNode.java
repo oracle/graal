@@ -35,6 +35,7 @@ import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -67,14 +68,15 @@ public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend> {
     public ZeroExtendNode(ValueNode input, int inputBits, int resultBits, boolean inputAlwaysPositive) {
         super(TYPE, BinaryArithmeticNode.getArithmeticOpTable(input).getZeroExtend(), inputBits, resultBits, input);
         this.inputAlwaysPositive = inputAlwaysPositive;
+        GraalError.guarantee(!inputAlwaysPositive, "ZeroExtendNode.inputAlwaysPositive is deprecated.");
     }
 
     public static ValueNode create(ValueNode input, int resultBits, NodeView view) {
-        return create(input, PrimitiveStamp.getBits(input.stamp(view)), resultBits, view, inputAlwaysPositive(input));
+        return create(input, PrimitiveStamp.getBits(input.stamp(view)), resultBits, view, false);
     }
 
     public static ValueNode create(ValueNode input, int inputBits, int resultBits, NodeView view) {
-        return create(input, inputBits, resultBits, view, inputAlwaysPositive(input));
+        return create(input, inputBits, resultBits, view, false);
     }
 
     public static ValueNode create(ValueNode input, int inputBits, int resultBits, NodeView view, boolean alwaysPositive) {
@@ -84,15 +86,6 @@ public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend> {
             return synonym;
         }
         return canonical(null, input, inputBits, resultBits, view, alwaysPositive);
-    }
-
-    private static boolean inputAlwaysPositive(ValueNode v) {
-        Stamp s = v.stamp(NodeView.DEFAULT);
-        if (s instanceof IntegerStamp) {
-            return ((IntegerStamp) s).isPositive();
-        } else {
-            return false;
-        }
     }
 
     @Override
