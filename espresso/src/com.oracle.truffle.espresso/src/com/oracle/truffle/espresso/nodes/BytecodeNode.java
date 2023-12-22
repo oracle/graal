@@ -372,7 +372,7 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Target_com_oracle_truffle_espresso_continuations_Continuation;
+import com.oracle.truffle.espresso.vm.ContinuationSupport;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
@@ -1411,7 +1411,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
                 }
-            } catch (Target_com_oracle_truffle_espresso_continuations_Continuation.Unwind unwindRequest) {
+            } catch (ContinuationSupport.Unwind unwindRequest) {
                 // Someone has called pause() on a continuation. We need to gather up the frames as we unwind
                 // the stack so the user can persist them later.
                 CompilerDirectives.transferToInterpreter();                   // TODO: Is this right? Probably don't want to use collections inside PE code.
