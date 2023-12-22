@@ -1137,6 +1137,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return instance;
     }
 
+    /**
+     * Each time a method is changed via class redefinition it gets a new version, and therefore a new MethodVersion
+     * object.
+     */
     public final class MethodVersion implements MethodRef, ModifiersProvider {
         private final ObjectKlass.KlassVersion klassVersion;
         private final RuntimeConstantPool pool;

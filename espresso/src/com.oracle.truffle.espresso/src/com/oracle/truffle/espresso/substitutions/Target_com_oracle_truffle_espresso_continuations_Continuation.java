@@ -1,16 +1,14 @@
 package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
-import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static java.util.Arrays.stream;
@@ -21,13 +19,14 @@ import static java.util.Arrays.stream;
 @EspressoSubstitutions
 public final class Target_com_oracle_truffle_espresso_continuations_Continuation {
     // Next steps:
-    // - Figure out how to get enough type information back from the frame static slots to be able to print
-    //   type information (needed for serialization). Look at the bytecode verifier output?
-    // - Print out some human-meaningful info about the stack at the moment pause is called.
+    // - Ensure unwinds fail if there are any non-bytecode methods on the stack.
 
     @Substitution(hasReceiver = true)
-    static void resume0(@JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject continuation) {
-        System.out.println("resume0 called with " + continuation);
+    static void resume0(
+            @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject self,
+            @Inject Meta meta
+    ) {
+        System.out.println("resume0 called with " + self);
     }
 
     @Substitution
@@ -36,29 +35,31 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
     }
 
     @Substitution(hasReceiver = true)
-    @CompilerDirectives.TruffleBoundary
     static void start0(
-            @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject continuation,
+            @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject self,
             @Inject Meta meta
     ) {
+        // The run method is private in Continuation and is the continuation delimiter. Frames from run onwards will
+        // be unwound on pause, and rewound on resume.
         try {
-            meta.com_oracle_truffle_espresso_continuations_Continuation_run.invokeDirect(continuation);
+            meta.com_oracle_truffle_espresso_continuations_Continuation_run.invokeDirect(self);
         } catch (Unwind e) {
-            handleUnwind(meta, continuation, e);
+            handleUnwind(meta, self, e);
         }
     }
 
+    @TruffleBoundary
     private static void handleUnwind(Meta meta, @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject continuation, Unwind e) {
         // dumpStackToStdOut(e);
         StaticObject nextPtr = StaticObject.NULL;
-        for (int i = e.frames.size() - 1; i >= 0; i--)
-            nextPtr = createFrameRecord(meta, e.frames.get(i), nextPtr);
+        for (int i = 0; i < e.frames.size(); i++)
+            nextPtr = createFrameRecord(meta, e.frames.get(i), e.methodVersions.get(i), nextPtr);
         meta.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.setObject(continuation, nextPtr);
     }
 
     // Convert the MaterializedFrame to a guest-land Continuation.FrameRecord.
-    private static @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation$FrameRecord") StaticObject
-    createFrameRecord(Meta meta, MaterializedFrame frame, StaticObject nextRecord) {
+    private static @JavaType StaticObject
+    createFrameRecord(Meta meta, MaterializedFrame frame, Method.MethodVersion methodVersion, StaticObject nextRecord) {
         Object[] ptrs = frame.getIndexedLocals();
         long[] prims = frame.getIndexedPrimitiveLocals();
 
@@ -74,7 +75,8 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
                 nextRecord,
                 // Host arrays are not guest arrays, so convert.
                 StaticObject.wrap(convertedPtrs, meta),
-                StaticObject.wrap(prims, meta)
+                StaticObject.wrap(prims, meta),
+                methodVersion.getMethod().makeMirror(meta)
         );
         return record;
     }
@@ -83,8 +85,9 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
     private static void dumpStackToStdOut(Unwind e) {
         System.out.printf("Stack has %d frames\n", e.frames.size());
         for (int i = 0; i < e.frames.size(); i++) {
-            System.out.printf("%d. ", i);
             MaterializedFrame frame = e.frames.get(i);
+            Method.MethodVersion methodVersion = e.methodVersions.get(i);
+            System.out.printf("[%d] %s.%s()\n", i, methodVersion.getDeclaringKlass().getExternalName(), methodVersion.getNameAsString());
             System.out.printf("Object refs:\n%s\n   Primitives: %s\n",
                     String.join(
                             "\n",
@@ -111,5 +114,6 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
 
     public static class Unwind extends ControlFlowException {
         public final List<MaterializedFrame> frames = new ArrayList<>();
+        public final List<Method.MethodVersion> methodVersions = new ArrayList<>();
     }
 }

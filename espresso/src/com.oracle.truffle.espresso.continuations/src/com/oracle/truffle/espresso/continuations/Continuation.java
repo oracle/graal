@@ -1,5 +1,6 @@
 package com.oracle.truffle.espresso.continuations;
 
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -56,12 +57,14 @@ public final class Continuation {
         private final FrameRecord next;
         private final Object[] pointers;
         private final long[] primitives;
+        private final Method method;
 
         // Invoked by the VM.
-        FrameRecord(FrameRecord next, Object[] pointers, long[] primitives) {
+        FrameRecord(FrameRecord next, Object[] pointers, long[] primitives, Method method) {
             this.next = next;
             this.pointers = pointers;
             this.primitives = primitives;
+            this.method = method;
         }
 
         /** The next record in the list, or null if this is the last record in the stack. */
@@ -79,6 +82,10 @@ public final class Continuation {
             return primitives;
         }
 
+        public Method method() {
+            return method;
+        }
+
         @Override
         public boolean equals(Object obj) {
             if (obj == this) return true;
@@ -86,20 +93,21 @@ public final class Continuation {
             var that = (FrameRecord) obj;
             return Objects.equals(this.next, that.next) &&
                     Arrays.equals(this.pointers, that.pointers) &&
-                    Arrays.equals(this.primitives, that.primitives);
+                    Arrays.equals(this.primitives, that.primitives) &&
+                    Objects.equals(this.method, that.method);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(next, Arrays.hashCode(pointers), Arrays.hashCode(primitives));
+            return Objects.hash(next, Arrays.hashCode(pointers), Arrays.hashCode(primitives), method);
         }
 
         @Override
         public String toString() {
-            return "FrameRecord[" +
-                    "next=" + next + ", " +
+            return "FrameRecord@" + method + "[" +
                     "pointers=" + Arrays.toString(pointers) + ", " +
-                    "primitives=" + Arrays.toString(primitives) + ']';
+                    "primitives=" + Arrays.toString(primitives) +
+                    ']';
         }
     }
 
@@ -124,7 +132,7 @@ public final class Continuation {
     }
 
     // Avoid the continuation stack having a reference to this controller class.
-    private static class StateHolder {
+    private static final class StateHolder {
         State state = State.NEW;
     }
     private final transient StateHolder stateHolder = new StateHolder();
@@ -202,9 +210,12 @@ public final class Continuation {
         resume0();
     }
 
+    /**
+     * Invoked by the VM. This is the first frame in the continuation. We get here from inside the substituted start0
+     * method.
+     */
     @SuppressWarnings("unused")
     private void run() {
-        // We get here from inside the substituted start0 method.
         var cap = new PauseCapability();
         cap.stateHolder = stateHolder;
         stateHolder.state = State.RUNNING;

@@ -1216,7 +1216,7 @@ public final class Meta extends ContextAccessImpl {
         com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead = com_oracle_truffle_espresso_continuations_Continuation.requireDeclaredField(Name.stackFrameHead, Type.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord);
         com_oracle_truffle_espresso_continuations_Continuation_FrameRecord = loadKlassWithBootClassLoader(Type.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord);
         com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_init_ = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredMethod(
-                Name._init_, Signature._void_FrameRecord_Object_array_long_array
+                Name._init_, Signature._void_FrameRecord_Object_array_long_array_Method
         );
         // Load Espresso's Polyglot API.
         boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
