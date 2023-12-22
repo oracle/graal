@@ -80,7 +80,7 @@ public class MarkLookBehindEntriesVisitor extends NFATraversalRegexASTVisitor {
         curLookAheadBoundariesHit = StateSet.create(ast);
         newLookAheadBoundariesHit = StateSet.create(ast);
         setCanTraverseCaret(false);
-        setReverse();
+        setReverse(true);
     }
 
     public void run() {
@@ -162,5 +162,10 @@ public class MarkLookBehindEntriesVisitor extends NFATraversalRegexASTVisitor {
     @Override
     protected boolean isBuildingDFA() {
         return true;
+    }
+
+    @Override
+    protected boolean canPruneAfterUnconditionalFinalState() {
+        return false;
     }
 }

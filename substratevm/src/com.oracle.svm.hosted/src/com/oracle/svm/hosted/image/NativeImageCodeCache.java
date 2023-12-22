@@ -117,7 +117,6 @@ import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.VMConstant;
@@ -332,6 +331,26 @@ public abstract class NativeImageCodeCache {
             }
         }
 
+        reflectionSupport.getClassLookupErrors().forEach((clazz, error) -> {
+            HostedType type = hMetaAccess.lookupJavaType(clazz);
+            reflectionMetadataEncoder.addClassLookupError(type, error);
+        });
+
+        reflectionSupport.getFieldLookupErrors().forEach((clazz, error) -> {
+            HostedType type = hMetaAccess.lookupJavaType(clazz);
+            reflectionMetadataEncoder.addFieldLookupError(type, error);
+        });
+
+        reflectionSupport.getMethodLookupErrors().forEach((clazz, error) -> {
+            HostedType type = hMetaAccess.lookupJavaType(clazz);
+            reflectionMetadataEncoder.addMethodLookupError(type, error);
+        });
+
+        reflectionSupport.getConstructorLookupErrors().forEach((clazz, error) -> {
+            HostedType type = hMetaAccess.lookupJavaType(clazz);
+            reflectionMetadataEncoder.addConstructorLookupError(type, error);
+        });
+
         Set<AnalysisField> includedFields = new HashSet<>();
         Set<AnalysisMethod> includedMethods = new HashSet<>();
         Map<AnalysisField, Field> configurationFields = reflectionSupport.getReflectionFields();
@@ -382,13 +401,11 @@ public abstract class NativeImageCodeCache {
             if (includedMethods.add(analysisMethod)) {
                 HostedType declaringType = hUniverse.lookup(analysisMethod.getDeclaringClass());
                 String name = analysisMethod.getName();
-                JavaType[] analysisParameterTypes = analysisMethod.getSignature().toParameterTypes(null);
-                HostedType[] parameterTypes = new HostedType[analysisParameterTypes.length];
-                for (int i = 0; i < analysisParameterTypes.length; ++i) {
-                    parameterTypes[i] = hUniverse.lookup(analysisParameterTypes[i]);
-                }
+                HostedType[] parameterTypes = analysisMethod.getSignature().toParameterList(null).stream()
+                                .map(aType -> hUniverse.lookup(aType))
+                                .toArray(HostedType[]::new);
                 int modifiers = analysisMethod.getModifiers();
-                HostedType returnType = hUniverse.lookup(analysisMethod.getSignature().getReturnType(null));
+                HostedType returnType = hUniverse.lookup(analysisMethod.getSignature().getReturnType());
                 reflectionMetadataEncoder.addHidingMethodMetadata(analysisMethod, declaringType, name, parameterTypes, modifiers, returnType);
             }
         }
@@ -770,6 +787,14 @@ public abstract class NativeImageCodeCache {
         void addNegativeMethodQueryMetadata(HostedType declaringClass, String methodName, HostedType[] parameterTypes);
 
         void addNegativeConstructorQueryMetadata(HostedType declaringClass, HostedType[] parameterTypes);
+
+        void addClassLookupError(HostedType declaringClass, Throwable exception);
+
+        void addFieldLookupError(HostedType declaringClass, Throwable exception);
+
+        void addMethodLookupError(HostedType declaringClass, Throwable exception);
+
+        void addConstructorLookupError(HostedType declaringClass, Throwable exception);
 
         void encodeAllAndInstall();
 

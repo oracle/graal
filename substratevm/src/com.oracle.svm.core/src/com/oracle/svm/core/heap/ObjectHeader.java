@@ -146,11 +146,6 @@ public abstract class ObjectHeader {
     }
 
     @Fold
-    protected static int getCompressionShift() {
-        return ReferenceAccess.singleton().getCompressEncoding().getShift();
-    }
-
-    @Fold
     protected static int getHubOffset() {
         return ConfigurationValues.getObjectLayout().getHubOffset();
     }

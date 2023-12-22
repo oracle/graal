@@ -1,4 +1,5 @@
 {
+  local utils = (import '../../ci/ci_common/common-utils.libsonnet'),
   local common = import '../../ci/ci_common/common.jsonnet',
 
   local regex_common = {
@@ -8,23 +9,14 @@
     timelimit: "30:00",
   },
 
-  local regex_gate = regex_common + common.deps.eclipse + common.deps.jdt + {
-    name: 'gate-regex-jdk' + self.jdk_version,
+  local regex_gate = regex_common + common.deps.eclipse + common.deps.jdt + common.deps.spotbugs + {
+    name: 'gate-regex-' + self.jdk_name,
     run: [["mx", "--strict-compliance", "gate", "--strict-mode"]],
     targets: ["gate"],
   },
 
-  local regex_gate_jdkLatest = regex_common + common.deps.eclipse + common.deps.jdt + {
-    name: 'gate-regex-jdk' + self.jdk_version,
-    run: [
-      ["mx", "build"],
-      ["mx", "unittest", "com.oracle.truffle.regex"],
-    ],
-    targets: ["gate"],
-  },
-
   local regex_gate_lite = regex_common + {
-    name: 'gate-regex-mac-lite-jdk' + self.jdk_version,
+    name: 'gate-regex-mac-lite-' + self.jdk_name,
     run: [
       ["mx", "build"],
       ["mx", "unittest", "--verbose", "com.oracle.truffle.regex"],
@@ -34,7 +26,7 @@
   },
 
   local regex_downstream_js = regex_common + {
-    name: 'gate-regex-downstream-js-jdk' + self.jdk_version,
+    name: 'gate-regex-downstream-js-' + self.jdk_name,
     run: [
       # checkout graal-js and js-tests suites at the imported (downstream-branch) revisions.
       ["mx", "-p", "../vm", "--dynamicimports", "/graal-js", "sforceimports"],
@@ -47,15 +39,13 @@
     targets: ["gate"],
   },
 
-  builds: std.flattenArrays([
+  builds: [utils.add_gate_predicate(b, ["sdk", "truffle", "regex", "compiler", "vm", "substratevm"]) for b in std.flattenArrays([
     [
       common.linux_amd64  + jdk + regex_gate,
       common.linux_amd64  + jdk + regex_downstream_js,
-      common.darwin_amd64 + jdk + regex_gate_lite,
+      common.darwin_aarch64 + jdk + regex_gate_lite,
     ] for jdk in [
-      common.labsjdk21,
+      common.labsjdkLatest,
     ]
-  ]) + [
-      common.linux_amd64  + common.labsjdkLatest + regex_gate_jdkLatest,
-  ],
+  ])],
 }

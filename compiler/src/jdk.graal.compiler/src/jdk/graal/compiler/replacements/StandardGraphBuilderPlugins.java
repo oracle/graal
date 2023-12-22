@@ -24,9 +24,6 @@
  */
 package jdk.graal.compiler.replacements;
 
-import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
-import static jdk.vm.ci.meta.DeoptimizationAction.None;
-import static jdk.vm.ci.meta.DeoptimizationReason.TransferToInterpreter;
 import static jdk.graal.compiler.core.common.calc.Condition.LT;
 import static jdk.graal.compiler.core.common.memory.MemoryOrderMode.ACQUIRE;
 import static jdk.graal.compiler.core.common.memory.MemoryOrderMode.PLAIN;
@@ -38,6 +35,9 @@ import static jdk.graal.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION;
 import static jdk.graal.compiler.replacements.BoxingSnippets.Templates.getCacheClass;
 import static jdk.graal.compiler.replacements.nodes.AESNode.CryptMode.DECRYPT;
 import static jdk.graal.compiler.replacements.nodes.AESNode.CryptMode.ENCRYPT;
+import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
+import static jdk.vm.ci.meta.DeoptimizationAction.None;
+import static jdk.vm.ci.meta.DeoptimizationReason.TransferToInterpreter;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -48,6 +48,8 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiFunction;
+
+import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -173,10 +175,28 @@ import jdk.graal.compiler.nodes.util.ConstantFoldUtil;
 import jdk.graal.compiler.nodes.util.ConstantReflectionUtil;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.nodes.virtual.EnsureVirtualizedNode;
+import jdk.graal.compiler.replacements.nodes.AESNode;
+import jdk.graal.compiler.replacements.nodes.AESNode.CryptMode;
 import jdk.graal.compiler.replacements.nodes.ArrayEqualsNode;
+import jdk.graal.compiler.replacements.nodes.BigIntegerMulAddNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerSquareToLenNode;
+import jdk.graal.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import jdk.graal.compiler.replacements.nodes.CountPositivesNode;
+import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
+import jdk.graal.compiler.replacements.nodes.EncodeArrayNode;
+import jdk.graal.compiler.replacements.nodes.GHASHProcessBlocksNode;
+import jdk.graal.compiler.replacements.nodes.LogNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.MD5Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
+import jdk.graal.compiler.replacements.nodes.ProfileBooleanNode;
+import jdk.graal.compiler.replacements.nodes.ReverseBitsNode;
+import jdk.graal.compiler.replacements.nodes.ReverseBytesNode;
+import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
+import jdk.graal.compiler.replacements.nodes.VirtualizableInvokeMacroNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerAddExactNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerAddExactOverflowNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerAddExactSplitNode;
@@ -191,27 +211,8 @@ import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerSubExactNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerSubExactOverflowNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerSubExactSplitNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
-import jdk.graal.compiler.replacements.nodes.AESNode;
-import jdk.graal.compiler.replacements.nodes.AESNode.CryptMode;
-import jdk.graal.compiler.replacements.nodes.BigIntegerMulAddNode;
-import jdk.graal.compiler.replacements.nodes.CipherBlockChainingAESNode;
-import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
-import jdk.graal.compiler.replacements.nodes.EncodeArrayNode;
-import jdk.graal.compiler.replacements.nodes.GHASHProcessBlocksNode;
-import jdk.graal.compiler.replacements.nodes.LogNode;
-import jdk.graal.compiler.replacements.nodes.MessageDigestNode;
-import jdk.graal.compiler.replacements.nodes.MessageDigestNode.MD5Node;
-import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
-import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
-import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
-import jdk.graal.compiler.replacements.nodes.ProfileBooleanNode;
-import jdk.graal.compiler.replacements.nodes.ReverseBitsNode;
-import jdk.graal.compiler.replacements.nodes.ReverseBytesNode;
-import jdk.graal.compiler.replacements.nodes.VirtualizableInvokeMacroNode;
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.CodeUtil;
@@ -2505,4 +2506,47 @@ public class StandardGraphBuilderPlugins {
             }
         });
     }
+
+    public static class VectorizedHashCodeInvocationPlugin extends InlineOnlyInvocationPlugin {
+
+        // Sync with ArraysSupport.java
+        public static final int T_BOOLEAN = 4;
+        public static final int T_CHAR = 5;
+        public static final int T_BYTE = 8;
+        public static final int T_SHORT = 9;
+        public static final int T_INT = 10;
+
+        public VectorizedHashCodeInvocationPlugin(String name) {
+            super(name, Object.class, int.class, int.class, int.class, int.class);
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                        ValueNode array, ValueNode fromIndex, ValueNode length, ValueNode initialValue, ValueNode basicType) {
+            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                if (basicType.isConstant()) {
+                    int basicTypeAsInt = basicType.asJavaConstant().asInt();
+                    JavaKind componentType = switch (basicTypeAsInt) {
+                        case T_BOOLEAN -> JavaKind.Boolean;
+                        case T_CHAR -> JavaKind.Char;
+                        case T_BYTE -> JavaKind.Byte;
+                        case T_SHORT -> JavaKind.Short;
+                        case T_INT -> JavaKind.Int;
+                        default -> JavaKind.Illegal;
+                    };
+                    if (componentType == JavaKind.Illegal) {
+                        // Unsupported array element type
+                        return false;
+                    }
+
+                    // for T_CHAR, the intrinsic accepts both byte[] and char[]
+                    ValueNode arrayStart = helper.arrayElementPointer(array, componentType, fromIndex, componentType == JavaKind.Char || componentType == JavaKind.Boolean);
+                    b.addPush(JavaKind.Int, new VectorizedHashCodeNode(arrayStart, length, initialValue, componentType));
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
 }

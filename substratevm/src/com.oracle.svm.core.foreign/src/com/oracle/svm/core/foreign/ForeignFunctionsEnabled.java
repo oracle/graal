@@ -22,33 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jni.headers;
+package com.oracle.svm.core.foreign;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CConstant;
+import java.util.function.BooleanSupplier;
 
-final class JNIHeaderDirectivesJDK22OrLater extends JNIHeaderDirectives {
+import com.oracle.svm.core.SubstrateOptions;
+
+final class ForeignFunctionsEnabled implements BooleanSupplier {
     @Override
-    public boolean isInConfiguration() {
-        return JavaVersionUtil.JAVA_SPEC >= 22;
-    }
-}
-
-@CContext(JNIHeaderDirectivesJDK22OrLater.class)
-public final class JNIVersionJDK22OrLater {
-
-    // Checkstyle: stop
-
-    /*
-     * GR-48572: there is not yet a JNI_VERSION_22 constant defined. As soon as it gets available,
-     * the "value" property of the CConstant annotation below must be removed.
-     */
-    @CConstant(value = "JNI_VERSION_21")
-    public static native int JNI_VERSION_22();
-
-    // Checkstyle: resume
-
-    private JNIVersionJDK22OrLater() {
+    public boolean getAsBoolean() {
+        return SubstrateOptions.ForeignAPISupport.getValue();
     }
 }

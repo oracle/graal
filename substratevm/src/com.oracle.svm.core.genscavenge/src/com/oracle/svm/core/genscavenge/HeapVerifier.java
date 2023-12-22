@@ -26,13 +26,11 @@ package com.oracle.svm.core.genscavenge;
 
 import java.lang.ref.Reference;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
@@ -46,11 +44,13 @@ import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+
+import jdk.graal.compiler.word.Word;
 
 public final class HeapVerifier {
     private static final ObjectVerifier OBJECT_VERIFIER = new ObjectVerifier();
-    private static final ImageHeapRegionVerifier IMAGE_HEAP_OBJECT_VERIFIER = new ImageHeapRegionVerifier();
     private static final ObjectReferenceVerifier REFERENCE_VERIFIER = new ObjectReferenceVerifier();
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -59,33 +59,19 @@ public final class HeapVerifier {
 
     public static boolean verify(Occasion occasion) {
         boolean success = true;
-        success &= verifyImageHeapObjects();
+        success &= verifyImageHeap();
         success &= verifyYoungGeneration(occasion);
         success &= verifyOldGeneration();
         success &= verifyRememberedSets();
         return success;
     }
 
-    private static boolean verifyImageHeapObjects() {
-        if (HeapImpl.usesImageHeapChunks()) {
-            return verifyChunkedImageHeap();
-        } else {
-            return verifyNonChunkedImageHeap();
-        }
-    }
-
-    private static boolean verifyChunkedImageHeap() {
+    private static boolean verifyImageHeap() {
         boolean success = true;
         ImageHeapInfo info = HeapImpl.getImageHeapInfo();
         success &= verifyAlignedChunks(null, info.getFirstWritableAlignedChunk());
         success &= verifyUnalignedChunks(null, info.getFirstWritableUnalignedChunk());
         return success;
-    }
-
-    private static boolean verifyNonChunkedImageHeap() {
-        IMAGE_HEAP_OBJECT_VERIFIER.initialize();
-        ImageHeapWalker.walkRegions(HeapImpl.getImageHeapInfo(), IMAGE_HEAP_OBJECT_VERIFIER);
-        return IMAGE_HEAP_OBJECT_VERIFIER.getResult();
     }
 
     private static boolean verifyYoungGeneration(Occasion occasion) {
@@ -155,15 +141,13 @@ public final class HeapVerifier {
 
         boolean success = true;
         RememberedSet rememberedSet = RememberedSet.get();
-        if (HeapImpl.usesImageHeapChunks()) {
-            /*
-             * For the image heap, we can't verify that all cards are clean after a GC because the
-             * GC itself may result in dirty cards.
-             */
-            ImageHeapInfo info = HeapImpl.getImageHeapInfo();
-            success &= rememberedSet.verify(info.getFirstWritableAlignedChunk());
-            success &= rememberedSet.verify(info.getFirstWritableUnalignedChunk());
-        }
+        /*
+         * For the image heap, we can't verify that all cards are clean after a GC because the GC
+         * itself may result in dirty cards.
+         */
+        ImageHeapInfo info = HeapImpl.getImageHeapInfo();
+        success &= rememberedSet.verify(info.getFirstWritableAlignedChunk());
+        success &= rememberedSet.verify(info.getFirstWritableUnalignedChunk());
 
         OldGeneration oldGeneration = HeapImpl.getHeapImpl().getOldGeneration();
         Space toSpace = oldGeneration.getToSpace();
@@ -269,49 +253,49 @@ public final class HeapVerifier {
             return false;
         }
 
-        if (HeapImpl.usesImageHeapChunks() || !HeapImpl.getHeapImpl().isInImageHeap(obj)) {
-            assert aChunk.isNonNull() ^ uChunk.isNonNull();
-            HeapChunk.Header<?> expectedChunk = aChunk.isNonNull() ? aChunk : uChunk;
-            HeapChunk.Header<?> chunk = HeapChunk.getEnclosingHeapChunk(obj);
-            if (chunk.notEqual(expectedChunk)) {
-                Log.log().string("Object ").zhex(ptr).string(" should have ").zhex(expectedChunk).string(" as its enclosing chunk but getEnclosingHeapChunk returned ").zhex(chunk).newline();
+        assert aChunk.isNonNull() ^ uChunk.isNonNull();
+        HeapChunk.Header<?> chunk = aChunk.isNonNull() ? aChunk : uChunk;
+        if (CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment()) {
+            HeapChunk.Header<?> enclosingHeapChunk = HeapChunk.getEnclosingHeapChunk(obj);
+            if (chunk.notEqual(enclosingHeapChunk)) {
+                Log.log().string("Object ").zhex(ptr).string(" should have ").zhex(chunk).string(" as its enclosing chunk but getEnclosingHeapChunk returned ").zhex(enclosingHeapChunk).newline();
                 return false;
             }
+        }
 
-            Pointer chunkStart = HeapChunk.asPointer(chunk);
-            Pointer chunkTop = HeapChunk.getTopPointer(chunk);
-            if (chunkStart.aboveOrEqual(ptr) || chunkTop.belowOrEqual(ptr)) {
-                Log.log().string("Object ").zhex(ptr).string(" is not within the allocated part of the chunk: ").zhex(chunkStart).string(" - ").zhex(chunkTop).string("").newline();
+        Pointer chunkStart = HeapChunk.asPointer(chunk);
+        Pointer chunkTop = HeapChunk.getTopPointer(chunk);
+        if (chunkStart.aboveOrEqual(ptr) || chunkTop.belowOrEqual(ptr)) {
+            Log.log().string("Object ").zhex(ptr).string(" is not within the allocated part of the chunk: ").zhex(chunkStart).string(" - ").zhex(chunkTop).string("").newline();
+            return false;
+        }
+
+        if (aChunk.isNonNull()) {
+            if (!ObjectHeaderImpl.isAlignedHeader(header)) {
+                Log.log().string("Header of object ").zhex(ptr).string(" is not marked as aligned: ").zhex(header).newline();
                 return false;
             }
-
-            if (aChunk.isNonNull()) {
-                if (!ObjectHeaderImpl.isAlignedHeader(header)) {
-                    Log.log().string("Header of object ").zhex(ptr).string(" is not marked as aligned: ").zhex(header).newline();
-                    return false;
-                }
-            } else {
-                assert uChunk.isNonNull();
-                if (!ObjectHeaderImpl.isUnalignedHeader(header)) {
-                    Log.log().string("Header of object ").zhex(ptr).string(" is not marked as unaligned: ").zhex(header).newline();
-                    return false;
-                }
+        } else {
+            assert uChunk.isNonNull();
+            if (!ObjectHeaderImpl.isUnalignedHeader(header)) {
+                Log.log().string("Header of object ").zhex(ptr).string(" is not marked as unaligned: ").zhex(header).newline();
+                return false;
             }
+        }
 
-            Space space = chunk.getSpace();
-            if (space == null) {
-                if (!HeapImpl.getHeapImpl().isInImageHeap(obj)) {
-                    Log.log().string("Object ").zhex(ptr).string(" is not an image heap object even though the space of the parent chunk ").zhex(chunk).string(" is null.").newline();
-                    return false;
-                }
-                // Not all objects in the image heap have the remembered set bit in the header, so
-                // we can't verify that this bit is set.
+        Space space = chunk.getSpace();
+        if (space == null) {
+            if (!HeapImpl.getHeapImpl().isInImageHeap(obj)) {
+                Log.log().string("Object ").zhex(ptr).string(" is not an image heap object even though the space of the parent chunk ").zhex(chunk).string(" is null.").newline();
+                return false;
+            }
+            // Not all objects in the image heap have the remembered set bit in the header, so
+            // we can't verify that this bit is set.
 
-            } else if (space.isOldSpace()) {
-                if (SubstrateOptions.useRememberedSet() && !RememberedSet.get().hasRememberedSet(header)) {
-                    Log.log().string("Object ").zhex(ptr).string(" is in old generation chunk ").zhex(chunk).string(" but does not have a remembered set.").newline();
-                    return false;
-                }
+        } else if (space.isOldSpace()) {
+            if (SubstrateOptions.useRememberedSet() && !RememberedSet.get().hasRememberedSet(header)) {
+                Log.log().string("Object ").zhex(ptr).string(" is in old generation chunk ").zhex(chunk).string(" but does not have a remembered set.").newline();
+                return false;
             }
         }
 
@@ -383,29 +367,6 @@ public final class HeapVerifier {
         }
     }
 
-    private static class ImageHeapRegionVerifier implements MemoryWalker.ImageHeapRegionVisitor {
-        private final ImageHeapObjectVerifier objectVerifier;
-
-        @Platforms(Platform.HOSTED_ONLY.class)
-        ImageHeapRegionVerifier() {
-            objectVerifier = new ImageHeapObjectVerifier();
-        }
-
-        public void initialize() {
-            objectVerifier.initialize(WordFactory.nullPointer(), WordFactory.nullPointer());
-        }
-
-        public boolean getResult() {
-            return objectVerifier.result;
-        }
-
-        @Override
-        public <T> boolean visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access) {
-            access.visitObjects(region, objectVerifier);
-            return true;
-        }
-    }
-
     private static class ObjectVerifier implements ObjectVisitor {
         protected boolean result;
         private AlignedHeader aChunk;
@@ -426,23 +387,6 @@ public final class HeapVerifier {
         public boolean visitObject(Object object) {
             result &= verifyObject(object, aChunk, uChunk);
             return true;
-        }
-    }
-
-    private static class ImageHeapObjectVerifier extends ObjectVerifier {
-        @Platforms(Platform.HOSTED_ONLY.class)
-        ImageHeapObjectVerifier() {
-        }
-
-        @Override
-        public boolean visitObject(Object object) {
-            Word pointer = Word.objectToUntrackedPointer(object);
-            if (!HeapImpl.getHeapImpl().isInImageHeap(object)) {
-                Log.log().string("Image heap object ").zhex(pointer).string(" is not considered as part of the image heap.").newline();
-                result = false;
-            }
-
-            return super.visitObject(object);
         }
     }
 

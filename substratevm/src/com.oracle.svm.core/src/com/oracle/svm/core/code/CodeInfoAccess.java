@@ -157,8 +157,8 @@ public final class CodeInfoAccess {
                 return "non-entrant";
             case CodeInfo.STATE_READY_FOR_INVALIDATION:
                 return "ready for invalidation";
-            case CodeInfo.STATE_PARTIALLY_FREED:
-                return "partially freed";
+            case CodeInfo.STATE_INVALIDATED:
+                return "invalidated";
             case CodeInfo.STATE_UNREACHABLE:
                 return "unreachable";
             case CodeInfo.STATE_FREED:

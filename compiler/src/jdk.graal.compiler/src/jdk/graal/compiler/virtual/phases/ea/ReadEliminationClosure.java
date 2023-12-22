@@ -373,7 +373,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                     for (LocationIdentity location : forwardEndLiveLocations) {
                         loopKilledLocations.rememberLoopKilledLocation(location);
                     }
-                    if (debug.isLogEnabled() && loopKilledLocations != null) {
+                    if (debug.isLogEnabled()) {
                         debug.log("[Early Read Elimination] Setting loop killed locations of loop at node %s with %s",
                                         loop.getHeader().getBeginNode(), forwardEndLiveLocations);
                     }

@@ -76,6 +76,14 @@ public interface ReflectionHostedSupport {
 
     Map<AnalysisType, Set<AnalysisType[]>> getNegativeConstructorQueries();
 
+    Map<Class<?>, Throwable> getClassLookupErrors();
+
+    Map<Class<?>, Throwable> getFieldLookupErrors();
+
+    Map<Class<?>, Throwable> getMethodLookupErrors();
+
+    Map<Class<?>, Throwable> getConstructorLookupErrors();
+
     int getReflectionMethodsCount();
 
     int getReflectionFieldsCount();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,45 +38,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.utils;
+package org.graalvm.wasm.predefined.wasi;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+import org.graalvm.wasm.predefined.wasi.types.Errno;
 
-public class Assert {
-    public static void assertTrue(String message, boolean condition) {
-        if (!condition) {
-            fail(message);
-        }
+import com.oracle.truffle.api.frame.VirtualFrame;
+
+public class WasiUnsupportedFunctionNode extends WasmBuiltinRootNode {
+    private final String name;
+
+    protected WasiUnsupportedFunctionNode(WasmLanguage language, WasmModule module, String name) {
+        super(language, module);
+        this.name = name;
     }
 
-    public static void assertNotNull(String message, Object object) {
-        assertTrue(message, object != null);
+    @Override
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
+        return Errno.Nosys; // error code for function not supported
     }
 
-    public static void assertEquals(String message, Object expected, Object actual) {
-        if (!actual.equals(expected)) {
-            fail(format("%s '%s' != '%s'", message, expected, actual));
-        }
-    }
-
-    public static void assertFloatEquals(String message, Float expected, Float actual, Float epsilon) {
-        if (Math.abs(actual - expected) > epsilon) {
-            fail(format("%s %s \u2209 %s +/- %s", message, actual, expected, epsilon));
-        }
-    }
-
-    public static void assertDoubleEquals(String message, Double expected, Double actual, Double epsilon) {
-        if (Math.abs(actual - expected) > epsilon) {
-            fail(format("%s %s \u2209 %s +/- %s", message, actual, expected, epsilon));
-        }
-    }
-
-    public static void fail(String message) {
-        throw new RuntimeException(message);
-    }
-
-    @TruffleBoundary
-    public static String format(String format, Object... args) {
-        return String.format(format, args);
+    @Override
+    public String builtinNodeName() {
+        return name;
     }
 }

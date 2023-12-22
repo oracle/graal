@@ -24,6 +24,8 @@
  */
 package org.graalvm.profdiff.parser;
 
+import jdk.graal.compiler.nodes.OptimizationLogImpl;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -31,6 +33,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.channels.FileChannel;
+import java.nio.charset.Charset;
 import java.util.function.BiConsumer;
 
 /**
@@ -52,15 +55,14 @@ public interface FileView {
 
             @Override
             public void forEachLine(BiConsumer<String, FileView> consumer) throws IOException {
-                try (FileInputStream inputStream = new FileInputStream(file);
-                                InputStreamReader streamReader = new InputStreamReader(inputStream);
-                                BufferedReader bufferedReader = new BufferedReader(streamReader)) {
+                long lineSeparatorLength = String.valueOf(OptimizationLogImpl.LINE_SEPARATOR).getBytes(Charset.defaultCharset()).length;
+                try (FileReader fileReader = new FileReader(file);
+                                BufferedReader bufferedReader = new BufferedReader(fileReader)) {
                     long position = 0;
                     String line;
                     while ((line = bufferedReader.readLine()) != null) {
                         long lineStartPosition = position;
-                        // assume that line separators are '\n' on all platforms
-                        position += line.length() + 1;
+                        position += line.getBytes(Charset.defaultCharset()).length + lineSeparatorLength;
                         consumer.accept(line, FileView.fromFileLineAtPosition(file, lineStartPosition));
                     }
                 }
@@ -93,7 +95,7 @@ public interface FileView {
         return new FileView() {
             @Override
             public String getSymbolicPath() {
-                return file.getAbsolutePath();
+                return file.getAbsolutePath() + "@ offset " + linePosition;
             }
 
             @Override

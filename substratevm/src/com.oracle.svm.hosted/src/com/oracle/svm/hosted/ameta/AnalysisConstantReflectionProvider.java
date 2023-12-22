@@ -47,7 +47,6 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.annotate.InjectAccessors;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.ObjectConstantEquality;
@@ -56,9 +55,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
-import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedLookupSnippetReflectionProvider;
-import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
 
 import jdk.graal.compiler.core.common.type.TypedConstant;
@@ -76,20 +73,16 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class AnalysisConstantReflectionProvider extends SharedConstantReflectionProvider implements ConstantReflectionProviderExtension<AnalysisField> {
     private final AnalysisUniverse universe;
     protected final UniverseMetaAccess metaAccess;
-    private HostedMetaAccess hMetaAccess;
     private final ClassInitializationSupport classInitializationSupport;
     private final AnalysisMethodHandleAccessProvider methodHandleAccess;
     private SimulateClassInitializerSupport simulateClassInitializerSupport;
+    private final FieldValueInterceptionSupport fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
 
     public AnalysisConstantReflectionProvider(AnalysisUniverse universe, UniverseMetaAccess metaAccess, ClassInitializationSupport classInitializationSupport) {
         this.universe = universe;
         this.metaAccess = metaAccess;
         this.classInitializationSupport = classInitializationSupport;
         this.methodHandleAccess = new AnalysisMethodHandleAccessProvider(universe);
-    }
-
-    public void setHostedMetaAccess(HostedMetaAccess hMetaAccess) {
-        this.hMetaAccess = hMetaAccess;
     }
 
     @Override
@@ -235,7 +228,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         }
         if (value == null && receiver instanceof ImageHeapConstant heapConstant) {
             heapConstant.ensureReaderInstalled();
-            AnalysisError.guarantee(ReadableJavaField.isValueAvailable(field), "Value not yet available for %s", field);
+            AnalysisError.guarantee(fieldValueInterceptionSupport.isValueAvailable(field), "Value not yet available for %s", field);
             ImageHeapInstance heapObject = (ImageHeapInstance) receiver;
             value = heapObject.readFieldValue(field);
         }
@@ -253,9 +246,9 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
      * heap is a snapshot of the hosted state; simulated values are a level above the shadow heap.
      */
     public ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, JavaConstant receiver) {
-        if (ReadableJavaField.isValueAvailable(field)) {
+        if (fieldValueInterceptionSupport.isValueAvailable(field)) {
             /* Materialize and return the value. */
-            return ValueSupplier.eagerValue(doReadValue(field, receiver, metaAccess));
+            return ValueSupplier.eagerValue(doReadValue(field, receiver));
         }
         /*
          * Return a lazy value. First, this applies to fields annotated with
@@ -266,27 +259,17 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
          * during analysis or in a later phase. Attempts to materialize the value before it becomes
          * available will result in an error.
          */
-        return ValueSupplier.lazyValue(() -> doReadValue(field, receiver), () -> ReadableJavaField.isValueAvailable(field));
+        return ValueSupplier.lazyValue(() -> doReadValue(field, receiver), () -> fieldValueInterceptionSupport.isValueAvailable(field));
     }
 
     /** Returns the hosted field value. The receiver must be a hosted constant. */
     @Override
     public JavaConstant readHostedFieldValue(UniverseMetaAccess access, AnalysisField field, JavaConstant receiver) {
-        return interceptValue(access, field, doReadValue(field, universe.toHosted(receiver), access));
+        return interceptValue(access, field, doReadValue(field, universe.toHosted(receiver)));
     }
 
-    /**
-     * The {@link HostedMetaAccess} is used to access the {@link HostedField} in the re-computation
-     * of {@link RecomputeFieldValue.Kind#AtomicFieldUpdaterOffset} and
-     * {@link RecomputeFieldValue.Kind#TranslateFieldOffset} annotated fields .
-     */
     private JavaConstant doReadValue(AnalysisField field, JavaConstant receiver) {
-        Objects.requireNonNull(hMetaAccess);
-        return doReadValue(field, receiver, hMetaAccess);
-    }
-
-    private JavaConstant doReadValue(AnalysisField field, JavaConstant receiver, UniverseMetaAccess access) {
-        return universe.fromHosted(ReadableJavaField.readFieldValue(access, classInitializationSupport, field.wrapped, receiver));
+        return universe.fromHosted(fieldValueInterceptionSupport.readFieldValue(classInitializationSupport, field, receiver));
     }
 
     /**

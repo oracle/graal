@@ -32,6 +32,7 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.graal.reachability.ReachabilityAnalysisEngine;
 import com.oracle.graal.reachability.ReachabilityMethodProcessingHandler;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.ameta.CustomTypeFieldHandler;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;

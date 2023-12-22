@@ -24,11 +24,6 @@
  */
 package com.oracle.svm.core.heap;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.CompressEncoding;
-import jdk.graal.compiler.word.BarrieredAccess;
-import jdk.graal.compiler.word.ObjectAccess;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -39,6 +34,12 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.word.BarrieredAccess;
+import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 
 @AutomaticallyRegisteredImageSingleton(ReferenceAccess.class)
 public final class ReferenceAccessImpl implements ReferenceAccess {
@@ -116,5 +117,11 @@ public final class ReferenceAccessImpl implements ReferenceAccess {
         }
         // Assume that 48 bit is the maximum address space that can be used.
         return WordFactory.unsigned((1L << 48) - 1);
+    }
+
+    @Fold
+    @Override
+    public int getCompressionShift() {
+        return getCompressEncoding().getShift();
     }
 }

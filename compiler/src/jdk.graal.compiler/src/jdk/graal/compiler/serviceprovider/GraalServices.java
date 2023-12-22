@@ -40,6 +40,7 @@ import java.util.Map;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 
+import jdk.graal.compiler.core.common.BootstrapMethodIntrospection;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.EncodedSpeculationReason;
@@ -61,10 +62,12 @@ public final class GraalServices {
 
     private static final Method constantPoolLookupMethodWithCaller;
     private static final Method constantPoolLookupConstantWithResolve;
+    private static final Method constantPoolLookupBootstrapMethodInvocation;
 
     static {
         Method lookupMethodWithCaller = null;
         Method lookupConstantWithResolve = null;
+        Method lookupBootstrapMethodInvocation = null;
 
         try {
             lookupMethodWithCaller = ConstantPool.class.getDeclaredMethod("lookupMethod", Integer.TYPE, Integer.TYPE, ResolvedJavaMethod.class);
@@ -76,8 +79,14 @@ public final class GraalServices {
         } catch (NoSuchMethodException e) {
         }
 
+        try {
+            lookupBootstrapMethodInvocation = ConstantPool.class.getDeclaredMethod("lookupBootstrapMethodInvocation", Integer.TYPE, Integer.TYPE);
+        } catch (NoSuchMethodException e) {
+        }
+
         constantPoolLookupMethodWithCaller = lookupMethodWithCaller;
         constantPoolLookupConstantWithResolve = lookupConstantWithResolve;
+        constantPoolLookupBootstrapMethodInvocation = lookupBootstrapMethodInvocation;
     }
 
     private GraalServices() {
@@ -478,6 +487,22 @@ public final class GraalServices {
         return constantPool.lookupConstant(cpi);
     }
 
+    public static BootstrapMethodIntrospection lookupBootstrapMethodIntrospection(ConstantPool constantPool, int cpi, int opcode) {
+        if (constantPoolLookupBootstrapMethodInvocation != null) {
+            try {
+                Object bootstrapMethodInvocation = constantPoolLookupBootstrapMethodInvocation.invoke(constantPool, cpi, opcode);
+                if (bootstrapMethodInvocation != null) {
+                    return new BootstrapMethodIntrospectionImpl(bootstrapMethodInvocation);
+                }
+            } catch (InvocationTargetException e) {
+                throw rethrow(e.getCause());
+            } catch (IllegalAccessException e) {
+                throw GraalError.shouldNotReachHere(e, "The method lookupBootstrapMethodInvocation should be accessible");
+            }
+        }
+        return null;
+    }
+
     @SuppressWarnings("unchecked")
     static <E extends Throwable> RuntimeException rethrow(Throwable ex) throws E {
         throw (E) ex;
@@ -499,13 +524,32 @@ public final class GraalServices {
     }
 
     /**
+     * Notifies that the compiler is at a point where memory usage is expected to be minimal like
+     * after the completion of compilation.
+     *
+     * @param forceFullGC controls whether to explicitly perform a full GC
+     */
+    public static void notifyLowMemoryPoint(boolean forceFullGC) {
+        notifyLowMemoryPoint(true, forceFullGC);
+    }
+
+    /**
+     * Notifies that the compiler is at a point where memory usage is might have dropped
+     * significantly like after some major phase execution.
+     */
+    public static void notifyLowMemoryPoint() {
+        notifyLowMemoryPoint(false, false);
+    }
+
+    /**
      * Notifies that the compiler is at a point where memory usage is expected to be relatively low
      * (e.g., just before/after a compilation). The garbage collector might be able to make use of
      * such a hint to optimize its performance.
      *
-     * @param fullGC controls whether the hinted GC should be a full GC.
+     * @param hintFullGC controls whether the hinted GC should be a full GC.
+     * @param forceFullGC controls whether to explicitly perform a full GC
      */
-    public static void notifyLowMemoryPoint(@SuppressWarnings("unused") boolean fullGC) {
+    private static void notifyLowMemoryPoint(boolean hintFullGC, boolean forceFullGC) {
         // Substituted by
         // com.oracle.svm.hotspot.libgraal.Target_jdk_graal_compiler_serviceprovider_GraalServices
     }

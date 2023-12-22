@@ -32,6 +32,16 @@ import java.util.Deque;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicSet;
+
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.util.ReflectionUtil;
+
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
@@ -59,16 +69,6 @@ import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.replacements.PEGraphDecoder;
 import jdk.graal.compiler.replacements.nodes.MethodHandleWithExceptionNode;
 import jdk.graal.compiler.replacements.nodes.ResolvedMethodHandleCallTargetNode;
-
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
-import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.graal.pointsto.util.GraalAccess;
-import com.oracle.svm.util.ReflectionUtil;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -88,7 +88,7 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
          */
         private final EconomicSet<EncodedGraph> encodedGraphs;
 
-        InlineBeforeAnalysisMethodScope(StructuredGraph targetGraph, PEMethodScope caller, LoopScope callerLoopScope, EncodedGraph encodedGraph, ResolvedJavaMethod method,
+        InlineBeforeAnalysisMethodScope(StructuredGraph targetGraph, PEMethodScope caller, LoopScope callerLoopScope, EncodedGraph encodedGraph, AnalysisMethod method,
                         InvokeData invokeData, int inliningDepth, ValueNode[] arguments) {
             super(targetGraph, caller, callerLoopScope, encodedGraph, method, invokeData, inliningDepth, arguments);
 
@@ -166,7 +166,7 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
     @Override
     protected PEMethodScope createMethodScope(StructuredGraph targetGraph, PEMethodScope caller, LoopScope callerLoopScope, EncodedGraph encodedGraph, ResolvedJavaMethod method, InvokeData invokeData,
                     int inliningDepth, ValueNode[] arguments) {
-        return new InlineBeforeAnalysisMethodScope(targetGraph, caller, callerLoopScope, encodedGraph, method, invokeData, inliningDepth, arguments);
+        return new InlineBeforeAnalysisMethodScope(targetGraph, caller, callerLoopScope, encodedGraph, (AnalysisMethod) method, invokeData, inliningDepth, arguments);
     }
 
     @Override
@@ -205,7 +205,7 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
 
     @Override
     protected boolean shouldOmitIntermediateMethodInStates(ResolvedJavaMethod method) {
-        return policy.shouldOmitIntermediateMethodInState(method);
+        return policy.shouldOmitIntermediateMethodInState((AnalysisMethod) method);
     }
 
     @SuppressWarnings("unused")
@@ -312,7 +312,7 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
             if (graph.getDebug().isLogEnabled()) {
                 graph.getDebug().logv("  ".repeat(methodScope.inliningDepth) + "  node " + node + ": " + methodScope.policyScope);
             }
-            if (!methodScope.policyScope.processNode(bb.getMetaAccess(), methodScope.method, node)) {
+            if (!methodScope.policyScope.processNode(bb.getMetaAccess(), (AnalysisMethod) methodScope.method, node)) {
                 abortInlining(methodScope);
             }
         }
@@ -502,6 +502,6 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
     protected FixedWithNextNode afterMethodScopeCreation(PEMethodScope is, FixedWithNextNode predecessor) {
         InlineBeforeAnalysisMethodScope inlineScope = cast(is);
         var sourcePosition = inlineScope.invokeData.invoke.asNode().getNodeSourcePosition();
-        return policy.processInvokeArgs(inlineScope.method, predecessor, inlineScope.getArguments(), sourcePosition);
+        return policy.processInvokeArgs((AnalysisMethod) inlineScope.method, predecessor, inlineScope.getArguments(), sourcePosition);
     }
 }

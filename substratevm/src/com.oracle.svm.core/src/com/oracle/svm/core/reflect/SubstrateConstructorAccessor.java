@@ -34,12 +34,13 @@ import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointer;
 
 import jdk.internal.reflect.ConstructorAccessor;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @InternalVMMethod
 public final class SubstrateConstructorAccessor extends SubstrateAccessor implements ConstructorAccessor {
 
-    public SubstrateConstructorAccessor(Executable member, CFunctionPointer expandSignature, CFunctionPointer directTarget, DynamicHub initializeBeforeInvoke) {
-        super(member, expandSignature, directTarget, initializeBeforeInvoke);
+    public SubstrateConstructorAccessor(Executable member, CFunctionPointer expandSignature, CFunctionPointer directTarget, ResolvedJavaMethod targetMethod, DynamicHub initializeBeforeInvoke) {
+        super(member, expandSignature, directTarget, targetMethod, initializeBeforeInvoke);
     }
 
     @Override

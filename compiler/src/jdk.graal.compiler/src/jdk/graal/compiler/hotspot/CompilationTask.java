@@ -56,7 +56,9 @@ import jdk.graal.compiler.debug.TimerKey;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.spi.StableProfileProvider;
 import jdk.graal.compiler.nodes.spi.StableProfileProvider.TypeFilter;
+import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.serviceprovider.GraalServices;
@@ -73,6 +75,12 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
 public class CompilationTask implements CompilationWatchDog.EventHandler {
+
+    static class Options {
+        @Option(help = "Perform a full GC of the libgraal heap after every compile to reduce idle heap and reclaim " +
+                        "references to the HotSpot heap.  This flag has no effect in the context of jargraal", type = OptionType.Expert)//
+        public static final OptionKey<Boolean> FullGCAfterCompile = new OptionKey<>(false);
+    }
 
     @Override
     public void onStuckCompilation(CompilationWatchDog watchDog, Thread watched, CompilationIdentifier compilation, StackTraceElement[] stackTrace, int stuckTime) {
@@ -379,7 +387,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
             // Notify the runtime that most objects allocated in the current compilation
             // are dead and can be reclaimed.
             try (DebugCloseable timer = HintedFullGC.start(debug)) {
-                GraalServices.notifyLowMemoryPoint(true);
+                GraalServices.notifyLowMemoryPoint(Options.FullGCAfterCompile.getValue(debug.getOptions()));
             }
             return result;
         }

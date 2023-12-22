@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge;
+package com.oracle.svm.core.fieldvaluetransformer;
 
-public class LinearImageHeapAllocator {
-    private long position;
+import java.lang.reflect.Field;
 
-    public LinearImageHeapAllocator(long position) {
-        this.position = position;
+import com.oracle.svm.core.StaticFieldsSupport;
+
+public final class StaticFieldBaseFieldValueTransformer implements FieldValueTransformerWithAvailability {
+    private final Field targetField;
+
+    public StaticFieldBaseFieldValueTransformer(Field targetField) {
+        this.targetField = targetField;
     }
 
-    public long getPosition() {
-        return position;
+    @Override
+    public ValueAvailability valueAvailability() {
+        return ValueAvailability.AfterAnalysis;
     }
 
-    public long allocate(long size) {
-        long begin = position;
-        position += size;
-        return begin;
-    }
-
-    public void align(int multiple) {
-        allocate(computePadding(position, multiple));
-    }
-
-    static long computePadding(long offset, int alignment) {
-        long remainder = offset % alignment;
-        return remainder == 0 ? 0 : alignment - remainder;
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        return targetField.getType().isPrimitive() ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields();
     }
 }

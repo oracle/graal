@@ -216,8 +216,7 @@ class NativeImageVM(GraalVm):
                 base_image_build_args += ['-R:+FlightRecorder',
                                           '-R:StartFlightRecording=filename=default.jfr',
                                           '--enable-monitoring=jfr',
-                                          # We should enable this flag, but after we fix GR-39429.
-                                          # '-R:+JfrBasedExecutionSamplerStatistics'
+                                          '-R:+JfrBasedExecutionSamplerStatistics'
                                           ]
                 for stage in ('instrument-image', 'instrument-run'):
                     if stage in self.stages:
@@ -237,10 +236,16 @@ class NativeImageVM(GraalVm):
 
         def get_bundle_path_if_present(self):
             bundle_apply_arg = "--bundle-apply="
-            bundle_arg = [arg for arg in self.extra_image_build_arguments if arg.startswith(bundle_apply_arg)]
-            if len(bundle_arg) == 1:
-                bp = bundle_arg[0][len(bundle_apply_arg):]
-                return bp
+            for i in range(len(self.extra_image_build_arguments)):
+                if self.extra_image_build_arguments[i].startswith(bundle_apply_arg):
+                    # The bundle output is produced next to the bundle file, which in the case of
+                    # benchmarks is in the mx cache, so we make a local copy.
+                    cached_bundle_path = self.extra_image_build_arguments[i][len(bundle_apply_arg):]
+                    bundle_copy_path = join(self.output_dir, basename(cached_bundle_path))
+                    mx.ensure_dirname_exists(bundle_copy_path)
+                    mx.copyfile(cached_bundle_path, bundle_copy_path)
+                    self.extra_image_build_arguments[i] = bundle_apply_arg + bundle_copy_path
+                    return bundle_copy_path
 
             return None
 
@@ -893,7 +898,7 @@ class NativeImageVM(GraalVm):
     def copy_bundle_output(config):
         """
         Copies all files from the bundle build into the benchmark build location.
-        By default, the bundle output is produced next to the bundle file. In case of benchmarks, this bundle file is in the mx cache.
+        By default, the bundle output is produced next to the bundle file.
         """
         bundle_dir = os.path.dirname(config.bundle_path)
         bundle_name = os.path.basename(config.bundle_path)
@@ -934,7 +939,7 @@ class NativeImageVM(GraalVm):
         pgo_args += svm_experimental_options(['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled'])
         instrument_args = ['--pgo-instrument', '-R:ProfilesDumpFile=' + profile_path] + ([] if i == 0 else pgo_args)
         if self.jdk_profiles_collect:
-            instrument_args += svm_experimental_options(['-H:+ProfilingEnabled', '-H:+AOTPriorityInline', '-H:-SamplingCollect', f'-H:ProfilingPackagePrefixes={self.generate_profiling_package_prefixes()}'])
+            instrument_args += svm_experimental_options(['-H:+AOTPriorityInline', '-H:-SamplingCollect', f'-H:ProfilingPackagePrefixes={self.generate_profiling_package_prefixes()}'])
 
         with stages.set_command(config.base_image_build_args + executable_name_args + instrument_args) as s:
             s.execute_command()
@@ -994,10 +999,7 @@ class NativeImageVM(GraalVm):
             jdk_profiles = f"JDK{jdk_version}_PROFILES"
             adopted_profiles_lib = mx.library(jdk_profiles, fatalIfMissing=False)
             if adopted_profiles_lib:
-                adopted_profiles_zip = adopted_profiles_lib.get_path(True)
-                adopted_profiles_dir = os.path.dirname(adopted_profiles_zip)
-                with zipfile.ZipFile(adopted_profiles_zip, 'r') as zip_ref:
-                    zip_ref.extractall(adopted_profiles_dir)
+                adopted_profiles_dir = adopted_profiles_lib.get_path(True)
                 adopted_profile = os.path.join(adopted_profiles_dir, 'jdk_profile.iprof')
             else:
                 mx.warn(f'SubstrateVM Enterprise with JDK{jdk_version} does not contain JDK profiles.')

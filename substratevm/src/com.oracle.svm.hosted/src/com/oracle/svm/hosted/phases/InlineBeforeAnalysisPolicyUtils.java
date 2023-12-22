@@ -30,6 +30,23 @@ import java.lang.invoke.MethodHandles;
 import java.util.Map;
 import java.util.Set;
 
+import org.graalvm.nativeimage.AnnotationAccess;
+
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.jdk.VarHandleFeature;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ReachabilityRegistrationNode;
+import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.methodhandles.MethodHandleInvokerRenamingSubstitutionProcessor;
+import com.oracle.svm.util.ReflectionUtil;
+
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
@@ -56,25 +73,6 @@ import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.replacements.nodes.MethodHandleWithExceptionNode;
-import org.graalvm.nativeimage.AnnotationAccess;
-
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.jdk.VarHandleFeature;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.ReachabilityRegistrationNode;
-import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.methodhandles.MethodHandleInvokerRenamingSubstitutionProcessor;
-import com.oracle.svm.util.ReflectionUtil;
-
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class InlineBeforeAnalysisPolicyUtils {
     public static class Options {
@@ -108,9 +106,8 @@ public class InlineBeforeAnalysisPolicyUtils {
     private AnalysisType methodHandleType;
     private AnalysisType varHandleGuardsType;
 
-    public static boolean inliningAllowed(SVMHost hostVM, GraphBuilderContext b, ResolvedJavaMethod method) {
+    public static boolean inliningAllowed(SVMHost hostVM, GraphBuilderContext b, AnalysisMethod callee) {
         AnalysisMethod caller = (AnalysisMethod) b.getMethod();
-        AnalysisMethod callee = (AnalysisMethod) method;
         if (hostVM.neverInlineTrivial(caller, callee)) {
             return false;
         }
@@ -143,7 +140,7 @@ public class InlineBeforeAnalysisPolicyUtils {
         return true;
     }
 
-    public boolean alwaysInlineInvoke(@SuppressWarnings("unused") AnalysisMetaAccess metaAccess, @SuppressWarnings("unused") ResolvedJavaMethod method) {
+    public boolean alwaysInlineInvoke(@SuppressWarnings("unused") AnalysisMetaAccess metaAccess, @SuppressWarnings("unused") AnalysisMethod method) {
         return false;
     }
 
@@ -173,7 +170,7 @@ public class InlineBeforeAnalysisPolicyUtils {
         }
 
         @Override
-        public boolean processNode(AnalysisMetaAccess metaAccess, ResolvedJavaMethod method, Node node) {
+        public boolean processNode(AnalysisMetaAccess metaAccess, AnalysisMethod method, Node node) {
             // always inlining
             return true;
         }
@@ -222,7 +219,7 @@ public class InlineBeforeAnalysisPolicyUtils {
      * aborted.
      */
     public AccumulativeInlineScope createAccumulativeInlineScope(AccumulativeInlineScope outer, AnalysisMetaAccess metaAccess,
-                    ResolvedJavaMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle) {
+                    AnalysisMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle) {
         AccumulativeCounters accumulativeCounters;
         int depth;
         if (outer == null) {
@@ -264,11 +261,11 @@ public class InlineBeforeAnalysisPolicyUtils {
         return new AccumulativeInlineScope(accumulativeCounters, depth);
     }
 
-    private boolean isMethodHandleIntrinsificationRoot(AnalysisMetaAccess metaAccess, ResolvedJavaMethod method, boolean[] constArgsWithReceiver) {
+    private boolean isMethodHandleIntrinsificationRoot(AnalysisMetaAccess metaAccess, AnalysisMethod method, boolean[] constArgsWithReceiver) {
         return (isVarHandleMethod(metaAccess, method) || hasConstantMethodHandleParameter(metaAccess, method, constArgsWithReceiver)) && !isIgnoredMethodHandleMethod(method);
     }
 
-    private boolean hasConstantMethodHandleParameter(AnalysisMetaAccess metaAccess, ResolvedJavaMethod method, boolean[] constArgsWithReceiver) {
+    private boolean hasConstantMethodHandleParameter(AnalysisMetaAccess metaAccess, AnalysisMethod method, boolean[] constArgsWithReceiver) {
         if (methodHandleType == null) {
             methodHandleType = metaAccess.lookupJavaType(MethodHandle.class);
         }
@@ -280,7 +277,7 @@ public class InlineBeforeAnalysisPolicyUtils {
         return false;
     }
 
-    private static ResolvedJavaType getParameterType(ResolvedJavaMethod method, int index) {
+    private static AnalysisType getParameterType(AnalysisMethod method, int index) {
         int i = index;
         if (!method.isStatic()) {
             if (i == 0) { // receiver
@@ -288,7 +285,7 @@ public class InlineBeforeAnalysisPolicyUtils {
             }
             i--;
         }
-        return (ResolvedJavaType) method.getSignature().getParameterType(i, null);
+        return method.getSignature().getParameterType(i);
     }
 
     /**
@@ -299,14 +296,14 @@ public class InlineBeforeAnalysisPolicyUtils {
      * See the documentation in {@link VarHandleFeature} for more information on the overall
      * VarHandle support.
      */
-    private boolean isVarHandleMethod(AnalysisMetaAccess metaAccess, ResolvedJavaMethod method) {
+    private boolean isVarHandleMethod(AnalysisMetaAccess metaAccess, AnalysisMethod method) {
         if (varHandleGuardsType == null) {
             varHandleGuardsType = metaAccess.lookupJavaType(ReflectionUtil.lookupClass(false, "java.lang.invoke.VarHandleGuards"));
         }
         return method.getDeclaringClass().equals(varHandleGuardsType);
     }
 
-    private static boolean isIgnoredMethodHandleMethod(ResolvedJavaMethod method) {
+    private static boolean isIgnoredMethodHandleMethod(AnalysisMethod method) {
         Class<?> declaringClass = OriginalClassProvider.getJavaClass(method.getDeclaringClass());
         Set<String> ignoredMethods = IGNORED_METHOD_HANDLE_METHODS.get(declaringClass);
         return ignoredMethods != null && ignoredMethods.contains(method.getName());
@@ -363,7 +360,7 @@ public class InlineBeforeAnalysisPolicyUtils {
         }
 
         @Override
-        public boolean processNode(AnalysisMetaAccess metaAccess, ResolvedJavaMethod method, Node node) {
+        public boolean processNode(AnalysisMetaAccess metaAccess, AnalysisMethod method, Node node) {
             if (node instanceof StartNode || node instanceof ParameterNode || node instanceof ReturnNode || node instanceof UnwindNode ||
                             node instanceof CallTargetNode || node instanceof MethodHandleWithExceptionNode) {
                 /*
@@ -471,7 +468,7 @@ public class InlineBeforeAnalysisPolicyUtils {
         }
     }
 
-    private static boolean inlineForMethodHandleIntrinsification(ResolvedJavaMethod method) {
+    private static boolean inlineForMethodHandleIntrinsification(AnalysisMethod method) {
         String className = method.getDeclaringClass().toJavaName(true);
         if (className.startsWith("java.lang.invoke") && !className.contains("InvokerBytecodeGenerator")) {
             /*
@@ -493,7 +490,7 @@ public class InlineBeforeAnalysisPolicyUtils {
      *
      * @see MethodHandleInvokerRenamingSubstitutionProcessor
      */
-    protected boolean shouldOmitIntermediateMethodInState(ResolvedJavaMethod method) {
+    protected boolean shouldOmitIntermediateMethodInState(AnalysisMethod method) {
         return method.isAnnotationPresent(COMPILED_LAMBDA_FORM_ANNOTATION);
     }
 }

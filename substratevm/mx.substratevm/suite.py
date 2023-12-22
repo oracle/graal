@@ -689,13 +689,11 @@ suite = {
                 "jdk.internal.vm.ci" : [
                 ],
             },
-            "javaCompliance" : "21+",
-            "javaPreviewNeeded": "21+",
+            "javaCompliance" : "22+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javac.lint.overrides": "-preview",
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
             "jacoco" : "include",
@@ -719,13 +717,11 @@ suite = {
                     "jdk.vm.ci.code"
                 ],
             },
-            "javaCompliance" : "21+",
-            "javaPreviewNeeded": "21+",
+            "javaCompliance" : "22+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javac.lint.overrides": "-preview",
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
             "jacoco" : "include",
@@ -2180,13 +2176,13 @@ suite = {
                     "org.graalvm.nativeimage.builder"
                 ],
                 "exports" : [
-                    "* to org.graalvm.nativeimage.builder",
+                    "* to org.graalvm.nativeimage.builder"
                 ],
                 "requiresConcealed": {
                     "jdk.internal.vm.ci" : [
                         "jdk.vm.ci.meta",
                         "jdk.vm.ci.code",
-                    	"jdk.vm.ci.amd64",
+                        "jdk.vm.ci.amd64",
                     ],
                     "java.base": [
                         "jdk.internal.foreign",

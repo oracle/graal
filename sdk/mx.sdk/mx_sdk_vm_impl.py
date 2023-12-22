@@ -1448,7 +1448,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             if isinstance(image_config, mx_sdk.LauncherConfig) or (isinstance(image_config, mx_sdk.LanguageLibraryConfig) and image_config.launchers):
                 build_args += [
                     '--install-exit-handlers',
-                    '--enable-monitoring=jvmstat,heapdump,jfr',
+                    '--enable-monitoring=jvmstat,heapdump,jfr,threaddump',
                 ] + svm_experimental_options([
                     '-H:+DumpRuntimeCompilationOnSignal',
                     '-H:+ReportExceptionStackTraces',
@@ -4106,6 +4106,12 @@ def print_standalone_home(args):
     print(standalone_home(args.comp_dir_name, is_jvm=(args.type == 'jvm')))
 
 
+def print_graalvm_type(args):
+    """print the GraalVM artifact type"""
+    # Required by the CI jsonnet files that trigger structure checks
+    print('release' if _suite.is_release() else 'snapshot')
+
+
 def _infer_env(graalvm_dist):
     dynamicImports = set()
     components = []
@@ -4917,6 +4923,7 @@ mx.update_commands(_suite, {
     'graalvm-dist-name': [print_graalvm_dist_name, ''],
     'graalvm-version': [print_graalvm_version, ''],
     'graalvm-home': [print_graalvm_home, ''],
+    'graalvm-type': [print_graalvm_type, ''],
     'graalvm-enter': [graalvm_enter, ''],
     'graalvm-show': [graalvm_show, ''],
     'graalvm-vm-name': [print_graalvm_vm_name, ''],

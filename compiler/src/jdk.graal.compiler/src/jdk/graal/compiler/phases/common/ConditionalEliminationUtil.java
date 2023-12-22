@@ -27,6 +27,7 @@ package jdk.graal.compiler.phases.common;
 import java.util.ArrayDeque;
 
 import org.graalvm.collections.Pair;
+
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Or;
@@ -49,7 +50,6 @@ import jdk.graal.compiler.nodes.calc.BinaryNode;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.calc.UnaryNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.TriState;
 
@@ -403,7 +403,7 @@ public class ConditionalEliminationUtil {
                         return true;
                     }
                 }
-                if (!y.isConstant() && guardFolding != null) {
+                if (!y.isConstant()) {
                     Stamp newStampY = binaryOpLogicNode.getSucceedingStampForY(thisGuard.isNegated(), getOtherSafeStamp(x), getSafeStamp(y));
                     if (newStampY != null && guardFolding.foldGuard(thisGuard, y, newStampY, rewireGuardFunction)) {
                         return true;

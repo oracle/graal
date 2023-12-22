@@ -347,7 +347,6 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                 '-H:+AllowFoldMethods',
                 '-H:-UseServiceLoaderFeature',
                 '-H:+AllowDeprecatedBuilderClassesOnImageClasspath', # needs to be removed once GR-41746 is fixed
-                '-H:+DisableSubstitutionReturnTypeCheck',  # remove once Quarkus fixed their substitutions (GR-48152)
         ]) + super(BaseQuarkusBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
 
@@ -2012,8 +2011,26 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             mx.abort("Must specify at least one benchmark.")
         else:
             benchArg = ",".join(benchmarks)
+
+        vmArgs = self.vmArgs(bmSuiteArgs)
+        sparkBenchmarks = set([
+            "als",
+            "chi-square",
+            "dec-tree",
+            "gauss-mix",
+            "log-regression",
+            "movie-lens",
+            "naive-bayes",
+            "page-rank",
+            ])
+
+        if any(benchmark in sparkBenchmarks for benchmark in benchmarks):
+            # Spark benchmarks require a higher stack size than default in some configurations.
+            # [JDK-8303076] [GR-44499] [GR-50671]
+            vmArgs.append("-Xss1090K")
+
         runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
-        return (self.vmArgs(bmSuiteArgs) + ["-jar", self.renaissancePath()] + runArgs + [benchArg])
+        return (vmArgs + ["-jar", self.renaissancePath()] + runArgs + [benchArg])
 
     def benchmarkList(self, bmSuiteArgs):
         return [b for b, it in self.renaissanceIterations().items() if it != -1]

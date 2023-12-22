@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,8 +36,13 @@ import org.graalvm.polyglot.Engine;
  * {@codesnippet Embedding#apply}
  *
  * and then {@link Function#apply(java.lang.Object) evaluate} {@link org.graalvm.polyglot.Source}
- * scripts written in any language accessing the {@code agent} variable exposed to them. Use
- * {@link #VERSION following API} when dealing with the {@code insight} variable:
+ * scripts written in any language accessing the {@code agent} variable exposed to them.
+ * <p>
+ * See an example at <a href=
+ * "https://www.graalvm.org/latest/tools/graalvm-insight/embedding/#embedding-insight-into-java">Embedding
+ * Insight into Java</a>.
+ *
+ * Use {@link #VERSION following API} when dealing with the {@code insight} variable:
  * <p>
  * {@codesnippet InsightAPI}
  *
@@ -79,16 +84,16 @@ public final class Insight {
      * every {@link #ID Insight script} when properly registered into the virtual machine. A typical
      * way is to register your custom instrument is to use property
      * {@code truffle.class.path.append} when launching the virtual machine:
-     * 
+     *
      * <pre>
      * graalvm/bin/java -Dtruffle.class.path.append=meaningOfWorld.jar -jar app.jar
      * </pre>
-     * 
+     *
      * Take care when writing your {@link TruffleInstrument instruments} as they can alter many
      * aspects of program execution and aren't subject to any security sandbox. See
      * {@link TruffleInstrument} for more information about developing, using and registering
      * instruments.
-     * 
+     *
      * @since 21.0
      */
     public interface SymbolProvider {

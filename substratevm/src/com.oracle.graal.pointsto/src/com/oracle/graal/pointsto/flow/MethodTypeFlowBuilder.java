@@ -148,7 +148,6 @@ import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.VMConstant;
 
@@ -411,7 +410,7 @@ public class MethodTypeFlowBuilder {
     private boolean handleNodeIntrinsic() {
         if (AnnotationAccess.isAnnotationPresent(method, NodeIntrinsic.class)) {
             graph.getDebug().log("apply MethodTypeFlow on node intrinsic %s", method);
-            AnalysisType returnType = (AnalysisType) method.getSignature().getReturnType(method.getDeclaringClass());
+            AnalysisType returnType = method.getSignature().getReturnType();
             if (bb.isSupportedJavaKind(returnType.getJavaKind())) {
                 /*
                  * This is a method used in a snippet, so most likely the return value does not
@@ -436,7 +435,7 @@ public class MethodTypeFlowBuilder {
     private void insertAllInstantiatedTypesReturn() {
         AnalysisError.guarantee(flowsGraph.getReturnFlow() == null, "Expected null return flow");
 
-        AnalysisType returnType = TypeFlow.filterUncheckedInterface((AnalysisType) method.getSignature().getReturnType(method.getDeclaringClass()));
+        AnalysisType returnType = TypeFlow.filterUncheckedInterface(method.getSignature().getReturnType());
         AnalysisError.guarantee(returnType.getJavaKind().isObject(), "Unexpected return type: %s", returnType);
 
         BytecodePosition position = AbstractAnalysisEngine.syntheticSourcePosition(null, method);
@@ -451,15 +450,14 @@ public class MethodTypeFlowBuilder {
      * Placeholder flows are placed in the graph for any missing flows.
      */
     private void insertPlaceholderParamAndReturnFlows() {
-        boolean isStatic = Modifier.isStatic(method.getModifiers());
-        JavaType[] paramTypes = method.getSignature().toParameterTypes(isStatic ? null : method.getDeclaringClass());
+        var paramTypes = method.toParameterList();
         BytecodePosition position = AbstractAnalysisEngine.syntheticSourcePosition(null, method);
-        for (int index = 0; index < paramTypes.length; index++) {
+        for (int index = 0; index < paramTypes.size(); index++) {
             if (flowsGraph.getParameter(index) == null) {
-                if (bb.isSupportedJavaKind(paramTypes[index].getJavaKind())) {
-                    AnalysisType paramType = (AnalysisType) paramTypes[index];
+                if (bb.isSupportedJavaKind(paramTypes.get(index).getJavaKind())) {
+                    AnalysisType paramType = paramTypes.get(index);
                     FormalParamTypeFlow parameter;
-                    if (!isStatic && index == 0) {
+                    if (index == 0 && !method.isStatic()) {
                         assert paramType.equals(method.getDeclaringClass()) : paramType + ", " + method;
                         parameter = new FormalReceiverTypeFlow(position, paramType);
                     } else {
@@ -471,7 +469,7 @@ public class MethodTypeFlowBuilder {
         }
 
         if (flowsGraph.getReturnFlow() == null) {
-            AnalysisType returnType = (AnalysisType) method.getSignature().getReturnType(method.getDeclaringClass());
+            AnalysisType returnType = method.getSignature().getReturnType();
             if (bb.isSupportedJavaKind(returnType.getJavaKind())) {
                 flowsGraph.setReturnFlow(new FormalReturnTypeFlow(position, returnType));
             }
@@ -501,7 +499,7 @@ public class MethodTypeFlowBuilder {
                                 parameter = new FormalReceiverTypeFlow(AbstractAnalysisEngine.sourcePosition(node), paramType);
                             } else {
                                 int offset = isStatic ? 0 : 1;
-                                AnalysisType paramType = (AnalysisType) method.getSignature().getParameterType(index - offset, method.getDeclaringClass());
+                                AnalysisType paramType = method.getSignature().getParameterType(index - offset);
                                 parameter = new FormalParamTypeFlow(AbstractAnalysisEngine.sourcePosition(node), paramType, index);
                             }
                             flowsGraph.setParameter(index, parameter);
@@ -772,7 +770,7 @@ public class MethodTypeFlowBuilder {
          */
         private TypeFlowBuilder<?> uniqueReturnFlowBuilder(ReturnNode node) {
             if (returnBuilder == null) {
-                AnalysisType returnType = (AnalysisType) method.getSignature().getReturnType(method.getDeclaringClass());
+                AnalysisType returnType = method.getSignature().getReturnType();
                 if (bb.isSupportedJavaKind(returnType.getJavaKind())) {
                     returnBuilder = TypeFlowBuilder.create(bb, node, FormalReturnTypeFlow.class, () -> {
                         FormalReturnTypeFlow returnFlow = flowsGraph.getReturnFlow();
@@ -1538,7 +1536,7 @@ public class MethodTypeFlowBuilder {
 
         if (!createDeoptInvokeTypeFlow && bb.isSupportedJavaKind(invoke.asNode().getStackKind())) {
             /* Create the actual return builder. */
-            AnalysisType returnType = (AnalysisType) targetMethod.getSignature().getReturnType(null);
+            AnalysisType returnType = targetMethod.getSignature().getReturnType();
             TypeFlowBuilder<?> actualReturnBuilder = TypeFlowBuilder.create(bb, invoke.asNode(), ActualReturnTypeFlow.class, () -> {
                 InvokeTypeFlow invokeFlow = invokeBuilder.get();
                 ActualReturnTypeFlow actualReturn = new ActualReturnTypeFlow(invokeFlow.source, returnType);
