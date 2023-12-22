@@ -1321,7 +1321,6 @@ public final class Symbol<T> extends ByteSequence {
         // Continuations
         public static final Symbol<Signature> _void_FrameRecord_Object_array_long_array_Method = StaticSymbols.putSignature(
                 Type._void,
-                Type.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord,
                 Type.java_lang_Object_array,
                 Type._long_array,
                 Type.java_lang_reflect_Method

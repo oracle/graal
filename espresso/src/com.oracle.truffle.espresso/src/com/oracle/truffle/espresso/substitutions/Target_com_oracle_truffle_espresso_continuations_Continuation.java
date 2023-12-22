@@ -1,5 +1,6 @@
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -19,11 +20,11 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
     static void resume0(
             @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject self,
             @Inject Meta meta,
-        @Inject EspressoContext context
+            @Inject EspressoContext context
     ) {
         System.out.println("resume0 called with " + self);
 
-        ContinuationSupport.HostFrameRecords stack = ContinuationSupport.guestFrameRecordsToHost(self, meta, context);
+        ContinuationSupport.HostFrameRecord stack = ContinuationSupport.guestFrameRecordsToHost(self, meta, context);
     }
 
     @Substitution
@@ -36,21 +37,15 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
             @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject self,
             @Inject Meta meta
     ) {
-        // The run method is private in Continuation and is the continuation delimiter. Frames from run onwards will
-        // be unwound on pause, and rewound on resume.
         try {
+            // The run method is private in Continuation and is the continuation delimiter. Frames from run onwards will
+            // be unwound on pause, and rewound on resume.
             meta.com_oracle_truffle_espresso_continuations_Continuation_run.invokeDirect(self);
-        } catch (ContinuationSupport.Unwind e) {
-            handleUnwind(meta, self, e);
+        } catch (ContinuationSupport.Unwind unwind) {
+            // Guest called pause(). By the time we get here the frame info has been gathered up into host-side objects
+            // so we just need to copy the data into the guest world.
+            CompilerDirectives.transferToInterpreter();
+            meta.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.setObject(self, unwind.toGuest(meta));
         }
-    }
-
-    @TruffleBoundary
-    private static void handleUnwind(Meta meta, @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject continuation, ContinuationSupport.Unwind e) {
-        // dumpStackToStdOut(e);
-        StaticObject nextPtr = StaticObject.NULL;
-        for (int i = 0; i < e.stack.frames.size(); i++)
-            nextPtr = ContinuationSupport.createFrameRecord(meta, e.stack.frames.get(i), e.stack.methodVersions.get(i), nextPtr);
-        meta.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.setObject(continuation, nextPtr);
     }
 }

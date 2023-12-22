@@ -54,14 +54,13 @@ public final class Continuation {
      * <p>The contents of the arrays should be treated as opaque.</p>
      */
     public static final class FrameRecord {
-        private final FrameRecord next;
+        private FrameRecord next;  // Set by the VM.
         private final Object[] pointers;
         private final long[] primitives;
         private final Method method;
 
         // Invoked by the VM.
-        FrameRecord(FrameRecord next, Object[] pointers, long[] primitives, Method method) {
-            this.next = next;
+        FrameRecord(Object[] pointers, long[] primitives, Method method) {
             this.pointers = pointers;
             this.primitives = primitives;
             this.method = method;
