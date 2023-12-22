@@ -42,8 +42,6 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.util.UnsignedUtils;
 
-import jdk.graal.compiler.word.Word;
-
 public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeapProvider {
     @Override
     public boolean guaranteesHeapPreferredAddressSpaceAlignment() {
@@ -98,10 +96,9 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
         }
 
         // Copy the memory to the reserved address space.
-        Word imageHeapBegin = IMAGE_HEAP_BEGIN.get();
         UnsignedWord imageHeapSizeInFile = getImageHeapSizeInFile();
-        Pointer imageHeap = heapBase.add(Heap.getHeap().getImageHeapOffsetInAddressSpace());
-        int result = commitAndCopyMemory(imageHeapBegin, imageHeapSizeInFile, imageHeap);
+        Pointer imageHeap = getImageHeapBegin(heapBase);
+        int result = commitAndCopyMemory(IMAGE_HEAP_BEGIN.get(), imageHeapSizeInFile, imageHeap);
         if (result != CEntryPointErrors.NO_ERROR) {
             freeImageHeap(allocatedMemory);
             return result;
@@ -109,17 +106,16 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
 
         // Protect the read-only parts at the start of the image heap.
         UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
-        Pointer firstPartOfReadOnlyImageHeap = imageHeap;
-        UnsignedWord writableBeginPageOffset = UnsignedUtils.roundDown(IMAGE_HEAP_WRITABLE_BEGIN.get().subtract(imageHeapBegin), pageSize);
+        UnsignedWord writableBeginPageOffset = UnsignedUtils.roundDown(IMAGE_HEAP_WRITABLE_BEGIN.get().subtract(IMAGE_HEAP_BEGIN.get()), pageSize);
         if (writableBeginPageOffset.aboveThan(0)) {
-            if (VirtualMemoryProvider.get().protect(firstPartOfReadOnlyImageHeap, writableBeginPageOffset, Access.READ) != 0) {
+            if (VirtualMemoryProvider.get().protect(imageHeap, writableBeginPageOffset, Access.READ) != 0) {
                 freeImageHeap(allocatedMemory);
                 return CEntryPointErrors.PROTECT_HEAP_FAILED;
             }
         }
 
         // Protect the read-only parts at the end of the image heap.
-        UnsignedWord writableEndPageOffset = UnsignedUtils.roundUp(IMAGE_HEAP_WRITABLE_END.get().subtract(imageHeapBegin), pageSize);
+        UnsignedWord writableEndPageOffset = UnsignedUtils.roundUp(IMAGE_HEAP_WRITABLE_END.get().subtract(IMAGE_HEAP_BEGIN.get()), pageSize);
         if (writableEndPageOffset.belowThan(imageHeapSizeInFile)) {
             Pointer afterWritableBoundary = imageHeap.add(writableEndPageOffset);
             UnsignedWord afterWritableSize = imageHeapSizeInFile.subtract(writableEndPageOffset);
