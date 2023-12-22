@@ -1106,7 +1106,7 @@ public abstract class ToReference extends ToEspressoNode {
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
                         @Cached ToReference.DynamicToReference converterToEspresso,
-                        @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+                        @Bind("getMeta()") Meta meta) {
             try {
                 return tryTypeConversion(value, interop, lookupProxyKlassNode, lookupTypeConverterNode, lookupInternalTypeConverterNode, converterToEspresso, errorProfile, meta);
             } catch (@SuppressWarnings("unused") UnsupportedTypeException ex) {
