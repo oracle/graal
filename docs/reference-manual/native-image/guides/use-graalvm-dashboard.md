@@ -26,7 +26,7 @@ For other installation options, visit the [Downloads section](https://www.graalv
     git clone https://github.com/graalvm/graalvm-demos
     ```
     ```shell
-    cd fortune-demo/fortune
+    cd fortune-demo/fortune-maven
     ```
 
 3. Build the project:
