@@ -775,7 +775,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         switch ((AMD64Kind) a.getPlatformKind()) {
             case DWORD:
                 // FIXME!
-                getLIRGen().emitHalt();
+                getLIRGen().emitTaint(4);
                 return emitShift(SHR, DWORD, a, b);
             case QWORD:
                 return emitShift(SHR, QWORD, a, b);
