@@ -627,6 +627,9 @@ public final class Symbol<T> extends ByteSequence {
 
         // Continuations
         public static final Symbol<Name> stackFrameHead = StaticSymbols.putName("stackFrameHead");
+        public static final Symbol<Name> pointers = StaticSymbols.putName("pointers");
+        public static final Symbol<Name> primitives = StaticSymbols.putName("primitives");
+        public static final Symbol<Name> method = StaticSymbols.putName("method");
 
         // Panama
         public static final Symbol<Name> segmentMaskOrSize = StaticSymbols.putName("segmentMaskOrSize");
@@ -1323,5 +1326,6 @@ public final class Symbol<T> extends ByteSequence {
                 Type._long_array,
                 Type.java_lang_reflect_Method
         );
+
     }
 }

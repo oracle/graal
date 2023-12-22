@@ -1415,8 +1415,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 // Someone has called pause() on a continuation. We need to gather up the frames as we unwind
                 // the stack so the user can persist them later.
                 CompilerDirectives.transferToInterpreter();                   // TODO: Is this right? Probably don't want to use collections inside PE code.
-                unwindRequest.frames.add(frame.materialize());
-                unwindRequest.methodVersions.add(methodVersion);
+                unwindRequest.stack.frames.add(frame.materialize());
+                unwindRequest.stack.methodVersions.add(methodVersion);
                 throw unwindRequest;
             } catch (AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
                 CompilerAsserts.partialEvaluationConstant(curBCI);

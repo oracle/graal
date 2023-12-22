@@ -1218,6 +1218,18 @@ public final class Meta extends ContextAccessImpl {
         com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_init_ = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredMethod(
                 Name._init_, Signature._void_FrameRecord_Object_array_long_array_Method
         );
+        com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_pointers = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
+                Name.pointers, Type.java_lang_Object_array
+        );
+        com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_primitives = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
+                Name.primitives, Type._long_array
+        );
+        com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_method = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
+                Name.method, Type.java_lang_reflect_Method
+        );
+        com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_next = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
+                Name.next, Type.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord
+        );
         // Load Espresso's Polyglot API.
         boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
         this.polyglot = polyglotSupport ? new PolyglotSupport() : null;
@@ -1910,6 +1922,10 @@ public final class Meta extends ContextAccessImpl {
     @CompilationFinal public Field com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead;
     @CompilationFinal public ObjectKlass com_oracle_truffle_espresso_continuations_Continuation_FrameRecord;
     @CompilationFinal public Method com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_init_;
+    @CompilationFinal public Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_pointers;
+    @CompilationFinal public Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_primitives;
+    @CompilationFinal public Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_method;
+    @CompilationFinal public Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_next;
 
     @CompilationFinal public ObjectKlass java_lang_management_MemoryUsage;
     @CompilationFinal public ObjectKlass sun_management_ManagementFactory;
