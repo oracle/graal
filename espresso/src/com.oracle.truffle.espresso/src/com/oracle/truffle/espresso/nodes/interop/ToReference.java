@@ -1099,7 +1099,12 @@ public abstract class ToReference extends ToEspressoNode {
                         @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
                         @Cached ToReference.DynamicToReference converterToEspresso,
                         @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
-            return tryTypeConversion(value, interop, lookupProxyKlassNode, lookupTypeConverterNode, lookupInternalTypeConverterNode, converterToEspresso, errorProfile, meta);
+            try {
+                return tryTypeConversion(value, interop, lookupProxyKlassNode, lookupTypeConverterNode, lookupInternalTypeConverterNode, converterToEspresso, errorProfile, meta);
+            } catch (@SuppressWarnings("unused") UnsupportedTypeException ex) {
+                // no meta object available, but we know it's a foreign exception so simply wrap
+                return StaticObject.createForeignException(context, value, interop);
+            }
         }
 
         @Specialization(guards = {
