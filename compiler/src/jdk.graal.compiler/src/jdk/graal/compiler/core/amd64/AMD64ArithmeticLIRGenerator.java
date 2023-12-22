@@ -726,7 +726,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         }
         Variable result = getLIRGen().newVariable(LIRKind.combine(a, b).changeType(a.getPlatformKind()));
         AllocatableValue input = asAllocatable(a);
-        getLIRGen().emitTaint();
+        getLIRGen().emitTaint(2);
         getLIRGen().emitMove(RCX_I, b);
         getLIRGen().append(new AMD64ShiftOp(op.mcOp, size, result, input, RCX_I));
         return result;

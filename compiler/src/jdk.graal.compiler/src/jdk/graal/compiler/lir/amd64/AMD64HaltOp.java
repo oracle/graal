@@ -42,6 +42,6 @@ public final class AMD64HaltOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler asm) {
-        asm.lfence();asm.sfence();asm.nop();
+        asm.hlt();
     }
 }

@@ -1122,10 +1122,47 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitTaint() {
-        append(new AMD64LFenceOp());
-        append(new AMD64LFenceOp());
-        append(new AMD64LFenceOp());
+    public void emitTaint(int type) {
+
+        switch (type) {
+            case 1:
+                append(new AMD64LFenceOp());
+                break;
+            case 2:
+                append(new AMD64LFenceOp());
+                append(new AMD64LFenceOp());
+                break;
+            case 3:
+                append(new AMD64LFenceOp());
+                append(new AMD64LFenceOp());
+                append(new AMD64LFenceOp());
+                break;
+            case 4:
+                append(new AMD64LFenceOp());
+                append(new AMD64LFenceOp());
+                append(new AMD64LFenceOp());
+                append(new AMD64LFenceOp());
+                break;
+            case 5:
+                append(new AMD64LFenceOp());
+                append(new AMD64LFenceOp());
+                append(new AMD64LFenceOp());
+                append(new AMD64LFenceOp());
+                append(new AMD64LFenceOp());
+                break;
+            case 6:
+                append(new AMD64LFenceOp());
+                append(new AMD64LFenceOp());
+                append(new AMD64LFenceOp());
+                append(new AMD64LFenceOp());
+                append(new AMD64LFenceOp());
+                append(new AMD64LFenceOp());
+                break;
+            default:
+                append(new AMD64HaltOp());
+                break;
+        }
+
     }
 
     @Override

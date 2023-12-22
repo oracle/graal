@@ -757,6 +757,7 @@ public class AMD64ControlFlow {
             if (defaultTarget != null) {
 
                 // Move the table entry (two DWORDs) into a QWORD
+                // FIXME: Tainting this
                 masm.nop();
                 masm.lfence();
                 masm.nop();
@@ -773,6 +774,7 @@ public class AMD64ControlFlow {
 
                 // The jump table has a single DWORD with the label address if there's no
                 // default target
+                // FIXME: Taint this
                 masm.nop();
                 masm.sfence();
                 masm.nop();
