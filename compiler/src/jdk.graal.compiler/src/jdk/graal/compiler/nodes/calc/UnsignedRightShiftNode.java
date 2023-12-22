@@ -139,7 +139,6 @@ public final class UnsignedRightShiftNode extends ShiftNode<UShr> {
 
     @Override
     public void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool gen) {
-        nodeValueMap.getLIRGeneratorTool().emitTaint(6);
         nodeValueMap.setResult(this, gen.emitUShr(nodeValueMap.operand(getX()), nodeValueMap.operand(getY())));
     }
 

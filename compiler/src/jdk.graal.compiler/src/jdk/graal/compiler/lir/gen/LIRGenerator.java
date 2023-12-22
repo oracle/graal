@@ -578,7 +578,6 @@ public abstract class LIRGenerator extends CoreProvidersDelegate implements LIRG
         }
         Value cardinalityAnd = emitJavaConstant(JavaConstant.forInt(hasher.cardinality - 1));
         hash = arithmeticLIRGen.emitAnd(hash, cardinalityAnd);
-        emitTaint(3);
         emitHashTableSwitch(keys, defaultTarget, targets, value, hash);
     }
 

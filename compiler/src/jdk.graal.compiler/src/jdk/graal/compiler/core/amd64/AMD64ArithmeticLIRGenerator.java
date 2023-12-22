@@ -726,7 +726,6 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         }
         Variable result = getLIRGen().newVariable(LIRKind.combine(a, b).changeType(a.getPlatformKind()));
         AllocatableValue input = asAllocatable(a);
-        getLIRGen().emitTaint(2);
         getLIRGen().emitMove(RCX_I, b);
         getLIRGen().append(new AMD64ShiftOp(op.mcOp, size, result, input, RCX_I));
         return result;
@@ -774,8 +773,6 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     public Variable emitUShr(Value a, Value b) {
         switch ((AMD64Kind) a.getPlatformKind()) {
             case DWORD:
-                // FIXME!
-                getLIRGen().emitTaint(4);
                 return emitShift(SHR, DWORD, a, b);
             case QWORD:
                 return emitShift(SHR, QWORD, a, b);
