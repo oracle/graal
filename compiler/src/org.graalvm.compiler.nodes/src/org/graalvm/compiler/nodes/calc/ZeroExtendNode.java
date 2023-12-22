@@ -35,6 +35,7 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.IntegerConvertOp.
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -67,14 +68,15 @@ public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend> {
     public ZeroExtendNode(ValueNode input, int inputBits, int resultBits, boolean inputAlwaysPositive) {
         super(TYPE, getArithmeticOpTable(input).getZeroExtend(), inputBits, resultBits, input);
         this.inputAlwaysPositive = inputAlwaysPositive;
+        GraalError.guarantee(!inputAlwaysPositive, "ZeroExtendNode.inputAlwaysPositive is deprecated.");
     }
 
     public static ValueNode create(ValueNode input, int resultBits, NodeView view) {
-        return create(input, PrimitiveStamp.getBits(input.stamp(view)), resultBits, view, inputAlwaysPositive(input));
+        return create(input, PrimitiveStamp.getBits(input.stamp(view)), resultBits, view, false);
     }
 
     public static ValueNode create(ValueNode input, int inputBits, int resultBits, NodeView view) {
-        return create(input, inputBits, resultBits, view, inputAlwaysPositive(input));
+        return create(input, inputBits, resultBits, view, false);
     }
 
     public static ValueNode create(ValueNode input, int inputBits, int resultBits, NodeView view, boolean alwaysPositive) {
@@ -84,15 +86,6 @@ public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend> {
             return synonym;
         }
         return canonical(null, input, inputBits, resultBits, view, alwaysPositive);
-    }
-
-    private static boolean inputAlwaysPositive(ValueNode v) {
-        Stamp s = v.stamp(NodeView.DEFAULT);
-        if (s instanceof IntegerStamp) {
-            return ((IntegerStamp) s).isPositive();
-        } else {
-            return false;
-        }
     }
 
     @Override
