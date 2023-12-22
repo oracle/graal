@@ -28,7 +28,6 @@ import re
 import tempfile
 from glob import glob
 from contextlib import contextmanager
-from distutils.dir_util import mkpath  # pylint: disable=no-name-in-module
 from os.path import join, exists, dirname
 import pipes
 from argparse import ArgumentParser
@@ -494,9 +493,9 @@ def native_unittests_task(extra_build_args=None):
     resources_from_dir = join(cp_entry_name, 'resourcesFromDir')
     simple_dir = join(cp_entry_name, 'simpleDir')
 
-    mkpath(cp_entry_name)
-    mkpath(resources_from_dir)
-    mkpath(simple_dir)
+    os.makedirs(cp_entry_name)
+    os.makedirs(resources_from_dir)
+    os.makedirs(simple_dir)
 
     for i in range(4):
         with open(join(cp_entry_name, "resourcesFromDir", f'cond-resource{i}.txt'), 'w') as out:
