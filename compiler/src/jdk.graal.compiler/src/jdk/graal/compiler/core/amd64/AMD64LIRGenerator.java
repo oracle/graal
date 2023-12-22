@@ -121,6 +121,7 @@ import jdk.graal.compiler.lir.amd64.AMD64Move.CompareAndSwapOp;
 import jdk.graal.compiler.lir.amd64.AMD64Move.MembarOp;
 import jdk.graal.compiler.lir.amd64.AMD64Move.StackLeaOp;
 import jdk.graal.compiler.lir.amd64.AMD64PauseOp;
+import jdk.graal.compiler.lir.amd64.AMD64SFenceOp;
 import jdk.graal.compiler.lir.amd64.AMD64SHA1Op;
 import jdk.graal.compiler.lir.amd64.AMD64SHA256AVX2Op;
 import jdk.graal.compiler.lir.amd64.AMD64SHA256Op;
@@ -1129,8 +1130,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 append(new AMD64LFenceOp());
                 break;
             case 2:
-                append(new AMD64LFenceOp());
-                append(new AMD64LFenceOp());
+                append(new AMD64SFenceOp());
+                append(new AMD64SFenceOp());
                 break;
             case 3:
                 append(new AMD64LFenceOp());
@@ -1138,25 +1139,25 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 append(new AMD64LFenceOp());
                 break;
             case 4:
+                append(new AMD64SFenceOp());
                 append(new AMD64LFenceOp());
-                append(new AMD64LFenceOp());
-                append(new AMD64LFenceOp());
+                append(new AMD64SFenceOp());
                 append(new AMD64LFenceOp());
                 break;
             case 5:
+                append(new AMD64SFenceOp());
                 append(new AMD64LFenceOp());
+                append(new AMD64SFenceOp());
                 append(new AMD64LFenceOp());
-                append(new AMD64LFenceOp());
-                append(new AMD64LFenceOp());
-                append(new AMD64LFenceOp());
+                append(new AMD64SFenceOp());
                 break;
             case 6:
-                append(new AMD64LFenceOp());
-                append(new AMD64LFenceOp());
-                append(new AMD64LFenceOp());
-                append(new AMD64LFenceOp());
-                append(new AMD64LFenceOp());
-                append(new AMD64LFenceOp());
+                append(new AMD64SFenceOp());
+                append(new AMD64SFenceOp());
+                append(new AMD64SFenceOp());
+                append(new AMD64SFenceOp());
+                append(new AMD64SFenceOp());
+                append(new AMD64SFenceOp());
                 break;
             default:
                 append(new AMD64HaltOp());
