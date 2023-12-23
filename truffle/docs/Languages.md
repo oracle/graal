@@ -35,6 +35,7 @@ The following language implementations exist already:
 * [DynSem](https://github.com/metaborg/dynsem), a DSL for declarative specification of dynamic semantics of languages.
 * [Heap Language](https://github.com/jaroslavtulach/heapdump), a tutorial showing the embedding of Truffle languages via interoperability.
 * [hextruffe](https://bitbucket.org/hexafraction/truffles), an implementation of Hex.
+* [islisp-truffle](https://github.com/arvyy/islisp-truffle), an implemention of the ISLISP 2007 standard.
 * [LuaTruffle](https://github.com/lucasallan/LuaTruffle), an implementation of the Lua language.
 * [Mozart-Graal](https://github.com/eregon/mozart-graal), an implementation of the Oz programming language.
 * [Mumbler](https://github.com/cesquivias/mumbler), an experimental Lisp programming language.
