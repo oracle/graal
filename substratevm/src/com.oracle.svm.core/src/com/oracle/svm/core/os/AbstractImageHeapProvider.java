@@ -27,11 +27,13 @@ package com.oracle.svm.core.os;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_END;
 
-import jdk.graal.compiler.word.Word;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
+
+import jdk.graal.compiler.word.Word;
 
 public abstract class AbstractImageHeapProvider implements ImageHeapProvider {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -44,5 +46,10 @@ public abstract class AbstractImageHeapProvider implements ImageHeapProvider {
     protected static UnsignedWord getImageHeapSizeInFile() {
         Word imageHeapBegin = IMAGE_HEAP_BEGIN.get();
         return IMAGE_HEAP_END.get().subtract(imageHeapBegin);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected static Pointer getImageHeapBegin(Pointer heapBase) {
+        return heapBase.add(Heap.getHeap().getImageHeapOffsetInAddressSpace());
     }
 }
