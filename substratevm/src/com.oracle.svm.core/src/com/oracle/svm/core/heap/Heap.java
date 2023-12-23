@@ -36,7 +36,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
@@ -156,14 +155,6 @@ public abstract class Heap {
      */
     @Fold
     public abstract int getImageHeapOffsetInAddressSpace();
-
-    /**
-     * Returns whether the runtime page size doesn't have to match the page size set at image
-     * creation ({@link SubstrateOptions#getPageSize()}). If there is a mismatch, then the page size
-     * set at image creation must be a multiple of the runtime page size.
-     */
-    @Fold
-    public abstract boolean allowPageSizeMismatch();
 
     /**
      * Returns true if the given object is located in the image heap.
