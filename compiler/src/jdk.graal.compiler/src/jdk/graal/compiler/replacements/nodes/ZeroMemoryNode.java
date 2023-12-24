@@ -31,6 +31,7 @@ import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.amd64.AMD64LFenceOp;
+import jdk.graal.compiler.lir.amd64.AMD64SFenceOp;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -66,7 +67,7 @@ public class ZeroMemoryNode extends FixedAccessNode implements LIRLowerable, Sin
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         // FIXME: Not really sure if useful
-        gen.getLIRGeneratorTool().append(new AMD64LFenceOp());
+        gen.getLIRGeneratorTool().emitTaint(2);
         gen.getLIRGeneratorTool().emitZeroMemory(gen.operand(getAddress()), gen.operand(length), isAligned);
     }
 
