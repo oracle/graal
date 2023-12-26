@@ -415,6 +415,10 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         // tail for 0 - 3 bytes
         // since we're on a 2-byte stride, the only possible lengths are 0 and 2 bytes
         asm.testlAndJcc(lengthTail, lengthTail, Zero, returnAscii, true);
+
+        //FIXME: tainting with SFENCE to see in the code
+        asm.sfence();
+        asm.sfence();
         asm.movzwq(len, new AMD64Address(arr));
         asm.testAndJcc(AMD64BaseAssembler.OperandSize.QWORD, len, 0xff80, Zero, returnAscii, true);
         asm.testAndJcc(AMD64BaseAssembler.OperandSize.QWORD, len, 0xff00, Zero, returnLatin1, true);
