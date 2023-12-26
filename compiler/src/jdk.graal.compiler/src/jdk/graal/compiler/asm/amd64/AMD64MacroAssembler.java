@@ -777,8 +777,6 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      */
     public final void movSZx(Stride strideSrc, ExtendMode extendMode, Register dst, AMD64Address src) {
         sfence();
-        sfence();
-        sfence();
         switch (strideSrc) {
             case S1:
                 if (extendMode == ExtendMode.SIGN_EXTEND) {
