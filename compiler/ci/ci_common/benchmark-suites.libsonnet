@@ -65,16 +65,6 @@
     max_jdk_version:: null
   },
 
-  dacapo_timing: cc.compiler_benchmark + c.heap.default + {
-    suite:: "dacapo-timing",
-    run+: [
-      self.benchmark_cmd + ["dacapo-timing:*", "--"] + self.extra_vm_args
-    ],
-    timelimit: "45:00",
-    min_jdk_version:: 8,
-    max_jdk_version:: null
-  },
-
   scala_dacapo: cc.compiler_benchmark + c.heap.default + {
     suite:: "scala-dacapo",
     run+: [
@@ -104,16 +94,6 @@
     timelimit: "08:00:00",
     forks_batches:: null, # weekly forks disabled
     forks_timelimit:: null,
-    min_jdk_version:: 8,
-    max_jdk_version:: null
-  },
-
-  scala_dacapo_timing: cc.compiler_benchmark + c.heap.default + {
-    suite:: "scala-dacapo-timing",
-    run+: [
-      self.benchmark_cmd + ["scala-dacapo-timing:*", "--"] + self.extra_vm_args
-    ],
-    timelimit: "45:00",
     min_jdk_version:: 8,
     max_jdk_version:: null
   },
