@@ -12,7 +12,7 @@
     spec_suites:: unique_suites([$.specjvm2008, $.specjbb2015]),
     jmh_micros_suites:: unique_suites([$.micros_graal_dist, $.micros_misc_graal_dist , $.micros_shootout_graal_dist]),
     graal_internals_suites:: unique_suites([$.micros_graal_whitebox]),
-    special_suites:: unique_suites([$.dacapo_size_variants, $.scala_dacapo_size_variants, $.specjbb2015_full_machine]),
+    special_suites:: unique_suites([$.dacapo_size_variants, $.scala_dacapo_size_variants]),
     microservice_suites:: unique_suites([$.microservice_benchmarks]),
 
     main_suites:: unique_suites([$.specjvm2008] + self.open_suites),
@@ -124,19 +124,6 @@
     timelimit: "3:00:00",
     forks_batches:: 1,
     forks_timelimit:: "20:00:00",
-    min_jdk_version:: 8,
-    max_jdk_version:: null
-  },
-
-  specjbb2015_full_machine: cc.compiler_benchmark + c.heap.large_with_large_young_gen + {
-    suite:: "specjbb2015-full-machine",
-    downloads+: {
-      "SPECJBB2015": { name: "specjbb2015", version: "1.03" }
-    },
-    run+: [
-      self.plain_benchmark_cmd + ["specjbb2015", "--"] + self.extra_vm_args
-    ],
-    timelimit: "3:00:00",
     min_jdk_version:: 8,
     max_jdk_version:: null
   },

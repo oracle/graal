@@ -18,7 +18,6 @@
     c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.renaissance + PR_bench_libgraal,
     c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.specjvm2008 + PR_bench_libgraal,
     c.weekly                   + hw.x52 + jdk + cc.libgraal + bench.specjbb2015,
-    c.weekly                   + hw.x52 + jdk + cc.libgraal + bench.specjbb2015_full_machine,
     c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.awfy + PR_bench_libgraal,
     c.daily                    + hw.x52 + jdk + cc.libgraal + bench.microservice_benchmarks,
     c.daily                    + hw.x52 + jdk + cc.libgraal + bench.micros_graal_whitebox,
