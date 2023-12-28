@@ -57,7 +57,7 @@
 
   local aarch64_builds = [
     c.daily + hw.a12c + cc.latest_jdk + cc.libgraal + suite,
-  for suite in bench.groups.all_suites
+  for suite in bench.groups.main_suites
   ],
 
   local avx_builds = [
