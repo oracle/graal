@@ -14,7 +14,7 @@
 
   local hotspot_aarch64_builds = [
     c.weekly + hw.a12c + cc.latest_jdk + cc.c2 + suite
-  for suite in bench.groups.all_suites
+  for suite in bench.groups.main_suites
   ],
 
   local hotspot_profiling_builds = std.flattenArrays([
@@ -24,7 +24,7 @@
     c.weekly + hw.x52  + cc.latest_jdk + cc.c2 + suite + cc.footprint_tracking + { job_prefix:: "bench-compiler-footprint" },
     c.weekly + hw.a12c + cc.latest_jdk + cc.c2 + suite + cc.footprint_tracking + { job_prefix:: "bench-compiler-footprint" }
     ]
-  for suite in bench.groups.profiled_suites
+  for suite in bench.groups.main_suites
   ]),
 
   local weekly_forks_amd64_builds = std.flattenArrays([
