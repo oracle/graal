@@ -19,7 +19,6 @@
     all_suites:: unique_suites(self.main_suites + self.spec_suites + self.jmh_micros_suites + self.special_suites + self.microservice_suites),
 
     weekly_forks_suites:: self.main_suites,
-    profiled_suites::     std.setDiff(self.main_suites, [$.specjbb2015], keyF=_suite_key),
     all_but_main_suites:: std.setDiff(self.all_suites, self.main_suites, keyF=_suite_key),
   },
 

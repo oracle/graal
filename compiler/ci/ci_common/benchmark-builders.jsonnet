@@ -40,7 +40,7 @@
     c.weekly + hw.x52 + jdk + cc.libgraal + suite + cc.footprint_tracking + { job_prefix:: "bench-compiler-footprint" }
     ]
   for jdk in cc.bench_jdks
-  for suite in bench.groups.profiled_suites
+  for suite in bench.groups.main_suites
   ]),
 
   local weekly_amd64_forks_builds = std.flattenArrays([
