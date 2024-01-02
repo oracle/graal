@@ -776,7 +776,9 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      * or sign-extend depending on {@code extendMode}.
      */
     public final void movSZx(Stride strideSrc, ExtendMode extendMode, Register dst, AMD64Address src) {
-        sfence();
+
+        // FIXME: Tainting required
+
         switch (strideSrc) {
             case S1:
                 if (extendMode == ExtendMode.SIGN_EXTEND) {
