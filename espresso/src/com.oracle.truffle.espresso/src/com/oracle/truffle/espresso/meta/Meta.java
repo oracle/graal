@@ -393,9 +393,22 @@ public final class Meta extends ContextAccessImpl {
         sun_nio_ch_DirectBuffer = knownKlass(Type.sun_nio_ch_DirectBuffer);
         java_nio_Buffer_address = java_nio_Buffer.requireDeclaredField(Name.address, Type._long);
         java_nio_Buffer_capacity = java_nio_Buffer.requireDeclaredField(Name.capacity, Type._int);
+        java_nio_Buffer_limit = java_nio_Buffer.requireDeclaredMethod(Name.limit, Signature._int);
+        java_nio_Buffer_isReadOnly = java_nio_Buffer.requireDeclaredMethod(Name.isReadOnly, Signature._boolean);
 
         java_nio_ByteBuffer = knownKlass(Type.java_nio_ByteBuffer);
         java_nio_ByteBuffer_wrap = java_nio_ByteBuffer.requireDeclaredMethod(Name.wrap, Signature.ByteBuffer_byte_array);
+        java_nio_ByteBuffer_get = java_nio_ByteBuffer.requireDeclaredMethod(Name.get, Signature.ByteBuffer_int_byte_array_int_int);
+        java_nio_ByteBuffer_getByte = java_nio_ByteBuffer.requireDeclaredMethod(Name.get, Signature._byte_int);
+        java_nio_ByteBuffer_put = java_nio_ByteBuffer.requireDeclaredMethod(Name.put, Signature.ByteBuffer_int_byte);
+        java_nio_ByteBuffer_putShort = java_nio_ByteBuffer.requireDeclaredMethod(Name.putShort, Signature.ByteBuffer_int_short);
+        java_nio_ByteBuffer_putInt = java_nio_ByteBuffer.requireDeclaredMethod(Name.putInt, Signature.ByteBuffer_int_int);
+        java_nio_ByteBuffer_putLong = java_nio_ByteBuffer.requireDeclaredMethod(Name.putLong, Signature.ByteBuffer_int_long);
+        java_nio_ByteBuffer_putFloat = java_nio_ByteBuffer.requireDeclaredMethod(Name.putFloat, Signature.ByteBuffer_int_float);
+        java_nio_ByteBuffer_putDouble = java_nio_ByteBuffer.requireDeclaredMethod(Name.putDouble, Signature.ByteBuffer_int_double);
+        java_nio_ByteBuffer_order = java_nio_ByteBuffer.requireDeclaredMethod(Name.order, Signature.ByteOrder);
+        java_nio_ByteBuffer_setOrder = java_nio_ByteBuffer.requireDeclaredMethod(Name.order, Signature.ByteBuffer_ByteOrder);
+
         java_nio_DirectByteBuffer = knownKlass(Type.java_nio_DirectByteBuffer);
         java_nio_DirectByteBuffer_init_long_int = diff() //
                         .method(lower(20), Name._init_, Signature._void_long_int) //
@@ -403,6 +416,7 @@ public final class Meta extends ContextAccessImpl {
                         .method(java_nio_DirectByteBuffer);
         java_nio_ByteOrder = knownKlass(Type.java_nio_ByteOrder);
         java_nio_ByteOrder_LITTLE_ENDIAN = java_nio_ByteOrder.requireDeclaredField(Name.LITTLE_ENDIAN, Type.java_nio_ByteOrder);
+        java_nio_ByteOrder_BIG_ENDIAN = java_nio_ByteOrder.requireDeclaredField(Name.BIG_ENDIAN, Type.java_nio_ByteOrder);
 
         java_lang_Thread = knownKlass(Type.java_lang_Thread);
         // The interrupted field is no longer hidden as of JDK14+
@@ -1315,15 +1329,28 @@ public final class Meta extends ContextAccessImpl {
 
     public final ObjectKlass sun_nio_ch_DirectBuffer;
     public final ObjectKlass java_nio_Buffer;
+    public final Method java_nio_Buffer_isReadOnly;
     public final Field java_nio_Buffer_address;
     public final Field java_nio_Buffer_capacity;
+    public final Method java_nio_Buffer_limit;
 
     public final ObjectKlass java_nio_ByteBuffer;
     public final Method java_nio_ByteBuffer_wrap;
+    public final Method java_nio_ByteBuffer_get;
+    public final Method java_nio_ByteBuffer_getByte;
+    public final Method java_nio_ByteBuffer_put;
+    public final Method java_nio_ByteBuffer_putShort;
+    public final Method java_nio_ByteBuffer_putInt;
+    public final Method java_nio_ByteBuffer_putLong;
+    public final Method java_nio_ByteBuffer_putFloat;
+    public final Method java_nio_ByteBuffer_putDouble;
+    public final Method java_nio_ByteBuffer_order;
+    public final Method java_nio_ByteBuffer_setOrder;
     public final ObjectKlass java_nio_DirectByteBuffer;
     public final Method java_nio_DirectByteBuffer_init_long_int;
     public final ObjectKlass java_nio_ByteOrder;
     public final Field java_nio_ByteOrder_LITTLE_ENDIAN;
+    public final Field java_nio_ByteOrder_BIG_ENDIAN;
 
     public final ObjectKlass java_lang_BaseVirtualThread;
     public final ObjectKlass java_lang_ThreadGroup;
