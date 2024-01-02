@@ -64,8 +64,6 @@ public final class MemoryWalker {
 
         String getRegionName(T region);
 
-        boolean containsReferences(T region);
-
         boolean isWritable(T region);
 
         boolean visitObjects(T region, ObjectVisitor visitor);
