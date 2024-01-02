@@ -42,24 +42,33 @@ import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.phases.common.DisableOverflownCountedLoopsPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
 
+/**
+ * Test to ensure that {@code HotSpotSpeculationLog} yields consistent results with respect to
+ * failed speculations during the course of a compilation. This is necessary for overflow
+ * speculations used by Graal in {@link DisableOverflownCountedLoopsPhase}.
+ */
 public class HotSpotLoopOverflowSpeculationTest extends GraalCompilerTest {
 
-    // loop that can overflow
+    public static final boolean LOG_STDOUT = false;
+
+    // Snippet with a loop that can easily overflow
     public static void snippetUp(int start, int end, int stride) {
         int i = start;
         int step = ((stride - 1) & 0xFFFF) + 1; // make sure this value is always strictly positive
         while (true) {
-            // TTY.printf("I=%s end=%s%n", i, end);
             if (i >= end) {
                 break;
             }
             GraalDirectives.sideEffect();
             if (GraalDirectives.sideEffect(i) < 0) {
-                TTY.printf("Overflow happened with values %s %s %s %n", start, end, stride);
+                if (LOG_STDOUT) {
+                    TTY.printf("Overflow happened with values %s %s %s %n", start, end, stride);
+                }
                 return;
             }
             i += step;
@@ -79,7 +88,9 @@ public class HotSpotLoopOverflowSpeculationTest extends GraalCompilerTest {
 
             @Override
             public void run() {
-                TTY.printf("[OverflowThread] Starting waiting until compiler is at the right position...%n");
+                if (LOG_STDOUT) {
+                    TTY.printf("[OverflowThread] Starting waiting until compiler is at the right position...%n");
+                }
                 while (!loopingStarted) {
                     try {
                         Thread.sleep(100);
@@ -87,9 +98,13 @@ public class HotSpotLoopOverflowSpeculationTest extends GraalCompilerTest {
                         throw GraalError.shouldNotReachHere(e);
                     }
                 }
-                TTY.printf("[OverflowThread] Sleeping over, starting overflow trigger%n");
+                if (LOG_STDOUT) {
+                    TTY.printf("[OverflowThread] Sleeping over, starting overflow trigger%n");
+                }
                 snippetUp(Integer.MAX_VALUE - 100, Integer.MAX_VALUE - 1, 7);
-                TTY.printf("[OverflowThread] Sleeping over, overflow happened now - speculation can be asked again%n");
+                if (LOG_STDOUT) {
+                    TTY.printf("[OverflowThread] Sleeping over, overflow happened now - speculation can be asked again%n");
+                }
                 loopCompileUntilErrorHit = false;
             }
         }).start();
@@ -101,7 +116,6 @@ public class HotSpotLoopOverflowSpeculationTest extends GraalCompilerTest {
     protected Suites createSuites(OptionValues opts) {
         Suites s = super.createSuites(opts);
         s = s.copy();
-
         s.getHighTier().appendPhase(new BasePhase<HighTierContext>() {
 
             static CountedLoopInfo queryOverflowGuardCounted(StructuredGraph graph, HighTierContext context) {
@@ -116,15 +130,19 @@ public class HotSpotLoopOverflowSpeculationTest extends GraalCompilerTest {
             protected void run(StructuredGraph graph, HighTierContext context) {
                 compiles.incrementAndGet();
                 HotSpotSpeculationLog hsLog = (HotSpotSpeculationLog) graph.getSpeculationLog();
-                TTY.printf("[Compiler Thread compileId=%s] Initial failed speculation adr %s and data %s%n", compiles.get(), hsLog.getFailedSpeculationsAddress(),
-                                UNSAFE.getLong(hsLog.getFailedSpeculationsAddress()));
+                if (LOG_STDOUT) {
+                    TTY.printf("[Compiler Thread compileId=%s] Initial failed speculation adr %s and data %s%n", compiles.get(), hsLog.getFailedSpeculationsAddress(),
+                                    UNSAFE.getLong(hsLog.getFailedSpeculationsAddress()));
+                }
                 if (!loopCompileUntilErrorHit) {
                     return;
                 }
                 // the fact that the counted loop info below exists is enough proof that passing did
                 // not find any overflow guards that failed for that loop
                 CountedLoopInfo cli = queryOverflowGuardCounted(graph, context);
-                TTY.printf("[Compiler Thread compileId=%s] Asking for the overflow guard - not a problem, starting looping and waiting %n", compiles.get());
+                if (LOG_STDOUT) {
+                    TTY.printf("[Compiler Thread compileId=%s] Asking for the overflow guard - not a problem, starting looping and waiting %n", compiles.get());
+                }
                 loopingStarted = true;
                 while (loopCompileUntilErrorHit) {
                     try {
@@ -133,9 +151,11 @@ public class HotSpotLoopOverflowSpeculationTest extends GraalCompilerTest {
                         throw GraalError.shouldNotReachHere(e);
                     }
                 }
-                TTY.printf("[Compiler Thread compileId=%s] Looping over, asking again %n", compiles.get());
-                TTY.printf("[Compiler Thread compileId=%s] Failed speculation adr %s and data %s%n", compiles.get(), hsLog.getFailedSpeculationsAddress(),
-                                UNSAFE.getLong(hsLog.getFailedSpeculationsAddress()));
+                if (LOG_STDOUT) {
+                    TTY.printf("[Compiler Thread compileId=%s] Looping over, asking again %n", compiles.get());
+                    TTY.printf("[Compiler Thread compileId=%s] Failed speculation adr %s and data %s%n", compiles.get(), hsLog.getFailedSpeculationsAddress(),
+                                    UNSAFE.getLong(hsLog.getFailedSpeculationsAddress()));
+                }
                 // ask again - this time we should fail
                 cli.createOverFlowGuard();
             }
@@ -159,7 +179,7 @@ public class HotSpotLoopOverflowSpeculationTest extends GraalCompilerTest {
         // start the thread that waits until the compiler thread fails
         loopCompileUntilErrorHit = true;
         startThreadAndWaitUntilLoopingStarted();
-        // force compile again, for some reason another compile is enqueued and the exisitng one is
+        // force compile again, for some reason another compile is enqueued and the existing one is
         // not yet deopted
         getCode(getResolvedJavaMethod("snippetUp"), null, true, true, getInitialOptions());
     }
