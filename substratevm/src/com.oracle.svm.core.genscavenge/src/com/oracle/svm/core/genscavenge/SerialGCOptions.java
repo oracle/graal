@@ -80,9 +80,6 @@ public final class SerialGCOptions {
     @Option(help = "Print the time for each of the phases of each collection, if +VerboseGC. Serial GC only.", type = OptionType.Debug)//
     public static final RuntimeOptionKey<Boolean> PrintGCTimes = new RuntimeOptionKey<>(false, SerialGCOptions::serialGCOnly);
 
-    @Option(help = "Instrument write barriers with counters. Serial GC only.", type = OptionType.Debug)//
-    public static final HostedOptionKey<Boolean> CountWriteBarriers = new HostedOptionKey<>(false, SerialGCOptions::serialGCOnly);
-
     @Option(help = "Verify the heap before doing a garbage collection if VerifyHeap is enabled. Serial GC only.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyBeforeGC = new HostedOptionKey<>(true, SerialGCOptions::serialGCOnly);
 
