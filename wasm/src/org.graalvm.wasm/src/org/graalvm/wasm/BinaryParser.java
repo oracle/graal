@@ -115,6 +115,7 @@ public class BinaryParser extends BinaryStreamParser {
     private final boolean memory64;
     private final boolean multiMemory;
     private final boolean threads;
+    private final boolean simd;
 
     private final boolean unsafeMemory;
 
@@ -131,6 +132,7 @@ public class BinaryParser extends BinaryStreamParser {
         this.memory64 = context.getContextOptions().supportMemory64();
         this.multiMemory = context.getContextOptions().supportMultiMemory();
         this.threads = context.getContextOptions().supportThreads();
+        this.simd = context.getContextOptions().supportSIMD();
         this.unsafeMemory = context.getContextOptions().useUnsafeMemory();
     }
 
@@ -420,7 +422,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case ImportIdentifier.GLOBAL: {
-                    byte type = readValueType(bulkMemoryAndRefTypes);
+                    byte type = readValueType(bulkMemoryAndRefTypes, simd);
                     byte mutability = readMutability();
                     int index = module.symbolTable().numGlobals();
                     module.symbolTable().importGlobal(moduleName, memberName, index, type, mutability);
@@ -520,7 +522,7 @@ public class BinaryParser extends BinaryStreamParser {
             final int groupLength = readUnsignedInt32();
             localsLength += groupLength;
             module.limits().checkLocalCount(localsLength);
-            final byte t = readValueType(bulkMemoryAndRefTypes);
+            final byte t = readValueType(bulkMemoryAndRefTypes, simd);
             for (int i = 0; i != groupLength; ++i) {
                 localTypes.add(t);
             }
@@ -597,7 +599,7 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.BLOCK: {
                     final byte[] blockParamTypes;
                     final byte[] blockResultTypes;
-                    readBlockType(multiResult, bulkMemoryAndRefTypes);
+                    readBlockType(multiResult, bulkMemoryAndRefTypes, simd);
                     // Extract value based on result arity.
                     if (multiResult[1] == SINGLE_RESULT_VALUE) {
                         blockParamTypes = WasmType.VOID_TYPE_ARRAY;
@@ -616,7 +618,7 @@ public class BinaryParser extends BinaryStreamParser {
                     // Jumps are targeting the loop instruction for OSR.
                     final byte[] loopParamTypes;
                     final byte[] loopResultTypes;
-                    readBlockType(multiResult, bulkMemoryAndRefTypes);
+                    readBlockType(multiResult, bulkMemoryAndRefTypes, simd);
                     // Extract value based on result arity.
                     if (multiResult[1] == SINGLE_RESULT_VALUE) {
                         loopParamTypes = WasmType.VOID_TYPE_ARRAY;
@@ -635,7 +637,7 @@ public class BinaryParser extends BinaryStreamParser {
                     state.popChecked(I32_TYPE); // condition
                     final byte[] ifParamTypes;
                     final byte[] ifResultTypes;
-                    readBlockType(multiResult, bulkMemoryAndRefTypes);
+                    readBlockType(multiResult, bulkMemoryAndRefTypes, simd);
                     // Extract value based on result arity.
                     if (multiResult[1] == SINGLE_RESULT_VALUE) {
                         ifParamTypes = WasmType.VOID_TYPE_ARRAY;
@@ -763,7 +765,7 @@ public class BinaryParser extends BinaryStreamParser {
                     checkBulkMemoryAndRefTypesSupport(opcode);
                     final int length = readLength();
                     assertIntEqual(length, 1, Failure.INVALID_RESULT_ARITY);
-                    final byte t = readValueType(bulkMemoryAndRefTypes);
+                    final byte t = readValueType(bulkMemoryAndRefTypes, simd);
                     state.popChecked(I32_TYPE);
                     state.popChecked(t);
                     state.popChecked(t);
@@ -1798,6 +1800,7 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 break;
             case Instructions.VECTOR:
+                checkSIMDSupport();
                 int vectorOpcode = read1() & 0xFF;
                 state.addVectorFlag();
                 switch (vectorOpcode) {
@@ -1879,6 +1882,10 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void checkThreadsSupport(int opcode) {
         checkContextOption(wasmContext.getContextOptions().supportThreads(), "Threads and atomics are not enabled (opcode: 0x%02x)", opcode);
+    }
+
+    private void checkSIMDSupport() {
+        checkContextOption(wasmContext.getContextOptions().supportSIMD(), "Vector instructions are not enabled (opcode: 0x%02x)", Instructions.VECTOR);
     }
 
     private void store(ParserState state, byte type, int n, long[] result) {
@@ -2381,7 +2388,7 @@ public class BinaryParser extends BinaryStreamParser {
         final int startingGlobalIndex = module.symbolTable().numGlobals();
         for (int globalIndex = startingGlobalIndex; globalIndex != startingGlobalIndex + globalCount; globalIndex++) {
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
-            final byte type = readValueType(bulkMemoryAndRefTypes);
+            final byte type = readValueType(bulkMemoryAndRefTypes, simd);
             // 0x00 means const, 0x01 means var
             final byte mutability = readMutability();
             // Global initialization expressions must be constant expressions:
@@ -2516,14 +2523,14 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void readParameterList(int funcTypeIdx, int paramCount) {
         for (int paramIdx = 0; paramIdx != paramCount; ++paramIdx) {
-            byte type = readValueType(bulkMemoryAndRefTypes);
+            byte type = readValueType(bulkMemoryAndRefTypes, simd);
             module.symbolTable().registerFunctionTypeParameterType(funcTypeIdx, paramIdx, type);
         }
     }
 
     private void readResultList(int funcTypeIdx, int resultCount) {
         for (int resultIdx = 0; resultIdx != resultCount; resultIdx++) {
-            byte type = readValueType(bulkMemoryAndRefTypes);
+            byte type = readValueType(bulkMemoryAndRefTypes, simd);
             module.symbolTable().registerFunctionTypeResultType(funcTypeIdx, resultIdx, type);
         }
     }
