@@ -107,14 +107,6 @@ public final class FrameDescriptor implements Cloneable {
      */
     boolean materializeCalled;
 
-    /**
-     * Flag that defines the assignment strategy of initial {@link FrameSlotKind}s to slots in a
-     * frame.
-     *
-     * @since 22.2
-     */
-    final int staticMode;
-
     private static final String NEVER_PART_OF_COMPILATION_MESSAGE = "interpreter-only. includes hashmap operations.";
 
     private static final byte[] EMPTY_BYTE_ARRAY = {};
@@ -140,18 +132,16 @@ public final class FrameDescriptor implements Cloneable {
         this.indexedSlotNames = null;
         this.indexedSlotInfos = null;
         this.descriptorInfo = null;
-        this.staticMode = NO_STATIC_MODE;
 
         this.defaultValue = defaultValue;
     }
 
-    private FrameDescriptor(Object defaultValue, byte[] indexedSlotTags, Object[] indexedSlotNames, Object[] indexedSlotInfos, Object info, int staticMode) {
+    private FrameDescriptor(Object defaultValue, byte[] indexedSlotTags, Object[] indexedSlotNames, Object[] indexedSlotInfos, Object info) {
         CompilerAsserts.neverPartOfCompilation("do not create a FrameDescriptor from compiled code");
         this.indexedSlotTags = indexedSlotTags;
         this.indexedSlotNames = indexedSlotNames;
         this.indexedSlotInfos = indexedSlotInfos;
         this.descriptorInfo = info;
-        this.staticMode = staticMode;
 
         this.defaultValue = defaultValue;
     }
@@ -167,7 +157,7 @@ public final class FrameDescriptor implements Cloneable {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         synchronized (this) {
             FrameDescriptor clonedFrameDescriptor = new FrameDescriptor(this.defaultValue, indexedSlotTags == null ? null : indexedSlotTags.clone(),
-                            indexedSlotNames == null ? null : indexedSlotNames.clone(), indexedSlotInfos == null ? null : indexedSlotInfos.clone(), descriptorInfo, staticMode);
+                            indexedSlotNames == null ? null : indexedSlotNames.clone(), indexedSlotInfos == null ? null : indexedSlotInfos.clone(), descriptorInfo);
             clonedFrameDescriptor.auxiliarySlotCount = auxiliarySlotCount;
             clonedFrameDescriptor.activeAuxiliarySlotCount = activeAuxiliarySlotCount;
             if (auxiliarySlotMap != null) {
@@ -437,7 +427,6 @@ public final class FrameDescriptor implements Cloneable {
         private Object[] infos;
         private int size;
         private Object descriptorInfo;
-        private int staticMode;
 
         private Builder(int capacity) {
             this.tags = new byte[capacity];
@@ -484,7 +473,6 @@ public final class FrameDescriptor implements Cloneable {
             Arrays.fill(tags, size, size + count, kind.tag);
             int newIndex = size;
             size += count;
-            staticMode |= (kind == FrameSlotKind.Static ? ALL_STATIC_MODE : NO_STATIC_MODE);
             return newIndex;
         }
 
@@ -517,7 +505,6 @@ public final class FrameDescriptor implements Cloneable {
             tags[size] = kind.tag;
             int newIndex = size;
             size++;
-            staticMode |= (kind == FrameSlotKind.Static ? ALL_STATIC_MODE : NO_STATIC_MODE);
             return newIndex;
         }
 
@@ -543,8 +530,7 @@ public final class FrameDescriptor implements Cloneable {
          * @since 22.0
          */
         public FrameDescriptor build() {
-            return new FrameDescriptor(defaultValue, Arrays.copyOf(tags, size), names == null ? null : Arrays.copyOf(names, size), infos == null ? null : Arrays.copyOf(infos, size), descriptorInfo,
-                            staticMode != 0 ? staticMode : NO_STATIC_MODE);
+            return new FrameDescriptor(defaultValue, Arrays.copyOf(tags, size), names == null ? null : Arrays.copyOf(names, size), infos == null ? null : Arrays.copyOf(infos, size), descriptorInfo);
         }
     }
 }

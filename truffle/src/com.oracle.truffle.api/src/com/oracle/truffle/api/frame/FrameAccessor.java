@@ -56,15 +56,5 @@ final class FrameAccessor extends Accessor {
         public boolean getMaterializeCalled(FrameDescriptor descriptor) {
             return descriptor.materializeCalled;
         }
-
-        @Override
-        public boolean usesAllStaticMode(FrameDescriptor descriptor) {
-            return descriptor.staticMode == FrameDescriptor.ALL_STATIC_MODE;
-        }
-
-        @Override
-        public boolean usesMixedStaticMode(FrameDescriptor descriptor) {
-            return descriptor.staticMode == FrameDescriptor.MIXED_STATIC_MODE;
-        }
     }
 }
