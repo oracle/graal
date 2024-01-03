@@ -113,21 +113,27 @@ public class RemoveUnwindPhase extends Phase {
          */
         List<WorklistEntry> worklist = new ArrayList<>();
         while (true) {
-            while (true) {
+            nodeWalk: while (true) {
                 if (current instanceof WithExceptionNode node) {
                     if (node.exceptionEdge() == successor) {
                         withExceptionNodes.add(node);
                     }
                     break;
 
-                } else if (current == expectedException && current instanceof BytecodeExceptionNode node) {
-                    bytecodeExceptionNodes.add(node);
+                } else if (current instanceof BytecodeExceptionNode || current instanceof ExceptionObjectNode) {
+                    if (current == expectedException) {
+                        if (current instanceof BytecodeExceptionNode) {
+                            BytecodeExceptionNode node = (BytecodeExceptionNode) current;
+                            bytecodeExceptionNodes.add(node);
+                        } else {
+                            successor = current;
+                            current = current.predecessor();
+                            continue nodeWalk;
+                        }
+                    }
+                    // bailout here, the node does not flow into the corresponding unwind, its a
+                    // unrelated exception, but a different one than the unwind one
                     break;
-
-                } else if (current == expectedException && current instanceof ExceptionObjectNode) {
-                    successor = current;
-                    current = current.predecessor();
-
                 } else if (current instanceof MergeNode merge) {
                     if (merge.isPhiAtMerge(expectedException)) {
                         /* Propagate expected exception on each control path leading to the merge */
