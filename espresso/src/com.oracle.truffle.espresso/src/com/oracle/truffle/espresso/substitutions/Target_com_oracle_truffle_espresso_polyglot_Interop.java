@@ -2626,6 +2626,49 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     }
 
     /**
+     * Reads bytes from the receiver object into the specified byte array.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || length < 0 || byteOffset + length > </code>{@link InteropLibrary#getBufferSize(Object)}
+     * @throws UnsupportedMessageException if and only if
+     *             {@link InteropLibrary#hasBufferElements(Object)} returns {@code false}
+     * @since 24.0
+     */
+    @Substitution
+    @Throws(others = {
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
+    })
+    abstract static class ReadBuffer extends SubstitutionNode {
+        static final int LIMIT = 2;
+
+        abstract void execute(@JavaType(Object.class) StaticObject receiver, long byteOffset, @JavaType(byte[].class) StaticObject destination, int destinationOffset, int length);
+
+        @Specialization
+        void doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        long byteOffset,
+                        @JavaType(byte[].class) StaticObject destination,
+                        int destinationOffset,
+                        int length,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
+                        @Cached BranchProfile exceptionProfile) {
+            try {
+                interop.readBuffer(InteropUtils.unwrapForeign(getLanguage(), receiver), byteOffset, destination.unwrap(getLanguage()), destinationOffset, length);
+            } catch (InteropException e) {
+                exceptionProfile.enter();
+                throw throwInteropExceptionAsGuest.execute(e);
+            }
+        }
+    }
+
+    /**
      * Reads the byte from the receiver object at the given byte offset from the start of the
      * buffer.
      * <p>
