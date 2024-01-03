@@ -57,8 +57,6 @@ public final class EspressoFrame {
     private static final int BCI_SLOT = 0;
     private static final int VALUES_START = 1;
 
-    private static final Object UNINIT_MARKER = new Object();
-
     public static FrameDescriptor createFrameDescriptor(int locals, int stack) {
         int slotCount = locals + stack;
         FrameDescriptor.Builder builder = FrameDescriptor.newBuilder(slotCount + VALUES_START);
@@ -66,7 +64,6 @@ public final class EspressoFrame {
         assert bciSlot == BCI_SLOT;
         int valuesStart = builder.addSlots(slotCount, FrameSlotKind.Static); // locals + stack
         assert valuesStart == VALUES_START;
-        builder.defaultValue(UNINIT_MARKER);
         return builder.build();
     }
 
@@ -313,21 +310,11 @@ public final class EspressoFrame {
     // endregion Local accessors
 
     static void setBCI(Frame frame, int bci) {
-        frame.setIntStatic(BCI_SLOT, bci);
+        frame.setIntStatic(BCI_SLOT, bci + 1);
     }
 
     static int getBCI(Frame frame) {
-        CompilerAsserts.neverPartOfCompilation();
-        try {
-            // Note: if assertions are disabled, but the slot is still uninitialized, this will not
-            // throw and return 0.
-            return frame.getIntStatic(BCI_SLOT);
-        } catch (AssertionError e) {
-            // We did not have time to initialize the BCI before needing the inspection. Return 0
-            // for compatibility with the assertions disabled case.
-            assert frame.getObjectStatic(BCI_SLOT) == UNINIT_MARKER;
-            return 0;
-        }
+        return frame.getIntStatic(BCI_SLOT) - 1;
     }
 
     public static int startingStackOffset(int maxLocals) {
