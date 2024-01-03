@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,10 +29,12 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.BinaryOpLogicNode;
 import jdk.graal.compiler.nodes.LogicConstantNode;
+import jdk.graal.compiler.nodes.LogicNegationNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -86,6 +88,28 @@ public final class IntegerTestNode extends BinaryOpLogicNode implements Canonica
             if (newRHS != null) {
                 return new IntegerTestNode(forX, newRHS);
             }
+
+            if (forX.isConstant() && forX.asJavaConstant().asLong() == 1 || forY.isConstant() && forY.asJavaConstant().asLong() == 1) {
+
+                ValueNode nonConstantInput = forX.isConstant() ? forY : forX;
+                GraalError.guarantee(!nonConstantInput.isConstant(), "Must not be constant %s", nonConstantInput);
+                if (nonConstantInput instanceof ConditionalNode conditional) {
+                    ValueNode condX = conditional.trueValue();
+                    ValueNode condY = conditional.falseValue();
+
+                    // fold the following condition ((c ? 1:0 ) & 1 == 0) to !c
+                    if (condX.isConstant() && condX.asJavaConstant().asLong() == 1 && condY.isConstant() && condY.asJavaConstant().asLong() == 0) {
+                        return LogicNegationNode.create(conditional.condition());
+                    }
+
+                    // fold the following condition ((c ? 0 : 1 ) & 1 == 0) to c
+                    if (condX.isConstant() && condX.asJavaConstant().asLong() == 0 && condY.isConstant() && condY.asJavaConstant().asLong() == 1) {
+                        return conditional.condition();
+                    }
+                }
+
+            }
+
         }
         return null;
     }
