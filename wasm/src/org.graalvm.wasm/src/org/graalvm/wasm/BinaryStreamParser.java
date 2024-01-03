@@ -276,7 +276,7 @@ public abstract class BinaryStreamParser {
      * @param result The array used for returning the result.
      *
      */
-    protected void readBlockType(int[] result, boolean allowRefTypes) {
+    protected void readBlockType(int[] result, boolean allowRefTypes, boolean allowVecType) {
         byte type = peek1(data, offset);
         switch (type) {
             case WasmType.VOID_TYPE:
@@ -284,7 +284,12 @@ public abstract class BinaryStreamParser {
             case WasmType.I64_TYPE:
             case WasmType.F32_TYPE:
             case WasmType.F64_TYPE:
+                offset++;
+                result[0] = type;
+                result[1] = SINGLE_RESULT_VALUE;
+                break;
             case WasmType.V128_TYPE:
+                Assert.assertTrue(allowVecType, Failure.MALFORMED_VALUE_TYPE);
                 offset++;
                 result[0] = type;
                 result[1] = SINGLE_RESULT_VALUE;
@@ -305,14 +310,16 @@ public abstract class BinaryStreamParser {
         }
     }
 
-    protected static byte peekValueType(byte[] data, int offset, boolean allowRefTypes) {
+    protected static byte peekValueType(byte[] data, int offset, boolean allowRefTypes, boolean allowVecType) {
         byte b = peek1(data, offset);
         switch (b) {
             case WasmType.I32_TYPE:
             case WasmType.I64_TYPE:
             case WasmType.F32_TYPE:
             case WasmType.F64_TYPE:
+                break;
             case WasmType.V128_TYPE:
+                Assert.assertTrue(allowVecType, Failure.MALFORMED_VALUE_TYPE);
                 break;
             case WasmType.FUNCREF_TYPE:
             case WasmType.EXTERNREF_TYPE:
@@ -324,8 +331,8 @@ public abstract class BinaryStreamParser {
         return b;
     }
 
-    protected byte readValueType(boolean allowRefTypes) {
-        byte b = peekValueType(data, offset, allowRefTypes);
+    protected byte readValueType(boolean allowRefTypes, boolean allowVecType) {
+        byte b = peekValueType(data, offset, allowRefTypes, allowVecType);
         offset++;
         return b;
     }
