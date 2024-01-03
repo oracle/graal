@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -60,6 +61,9 @@ import com.oracle.svm.hosted.substitute.ComputedValueField;
 import com.oracle.svm.hosted.substitute.FieldValueTransformation;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
 import jdk.vm.ci.meta.JavaConstant;
@@ -245,6 +249,43 @@ public final class FieldValueInterceptionSupport {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Returns the Graal IR node that intrinsifies the provided field load, or null if no
+     * intrinsification is possible.
+     */
+    public ValueNode tryIntrinsifyFieldLoad(CoreProviders providers, LoadFieldNode node) {
+        var field = (AnalysisField) node.field();
+
+        FieldValueTransformer transformer = null;
+        var interceptor = lookupFieldValueInterceptor(field);
+        if (interceptor instanceof FieldValueTransformation transformation) {
+            transformer = transformation.getFieldValueTransformer();
+        } else if (field.wrapped instanceof ComputedValueField computedValueField) {
+            transformer = computedValueField.getFieldValueTransformer();
+        }
+        if (!(transformer instanceof FieldValueTransformerWithAvailability transformerWithAvailability)) {
+            return null;
+        }
+
+        JavaConstant receiver;
+        if (field.isStatic()) {
+            receiver = null;
+        } else {
+            receiver = node.object().asJavaConstant();
+            /*
+             * The receiver constant might not be an instance of the field's declaring class,
+             * because during optimizations the load can actually be dead code that will be removed
+             * later. We do not want to burden the field value transformers with such details, so we
+             * check here.
+             */
+            if (!(receiver instanceof ImageHeapConstant imageHeapConstant) || !field.getDeclaringClass().isAssignableFrom(imageHeapConstant.getType())) {
+                return null;
+            }
+        }
+
+        return transformerWithAvailability.intrinsify(providers, receiver);
     }
 
     JavaConstant readFieldValue(ClassInitializationSupport classInitializationSupport, AnalysisField field, JavaConstant receiver) {

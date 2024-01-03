@@ -28,6 +28,10 @@ import java.lang.reflect.Field;
 
 import com.oracle.svm.core.StaticFieldsSupport;
 
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.vm.ci.meta.JavaConstant;
+
 public final class StaticFieldBaseFieldValueTransformer implements FieldValueTransformerWithAvailability {
     private final Field targetField;
 
@@ -43,5 +47,10 @@ public final class StaticFieldBaseFieldValueTransformer implements FieldValueTra
     @Override
     public Object transform(Object receiver, Object originalValue) {
         return targetField.getType().isPrimitive() ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields();
+    }
+
+    @Override
+    public ValueNode intrinsify(CoreProviders providers, JavaConstant receiver) {
+        return StaticFieldsSupport.createStaticFieldBaseNode(targetField.getType().isPrimitive());
     }
 }

@@ -45,6 +45,7 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.extended.FieldOffsetProvider;
 import jdk.graal.compiler.nodes.extended.ForeignCall;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
@@ -132,6 +133,8 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
                     continue;
                 }
                 embeddedConstants.add(((JavaConstant) node.getValue()));
+            } else if (n instanceof FieldOffsetProvider node) {
+                ((AnalysisField) node.getField()).registerAsUnsafeAccessed(AbstractAnalysisEngine.sourcePosition(node.asNode()));
             } else if (n instanceof InstanceOfNode) {
                 InstanceOfNode node = (InstanceOfNode) n;
                 accessedTypes.add((ReachabilityAnalysisType) node.type().getType());

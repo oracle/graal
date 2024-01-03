@@ -60,7 +60,7 @@ import com.oracle.svm.core.graal.nodes.DeoptEntryBeginNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntrySupport;
 import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
-import com.oracle.svm.core.graal.nodes.LazyConstantNode;
+import com.oracle.svm.core.graal.nodes.FieldOffsetNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
@@ -74,7 +74,6 @@ import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
-import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins.FieldOffsetConstantProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -86,7 +85,6 @@ import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
-import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.java.BciBlockMapping;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.FrameStateBuilder;
@@ -1105,17 +1103,11 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                  */
 
                 ConstantNode nullConstant = ConstantNode.forConstant(JavaConstant.NULL_POINTER, getMetaAccess(), getGraph());
-                ValueNode offset = graph.addOrUniqueWithInputs(
-                                LazyConstantNode.create(StampFactory.forKind(JavaKind.Long), new FieldOffsetConstantProvider(bootstrapObjectField), SharedBytecodeParser.this));
+                ValueNode offset = graph.addOrUniqueWithInputs(FieldOffsetNode.create(JavaKind.Long, bootstrapObjectResolvedField));
                 FieldLocationIdentity fieldLocationIdentity = new FieldLocationIdentity(bootstrapObjectResolvedField);
                 FixedWithNextNode linkBootstrapObject = graph.add(
                                 new UnsafeCompareAndSwapNode(bootstrapMethodInfoNode, offset, nullConstant, finalBootstrapObjectNode, JavaKind.Object, fieldLocationIdentity, MemoryOrderMode.RELEASE));
                 ((StateSplit) linkBootstrapObject).setStateAfter(createFrameState(stream.nextBCI(), (StateSplit) linkBootstrapObject));
-
-                NodeSourcePosition nodeSourcePosition = getGraph().currentNodeSourcePosition();
-                Object reason = nodeSourcePosition == null ? "Unknown graph builder location." : nodeSourcePosition;
-                bootstrapObjectResolvedField.registerAsAccessed(reason);
-                bootstrapObjectResolvedField.registerAsUnsafeAccessed(reason);
 
                 EndNode trueEnd = graph.add(new EndNode());
 

@@ -26,14 +26,20 @@ package com.oracle.svm.core.fieldvaluetransformer;
 
 import java.lang.reflect.Field;
 
+import com.oracle.svm.core.graal.nodes.FieldOffsetNode;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 public final class FieldOffsetFieldValueTransformer extends BoxingTransformer implements FieldValueTransformerWithAvailability {
     private final Field targetField;
 
-    public FieldOffsetFieldValueTransformer(Field targetField, Class<?> returnType) {
-        super(returnType);
+    public FieldOffsetFieldValueTransformer(Field targetField, JavaKind returnKind) {
+        super(returnKind);
         this.targetField = targetField;
     }
 
@@ -49,5 +55,10 @@ public final class FieldOffsetFieldValueTransformer extends BoxingTransformer im
             throw VMError.shouldNotReachHere("Field is not marked as unsafe accessed: " + targetField);
         }
         return box(offset);
+    }
+
+    @Override
+    public ValueNode intrinsify(CoreProviders providers, JavaConstant receiver) {
+        return FieldOffsetNode.create(returnKind, providers.getMetaAccess().lookupJavaField(targetField));
     }
 }

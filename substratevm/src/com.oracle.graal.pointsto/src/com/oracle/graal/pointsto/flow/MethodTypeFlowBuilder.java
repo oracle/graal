@@ -105,10 +105,12 @@ import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.extended.BoxNode;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
+import jdk.graal.compiler.nodes.extended.FieldOffsetProvider;
 import jdk.graal.compiler.nodes.extended.ForeignCall;
 import jdk.graal.compiler.nodes.extended.GetClassNode;
 import jdk.graal.compiler.nodes.extended.RawLoadNode;
 import jdk.graal.compiler.nodes.extended.RawStoreNode;
+import jdk.graal.compiler.nodes.java.AtomicReadAndAddNode;
 import jdk.graal.compiler.nodes.java.AtomicReadAndWriteNode;
 import jdk.graal.compiler.nodes.java.ClassIsAssignableFromNode;
 import jdk.graal.compiler.nodes.java.DynamicNewArrayNode;
@@ -256,24 +258,6 @@ public class MethodTypeFlowBuilder {
                 AnalysisType type = (AnalysisType) node.type();
                 type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
 
-            } else if (n instanceof CommitAllocationNode) {
-                CommitAllocationNode node = (CommitAllocationNode) n;
-                List<ValueNode> values = node.getValues();
-                int objectStartIndex = 0;
-                for (VirtualObjectNode virtualObject : node.getVirtualObjects()) {
-                    AnalysisType type = (AnalysisType) virtualObject.type();
-                    if (!type.isArray()) {
-                        for (int i = 0; i < virtualObject.entryCount(); i++) {
-                            ValueNode value = values.get(objectStartIndex + i);
-                            if (!value.isJavaConstant() || !value.asJavaConstant().isDefaultForKind()) {
-                                AnalysisField field = (AnalysisField) ((VirtualInstanceNode) virtualObject).field(i);
-                                field.registerAsWritten(AbstractAnalysisEngine.sourcePosition(node));
-                            }
-                        }
-                    }
-                    objectStartIndex += virtualObject.entryCount();
-                }
-
             } else if (n instanceof NewArrayNode) {
                 NewArrayNode node = (NewArrayNode) n;
                 AnalysisType type = ((AnalysisType) node.elementType()).getArrayClass();
@@ -312,6 +296,11 @@ public class MethodTypeFlowBuilder {
                         type.registerAsInHeap(new EmbeddedRootScan(AbstractAnalysisEngine.sourcePosition(cn), root));
                         registerEmbeddedRoot(bb, cn);
                     }
+                }
+
+            } else if (n instanceof FieldOffsetProvider node) {
+                if (needsUnsafeRegistration(node)) {
+                    ((AnalysisField) node.getField()).registerAsUnsafeAccessed(AbstractAnalysisEngine.sourcePosition(node.asNode()));
                 }
 
             } else if (n instanceof FrameState) {
@@ -379,6 +368,31 @@ public class MethodTypeFlowBuilder {
         }
         /* Success, the ConstantNode does not need to be seen as reachable. */
         return true;
+    }
+
+    /**
+     * Unsafe access nodes whose offset is a {@link FieldOffsetProvider} are modeled directly as
+     * field access type flows and therefore do not need unsafe registration.
+     * 
+     * We do not want that a field is registered as unsafe accessed just so that we have the field
+     * offset during debugging, so we also ignore {@link FrameState}. {@link StrengthenGraphs}
+     * removes the node from the {@link FrameState} if it is not registered for unsafe access for
+     * any other reason.
+     */
+    protected static boolean needsUnsafeRegistration(FieldOffsetProvider node) {
+        for (var usage : node.asNode().usages()) {
+            if (usage instanceof RawLoadNode || usage instanceof RawStoreNode ||
+                            usage instanceof UnsafeCompareAndSwapNode || usage instanceof UnsafeCompareAndExchangeNode ||
+                            usage instanceof AtomicReadAndWriteNode || usage instanceof AtomicReadAndAddNode) {
+                /* Unsafe usages are modeled as field type flows. */
+            } else if (usage instanceof FrameState) {
+                /* FrameState usages are only for debugging and not necessary for correctness. */
+            } else {
+                return true;
+            }
+        }
+        /* Success, the field does not need to be registered for unsafe access. */
+        return false;
     }
 
     protected static boolean ignoreInstanceOfType(PointsToAnalysis bb, AnalysisType type) {
@@ -633,6 +647,17 @@ public class MethodTypeFlowBuilder {
 
         public boolean contains(ValueNode node) {
             return flows.containsKey(typeFlowUnproxify(node));
+        }
+
+        public TypeFlowBuilder<?> lookupOrAny(ValueNode n, JavaKind kind) {
+            if (n != null) {
+                return lookup(n);
+            } else if (kind == JavaKind.Int || kind == JavaKind.Long) {
+                return anyPrimitiveSourceTypeFlowBuilder;
+            } else {
+                /* For now, we do not need support JavaKind.Object here. */
+                throw AnalysisError.shouldNotReachHere("Unimplemented kind: " + kind);
+            }
         }
 
         public TypeFlowBuilder<?> lookup(ValueNode n) {
@@ -978,59 +1003,23 @@ public class MethodTypeFlowBuilder {
                 state.add(node, newArrayBuilder);
 
             } else if (n instanceof LoadFieldNode node) { // value = object.field
-                AnalysisField field = (AnalysisField) node.field();
-                assert field.isAccessed() : field;
-                if (bb.isSupportedJavaKind(node.getStackKind())) {
-                    TypeFlowBuilder<? extends LoadFieldTypeFlow> loadFieldBuilder;
-                    BytecodePosition loadLocation = AbstractAnalysisEngine.sourcePosition(node);
-                    if (node.isStatic()) {
-                        loadFieldBuilder = TypeFlowBuilder.create(bb, node, LoadStaticFieldTypeFlow.class, () -> {
-                            FieldTypeFlow fieldFlow = field.getStaticFieldFlow();
-                            LoadStaticFieldTypeFlow loadFieldFLow = new LoadStaticFieldTypeFlow(loadLocation, field, fieldFlow);
-                            flowsGraph.addNodeFlow(node, loadFieldFLow);
-                            return loadFieldFLow;
-                        });
-                    } else {
-                        TypeFlowBuilder<?> objectBuilder = state.lookup(node.object());
-                        loadFieldBuilder = TypeFlowBuilder.create(bb, node, LoadInstanceFieldTypeFlow.class, () -> {
-                            LoadInstanceFieldTypeFlow loadFieldFLow = new LoadInstanceFieldTypeFlow(loadLocation, field, objectBuilder.get());
-                            flowsGraph.addNodeFlow(node, loadFieldFLow);
-                            return loadFieldFLow;
-                        });
-                        loadFieldBuilder.addObserverDependency(objectBuilder);
-                    }
-                    typeFlowGraphBuilder.registerSinkBuilder(loadFieldBuilder);
-                    state.add(node, loadFieldBuilder);
-                }
+                processLoadField(node, (AnalysisField) node.field(), node.object(), state);
                 if (node.object() != null) {
                     processImplicitNonNull(node.object(), state);
                 }
 
             } else if (n instanceof StoreFieldNode node) { // object.field = value
-                processStoreField(node, state);
+                processStoreField(node, (AnalysisField) node.field(), node.object(), node.value(), node.value().getStackKind(), state);
                 if (node.object() != null) {
                     processImplicitNonNull(node.object(), state);
                 }
 
             } else if (n instanceof LoadIndexedNode node) {
-                TypeFlowBuilder<?> arrayBuilder = state.lookup(node.array());
-                if (node.getStackKind() == JavaKind.Object) {
-                    AnalysisType type = (AnalysisType) StampTool.typeOrNull(node.array(), bb.getMetaAccess());
-                    AnalysisType arrayType = type.isArray() ? type : bb.getObjectArrayType();
-
-                    TypeFlowBuilder<?> loadIndexedBuilder = TypeFlowBuilder.create(bb, node, LoadIndexedTypeFlow.class, () -> {
-                        LoadIndexedTypeFlow loadIndexedFlow = new LoadIndexedTypeFlow(AbstractAnalysisEngine.sourcePosition(node), arrayType, arrayBuilder.get());
-                        flowsGraph.addNodeFlow(node, loadIndexedFlow);
-                        return loadIndexedFlow;
-                    });
-                    typeFlowGraphBuilder.registerSinkBuilder(loadIndexedBuilder);
-                    loadIndexedBuilder.addObserverDependency(arrayBuilder);
-                    state.add(node, loadIndexedBuilder);
-                }
+                processLoadIndexed(node, node.array(), state);
                 processImplicitNonNull(node.array(), state);
 
             } else if (n instanceof StoreIndexedNode node) {
-                processStoreIndexed(node, state);
+                processStoreIndexed(node, node.array(), node.value(), node.value().getStackKind(), state);
                 processImplicitNonNull(node.array(), state);
 
             } else if (n instanceof UnsafePartitionLoadNode) {
@@ -1092,131 +1081,18 @@ public class MethodTypeFlowBuilder {
                 /* Unsafe stores must not be removed. */
                 typeFlowGraphBuilder.registerSinkBuilder(unsafeStoreBuilder);
 
-            } else if (n instanceof RawLoadNode) {
-                RawLoadNode node = (RawLoadNode) n;
-
-                checkUnsafeOffset(node.object(), node.offset());
-
-                if (node.object().getStackKind() == JavaKind.Object && node.getStackKind() == JavaKind.Object) {
-                    AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(node.object(), bb.getMetaAccess());
-                    TypeFlowBuilder<?> objectBuilder = state.lookup(node.object());
-                    TypeFlowBuilder<?> loadBuilder;
-                    BytecodePosition loadLocation = AbstractAnalysisEngine.sourcePosition(node);
-                    if (objectType != null && objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
-                        /*
-                         * Unsafe load from an array object is essentially an array load since we
-                         * don't have separate type flows for different array elements.
-                         */
-                        loadBuilder = TypeFlowBuilder.create(bb, node, LoadIndexedTypeFlow.class, () -> {
-                            LoadIndexedTypeFlow loadTypeFlow = new LoadIndexedTypeFlow(loadLocation, objectType, objectBuilder.get());
-                            flowsGraph.addMiscEntryFlow(loadTypeFlow);
-                            return loadTypeFlow;
-                        });
-                    } else {
-                        /*
-                         * Use the Object type as a conservative approximation for both the receiver
-                         * object type and the loaded values type.
-                         */
-                        AnalysisType nonNullObjectType = bb.getObjectType();
-                        loadBuilder = TypeFlowBuilder.create(bb, node, UnsafeLoadTypeFlow.class, () -> {
-                            UnsafeLoadTypeFlow loadTypeFlow = new UnsafeLoadTypeFlow(loadLocation, nonNullObjectType, nonNullObjectType, objectBuilder.get());
-                            flowsGraph.addMiscEntryFlow(loadTypeFlow);
-                            return loadTypeFlow;
-                        });
-                    }
-
-                    loadBuilder.addObserverDependency(objectBuilder);
-                    state.add(node, loadBuilder);
-                }
-
-            } else if (n instanceof RawStoreNode) {
-                RawStoreNode node = (RawStoreNode) n;
-
-                checkUnsafeOffset(node.object(), node.offset());
-
-                if (node.object().getStackKind() == JavaKind.Object && node.value().getStackKind() == JavaKind.Object) {
-                    AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(node.object(), bb.getMetaAccess());
-                    TypeFlowBuilder<?> objectBuilder = state.lookup(node.object());
-                    TypeFlowBuilder<?> valueBuilder = state.lookup(node.value());
-                    TypeFlowBuilder<?> storeBuilder;
-                    BytecodePosition storeLocation = AbstractAnalysisEngine.sourcePosition(node);
-                    if (objectType != null && objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
-                        /*
-                         * Unsafe store to an array object is essentially an array store since we
-                         * don't have separate type flows for different array elements.
-                         */
-                        storeBuilder = TypeFlowBuilder.create(bb, node, StoreIndexedTypeFlow.class, () -> {
-                            StoreIndexedTypeFlow storeTypeFlow = new StoreIndexedTypeFlow(storeLocation, objectType, objectBuilder.get(), valueBuilder.get());
-                            flowsGraph.addMiscEntryFlow(storeTypeFlow);
-                            return storeTypeFlow;
-                        });
-                    } else {
-                        /*
-                         * Use the Object type as a conservative approximation for both the receiver
-                         * object type and the stored values type.
-                         */
-                        AnalysisType nonNullObjectType = bb.getObjectType();
-                        storeBuilder = TypeFlowBuilder.create(bb, node, UnsafeStoreTypeFlow.class, () -> {
-                            UnsafeStoreTypeFlow storeTypeFlow = new UnsafeStoreTypeFlow(storeLocation, nonNullObjectType, nonNullObjectType, objectBuilder.get(), valueBuilder.get());
-                            flowsGraph.addMiscEntryFlow(storeTypeFlow);
-                            return storeTypeFlow;
-                        });
-                    }
-                    storeBuilder.addUseDependency(valueBuilder);
-                    storeBuilder.addObserverDependency(objectBuilder);
-
-                    /* Offset stores must not be removed. */
-                    typeFlowGraphBuilder.registerSinkBuilder(storeBuilder);
-                }
-            } else if (n instanceof UnsafeCompareAndSwapNode) {
-                UnsafeCompareAndSwapNode node = (UnsafeCompareAndSwapNode) n;
-                ValueNode object = node.object();
-                ValueNode newValue = node.newValue();
-
-                checkUnsafeOffset(object, node.offset());
-                if (object.getStackKind() == JavaKind.Object && newValue.getStackKind() == JavaKind.Object) {
-                    AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(object, bb.getMetaAccess());
-                    TypeFlowBuilder<?> objectBuilder = state.lookup(object);
-                    TypeFlowBuilder<?> newValueBuilder = state.lookup(newValue);
-                    TypeFlowBuilder<?> storeBuilder;
-                    BytecodePosition storeLocation = AbstractAnalysisEngine.sourcePosition(node);
-                    if (objectType != null && objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
-                        /*
-                         * Unsafe compare and swap is essentially unsafe store and unsafe store to
-                         * an array object is essentially an array store since we don't have
-                         * separate type flows for different array elements.
-                         */
-                        storeBuilder = TypeFlowBuilder.create(bb, node, StoreIndexedTypeFlow.class, () -> {
-                            StoreIndexedTypeFlow storeTypeFlow = new StoreIndexedTypeFlow(storeLocation, objectType, objectBuilder.get(), newValueBuilder.get());
-                            flowsGraph.addMiscEntryFlow(storeTypeFlow);
-                            return storeTypeFlow;
-                        });
-                    } else {
-                        /*
-                         * Use the Object type as a conservative approximation for both the receiver
-                         * object type and the swapped values type.
-                         */
-                        AnalysisType nonNullObjectType = bb.getObjectType();
-                        storeBuilder = TypeFlowBuilder.create(bb, node, UnsafeStoreTypeFlow.class, () -> {
-                            UnsafeStoreTypeFlow storeTypeFlow = new UnsafeStoreTypeFlow(storeLocation, nonNullObjectType, nonNullObjectType, objectBuilder.get(), newValueBuilder.get());
-                            flowsGraph.addMiscEntryFlow(storeTypeFlow);
-                            return storeTypeFlow;
-                        });
-                    }
-                    storeBuilder.addUseDependency(newValueBuilder);
-                    storeBuilder.addObserverDependency(objectBuilder);
-
-                    /* Offset stores must not be removed. */
-                    typeFlowGraphBuilder.registerSinkBuilder(storeBuilder);
-                }
-
-            } else if (n instanceof UnsafeCompareAndExchangeNode) {
-                UnsafeCompareAndExchangeNode node = (UnsafeCompareAndExchangeNode) n;
-                modelUnsafeReadAndWriteFlow(node, node.object(), node.newValue(), node.offset());
-
-            } else if (n instanceof AtomicReadAndWriteNode) {
-                AtomicReadAndWriteNode node = (AtomicReadAndWriteNode) n;
-                modelUnsafeReadAndWriteFlow(node, node.object(), node.newValue(), node.offset());
+            } else if (n instanceof RawLoadNode node) {
+                modelUnsafeReadOnlyFlow(node, node.object(), node.offset());
+            } else if (n instanceof RawStoreNode node) {
+                modelUnsafeWriteOnlyFlow(node, node.object(), node.value(), node.value().getStackKind(), node.offset());
+            } else if (n instanceof UnsafeCompareAndSwapNode node) {
+                modelUnsafeWriteOnlyFlow(node, node.object(), node.newValue(), node.newValue().getStackKind(), node.offset());
+            } else if (n instanceof UnsafeCompareAndExchangeNode node) {
+                modelUnsafeReadAndWriteFlow(node, node.object(), node.newValue(), node.newValue().getStackKind(), node.offset());
+            } else if (n instanceof AtomicReadAndWriteNode node) {
+                modelUnsafeReadAndWriteFlow(node, node.object(), node.newValue(), node.newValue().getStackKind(), node.offset());
+            } else if (n instanceof AtomicReadAndAddNode node) {
+                modelUnsafeReadAndWriteFlow(node, node.object(), null, node.offset().getStackKind(), node.offset());
 
             } else if (n instanceof BasicArrayCopyNode) {
                 BasicArrayCopyNode node = (BasicArrayCopyNode) n;
@@ -1295,82 +1171,60 @@ public class MethodTypeFlowBuilder {
             }
         }
 
-        /**
-         * Model an unsafe-read-and-write operation.
+        /*
+         * The various Unsafe access nodes either only read, only write, or write-and-read directly
+         * based on an offset. All three cases are handled similarly:
+         * 
+         * 1) If we have precise information about the accessed field, we can model the access using
+         * proper field access type flows.
+         * 
+         * 2) If the accessed object is always an array, we ca model the access using array type
+         * flows. The Unsafe access of an array is essentially an array access because we do not
+         * have separate type flows for different array elements.
          *
-         * In the analysis this is used to model both {@link AtomicReadAndWriteNode}, i.e., an
-         * atomic read-and-write operation like
-         * {@code sun.misc.Unsafe#getAndSetObject(Object, long, Object)}, and
-         * {@link UnsafeCompareAndExchangeNode}, i.e., an atomic compare-and-swap operation like
-         * {@code jdk.internal.misc.Unsafe#compareAndExchangeObject(Object, long, Object, Object)}
-         * where the result is the current value of the memory location that was compared.
-         *
-         * The Unsafe.compareAndExchangeObject() operation is similar to the
-         * Unsafe.compareAndSwapObject() operation which is modeled by the
-         * {@link UnsafeCompareAndSwapNode} above. However, Unsafe.compareAndSwapObject() returns a
-         * boolean, which the analysis ignores, whereas Unsafe.compareAndExchangeObject() returns
-         * the previous value, therefore it is equivalent to the model for Unsafe.getAndSetObject().
+         * 3) In the generic case, we use the unsafe access type flows.
          */
-        private void modelUnsafeReadAndWriteFlow(ValueNode node, ValueNode object, ValueNode newValue, ValueNode offset) {
-            assert node instanceof UnsafeCompareAndExchangeNode || node instanceof AtomicReadAndWriteNode : node;
 
+        private void modelUnsafeReadOnlyFlow(RawLoadNode node, ValueNode object, ValueNode offset) {
             checkUnsafeOffset(object, offset);
-
-            if (object.getStackKind() == JavaKind.Object && newValue.getStackKind() == JavaKind.Object) {
-                AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(object, bb.getMetaAccess());
-                TypeFlowBuilder<?> objectBuilder = state.lookup(object);
-                TypeFlowBuilder<?> newValueBuilder = state.lookup(newValue);
-
-                TypeFlowBuilder<?> storeBuilder;
-                TypeFlowBuilder<?> loadBuilder;
-
-                BytecodePosition location = AbstractAnalysisEngine.sourcePosition(node);
-                if (objectType != null && objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
-                    /*
-                     * Atomic read and write is essentially unsafe store and unsafe store to an
-                     * array object is essentially an array store since we don't have separate type
-                     * flows for different array elements.
-                     */
-                    storeBuilder = TypeFlowBuilder.create(bb, node, StoreIndexedTypeFlow.class, () -> {
-                        StoreIndexedTypeFlow storeTypeFlow = new StoreIndexedTypeFlow(location, objectType, objectBuilder.get(), newValueBuilder.get());
-                        flowsGraph.addMiscEntryFlow(storeTypeFlow);
-                        return storeTypeFlow;
-                    });
-
-                    loadBuilder = TypeFlowBuilder.create(bb, node, LoadIndexedTypeFlow.class, () -> {
-                        LoadIndexedTypeFlow loadTypeFlow = new LoadIndexedTypeFlow(location, objectType, objectBuilder.get());
-                        flowsGraph.addMiscEntryFlow(loadTypeFlow);
-                        return loadTypeFlow;
-                    });
-
+            if (object.getStackKind() == JavaKind.Object) {
+                if (offset instanceof FieldOffsetProvider fieldOffsetProvider) {
+                    processLoadField(node, (AnalysisField) fieldOffsetProvider.getField(), object, state);
+                } else if (StampTool.isAlwaysArray(object)) {
+                    processLoadIndexed(node, object, state);
                 } else {
-                    /*
-                     * Use the Object type as a conservative approximation for both the receiver
-                     * object type and the read/written values type.
-                     */
-                    AnalysisType nonNullObjectType = bb.getObjectType();
-                    storeBuilder = TypeFlowBuilder.create(bb, node, UnsafeStoreTypeFlow.class, () -> {
-                        UnsafeStoreTypeFlow storeTypeFlow = new UnsafeStoreTypeFlow(location, nonNullObjectType, nonNullObjectType, objectBuilder.get(), newValueBuilder.get());
-                        flowsGraph.addMiscEntryFlow(storeTypeFlow);
-                        return storeTypeFlow;
-                    });
-
-                    loadBuilder = TypeFlowBuilder.create(bb, node, UnsafeLoadTypeFlow.class, () -> {
-                        UnsafeLoadTypeFlow loadTypeFlow = new UnsafeLoadTypeFlow(location, nonNullObjectType, nonNullObjectType, objectBuilder.get());
-                        flowsGraph.addMiscEntryFlow(loadTypeFlow);
-                        return loadTypeFlow;
-                    });
-
+                    processUnsafeLoad(node, object, state);
                 }
+            }
+        }
 
-                storeBuilder.addUseDependency(newValueBuilder);
-                storeBuilder.addObserverDependency(objectBuilder);
-                loadBuilder.addObserverDependency(objectBuilder);
+        private void modelUnsafeWriteOnlyFlow(ValueNode node, ValueNode object, ValueNode newValue, JavaKind newValueKind, ValueNode offset) {
+            checkUnsafeOffset(object, offset);
+            if (object.getStackKind() == JavaKind.Object) {
+                if (offset instanceof FieldOffsetProvider fieldOffsetProvider) {
+                    processStoreField(node, (AnalysisField) fieldOffsetProvider.getField(), object, newValue, newValueKind, state);
+                } else if (StampTool.isAlwaysArray(object)) {
+                    processStoreIndexed(node, object, newValue, newValueKind, state);
+                } else {
+                    processUnsafeStore(node, object, newValue, newValueKind, state);
+                }
+            }
+        }
 
-                /* Offset stores must not be removed. */
-                typeFlowGraphBuilder.registerSinkBuilder(storeBuilder);
-
-                state.add(node, loadBuilder);
+        private void modelUnsafeReadAndWriteFlow(ValueNode node, ValueNode object, ValueNode newValue, JavaKind newValueKind, ValueNode offset) {
+            checkUnsafeOffset(object, offset);
+            if (object.getStackKind() == JavaKind.Object) {
+                if (offset instanceof FieldOffsetProvider fieldOffsetProvider) {
+                    var field = (AnalysisField) fieldOffsetProvider.getField();
+                    processStoreField(node, field, object, newValue, newValueKind, state);
+                    processLoadField(node, field, object, state);
+                } else if (StampTool.isAlwaysArray(object)) {
+                    processStoreIndexed(node, object, newValue, newValueKind, state);
+                    processLoadIndexed(node, object, state);
+                } else {
+                    processUnsafeStore(node, object, newValue, newValueKind, state);
+                    processUnsafeLoad(node, object, state);
+                }
             }
         }
     }
@@ -1607,10 +1461,10 @@ public class MethodTypeFlowBuilder {
                 ValueNode value = values.get(objectStartIndex + i);
                 if (!value.isJavaConstant() || !value.asJavaConstant().isDefaultForKind()) {
                     if (type.isArray()) {
-                        processStoreIndexed(commitAllocationNode, object, value, state);
+                        processStoreIndexed(commitAllocationNode, object, value, value.getStackKind(), state);
                     } else {
                         AnalysisField field = (AnalysisField) ((VirtualInstanceNode) virtualObject).field(i);
-                        processStoreField(commitAllocationNode, field, object, value, state);
+                        processStoreField(commitAllocationNode, field, object, value, value.getStackKind(), state);
                     }
                 }
             }
@@ -1639,60 +1493,142 @@ public class MethodTypeFlowBuilder {
         state.add(node, newInstanceBuilder);
     }
 
-    protected void processStoreField(StoreFieldNode node, TypeFlowsOfNodes state) {
-        processStoreField(node, (AnalysisField) node.field(), node.object(), node.value(), state);
-    }
+    protected void processLoadField(ValueNode node, AnalysisField field, ValueNode object, TypeFlowsOfNodes state) {
+        field.registerAsRead(AbstractAnalysisEngine.sourcePosition(node));
 
-    protected void processStoreField(ValueNode node, AnalysisField field, ValueNode object, ValueNode value, TypeFlowsOfNodes state) {
-        assert field.isWritten() : field;
-        if (bb.isSupportedJavaKind(value.getStackKind())) {
-            TypeFlowBuilder<?> valueBuilder = state.lookup(value);
-
-            TypeFlowBuilder<StoreFieldTypeFlow> storeFieldBuilder;
-            BytecodePosition storeLocation = AbstractAnalysisEngine.sourcePosition(node);
+        if (bb.isSupportedJavaKind(node.getStackKind())) {
+            TypeFlowBuilder<?> loadFieldBuilder;
             if (field.isStatic()) {
-                storeFieldBuilder = TypeFlowBuilder.create(bb, node, StoreFieldTypeFlow.class, () -> {
+                loadFieldBuilder = TypeFlowBuilder.create(bb, node, LoadStaticFieldTypeFlow.class, () -> {
                     FieldTypeFlow fieldFlow = field.getStaticFieldFlow();
-                    StoreStaticFieldTypeFlow storeFieldFlow = new StoreStaticFieldTypeFlow(storeLocation, field, valueBuilder.get(), fieldFlow);
-                    flowsGraph.addMiscEntryFlow(storeFieldFlow);
-                    return storeFieldFlow;
+                    LoadStaticFieldTypeFlow loadFieldFLow = new LoadStaticFieldTypeFlow(AbstractAnalysisEngine.sourcePosition(node), field, fieldFlow);
+                    flowsGraph.addNodeFlow(node, loadFieldFLow);
+                    return loadFieldFLow;
                 });
-                storeFieldBuilder.addUseDependency(valueBuilder);
             } else {
                 TypeFlowBuilder<?> objectBuilder = state.lookup(object);
-                storeFieldBuilder = TypeFlowBuilder.create(bb, node, StoreFieldTypeFlow.class, () -> {
-                    StoreInstanceFieldTypeFlow storeFieldFlow = new StoreInstanceFieldTypeFlow(storeLocation, field, valueBuilder.get(), objectBuilder.get());
+                loadFieldBuilder = TypeFlowBuilder.create(bb, node, LoadInstanceFieldTypeFlow.class, () -> {
+                    LoadInstanceFieldTypeFlow loadFieldFLow = new LoadInstanceFieldTypeFlow(AbstractAnalysisEngine.sourcePosition(node), field, objectBuilder.get());
+                    flowsGraph.addNodeFlow(node, loadFieldFLow);
+                    return loadFieldFLow;
+                });
+                loadFieldBuilder.addObserverDependency(objectBuilder);
+            }
+            typeFlowGraphBuilder.registerSinkBuilder(loadFieldBuilder);
+            state.add(node, loadFieldBuilder);
+        }
+    }
+
+    protected void processStoreField(ValueNode node, AnalysisField field, ValueNode object, ValueNode newValue, JavaKind newValueKind, TypeFlowsOfNodes state) {
+        field.registerAsWritten(AbstractAnalysisEngine.sourcePosition(node));
+
+        if (bb.isSupportedJavaKind(newValueKind)) {
+            TypeFlowBuilder<?> valueBuilder = state.lookupOrAny(newValue, newValueKind);
+
+            TypeFlowBuilder<?> storeFieldBuilder;
+            if (field.isStatic()) {
+                storeFieldBuilder = TypeFlowBuilder.create(bb, node, StoreStaticFieldTypeFlow.class, () -> {
+                    FieldTypeFlow fieldFlow = field.getStaticFieldFlow();
+                    StoreStaticFieldTypeFlow storeFieldFlow = new StoreStaticFieldTypeFlow(AbstractAnalysisEngine.sourcePosition(node), field, valueBuilder.get(), fieldFlow);
                     flowsGraph.addMiscEntryFlow(storeFieldFlow);
                     return storeFieldFlow;
                 });
-                storeFieldBuilder.addUseDependency(valueBuilder);
+            } else {
+                TypeFlowBuilder<?> objectBuilder = state.lookup(object);
+                storeFieldBuilder = TypeFlowBuilder.create(bb, node, StoreInstanceFieldTypeFlow.class, () -> {
+                    StoreInstanceFieldTypeFlow storeFieldFlow = new StoreInstanceFieldTypeFlow(AbstractAnalysisEngine.sourcePosition(node), field, valueBuilder.get(), objectBuilder.get());
+                    flowsGraph.addMiscEntryFlow(storeFieldFlow);
+                    return storeFieldFlow;
+                });
                 storeFieldBuilder.addObserverDependency(objectBuilder);
             }
+            storeFieldBuilder.addUseDependency(valueBuilder);
             /* Field stores must not be removed. */
             typeFlowGraphBuilder.registerSinkBuilder(storeFieldBuilder);
         }
     }
 
-    private void processStoreIndexed(StoreIndexedNode node, TypeFlowsOfNodes state) {
-        processStoreIndexed(node, node.array(), node.value(), state);
+    protected void processLoadIndexed(ValueNode node, ValueNode array, TypeFlowsOfNodes state) {
+        /* All primitive array loads are always saturated. */
+        if (node.getStackKind() == JavaKind.Object) {
+            TypeFlowBuilder<?> arrayBuilder = state.lookup(array);
+            AnalysisType type = (AnalysisType) StampTool.typeOrNull(array, bb.getMetaAccess());
+            AnalysisType arrayType = type.isArray() ? type : bb.getObjectArrayType();
+
+            TypeFlowBuilder<?> loadIndexedBuilder = TypeFlowBuilder.create(bb, node, LoadIndexedTypeFlow.class, () -> {
+                LoadIndexedTypeFlow loadIndexedFlow = new LoadIndexedTypeFlow(AbstractAnalysisEngine.sourcePosition(node), arrayType, arrayBuilder.get());
+                flowsGraph.addNodeFlow(node, loadIndexedFlow);
+                return loadIndexedFlow;
+            });
+
+            typeFlowGraphBuilder.registerSinkBuilder(loadIndexedBuilder);
+            loadIndexedBuilder.addObserverDependency(arrayBuilder);
+            state.add(node, loadIndexedBuilder);
+        }
     }
 
-    private void processStoreIndexed(ValueNode node, ValueNode array, ValueNode value, TypeFlowsOfNodes state) {
-        if (value.getStackKind() == JavaKind.Object) {
+    protected void processStoreIndexed(ValueNode node, ValueNode array, ValueNode newValue, JavaKind newValueKind, TypeFlowsOfNodes state) {
+        /* All primitive array loads are always saturated. */
+        if (newValueKind == JavaKind.Object) {
             AnalysisType type = (AnalysisType) StampTool.typeOrNull(array, bb.getMetaAccess());
             AnalysisType arrayType = type.isArray() ? type : bb.getObjectArrayType();
             TypeFlowBuilder<?> arrayBuilder = state.lookup(array);
-            TypeFlowBuilder<?> valueBuilder = state.lookup(value);
+            TypeFlowBuilder<?> valueBuilder = state.lookupOrAny(newValue, newValueKind);
+
             TypeFlowBuilder<?> storeIndexedBuilder = TypeFlowBuilder.create(bb, node, StoreIndexedTypeFlow.class, () -> {
                 StoreIndexedTypeFlow storeIndexedFlow = new StoreIndexedTypeFlow(AbstractAnalysisEngine.sourcePosition(node), arrayType, arrayBuilder.get(), valueBuilder.get());
                 flowsGraph.addMiscEntryFlow(storeIndexedFlow);
                 return storeIndexedFlow;
             });
+
             storeIndexedBuilder.addUseDependency(valueBuilder);
             storeIndexedBuilder.addObserverDependency(arrayBuilder);
-
             /* Index stores must not be removed. */
             typeFlowGraphBuilder.registerSinkBuilder(storeIndexedBuilder);
+        }
+    }
+
+    protected void processUnsafeLoad(ValueNode node, ValueNode object, TypeFlowsOfNodes state) {
+        /* All unsafe accessed primitive fields are always saturated. */
+        if (node.getStackKind() == JavaKind.Object) {
+            TypeFlowBuilder<?> objectBuilder = state.lookup(object);
+
+            /*
+             * Use the Object type as a conservative approximation for both the receiver object type
+             * and the loaded values type.
+             */
+            var loadBuilder = TypeFlowBuilder.create(bb, node, UnsafeLoadTypeFlow.class, () -> {
+                UnsafeLoadTypeFlow loadTypeFlow = new UnsafeLoadTypeFlow(AbstractAnalysisEngine.sourcePosition(node), bb.getObjectType(), bb.getObjectType(), objectBuilder.get());
+                flowsGraph.addMiscEntryFlow(loadTypeFlow);
+                return loadTypeFlow;
+            });
+
+            loadBuilder.addObserverDependency(objectBuilder);
+            state.add(node, loadBuilder);
+        }
+    }
+
+    protected void processUnsafeStore(ValueNode node, ValueNode object, ValueNode newValue, JavaKind newValueKind, TypeFlowsOfNodes state) {
+        /* All unsafe accessed primitive fields are always saturated. */
+        if (newValueKind == JavaKind.Object) {
+            TypeFlowBuilder<?> objectBuilder = state.lookup(object);
+            TypeFlowBuilder<?> newValueBuilder = state.lookupOrAny(newValue, newValueKind);
+
+            /*
+             * Use the Object type as a conservative approximation for both the receiver object type
+             * and the stored values type.
+             */
+            var storeBuilder = TypeFlowBuilder.create(bb, node, UnsafeStoreTypeFlow.class, () -> {
+                UnsafeStoreTypeFlow storeTypeFlow = new UnsafeStoreTypeFlow(AbstractAnalysisEngine.sourcePosition(node), bb.getObjectType(), bb.getObjectType(),
+                                objectBuilder.get(), newValueBuilder.get());
+                flowsGraph.addMiscEntryFlow(storeTypeFlow);
+                return storeTypeFlow;
+            });
+
+            storeBuilder.addUseDependency(newValueBuilder);
+            storeBuilder.addObserverDependency(objectBuilder);
+            /* Offset stores must not be removed. */
+            typeFlowGraphBuilder.registerSinkBuilder(storeBuilder);
         }
     }
 

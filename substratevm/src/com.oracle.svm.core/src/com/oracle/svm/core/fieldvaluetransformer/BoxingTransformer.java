@@ -26,20 +26,23 @@ package com.oracle.svm.core.fieldvaluetransformer;
 
 import com.oracle.svm.core.util.VMError;
 
-abstract class BoxingTransformer {
-    private final Class<?> returnType;
+import jdk.vm.ci.meta.JavaKind;
 
-    BoxingTransformer(Class<?> returnType) {
-        this.returnType = returnType;
+abstract class BoxingTransformer {
+    final JavaKind returnKind;
+
+    BoxingTransformer(JavaKind returnKind) {
+        this.returnKind = returnKind;
     }
 
     Object box(int value) {
-        if (returnType == int.class || returnType == Integer.class) {
-            return Integer.valueOf(value);
-        } else if (returnType == long.class || returnType == Long.class) {
-            return Long.valueOf(value);
-        } else {
-            throw VMError.shouldNotReachHere("Unexpected type: " + returnType);
+        switch (returnKind) {
+            case Int:
+                return Integer.valueOf(value);
+            case Long:
+                return Long.valueOf(value);
+            default:
+                throw VMError.shouldNotReachHere("Unexpected kind: " + returnKind);
         }
     }
 }

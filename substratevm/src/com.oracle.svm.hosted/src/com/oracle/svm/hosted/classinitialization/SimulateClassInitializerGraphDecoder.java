@@ -294,6 +294,10 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
                 return ConstantNode.forConstant(currentValue, metaAccess);
             }
         }
+        var intrinsified = support.fieldValueInterceptionSupport.tryIntrinsifyFieldLoad(providers, node);
+        if (intrinsified != null) {
+            return intrinsified;
+        }
         return node;
     }
 

@@ -273,7 +273,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     }
 
     public AnalysisType getObjectType() {
-        return metaAccess.lookupJavaType(Object.class);
+        return universe.objectType();
     }
 
     public AnalysisType getObjectArrayType() {
