@@ -300,6 +300,14 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         analysisProviders = customHostedProviders;
     }
 
+    public String[] getCallTrace(CallTreeInfo callTreeInfo, AnalysisMethod method) {
+        return CallTreeInfo.getCallTrace(callTreeInfo, method, registeredRuntimeCompilations);
+    }
+
+    public String[] getCallTrace(CallTreeInfo callTreeInfo, RuntimeCompilationCandidate candidate) {
+        return CallTreeInfo.getCallTrace(callTreeInfo, candidate, registeredRuntimeCompilations);
+    }
+
     public CallTreeInfo getCallTreeInfo() {
         VMError.guarantee(callTreeMetadata != null);
         return callTreeMetadata;
@@ -577,7 +585,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                         System.out.println("Parsing failed on a special method version: " + errorMethod.format("%H.%n"));
                         System.out.println("Method reachability trace");
                         if (failingRuntimeMethod != null) {
-                            Arrays.stream(CallTreeInfo.getCallTrace(treeInfo, failingRuntimeMethod)).forEach(System.out::println);
+                            Arrays.stream(CallTreeInfo.getCallTrace(treeInfo, failingRuntimeMethod, registeredRuntimeCompilations)).forEach(System.out::println);
                         } else {
                             System.out.println("trace unavailable");
                         }
