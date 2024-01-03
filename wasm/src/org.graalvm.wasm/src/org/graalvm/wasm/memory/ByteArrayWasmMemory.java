@@ -238,9 +238,9 @@ final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public Vector128 load_i128(Node node, long address) {
-        try {
+        if (ByteArraySupport.littleEndian().inBounds(byteArrayBuffer.buffer(), address, 16)) {
             return Vector128.ofBytes(Arrays.copyOfRange(byteArrayBuffer.buffer(), (int) address, (int) address + 16));
-        } catch (final IndexOutOfBoundsException e) {
+        } else {
             throw trapOutOfBounds(node, address, 16);
         }
     }
