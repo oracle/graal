@@ -3,7 +3,6 @@ package com.oracle.truffle.espresso.substitutions;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.ContinuationSupport;
@@ -14,8 +13,11 @@ import com.oracle.truffle.espresso.vm.ContinuationSupport;
 @EspressoSubstitutions
 public final class Target_com_oracle_truffle_espresso_continuations_Continuation {
     // Next steps:
-    // - Plumb HostFrameRecord into BytecodeNode.executeBodyFromBCI
-    // - Refactor BytecodeNode a bit to try and unify the regular, OSR and continuation resume paths.
+    // - Make it work when assertions are enabled.
+    // - Test with a lambda on the stack (indy), fix it.
+    // - Make a demo of using Kryo to serialize and restore a continuation.
+    // - Work out how to put unit tests in the enterprise repository.
+    // - Be able to abort the unwind if we hit a frame that can't be suspended e.g. that holds monitors.
     // - Ensure unwinds fail if there are any non-bytecode methods on the stack.
 
     @Substitution
