@@ -378,22 +378,8 @@ final class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
                 continue;
             }
 
-            // The causality-query implementation saturates at 20 types.
-            // Saturation will happen even if the types don't pass the filter
-            // Therefore, as soon as a typeflow connected to the source (represented by null) allows
-            // for more than 20 types,
-            // These will be added to allInstantiated immeadiatly.
-            // In practice this only shows in big projects and rarely (e.g. 3 times in 170MB
-            // spring-petclinic)
-            // Therefore we simply employ this quick fix:
-            var typeIter = e.getValue().iterator();
-            while (typeIter.hasNext()) {
-                TypeState state = TypeState.forEmpty();
-
-                for (int j = 0; j < 20 && typeIter.hasNext(); j++) {
-                    state = TypeState.forUnion(bb, state, TypeState.forExactType(bb, typeIter.next(), false));
-                }
-
+            for (AnalysisType analysisType : e.getValue()) {
+                TypeState state = TypeState.forExactType(bb, analysisType, false);
                 Graph.FlowNode intermediate = new Graph.FlowNode("Virtual Flow from Heap", e.getKey().getLeft(), state);
                 g.add(new Graph.FlowEdge(null, intermediate));
                 g.add(new Graph.FlowEdge(intermediate, fieldNode));
