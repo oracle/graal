@@ -33,7 +33,7 @@ The Native Image JNI implementation supports both approaches.
 
 ## Loading Native Libraries
 
-When loading native libraries using `System.loadLibrary()` (and related APIs), the native image will search the directory containing the native library before searching the Java library path. 
+When loading native libraries using `System.loadLibrary()` (and related APIs), the native image will search the directory containing the native image before searching the Java library path. 
 So as long as the native libraries to be loaded are in the same directory as the native image, no other settings should be necessary.
 
 ## Reflection Metadata
@@ -54,7 +54,7 @@ The `native-image` builder generates JNI reflection metadata for all classes, me
 More than one JNI configuration can be used by specifying multiple paths for `JNIConfigurationFiles` and separating them with `,`.
 Also, `-H:JNIConfigurationResources` can be specified to load one or several configuration files from the image build's class path, such as from a JAR file.
 
-The JNI configuration can be collected automatically using the [Tracing Agent](AutomaticMetadataCollection.md), provided with GraalVM. 
+The JNI configuration can be collected automatically using the [Tracing Agent](AutomaticMetadataCollection.md) from the GraalVM JDK. 
 The agent tracks all usages of dynamic features during application execution on a regular Java VM. 
 When the application completes and the JVM exits, the agent writes configuration to JSON files in the specified output directory.
 If you move the generated configuration files from that output directory to _META-INF/native-image/_ on the class path, they are then automatically used at build time. 
