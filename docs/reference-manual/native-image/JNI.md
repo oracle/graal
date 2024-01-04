@@ -11,10 +11,11 @@ redirect_from: /reference-manual/native-image/JNI/
 Java Native Interface (JNI) is a native API that enables Java code to interact with native code and vice versa.
 This page gives an overview of the JNI implementation in Native Image.
 
-JNI support is enabled by default and built into Native Image. Individual classes, methods, and fields that should be accessible via JNI must be specified at image build time in a configuration file (read below).
+JNI support is enabled by default and built into Native Image. 
+Individual classes, methods, and fields that should be accessible via JNI must be specified at image build time in a configuration file (read below).
 
 Java code can load native code from a shared object with `System.loadLibrary()`.
-Alternatively, native code can load the JVM's native library and attach to its Java environment using JNI's Invocation API.
+Alternatively, native code can load the JVM's native library and attach to its Java environment using the Invocation API.
 The Native Image JNI implementation supports both approaches.
 
 ### Table of Contents
@@ -32,9 +33,8 @@ The Native Image JNI implementation supports both approaches.
 
 ## Loading Native Libraries
 
-When loading native libraries using `System.loadLibrary()` (and related APIs), the native image will search the
-directory containing the native library before searching the Java library path. So as long as the native libraries
-to be loaded are in the same directory as the native image, no other settings should be necessary.
+When loading native libraries using `System.loadLibrary()` (and related APIs), the native image will search the directory containing the native library before searching the Java library path. 
+So as long as the native libraries to be loaded are in the same directory as the native image, no other settings should be necessary.
 
 ## Reflection Metadata
 
@@ -45,17 +45,20 @@ Moreover, `native-image` must generate wrapper code ahead-of-time for any method
 Therefore, specifying a concise list of items that need to be accessible via JNI guarantees their availability and allows for a smaller footprint.
 Such a list can be specified with the following image build argument:
 ```shell
--H:JNIConfigurationFiles=/path/to/jniconfig
+-H:JNIConfigurationFiles=/path/to/jni-config.json
 ```
-Here, _jniconfig_ is a JSON configuration file.
+Here, _jni-config.json_ is a JSON configuration file.
 Check the JSON schema for specifing JNI metadata [here](ReachabilityMetadata.md#specifying-metadata-with-json).
 
 The `native-image` builder generates JNI reflection metadata for all classes, methods, and fields referenced in the configuration file.
 More than one JNI configuration can be used by specifying multiple paths for `JNIConfigurationFiles` and separating them with `,`.
 Also, `-H:JNIConfigurationResources` can be specified to load one or several configuration files from the image build's class path, such as from a JAR file.
 
-The JNI configuration can be collected automatically using the [Tracing Agent](AutomaticMetadataCollection.md), provided with GraalVM. The agent tracks all usages of dynamic features during application execution on a regular Java VM. When the application completes and the JVM exits, the agent writes configuration to JSON files in the specified output directory.
-If you move the generated configuration files from that output directory to _META-INF/native-image/_ on the class path, they are then automatically included at build time. The `native-image` builder searches for _META-INF/native-image/_ and its subdirectories for files named _jni-config.json_, _reflect-config.json_, and others.
+The JNI configuration can be collected automatically using the [Tracing Agent](AutomaticMetadataCollection.md), provided with GraalVM. 
+The agent tracks all usages of dynamic features during application execution on a regular Java VM. 
+When the application completes and the JVM exits, the agent writes configuration to JSON files in the specified output directory.
+If you move the generated configuration files from that output directory to _META-INF/native-image/_ on the class path, they are then automatically used at build time. 
+The `native-image` builder searches for _META-INF/native-image/_ and its subdirectories for files named _jni-config.json_, _reflect-config.json_, and others.
 
 Alternatively, a custom `Feature` implementation can register program elements before and during the analysis phase of the image build using the `JNIRuntimeAccess` class. For example:
 ```java
@@ -74,7 +77,7 @@ class JNIRegistrationFeature implements Feature {
   }
 }
 ```
-To activate the custom feature `--features=<fully qualified name of JNIRegistrationFeature class>` needs to be passed to native-image.
+To activate the custom feature, pass `--features=<fully qualified name of JNIRegistrationFeature class>` to the `native-image` builder.
 [Native Image Build Configuration](BuildConfiguration.md#embed-a-configuration-file) explains how this can be automated with a `native-image.properties` file in `META-INF/native-image`.
 
 ### java.lang.reflect Support
