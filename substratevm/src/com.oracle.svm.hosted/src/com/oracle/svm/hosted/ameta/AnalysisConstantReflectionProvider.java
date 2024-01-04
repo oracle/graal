@@ -178,7 +178,8 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         return readValue(metaAccess, (AnalysisField) field, receiver, false);
     }
 
-    public JavaConstant readValue(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant receiver, boolean returnSimulatedValues) {
+    public JavaConstant readValue(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant r, boolean returnSimulatedValues) {
+        JavaConstant receiver = r;
         if (!field.isStatic()) {
             if (receiver.isNull() || !field.getDeclaringClass().isAssignableFrom(((TypedConstant) receiver).getType(metaAccess))) {
                 /*
@@ -200,7 +201,17 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         }
         if (value == null && receiver instanceof ImageHeapConstant) {
             ImageHeapInstance heapObject = (ImageHeapInstance) receiver;
-            value = heapObject.readFieldValue(field);
+            if (field.isComputedValue() && heapObject.isBackedByHostedObject()) {
+                /*
+                 * The shadow heap is not complete yet, fields that are annotated
+                 * with @UnknownObjectField or @UnknownPrimitiveField are not properly updated in
+                 * the shadow heap when their value becomes available. We always must read the
+                 * hosted values for such fields.
+                 */
+                receiver = heapObject.getHostedObject();
+            } else {
+                value = heapObject.readFieldValue(field);
+            }
         }
         if (value == null) {
             value = universe.lookup(ReadableJavaField.readFieldValue(suppliedMetaAccess, classInitializationSupport, field.wrapped, universe.toHosted(receiver)));
