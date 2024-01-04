@@ -220,7 +220,7 @@ public final class Target_java_lang_VirtualThread {
     @Substitute
     @SuppressWarnings({"static-method", "unused"})
     @TargetElement(onlyWith = JDK23OrLater.class)
-    private void notifyJvmtiDisableSuspend(boolean hide) {
+    private void notifyJvmtiDisableSuspend(boolean enter) {
         // unimplemented (GR-51158)
     }
 
