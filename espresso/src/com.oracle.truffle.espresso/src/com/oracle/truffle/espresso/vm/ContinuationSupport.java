@@ -102,38 +102,6 @@ public class ContinuationSupport {
 
             return hostHead;
         }
-
-
-        //        @SuppressWarnings("unused")
-        //        public void dumpStackToStdOut() {
-        //            System.out.printf("Stack has %d frames\n", frames.size());
-        //            for (int i = 0; i < frames.size(); i++) {
-        //                MaterializedFrame frame = frames.get(i);
-        //                Method.MethodVersion methodVersion = methodVersions.get(i);
-        //                System.out.printf("[%d] %s.%s()\n", i, methodVersion.getDeclaringKlass().getExternalName(), methodVersion.getNameAsString());
-        //                System.out.printf("Object refs:\n%s\n   Primitives: %s\n",
-        //                        String.join(
-        //                                "\n",
-        //                                stream(frame.getIndexedLocals())
-        //                                        .map(it -> {
-        //                                            var obj = (StaticObject) it;
-        //                                            if (obj != null) {
-        //                                                return "   • " + obj.toVerboseString().replace("\n", "\n     ");
-        //                                            }
-        //                                            return "   null";
-        //                                        })
-        //                                        .toList()
-        //                        ),
-        //
-        //                        String.join(
-        //                                "  ",
-        //                                stream(frame.getIndexedPrimitiveLocals())
-        //                                        .mapToObj(it -> String.format("0x%x", it))
-        //                                        .toList()
-        //                        )
-        //                );
-        //            }
-        //        }
     }
 
     /**
