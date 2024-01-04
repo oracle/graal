@@ -65,7 +65,7 @@ public abstract class InvokeQuickNode extends QuickNode {
     }
 
     /**
-     * Called as part of re-winding the stack when the user resumes a paused continuation. Executes the target of the
+     * Called as part of re-winding the stack when the user resumes a suspended continuation. Executes the target of the
      * invoke using a special calling convention in which the frame record to unwind is passed as a first argument.
      */
     public int resumeContinuation(VirtualFrame frame, ContinuationSupport.HostFrameRecord hfr) {

@@ -1,18 +1,15 @@
 package com.oracle.truffle.espresso.continuations;
 
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.Objects;
-import java.util.function.Consumer;
 
 /**
  * <p>A delimited one-shot continuation, which encapsulates a part of the program's execution such that it can be
- * resumed from the point at which it paused.</p>
+ * resumed from the point at which it suspended.</p>
  *
  * <p>
- * Continuations allow you to mark a region of code in which the program can <i>pause</i>, which passes control
+ * Continuations allow you to mark a region of code in which the program can <i>suspend</i>, which passes control
  * flow up the stack to the point at which the continuation was <i>resumed</i>. This implementation is low level
- * and doesn't address common needs, such as passing objects in and out of the continuation as it pauses and
+ * and doesn't address common needs, such as passing objects in and out of the continuation as it suspends and
  * resumes.
  * </p>
  *
@@ -27,7 +24,7 @@ import java.util.function.Consumer;
  * </p>
  *
  * <p>
- * This class implements <i>one shot</i> continuations, meaning you cannot restart a continuation from the same pause
+ * This class implements <i>one shot</i> continuations, meaning you cannot restart a continuation from the same suspend
  * point more than once. For that reason this class is mutable, and the act of calling {@code resume} changes its state.
  * If you want to roll back and retry a resume operation you should start by serializing the continuation, then
  * to try deserialize it to obtain a new {@code Continuation} that you can resume again. This is required
@@ -43,7 +40,7 @@ public final class Continuation {
 
     // We want a compact serialized representation, so use fields judiciously here.
 
-    // This field is set by the VM after a pause.
+    // This field is set by the VM after a suspend.
     public volatile FrameRecord stackFrameHead;
 
     /**
@@ -81,8 +78,8 @@ public final class Continuation {
         NEW,
         /** Currently executing. */
         RUNNING,
-        /** Pause has been called. */
-        PAUSED,
+        /** Suspend has been called. */
+        SUSPENDED,
         /** Completed successfully. */
         COMPLETED,
         /** An exception propagated out of the entry point. */
@@ -96,13 +93,13 @@ public final class Continuation {
     private final transient StateHolder stateHolder = new StateHolder();
 
     /**
-     * <p>Creates a new paused continuation.</p>
+     * <p>Creates a new suspended continuation.</p>
      *
      * <p>
-     * Pass an implementation of {@link EntryPoint}. The new continuation starts in the paused state. To begin execution
-     * call the {@link Continuation#resume()} method. The entry point will be passed a capability object allowing it
-     * to pause itself. If you don't want to deal with passing capabilities around, just stick it in a global variable
-     * that you clear when done, or use a thread local.
+     * Pass an implementation of {@link EntryPoint}. The new continuation starts in the {@link State#SUSPENDED} state.
+     * To begin execution call the {@link Continuation#resume()} method. The entry point will be passed a capability
+     * object allowing it to suspend itself. If you don't want to deal with passing capabilities around, just stick it
+     * in a global variable that you clear when done, or use a thread local.
      * </p>
      *
      * <p>
@@ -117,47 +114,47 @@ public final class Continuation {
     /**
      * A newly constructed continuation starts in {@link State#NEW}. After the first call to {@link #resume()} the
      * state will become {@link State#RUNNING} until either the entry point returns, at which point the state
-     * becomes {@link State#COMPLETED}, or until the continuation pauses, at which point it will be
-     * {@link State#PAUSED}.
+     * becomes {@link State#COMPLETED}, or until the continuation suspends, at which point it will be
+     * {@link State#SUSPENDED}.
      */
     public State getState() {
         return stateHolder.state;
     }
 
     /**
-     * A functional interface you implement to delimit the starting point of the continuation. You can only pause
-     * the continuation when your implementation of {@link #start(PauseCapability)} is on the stack.
+     * A functional interface you implement to delimit the starting point of the continuation. You can only suspend
+     * the continuation when your implementation of {@link #start(SuspendCapability)} is on the stack.
      */
     @FunctionalInterface
     public interface EntryPoint {
         /**
-         * The starting point of your continuation. The {@code pauseCapability} should only be invoked on this
+         * The starting point of your continuation. The {@code suspendCapability} should only be invoked on this
          * thread.
          */
-        public void start(PauseCapability pauseCapability);
+        public void start(SuspendCapability suspendCapability);
     }
 
     /**
      * An object provided by the system that lets you yield control and return from {@link Continuation#resume()}.
      */
-    public static final class PauseCapability {
+    public static final class SuspendCapability {
         // Will be assigned separately to break the cycle that occurs because this object has to be on the entry stack.
         StateHolder stateHolder;
 
         /**
-         * Pauses the continuation, unwinding the stack to the point at which it was previously resumed.
+         * Suspends the continuation, unwinding the stack to the point at which it was previously resumed.
          */
-        public void pause() {
-            stateHolder.state = State.PAUSED;
-            Continuation.pause0();
+        public void suspend() {
+            stateHolder.state = State.SUSPENDED;
+            Continuation.suspend0();
             stateHolder.state = State.RUNNING;
         }
     }
 
     /**
-     * Runs the continuation until it either completes or calls {@link PauseCapability#pause()}. If the
-     * continuation completes (returns from the entry point) then this method returns null. If it pauses then
-     * the returned object is whatever was passed to {@code pause}.
+     * Runs the continuation until it either completes or calls {@link SuspendCapability#suspend()}. The difference
+     * between the two reasons for returning is visible in {@link #getState()}. A continuation may not be resumed
+     * if it's already {@link State#COMPLETED} or {@link State#FAILED}, nor if it is already {@link State#RUNNING}.
      */
     public void resume() {
         // Are we in the special waiting-to-start state?
@@ -168,7 +165,7 @@ public final class Continuation {
 
         switch (stateHolder.state) {
             case RUNNING -> throw new IllegalStateException("You can't recursively resume an already executing continuation.");
-            case PAUSED -> {} // OK
+            case SUSPENDED -> {} // OK
             case COMPLETED -> throw new IllegalStateException("This continuation has already completed successfully.");
             case FAILED -> throw new IllegalStateException("This continuation has failed and must be discarded.");
         }
@@ -183,7 +180,7 @@ public final class Continuation {
      */
     @SuppressWarnings("unused")
     private void run() {
-        var cap = new PauseCapability();
+        var cap = new SuspendCapability();
         cap.stateHolder = stateHolder;
         stateHolder.state = State.RUNNING;
         try {
@@ -252,7 +249,7 @@ public final class Continuation {
     // This is native rather than throwing, because if we throw then IntelliJ can look inside the implementation
     // to determine it always fails and then its static analysis starts flagging non-existent errors in the user's
     // source code.
-    private static native void pause0();
+    private static native void suspend0();
 
     private static UnsupportedOperationException notOnEspresso() {
         // Caller should have been replaced by an intrinsic / substitution.

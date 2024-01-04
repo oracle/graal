@@ -137,7 +137,7 @@ public class ContinuationSupport {
     }
 
     /**
-     * The exception thrown host-side to unwind the stack when a continuation pauses. Frame info is gathered up into
+     * The exception thrown host-side to unwind the stack when a continuation suspends. Frame info is gathered up into
      * a linked list.
      */
     public static class Unwind extends ControlFlowException {

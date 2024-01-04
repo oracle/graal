@@ -618,10 +618,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         if (nextFrame != null) {
             slotsNeededForReturnType = invoke.resumeContinuation(frame, nextFrame);
         } else {
-            // Reached the end of the stack - this is where we paused, so we want to continue here as if nothing
+            // Reached the end of the stack - this is where we suspended, so we want to continue here as if nothing
             // had happened.
-            assert invoke.method.getNameAsString().equals("pause0");
-            slotsNeededForReturnType = 0;   // pause0 returns void
+            assert invoke.method.getNameAsString().equals("suspend0");
+            slotsNeededForReturnType = 0;   // suspend0 returns void
         }
 
         // Return the adjustment to the stack pointer.
@@ -1524,7 +1524,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
                 }
             } catch (ContinuationSupport.Unwind unwindRequest) {
-                // The guest has paused a continuation. We need to gather the frames as we unwind the stack so the
+                // The guest has suspended a continuation. We need to gather the frames as we unwind the stack so the
                 // user can persist them later.
                 CompilerDirectives.transferToInterpreter();   // TODO: Is this right?
 
