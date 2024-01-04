@@ -665,6 +665,39 @@ public class UniverseBuilder {
         return alignedOffset - offset;
     }
 
+    private boolean skipStaticField(HostedField field) {
+        if (field.wrapped.isWritten() || MaterializedConstantFields.singleton().contains(field.wrapped)) {
+            return false;
+        }
+
+        if (!field.wrapped.isAccessed()) {
+            // if the field is never accessed then it does not need to be materialized
+            return true;
+        }
+
+        /*
+         * The field can be treated as a constant. Check if constant is available.
+         */
+
+        var interceptor = field.getWrapped().getFieldValueInterceptor();
+        if (interceptor == null) {
+            return true;
+        }
+
+        boolean available = field.isValueAvailable();
+        if (!available) {
+            /*
+             * Since the value is not yet available we must register it as a
+             * MaterializedConstantField. Note the field may be folded at a later point when the
+             * value becomes available. However, at this phase of the image building process this is
+             * not determinable.
+             */
+            MaterializedConstantFields.singleton().register(field.wrapped);
+        }
+
+        return available;
+    }
+
     private void layoutStaticFields() {
         ArrayList<HostedField> fields = new ArrayList<>();
         for (HostedField field : hUniverse.fields.values()) {
@@ -685,8 +718,8 @@ public class UniverseBuilder {
         List<HostedField>[] fieldsOfTypes = (List<HostedField>[]) new ArrayList<?>[hUniverse.getTypes().size()];
 
         for (HostedField field : fields) {
-            if (!field.wrapped.isWritten() && !MaterializedConstantFields.singleton().contains(field.wrapped)) {
-                // Constant, does not require memory.
+            if (skipStaticField(field)) {
+                // does not require memory.
             } else if (field.getStorageKind() == JavaKind.Object) {
                 field.setLocation(NumUtil.safeToInt(layout.getArrayElementOffset(JavaKind.Object, nextObjectField)));
                 nextObjectField += 1;
