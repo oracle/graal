@@ -117,6 +117,8 @@ public final class UnimplementedGraalIntrinsics {
                         "jdk/jfr/internal/JVM.getEventWriter()Ljdk/jfr/internal/event/EventWriter;");
 
         add(toBeInvestigated, // @formatter:off
+                        // JDK-8311218
+                        "java/lang/VirtualThread.notifyJvmtiDisableSuspend(Z)V",
                         // JDK-8309130: x86_64 AVX512 intrinsics for Arrays.sort methods (GR-48679)
                         "java/util/DualPivotQuicksort.partition(Ljava/lang/Class;Ljava/lang/Object;JIIIILjava/util/DualPivotQuicksort$PartitionOperation;)[I",
                         "java/util/DualPivotQuicksort.sort(Ljava/lang/Class;Ljava/lang/Object;JIILjava/util/DualPivotQuicksort$SortOperation;)V",
