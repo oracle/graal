@@ -774,11 +774,6 @@ public class AMD64ControlFlow {
 
                 // The jump table has a single DWORD with the label address if there's no
                 // default target
-                // FIXME: Taint this
-                masm.nop();
-                masm.sfence();
-                masm.nop();
-                masm.lfence();
                 masm.movslq(entryScratchReg, new AMD64Address(scratchReg, indexReg, Stride.S4, 0));
             }
             masm.addq(scratchReg, entryScratchReg);

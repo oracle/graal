@@ -421,8 +421,6 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         // adjust index to vector size alignment
         asm.movl(cmpResult, arrayPtr);
         if (stride.value > 1) {
-            asm.sfence();
-            asm.lfence();
             asm.shrl(cmpResult, stride.log2);
         }
         asm.addq(index, cmpResult);

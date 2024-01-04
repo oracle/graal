@@ -91,8 +91,6 @@ public final class FloatingReadNode extends FloatingAccessNode implements LIRLow
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         LIRKind readKind = gen.getLIRGeneratorTool().getLIRKind(stamp(NodeView.DEFAULT));
-        // FIXME: This masking needs to be done only for SFI on
-        gen.getLIRGeneratorTool().emitTaint(3);
         if (getBarrierType() != BarrierType.NONE && gen.getLIRGeneratorTool().getBarrierSet() != null) {
             gen.setResult(this, gen.getLIRGeneratorTool().getBarrierSet().emitBarrieredLoad(readKind, gen.operand(address), null, MemoryOrderMode.PLAIN, getBarrierType()));
         } else {
