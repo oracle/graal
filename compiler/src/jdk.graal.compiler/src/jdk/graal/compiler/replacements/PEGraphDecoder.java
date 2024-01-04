@@ -999,7 +999,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             }
             callTarget = trySimplifyCallTarget(methodScope, invokeData, methodCall);
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
-            if (forceLink && targetMethod.hasBytecodes() && targetMethod.getCode() == null && !targetMethod.getDeclaringClass().isLinked()) {
+            if (forceLink && targetMethod.getCodeSize() == -1) {
                 targetMethod.getDeclaringClass().link();
             }
             LoopScope inlineLoopScope = trySimplifyInvoke(methodScope, loopScope, invokeData, (MethodCallTargetNode) callTarget);
