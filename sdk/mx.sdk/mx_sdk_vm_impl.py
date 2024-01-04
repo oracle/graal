@@ -2890,7 +2890,8 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                         'path': None,
                     })
                     # additional JDK libraries need to be in the launcher's directory
-                    layout.setdefault(dirname(launcher_dest) + '/', []).append({
+                    destination = path_prefix + '/bin/' if mx.is_windows() else dirname(launcher_dest) + '/'
+                    layout.setdefault(destination, []).append({
                         'source_type': 'dependency',
                         'dependency': dependency,
                         'exclude': [],
@@ -2938,7 +2939,8 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                         })
                         if not _skip_libraries(library_config):
                             # additional JDK libraries need to be in the library's directory
-                            layout.setdefault(dirname(library_dest) + '/', []).append({
+                            destination = path_prefix + '/bin/' if mx.is_windows() else dirname(library_dest) + '/'
+                            layout.setdefault(destination, []).append({
                                 'source_type': 'dependency',
                                 'dependency': dependency,
                                 'exclude': [],
