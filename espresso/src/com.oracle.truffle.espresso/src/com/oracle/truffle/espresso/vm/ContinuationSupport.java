@@ -14,56 +14,33 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
  * the {@link com.oracle.truffle.espresso.substitutions.Target_com_oracle_truffle_espresso_continuations_Continuation continuation intrinsics}.
  */
 public class ContinuationSupport {
-    public static HostFrameRecord guestFrameRecordsToHost(
-            @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject self,
-            Meta meta,
-            @Inject EspressoContext context
-    ) {
-        // Walk the guest linked list, converting to host-side objects.
-        HostFrameRecord hostCursor = null;
-        HostFrameRecord hostHead = null;
-        StaticObject /* FrameRecord */ cursor = meta.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.getObject(self);
-        while (StaticObject.notNull(cursor)) {
-            /* Object[] */
-            StaticObject pointersGuest = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_pointers.getObject(cursor);
-            /* long[] */
-            StaticObject primitivesGuest = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_primitives.getObject(cursor);
-            /* java.lang.reflect.Method */
-            StaticObject methodGuest = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_method.getObject(cursor);
-
-            var language = context.getLanguage();
-
-            StaticObject[] pointers = pointersGuest.unwrap(language);
-            long[] primitives = primitivesGuest.unwrap(language);
-            Method method = (Method) meta.HIDDEN_METHOD_KEY.getHiddenObject(methodGuest);
-
-            var next = new HostFrameRecord(pointers, primitives, method.getMethodVersion(), null);
-            if (hostCursor != null)
-                hostCursor.next = next;
-            if (hostHead == null)
-                hostHead = next;
-            hostCursor = next;
-            cursor = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_next.getObject(cursor);
-        }
-
-        return hostHead;
-    }
-
+    /**
+     * A host-side mirror of a guest-side {@code Continuation.FrameRecord} object. The data in a frame record is
+     * trusted but may be accidentally nonsensical in case of user error, for instance resuming a continuation
+     * generated with a different version of the program or VM to what we are running now.
+     */
     public static final class HostFrameRecord {
-        final Object[] pointers;
-        final long[] primitives;
-        final Method.MethodVersion methodVersion;
-        HostFrameRecord next;
+        public final StaticObject[] pointers;
+        public final long[] primitives;
+        public final int sp;
+        public final Method.MethodVersion methodVersion;
+        public HostFrameRecord next;
 
-        public HostFrameRecord(Object[] pointers, long[] primitives, Method.MethodVersion methodVersion,
+        // TODO: Add an `Object reserved` field to hold tags when assertions are enabled.
+
+        public HostFrameRecord(StaticObject[] pointers, long[] primitives, int sp, Method.MethodVersion methodVersion,
                                HostFrameRecord next) {
             this.pointers = pointers;
             this.primitives = primitives;
+            this.sp = sp;
             this.methodVersion = methodVersion;
             this.next = next;
         }
 
-        // Convert the MaterializedFrame to a guest-land Continuation.FrameRecord.
+        /**
+         * Copies this single record into a newly allocated guest-side object that the guest can then serialize,
+         * deserialize and resume. Does <i>not</i> set the {@code next} pointer.
+         */
         public @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation$FrameRecord;") StaticObject
         copyToGuest(Meta meta) {
             // We discard frame cookies here. As they are only used for the guest StackWalker API and the obsolete
@@ -73,7 +50,7 @@ public class ContinuationSupport {
             // we get ClassCastExceptions.
             StaticObject[] convertedPtrs = new StaticObject[pointers.length];
             for (int i = 0; i < convertedPtrs.length; i++)
-                convertedPtrs[i] = pointers[i] != null ? (StaticObject) pointers[i] : StaticObject.NULL;
+                convertedPtrs[i] = pointers[i] != null ? pointers[i] : StaticObject.NULL;
 
             var guestRecord = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.allocateInstance();
             meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_init_.invokeDirect(
@@ -81,9 +58,49 @@ public class ContinuationSupport {
                     // Host arrays are not guest arrays, so convert.
                     StaticObject.wrap(convertedPtrs, meta),
                     StaticObject.wrap(primitives, meta),
-                    methodVersion.getMethod().makeMirror(meta)
+                    methodVersion.getMethod().makeMirror(meta),
+                    sp
             );
             return guestRecord;
+        }
+
+        /**
+         * Copies the <i>entire</i> linked list of frame records from a guest {@code Continuation} object (which
+         * contains the head frame record pointer) to a linked list of host frame records.
+         */
+        public static HostFrameRecord copyFromGuest(
+                @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject self,
+                Meta meta,
+                @Inject EspressoContext context
+        ) {
+            HostFrameRecord hostCursor = null;
+            HostFrameRecord hostHead = null;
+            StaticObject /* FrameRecord */ cursor = meta.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.getObject(self);
+            while (StaticObject.notNull(cursor)) {
+                /* Object[] */
+                StaticObject pointersGuest = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_pointers.getObject(cursor);
+                /* long[] */
+                StaticObject primitivesGuest = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_primitives.getObject(cursor);
+                /* java.lang.reflect.Method */
+                StaticObject methodGuest = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_method.getObject(cursor);
+                int sp = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_sp.getInt(cursor);
+
+                var language = context.getLanguage();
+
+                StaticObject[] pointers = pointersGuest.unwrap(language);
+                long[] primitives = primitivesGuest.unwrap(language);
+                Method method = (Method) meta.HIDDEN_METHOD_KEY.getHiddenObject(methodGuest);
+
+                var next = new HostFrameRecord(pointers, primitives, sp, method.getMethodVersion(), null);
+                if (hostCursor != null)
+                    hostCursor.next = next;
+                if (hostHead == null)
+                    hostHead = next;
+                hostCursor = next;
+                cursor = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_next.getObject(cursor);
+            }
+
+            return hostHead;
         }
 
 

@@ -295,7 +295,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
      * for mismatches when assertions are enabled.
      */
     public Object[] getIndexedLocals() {
-        return unsafeCast(indexedLocals, Object[].class, true, true, true);
+        return indexedLocals;
     }
 
     /**
@@ -304,7 +304,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
      * for mismatches when assertions are enabled.
      */
     public long[] getIndexedPrimitiveLocals() {
-        return unsafeCast(this.indexedPrimitiveLocals, long[].class, true, true, true);
+        return this.indexedPrimitiveLocals;
     }
 
     private byte[] getIndexedTags() {

@@ -54,59 +54,18 @@ public final class Continuation {
      * <p>The contents of the arrays should be treated as opaque.</p>
      */
     public static final class FrameRecord {
-        private FrameRecord next;  // Set by the VM.
-        private final Object[] pointers;
-        private final long[] primitives;
-        private final Method method;
+        public FrameRecord next;  // Set by the VM.
+        public final Object[] pointers;
+        public final long[] primitives;
+        public final Method method;
+        public final int sp;   // The stack pointer (how many slots are used at the current bci)
 
         // Invoked by the VM.
-        FrameRecord(Object[] pointers, long[] primitives, Method method) {
+        FrameRecord(Object[] pointers, long[] primitives, Method method, int sp) {
             this.pointers = pointers;
             this.primitives = primitives;
             this.method = method;
-        }
-
-        /** The next record in the list, or null if this is the last record in the stack. */
-        public FrameRecord next() {
-            return next;
-        }
-
-        /** A mix of nulls and object references representing pointer-typed stack slots. */
-        public Object[] pointers() {
-            return pointers;
-        }
-
-        /** An array of untyped opaque longs holding primitive data from the stack. */
-        public long[] primitives() {
-            return primitives;
-        }
-
-        public Method method() {
-            return method;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj == this) return true;
-            if (obj == null || obj.getClass() != this.getClass()) return false;
-            var that = (FrameRecord) obj;
-            return Objects.equals(this.next, that.next) &&
-                    Arrays.equals(this.pointers, that.pointers) &&
-                    Arrays.equals(this.primitives, that.primitives) &&
-                    Objects.equals(this.method, that.method);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(next, Arrays.hashCode(pointers), Arrays.hashCode(primitives), method);
-        }
-
-        @Override
-        public String toString() {
-            return "FrameRecord@" + method + "[" +
-                    "pointers=" + Arrays.toString(pointers) + ", " +
-                    "primitives=" + Arrays.toString(primitives) +
-                    ']';
+            this.sp = sp;
         }
     }
 
@@ -165,8 +124,17 @@ public final class Continuation {
         return stateHolder.state;
     }
 
+    /**
+     * A functional interface you implement to delimit the starting point of the continuation. You can only pause
+     * the continuation when your implementation of {@link #start(PauseCapability)} is on the stack.
+     */
     @FunctionalInterface
-    public interface EntryPoint extends Consumer<PauseCapability> {
+    public interface EntryPoint {
+        /**
+         * The starting point of your continuation. The {@code pauseCapability} should only be invoked on this
+         * thread.
+         */
+        public void start(PauseCapability pauseCapability);
     }
 
     /**
@@ -187,7 +155,7 @@ public final class Continuation {
     }
 
     /**
-     * Runs the continuation until it either completes or calls {@link PauseCapability#pause(Object)}. If the
+     * Runs the continuation until it either completes or calls {@link PauseCapability#pause()}. If the
      * continuation completes (returns from the entry point) then this method returns null. If it pauses then
      * the returned object is whatever was passed to {@code pause}.
      */
@@ -219,12 +187,56 @@ public final class Continuation {
         cap.stateHolder = stateHolder;
         stateHolder.state = State.RUNNING;
         try {
-            entryPoint.accept(cap);
+            entryPoint.start(cap);
             stateHolder.state = State.COMPLETED;
+            stackFrameHead = null;
         } catch (Throwable e) {
             stateHolder.state = State.FAILED;
+            stackFrameHead = null;
             throw e;
         }
+    }
+
+    @Override
+    public String toString() {
+        var sb = new StringBuilder();
+        sb.append("Continuation in state ");
+        sb.append(getState());
+        sb.append("\n");
+        if (stackFrameHead != null) {
+            Continuation.FrameRecord cursor = stackFrameHead;
+            while (cursor != null) {
+                sb.append("Frame: ");
+                sb.append(cursor.method);
+                sb.append("\n");
+                sb.append("  Current bytecode index: ");
+                sb.append(cursor.primitives[0]);
+                sb.append("\n");
+                sb.append("  Pointers: [");
+                // We start at 1 because the first slot is always a primitive (the bytecode index).
+                for (int i = 1; i < cursor.pointers.length; i++) {
+                    var pointer = cursor.pointers[i];
+                    if (pointer == null)
+                        sb.append("null");
+                    else if (pointer == this)
+                        sb.append("this continuation");   // Don't stack overflow.
+                    else
+                        sb.append(pointer);
+                    if (i < cursor.pointers.length - 1)
+                        sb.append(", ");
+                }
+                sb.append("]\n");
+                sb.append("  Primitives: ");
+                for (int i = 1; i < cursor.primitives.length; i++) {
+                    sb.append(cursor.primitives[i]);
+                    if (i < cursor.pointers.length - 1)
+                        sb.append(" ");
+                }
+                sb.append("\n");
+                cursor = cursor.next;
+            }
+        }
+        return sb.toString();
     }
 
     // region Intrinsics

@@ -3,6 +3,7 @@ package com.oracle.truffle.espresso.substitutions;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.ContinuationSupport;
@@ -13,7 +14,16 @@ import com.oracle.truffle.espresso.vm.ContinuationSupport;
 @EspressoSubstitutions
 public final class Target_com_oracle_truffle_espresso_continuations_Continuation {
     // Next steps:
+    // - Plumb HostFrameRecord into BytecodeNode.executeBodyFromBCI
+    // - Refactor BytecodeNode a bit to try and unify the regular, OSR and continuation resume paths.
     // - Ensure unwinds fail if there are any non-bytecode methods on the stack.
+
+    @Substitution
+    static void pause0() {
+        // This internal exception will be caught in BytecodeNode's interpreter loop. Frame records will be added to
+        // the exception object in a linked list until it's caught below.
+        throw new ContinuationSupport.Unwind();
+    }
 
     @Substitution(hasReceiver = true)
     @TruffleBoundary
@@ -22,14 +32,20 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
             @Inject Meta meta,
             @Inject EspressoContext context
     ) {
-        System.out.println("resume0 called with " + self);
+        ContinuationSupport.HostFrameRecord stack = ContinuationSupport.HostFrameRecord.copyFromGuest(self, meta, context);
 
-        ContinuationSupport.HostFrameRecord stack = ContinuationSupport.guestFrameRecordsToHost(self, meta, context);
-    }
+        // This will break if the continuations API is redefined - TODO: find a way to block that.
+        var runMethod = meta.com_oracle_truffle_espresso_continuations_Continuation_run.getMethodVersion();
 
-    @Substitution
-    static void pause0() {
-        throw new ContinuationSupport.Unwind();
+        // The entry node will unpack the head frame record into the stack and then pass the remaining records into the
+        // bytecode interpreter, which will then pass them down the stack until everything is fully unwound.
+        // TODO: Is creating a new node the right way to do it? Probably we should be using an explicit node with cached arguments and stuff?
+        try {
+            runMethod.getCallTarget().call(self, stack);
+        } catch (ContinuationSupport.Unwind unwind) {
+            CompilerDirectives.transferToInterpreter();
+            meta.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.setObject(self, unwind.toGuest(meta));
+        }
     }
 
     @Substitution(hasReceiver = true)

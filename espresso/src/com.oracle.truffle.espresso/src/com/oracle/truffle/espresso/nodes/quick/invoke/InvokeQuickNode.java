@@ -29,11 +29,12 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.vm.ContinuationSupport;
 
 public abstract class InvokeQuickNode extends QuickNode {
     private static final Object[] EMPTY_ARGS = new Object[0];
 
-    protected final Method.MethodVersion method;
+    public final Method.MethodVersion method;
 
     // Helper information for easier arguments handling.
     protected final int resultAt;
@@ -61,6 +62,14 @@ public abstract class InvokeQuickNode extends QuickNode {
 
     public StaticObject peekReceiver(VirtualFrame frame) {
         return EspressoFrame.peekReceiver(frame, top, method.getMethod());
+    }
+
+    /**
+     * Called as part of re-winding the stack when the user resumes a paused continuation. Executes the target of the
+     * invoke using a special calling convention in which the frame record to unwind is passed as a first argument.
+     */
+    public int resumeContinuation(VirtualFrame frame, ContinuationSupport.HostFrameRecord hfr) {
+        throw new UnsupportedOperationException();
     }
 
     protected Object[] getArguments(VirtualFrame frame) {

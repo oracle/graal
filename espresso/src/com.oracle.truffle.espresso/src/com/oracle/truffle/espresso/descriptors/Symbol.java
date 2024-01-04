@@ -630,6 +630,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> pointers = StaticSymbols.putName("pointers");
         public static final Symbol<Name> primitives = StaticSymbols.putName("primitives");
         public static final Symbol<Name> method = StaticSymbols.putName("method");
+        public static final Symbol<Name> sp = StaticSymbols.putName("sp");
 
         // Panama
         public static final Symbol<Name> segmentMaskOrSize = StaticSymbols.putName("segmentMaskOrSize");
@@ -1319,11 +1320,12 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> ModuleDescriptor_String_String = StaticSymbols.putSignature(Type.java_lang_module_ModuleDescriptor, Type.java_lang_String, Type.java_lang_String);
 
         // Continuations
-        public static final Symbol<Signature> _void_FrameRecord_Object_array_long_array_Method = StaticSymbols.putSignature(
+        public static final Symbol<Signature> _void_FrameRecord_Object_array_long_array_Method_int = StaticSymbols.putSignature(
                 Type._void,
                 Type.java_lang_Object_array,
                 Type._long_array,
-                Type.java_lang_reflect_Method
+                Type.java_lang_reflect_Method,
+                Type._int
         );
 
     }

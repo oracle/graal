@@ -27,6 +27,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeVirtual;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeVirtualNodeGen;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.vm.ContinuationSupport;
 
 public final class InvokeVirtualQuickNode extends InvokeQuickNode {
 
@@ -43,5 +44,15 @@ public final class InvokeVirtualQuickNode extends InvokeQuickNode {
         Object[] args = getArguments(frame);
         nullCheck((StaticObject) args[0]);
         return pushResult(frame, invokeVirtual.execute(args));
+    }
+
+    @Override
+    public int resumeContinuation(VirtualFrame frame, ContinuationSupport.HostFrameRecord hfr) {
+        // The frame doesn't hold the arguments anymore, they were cleared during the invoke that happened before
+        // the user suspended. So we get the receiver from the frame we're about to wind in the first reference slot
+        // (which is 1, because slot 0 is the bci and thus a long slot).
+        StaticObject receiver = hfr.pointers[1];
+        nullCheck(receiver);
+        return pushResult(frame, invokeVirtual.execute(new Object[] { receiver, hfr }));
     }
 }
