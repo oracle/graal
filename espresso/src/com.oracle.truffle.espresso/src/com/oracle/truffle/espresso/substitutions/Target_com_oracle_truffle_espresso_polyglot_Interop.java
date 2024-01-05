@@ -2632,11 +2632,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * thread-safe.
      * <p>
      * Invoking this message does not cause any observable side-effects.
-     *
-     * @throws InvalidBufferOffsetException if and only if
-     *             <code>byteOffset < 0 || length < 0 || byteOffset + length > </code>{@link InteropLibrary#getBufferSize(Object)}
-     * @throws UnsupportedMessageException if and only if
-     *             {@link InteropLibrary#hasBufferElements(Object)} returns {@code false}
+     * <p>
+     * Throws InvalidBufferOffsetException if and only if
+     * <code>byteOffset < 0 || length < 0 || byteOffset + length > </code>{@link InteropLibrary#getBufferSize(Object)}
+     * <p>
+     * Throws UnsupportedMessageException if and only if
+     * {@link InteropLibrary#hasBufferElements(Object)} returns {@code false}
+     * 
      * @since 24.0
      */
     @Substitution
