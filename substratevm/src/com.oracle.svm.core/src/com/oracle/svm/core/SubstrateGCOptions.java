@@ -84,6 +84,9 @@ public class SubstrateGCOptions {
     @Option(help = "Exit on the first occurrence of an out-of-memory error that is thrown because the Java heap is out of memory.", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Boolean> ExitOnOutOfMemoryError = new NotifyGCRuntimeOptionKey<>(false);
 
+    @Option(help = "Report a fatal error on the first occurrence of an out-of-memory error that is thrown because the Java heap is out of memory.", type = OptionType.Expert)//
+    public static final RuntimeOptionKey<Boolean> ReportFatalErrorOnOutOfMemoryError = new RuntimeOptionKey<>(false);
+
     @Option(help = "Ignore calls to System.gc().", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Boolean> DisableExplicitGC = new NotifyGCRuntimeOptionKey<>(false);
 
