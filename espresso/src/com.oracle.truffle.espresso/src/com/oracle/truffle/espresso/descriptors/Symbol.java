@@ -322,7 +322,6 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> putFloat = StaticSymbols.putName("putFloat");
         public static final Symbol<Name> putDouble = StaticSymbols.putName("putDouble");
 
-
         // java.nio.ByteOrder
         public static final Symbol<Name> LITTLE_ENDIAN = StaticSymbols.putName("LITTLE_ENDIAN");
 
