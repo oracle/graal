@@ -104,7 +104,6 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaField FrameDescriptor_materializeCalled = findField(FrameDescriptor, "materializeCalled");
     public final ResolvedJavaField FrameDescriptor_indexedSlotTags = findField(FrameDescriptor, "indexedSlotTags");
     public final ResolvedJavaField FrameDescriptor_auxiliarySlotCount = findField(FrameDescriptor, "auxiliarySlotCount");
-    public final ResolvedJavaField FrameDescriptor_staticMode = findField(FrameDescriptor, "staticMode");
 
     public final ResolvedJavaType FrameSlotKind = lookupTypeCached("com.oracle.truffle.api.frame.FrameSlotKind");
     public final ResolvedJavaField FrameSlotKind_Object = findField(FrameSlotKind, "Object");

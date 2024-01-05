@@ -920,6 +920,17 @@ public class TruffleGraphBuilderPlugins {
                 return false;
             }
         });
+        r.register(new RequiredInvocationPlugin("isStatic", Receiver.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode, ValueNode frameSlotNode) {
+                int frameSlotIndex = maybeGetConstantNumberedFrameSlotIndex(frameNode, frameSlotNode);
+                if (frameSlotIndex >= 0) {
+                    b.addPush(JavaKind.Boolean, new VirtualFrameIsNode(frameNode, frameSlotIndex, VirtualFrameIsNode.STATIC_TAG, VirtualFrameAccessType.Indexed));
+                    return true;
+                }
+                return false;
+            }
+        });
         r.register(new RequiredInvocationPlugin("extend", int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {

@@ -87,7 +87,17 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
             if (frameSlotIndex < tagVirtual.entryCount() && frameSlotIndex < dataVirtual.entryCount()) {
                 ValueNode actualTag = tool.getEntry(tagVirtual, frameSlotIndex);
                 final boolean staticAccess = accessFlags.isStatic();
-                if (!staticAccess && (!actualTag.isConstant() || actualTag.asJavaConstant().asInt() != accessTag)) {
+                if (staticAccess && accessKind.isPrimitive() &&
+                                (actualTag.isConstant() && actualTag.asJavaConstant().asInt() == 0)) {
+                    /*
+                     * Reading a primitive from an uninitialized static slot: return the default
+                     * value for the access kind. Reading an object goes can go through the regular
+                     * route.
+                     */
+                    ValueNode dataEntry = ConstantNode.defaultForKind(getStackKind(), graph());
+                    tool.replaceWith(dataEntry);
+                    return;
+                } else if (!staticAccess && (!actualTag.isConstant() || actualTag.asJavaConstant().asInt() != accessTag)) {
                     /*
                      * We cannot constant fold the tag-check immediately, so we need to create a
                      * guard comparing the actualTag with the accessTag.

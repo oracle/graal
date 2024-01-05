@@ -117,7 +117,7 @@ public final class FrameAccessVerificationPhase extends BasePhase<TruffleTierCon
     private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
 
     private static final byte NONE = (byte) 0xff;
-    private static final int TYPE_MASK = 0xf;
+    private static final int TYPE_MASK = 0x0f;
     private static final int MODE_MASK = 0x30;
 
     private static final int MODE_CLEARED = 0x00;

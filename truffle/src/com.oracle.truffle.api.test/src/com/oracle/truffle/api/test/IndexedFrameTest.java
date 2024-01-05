@@ -147,6 +147,12 @@ public class IndexedFrameTest {
             for (int slot = 0; slot < descriptor.getNumberOfSlots(); slot++) {
                 assertIsType(frame, slot, FrameSlotKind.Static);
                 assertSame(DEFAULT, frame.getObjectStatic(slot));
+                assertEquals((byte) 0, frame.getByteStatic(slot));
+                assertEquals(false, frame.getBooleanStatic(slot));
+                assertEquals(0, frame.getIntStatic(slot));
+                assertEquals(0.0f, frame.getFloatStatic(slot), 0);
+                assertEquals(0L, frame.getLongStatic(slot));
+                assertEquals(0.0d, frame.getDoubleStatic(slot), 0);
             }
         });
     }

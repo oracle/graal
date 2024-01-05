@@ -441,7 +441,10 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public boolean isObject(int slot) {
-        return isNonStaticType(slot, OBJECT_TAG);
+        return isNonStaticType(slot, OBJECT_TAG) &&
+                        // Uninitialized static slots get OBJECT_TAG before the first set , so we
+                        // explicitly check for non-staticness of the slot.
+                        !isStatic(slot);
     }
 
     @Override
@@ -772,14 +775,13 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
      *
      * Static slots tags are not initialized to the STATIC_TAG value, but are initially left to 0.
      * The first write to a static slot will (if checks are enabled) set the tag to its
-     * corresponding static tag.
+     * corresponding static tag. Note that this means the tag value in the frame itself is not
+     * reliable for determining if a slot is static, but instead the frame descriptor should be
+     * queried.
      *
      * Much like regular slots can be read when not yet written to, static slots can be read when
      * not yet initialized (tag == 0), and will return the default value associated with the read
      * (frameDescriptor.defaultValue() for reading an object, 0 for reading a primitive).
-     *
-     * Note that this means the tag value in the frame itself is not reliable for determining if a
-     * slot is static, but instead the frame descriptor should be queried.
      */
 
     private boolean checkStaticGet(int slot, byte tag) {

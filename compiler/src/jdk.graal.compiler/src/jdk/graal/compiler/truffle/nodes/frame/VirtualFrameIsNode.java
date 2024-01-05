@@ -38,12 +38,12 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import jdk.graal.compiler.nodes.spi.Virtualizable;
 import jdk.graal.compiler.nodes.spi.VirtualizerTool;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
-
 import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public final class VirtualFrameIsNode extends VirtualFrameAccessorNode implements Virtualizable {
     public static final NodeClass<VirtualFrameIsNode> TYPE = NodeClass.create(VirtualFrameIsNode.class);
+    public static final int STATIC_TAG = NewFrameNode.FrameSlotKindStaticTag;
 
     public VirtualFrameIsNode(Receiver frame, int frameSlotIndex, int accessTag, VirtualFrameAccessType type) {
         super(TYPE, StampFactory.forKind(JavaKind.Boolean), frame, frameSlotIndex, accessTag, type, VirtualFrameAccessFlags.BENIGN);
@@ -57,6 +57,11 @@ public final class VirtualFrameIsNode extends VirtualFrameAccessorNode implement
             VirtualObjectNode tagVirtual = (VirtualObjectNode) tagAlias;
 
             if (frameSlotIndex < tagVirtual.entryCount()) {
+                if (accessTag == STATIC_TAG) {
+                    // Queries the slot kind in the frame descriptor.
+                    tool.replaceWith(getConstant(frame.isStatic(frameSlotIndex) ? 1 : 0));
+                    return;
+                }
                 ValueNode actualTag = tool.getEntry(tagVirtual, frameSlotIndex);
                 if (actualTag.isConstant()) {
                     tool.replaceWith(getConstant(actualTag.asJavaConstant().asInt() == accessTag ? 1 : 0));
