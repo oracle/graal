@@ -981,18 +981,24 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     private CodeExecutableElement createCreate() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, STATIC), generic(types.BytecodeNodes, model.templateType.asType()), "create");
         ex.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
-        ex.addParameter(new CodeVariableElement(parserType, "generator"));
+        ex.addParameter(new CodeVariableElement(parserType, "parser"));
 
+        ex.createDocBuilder().startJavadoc() //
+                        .string(String.format("Create one or more bytecode nodes. This is the entrypoint for creating new {@link %s} instances.", model.getName())).newLine() //
+                        .string(" ").newLine() //
+                        .string("@param config indicates whether to parse metadata (e.g., source information).").newLine() //
+                        .string("@param parser the parser that invokes a series of builder instructions to generate bytecode.").newLine() //
+                        .end();
         CodeTreeBuilder b = ex.getBuilder();
 
-        b.declaration("BytecodeNodesImpl", "nodes", "new BytecodeNodesImpl(generator)");
+        b.declaration("BytecodeNodesImpl", "nodes", "new BytecodeNodesImpl(parser)");
         b.startAssign("Builder builder").startNew(builder.getSimpleName().toString());
         b.string("nodes");
         b.string("false");
         b.string("config");
         b.end(2);
 
-        b.startStatement().startCall("generator", "parse");
+        b.startStatement().startCall("parser", "parse");
         b.string("builder");
         b.end(2);
 
@@ -1044,6 +1050,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         method.addParameter(new CodeVariableElement(parserType, "parser"));
         method.addThrownType(context.getType(IOException.class));
 
+        method.createDocBuilder().startJavadoc() //
+                        .string("Serializes the bytecode nodes parsed by the {@code parser}.").newLine() //
+                        .string(" ").newLine() //
+                        .string("@param config indicates whether to serialize metadata (e.g., source information).").newLine() //
+                        .string("@param buffer the buffer to write the byte output to.").newLine() //
+                        .string("@param callback the language-specific serializer for constants in the bytecode.").newLine() //
+                        .string("@param parser the parser.").newLine() //
+                        .end();
+
         CodeTreeBuilder init = CodeTreeBuilder.createBuilder();
         init.startNew(operationBuilderType);
         init.startGroup();
@@ -1081,6 +1096,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         method.addParameter(new CodeVariableElement(generic(Supplier.class, DataInput.class), "input"));
         method.addParameter(new CodeVariableElement(types.BytecodeDeserializer, "callback"));
         method.addThrownType(context.getType(IOException.class));
+
+        method.createDocBuilder().startJavadoc() //
+                        .string("Deserializes a byte sequence to bytecode nodes. The bytes must have been produced by a previous call to {@link #serialize}.").newLine() //
+                        .string(" ").newLine() //
+                        .string("@param language the language instance.").newLine() //
+                        .string("@param config indicates whether to deserialize metadata (e.g., source information), if available.").newLine() //
+                        .string("@param input A function that supplies the bytes to deserialize. This supplier must produce a new {@link DataInput} each time, since the bytes may be processed multiple times for reparsing.").newLine() //
+                        .string("@param callback The language-specific deserializer for constants in the bytecode. This callback must perform the inverse of the callback that was used to {@link #serialize} the nodes to bytes.").newLine() //
+                        .end();
+
         CodeTreeBuilder b = method.createBuilder();
 
         b.startTryBlock();
