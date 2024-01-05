@@ -90,7 +90,7 @@ class GenScavengeGCFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        HeapImpl heap = new HeapImpl(SubstrateOptions.getPageSize());
+        HeapImpl heap = new HeapImpl();
         ImageSingletons.add(Heap.class, heap);
         ImageSingletons.add(GCAllocationSupport.class, new GenScavengeAllocationSupport());
 

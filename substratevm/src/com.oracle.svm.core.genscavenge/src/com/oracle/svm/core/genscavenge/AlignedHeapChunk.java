@@ -24,18 +24,13 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
@@ -118,11 +113,6 @@ public final class AlignedHeapChunk {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static UnsignedWord getCommittedObjectMemory(AlignedHeader that) {
-        return HeapChunk.getEndOffset(that).subtract(getObjectsStartOffset());
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static AlignedHeader getEnclosingChunk(Object obj) {
         Pointer ptr = Word.objectToUntrackedPointer(obj);
         return getEnclosingChunkFromObjectPointer(ptr);
@@ -156,29 +146,5 @@ public final class AlignedHeapChunk {
     @Fold
     public static UnsignedWord getObjectsStartOffset() {
         return RememberedSet.get().getHeaderSizeOfAlignedChunk();
-    }
-
-    @Fold
-    static MemoryWalker.HeapChunkAccess<AlignedHeapChunk.AlignedHeader> getMemoryWalkerAccess() {
-        return ImageSingletons.lookup(AlignedHeapChunk.MemoryWalkerAccessImpl.class);
-    }
-
-    /** Methods for a {@link MemoryWalker} to access an aligned heap chunk. */
-    @AutomaticallyRegisteredImageSingleton(onlyWith = UseSerialOrEpsilonGC.class)
-    static final class MemoryWalkerAccessImpl extends HeapChunk.MemoryWalkerAccessImpl<AlignedHeapChunk.AlignedHeader> {
-
-        @Platforms(Platform.HOSTED_ONLY.class)
-        MemoryWalkerAccessImpl() {
-        }
-
-        @Override
-        public boolean isAligned(AlignedHeapChunk.AlignedHeader heapChunk) {
-            return true;
-        }
-
-        @Override
-        public UnsignedWord getAllocationStart(AlignedHeapChunk.AlignedHeader heapChunk) {
-            return getObjectsStart(heapChunk);
-        }
     }
 }

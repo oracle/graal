@@ -26,8 +26,6 @@ package com.oracle.svm.core.genscavenge;
 
 import java.util.function.IntUnaryOperator;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.UniqueLocationIdentity;
@@ -40,7 +38,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
@@ -351,42 +348,5 @@ public final class HeapChunk {
         } else {
             return UnalignedHeapChunk.getEnclosingChunkFromObjectPointer(ptrToObj);
         }
-    }
-
-    abstract static class MemoryWalkerAccessImpl<T extends HeapChunk.Header<?>> implements MemoryWalker.HeapChunkAccess<T> {
-        @Platforms(Platform.HOSTED_ONLY.class)
-        MemoryWalkerAccessImpl() {
-        }
-
-        @Override
-        public UnsignedWord getStart(T heapChunk) {
-            return (UnsignedWord) heapChunk;
-        }
-
-        @Override
-        public UnsignedWord getSize(T heapChunk) {
-            return HeapChunk.getEndOffset(heapChunk);
-        }
-
-        @Override
-        public UnsignedWord getAllocationEnd(T heapChunk) {
-            return HeapChunk.getTopPointer(heapChunk);
-        }
-
-        @Override
-        public String getRegion(T heapChunk) {
-            /* This method knows too much about spaces, especially the "free" space. */
-            Space space = getSpace(heapChunk);
-            String result;
-            if (space == null) {
-                result = "free";
-            } else if (space.isYoungSpace()) {
-                result = "young";
-            } else {
-                result = "old";
-            }
-            return result;
-        }
-
     }
 }

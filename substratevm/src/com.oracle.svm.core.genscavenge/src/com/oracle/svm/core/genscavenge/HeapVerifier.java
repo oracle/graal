@@ -399,7 +399,6 @@ public final class HeapVerifier {
         ObjectReferenceVerifier() {
         }
 
-        @SuppressWarnings("hiding")
         public void initialize() {
             this.result = true;
         }
