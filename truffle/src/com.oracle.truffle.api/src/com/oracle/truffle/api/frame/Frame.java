@@ -813,4 +813,15 @@ public interface Frame {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new UnsupportedOperationException();
     }
+
+    /**
+     * Direct access to slot tags of the stack. Slot tags track the true primitive type stored in a static slot,
+     * but only when assertions are enabled. When assertions aren't enabled the tags will all be STATIC_TAG (8).
+     * This is a very low level interface that you should avoid using unless you are trying to bulk access
+     * untyped stack data.
+     */
+    default byte[] getIndexedTags() {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new UnsupportedOperationException();
+    }
 }

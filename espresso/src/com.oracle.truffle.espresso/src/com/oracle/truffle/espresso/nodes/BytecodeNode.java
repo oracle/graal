@@ -575,6 +575,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             frame.setObjectStatic(i, record.pointers[i]);
         for (int i = 0; i < record.primitives.length; i++)
             frame.setLongStatic(i, record.primitives[i]);
+        if (record.slotTags != null) {
+            assert frame.getIndexedTags().length == record.slotTags.length;
+            System.arraycopy(record.slotTags, 0, frame.getIndexedTags(), 0, record.slotTags.length);
+        }
 
         int bci = getBCI(frame);
         var isInvoke = isPossiblyQuickenedInvoke(bci);
@@ -1537,10 +1541,16 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 //noinspection SuspiciousSystemArraycopy
                 System.arraycopy(localRefsObj, 0, localRefsStaticObj, 0, localRefsObj.length);
 
+                // Slot tags are only used when the VM has assertions enabled. Otherwise they're always just STATIC_TAG
+                byte[] slotTags = null;
+                //noinspection AssertWithSideEffects
+                assert (slotTags = materializedFrame.getIndexedTags()) != null;
+
                 // Extend the linked list of frame records as we unwind.
                 unwindRequest.head = new ContinuationSupport.HostFrameRecord(
                         localRefsStaticObj,
                         materializedFrame.getIndexedPrimitiveLocals(),
+                        slotTags,
                         top,
                         methodVersion,
                         unwindRequest.head

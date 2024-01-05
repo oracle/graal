@@ -13,7 +13,6 @@ import com.oracle.truffle.espresso.vm.ContinuationSupport;
 @EspressoSubstitutions
 public final class Target_com_oracle_truffle_espresso_continuations_Continuation {
     // Next steps:
-    // - Make it work when assertions are enabled.
     // - Test with a lambda on the stack (indy), fix it.
     // - Make a demo of using Kryo to serialize and restore a continuation.
     // - Work out how to put unit tests in the enterprise repository.

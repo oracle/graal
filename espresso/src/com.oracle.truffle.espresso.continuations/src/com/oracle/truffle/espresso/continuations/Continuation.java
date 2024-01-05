@@ -51,18 +51,43 @@ public final class Continuation {
      * <p>The contents of the arrays should be treated as opaque.</p>
      */
     public static final class FrameRecord {
-        public FrameRecord next;  // Set by the VM.
+        /**
+         * The next frame in the stack.
+         */
+        public FrameRecord next;   // Set by the VM
+
+        /**
+         * Pointer stack slots. Note that not every slot is used.
+         */
         public final Object[] pointers;
+
+        /**
+         * Primitive stack slots. Note that not every slot is used.
+         */
         public final long[] primitives;
+
+        /**
+         * The method of this stack frame.
+         */
         public final Method method;
-        public final int sp;   // The stack pointer (how many slots are used at the current bci)
+
+        /**
+         * The stack pointer (how many slots are used at the current bci).
+         */
+        public final int sp;
+
+        /**
+         * Reserved. Will always be null when using release builds of the JVM.
+         */
+        public final Object reserved1;
 
         // Invoked by the VM.
-        FrameRecord(Object[] pointers, long[] primitives, Method method, int sp) {
+        FrameRecord(Object[] pointers, long[] primitives, Method method, int sp, Object reserved1) {
             this.pointers = pointers;
             this.primitives = primitives;
             this.method = method;
             this.sp = sp;
+            this.reserved1 = reserved1;
         }
     }
 
@@ -230,6 +255,16 @@ public final class Continuation {
                         sb.append(" ");
                 }
                 sb.append("\n");
+                if (cursor.reserved1 instanceof byte[] slotTags) {
+                    // We only take this path in debug builds of Espresso when assertions are enabled for the VM itself.
+                    sb.append("  Slot tags: ");
+                    for (int i = 0; i < slotTags.length; i++) {
+                        sb.append(slotTags[i]);
+                        if (i < slotTags.length - 1)
+                            sb.append(" ");
+                    }
+                    sb.append("\n");
+                }
                 cursor = cursor.next;
             }
         }

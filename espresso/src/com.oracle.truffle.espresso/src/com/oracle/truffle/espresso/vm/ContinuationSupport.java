@@ -22,16 +22,17 @@ public class ContinuationSupport {
     public static final class HostFrameRecord {
         public final StaticObject[] pointers;
         public final long[] primitives;
+        public final byte[] slotTags;
         public final int sp;
         public final Method.MethodVersion methodVersion;
         public HostFrameRecord next;
 
-        // TODO: Add an `Object reserved` field to hold tags when assertions are enabled.
-
-        public HostFrameRecord(StaticObject[] pointers, long[] primitives, int sp, Method.MethodVersion methodVersion,
+        public HostFrameRecord(StaticObject[] pointers, long[] primitives, byte[] slotTags,
+                               int sp, Method.MethodVersion methodVersion,
                                HostFrameRecord next) {
             this.pointers = pointers;
             this.primitives = primitives;
+            this.slotTags = slotTags;
             this.sp = sp;
             this.methodVersion = methodVersion;
             this.next = next;
@@ -59,7 +60,8 @@ public class ContinuationSupport {
                     StaticObject.wrap(convertedPtrs, meta),
                     StaticObject.wrap(primitives, meta),
                     methodVersion.getMethod().makeMirror(meta),
-                    sp
+                    sp,
+                    slotTags != null ? StaticObject.wrap(slotTags, meta) : StaticObject.NULL
             );
             return guestRecord;
         }
@@ -81,6 +83,8 @@ public class ContinuationSupport {
                 StaticObject pointersGuest = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_pointers.getObject(cursor);
                 /* long[] */
                 StaticObject primitivesGuest = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_primitives.getObject(cursor);
+                /* Object (actually byte[]), or null */
+                StaticObject reservedGuest = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_reserved1.getObject(cursor);
                 /* java.lang.reflect.Method */
                 StaticObject methodGuest = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_method.getObject(cursor);
                 int sp = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_sp.getInt(cursor);
@@ -89,9 +93,10 @@ public class ContinuationSupport {
 
                 StaticObject[] pointers = pointersGuest.unwrap(language);
                 long[] primitives = primitivesGuest.unwrap(language);
+                byte[] slotTags = reservedGuest != StaticObject.NULL ? reservedGuest.unwrap(language) : null;
                 Method method = (Method) meta.HIDDEN_METHOD_KEY.getHiddenObject(methodGuest);
 
-                var next = new HostFrameRecord(pointers, primitives, sp, method.getMethodVersion(), null);
+                var next = new HostFrameRecord(pointers, primitives, slotTags, sp, method.getMethodVersion(), null);
                 if (hostCursor != null)
                     hostCursor.next = next;
                 if (hostHead == null)
