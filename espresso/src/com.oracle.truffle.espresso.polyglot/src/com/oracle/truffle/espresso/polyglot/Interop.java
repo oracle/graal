@@ -1481,7 +1481,7 @@ public final class Interop {
      *             {@code false}
      * @since 24.0
      */
-    public static native void readBuffer(Object receiver, long byteOffset, byte[] destination, int destinationOffset, int length);
+    public static native void readBuffer(Object receiver, long byteOffset, byte[] destination, int destinationOffset, int length) throws InvalidBufferOffsetException, UnsupportedMessageException;
 
     /**
      * Reads the byte from the receiver object at the given byte offset from the start of the
