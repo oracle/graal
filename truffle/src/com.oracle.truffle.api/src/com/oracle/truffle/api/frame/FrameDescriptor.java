@@ -60,21 +60,6 @@ import com.oracle.truffle.api.impl.TVMCI;
  * @since 0.8 or earlier
  */
 public final class FrameDescriptor implements Cloneable {
-    /*
-     * Changing these constants implies changes in NewFrameNode.java as well:
-     */
-    /**
-     * @since 22.2
-     */
-    static final int NO_STATIC_MODE = 1;
-    /**
-     * @since 22.2
-     */
-    static final int ALL_STATIC_MODE = 2;
-    /**
-     * @since 22.2
-     */
-    static final int MIXED_STATIC_MODE = NO_STATIC_MODE | ALL_STATIC_MODE;
 
     private final Object defaultValue;
 

@@ -91,7 +91,7 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
                                 (actualTag.isConstant() && actualTag.asJavaConstant().asInt() == 0)) {
                     /*
                      * Reading a primitive from an uninitialized static slot: return the default
-                     * value for the access kind. Reading an object goes can go through the regular
+                     * value for the access kind. Reading an object can go through the regular
                      * route.
                      */
                     ValueNode dataEntry = ConstantNode.defaultForKind(getStackKind(), graph());
