@@ -37,9 +37,11 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.LookupAndInvokeKnownMethodNode;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @GenerateInteropNodes
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
@@ -333,9 +335,13 @@ public class ByteBufferInterop extends EspressoInterop {
         }
         try {
             readBuffer.execute(receiver, get, new Object[]{byteOffset, StaticObject.wrap(destination, getMeta()), destinationOffset, length});
-        } catch (Throwable t) {
+        } catch (EspressoException ex) {
             error.enter();
-            throw InvalidBufferOffsetException.create(byteOffset, length);
+            StaticObject guestException = ex.getGuestException();
+            if (InterpreterToVM.instanceOf(guestException, receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {
+                throw InvalidBufferOffsetException.create(byteOffset, length);
+            }
+            throw ex;
         }
     }
 
