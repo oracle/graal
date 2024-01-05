@@ -400,6 +400,11 @@ public final class Meta extends ContextAccessImpl {
         java_nio_ByteBuffer_wrap = java_nio_ByteBuffer.requireDeclaredMethod(Name.wrap, Signature.ByteBuffer_byte_array);
         java_nio_ByteBuffer_get = java_nio_ByteBuffer.requireDeclaredMethod(Name.get, Signature.ByteBuffer_int_byte_array_int_int);
         java_nio_ByteBuffer_getByte = java_nio_ByteBuffer.requireDeclaredMethod(Name.get, Signature._byte_int);
+        java_nio_ByteBuffer_getShort = java_nio_ByteBuffer.requireDeclaredMethod(Name.getShort, Signature._short_int);
+        java_nio_ByteBuffer_getInt = java_nio_ByteBuffer.requireDeclaredMethod(Name.getInt, Signature._int_int);
+        java_nio_ByteBuffer_getLong = java_nio_ByteBuffer.requireDeclaredMethod(Name.getLong, Signature._long_int);
+        java_nio_ByteBuffer_getFloat = java_nio_ByteBuffer.requireDeclaredMethod(Name.getFloat, Signature._float_int);
+        java_nio_ByteBuffer_getDouble = java_nio_ByteBuffer.requireDeclaredMethod(Name.getDouble, Signature._double_int);
         java_nio_ByteBuffer_put = java_nio_ByteBuffer.requireDeclaredMethod(Name.put, Signature.ByteBuffer_int_byte);
         java_nio_ByteBuffer_putShort = java_nio_ByteBuffer.requireDeclaredMethod(Name.putShort, Signature.ByteBuffer_int_short);
         java_nio_ByteBuffer_putInt = java_nio_ByteBuffer.requireDeclaredMethod(Name.putInt, Signature.ByteBuffer_int_int);
@@ -1338,6 +1343,11 @@ public final class Meta extends ContextAccessImpl {
     public final Method java_nio_ByteBuffer_wrap;
     public final Method java_nio_ByteBuffer_get;
     public final Method java_nio_ByteBuffer_getByte;
+    public final Method java_nio_ByteBuffer_getShort;
+    public final Method java_nio_ByteBuffer_getInt;
+    public final Method java_nio_ByteBuffer_getLong;
+    public final Method java_nio_ByteBuffer_getFloat;
+    public final Method java_nio_ByteBuffer_getDouble;
     public final Method java_nio_ByteBuffer_put;
     public final Method java_nio_ByteBuffer_putShort;
     public final Method java_nio_ByteBuffer_putInt;

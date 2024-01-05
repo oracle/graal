@@ -26,7 +26,6 @@ package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 import java.nio.ByteOrder;
 import java.nio.ReadOnlyBufferException;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -73,7 +72,7 @@ public class ByteBufferInterop extends EspressoInterop {
                     @Cached LookupAndInvokeKnownMethodNode get,
                     @Bind("getMeta().java_nio_Buffer_limit") Method limitMethod,
                     @Cached LookupAndInvokeKnownMethodNode size,
-                    @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+                    @Cached.Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
         int bufferSize = (int) size.execute(receiver, limitMethod);
         if (byteOffset < 0 || byteOffset >= bufferSize) {
             error.enter();
@@ -105,24 +104,21 @@ public class ByteBufferInterop extends EspressoInterop {
 
     @ExportMessage
     static short readBufferShort(StaticObject receiver, ByteOrder order, long byteOffset,
-                    @Bind("getMeta().java_nio_ByteBuffer_getByte") Method getShortMethod,
+                    @Bind("getMeta().java_nio_ByteBuffer_getShort") Method getShortMethod,
                     @Cached LookupAndInvokeKnownMethodNode get,
                     @Bind("getMeta().java_nio_Buffer_limit") Method limitMethod,
                     @Cached LookupAndInvokeKnownMethodNode size,
-                    @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+                    @Bind("getMeta().java_nio_ByteBuffer_order") Method orderMethod,
+                    @Cached LookupAndInvokeKnownMethodNode orderNode,
+                    @Bind("getMeta().java_nio_ByteBuffer_setOrder") Method setOrderMethod,
+                    @Cached LookupAndInvokeKnownMethodNode setOrderNode,
+                    @Cached.Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
         int bufferSize = (int) size.execute(receiver, limitMethod);
         if (byteOffset < 0 || byteOffset >= bufferSize - 1) {
             error.enter();
             throw InvalidBufferOffsetException.create(byteOffset, bufferSize);
         }
-
-        int b1 = (byte) get.execute(receiver, getShortMethod, new Object[]{byteOffset}) & 0xFF;
-        int b2 = (byte) get.execute(receiver, getShortMethod, new Object[]{byteOffset + 1}) & 0xFF;
-        if (order == ByteOrder.BIG_ENDIAN) {
-            return (short) ((b1 << 8) | b2);
-        } else {
-            return (short) ((b2 << 8) | b1);
-        }
+        return (short) get(receiver, byteOffset, order, get, getShortMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
     }
 
     @ExportMessage
@@ -147,43 +143,26 @@ public class ByteBufferInterop extends EspressoInterop {
             error.enter();
             throw UnsupportedMessageException.create(new ReadOnlyBufferException());
         }
-        StaticObject originalOrder = (StaticObject) orderNode.execute(receiver, orderMethod);
-        StaticObject littleEndian = getLittleEndian(getMeta());
-        boolean isLittleEndian = originalOrder == littleEndian;
-        try {
-            if (order == ByteOrder.BIG_ENDIAN && isLittleEndian) {
-                setOrderNode.execute(receiver, setOrderMethod, new Object[]{getBigEndian(getMeta())});
-            } else if (order == ByteOrder.LITTLE_ENDIAN && !isLittleEndian) {
-                setOrderNode.execute(receiver, setOrderMethod, new Object[]{littleEndian});
-            }
-            put.execute(receiver, putShortMethod, new Object[]{byteOffset, value});
-        } finally {
-            setOrderNode.execute(receiver, setOrderMethod, new Object[]{originalOrder});
-        }
+        put(receiver, byteOffset, value, order, put, putShortMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
     }
 
     @ExportMessage
     static int readBufferInt(StaticObject receiver, ByteOrder order, long byteOffset,
-                    @Bind("getMeta().java_nio_ByteBuffer_getByte") Method getByteMethod,
+                    @Bind("getMeta().java_nio_ByteBuffer_getInt") Method getIntMethod,
                     @Cached LookupAndInvokeKnownMethodNode get,
                     @Bind("getMeta().java_nio_Buffer_limit") Method limitMethod,
                     @Cached LookupAndInvokeKnownMethodNode size,
-                    @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+                    @Bind("getMeta().java_nio_ByteBuffer_order") Method orderMethod,
+                    @Cached LookupAndInvokeKnownMethodNode orderNode,
+                    @Bind("getMeta().java_nio_ByteBuffer_setOrder") Method setOrderMethod,
+                    @Cached LookupAndInvokeKnownMethodNode setOrderNode,
+                    @Cached.Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
         int bufferSize = (int) size.execute(receiver, limitMethod);
         if (byteOffset < 0 || byteOffset >= bufferSize - 3) {
             error.enter();
             throw InvalidBufferOffsetException.create(byteOffset, bufferSize);
         }
-
-        int b1 = (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset}) & 0xFF;
-        int b2 = (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset + 1}) & 0xFF;
-        int b3 = (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset + 2}) & 0xFF;
-        int b4 = (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset + 3}) & 0xFF;
-        if (order == ByteOrder.BIG_ENDIAN) {
-            return (b1 << 24) | (b2 << 16) | (b3 << 8) | b4;
-        } else {
-            return (b4 << 24) | (b3 << 16) | (b2 << 8) | b1;
-        }
+        return (int) get(receiver, byteOffset, order, get, getIntMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
     }
 
     @ExportMessage
@@ -208,47 +187,26 @@ public class ByteBufferInterop extends EspressoInterop {
             error.enter();
             throw UnsupportedMessageException.create(new ReadOnlyBufferException());
         }
-        StaticObject originalOrder = (StaticObject) orderNode.execute(receiver, orderMethod);
-        StaticObject littleEndian = getLittleEndian(getMeta());
-        boolean isLittleEndian = originalOrder == littleEndian;
-        try {
-            if (order == ByteOrder.BIG_ENDIAN && isLittleEndian) {
-                setOrderNode.execute(receiver, setOrderMethod, new Object[]{getBigEndian(getMeta())});
-            } else if (order == ByteOrder.LITTLE_ENDIAN && !isLittleEndian) {
-                setOrderNode.execute(receiver, setOrderMethod, new Object[]{littleEndian});
-            }
-            put.execute(receiver, putIntMethod, new Object[]{byteOffset, value});
-        } finally {
-            setOrderNode.execute(receiver, setOrderMethod, new Object[]{originalOrder});
-        }
+        put(receiver, byteOffset, value, order, put, putIntMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
     }
 
     @ExportMessage
     static long readBufferLong(StaticObject receiver, ByteOrder order, long byteOffset,
-                    @Bind("getMeta().java_nio_ByteBuffer_getByte") Method getByteMethod,
+                    @Bind("getMeta().java_nio_ByteBuffer_getLong") Method getLongMethod,
                     @Cached LookupAndInvokeKnownMethodNode get,
                     @Bind("getMeta().java_nio_Buffer_limit") Method limitMethod,
                     @Cached LookupAndInvokeKnownMethodNode size,
-                    @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+                    @Bind("getMeta().java_nio_ByteBuffer_order") Method orderMethod,
+                    @Cached LookupAndInvokeKnownMethodNode orderNode,
+                    @Bind("getMeta().java_nio_ByteBuffer_setOrder") Method setOrderMethod,
+                    @Cached LookupAndInvokeKnownMethodNode setOrderNode,
+                    @Cached.Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
         int bufferSize = (int) size.execute(receiver, limitMethod);
         if (byteOffset < 0 || byteOffset >= bufferSize - 7) {
             error.enter();
             throw InvalidBufferOffsetException.create(byteOffset, bufferSize);
         }
-
-        long b1 = (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset}) & 0xFF;
-        long b2 = (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset + 1}) & 0xFF;
-        long b3 = (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset + 2}) & 0xFF;
-        long b4 = (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset + 3}) & 0xFF;
-        long b5 = (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset + 4}) & 0xFF;
-        long b6 = (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset + 5}) & 0xFF;
-        long b7 = (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset + 6}) & 0xFF;
-        long b8 = (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset + 7}) & 0xFF;
-        if (order == ByteOrder.BIG_ENDIAN) {
-            return (b1 << 56) | (b2 << 48) | (b3 << 40) | (b4 << 32) | (b5 << 24) | (b6 << 16) | (b7 << 8) | b8;
-        } else {
-            return (b8 << 56) | (b7 << 48) | (b6 << 40) | (b5 << 32) | (b4 << 24) | (b3 << 16) | (b2 << 8) | b1;
-        }
+        return (long) get(receiver, byteOffset, order, get, getLongMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
     }
 
     @ExportMessage
@@ -273,43 +231,26 @@ public class ByteBufferInterop extends EspressoInterop {
             error.enter();
             throw UnsupportedMessageException.create(new ReadOnlyBufferException());
         }
-        StaticObject originalOrder = (StaticObject) orderNode.execute(receiver, orderMethod);
-        StaticObject littleEndian = getLittleEndian(getMeta());
-        boolean isLittleEndian = originalOrder == littleEndian;
-        try {
-            if (order == ByteOrder.BIG_ENDIAN && isLittleEndian) {
-                setOrderNode.execute(receiver, setOrderMethod, new Object[]{getBigEndian(getMeta())});
-            } else if (order == ByteOrder.LITTLE_ENDIAN && !isLittleEndian) {
-                setOrderNode.execute(receiver, setOrderMethod, new Object[]{littleEndian});
-            }
-            put.execute(receiver, putLongMethod, new Object[]{byteOffset, value});
-        } finally {
-            setOrderNode.execute(receiver, setOrderMethod, new Object[]{originalOrder});
-        }
+        put(receiver, byteOffset, value, order, put, putLongMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
     }
 
     @ExportMessage
     static float readBufferFloat(StaticObject receiver, ByteOrder order, long byteOffset,
-                    @Bind("getMeta().java_nio_ByteBuffer_getByte") Method getByteMethod,
+                    @Bind("getMeta().java_nio_ByteBuffer_getFloat") Method getFloatMethod,
                     @Cached LookupAndInvokeKnownMethodNode get,
                     @Bind("getMeta().java_nio_Buffer_limit") Method limitMethod,
                     @Cached LookupAndInvokeKnownMethodNode size,
-                    @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+                    @Bind("getMeta().java_nio_ByteBuffer_order") Method orderMethod,
+                    @Cached LookupAndInvokeKnownMethodNode orderNode,
+                    @Bind("getMeta().java_nio_ByteBuffer_setOrder") Method setOrderMethod,
+                    @Cached LookupAndInvokeKnownMethodNode setOrderNode,
+                    @Cached.Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
         int bufferSize = (int) size.execute(receiver, limitMethod);
         if (byteOffset < 0 || byteOffset >= bufferSize - 3) {
             error.enter();
             throw InvalidBufferOffsetException.create(byteOffset, bufferSize);
         }
-
-        int b1 = (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset}) & 0xFF;
-        int b2 = (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset + 1}) & 0xFF;
-        int b3 = (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset + 2}) & 0xFF;
-        int b4 = (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset + 3}) & 0xFF;
-        if (order == ByteOrder.BIG_ENDIAN) {
-            return Float.intBitsToFloat((b1 << 24) | (b2 << 16) | (b3 << 8) | b4);
-        } else {
-            return Float.intBitsToFloat((b4 << 24) | (b3 << 16) | (b2 << 8) | b1);
-        }
+        return (float) get(receiver, byteOffset, order, get, getFloatMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
     }
 
     @ExportMessage
@@ -334,47 +275,26 @@ public class ByteBufferInterop extends EspressoInterop {
             error.enter();
             throw UnsupportedMessageException.create(new ReadOnlyBufferException());
         }
-        StaticObject originalOrder = (StaticObject) orderNode.execute(receiver, orderMethod);
-        StaticObject littleEndian = getLittleEndian(getMeta());
-        boolean isLittleEndian = originalOrder == littleEndian;
-        try {
-            if (order == ByteOrder.BIG_ENDIAN && isLittleEndian) {
-                setOrderNode.execute(receiver, setOrderMethod, new Object[]{getBigEndian(getMeta())});
-            } else if (order == ByteOrder.LITTLE_ENDIAN && !isLittleEndian) {
-                setOrderNode.execute(receiver, setOrderMethod, new Object[]{littleEndian});
-            }
-            put.execute(receiver, putFloatMethod, new Object[]{byteOffset, value});
-        } finally {
-            setOrderNode.execute(receiver, setOrderMethod, new Object[]{originalOrder});
-        }
+        put(receiver, byteOffset, value, order, put, putFloatMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
     }
 
     @ExportMessage
     static double readBufferDouble(StaticObject receiver, ByteOrder order, long byteOffset,
-                    @Bind("getMeta().java_nio_ByteBuffer_getByte") Method getByteMethod,
+                    @Bind("getMeta().java_nio_ByteBuffer_getDouble") Method getDoubleMethod,
                     @Cached LookupAndInvokeKnownMethodNode get,
                     @Bind("getMeta().java_nio_Buffer_limit") Method limitMethod,
+                    @Bind("getMeta().java_nio_ByteBuffer_order") Method orderMethod,
+                    @Cached LookupAndInvokeKnownMethodNode orderNode,
+                    @Bind("getMeta().java_nio_ByteBuffer_setOrder") Method setOrderMethod,
+                    @Cached LookupAndInvokeKnownMethodNode setOrderNode,
                     @Cached LookupAndInvokeKnownMethodNode size,
-                    @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
+                    @Cached.Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
         int bufferSize = (int) size.execute(receiver, limitMethod);
         if (byteOffset < 0 || byteOffset >= bufferSize - 7) {
             error.enter();
             throw InvalidBufferOffsetException.create(byteOffset, bufferSize);
         }
-
-        long b1 = (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset}) & 0xFF;
-        long b2 = (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset + 1}) & 0xFF;
-        long b3 = (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset + 2}) & 0xFF;
-        long b4 = (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset + 3}) & 0xFF;
-        long b5 = (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset + 4}) & 0xFF;
-        long b6 = (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset + 5}) & 0xFF;
-        long b7 = (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset + 6}) & 0xFF;
-        long b8 = (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset + 7}) & 0xFF;
-        if (order == ByteOrder.BIG_ENDIAN) {
-            return Double.longBitsToDouble((b1 << 56) | (b2 << 48) | (b3 << 40) | (b4 << 32) | (b5 << 24) | (b6 << 16) | (b7 << 8) | b8);
-        } else {
-            return Double.longBitsToDouble((b8 << 56) | (b7 << 48) | (b6 << 40) | (b5 << 32) | (b4 << 24) | (b3 << 16) | (b2 << 8) | b1);
-        }
+        return (double) get(receiver, byteOffset, order, get, getDoubleMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
     }
 
     @ExportMessage
@@ -399,19 +319,7 @@ public class ByteBufferInterop extends EspressoInterop {
             error.enter();
             throw UnsupportedMessageException.create(new ReadOnlyBufferException());
         }
-        StaticObject originalOrder = (StaticObject) orderNode.execute(receiver, orderMethod);
-        StaticObject littleEndian = getLittleEndian(getMeta());
-        boolean isLittleEndian = originalOrder == littleEndian;
-        try {
-            if (order == ByteOrder.BIG_ENDIAN && isLittleEndian) {
-                setOrderNode.execute(receiver, setOrderMethod, new Object[]{getBigEndian(getMeta())});
-            } else if (order == ByteOrder.LITTLE_ENDIAN && !isLittleEndian) {
-                setOrderNode.execute(receiver, setOrderMethod, new Object[]{littleEndian});
-            }
-            put.execute(receiver, putDoubleMethod, new Object[]{byteOffset, value});
-        } finally {
-            setOrderNode.execute(receiver, setOrderMethod, new Object[]{originalOrder});
-        }
+        put(receiver, byteOffset, value, order, put, putDoubleMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
     }
 
     @ExportMessage
@@ -431,15 +339,44 @@ public class ByteBufferInterop extends EspressoInterop {
         }
     }
 
-    @TruffleBoundary
-    static @JavaType(ByteOrder.class) StaticObject getLittleEndian(Meta meta) {
-        StaticObject staticStorage = meta.java_nio_ByteOrder.tryInitializeAndGetStatics();
-        return meta.java_nio_ByteOrder_LITTLE_ENDIAN.getObject(staticStorage);
+    private static Object get(StaticObject receiver, long byteOffset, ByteOrder order, LookupAndInvokeKnownMethodNode get, Method getMethod, LookupAndInvokeKnownMethodNode orderNode,
+                    Method orderMethod, LookupAndInvokeKnownMethodNode setOrderNode, Method setOrderMethod) {
+        StaticObject originalOrder = (StaticObject) orderNode.execute(receiver, orderMethod);
+        StaticObject desiredOrder = toGuestEndian(order, getMeta());
+        if (originalOrder == desiredOrder) {
+            return get.execute(receiver, getMethod, new Object[]{byteOffset});
+        } else {
+            try {
+                setOrderNode.execute(receiver, setOrderMethod, new Object[]{desiredOrder});
+                return get.execute(receiver, getMethod, new Object[]{byteOffset});
+            } finally {
+                setOrderNode.execute(receiver, setOrderMethod, new Object[]{originalOrder});
+            }
+        }
     }
 
-    @TruffleBoundary
-    static @JavaType(ByteOrder.class) StaticObject getBigEndian(Meta meta) {
+    private static void put(StaticObject receiver, long byteOffset, Object value, ByteOrder order, LookupAndInvokeKnownMethodNode put, Method putMethod, LookupAndInvokeKnownMethodNode orderNode,
+                    Method orderMethod, LookupAndInvokeKnownMethodNode setOrderNode, Method setOrderMethod) {
+        StaticObject originalOrder = (StaticObject) orderNode.execute(receiver, orderMethod);
+        StaticObject desiredOrder = toGuestEndian(order, getMeta());
+        if (originalOrder == desiredOrder) {
+            put.execute(receiver, putMethod, new Object[]{byteOffset, value});
+        } else {
+            try {
+                setOrderNode.execute(receiver, setOrderMethod, new Object[]{desiredOrder});
+                put.execute(receiver, putMethod, new Object[]{byteOffset, value});
+            } finally {
+                setOrderNode.execute(receiver, setOrderMethod, new Object[]{originalOrder});
+            }
+        }
+    }
+
+    private static @JavaType(ByteOrder.class) StaticObject toGuestEndian(ByteOrder order, Meta meta) {
         StaticObject staticStorage = meta.java_nio_ByteOrder.tryInitializeAndGetStatics();
-        return meta.java_nio_ByteOrder_BIG_ENDIAN.getObject(staticStorage);
+        if (order == ByteOrder.LITTLE_ENDIAN) {
+            return meta.java_nio_ByteOrder_LITTLE_ENDIAN.getObject(staticStorage);
+        } else {
+            return meta.java_nio_ByteOrder_BIG_ENDIAN.getObject(staticStorage);
+        }
     }
 }
