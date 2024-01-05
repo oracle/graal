@@ -29,18 +29,16 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
-import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.BinaryOpLogicNode;
 import jdk.graal.compiler.nodes.LogicConstantNode;
-import jdk.graal.compiler.nodes.LogicNegationNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
-
 import jdk.vm.ci.meta.TriState;
 
 /**
@@ -88,36 +86,14 @@ public final class IntegerTestNode extends BinaryOpLogicNode implements Canonica
             if (newRHS != null) {
                 return new IntegerTestNode(forX, newRHS);
             }
-
-            if (forX.isConstant() && forX.asJavaConstant().asLong() == 1 || forY.isConstant() && forY.asJavaConstant().asLong() == 1) {
-
-                ValueNode nonConstantInput = forX.isConstant() ? forY : forX;
-                GraalError.guarantee(!nonConstantInput.isConstant(), "Must not be constant %s", nonConstantInput);
-                if (nonConstantInput instanceof ConditionalNode conditional) {
-                    ValueNode condX = conditional.trueValue();
-                    ValueNode condY = conditional.falseValue();
-
-                    // fold the following condition ((c ? 1:0 ) & 1 == 0) to !c
-                    if (condX.isConstant() && condX.asJavaConstant().asLong() == 1 && condY.isConstant() && condY.asJavaConstant().asLong() == 0) {
-                        return LogicNegationNode.create(conditional.condition());
-                    }
-
-                    // fold the following condition ((c ? 0 : 1 ) & 1 == 0) to c
-                    if (condX.isConstant() && condX.asJavaConstant().asLong() == 0 && condY.isConstant() && condY.asJavaConstant().asLong() == 1) {
-                        return conditional.condition();
-                    }
-                }
-
-            }
-
         }
         return null;
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+    public Node canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         ValueNode value = canonical(forX, forY, NodeView.from(tool));
-        return value != null ? value : this;
+        return value != null ? value : super.canonical(tool, forX, forY);
     }
 
     @Override
