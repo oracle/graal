@@ -3928,7 +3928,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         pushInt(frame, stackPointer - 1, result);
     }
 
-    @ExplodeLoop
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static void i32x4_binop(VirtualFrame frame, int stackPointer, int vectorOpcode) {
         int[] x = popVector128(frame, stackPointer - 1).asInts();
         int[] y = popVector128(frame, stackPointer - 2).asInts();
@@ -3947,7 +3947,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         pushVector128(frame, stackPointer - 2, Vector128.ofInts(result));
     }
 
-    @ExplodeLoop
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static void f64x2_relop(VirtualFrame frame, int stackPointer, int vectorOpcode) {
         double[] x = popVector128(frame, stackPointer - 1).asDoubles();
         double[] y = popVector128(frame, stackPointer - 2).asDoubles();
@@ -3969,7 +3969,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         pushVector128(frame, stackPointer - 2, Vector128.ofLongs(result));
     }
 
-    @ExplodeLoop
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static void f64x2_unop(VirtualFrame frame, int stackPointer, int vectorOpcode) {
         double[] x = popVector128(frame, stackPointer - 1).asDoubles();
         double[] result = new double[2];
@@ -3990,7 +3990,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         pushVector128(frame, stackPointer - 1, Vector128.ofDoubles(result));
     }
 
-    @ExplodeLoop
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static void f64x2_binop(VirtualFrame frame, int stackPointer, int vectorOpcode) {
         double[] x = popVector128(frame, stackPointer - 1).asDoubles();
         double[] y = popVector128(frame, stackPointer - 2).asDoubles();
