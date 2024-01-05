@@ -122,9 +122,9 @@ public abstract class ImageHeapScanner {
     public void onFieldRead(AnalysisField field) {
         assert field.isRead() : field;
         /* Check if the value is available before accessing it. */
-        FieldScan reason = new FieldScan(field);
         AnalysisType declaringClass = field.getDeclaringClass();
         if (field.isStatic()) {
+            FieldScan reason = new FieldScan(field);
             if (isValueAvailable(field)) {
                 JavaConstant fieldValue = readStaticFieldValue(field);
                 markReachable(fieldValue, reason);
@@ -134,19 +134,20 @@ public abstract class ImageHeapScanner {
             }
         } else {
             /* Trigger field scanning for the already processed objects. */
-            postTask(() -> onInstanceFieldRead(field, declaringClass, reason));
+            postTask(() -> onInstanceFieldRead(field, declaringClass));
         }
     }
 
-    private void onInstanceFieldRead(AnalysisField field, AnalysisType type, FieldScan reason) {
+    private void onInstanceFieldRead(AnalysisField field, AnalysisType type) {
         for (AnalysisType subtype : type.getSubTypes()) {
             for (ImageHeapConstant imageHeapConstant : imageHeap.getReachableObjects(subtype)) {
+                FieldScan reason = new FieldScan(field, imageHeapConstant);
                 ImageHeapInstance imageHeapInstance = (ImageHeapInstance) imageHeapConstant;
                 updateInstanceField(field, imageHeapInstance, reason, null);
             }
             /* Subtypes include this type itself. */
             if (!subtype.equals(type)) {
-                onInstanceFieldRead(field, subtype, reason);
+                onInstanceFieldRead(field, subtype);
             }
         }
     }
