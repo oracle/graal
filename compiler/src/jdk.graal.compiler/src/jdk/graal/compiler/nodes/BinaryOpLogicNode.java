@@ -121,7 +121,7 @@ public abstract class BinaryOpLogicNode extends LIRLowerableLogicNode implements
             final TriState trueValCond = tryFold(condTrueVal.stamp(NodeView.DEFAULT), forY.stamp(NodeView.DEFAULT));
             final TriState falseValCond = tryFold(condFalseVal.stamp(NodeView.DEFAULT), forY.stamp(NodeView.DEFAULT));
             if (trueValCond.isUnknown() || falseValCond.isUnknown()) {
-                return null;
+                return this;
             }
             if (trueValCond == falseValCond) {
                 return LogicConstantNode.forBoolean(trueValCond.toBoolean());
