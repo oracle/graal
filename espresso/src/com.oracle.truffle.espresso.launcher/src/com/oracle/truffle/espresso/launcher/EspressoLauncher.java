@@ -40,6 +40,11 @@ import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
+/**
+ * A simple emulation of the {@code java} launcher that parses the command line flags and builds and Espresso context
+ * based on them. This code isn't used by anyone except Espresso developers, because in a shipped Espresso the VM
+ * is started via {@code mokapot} instead (see {@code hacking.md} for details).
+ */
 public final class EspressoLauncher extends AbstractLanguageLauncher {
     private static final String AGENT_LIB = "java.AgentLib.";
     private static final String AGENT_PATH = "java.AgentPath.";
