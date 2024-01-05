@@ -297,20 +297,20 @@ public final class HeapChunk {
     }
 
     @NeverInline("Not performance critical")
-    public static boolean walkObjectsFrom(Header<?> that, Pointer offset, ObjectVisitor visitor) {
-        return walkObjectsFromInline(that, offset, visitor);
+    public static boolean walkObjectsFrom(Header<?> that, Pointer start, ObjectVisitor visitor) {
+        return walkObjectsFromInline(that, start, visitor);
     }
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean walkObjectsFromInline(Header<?> that, Pointer startOffset, ObjectVisitor visitor) {
-        Pointer offset = startOffset;
-        while (offset.belowThan(getTopPointer(that))) { // crucial: top can move, so always re-read
-            Object obj = offset.toObject();
+    public static boolean walkObjectsFromInline(Header<?> that, Pointer start, ObjectVisitor visitor) {
+        Pointer p = start;
+        while (p.belowThan(getTopPointer(that))) { // crucial: top can move, so always re-read
+            Object obj = p.toObject();
             if (!callVisitor(visitor, obj)) {
                 return false;
             }
-            offset = offset.add(LayoutEncoding.getSizeFromObjectInlineInGC(obj));
+            p = p.add(LayoutEncoding.getSizeFromObjectInlineInGC(obj));
         }
         return true;
     }
