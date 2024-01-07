@@ -297,7 +297,7 @@ public class TruffleCompilerOptions {
     public static final OptionKey<PerformanceWarnings> TreatPerformanceWarningsAsErrors = new OptionKey<>(PerformanceWarnings.defaultValue());
 
     @Option(help = "Dumps bytes of runtime compiled methods in OS tmp folder.")
-    public static final OptionKey<Boolean> DumpRuntimeCompiledMethods = new OptionKey<>(false);
+    public static final OptionKey<Boolean> DumpRuntimeCompiledMethods = new OptionKey<>(true);
 
     private static OptionValues enableNodeSourcePositions(OptionValues values) {
         if (GraalOptions.TrackNodeSourcePosition.getValue(values)) {
