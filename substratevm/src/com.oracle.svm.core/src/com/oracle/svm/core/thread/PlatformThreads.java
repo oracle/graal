@@ -667,7 +667,6 @@ public abstract class PlatformThreads {
             loopNanos = TimeUtils.doNotLoopTooLong(startNanos, loopNanos, warningNanos, warningMessage);
             final boolean fatallyTooLong = TimeUtils.maybeFatallyTooLong(startNanos, failureNanos, failureMessage);
             if (fatallyTooLong) {
-                /* I took too long to tear down the VM. */
                 trace.string("Took too long to tear down the VM.").newline();
                 /*
                  * Debugging tip: Insert a `BreakpointNode.breakpoint()` here to stop in gdb or get
@@ -690,12 +689,18 @@ public abstract class PlatformThreads {
     @SuppressFBWarnings(value = "NN", justification = "notifyAll is necessary for Java semantics, no shared state needs to be modified beforehand")
     public static void exit(Thread thread) {
         ThreadListenerSupport.get().afterThreadRun();
+
         /*
          * First call Thread.exit(). This allows waiters on the thread object to observe that a
          * daemon ThreadGroup is destroyed as well if this thread happens to be the last thread of a
          * daemon group.
          */
-        toTarget(thread).exit();
+        try {
+            toTarget(thread).exit();
+        } catch (Throwable e) {
+            /* Ignore exception. */
+        }
+
         /*
          * Then set the threadStatus to TERMINATED. This makes Thread.isAlive() return false and
          * allows Thread.join() to complete once we notify all the waiters below.
@@ -1053,6 +1058,7 @@ public abstract class PlatformThreads {
 
     public static void setThreadStatus(Thread thread, int threadStatus) {
         assert !isVirtual(thread);
+        assert toTarget(thread).holder.threadStatus != ThreadStatus.TERMINATED : "once a thread is marked terminated, its status must not change";
         toTarget(thread).holder.threadStatus = threadStatus;
     }
 
