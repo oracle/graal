@@ -42,11 +42,10 @@ import java.lang.reflect.Method;
  */
 public final class Continuation {
     // Next steps:
-    // - Make a demo of using Kryo to serialize and restore a continuation.
-    // - Add more data to FrameRecord so we can do consistency checks in case the code has changed.
     // - Be able to abort the unwind if we hit a frame that can't be suspended e.g. that holds monitors.
     // - Ensure unwinds fail if there are any non-bytecode methods on the stack.
     // - Refactor to pull frame serialization into Truffle itself, stop exposing frame guts to language impls.
+    // - Feature: Add more data to FrameRecord so we can do consistency checks in case the code has changed.
     // - (lowpri) Refactor to use frame slots and avoid having a non-final field in BytecodeNode.
 
     // We want a compact serialized representation, so use fields judiciously here.
@@ -247,6 +246,9 @@ public final class Continuation {
                 sb.append("\n");
                 sb.append("  Current bytecode index: ");
                 sb.append(cursor.primitives[0]);
+                sb.append("\n");
+                sb.append("  Stack pointer: ");
+                sb.append(cursor.sp);
                 sb.append("\n");
                 sb.append("  Pointers: [");
                 // We start at 1 because the first slot is always a primitive (the bytecode index).

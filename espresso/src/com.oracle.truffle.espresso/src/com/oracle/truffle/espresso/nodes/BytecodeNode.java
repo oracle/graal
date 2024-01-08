@@ -628,8 +628,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             slotsNeededForReturnType = 0;   // suspend0 returns void
         }
 
-        // Return the adjustment to the stack pointer.
-        return slotsNeededForReturnType - Bytecodes.stackEffectOf(opcode);
+        return slotsNeededForReturnType;
     }
     // endregion
 
@@ -2200,6 +2199,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             }
         }
         // Perform the call outside of the lock.
+        // We _subtract_ the stack effect here to undo its effect, as the stack effect of the replaced opcode
+        // will be computed by quick.execute(frame), and then re-applied at the bottom of the interpreter loop.
+        // So we have to subtract the stack effect to prevent double counting.
         return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
     }
 

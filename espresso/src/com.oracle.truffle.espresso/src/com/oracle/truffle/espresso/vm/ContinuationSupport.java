@@ -94,7 +94,7 @@ public class ContinuationSupport {
                 StaticObject[] pointers = pointersGuest.unwrap(language);
                 long[] primitives = primitivesGuest.unwrap(language);
                 byte[] slotTags = reservedGuest != StaticObject.NULL ? reservedGuest.unwrap(language) : null;
-                Method method = (Method) meta.HIDDEN_METHOD_KEY.getHiddenObject(methodGuest);
+                Method method = Method.getHostReflectiveMethodRoot(methodGuest, meta);
 
                 var next = new HostFrameRecord(pointers, primitives, slotTags, sp, method.getMethodVersion(), null);
                 if (hostCursor != null)
