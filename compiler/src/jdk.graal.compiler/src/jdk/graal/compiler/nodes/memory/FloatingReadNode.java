@@ -46,7 +46,10 @@ import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.word.LocationIdentity;
+
+import java.awt.*;
 
 /**
  * A floating read of a value from memory specified in terms of an object base and an object
@@ -94,7 +97,10 @@ public final class FloatingReadNode extends FloatingAccessNode implements LIRLow
         if (getBarrierType() != BarrierType.NONE && gen.getLIRGeneratorTool().getBarrierSet() != null) {
             gen.setResult(this, gen.getLIRGeneratorTool().getBarrierSet().emitBarrieredLoad(readKind, gen.operand(address), null, MemoryOrderMode.PLAIN, getBarrierType()));
         } else {
-
+            if (ImageInfo.inImageRuntimeCode()) {
+                // FIXME: this shodu not use taint if need, move to a proper LFENCE.
+                gen.getLIRGeneratorTool().emitTaint(1);
+            }
             gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitLoad(readKind, gen.operand(address), null, MemoryOrderMode.PLAIN, MemoryExtendKind.DEFAULT));
         }
     }
