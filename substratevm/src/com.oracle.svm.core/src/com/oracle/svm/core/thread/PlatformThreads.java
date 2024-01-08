@@ -417,7 +417,13 @@ public abstract class PlatformThreads {
      */
     public static boolean ensureCurrentAssigned(String name, ThreadGroup group, boolean asDaemon) {
         if (currentThread.get() == null) {
-            assignCurrent(fromTarget(new Target_java_lang_Thread(name, group, asDaemon)), true);
+            Thread thread = fromTarget(new Target_java_lang_Thread(name, group, asDaemon));
+            assignCurrent(thread);
+
+            if (!thread.isDaemon()) {
+                int newValue = nonDaemonThreads.incrementAndGet();
+                assert newValue >= 1;
+            }
             return true;
         }
         return false;
@@ -425,27 +431,19 @@ public abstract class PlatformThreads {
 
     /**
      * Assign a {@link Thread} object to the current thread, which must have already been attached
-     * {@link VMThreads} as an {@link IsolateThread}.
+     * as an {@link IsolateThread}.
      *
      * The manuallyStarted parameter is true if this thread was started directly by calling
      * {@link #ensureCurrentAssigned(String, ThreadGroup, boolean)}. It is false when the thread is
      * started via {@link #doStartThread} and {@link #threadStartRoutine}.
      */
-    static void assignCurrent(Thread thread, boolean manuallyStarted) {
+    static void assignCurrent(Thread thread) {
         /*
          * First of all, ensure we are in RUNNABLE state. If !manuallyStarted, we race with the
          * thread that launched us to set the status and we could still be in status NEW.
          */
         setThreadStatus(thread, ThreadStatus.RUNNABLE);
-
         assignCurrent0(thread);
-
-        /* If the thread was manually started, finish initializing it. */
-        if (manuallyStarted) {
-            if (!thread.isDaemon()) {
-                nonDaemonThreads.incrementAndGet();
-            }
-        }
     }
 
     @Uninterruptible(reason = "Ensure consistency of vthread and cached vthread id.")
@@ -507,7 +505,8 @@ public abstract class PlatformThreads {
             toTarget(thread).threadData.detach();
             toTarget(thread).isolateThread = WordFactory.nullPointer();
             if (!thread.isDaemon()) {
-                nonDaemonThreads.decrementAndGet();
+                int newValue = nonDaemonThreads.decrementAndGet();
+                assert newValue >= 0;
             }
         }
     }
@@ -729,7 +728,8 @@ public abstract class PlatformThreads {
         startData.setIsolate(CurrentIsolate.getIsolate());
         startData.setThreadHandle(ObjectHandles.getGlobal().create(thread));
         if (!thread.isDaemon()) {
-            nonDaemonThreads.incrementAndGet();
+            int newValue = nonDaemonThreads.incrementAndGet();
+            assert newValue >= 1;
         }
         return startData;
     }
@@ -745,7 +745,8 @@ public abstract class PlatformThreads {
     private static void undoPrepareNonDaemonStartOnError() {
         VMThreads.lockThreadMutexInNativeCode();
         try {
-            nonDaemonThreads.decrementAndGet();
+            int newValue = nonDaemonThreads.decrementAndGet();
+            assert newValue >= 0;
             VMThreads.THREAD_LIST_CONDITION.broadcast();
         } finally {
             VMThreads.THREAD_MUTEX.unlock();
@@ -788,7 +789,7 @@ public abstract class PlatformThreads {
         Thread thread = ObjectHandles.getGlobal().get(threadHandle);
 
         try {
-            assignCurrent(thread, false);
+            assignCurrent(thread);
             ObjectHandles.getGlobal().destroy(threadHandle);
 
             singleton().unattachedStartedThreads.decrementAndGet();
