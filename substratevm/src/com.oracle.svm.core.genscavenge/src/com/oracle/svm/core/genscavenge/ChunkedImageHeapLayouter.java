@@ -108,6 +108,11 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
     }
 
     @Override
+    public long getStartOffset() {
+        return startOffset;
+    }
+
+    @Override
     public ChunkedImageHeapPartition[] getPartitions() {
         return partitions;
     }
