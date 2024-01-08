@@ -627,7 +627,7 @@ suite = {
             "license": "UPL",
             "javadocType": "api",
             "moduleInfo" : {
-                "name" : "espresso.continuations",
+                "name" : "com.oracle.truffle.espresso.continuations",
                 "exports" : [
                     "com.oracle.truffle.espresso.continuations",
                 ]
