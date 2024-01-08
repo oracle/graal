@@ -720,12 +720,14 @@ def gate_svm_truffle_tck_smoke_test(tasks):
                     mx.abort("Expected failure, log:\n" + result)
                 if not 'UnsafeCallNode.doUnsafeAccess' in result:
                     mx.abort("Missing UnsafeCallNode.doUnsafeAccess call in the log, log:\n" + result)
-                if not 'UnsafeCallNode.doUnsafeAccessBehindBoundary' in result:
-                    mx.abort("Missing UnsafeCallNode.doUnsafeAccessBehindBoundary call in the log, log:\n" + result)
-                if not 'PrivilegedCallNode.doPrivilegedCall' in result:
-                    mx.abort("Missing PrivilegedCallNode.doPrivilegedCall call in the log, log:\n" + result)
-                if not 'PrivilegedCallNode.doPrivilegedCallBehindBoundary' in result:
-                    mx.abort("Missing PrivilegedCallNode.doPrivilegedCallBehindBoundary call in the log, log:\n" + result)
+                if not 'UnsafeCallNode.doBehindBoundaryUnsafeAccess' in result:
+                    mx.abort("Missing UnsafeCallNode.doBehindBoundaryUnsafeAccess call in the log, log:\n" + result)
+                if not 'PrivilegedCallNode.execute' in result:
+                    mx.abort("Missing PrivilegedCallNode.execute call in the log, log:\n" + result)
+                if not 'PrivilegedCallNode.doBehindBoundaryPrivilegedCall' in result:
+                    mx.abort("Missing PrivilegedCallNode.doBehindBoundaryPrivilegedCall call in the log, log:\n" + result)
+                if not 'PrivilegedCallNode.doInterrupt' in result:
+                    mx.abort("Missing PrivilegedCallNode.doInterrupt call in the log, log:\n" + result)
 
 
 def gate_svm_truffle_tck_js(tasks):

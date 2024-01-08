@@ -665,14 +665,16 @@ public class PermissionsFeature implements Feature {
                 StructuredGraph graph = hostVM.getAnalysisGraph(caller);
                 for (Invoke invoke : graph.getInvokes()) {
                     if (threadInterrupt.getMethod().equals(invoke.callTarget().targetMethod())) {
+                        boolean vote = false;
                         ValueNode node = invoke.getReceiver();
                         if (node instanceof PiNode) {
                             node = ((PiNode) node).getOriginalNode();
                             if (node instanceof Invoke) {
                                 boolean isCurrentThread = threadCurrentThread.equals(((Invoke) node).callTarget().targetMethod());
-                                res = res == null ? isCurrentThread : (res && isCurrentThread);
+                                vote = res == null ? isCurrentThread : (res && isCurrentThread);
                             }
                         }
+                        res = vote;
                     }
                 }
             }
