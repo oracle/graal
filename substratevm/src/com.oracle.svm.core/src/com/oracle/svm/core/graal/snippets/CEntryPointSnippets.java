@@ -421,8 +421,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (MultiThreaded.getValue()) {
             Safepoint.transitionNativeToJava(false);
         }
+
         if (ensureJavaThread) {
-            runtimeCallEnsureJavaThread(ENSURE_JAVA_THREAD);
+            return runtimeCallEnsureJavaThread(ENSURE_JAVA_THREAD);
         }
         return CEntryPointErrors.NO_ERROR;
     }
@@ -530,11 +531,22 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     }
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    public static native void runtimeCallEnsureJavaThread(@ConstantNodeParameter ForeignCallDescriptor descriptor);
+    public static native int runtimeCallEnsureJavaThread(@ConstantNodeParameter ForeignCallDescriptor descriptor);
 
+    @Uninterruptible(reason = "Prevent stack overflow errors; thread is no longer attached in error case.", calleeMustBe = false)
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static void ensureJavaThread() {
-        PlatformThreads.ensureCurrentAssigned();
+    private static int ensureJavaThread() {
+        try {
+            PlatformThreads.ensureCurrentAssigned();
+            return CEntryPointErrors.NO_ERROR;
+        } catch (Throwable e) {
+            int result = CEntryPointErrors.UNCAUGHT_EXCEPTION;
+            if (e instanceof OutOfMemoryError) {
+                result = CEntryPointErrors.ALLOCATION_FAILED;
+            }
+            CEntryPointActions.leaveDetachThread();
+            return result;
+        }
     }
 
     @Snippet(allowMissingProbabilities = true)
