@@ -701,15 +701,13 @@ public abstract class PlatformThreads {
             /* Ignore exception. */
         }
 
-        /*
-         * Then set the threadStatus to TERMINATED. This makes Thread.isAlive() return false and
-         * allows Thread.join() to complete once we notify all the waiters below.
-         */
-        setThreadStatus(thread, ThreadStatus.TERMINATED);
-        /*
-         * And finally, wake up any threads waiting to join this one.
-         */
         synchronized (thread) {
+            /*
+             * Then set the threadStatus to TERMINATED. This makes Thread.isAlive() return false and
+             * allows Thread.join() to complete once we notify all the waiters below.
+             */
+            setThreadStatus(thread, ThreadStatus.TERMINATED);
+            /* And finally, wake up any threads waiting to join this one. */
             thread.notifyAll();
         }
     }
