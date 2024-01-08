@@ -53,7 +53,7 @@ public class InteropKlassesDispatch {
     public static final int THROWABLE_INTEROP_ID = 9;
     public static final int BYTE_BUFFER_INTEROP_ID = 10;
 
-    public static final int DISPATCH_TOTAL = THROWABLE_INTEROP_ID + 1;
+    public static final int DISPATCH_TOTAL = BYTE_BUFFER_INTEROP_ID + 1;
 
     /**
      * Represents all known guest classes with special interop library handling. Each entry in the
