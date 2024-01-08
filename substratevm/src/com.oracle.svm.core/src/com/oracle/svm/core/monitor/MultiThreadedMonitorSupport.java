@@ -33,8 +33,6 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
-import jdk.graal.compiler.word.BarrieredAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -56,6 +54,8 @@ import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.word.BarrieredAccess;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -244,7 +244,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
                 long startTicks = JfrTicks.elapsedTicks();
                 JavaMonitor newMonitor = newMonitorLock();
                 newMonitor.setState(current);
-                monitor = (JavaMonitor) UNSAFE.compareAndExchangeObject(obj, monitorOffset, null, newMonitor);
+                monitor = (JavaMonitor) UNSAFE.compareAndExchangeReference(obj, monitorOffset, null, newMonitor);
                 if (monitor == null) { // successful
                     JavaMonitorInflateEvent.emit(obj, startTicks, MonitorInflationCause.MONITOR_ENTER);
                     newMonitor.latestJfrTid = current;
