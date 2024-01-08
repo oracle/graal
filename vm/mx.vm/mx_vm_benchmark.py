@@ -301,7 +301,7 @@ class NativeImageVM(GraalVm):
             return
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
-        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-)?(?P<inliner>inline-|iterative-|inline-explored-)?' \
+        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-)?(?P<inliner>inline-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<jdk_profiles>jdk-profiles-collect-|adopted-jdk-pgo-)?' \
                r'(?P<profile_inference>profile-inference-feature-extraction-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-)?(?P<edition>ce-|ee-)?$'
 
@@ -354,17 +354,6 @@ class NativeImageVM(GraalVm):
                 self.pgo_context_sensitive = False
             else:
                 mx.abort(f"Unknown pgo mode: {pgo_mode}")
-
-        if matching.group("inliner") is not None:
-            inliner = matching.group("inliner")[:-1]
-            if inliner == "iterative":
-                mx.logv(f"'iterative' inliner is enabled for {config_name}")
-                self.pgo_instrumentation = True
-            elif inliner == "inline-explored":
-                mx.logv(f"'inline-explored' is enabled for {config_name}")
-                self.pgo_instrumentation = True
-            else:
-                mx.abort(f"Unknown inliner configuration: {inliner}")
 
         if matching.group("jdk_profiles") is not None:
             config = matching.group("jdk_profiles")[:-1]
