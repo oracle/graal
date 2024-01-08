@@ -61,21 +61,38 @@ public final class WindowsPlatformThreads extends PlatformThreads {
     @Override
     protected boolean doStartThread(Thread thread, long stackSize) {
         int threadStackSize = NumUtil.safeToUInt(stackSize);
-
         int initFlag = 0;
         // If caller specified a stack size, don't commit it all at once.
         if (threadStackSize != 0) {
             initFlag |= Process.STACK_SIZE_PARAM_IS_A_RESERVATION();
         }
 
-        ThreadStartData startData = prepareStart(thread, SizeOf.get(ThreadStartData.class));
-        WinBase.HANDLE osThreadHandle = Process._beginthreadex(WordFactory.nullPointer(), threadStackSize, threadStartRoutine.getFunctionPointer(), startData, initFlag, WordFactory.nullPointer());
-        if (osThreadHandle.isNull()) {
-            undoPrepareStartOnError(thread, startData);
-            return false;
+        /*
+         * Prevent stack overflow errors so that starting the thread and reverting back to a safe
+         * state (in case of an error) works reliably.
+         */
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        try {
+            return doStartThread0(thread, threadStackSize, initFlag);
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
         }
-        WinBase.CloseHandle(osThreadHandle);
-        return true;
+    }
+
+    /** Starts a thread to the point so that it is executing. */
+    private boolean doStartThread0(Thread thread, int threadStackSize, int initFlag) {
+        ThreadStartData startData = prepareStart(thread, SizeOf.get(ThreadStartData.class));
+        try {
+            WinBase.HANDLE osThreadHandle = Process._beginthreadex(WordFactory.nullPointer(), threadStackSize, threadStartRoutine.getFunctionPointer(), startData, initFlag, WordFactory.nullPointer());
+            if (osThreadHandle.isNull()) {
+                undoPrepareStartOnError(thread, startData);
+                return false;
+            }
+            WinBase.CloseHandle(osThreadHandle);
+            return true;
+        } catch (Throwable e) {
+            throw VMError.shouldNotReachHere("No exception must be thrown after creating the thread start data.", e);
+        }
     }
 
     @Override
