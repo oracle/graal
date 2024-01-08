@@ -199,9 +199,7 @@ jobs:
       if: ${{ env.MX_RUNS_STYLE == 'true' }}
       run: |
         sudo apt install python3-pip python-setuptools
-        sudo pip install ninja_syntax$(jq -r '.pip.ninja_syntax' common.json)
-        sudo pip install lazy-object-proxy$(jq -r '.pip["lazy-object-proxy"]' common.json)
-        sudo pip install pylint$(jq -r '.pip.pylint' common.json)
+        sudo pip install $(jq -r '[.pip | to_entries[] | join("")] | join(" ")' common.json)
     - name: Install additional pip packages
       if: ${{ matrix.env.PIP_PACKAGES != '' }}
       run: ${MX_PYTHON} -m pip install ${{ matrix.env.PIP_PACKAGES }}
