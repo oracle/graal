@@ -264,6 +264,7 @@ class NativeImageVM(GraalVm):
             mx.warn(f"Ignoring: {kwargs}")
 
         self.vm_args = None
+        self.pgo_instrumentation = False
         self.pgo_context_sensitive = True
         self.is_gate = False
         self.is_quickbuild = False
@@ -346,8 +347,10 @@ class NativeImageVM(GraalVm):
             pgo_mode = matching.group("pgo")[:-1]
             if pgo_mode == "pgo":
                 mx.logv(f"'pgo' is enabled for {config_name}")
+                self.pgo_instrumentation = True
             elif pgo_mode == "pgo-ctx-insens":
                 mx.logv(f"'pgo-ctx-insens' is enabled for {config_name}")
+                self.pgo_instrumentation = True
                 self.pgo_context_sensitive = False
             else:
                 mx.abort(f"Unknown pgo mode: {pgo_mode}")
@@ -356,8 +359,10 @@ class NativeImageVM(GraalVm):
             inliner = matching.group("inliner")[:-1]
             if inliner == "iterative":
                 mx.logv(f"'iterative' inliner is enabled for {config_name}")
+                self.pgo_instrumentation = True
             elif inliner == "inline-explored":
                 mx.logv(f"'inline-explored' is enabled for {config_name}")
+                self.pgo_instrumentation = True
             else:
                 mx.abort(f"Unknown inliner configuration: {inliner}")
 
@@ -365,6 +370,7 @@ class NativeImageVM(GraalVm):
             config = matching.group("jdk_profiles")[:-1]
             if config == 'jdk-profiles-collect':
                 self.jdk_profiles_collect = True
+                self.pgo_instrumentation = True
 
                 def generate_profiling_package_prefixes():
                     # run the native-image-configure tool to gather the jdk package prefixes
@@ -398,6 +404,7 @@ class NativeImageVM(GraalVm):
             profile_inference_config = matching.group("profile_inference")[:-1]
             if profile_inference_config == 'profile-inference-feature-extraction':
                 self.profile_inference_feature_extraction = True
+                self.pgo_instrumentation = True # extract code features
             else:
                 mx.abort('Unknown profile inference configuration: {}.'.format(profile_inference_config))
 
@@ -405,6 +412,7 @@ class NativeImageVM(GraalVm):
             config = matching.group("sampler")[:-1]
             if config == 'safepoint-sampler':
                 self.safepoint_sampler = True
+                self.pgo_instrumentation = True
             elif config == 'async-sampler':
                 self.async_sampler = True
             else:
@@ -998,7 +1006,7 @@ class NativeImageVM(GraalVm):
                 mx.warn("To dump the profile inference features to a specific location, please set the '{}' flag.".format(dump_file_flag))
         else:
             ml_args = []
-        final_image_command = config.base_image_build_args + executable_name_args + pgo_args + jdk_profiles_args + ml_args
+        final_image_command = config.base_image_build_args + executable_name_args + (pgo_args if self.pgo_instrumentation else []) + jdk_profiles_args + ml_args
         with stages.set_command(final_image_command) as s:
             s.execute_command()
             if config.bundle_path is not None:
@@ -1058,12 +1066,13 @@ class NativeImageVM(GraalVm):
         profile_path = config.profile_path_no_extension + config.profile_file_extension
         instrumentation_image_name = config.executable_name + '-instrument'
 
-        image_path = os.path.join(config.output_dir, instrumentation_image_name)
-        if stages.change_stage('instrument-image'):
-            self.run_stage_instrument_image(config, stages, out, instrumentation_image_name, image_path, profile_path)
+        if self.pgo_instrumentation:
+            image_path = os.path.join(config.output_dir, instrumentation_image_name)
+            if stages.change_stage('instrument-image'):
+                self.run_stage_instrument_image(config, stages, out, instrumentation_image_name, image_path, profile_path)
 
-        if stages.change_stage('instrument-run'):
-            self.run_stage_instrument_run(config, stages, image_path, profile_path)
+            if stages.change_stage('instrument-run'):
+                self.run_stage_instrument_run(config, stages, image_path, profile_path)
 
         # Build the final image
         if stages.change_stage('image'):
