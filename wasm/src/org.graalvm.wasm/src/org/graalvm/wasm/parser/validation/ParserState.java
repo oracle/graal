@@ -45,6 +45,7 @@ import static java.lang.Integer.compareUnsigned;
 
 import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.WasmType;
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.exception.Failure;
@@ -416,6 +417,13 @@ public class ParserState {
     }
 
     /**
+     * Adds the vector flag to the bytecode.
+     */
+    public void addVectorFlag() {
+        bytecode.add(Bytecode.VECTOR);
+    }
+
+    /**
      * Adds the given instruction and an i32 immediate value to the bytecode.
      * 
      * @param instruction The instruction
@@ -432,6 +440,16 @@ public class ParserState {
      * @param value The immediate value
      */
     public void addInstruction(int instruction, long value) {
+        bytecode.add(instruction, value);
+    }
+
+    /**
+     * Adds the given instruction and an i128 immediate value to the bytecode.
+     *
+     * @param instruction The instruction
+     * @param value The immediate value
+     */
+    public void addInstruction(int instruction, Vector128 value) {
         bytecode.add(instruction, value);
     }
 
@@ -495,15 +513,16 @@ public class ParserState {
     }
 
     /**
-     * Adds an atomic memory instruction based on the given values and index type.
+     * Adds an extended (atomic or vector) memory instruction based on the given values and index
+     * type.
      *
-     * @param instruction The atomic memory instruction
+     * @param instruction The extended memory instruction
      * @param memoryIndex The index of the memory being accessed
      * @param value The immediate value
      * @param indexType64 If the index type is 64 bit.
      */
-    public void addAtomicMemoryInstruction(int instruction, int memoryIndex, long value, boolean indexType64) {
-        bytecode.addAtomicMemoryInstruction(instruction, memoryIndex, value, indexType64);
+    public void addExtendedMemoryInstruction(int instruction, int memoryIndex, long value, boolean indexType64) {
+        bytecode.addExtendedMemoryInstruction(instruction, memoryIndex, value, indexType64);
     }
 
     /**

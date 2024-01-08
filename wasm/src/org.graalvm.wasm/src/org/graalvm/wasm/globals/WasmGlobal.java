@@ -67,11 +67,11 @@ public abstract class WasmGlobal extends EmbedderDataHolder implements TruffleOb
 
     public abstract long loadAsLong();
 
-    public abstract Object loadAsReference();
+    public abstract Object loadAsObject();
 
     public abstract void storeInt(int value);
 
     public abstract void storeLong(long value);
 
-    public abstract void storeReference(Object value);
+    public abstract void storeObject(Object value);
 }

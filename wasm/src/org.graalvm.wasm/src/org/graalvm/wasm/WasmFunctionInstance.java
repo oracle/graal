@@ -156,10 +156,10 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
     private Object multiValueStackAsArray(WasmLanguage language) {
         final var multiValueStack = language.multiValueStack();
         final long[] primitiveMultiValueStack = multiValueStack.primitiveStack();
-        final Object[] referenceMultiValueStack = multiValueStack.referenceStack();
+        final Object[] objectMultiValueStack = multiValueStack.objectStack();
         final int resultCount = function.resultCount();
         assert primitiveMultiValueStack.length >= resultCount;
-        assert referenceMultiValueStack.length >= resultCount;
+        assert objectMultiValueStack.length >= resultCount;
         final Object[] values = new Object[resultCount];
         for (int i = 0; i < resultCount; i++) {
             byte resultType = function.resultTypeAt(i);
@@ -168,10 +168,10 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
                 case WasmType.I64_TYPE -> primitiveMultiValueStack[i];
                 case WasmType.F32_TYPE -> Float.intBitsToFloat((int) primitiveMultiValueStack[i]);
                 case WasmType.F64_TYPE -> Double.longBitsToDouble(primitiveMultiValueStack[i]);
-                case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> {
-                    Object ref = referenceMultiValueStack[i];
-                    referenceMultiValueStack[i] = null;
-                    yield ref;
+                case WasmType.V128_TYPE, WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> {
+                    Object obj = objectMultiValueStack[i];
+                    objectMultiValueStack[i] = null;
+                    yield obj;
                 }
                 default -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL);
             };

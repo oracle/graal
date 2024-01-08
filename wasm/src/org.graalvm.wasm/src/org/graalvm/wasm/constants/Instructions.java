@@ -344,13 +344,41 @@ public final class Instructions {
     public static final int ATOMIC_I64_RMW8_U_CMPXCHG = 0x4C;
     public static final int ATOMIC_I64_RMW16_U_CMPXCHG = 0x4D;
     public static final int ATOMIC_I64_RMW32_U_CMPXCHG = 0x4E;
-    // GraalWasm specific opcodes (these are reserved for future webassembly extensions and might be
-    // used in other ways in the future)
 
-    public static final int DROP_REF = 0x19;
-    public static final int LOCAL_GET_REF = 0x1D;
-    public static final int LOCAL_SET_REF = 0x1E;
-    public static final int LOCAL_TEE_REF = 0x1F;
+    public static final int VECTOR = 0xFD;
+
+    public static final int VECTOR_V128_LOAD = 0x00;
+    public static final int VECTOR_V128_CONST = 0x0C;
+
+    public static final int VECTOR_F64X2_EQ = 0x47;
+    public static final int VECTOR_F64X2_NE = 0x48;
+    public static final int VECTOR_F64X2_LT = 0x49;
+    public static final int VECTOR_F64X2_GT = 0x4A;
+    public static final int VECTOR_F64X2_LE = 0x4B;
+    public static final int VECTOR_F64X2_GE = 0x4C;
+
+    public static final int VECTOR_V128_ANY_TRUE = 0x53;
+
+    public static final int VECTOR_I32X4_ALL_TRUE = 0xA3;
+    public static final int VECTOR_I32X4_ADD = 0xAE;
+    public static final int VECTOR_I32X4_SUB = 0xB1;
+    public static final int VECTOR_I32X4_MUL = 0xB5;
+
+    public static final int VECTOR_F64X2_CEIL = 0x74;
+    public static final int VECTOR_F64X2_FLOOR = 0x75;
+    public static final int VECTOR_F64X2_TRUNC = 0x7A;
+    public static final int VECTOR_F64X2_NEAREST = 0x94;
+    public static final int VECTOR_F64X2_ABS = 0xEC;
+    public static final int VECTOR_F64X2_NEG = 0xED;
+    public static final int VECTOR_F64X2_SQRT = 0xEF;
+    public static final int VECTOR_F64X2_ADD = 0xF0;
+    public static final int VECTOR_F64X2_SUB = 0xF1;
+    public static final int VECTOR_F64X2_MUL = 0xF2;
+    public static final int VECTOR_F64X2_DIV = 0xF3;
+    public static final int VECTOR_F64X2_MIN = 0xF4;
+    public static final int VECTOR_F64X2_MAX = 0xF5;
+    public static final int VECTOR_F64X2_PMIN = 0xF6;
+    public static final int VECTOR_F64X2_PMAX = 0xF7;
 
     private static String[] decodingTable = new String[256];
 
