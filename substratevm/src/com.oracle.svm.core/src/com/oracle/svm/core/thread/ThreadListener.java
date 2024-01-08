@@ -37,9 +37,12 @@ public interface ThreadListener {
     default void beforeThreadRun() {
     }
 
+    /** Implementations must not throw any exceptions. */
+    @Uninterruptible(reason = "Only uninterruptible because we need to prevent stack overflow errors. Implementations may execute interruptible code.")
     default void afterThreadRun() {
     }
 
+    /** Implementations must not throw any exceptions. */
     @Uninterruptible(reason = "Only uninterruptible code may be executed after Thread.exit.")
     @SuppressWarnings("unused")
     default void afterThreadExit(IsolateThread isolateThread, Thread javaThread) {

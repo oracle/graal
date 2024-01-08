@@ -33,6 +33,9 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 @AutomaticallyRegisteredImageSingleton
 public class ThreadListenerSupport {
@@ -70,16 +73,25 @@ public class ThreadListenerSupport {
         }
     }
 
+    @Uninterruptible(reason = "Force that all listeners are uninterruptible.")
     public void afterThreadRun() {
         for (int i = listeners.length - 1; i >= 0; i--) {
-            listeners[i].afterThreadRun();
+            try {
+                listeners[i].afterThreadRun();
+            } catch (Throwable e) {
+                throw VMError.shouldNotReachHere(e);
+            }
         }
     }
 
     @Uninterruptible(reason = "Force that all listeners are uninterruptible.")
     public void afterThreadExit(IsolateThread isolateThread, Thread javaThread) {
         for (int i = listeners.length - 1; i >= 0; i--) {
-            listeners[i].afterThreadExit(isolateThread, javaThread);
+            try {
+                listeners[i].afterThreadExit(isolateThread, javaThread);
+            } catch (Throwable e) {
+                throw VMError.shouldNotReachHere(e);
+            }
         }
     }
 }
