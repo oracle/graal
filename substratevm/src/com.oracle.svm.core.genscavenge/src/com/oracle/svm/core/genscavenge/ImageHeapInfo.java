@@ -79,7 +79,14 @@ public final class ImageHeapInfo {
 
     @UnknownPrimitiveField(availability = AfterHeapLayout.class) public int dynamicHubCount;
 
+    public final ImageHeapInfo next;
+
     public ImageHeapInfo() {
+        this(null);
+    }
+
+    public ImageHeapInfo(ImageHeapInfo next) {
+        this.next = next;
     }
 
     @SuppressWarnings("hiding")

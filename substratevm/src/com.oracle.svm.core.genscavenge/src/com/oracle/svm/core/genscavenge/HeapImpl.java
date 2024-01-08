@@ -108,7 +108,7 @@ public final class HeapImpl extends Heap {
     private final ObjectHeaderImpl objectHeaderImpl = new ObjectHeaderImpl();
     private final GCImpl gcImpl;
     private final RuntimeCodeInfoGCSupportImpl runtimeCodeInfoGcSupport;
-    private final ImageHeapInfo imageHeapInfo = new ImageHeapInfo();
+    private final ImageHeapInfo firstImageHeapInfo = new ImageHeapInfo();
     private final HeapAccounting accounting = new HeapAccounting();
 
     /** Head of the linked list of currently pending (ready to be enqueued) {@link Reference}s. */
@@ -143,8 +143,8 @@ public final class HeapImpl extends Heap {
     }
 
     @Fold
-    public static ImageHeapInfo getImageHeapInfo() {
-        return getHeapImpl().imageHeapInfo;
+    public static ImageHeapInfo getFirstImageHeapInfo() {
+        return getHeapImpl().firstImageHeapInfo;
     }
 
     @Fold
@@ -179,7 +179,12 @@ public final class HeapImpl extends Heap {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInPrimaryImageHeap(Pointer objPointer) {
-        return imageHeapInfo.isInImageHeap(objPointer);
+        for (ImageHeapInfo info = firstImageHeapInfo; info != null; info = info.next) {
+            if (info.isInImageHeap(objPointer)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -283,7 +288,9 @@ public final class HeapImpl extends Heap {
 
     void logImageHeapPartitionBoundaries(Log log) {
         log.string("Native image heap boundaries:").indent(true);
-        imageHeapInfo.print(log);
+        for (ImageHeapInfo info = firstImageHeapInfo; info != null; info = info.next) {
+            info.print(log);
+        }
         log.indent(false);
 
         if (AuxiliaryImageHeap.isPresent()) {
@@ -326,7 +333,11 @@ public final class HeapImpl extends Heap {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getClassCount() {
-        return imageHeapInfo.dynamicHubCount;
+        int count = firstImageHeapInfo.dynamicHubCount;
+        for (ImageHeapInfo info = firstImageHeapInfo.next; info != null; info = info.next) {
+            count += info.dynamicHubCount;
+        }
+        return count;
     }
 
     @Override
@@ -334,14 +345,16 @@ public final class HeapImpl extends Heap {
         /* Two threads might race to set classList, but they compute the same result. */
         if (classList == null) {
             ArrayList<Class<?>> list = new ArrayList<>(1024);
-            ImageHeapWalker.walkRegions(imageHeapInfo, new ClassListBuilderVisitor(list));
+            for (ImageHeapInfo info = firstImageHeapInfo; info != null; info = info.next) {
+                ImageHeapWalker.walkRegions(info, new ClassListBuilderVisitor(list));
+            }
             list.trimToSize();
 
             /* Ensure that other threads see consistent values once the list is published. */
             MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_STORE);
             classList = list;
         }
-        assert classList.size() == imageHeapInfo.dynamicHubCount;
+        assert classList.size() == getClassCount();
         return classList;
     }
 
@@ -429,11 +442,15 @@ public final class HeapImpl extends Heap {
     @Override
     public boolean walkImageHeapObjects(ObjectVisitor visitor) {
         VMOperation.guaranteeInProgressAtSafepoint("Must only be called at a safepoint");
-        if (visitor != null) {
-            return ImageHeapWalker.walkImageHeapObjects(imageHeapInfo, visitor) &&
-                            (!AuxiliaryImageHeap.isPresent() || AuxiliaryImageHeap.singleton().walkObjects(visitor));
+        if (visitor == null) {
+            return true;
         }
-        return true;
+        for (ImageHeapInfo info = firstImageHeapInfo; info != null; info = info.next) {
+            if (!ImageHeapWalker.walkImageHeapObjects(info, visitor)) {
+                return false;
+            }
+        }
+        return !AuxiliaryImageHeap.isPresent() || AuxiliaryImageHeap.singleton().walkObjects(visitor);
     }
 
     @Override
@@ -694,28 +711,32 @@ public final class HeapImpl extends Heap {
     }
 
     private boolean printLocationInfo(Log log, Pointer ptr, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
-        if (imageHeapInfo.isInReadOnlyPrimitivePartition(ptr)) {
-            log.string("points into the image heap (read-only primitives)");
-            return true;
-        } else if (imageHeapInfo.isInReadOnlyReferencePartition(ptr)) {
-            log.string("points into the image heap (read-only references)");
-            return true;
-        } else if (imageHeapInfo.isInReadOnlyRelocatablePartition(ptr)) {
-            log.string("points into the image heap (read-only relocatables)");
-            return true;
-        } else if (imageHeapInfo.isInWritablePrimitivePartition(ptr)) {
-            log.string("points into the image heap (writable primitives)");
-            return true;
-        } else if (imageHeapInfo.isInWritableReferencePartition(ptr)) {
-            log.string("points into the image heap (writable references)");
-            return true;
-        } else if (imageHeapInfo.isInWritableHugePartition(ptr)) {
-            log.string("points into the image heap (writable huge)");
-            return true;
-        } else if (imageHeapInfo.isInReadOnlyHugePartition(ptr)) {
-            log.string("points into the image heap (read-only huge)");
-            return true;
-        } else if (AuxiliaryImageHeap.isPresent() && AuxiliaryImageHeap.singleton().containsObject(ptr)) {
+        for (ImageHeapInfo info = firstImageHeapInfo; info != null; info = info.next) {
+            if (info.isInReadOnlyPrimitivePartition(ptr)) {
+                log.string("points into the image heap (read-only primitives)");
+                return true;
+            } else if (info.isInReadOnlyReferencePartition(ptr)) {
+                log.string("points into the image heap (read-only references)");
+                return true;
+            } else if (info.isInReadOnlyRelocatablePartition(ptr)) {
+                log.string("points into the image heap (read-only relocatables)");
+                return true;
+            } else if (info.isInWritablePrimitivePartition(ptr)) {
+                log.string("points into the image heap (writable primitives)");
+                return true;
+            } else if (info.isInWritableReferencePartition(ptr)) {
+                log.string("points into the image heap (writable references)");
+                return true;
+            } else if (info.isInWritableHugePartition(ptr)) {
+                log.string("points into the image heap (writable huge)");
+                return true;
+            } else if (info.isInReadOnlyHugePartition(ptr)) {
+                log.string("points into the image heap (read-only huge)");
+                return true;
+            }
+        }
+
+        if (AuxiliaryImageHeap.isPresent() && AuxiliaryImageHeap.singleton().containsObject(ptr)) {
             log.string("points into the auxiliary image heap");
             return true;
         } else if (printTlabInfo(log, ptr, CurrentIsolate.getCurrentThread())) {
