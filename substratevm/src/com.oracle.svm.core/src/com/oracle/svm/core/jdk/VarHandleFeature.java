@@ -103,12 +103,13 @@ public class VarHandleFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         /*
-         * Initialize fiels of VarHandle instances that are @Stable eagerly, so that during method
+         * Initialize fields of VarHandle instances that are @Stable eagerly, so that during method
          * handle intrinsification loads of those fields and array elements can be constant-folded.
          * 
          * Note that we do this on purpose here in an object replacer, and not in an object
-         * reachability handler: intrinsification happens before the VarHandle object itself is
-         * marked as reachable, and the goal of intrinsification is to actually avoid making the
+         * reachability handler: Intrinsification happens as part of method inlining before
+         * analysis, i.e., before the static analysis, i.e., before the VarHandle object itself is
+         * marked as reachable. The goal of intrinsification is to actually avoid making the
          * VarHandle object itself reachable.
          */
         access.registerObjectReplacer(VarHandleFeature::eagerlyInitializeVarHandle);
