@@ -71,7 +71,6 @@ import com.oracle.svm.core.jni.functions.JNIFunctionTables;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.CounterSupport;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
@@ -164,8 +163,6 @@ public class JavaMainWrapper {
                     return 1;
                 }
             }
-
-            ThreadListenerSupport.get().beforeThreadRun();
 
             // Ensure that native code using JNI_GetCreatedJavaVMs finds this isolate.
             JNIJavaVMList.addJavaVM(JNIFunctionTables.singleton().getGlobalJavaVM());

@@ -304,6 +304,7 @@ public abstract class VMThreads {
         return attachThread(thread);
     }
 
+    /* Needs to be protected due to legacy code. */
     @Uninterruptible(reason = "Thread is not attached yet.")
     protected int attachThread(IsolateThread thread) {
         assert StatusSupport.isStatusCreated(thread) : "Status should be initialized on creation.";
@@ -318,6 +319,11 @@ public abstract class VMThreads {
         try {
             nextTL.set(thread, head);
             head = thread;
+
+            if (!wasStartedByCurrentIsolate(thread)) {
+                /* Treat attached threads as non-daemon threads until we know better. */
+                PlatformThreads.incrementNonDaemonThreads();
+            }
             Heap.getHeap().attachThread(CurrentIsolate.getCurrentThread());
             /* On the initial transition to java code this thread should be synchronized. */
             ActionOnTransitionToJavaSupport.setSynchronizeCode(thread);
