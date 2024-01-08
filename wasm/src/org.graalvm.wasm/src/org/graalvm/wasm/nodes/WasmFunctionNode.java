@@ -79,6 +79,7 @@ import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.api.Vector128;
+import org.graalvm.wasm.api.Vector128Ops;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.exception.Failure;
@@ -1751,7 +1752,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final Vector128 value = rawPeekI128(bytecode, offset);
                             offset += 16;
 
-                            pushVector128(frame, stackPointer, value);
+                            pushVector128(frame, stackPointer, Vector128Ops.v128_const(value));
                             stackPointer++;
                             break;
                         case Bytecode.VECTOR_F64X2_EQ:
@@ -1759,31 +1760,46 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         case Bytecode.VECTOR_F64X2_LT:
                         case Bytecode.VECTOR_F64X2_GT:
                         case Bytecode.VECTOR_F64X2_LE:
-                        case Bytecode.VECTOR_F64X2_GE:
-                            f64x2_relop(frame, stackPointer, vectorOpcode);
-                            stackPointer--;
+                        case Bytecode.VECTOR_F64X2_GE: {
+                            Vector128 x = popVector128(frame, --stackPointer);
+                            Vector128 y = popVector128(frame, --stackPointer);
+                            Vector128 result = Vector128Ops.f64x2_relop(x, y, vectorOpcode);
+                            pushVector128(frame, stackPointer++, result);
                             break;
-                        case Bytecode.VECTOR_V128_ANY_TRUE:
-                            v128_any_true(frame, stackPointer);
+                        }
+                        case Bytecode.VECTOR_V128_ANY_TRUE: {
+                            Vector128 vec = popVector128(frame, --stackPointer);
+                            int result = Vector128Ops.v128_any_true(vec);
+                            pushInt(frame, stackPointer++, result);
                             break;
-                        case Bytecode.VECTOR_I32X4_ALL_TRUE:
-                            i32x4_all_true(frame, stackPointer);
+                        }
+                        case Bytecode.VECTOR_I32X4_ALL_TRUE: {
+                            Vector128 vec = popVector128(frame, --stackPointer);
+                            int result = Vector128Ops.i32x4_all_true(vec);
+                            pushInt(frame, stackPointer++, result);
                             break;
+                        }
                         case Bytecode.VECTOR_I32X4_ADD:
                         case Bytecode.VECTOR_I32X4_SUB:
-                        case Bytecode.VECTOR_I32X4_MUL:
-                            i32x4_binop(frame, stackPointer, vectorOpcode);
-                            stackPointer--;
+                        case Bytecode.VECTOR_I32X4_MUL: {
+                            Vector128 x = popVector128(frame, --stackPointer);
+                            Vector128 y = popVector128(frame, --stackPointer);
+                            Vector128 result = Vector128Ops.i32x4_binop(x, y, vectorOpcode);
+                            pushVector128(frame, stackPointer++, result);
                             break;
+                        }
                         case Bytecode.VECTOR_F64X2_CEIL:
                         case Bytecode.VECTOR_F64X2_FLOOR:
                         case Bytecode.VECTOR_F64X2_TRUNC:
                         case Bytecode.VECTOR_F64X2_NEAREST:
                         case Bytecode.VECTOR_F64X2_ABS:
                         case Bytecode.VECTOR_F64X2_NEG:
-                        case Bytecode.VECTOR_F64X2_SQRT:
-                            f64x2_unop(frame, stackPointer, vectorOpcode);
+                        case Bytecode.VECTOR_F64X2_SQRT: {
+                            Vector128 x = popVector128(frame, --stackPointer);
+                            Vector128 result = Vector128Ops.f64x2_unop(x, vectorOpcode);
+                            pushVector128(frame, stackPointer++, result);
                             break;
+                        }
                         case Bytecode.VECTOR_F64X2_ADD:
                         case Bytecode.VECTOR_F64X2_SUB:
                         case Bytecode.VECTOR_F64X2_MUL:
@@ -1791,10 +1807,13 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         case Bytecode.VECTOR_F64X2_MIN:
                         case Bytecode.VECTOR_F64X2_MAX:
                         case Bytecode.VECTOR_F64X2_PMIN:
-                        case Bytecode.VECTOR_F64X2_PMAX:
-                            f64x2_binop(frame, stackPointer, vectorOpcode);
-                            stackPointer--;
+                        case Bytecode.VECTOR_F64X2_PMAX: {
+                            Vector128 x = popVector128(frame, --stackPointer);
+                            Vector128 y = popVector128(frame, --stackPointer);
+                            Vector128 result = Vector128Ops.f64x2_binop(x, y, vectorOpcode);
+                            pushVector128(frame, stackPointer++, result);
                             break;
+                        }
                         default:
                             throw CompilerDirectives.shouldNotReachHere();
                     }
@@ -3896,119 +3915,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             return;
         }
         destMemory.copyFrom(srcMemory, source, destination, length);
-    }
-
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static void v128_any_true(VirtualFrame frame, int stackPointer) {
-        byte[] bytes = popVector128(frame, stackPointer - 1).asBytes();
-        int result = 0;
-        for (int i = 0; i < 16; i++) {
-            if (bytes[i] != 0) {
-                result = 1;
-                break;
-            }
-        }
-        pushInt(frame, stackPointer - 1, result);
-    }
-
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static void i32x4_all_true(VirtualFrame frame, int stackPointer) {
-        int[] ints = popVector128(frame, stackPointer - 1).asInts();
-        CompilerDirectives.ensureVirtualized(ints);
-        int result = 1;
-        for (int i = 0; i < 4; i++) {
-            if (ints[i] == 0) {
-                result = 0;
-                break;
-            }
-        }
-        pushInt(frame, stackPointer - 1, result);
-    }
-
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static void i32x4_binop(VirtualFrame frame, int stackPointer, int vectorOpcode) {
-        int[] x = popVector128(frame, stackPointer - 1).asInts();
-        int[] y = popVector128(frame, stackPointer - 2).asInts();
-        int[] result = new int[4];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(y);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < 4; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_I32X4_ADD -> y[i] + x[i];
-                case Bytecode.VECTOR_I32X4_SUB -> y[i] - x[i];
-                case Bytecode.VECTOR_I32X4_MUL -> y[i] * x[i];
-                default -> throw CompilerDirectives.shouldNotReachHere();
-            };
-        }
-        pushVector128(frame, stackPointer - 2, Vector128.ofInts(result));
-    }
-
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static void f64x2_relop(VirtualFrame frame, int stackPointer, int vectorOpcode) {
-        double[] x = popVector128(frame, stackPointer - 1).asDoubles();
-        double[] y = popVector128(frame, stackPointer - 2).asDoubles();
-        long[] result = new long[2];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(y);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < 2; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_F64X2_EQ -> y[i] == x[i];
-                case Bytecode.VECTOR_F64X2_NE -> y[i] != x[i];
-                case Bytecode.VECTOR_F64X2_LT -> y[i] < x[i];
-                case Bytecode.VECTOR_F64X2_GT -> y[i] > x[i];
-                case Bytecode.VECTOR_F64X2_LE -> y[i] <= x[i];
-                case Bytecode.VECTOR_F64X2_GE -> y[i] >= x[i];
-                default -> throw CompilerDirectives.shouldNotReachHere();
-            } ? 0xffff_ffff_ffff_ffffL : 0x0000_0000_0000_0000L;
-        }
-        pushVector128(frame, stackPointer - 2, Vector128.ofLongs(result));
-    }
-
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static void f64x2_unop(VirtualFrame frame, int stackPointer, int vectorOpcode) {
-        double[] x = popVector128(frame, stackPointer - 1).asDoubles();
-        double[] result = new double[2];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < 2; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_F64X2_ABS -> Math.abs(x[i]);
-                case Bytecode.VECTOR_F64X2_NEG -> -x[i];
-                case Bytecode.VECTOR_F64X2_SQRT -> Math.sqrt(x[i]);
-                case Bytecode.VECTOR_F64X2_CEIL -> Math.ceil(x[i]);
-                case Bytecode.VECTOR_F64X2_FLOOR -> Math.floor(x[i]);
-                case Bytecode.VECTOR_F64X2_TRUNC -> ExactMath.truncate(x[i]);
-                case Bytecode.VECTOR_F64X2_NEAREST -> Math.rint(x[i]);
-                default -> throw CompilerDirectives.shouldNotReachHere();
-            };
-        }
-        pushVector128(frame, stackPointer - 1, Vector128.ofDoubles(result));
-    }
-
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static void f64x2_binop(VirtualFrame frame, int stackPointer, int vectorOpcode) {
-        double[] x = popVector128(frame, stackPointer - 1).asDoubles();
-        double[] y = popVector128(frame, stackPointer - 2).asDoubles();
-        double[] result = new double[2];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(y);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < 2; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_F64X2_ADD -> y[i] + x[i];
-                case Bytecode.VECTOR_F64X2_SUB -> y[i] - x[i];
-                case Bytecode.VECTOR_F64X2_MUL -> y[i] * x[i];
-                case Bytecode.VECTOR_F64X2_DIV -> y[i] / x[i];
-                case Bytecode.VECTOR_F64X2_MIN -> Math.min(y[i], x[i]);
-                case Bytecode.VECTOR_F64X2_MAX -> Math.max(y[i], x[i]);
-                case Bytecode.VECTOR_F64X2_PMIN -> x[i] < y[i] ? x[i] : y[i];
-                case Bytecode.VECTOR_F64X2_PMAX -> y[i] < x[i] ? x[i] : y[i];
-                default -> throw CompilerDirectives.shouldNotReachHere();
-            };
-        }
-        pushVector128(frame, stackPointer - 2, Vector128.ofDoubles(result));
     }
 
     // Checkstyle: resume method name check
