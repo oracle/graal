@@ -38,11 +38,3 @@ invoke in the regular way the arguments won't be there. This is avoided by chang
 popping/clearing the stack is avoided and the arguments passed to the next call will actually just be the next HFR. 
 This occurs recursively until the next HFR pointer is null, at which point the stack is fully unwound and execution
 will continue as normal.
-
------
-
-export LLVM_JAVA_HOME=$PWD/downloads/labsjdk-ce-21.0.1-jvmci-23.1-b22-sulong/Contents/Home
-alias MX="mx --env jvm-llvm"
-export CLASSPATH=$HOME/Projects/hello-maestro/out/production/hello-maestro/
-alias r="MX build && echo -e '\n\n------\n\n' && MX espresso --vm.ea --log.file=/tmp/truffle-log -ea Main"
-alias d="MX build && echo -e '\n\n------\n\n' && MX espresso '--vm.agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:8000' --vm.ea --log.file=/tmp/truffle-log Main"

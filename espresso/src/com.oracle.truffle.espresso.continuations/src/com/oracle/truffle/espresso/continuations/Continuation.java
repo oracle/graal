@@ -18,9 +18,17 @@ import java.lang.reflect.Method;
  * see. Continuations are also not thread safe.
  * </p>
  *
+ * <h1>Serialization</h1>
+ *
  * <p>
  * Continuations can be serialized to disk and resumed later in a separate process. Alternatively they can be discarded
  * and left for the GC to clean up.
+ * </p>
+ *
+ * <p>
+ * Continuation deserialization is <b>not secure</b>. You should only deserialize continuations you yourself suspended,
+ * as resuming a malicious continuation can cause arbitrary undefined behaviour, i.e. is equivalent to handing
+ * control of the JVM to the attacker.
  * </p>
  *
  * <p>
@@ -34,9 +42,12 @@ import java.lang.reflect.Method;
  */
 public final class Continuation {
     // Next steps:
-    // - Implement resume by remapping FrameRecords to truffle frames.
+    // - Make a demo of using Kryo to serialize and restore a continuation.
     // - Add more data to FrameRecord so we can do consistency checks in case the code has changed.
-
+    // - Be able to abort the unwind if we hit a frame that can't be suspended e.g. that holds monitors.
+    // - Ensure unwinds fail if there are any non-bytecode methods on the stack.
+    // - Refactor to pull frame serialization into Truffle itself, stop exposing frame guts to language impls.
+    // - (lowpri) Refactor to use frame slots and avoid having a non-final field in BytecodeNode.
 
     // We want a compact serialized representation, so use fields judiciously here.
 
@@ -91,7 +102,10 @@ public final class Continuation {
         }
     }
 
-    private final EntryPoint entryPoint;
+    /**
+     * The entry point as provided to the constructor.
+     */
+    public final EntryPoint entryPoint;
 
     /**
      * A point in the lifecycle of a continuation.
@@ -115,7 +129,7 @@ public final class Continuation {
     private static final class StateHolder {
         State state = State.NEW;
     }
-    private final transient StateHolder stateHolder = new StateHolder();
+    private final StateHolder stateHolder = new StateHolder();
 
     /**
      * <p>Creates a new suspended continuation.</p>
