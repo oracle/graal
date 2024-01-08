@@ -131,7 +131,7 @@ jobs:
     # Use Java 17 to build Quarkus as that's the lowest supported JDK version currently
     - uses: actions/setup-java@v4
       with:
-        distribution: 'temurin'
+        distribution: 'oracle'
         java-version: '17'
     - name: Build Quarkus
       run: |
@@ -196,7 +196,7 @@ jobs:
         run: tar -xzf maven-repo.tgz -C ~
       - uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: 'oracle'
           java-version: '17'
       - name: Build with Maven
         if: startsWith(matrix.os-name, 'ubuntu')
