@@ -177,6 +177,11 @@ public final class PosixPlatformThreads extends PlatformThreads {
         Sched.sched_yield();
     }
 
+    /**
+     * Note that this method is only executed for Java threads that are started via
+     * {@link Thread#start()}. It is not executed if an existing native thread is attached to an
+     * isolate.
+     */
     @Override
     protected void beforeThreadRun(Thread thread) {
         /* Complete the initialization of the thread, now that it is (nearly) running. */

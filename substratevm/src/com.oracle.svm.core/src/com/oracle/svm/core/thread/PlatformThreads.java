@@ -424,6 +424,8 @@ public abstract class PlatformThreads {
                 int newValue = nonDaemonThreads.incrementAndGet();
                 assert newValue >= 1;
             }
+
+            ThreadListenerSupport.get().beforeThreadRun();
             return true;
         }
         return false;
