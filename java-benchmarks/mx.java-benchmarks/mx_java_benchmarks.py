@@ -1273,6 +1273,9 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Te
     def name(self):
         return "specjvm2008"
 
+    def benchSuiteName(self, bmSuiteArgs=None):
+        return self.name()
+
     def group(self):
         return "Graal"
 
@@ -1364,9 +1367,8 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Te
         return []
 
     def rules(self, out, benchmarks, bmSuiteArgs):
-        suite_name = self.name()
-        if benchmarks and len(benchmarks) == 1:
-            suite_name = suite_name +  "-single"
+        # For historical reasons, we have the suffix. Dropping the suffix would require data migration.
+        suite_name = self.benchSuiteName() +  "-single"
         return [
             mx_benchmark.StdOutRule(
                 r"^Score on (?P<benchmark>[a-zA-Z0-9\._]+): (?P<score>[0-9]+((,|\.)[0-9]+)?) ops/m$", # pylint: disable=line-too-long
