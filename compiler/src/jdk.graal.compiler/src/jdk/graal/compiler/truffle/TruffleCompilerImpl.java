@@ -664,30 +664,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
                 outInstalledCode[0] = installedCode;
             }
 
-//            System.out.println("Installed code created: " + installedCode1.getName());
-//            System.out.println("The address is: " + installedCode1.getAddress());
-//            System.out.println("The code is: " + installedCode1.getCode());
-//
-//            if (TruffleCompilerOptions.DumpRuntimeCompiledMethods.getValue(getOrCreateCompilerOptions(compilable))) {
-//
-//                StringBuilder binName = new StringBuilder();
-//                binName.append(installedCode1.getName());
-//
-//                // Creating the WritableByteChannel, writing to dump and then closing it.
-//
-//                String path = "/tmp/" + new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date()) + "INSTALLED" + binName + compNumber + ".bin";
-//                compNumber++;
-//                WritableByteChannel channel;
-//                try {
-//                    channel = PathUtilities.openFileChannel(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
-//                } catch (IOException e) {
-//                    throw new IOException(String.format("Failed to open %s to dump IGV graphs", path), e);
-//                }
-//
-//                channel.write(ByteBuffer.wrap(installedCode1.getCode()));
-//                channel.close();
-//            }
-
         } catch (Throwable e) {
             throw debug.handle(e);
         }

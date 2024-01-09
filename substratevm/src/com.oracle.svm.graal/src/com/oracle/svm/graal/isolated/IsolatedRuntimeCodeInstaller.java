@@ -80,10 +80,6 @@ public final class IsolatedRuntimeCodeInstaller extends RuntimeCodeInstaller {
         installedCode.setCompilationId(IsolatedCompileClient.get().unhand(installInfo.getCompilationId()));
         installPrepared(method, installInfo, installedCode);
 
-        System.out.println("HERE IN THE CODE INSTALL");
-        System.out.println("Installed code: " + installedCode.getName());
-        System.out.println("Code length: " + installedCode.getMethod().getCode().length);
-
         return IsolatedCompileClient.get().hand(installedCode);
     }
 
