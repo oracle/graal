@@ -76,18 +76,18 @@ jobs:
       matrix: ${{ steps.read.outputs.matrix }}
     steps:
     - name: Checkout oracle/graal
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 1
     - name: Checkout graalvm/mx
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         repository: graalvm/mx.git
         fetch-depth: 1
         ref: master
         path: ${{ env.MX_PATH }}
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.8'
     - name: Get latest Quarkus release
@@ -124,10 +124,15 @@ jobs:
       shell: bash
       run: tar -czvf graalvm.tgz -C $(dirname ${GRAALVM_HOME}) $(basename ${GRAALVM_HOME})
     - name: Persist GraalVM build
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: graalvm
         path: graalvm.tgz
+    # Use Java 17 to build Quarkus as that's the lowest supported JDK version currently
+    - uses: actions/setup-java@v4
+      with:
+        distribution: 'oracle'
+        java-version: '17'
     - name: Build Quarkus
       run: |
         cd ${QUARKUS_PATH}
@@ -142,7 +147,7 @@ jobs:
       shell: bash
       run: tar -czvf maven-repo.tgz -C ~ .m2/repository
     - name: Persist Maven Repo
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: maven-repo
         path: maven-repo.tgz
@@ -160,7 +165,7 @@ jobs:
     steps:
       - name: Download GraalVM build
         if: startsWith(matrix.os-name, 'ubuntu')
-        uses: actions/download-artifact@v1
+        uses: actions/download-artifact@v4
         with:
           name: graalvm
           path: .
@@ -181,7 +186,7 @@ jobs:
         run: ${QUARKUS_PATH}/.github/ci-prerequisites.sh
       - name: Download Maven Repo
         if: startsWith(matrix.os-name, 'ubuntu')
-        uses: actions/download-artifact@v1
+        uses: actions/download-artifact@v4
         with:
           name: maven-repo
           path: .
@@ -189,11 +194,10 @@ jobs:
         if: startsWith(matrix.os-name, 'ubuntu')
         shell: bash
         run: tar -xzf maven-repo.tgz -C ~
-      - uses: graalvm/setup-graalvm@v1
+      - uses: actions/setup-java@v4
         with:
-          version: 'latest'
+          distribution: 'oracle'
           java-version: '17'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Build with Maven
         if: startsWith(matrix.os-name, 'ubuntu')
         env:
@@ -208,7 +212,7 @@ jobs:
         shell: bash
         run: find . -type d -name '*-reports' -o -wholename '*/build/reports/tests/functionalTest' | tar -czf test-reports.tgz -T -
       - name: Upload failure Archive (if maven failed)
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: test-reports-native-${{matrix.category}}
