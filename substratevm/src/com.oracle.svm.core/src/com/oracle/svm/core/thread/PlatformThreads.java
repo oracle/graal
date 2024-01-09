@@ -136,11 +136,8 @@ public abstract class PlatformThreads {
     /** The platform {@link java.lang.Thread} for the {@link IsolateThread}. */
     static final FastThreadLocalObject<Thread> currentThread = FastThreadLocalFactory.createObject(Thread.class, "PlatformThreads.currentThread").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
 
-    /**
-     * The number of running non-daemon threads. The initial value accounts for the main thread,
-     * which is implicitly running when the isolate is created.
-     */
-    private static final UninterruptibleUtils.AtomicInteger nonDaemonThreads = new UninterruptibleUtils.AtomicInteger(1);
+    /** The number of running non-daemon threads. */
+    private static final UninterruptibleUtils.AtomicInteger nonDaemonThreads = new UninterruptibleUtils.AtomicInteger(0);
 
     /**
      * Tracks the number of threads that have been started, but are not yet executing Java code. For
@@ -419,12 +416,6 @@ public abstract class PlatformThreads {
         if (currentThread.get() == null) {
             Thread thread = fromTarget(new Target_java_lang_Thread(name, group, asDaemon));
             assignCurrent(thread);
-
-            if (!thread.isDaemon()) {
-                int newValue = nonDaemonThreads.incrementAndGet();
-                assert newValue >= 1;
-            }
-
             ThreadListenerSupport.get().beforeThreadRun();
             return true;
         }
@@ -434,12 +425,14 @@ public abstract class PlatformThreads {
     /**
      * Assign a {@link Thread} object to the current thread, which must have already been attached
      * as an {@link IsolateThread}.
-     *
-     * The manuallyStarted parameter is true if this thread was started directly by calling
-     * {@link #ensureCurrentAssigned(String, ThreadGroup, boolean)}. It is false when the thread is
-     * started via {@link #doStartThread} and {@link #threadStartRoutine}.
      */
+    @Uninterruptible(reason = "Ensure consistency of nonDaemonThreads.")
     static void assignCurrent(Thread thread) {
+        if (!VMThreads.wasStartedByCurrentIsolate(CurrentIsolate.getCurrentThread()) && thread.isDaemon()) {
+            /* Correct the value of nonDaemonThreads, now that we have a Thread object. */
+            decrementNonDaemonThreadsAndNotify();
+        }
+
         /*
          * First of all, ensure we are in RUNNABLE state. If !manuallyStarted, we race with the
          * thread that launched us to set the status and we could still be in status NEW.
@@ -506,10 +499,16 @@ public abstract class PlatformThreads {
         if (thread != null) {
             toTarget(thread).threadData.detach();
             toTarget(thread).isolateThread = WordFactory.nullPointer();
+
             if (!thread.isDaemon()) {
-                int newValue = nonDaemonThreads.decrementAndGet();
-                assert newValue >= 0;
+                decrementNonDaemonThreads();
             }
+        } else if (!VMThreads.wasStartedByCurrentIsolate(vmThread)) {
+            /*
+             * Attached threads are treated like non-daemon threads as long as they don't have a
+             * thread object.
+             */
+            decrementNonDaemonThreads();
         }
     }
 
@@ -714,7 +713,6 @@ public abstract class PlatformThreads {
 
     @RawStructure
     protected interface ThreadStartData extends PointerBase {
-
         @RawField
         ObjectHandle getThreadHandle();
 
@@ -732,26 +730,45 @@ public abstract class PlatformThreads {
         T startData = UnmanagedMemory.malloc(startDataSize);
         startData.setIsolate(CurrentIsolate.getIsolate());
         startData.setThreadHandle(ObjectHandles.getGlobal().create(thread));
+
+        int numThreads = unattachedStartedThreads.incrementAndGet();
+        assert numThreads > 0;
+
         if (!thread.isDaemon()) {
-            int newValue = nonDaemonThreads.incrementAndGet();
-            assert newValue >= 1;
+            incrementNonDaemonThreads();
         }
         return startData;
     }
 
     protected void undoPrepareStartOnError(Thread thread, ThreadStartData startData) {
         if (!thread.isDaemon()) {
-            undoPrepareNonDaemonStartOnError();
+            decrementNonDaemonThreadsAndNotify();
         }
+
+        int numThreads = unattachedStartedThreads.decrementAndGet();
+        assert numThreads >= 0;
+
         freeStartData(startData);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static void incrementNonDaemonThreads() {
+        int numThreads = nonDaemonThreads.incrementAndGet();
+        assert numThreads > 0;
+    }
+
+    /** A caller must call THREAD_LIST_CONDITION.broadcast() manually. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static void decrementNonDaemonThreads() {
+        int numThreads = nonDaemonThreads.decrementAndGet();
+        assert numThreads >= 0;
+    }
+
     @Uninterruptible(reason = "Holding threads lock.")
-    private static void undoPrepareNonDaemonStartOnError() {
+    private static void decrementNonDaemonThreadsAndNotify() {
         VMThreads.lockThreadMutexInNativeCode();
         try {
-            int newValue = nonDaemonThreads.decrementAndGet();
-            assert newValue >= 0;
+            decrementNonDaemonThreads();
             VMThreads.THREAD_LIST_CONDITION.broadcast();
         } finally {
             VMThreads.THREAD_MUTEX.unlock();
@@ -763,10 +780,8 @@ public abstract class PlatformThreads {
     }
 
     void startThread(Thread thread, long stackSize) {
-        unattachedStartedThreads.incrementAndGet();
         boolean started = doStartThread(thread, stackSize);
         if (!started) {
-            unattachedStartedThreads.decrementAndGet();
             throw new OutOfMemoryError("Unable to create native thread: possibly out of memory or process/resource limits reached");
         }
     }
@@ -1054,6 +1069,7 @@ public abstract class PlatformThreads {
         return toTarget(thread).holder.threadStatus;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void setThreadStatus(Thread thread, int threadStatus) {
         assert !isVirtual(thread);
         assert toTarget(thread).holder.threadStatus != ThreadStatus.TERMINATED : "once a thread is marked terminated, its status must not change";
