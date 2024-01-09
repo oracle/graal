@@ -659,19 +659,19 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             System.out.println("Before installed code creation");
             InstalledCode installedCode = createInstalledCode(compilable);
             assert graph.getSpeculationLog() == result.getSpeculationLog() : Assertions.errorMessage(graph, graph.getSpeculationLog(), result, result.getSpeculationLog());
-            tier.backend().createInstalledCode(debug, graph.method(), compilationRequest, result, installedCode, false);
+            InstalledCode installedCode1 = tier.backend().createInstalledCode(debug, graph.method(), compilationRequest, result, installedCode, false);
             if (outInstalledCode != null) {
                 outInstalledCode[0] = installedCode;
             }
 
-            System.out.println("Installed code created: " + installedCode.getName());
-            System.out.println("The address is: " + installedCode.getAddress());
-            System.out.println("The code is: " + installedCode.getCode());
+            System.out.println("Installed code created: " + installedCode1.getName());
+            System.out.println("The address is: " + installedCode1.getAddress());
+            System.out.println("The code is: " + installedCode1.getCode());
 
             if (TruffleCompilerOptions.DumpRuntimeCompiledMethods.getValue(getOrCreateCompilerOptions(compilable))) {
 
                 StringBuilder binName = new StringBuilder();
-                binName.append(installedCode.getName());
+                binName.append(installedCode1.getName());
 
                 // Creating the WritableByteChannel, writing to dump and then closing it.
 
@@ -684,7 +684,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
                     throw new IOException(String.format("Failed to open %s to dump IGV graphs", path), e);
                 }
 
-                channel.write(ByteBuffer.wrap(installedCode.getCode()));
+                channel.write(ByteBuffer.wrap(installedCode1.getCode()));
                 channel.close();
             }
 
