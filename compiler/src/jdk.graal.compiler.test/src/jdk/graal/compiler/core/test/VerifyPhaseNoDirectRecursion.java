@@ -28,7 +28,6 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;
-import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.RecursivePhase;
 import jdk.graal.compiler.phases.VerifyPhase;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -49,7 +48,6 @@ public class VerifyPhaseNoDirectRecursion extends VerifyPhase<CoreProviders> {
     @Override
     protected void verify(StructuredGraph graph, CoreProviders context) {
         final ResolvedJavaType basePhaseType = context.getMetaAccess().lookupJavaType(BasePhase.class);
-        final ResolvedJavaType phaseSuiteType = context.getMetaAccess().lookupJavaType(PhaseSuite.class);
         final ResolvedJavaType recursivePhaseType = context.getMetaAccess().lookupJavaType(RecursivePhase.class);
         final ResolvedJavaMethod graphMethod = graph.method();
         final ResolvedJavaType graphMethodType = graph.method().getDeclaringClass();
@@ -60,10 +58,6 @@ public class VerifyPhaseNoDirectRecursion extends VerifyPhase<CoreProviders> {
         }
         if (!basePhaseType.isAssignableFrom(graphMethodType)) {
             // Not a compiler phase.
-            return;
-        }
-        if (phaseSuiteType.equals(graphMethodType)) {
-            // PhaseSuite has some understood recursion.
             return;
         }
         if (recursivePhaseType.isAssignableFrom(graphMethodType)) {
