@@ -71,7 +71,7 @@ For other installation options, visit the [Downloads section](https://www.graalv
     ```
 
     You should see the following output:
-    ```
+    ```shell
     Getting value of static property with key: static_key
     Value of static property: null
     Getting value of instance property with key: instance_key
@@ -86,12 +86,13 @@ For other installation options, visit the [Downloads section](https://www.graalv
     native-image --initialize-at-build-time=ReadProperties -Dstatic_key=STATIC_VALUE ReadProperties
     ```
     In the output from the `native-image` tool you should see output similar to the following:
-    ```
+   ```shell
     ...
     [1/7] Initializing...                                            (7.7s @ 0.07GB)
     Getting value of static property with key: static_key
     ...
     ```
+
     Run the executable again, as follows:
     ```shell
     ./readproperties -Dinstance_key=INSTANCE_VALUE
@@ -99,7 +100,7 @@ For other installation options, visit the [Downloads section](https://www.graalv
 
     This time you should see the following output, confirming that the static initializer was run at **build time**, not at runtime.
 
-    ```
+    ```shell
     Value of static property: STATIC_VALUE
     Getting value for instance property key: instance_key
     Value of instance property: INSTANCE_VALUE
