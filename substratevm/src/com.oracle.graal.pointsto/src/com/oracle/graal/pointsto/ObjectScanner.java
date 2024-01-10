@@ -145,7 +145,7 @@ public class ObjectScanner {
         try {
             scanningObserver.forEmbeddedRoot(root, reason);
             scanConstant(root, reason);
-        } catch (UnsupportedFeatureException ex) {
+        } catch (UnsupportedFeatureException | AnalysisError.TypeNotFoundError ex) {
             bb.getUnsupportedFeatures().addMessage(reason.toString(), reason.getMethod(), ex.getMessage(), null, ex);
         }
     }
@@ -205,7 +205,7 @@ public class ObjectScanner {
                 scanningObserver.forPrimitiveFieldValue(receiver, field, fieldValue, reason);
             }
 
-        } catch (UnsupportedFeatureException ex) {
+        } catch (UnsupportedFeatureException | AnalysisError.TypeNotFoundError ex) {
             unsupportedFeatureDuringFieldScan(bb, field, receiver, ex, reason);
         }
     }
@@ -268,7 +268,7 @@ public class ObjectScanner {
                     try {
                         JavaConstant element = bb.getUniverse().getSnippetReflection().forObject(bb.getUniverse().replaceObject(e));
                         scanArrayElement(array, arrayType, reason, idx, element);
-                    } catch (UnsupportedFeatureException ex) { /* Object replacement can throw. */
+                    } catch (UnsupportedFeatureException | AnalysisError.TypeNotFoundError ex) {
                         unsupportedFeatureDuringConstantScan(bb, bb.getUniverse().getSnippetReflection().forObject(e), ex, reason);
                     }
                 }
@@ -313,7 +313,7 @@ public class ObjectScanner {
      * Use the constant hashCode as a key for the unsupported feature to register only one error
      * message if the constant is reachable from multiple places.
      */
-    public static void unsupportedFeatureDuringConstantScan(BigBang bb, JavaConstant constant, UnsupportedFeatureException e, ScanReason reason) {
+    public static void unsupportedFeatureDuringConstantScan(BigBang bb, JavaConstant constant, Throwable e, ScanReason reason) {
         unsupportedFeature(bb, String.valueOf(receiverHashCode(constant)), e.getMessage(), reason);
     }
 
@@ -322,11 +322,11 @@ public class ObjectScanner {
      * only one error message if the value is reachable from multiple places. For example both the
      * heap scanning and the heap verification would scan a field that contains an illegal value.
      */
-    public static void unsupportedFeatureDuringFieldScan(BigBang bb, AnalysisField field, JavaConstant receiver, UnsupportedFeatureException e, ScanReason reason) {
+    public static void unsupportedFeatureDuringFieldScan(BigBang bb, AnalysisField field, JavaConstant receiver, Throwable e, ScanReason reason) {
         unsupportedFeature(bb, (receiver != null ? receiverHashCode(receiver) + "_" : "") + field.format("%H.%n"), e.getMessage(), reason);
     }
 
-    public static void unsupportedFeatureDuringFieldFolding(BigBang bb, AnalysisField field, JavaConstant receiver, UnsupportedFeatureException e, AnalysisMethod parsedMethod, int bci) {
+    public static void unsupportedFeatureDuringFieldFolding(BigBang bb, AnalysisField field, JavaConstant receiver, Throwable e, AnalysisMethod parsedMethod, int bci) {
         ScanReason reason = new FieldConstantFold(field, parsedMethod, bci, receiver, new MethodParsing(parsedMethod));
         unsupportedFeature(bb, (receiver != null ? receiverHashCode(receiver) + "_" : "") + field.format("%H.%n"), e.getMessage(), reason);
     }
@@ -448,7 +448,7 @@ public class ObjectScanner {
                 /* Scan the array elements. */
                 scanArray(entry.constant, entry.reason);
             }
-        } catch (UnsupportedFeatureException ex) {
+        } catch (UnsupportedFeatureException | AnalysisError.TypeNotFoundError ex) {
             unsupportedFeatureDuringConstantScan(bb, entry.constant, ex, entry.reason);
         }
     }

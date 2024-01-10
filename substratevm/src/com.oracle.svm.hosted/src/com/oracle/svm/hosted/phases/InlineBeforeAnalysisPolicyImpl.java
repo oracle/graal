@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils.AccumulativeInlineScope;
 
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
@@ -37,23 +37,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 
-/**
- * The defaults for node limits are very conservative. Only small methods should be inlined. The
- * only exception are constants - an arbitrary number of constants is always allowed. Limiting to 1
- * node (which can be also 1 invoke) means that field accessors can be inlined and forwarding
- * methods can be inlined. But null checks and class initialization checks are already putting a
- * method above the limit. On the other hand, the inlining depth is generous because we do do not
- * need to limit it. Note that more experimentation is necessary to come up with the optimal
- * configuration.
- *
- * Important: the implementation details of this class are publicly observable API. Since
- * {@link java.lang.reflect.Method} constants can be produced by inlining lookup methods with
- * constant arguments, reducing inlining can break customer code. This means we can never reduce the
- * amount of inlining in a future version without breaking compatibility. This also means that we
- * must be conservative and only inline what is necessary for known use cases.
- */
 public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy {
-    private final int maxInliningDepth = InlineBeforeAnalysisPolicyUtils.Options.InlineBeforeAnalysisAllowedDepth.getValue();
 
     private final SVMHost hostVM;
     private final InlineBeforeAnalysisPolicyUtils inliningUtils;
@@ -65,19 +49,8 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy {
     }
 
     @Override
-    protected boolean shouldInlineInvoke(GraphBuilderContext b, AnalysisMethod method, ValueNode[] args) {
-        if (inliningUtils.alwaysInlineInvoke((AnalysisMetaAccess) b.getMetaAccess(), method)) {
-            return true;
-        }
-        if (b.getDepth() >= maxInliningDepth) {
-            return false;
-        }
-        if (b.recursiveInliningDepth(method) > 0) {
-            /* Prevent recursive inlining. */
-            return false;
-        }
-
-        return InlineBeforeAnalysisPolicyUtils.inliningAllowed(hostVM, b, method);
+    protected boolean shouldInlineInvoke(GraphBuilderContext b, AbstractPolicyScope policyScope, AnalysisMethod method, ValueNode[] args) {
+        return inliningUtils.shouldInlineInvoke(b, hostVM, (AccumulativeInlineScope) policyScope, method);
     }
 
     @Override
@@ -106,9 +79,8 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy {
     }
 
     @Override
-    protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMetaAccess metaAccess,
-                    AnalysisMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle) {
-        return inliningUtils.createAccumulativeInlineScope((InlineBeforeAnalysisPolicyUtils.AccumulativeInlineScope) outer, metaAccess, method, constArgsWithReceiver, intrinsifiedMethodHandle);
+    protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMethod method) {
+        return inliningUtils.createAccumulativeInlineScope((InlineBeforeAnalysisPolicyUtils.AccumulativeInlineScope) outer, method);
     }
 
     @Override
