@@ -713,6 +713,7 @@ public abstract class PlatformThreads {
 
     @RawStructure
     protected interface ThreadStartData extends PointerBase {
+
         @RawField
         ObjectHandle getThreadHandle();
 
@@ -1235,6 +1236,19 @@ public abstract class PlatformThreads {
         Target_java_lang_Thread me = toTarget(currentThread.get());
         synchronized (me.interruptLock) {
             me.nioBlocker = b;
+        }
+    }
+
+    protected static class ThreadStartRoutinePrologue implements CEntryPointOptions.Prologue {
+        private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString("Failed to attach a newly launched thread.");
+
+        @SuppressWarnings("unused")
+        @Uninterruptible(reason = "prologue")
+        static void enter(ThreadStartData data) {
+            int code = CEntryPointActions.enterAttachThread(data.getIsolate(), true, false);
+            if (code != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(code, errorMessage.get());
+            }
         }
     }
 
