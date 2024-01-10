@@ -41,8 +41,8 @@
 suite = {
   "mxversion" : "5.300.4",
   "name" : "truffle",
-  "version" : "21.3.9",
-  "release" : True,
+  "version" : "21.3.10",
+  "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
   "url" : "http://openjdk.java.net/projects/graal",
@@ -111,10 +111,10 @@ suite = {
     },
 
     "TruffleJSON" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20231013.jar"],
-      "sha1" : "90263049944b9827d62e2eef04327e38730b0b1a",
-      "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20231013-src.jar"],
-      "sourceSha1" : "d379795a9de8a205bcfd7a19305a15007eab43d0",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20201115.jar"],
+      "sha1" : "7987931963f4fa995fa515273d70116725d0e37f",
+      "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20201115-src.jar"],
+      "sourceSha1" : "1da7c590b0582fb4c2e4de9b581c70407fa9108b",
     },
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",
