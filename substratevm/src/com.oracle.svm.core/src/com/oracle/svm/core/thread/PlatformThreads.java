@@ -63,6 +63,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.Pointer;
@@ -79,6 +80,11 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.c.function.CEntryPointActions;
+import com.oracle.svm.core.c.function.CEntryPointErrors;
+import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
@@ -1191,6 +1197,19 @@ public abstract class PlatformThreads {
         Target_java_lang_Thread me = toTarget(currentThread.get());
         synchronized (me.interruptLock) {
             me.nioBlocker = b;
+        }
+    }
+
+    protected static class ThreadStartRoutinePrologue implements CEntryPointOptions.Prologue {
+        private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString("Failed to attach a newly launched thread.");
+
+        @SuppressWarnings("unused")
+        @Uninterruptible(reason = "prologue")
+        static void enter(ThreadStartData data) {
+            int code = CEntryPointActions.enterAttachThread(data.getIsolate(), true, false);
+            if (code != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(code, errorMessage.get());
+            }
         }
     }
 
