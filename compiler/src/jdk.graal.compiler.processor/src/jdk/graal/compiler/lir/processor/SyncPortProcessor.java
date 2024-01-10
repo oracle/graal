@@ -31,6 +31,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -70,6 +71,10 @@ public class SyncPortProcessor extends AbstractProcessor {
     // Allows comparing against local files. E.g.,
     // HOTSPOT_PORT_SYNC_CHECK=true HOTSPOT_PORT_SYNC_OVERWRITE="file:///PATH/TO/JDK" mx build
     static final String SYNC_OVERWRITE_ENV_VAR = "HOTSPOT_PORT_SYNC_OVERWRITE";
+    // Allows generating a file of bash commands to update changed line numbers. E.g.:
+    // HOTSPOT_PORT_SYNC_CHECK=true HOTSPOT_PORT_SYNC_SHIFT_UPDATE_CMD_FILE="update.sh" mx build &&
+    // bash update.sh
+    static final String SYNC_SHIFT_UPDATE_COMMAND_DUMP_FILE_ENV_VAR = "HOTSPOT_PORT_SYNC_SHIFT_UPDATE_CMD_FILE";
 
     static final String JDK_LATEST = "https://raw.githubusercontent.com/openjdk/jdk/master/";
     static final String JDK_LATEST_HUMAN = "https://github.com/openjdk/jdk/blob/master/";
@@ -104,7 +109,14 @@ public class SyncPortProcessor extends AbstractProcessor {
         int lineStart = Integer.parseInt(matcher.group("lineStart"));
         int lineEnd = Integer.parseInt(matcher.group("lineEnd"));
 
-        try {
+        String dumpUpdateCommandsEnvVar = System.getenv(SYNC_SHIFT_UPDATE_COMMAND_DUMP_FILE_ENV_VAR);
+        PrintWriter dumpUpdateCommands;
+        if (dumpUpdateCommandsEnvVar != null) {
+            dumpUpdateCommands = new PrintWriter(new FileOutputStream(dumpUpdateCommandsEnvVar, true));
+        } else {
+            dumpUpdateCommands = null;
+        }
+        try (dumpUpdateCommands) {
             String overwriteURL = System.getenv(SYNC_OVERWRITE_ENV_VAR);
             boolean isURLOverwritten = overwriteURL != null && !"".equals(overwriteURL);
 
@@ -120,23 +132,27 @@ public class SyncPortProcessor extends AbstractProcessor {
             if (!isURLOverwritten) {
                 String urlOld = String.format("https://raw.githubusercontent.com/openjdk/jdk/%s/%s", commit, path);
                 String sha1Old = digest(proxy, md, urlOld, lineStart - 1, lineEnd);
-
                 if (sha1.equals(sha1Old)) {
                     String latestCommit = getLatestCommit(proxy);
                     int idx = find(proxy, urlOld, url, lineStart - 1, lineEnd, SEARCH_RANGE);
                     if (idx != -1) {
                         int idxInclusive = idx + 1;
                         kind = NOTE;
+                        String urlFormat = "https://github.com/openjdk/jdk/blob/%s/%s#L%d-L%d";
+                        String newUrl = String.format(urlFormat, latestCommit, path, idxInclusive, idxInclusive + (lineEnd - lineStart));
                         extraMessage = String.format("""
                                          The original code snippet is shifted. Update with:
-                                        @SyncPort(from = "https://github.com/openjdk/jdk/blob/%s/%s#L%d-L%d",
+                                        @SyncPort(from = "%s",
                                                   sha1 = "%s")
                                         """,
-                                        latestCommit,
-                                        path,
-                                        idxInclusive,
-                                        idxInclusive + (lineEnd - lineStart),
+                                        newUrl,
                                         sha1);
+                        if (dumpUpdateCommands != null) {
+                            String oldUrl = String.format(urlFormat, commit, path, lineStart, lineEnd);
+                            assert !oldUrl.contains("+");
+                            assert !newUrl.contains("+");
+                            dumpUpdateCommands.printf("sed -i s+%s+%s+g $(git grep --files-with-matches %s)%n", oldUrl, newUrl, sha1);
+                        }
                     } else {
                         extraMessage = String.format("""
                                          See also:

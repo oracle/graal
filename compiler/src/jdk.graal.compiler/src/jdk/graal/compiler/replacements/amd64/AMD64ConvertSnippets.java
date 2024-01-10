@@ -30,10 +30,15 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.unknownPro
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.core.common.calc.FloatConvert;
+import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
+import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.SnippetAnchorNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.FloatConvertNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
@@ -196,13 +201,18 @@ public class AMD64ConvertSnippets implements Snippets {
                 default:
                     return;
             }
-
+            IntegerStamp oldRetStamp = (IntegerStamp) convert.stamp(NodeView.DEFAULT);
             SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(key, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("input", convert.getValue());
+            FixedNode oldNext = tool.lastFixedNode().next();
             SnippetTemplate template = template(tool, convert, args);
             convert.getDebug().log("Lowering %s in %s: node=%s, template=%s, arguments=%s", convert.getFloatConvert(), graph, convert, template, args);
-            template.instantiate(tool.getMetaAccess(), convert, SnippetTemplate.DEFAULT_REPLACER, tool, args);
+            ValueNode replacer = template.instantiate(tool.getMetaAccess(), convert, SnippetTemplate.DEFAULT_REPLACER, tool, args);
             convert.safeDelete();
+            if (replacer.stamp(NodeView.DEFAULT).canBeImprovedWith(oldRetStamp)) {
+                PiNode pi = graph.addOrUnique(new PiNode(replacer, oldRetStamp, AbstractBeginNode.prevBegin(oldNext)));
+                replacer.replaceAtMatchingUsages(pi, x -> x != pi);
+            }
         }
     }
 }

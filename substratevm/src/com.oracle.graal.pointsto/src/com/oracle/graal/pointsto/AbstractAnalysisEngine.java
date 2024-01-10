@@ -25,12 +25,15 @@
 package com.oracle.graal.pointsto;
 
 import java.io.PrintWriter;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.graal.pointsto.ClassInclusionPolicy.LayeredBaseImageInclusionPolicy;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -97,11 +100,12 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     protected final Timer processFeaturesTimer;
     protected final Timer analysisTimer;
     protected final Timer verifyHeapTimer;
+    protected final ClassInclusionPolicy classInclusionPolicy;
 
     @SuppressWarnings("this-escape")
     public AbstractAnalysisEngine(OptionValues options, AnalysisUniverse universe, HostVM hostVM, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
                     ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, UnsupportedFeatures unsupportedFeatures, DebugContext debugContext,
-                    TimerCollection timerCollection) {
+                    TimerCollection timerCollection, ClassInclusionPolicy classInclusionPolicy) {
         this.options = options;
         this.universe = universe;
         this.debugHandlerFactories = Collections.singletonList(new GraalDebugHandlersFactory(snippetReflectionProvider));
@@ -123,6 +127,8 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         this.snippetReflectionProvider = snippetReflectionProvider;
         this.constantReflectionProvider = constantReflectionProvider;
         this.wordTypes = wordTypes;
+        classInclusionPolicy.setBigBang(this);
+        this.classInclusionPolicy = classInclusionPolicy;
     }
 
     /**
@@ -257,6 +263,10 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         }
     }
 
+    public boolean isBaseLayerAnalysisEnabled() {
+        return classInclusionPolicy instanceof LayeredBaseImageInclusionPolicy;
+    }
+
     @Override
     public OptionValues getOptions() {
         return options;
@@ -344,6 +354,19 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     @Override
     public final boolean executorIsStarted() {
         return executor.isStarted();
+    }
+
+    @Override
+    public void registerTypeForBaseImage(Class<?> cls) {
+        if (classInclusionPolicy.isClassIncluded(cls)) {
+            classInclusionPolicy.includeClass(cls);
+            Stream.concat(Arrays.stream(cls.getDeclaredConstructors()), Arrays.stream(cls.getDeclaredMethods()))
+                            .filter(classInclusionPolicy::isMethodIncluded)
+                            .forEach(classInclusionPolicy::includeMethod);
+            Arrays.stream(cls.getDeclaredFields())
+                            .filter(classInclusionPolicy::isFieldIncluded)
+                            .forEach(classInclusionPolicy::includeField);
+        }
     }
 
     /**

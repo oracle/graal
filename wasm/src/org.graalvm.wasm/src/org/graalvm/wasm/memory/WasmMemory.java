@@ -54,6 +54,7 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
 import org.graalvm.wasm.EmbedderDataHolder;
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Sizes;
@@ -252,6 +253,8 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     public abstract long load_i64_32s(Node node, long address);
 
     public abstract long load_i64_32u(Node node, long address);
+
+    public abstract Vector128 load_i128(Node node, long address);
 
     public abstract void store_i32(Node node, long address, int value);
 
@@ -624,21 +627,19 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     }
 
     @ExportMessage
+    final void readBuffer(long byteOffset, byte[] destination, int destinationOffset, int length,
+                    @Bind("$node") Node node,
+                    @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(node, byteOffset, length, errorBranch);
+        copyToBuffer(node, destination, byteOffset, destinationOffset, length);
+    }
+
+    @ExportMessage
     final byte readBufferByte(long byteOffset,
                     @Bind("$node") Node node,
                     @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch) throws InvalidBufferOffsetException {
         checkOffset(node, byteOffset, Byte.BYTES, errorBranch);
         return (byte) load_i32_8s(null, byteOffset);
-    }
-
-    @ExportMessage
-    final void readBuffer(long byteOffset, byte[] destination, int destinationOffset, int length,
-                    @Bind("$node") Node node,
-                    @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch) throws InvalidBufferOffsetException {
-        checkOffset(node, byteOffset, length, errorBranch);
-        for (long offset = byteOffset; offset < byteOffset + length; offset++) {
-            destination[destinationOffset + (int) (offset - byteOffset)] = (byte) load_i32_8s(null, offset);
-        }
     }
 
     @ExportMessage
@@ -891,6 +892,17 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * @throws IOException if writing the stream leads to an error.
      */
     public abstract void copyToStream(Node node, OutputStream stream, int offset, int length) throws IOException;
+
+    /**
+     * Copy data from memory into a byte[] array.
+     * 
+     * @param node the node used for errors
+     * @param dst the output buffer
+     * @param srcOffset the offset in the memory
+     * @param dstOffset the offset in the byte[] array
+     * @param length the length of the data
+     */
+    public abstract void copyToBuffer(Node node, byte[] dst, long srcOffset, int dstOffset, int length);
 
     public boolean isUnsafe() {
         return false;

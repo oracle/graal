@@ -55,6 +55,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     ],
     runAfter: [
       'post-merge-deploy-vm-base-java-latest-linux-amd64',
+      'post-merge-deploy-vm-base-java21-linux-amd64',
       'daily-deploy-vm-installables-standalones-java-latest-linux-amd64',
       'daily-deploy-vm-base-java-latest-linux-aarch64',
       'daily-deploy-vm-installables-standalones-java-latest-linux-aarch64',

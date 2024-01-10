@@ -541,7 +541,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             Class<?>[] searchSignature = signatureToClasses(searchMethod);
             Class<?> searchReturnType = null;
             if (searchMethod.getSignature().getReturnType(null) instanceof ResolvedJavaType) {
-                searchReturnType = OriginalClassProvider.getJavaClass((ResolvedJavaType) searchMethod.getSignature().getReturnType(null));
+                searchReturnType = OriginalClassProvider.getJavaClass(searchMethod.getSignature().getReturnType(null));
             }
 
             Class<?> declaringClass = OriginalClassProvider.getJavaClass(declaringType);
@@ -585,7 +585,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             for (int i = 0; i < paramCount; i++) {
                 JavaType parameterType = method.getSignature().getParameterType(i, null);
                 if (parameterType instanceof ResolvedJavaType) {
-                    result[i] = OriginalClassProvider.getJavaClass((ResolvedJavaType) parameterType);
+                    result[i] = OriginalClassProvider.getJavaClass(parameterType);
                 }
             }
             return result;

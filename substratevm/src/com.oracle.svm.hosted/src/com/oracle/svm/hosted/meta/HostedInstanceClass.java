@@ -33,6 +33,7 @@ public class HostedInstanceClass extends HostedClass {
 
     protected HostedField[] instanceFieldsWithoutSuper;
     protected HostedField[] instanceFieldsWithSuper;
+    protected int firstInstanceFieldOffset;
     protected int afterFieldsOffset;
     protected int instanceSize;
     protected boolean monitorFieldNeeded = false;
@@ -86,7 +87,20 @@ public class HostedInstanceClass extends HostedClass {
         return null;
     }
 
+    public int getFirstInstanceFieldOffset() {
+        /*
+         * Each object has at least a header, so the firstInstanceFieldOffset should always be
+         * positive.
+         */
+        assert firstInstanceFieldOffset > 0 : "Invalid offset " + firstInstanceFieldOffset + " class: " + getName();
+        return firstInstanceFieldOffset;
+    }
+
     public int getAfterFieldsOffset() {
+        /*
+         * Each object has at least a header, so the afterFieldsOffset should always be positive.
+         */
+        assert afterFieldsOffset > 0 : "Invalid offset " + afterFieldsOffset + " class: " + getName();
         return afterFieldsOffset;
     }
 

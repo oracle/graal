@@ -52,6 +52,7 @@ import java.lang.reflect.Field;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
@@ -239,6 +240,14 @@ public final class UnsafeWasmMemory extends WasmMemory {
     public long load_i64_32u(Node node, long address) {
         validateAddress(node, address, 4);
         return 0x0000_0000_ffff_ffffL & unsafe.getInt(startAddress + address);
+    }
+
+    @Override
+    public Vector128 load_i128(Node node, long address) {
+        validateAddress(node, address, 16);
+        byte[] bytes = new byte[16];
+        unsafe.copyMemory(null, startAddress + address, bytes, Unsafe.ARRAY_BYTE_BASE_OFFSET, 16);
+        return Vector128.ofBytes(bytes);
     }
 
     @Override
@@ -999,6 +1008,14 @@ public final class UnsafeWasmMemory extends WasmMemory {
             byte b = unsafe.getByte(startAddress + offset + i);
             stream.write(b & 0x0000_00ff);
         }
+    }
+
+    @Override
+    public void copyToBuffer(Node node, byte[] dst, long srcOffset, int dstOffset, int length) {
+        if (outOfBounds(srcOffset, length)) {
+            throw trapOutOfBounds(node, srcOffset, length);
+        }
+        unsafe.copyMemory(null, startAddress + srcOffset, dst, Unsafe.ARRAY_BYTE_BASE_OFFSET + (long) dstOffset * Unsafe.ARRAY_BYTE_INDEX_SCALE, length);
     }
 
     @Override

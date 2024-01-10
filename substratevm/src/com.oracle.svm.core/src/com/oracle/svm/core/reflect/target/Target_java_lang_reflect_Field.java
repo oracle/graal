@@ -133,7 +133,7 @@ public final class Target_java_lang_reflect_Field {
 
         @Override
         public Object transform(Object receiver, Object originalValue) {
-            return ImageSingletons.lookup(ReflectionSubstitutionSupport.class).getDeletionReason((Field) receiver);
+            return ReflectionSubstitutionSupport.singleton().getDeletionReason((Field) receiver);
         }
     }
 

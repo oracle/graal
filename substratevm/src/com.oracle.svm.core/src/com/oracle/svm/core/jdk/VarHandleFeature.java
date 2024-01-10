@@ -251,7 +251,7 @@ class VarHandleFieldOffsetIntComputer implements FieldValueTransformerWithAvaila
     @Override
     public Object transform(Object receiver, Object originalValue) {
         Field field = ImageSingletons.lookup(VarHandleFeature.class).findVarHandleField(receiver);
-        int offset = ImageSingletons.lookup(ReflectionSubstitutionSupport.class).getFieldOffset(field, true);
+        int offset = ReflectionSubstitutionSupport.singleton().getFieldOffset(field, true);
         if (offset <= 0) {
             throw VMError.shouldNotReachHere("Field is not marked as unsafe accessed: " + field);
         }

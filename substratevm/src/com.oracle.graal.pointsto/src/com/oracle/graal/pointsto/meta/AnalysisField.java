@@ -24,15 +24,13 @@
  */
 package com.oracle.graal.pointsto.meta;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-
-import jdk.graal.compiler.debug.GraalError;
 
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.api.HostVM;
@@ -42,10 +40,13 @@ import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.UnsafePartitionKind;
 
+import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -123,9 +124,10 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     /**
      * Marks a field whose value is computed during image building, in general derived from other
-     * values, and it cannot be constant-folded or otherwise optimized.
+     * values. The actual meaning of the field value is out of scope of the static analysis, but the
+     * value is stored here to allow fast access.
      */
-    protected final FieldValueComputer fieldValueComputer;
+    protected Object fieldValueInterceptor;
 
     @SuppressWarnings("this-escape")
     public AnalysisField(AnalysisUniverse universe, ResolvedJavaField wrappedField) {
@@ -152,8 +154,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
             this.instanceFieldFlow = new ContextInsensitiveFieldTypeFlow(this, getType());
             this.initialInstanceFieldFlow = new FieldTypeFlow(this, getType());
         }
-
-        fieldValueComputer = universe.hostVM().createFieldValueComputer(this);
     }
 
     @Override
@@ -260,6 +260,8 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     public boolean registerAsAccessed(Object reason) {
+        getDeclaringClass().registerAsReachable(this);
+
         assert isValidReason(reason) : "Registering a field as accessed needs to provide a valid reason.";
         boolean firstAttempt = AtomicUtils.atomicSet(this, reason, isAccessedUpdater);
         notifyUpdateAccessInfo();
@@ -275,6 +277,8 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
      * @param reason the reason why this field is read, non-null
      */
     public boolean registerAsRead(Object reason) {
+        getDeclaringClass().registerAsReachable(this);
+
         assert isValidReason(reason) : "Registering a field as read needs to provide a valid reason.";
         boolean firstAttempt = AtomicUtils.atomicSet(this, reason, isReadUpdater);
         notifyUpdateAccessInfo();
@@ -295,6 +299,8 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
      * @param reason the reason why this field is written, non-null
      */
     public boolean registerAsWritten(Object reason) {
+        getDeclaringClass().registerAsReachable(this);
+
         assert isValidReason(reason) : "Registering a field as written needs to provide a valid reason.";
         boolean firstAttempt = AtomicUtils.atomicSet(this, reason, isWrittenUpdater);
         notifyUpdateAccessInfo();
@@ -311,6 +317,8 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     public void registerAsFolded(Object reason) {
+        getDeclaringClass().registerAsReachable(this);
+
         assert isValidReason(reason) : "Registering a field as folded needs to provide a valid reason.";
         if (AtomicUtils.atomicSet(this, reason, isFoldedUpdater)) {
             assert getDeclaringClass().isReachable() : this;
@@ -442,23 +450,12 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         notifyReachabilityCallbacks(declaringClass.getUniverse(), new ArrayList<>());
     }
 
-    public boolean isValueAvailable() {
-        if (fieldValueComputer != null) {
-            return fieldValueComputer.isAvailable();
-        }
-        return true;
+    public Object getFieldValueInterceptor() {
+        return fieldValueInterceptor;
     }
 
-    public boolean isComputedValue() {
-        return fieldValueComputer != null;
-    }
-
-    public Class<?>[] computedValueTypes() {
-        return fieldValueComputer.types();
-    }
-
-    public boolean computedValueCanBeNull() {
-        return fieldValueComputer.canBeNull();
+    public void setFieldValueInterceptor(Object fieldValueInterceptor) {
+        this.fieldValueInterceptor = fieldValueInterceptor;
     }
 
     public void setCanBeNull(boolean canBeNull) {
@@ -480,7 +477,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     public int getPosition() {
-        assert position != -1 : this;
+        AnalysisError.guarantee(position != -1, "Unknown position for field %s", this);
         return position;
     }
 
@@ -531,13 +528,32 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     @Override
-    public Field getJavaField() {
-        return OriginalFieldProvider.getJavaField(wrapped);
+    public ResolvedJavaField unwrapTowardsOriginalField() {
+        return wrapped;
     }
 
     @Override
     public JavaConstant getConstantValue() {
         return getUniverse().lookup(getWrapped().getConstantValue());
+    }
+
+    /**
+     * Ensure that all reachability handler that were present at the time the declaring type was
+     * marked as reachable are executed before accessing field values. This allows field value
+     * transformer to be installed reliably in reachability handler.
+     */
+    public void beforeFieldValueAccess() {
+        declaringClass.registerAsReachable(this);
+        declaringClass.ensureOnTypeReachableTaskDone();
+
+        List<AnalysisFuture<Void>> notifications = declaringClass.scheduledTypeReachableNotifications;
+        if (notifications != null) {
+            for (var notification : notifications) {
+                notification.ensureDone();
+            }
+            /* Now we know all the handlers have been executed, no checks are necessary anymore. */
+            declaringClass.scheduledTypeReachableNotifications = null;
+        }
     }
 
     public void addAnalysisFieldObserver(AnalysisFieldObserver observer) {

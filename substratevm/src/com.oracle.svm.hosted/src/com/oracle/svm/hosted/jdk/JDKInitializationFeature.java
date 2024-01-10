@@ -196,6 +196,8 @@ public class JDKInitializationFeature implements InternalFeature {
 
         rci.rerunInitialization("jdk.internal.foreign.SystemLookup$WindowsFallbackSymbols", "Does not work on non-Windows modular images");
 
+        rci.rerunInitialization("jdk.internal.logger.LoggerFinderLoader", "Contains a static field with a FilePermission value");
+
         /*
          * The local class Holder in FallbackLinker#getInstance fails the build time initialization
          * starting JDK 22. There is no way to obtain a list of local classes using reflection. They

@@ -1076,16 +1076,43 @@ public abstract class ToReference extends ToEspressoNode {
 
         @Specialization(guards = {
                         "interop.isException(value)",
+                        "!isTypeMappingEnabled(context)",
                         "!isStaticObject(value)",
                         "!interop.isNull(value)",
                         "!isHostString(value)",
                         "!isEspressoException(value)",
                         "!isBoxedPrimitive(value)"
         })
-        StaticObject doForeignException(Object value,
+        StaticObject doForeignExceptionNoTypeMapping(Object value,
                         @Cached.Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @SuppressWarnings("unused") @Bind("getContext()") EspressoContext context) {
             return StaticObject.createForeignException(context, value, interop);
+        }
+
+        @Specialization(guards = {
+                        "interop.isException(value)",
+                        "isTypeMappingEnabled(context)",
+                        "!isStaticObject(value)",
+                        "!interop.isNull(value)",
+                        "!isHostString(value)",
+                        "!isEspressoException(value)",
+                        "!isBoxedPrimitive(value)"
+        })
+        StaticObject doForeignExceptionTypeMapping(Object value,
+                        @Cached.Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @SuppressWarnings("unused") @Bind("getContext()") EspressoContext context,
+                        @Cached BranchProfile errorProfile,
+                        @Cached LookupProxyKlassNode lookupProxyKlassNode,
+                        @Cached LookupTypeConverterNode lookupTypeConverterNode,
+                        @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
+                        @Cached ToReference.DynamicToReference converterToEspresso,
+                        @Bind("getMeta()") Meta meta) {
+            try {
+                return tryTypeConversion(value, interop, lookupProxyKlassNode, lookupTypeConverterNode, lookupInternalTypeConverterNode, converterToEspresso, errorProfile, meta);
+            } catch (@SuppressWarnings("unused") UnsupportedTypeException ex) {
+                // no meta object available, but we know it's a foreign exception so simply wrap
+                return StaticObject.createForeignException(context, value, interop);
+            }
         }
 
         @Specialization(guards = {
@@ -1225,7 +1252,11 @@ public abstract class ToReference extends ToEspressoNode {
                 } else {
                     PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(metaName);
                     if (converter != null) {
-                        return (StaticObject) converter.convert(StaticObject.createForeign(getLanguage(), meta.java_lang_Object, value, interop));
+                        if (interop.isException(value)) {
+                            return (StaticObject) converter.convert(StaticObject.createForeignException(getContext(), value, interop));
+                        } else {
+                            return (StaticObject) converter.convert(StaticObject.createForeign(getLanguage(), meta.java_lang_Object, value, interop));
+                        }
                     }
 
                     // check if foreign exception

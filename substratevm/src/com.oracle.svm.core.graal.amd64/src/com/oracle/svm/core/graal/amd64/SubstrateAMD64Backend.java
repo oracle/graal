@@ -363,7 +363,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             VMError.guarantee(SubstrateOptions.SpawnIsolates.getValue(), "Memory access without isolates is not implemented");
 
-            CompressEncoding compressEncoding = ReferenceAccess.singleton().getCompressEncoding();
+            int compressionShift = ReferenceAccess.singleton().getCompressionShift();
             Register computeRegister = asRegister(addressBase);
             AMD64BaseAssembler.OperandSize lastOperandSize = AMD64BaseAssembler.OperandSize.get(addressBase.getPlatformKind());
             boolean nextMemoryAccessNeedsDecompress = false;
@@ -387,7 +387,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                          * an optional shift that is known to be a valid addressing mode.
                          */
                         memoryAddress = new AMD64Address(ReservedRegisters.singleton().getHeapBaseRegister(),
-                                        computeRegister, Stride.fromLog2(compressEncoding.getShift()),
+                                        computeRegister, Stride.fromLog2(compressionShift),
                                         field.getOffset());
                     } else {
                         memoryAddress = new AMD64Address(computeRegister, field.getOffset());

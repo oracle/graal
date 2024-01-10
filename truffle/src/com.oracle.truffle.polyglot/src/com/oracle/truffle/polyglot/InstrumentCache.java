@@ -170,7 +170,7 @@ final class InstrumentCache {
         Map<String, Map<String, Supplier<InternalResourceCache>>> optionalResources = InternalResourceCache.loadOptionalInternalResources(suppliers);
         for (AbstractClassLoaderSupplier supplier : suppliers) {
             ClassLoader loader = supplier.get();
-            if (loader == null || !isValidLoader(loader)) {
+            if (loader == null) {
                 continue;
             }
             usesTruffleClassLoader |= truffleClassLoader == loader;
@@ -246,15 +246,6 @@ final class InstrumentCache {
         if (!classNamesUsed.contains(className)) {
             classNamesUsed.add(className);
             list.add(new InstrumentCache(id, name, version, className, internal, servicesClassNames, providerAdapter, website, sandboxPolicy, Collections.unmodifiableMap(resources)));
-        }
-    }
-
-    private static boolean isValidLoader(ClassLoader loader) {
-        try {
-            Class<?> truffleInstrumentClassAsSeenByLoader = Class.forName(TruffleInstrument.class.getName(), true, loader);
-            return truffleInstrumentClassAsSeenByLoader == TruffleInstrument.class;
-        } catch (ClassNotFoundException ex) {
-            return false;
         }
     }
 

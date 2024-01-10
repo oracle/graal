@@ -45,7 +45,9 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.jfr.internal.JVM;
+import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
+import jdk.jfr.internal.Logger;
 
 @SuppressWarnings({"static-method", "unused"})
 @TargetClass(value = jdk.jfr.internal.JVM.class, onlyWith = HasJfrSupport.class)
@@ -168,10 +170,15 @@ public final class Target_jdk_jfr_internal_JVM {
         throw VMError.unimplemented("JFR StackFilters are not yet supported.");
     }
 
+    /**
+     * As of 22+27, This method is both used to set cutoff tick values for leak profiling and
+     * for @Deprecated events.
+     */
     @Substitute
     @TargetElement(onlyWith = JDK22OrLater.class)
     public static void setMiscellaneous(long eventTypeId, long value) {
-        throw VMError.unimplemented("@Deprecated JFR events are not yet supported.");
+        Logger.log(LogTag.JFR_SETTING, LogLevel.WARN, "@Deprecated JFR events, and leak profiling are not yet supported.");
+        /* Explicitly don't throw an exception (would result in an unspecific warning). */
     }
 
     /** See {@link JVM#getThreadId}. */

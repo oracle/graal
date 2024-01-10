@@ -25,18 +25,6 @@
 
 package com.oracle.svm.hosted.analysis.flow;
 
-import jdk.graal.compiler.core.common.type.ObjectStamp;
-import jdk.graal.compiler.core.common.type.Stamp;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
-import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.FixedNode;
-import jdk.graal.compiler.nodes.NodeView;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.java.LoadFieldNode;
-
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
@@ -53,9 +41,20 @@ import com.oracle.svm.core.graal.thread.StoreVMThreadLocalNode;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
-import com.oracle.svm.hosted.substitute.ComputedValueField;
 
+import jdk.graal.compiler.core.common.type.ObjectStamp;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -159,7 +158,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
             if (field.isStatic() &&
                             getHostVM().getClassInitializationSupport().maybeInitializeAtBuildTime(field.getDeclaringClass()) &&
                             !field.getDeclaringClass().unsafeFieldsRecomputed() &&
-                            !(field.wrapped instanceof ComputedValueField) &&
+                            !FieldValueInterceptionSupport.singleton().hasFieldValueTransformer(field) &&
                             !(base.isConstant() && base.asConstant().isDefaultForKind())) {
                 String message = String.format("Field %s is used as an offset in an unsafe operation, but no value recomputation found.%n Wrapped field: %s", field, field.wrapped);
                 message += String.format("%n Location: %s", pos);

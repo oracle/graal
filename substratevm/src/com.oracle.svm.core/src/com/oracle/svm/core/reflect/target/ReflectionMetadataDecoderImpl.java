@@ -684,7 +684,10 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      */
     @SuppressWarnings("unchecked")
     private static <T> T[] decodeArray(UnsafeArrayTypeReader buf, Class<T> elementType, Function<Integer, T> elementDecoder) {
-        int length = buf.getUVInt();
+        int length = buf.getSVInt();
+        if (isErrorIndex(length)) {
+            decodeAndThrowError(length);
+        }
         T[] result = (T[]) Array.newInstance(elementType, length);
         int valueCount = 0;
         for (int i = 0; i < length; ++i) {

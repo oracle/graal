@@ -32,7 +32,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -50,6 +49,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 import com.oracle.svm.hosted.c.util.FileUtils;
 import com.oracle.svm.util.ClassUtil;
@@ -139,44 +139,49 @@ public abstract class CCompilerInvoker {
 
         @Override
         protected List<String> getVersionInfoOptions() {
-            return Collections.emptyList();
+            Path detectVersionInfoFile = tempDirectory.resolve("detect-cl-version-info.c").toAbsolutePath();
+            try {
+                Files.write(detectVersionInfoFile, List.of("M_X64=_M_X64", "M_ARM64EC=_M_ARM64EC", "MSC_FULL_VER=_MSC_FULL_VER"));
+            } catch (IOException ioe) {
+                throw VMError.shouldNotReachHere("Unable to create file to detect cl version info", ioe);
+            }
+            return List.of("/EP", detectVersionInfoFile.toString());
         }
 
         @Override
-        protected CompilerInfo createCompilerInfo(Path compilerPath, Scanner outerScanner) {
-            try (Scanner scanner = new Scanner(outerScanner.nextLine())) {
-                String targetArch = null;
-                /* For cl.exe the first line holds all necessary information */
-                if (scanner.hasNext("\u7528\u4E8E")) {
-                    /* Simplified-Chinese has targetArch first */
-                    scanner.next();
-                    targetArch = scanner.next();
+        protected CompilerInfo createCompilerInfo(Path compilerPath, Scanner scanner) {
+            try {
+                if (scanner.findInLine("Microsoft.*\\(R\\)") == null) {
+                    return null; // not a Microsoft compiler
                 }
-                /*
-                 * Some cl.exe print "... Microsoft (R) C/C++ ... ##.##.#####" while others print
-                 * "...C/C++ ... Microsoft (R) ... ##.##.#####".
-                 */
-                if (scanner.findInLine("Microsoft.*\\(R\\) C/C\\+\\+") == null &&
-                                scanner.findInLine("C/C\\+\\+.*Microsoft.*\\(R\\)") == null) {
+                scanner.nextLine(); // skip rest of first line
+                scanner.nextLine(); // skip copyright line
+                scanner.nextLine(); // skip blank separator line
+                skipLineIfHasNext(scanner, "detect-cl-version-info.c");
+                scanner.nextLine(); // skip blank separator line
+                skipLineIfHasNext(scanner, "M_X64=100"); // _M_X64 is defined
+                skipLineIfHasNext(scanner, "M_ARM64EC=_M_ARM64EC"); // _M_ARM64EC is not defined
+                if (scanner.findInLine("MSC_FULL_VER=") == null) {
                     return null;
                 }
-                scanner.useDelimiter("\\D");
-                while (!scanner.hasNextInt()) {
-                    scanner.next();
+                String mscFullVerValue = scanner.nextLine();
+                if (mscFullVerValue.length() < 5) {
+                    return null;
                 }
-                int major = scanner.nextInt();
-                int minor0 = scanner.nextInt();
-                int minor1 = scanner.nextInt();
-                if (targetArch == null) {
-                    scanner.reset();
-                    while (scanner.hasNext()) {
-                        /* targetArch is last token in line */
-                        targetArch = scanner.next();
-                    }
-                }
-                return new CompilerInfo(compilerPath, "microsoft", "C/C++ Optimizing Compiler", "cl", major, minor0, minor1, targetArch);
-            } catch (NoSuchElementException e) {
+                int major = Integer.parseInt(mscFullVerValue.substring(0, 2));
+                int minor0 = Integer.parseInt(mscFullVerValue.substring(2, 4));
+                int minor1 = Integer.parseInt(mscFullVerValue.substring(4));
+                return new CompilerInfo(compilerPath, "microsoft", "C/C++ Optimizing Compiler", "cl", major, minor0, minor1, "x64");
+            } catch (NoSuchElementException | NumberFormatException e) {
                 return null;
+            }
+        }
+
+        private void skipLineIfHasNext(Scanner scanner, String expectedToken) {
+            if (scanner.hasNext(expectedToken)) {
+                scanner.nextLine();
+            } else {
+                throw new NoSuchElementException(expectedToken);
             }
         }
 
@@ -189,11 +194,6 @@ public abstract class CCompilerInvoker {
             if (compilerInfo.versionMajor < minimumMajorVersion || compilerInfo.versionMinor0 < minimumMinorVersion) {
                 UserError.abort("On Windows, GraalVM Native Image for JDK %s requires %s or later (C/C++ Optimizing Compiler Version %s.%s or later).%nCompiler info detected: %s",
                                 JavaVersionUtil.JAVA_SPEC, VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION, minimumMajorVersion, minimumMinorVersion, compilerInfo.getShortDescription());
-            }
-            if (guessArchitecture(compilerInfo.targetArch) != AMD64.class) {
-                String targetPrefix = compilerInfo.targetArch.matches("(.*x|i\\d)86$") ? "32-bit architecture " : "";
-                UserError.abort("Native-image building on Windows currently only supports target architecture: %s (%s%s unsupported)",
-                                AMD64.class.getSimpleName(), targetPrefix, compilerInfo.targetArch);
             }
         }
 
@@ -416,7 +416,7 @@ public abstract class CCompilerInvoker {
     }
 
     protected List<String> getVersionInfoOptions() {
-        return Arrays.asList("-v");
+        return List.of("-v");
     }
 
     protected abstract CompilerInfo createCompilerInfo(Path compilerPath, Scanner scanner);

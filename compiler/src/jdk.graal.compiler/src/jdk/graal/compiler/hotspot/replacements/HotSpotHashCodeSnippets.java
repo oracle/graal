@@ -42,7 +42,7 @@ import jdk.graal.compiler.word.Word;
 import org.graalvm.word.WordFactory;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/d4c904d81970bbe5b0afe1029eae705366779839/src/hotspot/share/opto/library_call.cpp#L4480-L4604",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/ce8399fd6071766114f5f201b6e44a7abdba9f5a/src/hotspot/share/opto/library_call.cpp#L4485-L4609",
           sha1 = "34281fb78c4f0657a704dbda3e3cc85ed56dd2ad")
 // @formatter:on
 public class HotSpotHashCodeSnippets extends IdentityHashCodeSnippets {

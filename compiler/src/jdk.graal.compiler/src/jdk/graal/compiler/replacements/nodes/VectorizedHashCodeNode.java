@@ -34,6 +34,8 @@ import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSSE3;
 
 import java.util.EnumSet;
 
+import org.graalvm.word.Pointer;
+
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.debug.GraalError;
@@ -45,8 +47,7 @@ import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.word.Pointer;
-
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
@@ -116,6 +117,8 @@ public final class VectorizedHashCodeNode extends PureFunctionStubIntrinsicNode 
     public static boolean isSupported(Architecture arch) {
         if (arch instanceof AMD64) {
             return ((AMD64) arch).getFeatures().containsAll(minFeaturesAMD64());
+        } else if (arch instanceof AArch64) {
+            return true;
         }
         return false;
     }

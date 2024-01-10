@@ -30,7 +30,7 @@ public enum ParsingReason {
     AOTCompilation,
     JITCompilation,
     EarlyClassInitializerAnalysis,
-    UnsafeSubstitutionAnalysis;
+    AutomaticUnsafeTransformation;
 
     public boolean isForHosted() {
         return this != JITCompilation;

@@ -33,17 +33,16 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.ImageCodeInfo;
-import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.c.info.AccessorInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
-import com.oracle.svm.hosted.config.HybridLayout;
+import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.thread.VMThreadMTFeature;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -68,10 +67,10 @@ public final class KnownOffsetsFeature implements InternalFeature {
     public void beforeCompilation(BeforeCompilationAccess a) {
         BeforeCompilationAccessImpl access = (BeforeCompilationAccessImpl) a;
 
-        HybridLayout<DynamicHub> hubLayout = new HybridLayout<>(DynamicHub.class, ConfigurationValues.getObjectLayout(), access.getMetaAccess());
-        int vtableBaseOffset = hubLayout.getArrayBaseOffset();
-        int vtableEntrySize = ConfigurationValues.getObjectLayout().sizeInBytes(hubLayout.getArrayElementStorageKind());
-        int typeIDSlotsOffset = HybridLayout.getTypeIDSlotsFieldOffset(ConfigurationValues.getObjectLayout());
+        DynamicHubLayout dynamicHubLayout = DynamicHubLayout.singleton();
+        int vtableBaseOffset = dynamicHubLayout.vTableOffset();
+        int vtableEntrySize = dynamicHubLayout.vTableSlotSize;
+        int typeIDSlotsOffset = dynamicHubLayout.typeIDSlotsOffset;
 
         int componentHubOffset = findFieldOffset(access, DynamicHub.class, "componentType");
 

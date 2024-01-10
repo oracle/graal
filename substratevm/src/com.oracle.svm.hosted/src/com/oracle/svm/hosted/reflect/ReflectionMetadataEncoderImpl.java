@@ -148,6 +148,11 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
     private final Map<HostedType, Map<Object, MethodMetadata>> methodData = new HashMap<>();
     private final Map<HostedType, Map<Object, ConstructorMetadata>> constructorData = new HashMap<>();
 
+    private final Map<HostedType, Throwable> classLookupErrors = new HashMap<>();
+    private final Map<HostedType, Throwable> fieldLookupErrors = new HashMap<>();
+    private final Map<HostedType, Throwable> methodLookupErrors = new HashMap<>();
+    private final Map<HostedType, Throwable> constructorLookupErrors = new HashMap<>();
+
     private final Set<AccessibleObjectMetadata> heapData = new HashSet<>();
 
     private final Map<AccessibleObject, byte[]> annotationsEncodings = new HashMap<>();
@@ -633,6 +638,34 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         registerConstructor(declaringClass, parameterTypes, new ConstructorMetadata(declaringClass, parameterTypes));
     }
 
+    @Override
+    public void addClassLookupError(HostedType declaringClass, Throwable exception) {
+        addType(declaringClass);
+        registerError(exception);
+        classLookupErrors.put(declaringClass, exception);
+    }
+
+    @Override
+    public void addFieldLookupError(HostedType declaringClass, Throwable exception) {
+        addType(declaringClass);
+        registerError(exception);
+        fieldLookupErrors.put(declaringClass, exception);
+    }
+
+    @Override
+    public void addMethodLookupError(HostedType declaringClass, Throwable exception) {
+        addType(declaringClass);
+        registerError(exception);
+        methodLookupErrors.put(declaringClass, exception);
+    }
+
+    @Override
+    public void addConstructorLookupError(HostedType declaringClass, Throwable exception) {
+        addType(declaringClass);
+        registerError(exception);
+        constructorLookupErrors.put(declaringClass, exception);
+    }
+
     private static HostedType[] getParameterTypes(HostedMethod method) {
         HostedType[] parameterTypes = new HostedType[method.getSignature().getParameterCount(false)];
         for (int i = 0; i < parameterTypes.length; ++i) {
@@ -712,7 +745,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
                             : addElement(buf, encodeEnclosingMethodInfo((Object[]) classMetadata.enclosingMethodInfo));
             int annotationsIndex = addEncodedElement(buf, encodeAnnotations(classMetadata.annotations));
             int typeAnnotationsIndex = addEncodedElement(buf, encodeTypeAnnotations(classMetadata.typeAnnotations));
-            int classesEncodingIndex = encodeAndAddCollection(buf, classMetadata.classes, this::encodeType, false);
+            int classesEncodingIndex = encodeAndAddCollection(buf, classMetadata.classes, classLookupErrors.get(declaringType), this::encodeType, false);
             int permittedSubclassesIndex = encodeAndAddCollection(buf, classMetadata.permittedSubclasses, this::encodeType, true);
             int nestMembersEncodingIndex = encodeAndAddCollection(buf, classMetadata.nestMembers, this::encodeType, true);
             int signersEncodingIndex = encodeAndAddCollection(buf, classMetadata.signers, this::encodeObject, true);
@@ -720,9 +753,9 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
                 hub.setHubMetadata(enclosingMethodInfoIndex, annotationsIndex, typeAnnotationsIndex, classesEncodingIndex, permittedSubclassesIndex, nestMembersEncodingIndex, signersEncodingIndex);
             }
 
-            int fieldsIndex = encodeAndAddCollection(buf, getFields(declaringType), this::encodeField, false);
-            int methodsIndex = encodeAndAddCollection(buf, getMethods(declaringType), this::encodeExecutable, false);
-            int constructorsIndex = encodeAndAddCollection(buf, getConstructors(declaringType), this::encodeExecutable, false);
+            int fieldsIndex = encodeAndAddCollection(buf, getFields(declaringType), fieldLookupErrors.get(declaringType), this::encodeField, false);
+            int methodsIndex = encodeAndAddCollection(buf, getMethods(declaringType), methodLookupErrors.get(declaringType), this::encodeExecutable, false);
+            int constructorsIndex = encodeAndAddCollection(buf, getConstructors(declaringType), constructorLookupErrors.get(declaringType), this::encodeExecutable, false);
             int recordComponentsIndex = encodeAndAddCollection(buf, classMetadata.recordComponents, this::encodeRecordComponent, true);
             int classFlags = classMetadata.flags;
             if (anySet(fieldsIndex, methodsIndex, constructorsIndex, recordComponentsIndex) || classFlags != hub.getModifiers()) {
@@ -755,16 +788,23 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         return encodedIndex;
     }
 
-    private static <T> int encodeAndAddCollection(UnsafeArrayTypeWriter buf, T[] data, BiConsumer<UnsafeArrayTypeWriter, T> encodeCallback, boolean canBeNull) {
-        if (data == null || (!canBeNull && data.length == 0)) {
+    private <T> int encodeAndAddCollection(UnsafeArrayTypeWriter buf, T[] data, BiConsumer<UnsafeArrayTypeWriter, T> encodeCallback, boolean canBeNull) {
+        return encodeAndAddCollection(buf, data, null, encodeCallback, canBeNull);
+    }
+
+    private <T> int encodeAndAddCollection(UnsafeArrayTypeWriter buf, T[] data, Throwable lookupError, BiConsumer<UnsafeArrayTypeWriter, T> encodeCallback, boolean canBeNull) {
+        int offset = TypeConversion.asS4(buf.getBytesWritten());
+        if (lookupError != null) {
+            buf.putSV(encodeErrorIndex(lookupError));
+        } else if (data == null || (!canBeNull && data.length == 0)) {
             /*
              * We must encode a zero-length array if it does not have the same meaning as a null
              * array (e.g. for permitted classes)
              */
             return NO_DATA;
+        } else {
+            encodeArray(buf, data, element -> encodeCallback.accept(buf, element));
         }
-        int offset = TypeConversion.asS4(buf.getBytesWritten());
-        encodeArray(buf, data, element -> encodeCallback.accept(buf, element));
         return offset;
     }
 
@@ -889,7 +929,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
     }
 
     private static <T> void encodeArray(UnsafeArrayTypeWriter buf, T[] array, Consumer<T> elementEncoder) {
-        buf.putUV(array.length);
+        buf.putSV(array.length);
         for (T elem : array) {
             elementEncoder.accept(elem);
         }

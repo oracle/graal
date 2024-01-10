@@ -36,6 +36,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -70,7 +71,9 @@ import com.oracle.svm.core.jdk.StringInternSupport;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
+import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
 import com.oracle.svm.hosted.meta.HostedClass;
@@ -103,6 +106,7 @@ public final class NativeImageHeap implements ImageHeap {
     public final HostedMetaAccess hMetaAccess;
     public final HostedConstantReflectionProvider hConstantReflection;
     public final ObjectLayout objectLayout;
+    public final DynamicHubLayout dynamicHubLayout;
 
     private final ImageHeapLayouter heapLayouter;
     private final int minInstanceSize;
@@ -122,7 +126,7 @@ public final class NativeImageHeap implements ImageHeap {
     private final Set<Object> blacklist = Collections.newSetFromMap(new IdentityHashMap<>());
 
     /** A map from hosted classes to classes that have hybrid layouts in the native image heap. */
-    private final Map<HostedClass, HybridLayout<?>> hybridLayouts = new HashMap<>();
+    private final Map<HostedClass, HybridLayout> hybridLayouts = new HashMap<>();
 
     /** A Map to build what will be the String intern map in the native image heap. */
     private final Map<String, String> internedStrings = new HashMap<>();
@@ -153,6 +157,8 @@ public final class NativeImageHeap implements ImageHeap {
         this.minArraySize = objectLayout.getMinImageHeapArraySize();
         assert assertFillerObjectSizes();
 
+        dynamicHubLayout = DynamicHubLayout.singleton();
+
         if (ImageHeapConnectedComponentsFeature.Options.PrintImageHeapConnectedComponents.getValue()) {
             this.objectReachabilityInfo = new IdentityHashMap<>();
         }
@@ -178,7 +184,7 @@ public final class NativeImageHeap implements ImageHeap {
         return objects.get(CompressibleConstant.uncompress(constant));
     }
 
-    protected HybridLayout<?> getHybridLayout(HostedClass clazz) {
+    protected HybridLayout getHybridLayout(HostedClass clazz) {
         return hybridLayouts.get(clazz);
     }
 
@@ -248,11 +254,11 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     /**
-     * Bypass shadow heap reading for hybrid fields. These fields are not actually present in the
-     * image, their value is inlined, and are not present in the shadow heap either.
+     * Bypass shadow heap reading for inlined fields. These fields are not actually present in the
+     * image (their value is inlined) and are not present in the shadow heap either.
      */
-    Object readHybridField(HostedField field, JavaConstant receiver) {
-        VMError.guarantee(HybridLayout.isHybridField(field), "Expected a hybrid field, found %s", field);
+    Object readInlinedField(HostedField field, JavaConstant receiver) {
+        VMError.guarantee(HostedConfiguration.isInlinedField(field), "Expected an inlined field, found %s", field);
         JavaConstant hostedReceiver = ((ImageHeapInstance) receiver).getHostedObject();
         /* Use the AnalysisConstantReflectionProvider to get direct access to hosted values. */
         AnalysisConstantReflectionProvider analysisConstantReflection = hConstantReflection.getWrappedConstantReflection();
@@ -458,35 +464,44 @@ public final class NativeImageHeap implements ImageHeap {
                 // also not immutable: users of registerAsImmutable() must take precautions
             }
 
-            HostedField hybridTypeIDSlotsField = null;
-            HostedField hybridArrayField = null;
-            Object hybridArray = null;
+            List<HostedField> ignoredFields;
+            Object hybridArray;
             final long size;
 
-            if (HybridLayout.isHybrid(clazz)) {
-                HybridLayout<?> hybridLayout = hybridLayouts.get(clazz);
+            if (dynamicHubLayout.isDynamicHub(clazz)) {
+                /*
+                 * DynamicHubs' typeIdSlots and vTable fields are written within the object. They
+                 * can never be duplicated, i.e. written as a separate object. We use the blacklist
+                 * to check this.
+                 */
+                Object typeIDSlots = readInlinedField(dynamicHubLayout.typeIDSlotsField, constant);
+                assert typeIDSlots != null : "Cannot read value for field " + dynamicHubLayout.typeIDSlotsField.format("%H.%n");
+                blacklist.add(typeIDSlots);
+
+                Object vTable = readInlinedField(dynamicHubLayout.vTableField, constant);
+                hybridArray = vTable;
+                assert vTable != null : "Cannot read value for field " + dynamicHubLayout.vTableField.format("%H.%n");
+                blacklist.add(vTable);
+
+                size = dynamicHubLayout.getTotalSize(Array.getLength(vTable));
+                ignoredFields = List.of(dynamicHubLayout.typeIDSlotsField, dynamicHubLayout.vTableField);
+
+            } else if (HybridLayout.isHybrid(clazz)) {
+                HybridLayout hybridLayout = hybridLayouts.get(clazz);
                 if (hybridLayout == null) {
-                    hybridLayout = new HybridLayout<>(clazz, objectLayout, hMetaAccess);
+                    hybridLayout = new HybridLayout(clazz, objectLayout, hMetaAccess);
                     hybridLayouts.put(clazz, hybridLayout);
                 }
 
                 /*
-                 * The hybrid array, bit set, and typeID array are written within the hybrid object.
-                 * If the hybrid object declares that they can never be duplicated, i.e. written as
-                 * a separate object, we ensure that they never are duplicated. We use the blacklist
-                 * to check that.
+                 * The hybrid array is written within the hybrid object. If the hybrid object
+                 * declares that they can never be duplicated, i.e. written as a separate object, we
+                 * ensure that they are never duplicated. We use the blacklist to check that.
                  */
                 boolean shouldBlacklist = !HybridLayout.canHybridFieldsBeDuplicated(clazz);
-                hybridTypeIDSlotsField = hybridLayout.getTypeIDSlotsField();
-                if (hybridTypeIDSlotsField != null && shouldBlacklist) {
-                    Object typeIDSlots = readHybridField(hybridTypeIDSlotsField, constant);
-                    if (typeIDSlots != null) {
-                        blacklist.add(typeIDSlots);
-                    }
-                }
-
-                hybridArrayField = hybridLayout.getArrayField();
-                hybridArray = readHybridField(hybridArrayField, constant);
+                HostedField hybridArrayField = hybridLayout.getArrayField();
+                hybridArray = readInlinedField(hybridArrayField, constant);
+                ignoredFields = List.of(hybridArrayField);
                 if (hybridArray != null && shouldBlacklist) {
                     blacklist.add(hybridArray);
                     written = true;
@@ -495,6 +510,8 @@ public final class NativeImageHeap implements ImageHeap {
                 assert hybridArray != null : "Cannot read value for field " + hybridArrayField.format("%H.%n");
                 size = hybridLayout.getTotalSize(Array.getLength(hybridArray), true);
             } else {
+                ignoredFields = List.of();
+                hybridArray = null;
                 size = LayoutEncoding.getPureInstanceSize(hub, true).rawValue();
             }
 
@@ -510,9 +527,7 @@ public final class NativeImageHeap implements ImageHeap {
                      * StringInternSupport.imageInternedStrings and all ImageHeapInfo fields will
                      * not be processed.
                      */
-                    if (field.isRead() && field.isValueAvailable() &&
-                                    !field.equals(hybridArrayField) &&
-                                    !field.equals(hybridTypeIDSlotsField)) {
+                    if (field.isRead() && field.isValueAvailable() && !ignoredFields.contains(field)) {
                         if (field.getJavaKind() == JavaKind.Object) {
                             assert field.hasLocation();
                             JavaConstant fieldValueConstant = hConstantReflection.readFieldValue(field, constant);
@@ -656,7 +671,7 @@ public final class NativeImageHeap implements ImageHeap {
     private long getSize(Object object, HostedType type) {
         if (type.isInstanceClass()) {
             HostedInstanceClass clazz = (HostedInstanceClass) type;
-            assert !HybridLayout.isHybrid(clazz);
+            assert !HostedConfiguration.isArrayLikeLayout(clazz) : type;
             return LayoutEncoding.getPureInstanceSize(clazz.getHub(), true).rawValue();
         } else if (type.isArray()) {
             return objectLayout.getArraySize(type.getComponentType().getStorageKind(), Array.getLength(object), true);

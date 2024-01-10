@@ -180,7 +180,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
                 initFlowsGraph(bb, builder.postInitFlows);
             } catch (Throwable t) {
-                /* Wrap all other errors as parsing errors. */
+                /* Wrap all errors as parsing errors. */
                 throw AnalysisError.parsingError(method, t);
             }
         }
@@ -342,7 +342,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
                 }
             }
         } catch (Throwable t) {
-            /* Wrap all other errors as parsing errors. */
+            /* Wrap all errors as parsing errors. */
             throw AnalysisError.parsingError(method, t);
         }
         return true;

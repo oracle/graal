@@ -37,6 +37,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -95,6 +96,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> instantiatedNotificationsUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "typeInstantiatedNotifications");
+
+    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> objectReachableCallbacksUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisType.class, Object.class, "objectReachableCallbacks");
 
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isAllocatedUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "isAllocated");
@@ -218,6 +222,11 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * is called at least once, but there are no guarantees that it will be called exactly once.
      */
     @SuppressWarnings("unused") private volatile Object typeInstantiatedNotifications;
+
+    /**
+     * Contains callbacks that are executed when an object of this type is marked as reachable.
+     */
+    @SuppressWarnings("unused") private volatile Object objectReachableCallbacks;
 
     @SuppressWarnings("this-escape")
     public AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
@@ -614,6 +623,21 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return ConcurrentLightHashMap.getOrDefault(this, overrideReachableNotificationsUpdater, method, Collections.emptySet());
     }
 
+    public <T> void registerObjectReachableCallback(BiConsumer<DuringAnalysisAccess, T> callback) {
+        ConcurrentLightHashSet.addElement(this, objectReachableCallbacksUpdater, callback);
+        /* Register the callback with already discovered subtypes too. */
+        for (AnalysisType subType : subTypes) {
+            /* Subtypes include this type itself. */
+            if (!subType.equals(this)) {
+                subType.registerObjectReachableCallback(callback);
+            }
+        }
+    }
+
+    public <T> void notifyObjectReachable(DuringAnalysisAccess access, T object) {
+        ConcurrentLightHashSet.forEach(this, objectReachableCallbacksUpdater, (BiConsumer<DuringAnalysisAccess, T> c) -> c.accept(access, object));
+    }
+
     public void registerInstantiatedCallback(Consumer<DuringAnalysisAccess> callback) {
         if (this.isInstantiated()) {
             /* If the type is already instantiated just trigger the callback. */
@@ -681,13 +705,18 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         if (elementType == null) {
             return;
         }
-        if (processType) {
-            superTypeConsumer.accept(elementType.getArrayClass(arrayDimension));
-        }
         for (AnalysisType interf : elementType.getInterfaces()) {
             forAllSuperTypes(interf, arrayDimension, true, superTypeConsumer);
         }
         forAllSuperTypes(elementType.getSuperclass(), arrayDimension, true, superTypeConsumer);
+        /*
+         * Process the type itself only after visiting all supertypes. This ensures that, e.g., a
+         * type is never seen as reachable by another thread before all of its supertypes are
+         * already marked as reachable too.
+         */
+        if (processType) {
+            superTypeConsumer.accept(elementType.getArrayClass(arrayDimension));
+        }
     }
 
     protected synchronized void addAssignableType(BigBang bb, TypeState typeState) {
@@ -1008,6 +1037,11 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     private void addSubType(AnalysisType subType) {
         boolean result = this.subTypes.add(subType);
+        /* Register the object reachability callbacks with the newly discovered subtype. */
+        if (!subType.equals(this)) {
+            /* Subtypes include this type itself. */
+            ConcurrentLightHashSet.forEach(this, objectReachableCallbacksUpdater, (BiConsumer<DuringAnalysisAccess, Object> callback) -> subType.registerObjectReachableCallback(callback));
+        }
         assert result : "Tried to add a " + subType + " which is already registered";
     }
 

@@ -47,6 +47,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDK22OrLater;
+import com.oracle.svm.core.jdk.JDK23OrLater;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
@@ -214,6 +215,13 @@ public final class Target_java_lang_VirtualThread {
     @SuppressWarnings({"static-method", "unused"})
     private void notifyJvmtiHideFrames(boolean hide) {
         // unimplemented (GR-45392)
+    }
+
+    @Substitute
+    @SuppressWarnings({"static-method", "unused"})
+    @TargetElement(onlyWith = JDK23OrLater.class)
+    private void notifyJvmtiDisableSuspend(boolean enter) {
+        // unimplemented (GR-51158)
     }
 
     @Alias volatile Thread carrierThread;

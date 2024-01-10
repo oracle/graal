@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.truffle.test.strings;
 
+import java.lang.ref.Reference;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -92,8 +93,8 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
 
     protected void testWithNativeExcept(ResolvedJavaMethod method, Object receiver, long ignore, Object... args) {
         test(method, receiver, args);
+        Object[] argsWithNative = Arrays.copyOf(args, args.length);
         try {
-            Object[] argsWithNative = Arrays.copyOf(args, args.length);
             ResolvedJavaMethod.Parameter[] parameters = method.getParameters();
             Assert.assertTrue(parameters.length <= 64);
             for (int i = 0; i < parameters.length; i++) {
@@ -103,12 +104,14 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
                     ByteBuffer buffer = ByteBuffer.allocateDirect(array.length);
                     long bufferAddress = getBufferAddress(buffer);
                     UNSAFE.copyMemory(array, Unsafe.ARRAY_BYTE_BASE_OFFSET, null, bufferAddress, array.length);
-                    argsWithNative[i] = T_STRING_NATIVE_POINTER_CONSTRUCTOR.newInstance(null, bufferAddress);
+                    argsWithNative[i] = T_STRING_NATIVE_POINTER_CONSTRUCTOR.newInstance(buffer, bufferAddress);
                 }
             }
             test(method, receiver, argsWithNative);
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
+        } finally {
+            Reference.reachabilityFence(argsWithNative);
         }
     }
 
