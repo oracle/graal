@@ -32,7 +32,6 @@ import json
 from genericpath import exists
 from os.path import basename, dirname, getsize
 from traceback import print_tb
-import inspect
 import subprocess
 import zipfile
 from typing import Iterable, Optional
@@ -136,7 +135,7 @@ class NativeImageVM(GraalVm):
     class BenchmarkConfig:
         def __init__(self, vm, bm_suite, args):
             self.bmSuite = bm_suite
-            self.benchmark_suite_name = bm_suite.benchSuiteName(args) if len(inspect.getfullargspec(bm_suite.benchSuiteName).args) > 1 else bm_suite.benchSuiteName()
+            self.benchmark_suite_name = bm_suite.benchSuiteName(args)
             self.benchmark_name = bm_suite.benchmarkName()
             self.executable, self.classpath_arguments, self.modulepath_arguments, self.system_properties, self.image_vm_args, image_run_args, self.split_run = NativeImageVM.extract_benchmark_arguments(args)
             self.extra_image_build_arguments = bm_suite.extra_image_build_argument(self.benchmark_name, args)
