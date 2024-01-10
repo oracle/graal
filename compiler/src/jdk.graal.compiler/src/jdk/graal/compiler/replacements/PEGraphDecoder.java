@@ -344,7 +344,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     }
 
     protected class PENonAppendGraphBuilderContext extends CoreProvidersDelegate implements GraphBuilderContext {
-        protected final PEMethodScope methodScope;
+        public final PEMethodScope methodScope;
         protected final Invoke invoke;
 
         @Override

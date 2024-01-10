@@ -38,6 +38,7 @@ import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy.AbstractPolicyScope;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.util.ReflectionUtil;
@@ -60,6 +61,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.extended.UnsafeAccessNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
@@ -78,7 +80,7 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
 
     public class InlineBeforeAnalysisMethodScope extends PEMethodScope {
 
-        public final InlineBeforeAnalysisPolicy.AbstractPolicyScope policyScope;
+        public final AbstractPolicyScope policyScope;
 
         private boolean inliningAborted;
 
@@ -103,7 +105,7 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
                 for (int i = 0; i < arguments.length; i++) {
                     constArgsWithReceiver[i] = arguments[i].isConstant();
                 }
-                policyScope = policy.openCalleeScope(cast(caller).policyScope, bb.getMetaAccess(), method, constArgsWithReceiver, invokeData.intrinsifiedMethodHandle);
+                policyScope = policy.openCalleeScope(cast(caller).policyScope, method);
                 if (graph.getDebug().isLogEnabled()) {
                     graph.getDebug().logv("  ".repeat(inliningDepth) + "openCalleeScope for " + method.format("%H.%n(%p)") + ": " + policyScope);
                 }
@@ -118,6 +120,27 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
             var callerEncodedGraphs = callerScope.encodedGraphs;
             callerEncodedGraphs.addAll(calleeScope.encodedGraphs);
             callerEncodedGraphs.add(calleeScope.encodedGraph);
+        }
+    }
+
+    static final class InlineBeforeAnalysisInlineInvokePlugin implements InlineInvokePlugin {
+
+        private final InlineBeforeAnalysisPolicy policy;
+
+        InlineBeforeAnalysisInlineInvokePlugin(InlineBeforeAnalysisPolicy policy) {
+            this.policy = policy;
+        }
+
+        @Override
+        public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod m, ValueNode[] args) {
+            AnalysisMethod method = (AnalysisMethod) m;
+
+            AbstractPolicyScope policyScope = cast(((PENonAppendGraphBuilderContext) b).methodScope).policyScope;
+            if (policy.shouldInlineInvoke(b, policyScope, method, args)) {
+                return policy.createInvokeInfo(method);
+            } else {
+                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
+            }
         }
     }
 
@@ -301,8 +324,19 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
     }
 
     @Override
-    protected void handleNonInlinedInvoke(MethodScope methodScope, LoopScope loopScope, InvokeData invokeData) {
+    protected void handleNonInlinedInvoke(MethodScope ms, LoopScope loopScope, InvokeData invokeData) {
+        InlineBeforeAnalysisMethodScope methodScope = cast(ms);
         maybeAbortInlining(methodScope, loopScope, invokeData.invoke.asNode());
+
+        if (!methodScope.inliningAborted && methodScope.isInlinedMethod()) {
+            if (graph.getDebug().isLogEnabled()) {
+                graph.getDebug().logv("  ".repeat(methodScope.inliningDepth) + "  nonInlinedInvoke " + invokeData.callTarget.targetMethod() + ": " + methodScope.policyScope);
+            }
+            if (!methodScope.policyScope.processNonInlinedInvoke(providers, invokeData.callTarget)) {
+                abortInlining(methodScope);
+            }
+        }
+
         super.handleNonInlinedInvoke(methodScope, loopScope, invokeData);
     }
 
@@ -494,7 +528,7 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
      * at the cost of this ugly cast.
      */
     @SuppressWarnings("unchecked")
-    protected InlineBeforeAnalysisMethodScope cast(MethodScope methodScope) {
+    protected static InlineBeforeAnalysisMethodScope cast(MethodScope methodScope) {
         return (InlineBeforeAnalysisMethodScope) methodScope;
     }
 

@@ -595,6 +595,9 @@ public abstract class ImageHeapScanner {
             if (type.isReachable()) {
                 AnalysisField field = metaAccess.lookupJavaField(reflectionField);
                 assert !field.isStatic() : field;
+                if (!field.isReachable()) {
+                    return;
+                }
                 JavaConstant receiverConstant = asConstant(receiver);
                 Optional<JavaConstant> replaced = maybeReplace(receiverConstant, reason);
                 if (replaced.isPresent()) {
