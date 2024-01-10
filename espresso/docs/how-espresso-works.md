@@ -16,7 +16,6 @@ stack. Instead Espresso provides runtime services like:
 * JNI.
 * A development/debug java launcher command based on the polyglot API.
 * The "native" components of the standard library like `libjava` (in quotes because what native means can vary).
-  [See below](#native-components).
 * Sandboxing.
 
 ## How to attach a debugger
@@ -73,7 +72,11 @@ engine, 'casts' it to the JNI interface and then returns it.
 
 So adding it all together the startup sequence for end users goes like this:
 
-`java -truffle ...` -> `libjli` -> `lib/truffle/libjvm` (mokapot) -> `libjavavm` (`LibEspresso`) -> Polyglot API -> `EspressoLauncher` -> `EspressoContext`.
+`java -truffle ...` ➜ `libjli` ➜ `lib/truffle/libjvm` (mokapot) ➜ `libjavavm` (`LibEspresso`) ➜ Polyglot API ➜ `EspressoLanguage` ➜ `EspressoContext`
+
+The launcher uses this code path to obtain a JNI reference to the class `sun.launcher.LauncherHelper` which
+loads the user's main class from inside Java, and then invokes it. There are other launcher helper classes for
+alternative launch modes like when using `java` with a source file.
 
 ## Execution loop
 
@@ -85,7 +88,7 @@ Truffle the loop will be unrolled and partially evaluated, which is how the meth
 
 Most bytecodes are handled in the obvious way. Some are _quickened_.
 
-Truffle started as an AST interpreter and thus is very oriented around the concept of nodes (as in, AST nodes). It has 
+Truffle started as an AST interpreter and thus is very oriented around the concept of tree nodes. It has 
 a lot of features that require nodes, and in particular nodes can be _specialized_ based on how they are actually used
 whereas a bytecode generally cannot. Quickening bridges the two worlds. A bytecode that is quickened is replaced with 
 a special internal bytecode, `QUICK` or `SLIM_QUICK`, and a Truffle node is created for it then stored in the
@@ -149,13 +152,14 @@ convenient. It's especially convenient for navigating in the IDE, as it lets you
 guest symbol is being manipulated by the VM, without being distracted by all the places the host code is also using the
 same symbol.
 
-Accessing guest objects is relatively straightforward. An `impl.Klass` is similar to (but not the same as) a `Class` in
+Accessing guest objects is relatively straightforward. Add new names, signatures and fields to the `Meta` and `Symbol`
+classes using the existing entries as a guide. This will get you an `impl.ObjectKlass`, which is similar to (but not the same as) a `Class` in
 the guest world. Once you've obtained one you can use it to read fields, call methods etc. If you want to access
 _static_ fields, then you'll need to look up the field using `impl.Klass#lookupField()`, then use `getObject` on the
 field passing in the result of `Klass#tryInitializeAndGetStatics()`. Static fields are stored in a separate
 `StaticObject` and this will ensure the guest code `<clinit>` runs to set up the static fields of the class you're
 trying to access. The guest world `java.lang.reflect.Class` that matches a host `impl.ObjectKlass` can be obtained by
-calling `ObjectKlass#mirror()`.
+calling `ObjectKlass#mirror()`. 
 
 Guest-world reflection objects are tied back to host-world objects using _hidden fields_. These are special kinds of
 fields added to objects. Their names start with `0` making them illegal identifiers, ensuring there can never be
