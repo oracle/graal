@@ -17,7 +17,7 @@ Why implement a JVM in Java?
 
 ## Status
 
-Espresso is a fully supported implementation of the Java platform that ships in Oracle products and which is kept up to date with the latest Java versions. When the VM is compiled to a native image it runs on Windows, macOS and Linux. 
+Espresso is a complete Java implementation which is kept up to date with the latest LTS JDK versions. When the VM is compiled to a native image it runs on Windows, macOS and Linux.
 
 It features complete meta-circularity: it can run itself any amount of layers deep, preserving all the capabilities (Unsafe, JNI, Reflection...) of the base layer. Running HelloWorld on three nested layers of Espresso takes **~15 minutes**.  
 

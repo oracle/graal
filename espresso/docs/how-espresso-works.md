@@ -14,7 +14,7 @@ stack. Instead Espresso provides runtime services like:
 * Debugging.
 * HotSwap (changing code whilst it's running).
 * JNI.
-* A `java` launcher command.
+* A development/debug java launcher command based on the polyglot API.
 * The "native" components of the standard library like `libjava` (in quotes because what native means can vary).
   [See below](#native-components).
 * Sandboxing.
@@ -36,7 +36,7 @@ Espresso can be used in different configurations with differing tradeoffs.
 The **host VM** can be OpenJDK, GraalVM HotSpot or GraalVM Native Image. On OpenJDK Espresso will only execute in the
 interpreter and is thus slow. With a regular GraalVM it executes faster, because the Graal compiler will be used which
 knows how to accelerate Truffle languages, and with a Native Image host it is the fastest due to not needing the 
-Espresso VM itself to warm up. Additionally, virtual threads currently only work with a native image host.
+Espresso VM itself to warm up.
 
 The **native components** that implement the JNI side of the standard library can be genuine operating system 
 specific machine code, in which case the host OS must be Linux and Java code cannot be sandboxed, or LLVM bitcode 
@@ -134,11 +134,13 @@ You may notice that this class has only a lock word and a pointer to the class o
 actual data is stored. The answer depends on what host JVM is being used. On HotSpot the Truffle framework synthesizes
 bytecode to create and load subclasses of `StaticObject` with the right number of fields to store the guest data. This
 lets guest code use the host garbage collector. On SubstrateVM (native image) you can't dynamically load classes, so an
-alternative is required. SubstrateVM exposes APIs that let you define new class layouts at runtime (called "pods") which
-the garbage collector then becomes aware of. Behind the scenes field accesses may be carefully checked, or they may have
-their checks compiled out. That's useful for Espresso where the bytecode is statically verified ahead of time, so it's
-known to be safe at the time it executes. To learn more about how object storage works, read about the [Truffle Static
-Object Model](https://www.graalvm.org/latest/graalvm-as-a-platform/language-implementation-framework/StaticObjectModel/).
+alternative is required. There are two available: array based and "pod" based. The goal is to migrate to "pods", in 
+which Truffle communicates object layouts directly to the SubstrateVM runtime and GC, but as of January 2024 
+the array based method is faster.
+
+Behind the scenes field accesses may be carefully checked, or they may have their checks compiled out. That's useful for
+Espresso where the bytecode is statically verified ahead of time, so it's known to be safe at the time it executes. To
+learn more about how object storage works, read about the [Truffle Static Object Model](https://www.graalvm.org/latest/graalvm-as-a-platform/language-implementation-framework/StaticObjectModel/).
 
 ### Reflecting guest heap objects 
 
