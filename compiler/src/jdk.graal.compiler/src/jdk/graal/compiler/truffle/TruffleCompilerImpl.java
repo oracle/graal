@@ -649,7 +649,11 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         }
 
         if (TruffleCompilerOptions.DumpRuntimeCompiledMethods.getValue(getOrCreateCompilerOptions(compilable))) {
-            dumpASMCompiledCode(compilationResult,installedCode);
+            try {
+                dumpASMCompiledCode(compilationResult,installedCode);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         return result;
