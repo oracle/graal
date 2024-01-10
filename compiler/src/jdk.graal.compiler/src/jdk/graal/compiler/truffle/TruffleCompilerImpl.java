@@ -650,7 +650,25 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
 
         if (TruffleCompilerOptions.DumpRuntimeCompiledMethods.getValue(getOrCreateCompilerOptions(compilable))) {
             try {
-                dumpASMCompiledCode(compilationResult,installedCode);
+//                dumpASMCompiledCode(compilationResult,installedCode);
+                StringBuilder binName = new StringBuilder();
+                for (var method : compilationResult.getMethods()) {
+                    binName.append(method.getName());
+                }
+
+                // Creating the WritableByteChannel, writing to dump and then closing it.
+
+                String path = "/tmp/" + new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date()) + binName + compNumber + ".bin";
+                compNumber++;
+                WritableByteChannel channel;
+                try {
+                    channel = PathUtilities.openFileChannel(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+                } catch (IOException e) {
+                    throw new IOException(String.format("Failed to open %s to dump IGV graphs", path), e);
+                }
+
+                channel.write(ByteBuffer.wrap(compilationResult.getTargetCode()));
+                channel.close();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -938,40 +956,23 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
 
     private static final void dumpASMCompiledCode(CompilationResult compilationResult, InstalledCode installedCode) throws IOException {
 
-        StringBuilder binName = new StringBuilder();
-        for (var method : compilationResult.getMethods()) {
-            binName.append(method.getName());
-        }
 
-        // Creating the WritableByteChannel, writing to dump and then closing it.
 
-        String path = "/tmp/" + new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date()) + binName + compNumber + ".bin";
-        compNumber++;
-        WritableByteChannel channel;
-        try {
-            channel = PathUtilities.openFileChannel(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
-        } catch (IOException e) {
-            throw new IOException(String.format("Failed to open %s to dump IGV graphs", path), e);
-        }
-
-        channel.write(ByteBuffer.wrap(compilationResult.getTargetCode()));
-        channel.close();
-
-        // Dump also the installed code if valid
-        if (installedCode != null && installedCode.isValid()) {
-            String methodName = installedCode.getName();
-            path = "/tmp/" + new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date()) + methodName + ".installed";
-
-            WritableByteChannel channel2;
-            try {
-                channel2 = PathUtilities.openFileChannel(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
-            } catch (IOException e) {
-                throw new IOException(String.format("Failed to open %s to dump IGV graphs", path), e);
-            }
-
-            channel2.write(ByteBuffer.wrap(compilationResult.getTargetCode()));
-            channel2.close();
-        }
+//        // Dump also the installed code if valid
+//        if (installedCode != null && installedCode.isValid()) {
+//            String methodName = installedCode.getName();
+//            path = "/tmp/" + new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date()) + methodName + ".installed";
+//
+//            WritableByteChannel channel2;
+//            try {
+//                channel2 = PathUtilities.openFileChannel(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+//            } catch (IOException e) {
+//                throw new IOException(String.format("Failed to open %s to dump IGV graphs", path), e);
+//            }
+//
+//            channel2.write(ByteBuffer.wrap(compilationResult.getTargetCode()));
+//            channel2.close();
+//        }
     }
 
 }
