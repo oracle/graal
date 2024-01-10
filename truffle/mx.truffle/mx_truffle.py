@@ -188,15 +188,17 @@ def _open_module_exports_args():
 
 class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
 
-    _use_enterprise_polyglot = False
+    _use_enterprise_polyglot = True
 
     def __init__(self):
         super(TruffleUnittestConfig, self).__init__('truffle')
 
     def processDeps(self, deps):
         if TruffleUnittestConfig._use_enterprise_polyglot:
-            mx.logv('Adding Enterprise Polyglot to unittest dependencies due to the `--use-enterprise-polyglot` unittest argument being set.')
-            deps.add(mx.distribution('graal-enterprise:TRUFFLE_ENTERPRISE'))
+            dist_names = resolve_truffle_dist_names()
+            mx.logv(f'Adding Truffle runtime distributions {", ".join(dist_names)} to unittest dependencies.')
+            for dist_name in dist_names:
+                deps.add(mx.distribution(dist_name))
 
     def apply(self, config):
         vmArgs, mainClass, mainClassArgs = config
@@ -217,17 +219,17 @@ class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
 mx_unittest.register_unittest_config(TruffleUnittestConfig())
 
 
-class _UseEnterprisePolyglotAction(Action):
+class _DisableEnterpriseTruffleAction(Action):
     def __init__(self, **kwargs):
         kwargs['required'] = False
         kwargs['nargs'] = 0
-        super(_UseEnterprisePolyglotAction, self).__init__(**kwargs)
+        super(_DisableEnterpriseTruffleAction, self).__init__(**kwargs)
 
     def __call__(self, parser, namespace, values, option_string=None):
-        TruffleUnittestConfig._use_enterprise_polyglot = True
+        TruffleUnittestConfig._use_enterprise_polyglot = False
 
 
-mx_unittest.add_unittest_argument('--use-enterprise-polyglot', default=False, help='Adds Truffle enterprise polyglot to unittest depdendencies.', action=_UseEnterprisePolyglotAction)
+mx_unittest.add_unittest_argument('--disable-truffle-enterprise', default=False, help='Disables the automatic inclusion of Enterprise Truffle in unittest dependencies.', action=_DisableEnterpriseTruffleAction)
 
 
 class NFITestConfig:
