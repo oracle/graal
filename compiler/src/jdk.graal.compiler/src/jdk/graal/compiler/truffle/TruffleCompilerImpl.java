@@ -84,6 +84,7 @@ import jdk.graal.compiler.truffle.phases.InstrumentPhase;
 import jdk.graal.compiler.truffle.phases.InstrumentationSuite;
 import jdk.graal.compiler.truffle.phases.TruffleTier;
 import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.site.Infopoint;
@@ -99,6 +100,7 @@ import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -612,6 +614,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         }
 
         CompilationResult result = null;
+        CompilationResult compilationResult = null;
 
         final TruffleTierConfiguration tier = task.isFirstTier() ? config.firstTier() : config.lastTier();
         try (DebugCloseable a = CompilationTime.start(debug);
@@ -620,33 +623,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             Suites selectedSuites = tier.suites();
             LIRSuites selectedLirSuites = tier.lirSuites();
             Providers selectedProviders = tier.providers();
-            CompilationResult compilationResult = createCompilationResult(name, graph.compilationId(), compilable);
+            compilationResult = createCompilationResult(name, graph.compilationId(), compilable);
             result = GraalCompiler.compileGraph(graph, graph.method(), selectedProviders, tier.backend(), graphBuilderSuite, Optimizations, graph.getProfilingInfo(), selectedSuites,
                             selectedLirSuites, compilationResult, CompilationResultBuilderFactory.Default, false);
-
-
-            if (TruffleCompilerOptions.DumpRuntimeCompiledMethods.getValue(getOrCreateCompilerOptions(compilable))) {
-
-                StringBuilder binName = new StringBuilder();
-                for (var method : compilationResult.getMethods()) {
-                    binName.append(method.getName());
-                }
-
-                // Creating the WritableByteChannel, writing to dump and then closing it.
-
-                String path = "/tmp/" + new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date()) + binName + compNumber + ".bin";
-                compNumber++;
-                WritableByteChannel channel;
-                try {
-                    channel = PathUtilities.openFileChannel(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
-                } catch (IOException e) {
-                    throw new IOException(String.format("Failed to open %s to dump IGV graphs", path), e);
-                }
-
-                channel.write(ByteBuffer.wrap(compilationResult.getTargetCode()));
-                channel.close();
-            }
-
 
         } catch (Throwable e) {
             throw debug.handle(e);
@@ -655,16 +634,22 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             listener.onGraalTierFinished(compilable, new GraphInfoImpl(graph));
         }
 
+        InstalledCode installedCode = null;
+
         try (DebugCloseable a = CodeInstallationTime.start(debug); DebugCloseable c = CodeInstallationMemUse.start(debug)) {
-            InstalledCode installedCode = createInstalledCode(compilable);
+            installedCode = createInstalledCode(compilable);
             assert graph.getSpeculationLog() == result.getSpeculationLog() : Assertions.errorMessage(graph, graph.getSpeculationLog(), result, result.getSpeculationLog());
-            InstalledCode installedCode1 = tier.backend().createInstalledCode(debug, graph.method(), compilationRequest, result, installedCode, false);
+            tier.backend().createInstalledCode(debug, graph.method(), compilationRequest, result, installedCode, false);
             if (outInstalledCode != null) {
                 outInstalledCode[0] = installedCode;
             }
 
         } catch (Throwable e) {
             throw debug.handle(e);
+        }
+
+        if (TruffleCompilerOptions.DumpRuntimeCompiledMethods.getValue(getOrCreateCompilerOptions(compilable))) {
+            dumpASMCompiledCode(compilationResult,installedCode);
         }
 
         return result;
@@ -945,6 +930,44 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             return size() > maxCacheSize;
         }
 
+    }
+
+    private static final void dumpASMCompiledCode(CompilationResult compilationResult, InstalledCode installedCode) throws IOException {
+
+        StringBuilder binName = new StringBuilder();
+        for (var method : compilationResult.getMethods()) {
+            binName.append(method.getName());
+        }
+
+        // Creating the WritableByteChannel, writing to dump and then closing it.
+
+        String path = "/tmp/" + new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new java.util.Date()) + binName + compNumber + ".bin";
+        compNumber++;
+        WritableByteChannel channel;
+        try {
+            channel = PathUtilities.openFileChannel(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+        } catch (IOException e) {
+            throw new IOException(String.format("Failed to open %s to dump IGV graphs", path), e);
+        }
+
+        channel.write(ByteBuffer.wrap(compilationResult.getTargetCode()));
+        channel.close();
+
+        // Dump also the installed code if valid
+        if (installedCode != null && installedCode.isValid()) {
+            String methodName = installedCode.getName();
+            path = "/tmp/" + new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date()) + methodName + ".installed";
+
+            WritableByteChannel channel2;
+            try {
+                channel2 = PathUtilities.openFileChannel(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+            } catch (IOException e) {
+                throw new IOException(String.format("Failed to open %s to dump IGV graphs", path), e);
+            }
+
+            channel2.write(ByteBuffer.wrap(compilationResult.getTargetCode()));
+            channel2.close();
+        }
     }
 
 }
