@@ -61,18 +61,16 @@ import jdk.graal.compiler.replacements.StringLatin1Snippets;
 import jdk.graal.compiler.replacements.StringUTF16CompressNode;
 import jdk.graal.compiler.replacements.StringUTF16Snippets;
 import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
+import jdk.graal.compiler.replacements.nodes.ArrayCompareToNode;
+import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
+import jdk.graal.compiler.replacements.nodes.CountLeadingZerosNode;
 import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
 import jdk.graal.compiler.replacements.nodes.FloatToHalfFloatNode;
 import jdk.graal.compiler.replacements.nodes.FusedMultiplyAddNode;
-import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
-import jdk.graal.compiler.replacements.nodes.ArrayCompareToNode;
-import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
-import jdk.graal.compiler.replacements.nodes.CountLeadingZerosNode;
 import jdk.graal.compiler.replacements.nodes.HalfFloatToFloatNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
@@ -135,22 +133,20 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     private static void registerFloatPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, Float.class, replacements);
 
-        if (JavaVersionUtil.JAVA_SPEC >= 20) {
-            r.register(new InvocationPlugin("float16ToFloat", short.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                    b.push(JavaKind.Float, b.append(new HalfFloatToFloatNode(value)));
-                    return true;
-                }
-            });
-            r.register(new InvocationPlugin("floatToFloat16", float.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                    b.push(JavaKind.Short, b.append(new FloatToHalfFloatNode(value)));
-                    return true;
-                }
-            });
-        }
+        r.register(new InvocationPlugin("float16ToFloat", short.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.push(JavaKind.Float, b.append(new HalfFloatToFloatNode(value)));
+                return true;
+            }
+        });
+        r.register(new InvocationPlugin("floatToFloat16", float.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.push(JavaKind.Short, b.append(new FloatToHalfFloatNode(value)));
+                return true;
+            }
+        });
     }
 
     private static void registerMathPlugins(InvocationPlugins plugins, boolean registerForeignCallMath) {
