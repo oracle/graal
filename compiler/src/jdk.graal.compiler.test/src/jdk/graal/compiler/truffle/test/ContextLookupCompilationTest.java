@@ -430,7 +430,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
             LocationIdentity location = readNode.getLocationIdentity();
             if (location instanceof FieldLocationIdentity) {
                 ResolvedJavaField locationField = ((FieldLocationIdentity) location).getField();
-                if (locationField.getName().equals(locationField.getName()) && locationField.getDeclaringClass().toJavaName().equals(field.getDeclaringClass().getName())) {
+                if (locationField.getName().equals(field.getName()) && locationField.getDeclaringClass().toJavaName().equals(field.getDeclaringClass().getName())) {
                     count++;
                 }
             }
