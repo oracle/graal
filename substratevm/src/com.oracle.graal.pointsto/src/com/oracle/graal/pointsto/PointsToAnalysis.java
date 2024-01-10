@@ -184,7 +184,13 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         unsafeStores.putIfAbsent(unsafeStore, true);
     }
 
-    @Override
+    /**
+     * Force update of the unsafe loads and unsafe store type flows when a field is registered as
+     * unsafe accessed 'on the fly', i.e., during the analysis.
+     *
+     * @param field the newly unsafe registered field. We use its declaring type to filter the
+     *            unsafe access flows that need to be updated.
+     */
     public void forceUnsafeUpdate(AnalysisField field) {
         /*
          * It is cheaper to post the flows of all loads and stores even if they are not related to

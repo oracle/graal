@@ -45,7 +45,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.ParsingReason;
@@ -292,7 +291,7 @@ public class AutomaticUnsafeTransformationSupport {
     }
 
     private static FieldOffsetFieldValueTransformer createFieldOffsetFieldValueTransformer(BigBang bb, ResolvedJavaField original, Field targetField) {
-        bb.postTask(debugContext -> bb.registerAsUnsafeAccessed(bb.getMetaAccess().lookupJavaField(targetField), DefaultUnsafePartition.get(), original));
+        bb.postTask(debugContext -> bb.getMetaAccess().lookupJavaField(targetField).registerAsUnsafeAccessed(original));
         return new FieldOffsetFieldValueTransformer(targetField, original.getType().getJavaKind().toJavaClass());
     }
 
