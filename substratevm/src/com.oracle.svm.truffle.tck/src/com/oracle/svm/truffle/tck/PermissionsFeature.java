@@ -41,7 +41,6 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -279,10 +278,9 @@ public class PermissionsFeature implements Feature {
             for (BaseMethodNode deniedMethod : deniedMethods) {
                 if (cg.containsKey(deniedMethod)) {
                     collectViolations(report, deniedMethod,
-                                    maxStackDepth,
-                                    Options.TruffleTCKPermissionsMaxErrors.getValue(),
+                                    maxStackDepth, Options.TruffleTCKPermissionsMaxErrors.getValue(),
                                     cg, contextFilters,
-                                    new LinkedHashSet<>(), 1, 0);
+                                    new LinkedList<>(), new HashSet<>(), 1, 0);
                 }
             }
             if (!report.isEmpty()) {
@@ -447,7 +445,9 @@ public class PermissionsFeature implements Feature {
      * @param callGraph call graph obtained from
      *            {@link PermissionsFeature#callGraph(BigBang, Set, DebugContext, SVMHost)}
      * @param contextFilters filters removing known valid calls
-     * @param visited visited methods
+     * @param currentPath current path from a privileged method in a call graph
+     * @param visited set of already visited methods, these methods are already part of an existing
+     *            report or do not lead to language class
      * @param depth current depth
      */
     private int collectViolations(
@@ -457,7 +457,8 @@ public class PermissionsFeature implements Feature {
                     int maxReports,
                     Map<BaseMethodNode, Set<BaseMethodNode>> callGraph,
                     Set<CallGraphFilter> contextFilters,
-                    LinkedHashSet<BaseMethodNode> visited,
+                    List<BaseMethodNode> currentPath,
+                    Set<BaseMethodNode> visited,
                     int depth,
                     int initialNumReports) {
         int numReports = initialNumReports;
@@ -476,25 +477,27 @@ public class PermissionsFeature implements Feature {
         }
         if (!visited.contains(mNode)) {
             visited.add(mNode);
+            currentPath.add(mNode);
             try {
                 Set<BaseMethodNode> callers = callGraph.get(mNode);
                 if (depth > maxDepth) {
                     if (!callers.isEmpty()) {
-                        numReports = collectViolations(report, callers.iterator().next(), maxDepth, maxReports, callGraph, contextFilters, visited, depth + 1, numReports);
+                        numReports = collectViolations(report, callers.iterator().next(), maxDepth, maxReports, callGraph, contextFilters, currentPath, visited, depth + 1, numReports);
                     }
                 } else if (!isSystemClass(mNode)) {
-                    List<BaseMethodNode> callPath = new ArrayList<>(visited);
+                    List<BaseMethodNode> callPath = new ArrayList<>(currentPath);
                     report.add(callPath);
                     numReports++;
                 } else {
                     for (BaseMethodNode caller : callers) {
-                        if (contextFilters.stream().noneMatch((f) -> f.test(mNode, caller, visited))) {
-                            numReports = collectViolations(report, caller, maxDepth, maxReports, callGraph, contextFilters, visited, depth + 1, numReports);
+                        if (contextFilters.stream().noneMatch((f) -> f.test(mNode, caller, currentPath))) {
+                            numReports = collectViolations(report, caller, maxDepth, maxReports, callGraph, contextFilters, currentPath, visited, depth + 1, numReports);
                         }
                     }
                 }
             } finally {
-                visited.remove(mNode);
+                BaseMethodNode last = currentPath.removeLast();
+                assert last == mNode;
             }
         }
         return numReports;
@@ -625,7 +628,7 @@ public class PermissionsFeature implements Feature {
         /**
          * @return whether this methodNode should not be considered a violation
          */
-        boolean test(BaseMethodNode methodNode, BaseMethodNode callerNode, LinkedHashSet<BaseMethodNode> trace);
+        boolean test(BaseMethodNode methodNode, BaseMethodNode callerNode, List<BaseMethodNode> trace);
 
         Collection<AnalysisMethod> getInspectedMethods();
     }
@@ -655,21 +658,23 @@ public class PermissionsFeature implements Feature {
         }
 
         @Override
-        public boolean test(BaseMethodNode methodNode, BaseMethodNode callerNode, LinkedHashSet<BaseMethodNode> trace) {
+        public boolean test(BaseMethodNode methodNode, BaseMethodNode callerNode, List<BaseMethodNode> trace) {
             Boolean res = null;
             if (threadInterrupt.equals(methodNode)) {
                 AnalysisMethod caller = callerNode.getMethod();
                 StructuredGraph graph = hostVM.getAnalysisGraph(caller);
                 for (Invoke invoke : graph.getInvokes()) {
                     if (threadInterrupt.getMethod().equals(invoke.callTarget().targetMethod())) {
+                        boolean vote = false;
                         ValueNode node = invoke.getReceiver();
                         if (node instanceof PiNode) {
                             node = ((PiNode) node).getOriginalNode();
                             if (node instanceof Invoke) {
                                 boolean isCurrentThread = threadCurrentThread.equals(((Invoke) node).callTarget().targetMethod());
-                                res = res == null ? isCurrentThread : (res && isCurrentThread);
+                                vote = res == null ? isCurrentThread : (res && isCurrentThread);
                             }
                         }
+                        res = vote;
                     }
                 }
             }
@@ -696,7 +701,7 @@ public class PermissionsFeature implements Feature {
         }
 
         @Override
-        public boolean test(BaseMethodNode methodNode, BaseMethodNode callerNode, LinkedHashSet<BaseMethodNode> trace) {
+        public boolean test(BaseMethodNode methodNode, BaseMethodNode callerNode, List<BaseMethodNode> trace) {
             if (!doPrivileged.contains(methodNode)) {
                 return false;
             }
@@ -732,7 +737,7 @@ public class PermissionsFeature implements Feature {
         /**
          * Finds an entry point to {@code PrivilegedAction} called by {@code doPrivilegedMethod}.
          */
-        private ResolvedJavaMethod findPrivilegedEntryPoint(ResolvedJavaMethod doPrivilegedMethod, LinkedHashSet<BaseMethodNode> trace) {
+        private ResolvedJavaMethod findPrivilegedEntryPoint(ResolvedJavaMethod doPrivilegedMethod, List<BaseMethodNode> trace) {
             ResolvedJavaMethod ep = null;
             for (BaseMethodNode mNode : trace) {
                 AnalysisMethod m = mNode.getMethod();
@@ -766,7 +771,7 @@ public class PermissionsFeature implements Feature {
         }
 
         @Override
-        public boolean test(BaseMethodNode methodNode, BaseMethodNode callerNode, LinkedHashSet<BaseMethodNode> trace) {
+        public boolean test(BaseMethodNode methodNode, BaseMethodNode callerNode, List<BaseMethodNode> trace) {
             if (providerImplGet.equals(methodNode)) {
                 ResolvedJavaType instantiatedType = findInstantiatedType(trace);
                 return instantiatedType != null && !isRegisteredInServiceLoader(instantiatedType);
@@ -777,7 +782,7 @@ public class PermissionsFeature implements Feature {
         /**
          * Finds last constructor invocation.
          */
-        private static ResolvedJavaType findInstantiatedType(LinkedHashSet<BaseMethodNode> trace) {
+        private static ResolvedJavaType findInstantiatedType(List<BaseMethodNode> trace) {
             ResolvedJavaType res = null;
             for (BaseMethodNode mNode : trace) {
                 AnalysisMethod m = mNode.getMethod();
@@ -839,7 +844,7 @@ public class PermissionsFeature implements Feature {
         }
 
         @Override
-        public boolean test(BaseMethodNode methodNode, BaseMethodNode callerNode, LinkedHashSet<BaseMethodNode> trace) {
+        public boolean test(BaseMethodNode methodNode, BaseMethodNode callerNode, List<BaseMethodNode> trace) {
             if (!threadSetName.equals(methodNode)) {
                 return false;
             }
