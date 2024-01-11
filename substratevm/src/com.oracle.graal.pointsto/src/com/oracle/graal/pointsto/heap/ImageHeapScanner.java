@@ -518,7 +518,17 @@ public abstract class ImageHeapScanner {
 
         AnalysisType type = imageHeapConstant.getType(metaAccess);
         Object object = bb.getSnippetReflectionProvider().asObject(Object.class, imageHeapConstant);
-        type.notifyObjectReachable(universe.getConcurrentAnalysisAccess(), object);
+        try {
+            /* Simulated constants don't have a backing object and don't need to be processed. */
+            if (object != null) {
+                type.notifyObjectReachable(universe.getConcurrentAnalysisAccess(), object);
+            }
+        } catch (UnsupportedFeatureException e) {
+            /* Enhance the unsupported feature message with the object trace and rethrow. */
+            StringBuilder backtrace = new StringBuilder();
+            ObjectScanner.buildObjectBacktrace(bb, reason, backtrace);
+            throw new UnsupportedFeatureException(e.getMessage() + System.lineSeparator() + backtrace);
+        }
 
         markTypeInstantiated(objectType, reason);
         if (imageHeapConstant instanceof ImageHeapObjectArray imageHeapArray) {
