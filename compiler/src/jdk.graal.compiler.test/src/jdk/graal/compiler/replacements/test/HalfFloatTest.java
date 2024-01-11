@@ -24,12 +24,9 @@
  */
 package jdk.graal.compiler.replacements.test;
 
-import static jdk.graal.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC;
-import static org.junit.Assume.assumeTrue;
-
-import jdk.graal.compiler.jtt.JTTTest;
 import org.junit.Test;
 
+import jdk.graal.compiler.jtt.JTTTest;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.InvalidInstalledCodeException;
 
@@ -49,7 +46,6 @@ public class HalfFloatTest extends JTTTest {
      */
     @Test
     public void binary16RoundTrip() {
-        assumeTrue("Interpreter returns different result for silent NaNs prior to JDK-8302976", JAVA_SPEC >= 21);
         for (int i = Short.MIN_VALUE; i < Short.MAX_VALUE; i++) {
             short s = (short) i;
             Result result = test("float16ToFloat", s);
@@ -248,7 +244,6 @@ public class HalfFloatTest extends JTTTest {
      */
     @Test
     public void binary16NaNRoundTrip() {
-        assumeTrue("Interpreter returns different result for silent NaNs prior to JDK-8302976", JAVA_SPEC >= 21);
         // A NaN has a nonzero significand
         for (int i = 1; i <= 0x3ff; i++) {
             short binary16NaN = (short) (NAN_EXPONENT | i);
