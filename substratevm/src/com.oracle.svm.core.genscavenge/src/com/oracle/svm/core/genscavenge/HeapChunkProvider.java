@@ -76,7 +76,7 @@ final class HeapChunkProvider {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UnsignedWord getBytesInUnusedChunks() {
-        return numUnusedAlignedChunks.get().multiply(HeapParameters.getAlignedHeapChunkAlignment());
+        return numUnusedAlignedChunks.get().multiply(HeapParameters.getAlignedHeapChunkSize());
     }
 
     private static final OutOfMemoryError ALIGNED_OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Could not allocate an aligned heap chunk");
