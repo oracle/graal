@@ -119,41 +119,48 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
     @Override
     @Uninterruptible(reason = "Called during isolate initialization.")
     public int initialize(Pointer reservedAddressSpace, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer) {
-        Pointer heapBase;
-        Pointer allocatedMemory = WordFactory.nullPointer();
+        Pointer selfReservedMemory = WordFactory.nullPointer();
         UnsignedWord requiredSize = getTotalRequiredAddressSpaceSize();
         if (reservedAddressSpace.isNull()) {
             UnsignedWord alignment = WordFactory.unsigned(Heap.getHeap().getPreferredAddressSpaceAlignment());
-            allocatedMemory = VirtualMemoryProvider.get().reserve(requiredSize, alignment, false);
-            if (allocatedMemory.isNull()) {
+            selfReservedMemory = VirtualMemoryProvider.get().reserve(requiredSize, alignment, false);
+            if (selfReservedMemory.isNull()) {
                 return CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED;
             }
-            heapBase = allocatedMemory;
-        } else {
-            if (reservedSize.belowThan(requiredSize)) {
-                return CEntryPointErrors.INSUFFICIENT_ADDRESS_SPACE;
-            }
-            heapBase = reservedAddressSpace;
+        } else if (reservedSize.belowThan(requiredSize)) {
+            return CEntryPointErrors.INSUFFICIENT_ADDRESS_SPACE;
         }
         UnsignedWord remainingSize = requiredSize;
 
+        Pointer heapBase;
+        Pointer selfReservedHeapBase;
         if (DynamicMethodAddressResolutionHeapSupport.isEnabled()) {
+            UnsignedWord preHeapRequiredBytes = DynamicMethodAddressResolutionHeapSupport.get().getDynamicMethodAddressResolverPreHeapMemoryBytes();
+            if (selfReservedMemory.isNonNull()) {
+                selfReservedHeapBase = selfReservedMemory.add(preHeapRequiredBytes);
+                heapBase = selfReservedHeapBase;
+            } else {
+                heapBase = reservedAddressSpace.add(preHeapRequiredBytes);
+                selfReservedHeapBase = WordFactory.nullPointer();
+            }
+            assert heapBase.isNonNull();
+            remainingSize = remainingSize.subtract(preHeapRequiredBytes);
+
             int error = DynamicMethodAddressResolutionHeapSupport.get().initialize();
             if (error != CEntryPointErrors.NO_ERROR) {
-                freeImageHeap(allocatedMemory);
+                freeImageHeap(selfReservedHeapBase);
                 return error;
             }
-
-            UnsignedWord preHeapRequiredBytes = DynamicMethodAddressResolutionHeapSupport.get().getDynamicMethodAddressResolverPreHeapMemoryBytes();
-            heapBase = heapBase.add(preHeapRequiredBytes);
-            remainingSize = remainingSize.subtract(preHeapRequiredBytes);
 
             Pointer installOffset = heapBase.subtract(DynamicMethodAddressResolutionHeapSupport.get().getRequiredPreHeapMemoryInBytes());
             error = DynamicMethodAddressResolutionHeapSupport.get().install(installOffset);
             if (error != CEntryPointErrors.NO_ERROR) {
-                freeImageHeap(allocatedMemory);
+                freeImageHeap(selfReservedHeapBase);
                 return error;
             }
+        } else {
+            heapBase = selfReservedMemory.isNonNull() ? selfReservedMemory : reservedAddressSpace;
+            selfReservedHeapBase = selfReservedMemory;
         }
 
         int imageHeapOffsetInAddressSpace = Heap.getHeap().getImageHeapOffsetInAddressSpace();
@@ -166,7 +173,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
                         IMAGE_HEAP_RELOCATABLE_BEGIN.get(), IMAGE_HEAP_A_RELOCATABLE_POINTER.get(), IMAGE_HEAP_RELOCATABLE_END.get(),
                         IMAGE_HEAP_WRITABLE_BEGIN.get(), IMAGE_HEAP_WRITABLE_END.get());
         if (result != CEntryPointErrors.NO_ERROR) {
-            freeImageHeap(allocatedMemory);
+            freeImageHeap(selfReservedHeapBase);
         }
         return result;
     }
