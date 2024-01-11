@@ -171,17 +171,6 @@ local devkits = graal_common.devkits;
   vm_ol9_aarch64: self.vm_linux_aarch64_ol9,
 
   vm_darwin_amd64: self.common_vm_darwin + graal_common.darwin_amd64 + {
-    capabilities+: ['darwin_mojave', 'ram16gb'],
-    packages+: {
-      gcc: '==4.9.2',
-    },
-    environment+: {
-      # for compatibility with macOS Sierra
-      MACOSX_DEPLOYMENT_TARGET: '10.13',
-    },
-  },
-
-  vm_darwin_amd64_jdkLatest: self.common_vm_darwin + graal_common.darwin_amd64 + {
     capabilities+: ['darwin_bigsur', 'ram16gb'],
     packages+: {
       gcc: '==4.9.2',
@@ -191,6 +180,8 @@ local devkits = graal_common.devkits;
       MACOSX_DEPLOYMENT_TARGET: '11.0',
     },
   },
+
+  vm_darwin_amd64_jdkLatest: self.vm_darwin_amd64,
 
   vm_darwin_aarch64: self.common_vm_darwin + graal_common.darwin_aarch64 + {
     capabilities+: ['darwin_bigsur'],
