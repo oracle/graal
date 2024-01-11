@@ -13,6 +13,7 @@ import com.oracle.truffle.espresso.vm.ContinuationSupport;
 @EspressoSubstitutions
 public final class Target_com_oracle_truffle_espresso_continuations_Continuation {
     @Substitution
+    @TruffleBoundary
     static void suspend0() {
         // This internal exception will be caught in BytecodeNode's interpreter loop. Frame records will be added to
         // the exception object in a linked list until it's caught below.
@@ -43,6 +44,7 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
     }
 
     @Substitution(hasReceiver = true)
+    @TruffleBoundary
     static void start0(
             @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject self,
             @Inject Meta meta
@@ -54,8 +56,12 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
         } catch (ContinuationSupport.Unwind unwind) {
             // Guest called suspend(). By the time we get here the frame info has been gathered up into host-side objects
             // so we just need to copy the data into the guest world.
-            CompilerDirectives.transferToInterpreter();
             meta.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.setObject(self, unwind.toGuest(meta));
         }
+    }
+
+    @Substitution
+    static boolean isSupported() {
+        return true;
     }
 }

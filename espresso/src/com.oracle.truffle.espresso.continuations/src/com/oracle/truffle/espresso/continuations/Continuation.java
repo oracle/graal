@@ -302,6 +302,13 @@ public final class Continuation {
     // source code.
     private static native void suspend0();
 
+    /**
+     * Returns true if this VM supports the continuations feature, false otherwise.
+     */
+    public static boolean isSupported() {
+        return false;
+    }
+
     private static UnsupportedOperationException notOnEspresso() {
         // Caller should have been replaced by an intrinsic / substitution.
         return new UnsupportedOperationException("Continuations must be run on the Java on Truffle JVM.");
