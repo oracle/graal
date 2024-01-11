@@ -90,30 +90,13 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
     private static final SignedWord UNASSIGNED_FD = signed(-1);
     private static final SignedWord CANNOT_OPEN_FD = signed(-2);
     private static final CGlobalData<WordPointer> CACHED_IMAGE_FD = CGlobalDataFactory.createWord(UNASSIGNED_FD);
-    private static final CGlobalData<WordPointer> CACHED_IMAGE_HEAP_OFFSET = CGlobalDataFactory.createWord();
+    private static final CGlobalData<WordPointer> CACHED_IMAGE_HEAP_OFFSET_IN_FILE = CGlobalDataFactory.createWord();
+
+    private static final int MAX_PATHLEN = 4096;
 
     @Override
     public boolean guaranteesHeapPreferredAddressSpaceAlignment() {
         return true;
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected UnsignedWord getImageHeapAddressSpaceSize() {
-        int imageHeapOffset = Heap.getHeap().getImageHeapOffsetInAddressSpace();
-        assert imageHeapOffset >= 0;
-        UnsignedWord size = WordFactory.unsigned(imageHeapOffset);
-        size = size.add(getImageHeapSizeInFile(IMAGE_HEAP_BEGIN.get(), IMAGE_HEAP_END.get()));
-        return size;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected UnsignedWord getTotalRequiredAddressSpaceSize() {
-        UnsignedWord size = getImageHeapAddressSpaceSize();
-        if (DynamicMethodAddressResolutionHeapSupport.isEnabled()) {
-            size = size.add(DynamicMethodAddressResolutionHeapSupport.get().getDynamicMethodAddressResolverPreHeapMemoryBytes());
-        }
-        return size;
     }
 
     @Override
@@ -135,7 +118,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
         Pointer heapBase;
         Pointer selfReservedHeapBase;
         if (DynamicMethodAddressResolutionHeapSupport.isEnabled()) {
-            UnsignedWord preHeapRequiredBytes = DynamicMethodAddressResolutionHeapSupport.get().getDynamicMethodAddressResolverPreHeapMemoryBytes();
+            UnsignedWord preHeapRequiredBytes = getPreHeapAlignedSizeForDynamicMethodAddressResolver();
             if (selfReservedMemory.isNonNull()) {
                 selfReservedHeapBase = selfReservedMemory.add(preHeapRequiredBytes);
                 heapBase = selfReservedHeapBase;
@@ -143,7 +126,6 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
                 heapBase = reservedAddressSpace.add(preHeapRequiredBytes);
                 selfReservedHeapBase = WordFactory.nullPointer();
             }
-            assert heapBase.isNonNull();
             remainingSize = remainingSize.subtract(preHeapRequiredBytes);
 
             int error = DynamicMethodAddressResolutionHeapSupport.get().initialize();
@@ -152,8 +134,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
                 return error;
             }
 
-            Pointer installOffset = heapBase.subtract(DynamicMethodAddressResolutionHeapSupport.get().getRequiredPreHeapMemoryInBytes());
-            error = DynamicMethodAddressResolutionHeapSupport.get().install(installOffset);
+            error = DynamicMethodAddressResolutionHeapSupport.get().install(heapBase);
             if (error != CEntryPointErrors.NO_ERROR) {
                 freeImageHeap(selfReservedHeapBase);
                 return error;
@@ -165,10 +146,10 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
 
         int imageHeapOffsetInAddressSpace = Heap.getHeap().getImageHeapOffsetInAddressSpace();
         basePointer.write(heapBase);
-        Pointer firstBase = heapBase.add(imageHeapOffsetInAddressSpace);
+        Pointer imageHeapStart = heapBase.add(imageHeapOffsetInAddressSpace);
         remainingSize = remainingSize.subtract(imageHeapOffsetInAddressSpace);
-        int result = initializeImageHeap(firstBase, remainingSize, endPointer,
-                        CACHED_IMAGE_FD.get(), CACHED_IMAGE_HEAP_OFFSET.get(), MAGIC.get(),
+        int result = initializeImageHeap(imageHeapStart, remainingSize, endPointer,
+                        CACHED_IMAGE_FD.get(), CACHED_IMAGE_HEAP_OFFSET_IN_FILE.get(), MAGIC.get(),
                         IMAGE_HEAP_BEGIN.get(), IMAGE_HEAP_END.get(),
                         IMAGE_HEAP_RELOCATABLE_BEGIN.get(), IMAGE_HEAP_A_RELOCATABLE_POINTER.get(), IMAGE_HEAP_RELOCATABLE_END.get(),
                         IMAGE_HEAP_WRITABLE_BEGIN.get(), IMAGE_HEAP_WRITABLE_END.get());
@@ -179,7 +160,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
     }
 
     @Uninterruptible(reason = "Called during isolate initialization.")
-    private int initializeImageHeap(Pointer imageHeap, UnsignedWord reservedSize, WordPointer endPointer, WordPointer cachedFd, WordPointer cachedOffset,
+    private int initializeImageHeap(Pointer imageHeap, UnsignedWord reservedSize, WordPointer endPointer, WordPointer cachedFd, WordPointer cachedOffsetInFile,
                     Pointer magicAddress, Word heapBeginSym, Word heapEndSym, Word heapRelocsSym, Pointer heapAnyRelocPointer, Word heapRelocsEndSym, Word heapWritableSym, Word heapWritableEndSym) {
         assert heapBeginSym.belowOrEqual(heapWritableSym) && heapWritableSym.belowOrEqual(heapWritableEndSym) && heapWritableEndSym.belowOrEqual(heapEndSym);
         assert heapBeginSym.belowOrEqual(heapRelocsSym) && heapRelocsSym.belowOrEqual(heapRelocsEndSym) && heapRelocsEndSym.belowOrEqual(heapEndSym);
@@ -193,7 +174,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
          * step to avoid stalling threads.
          */
         if (fd.equal(UNASSIGNED_FD)) {
-            int opened = openImageFile(cachedOffset, heapBeginSym, heapRelocsSym, magicAddress);
+            int opened = openImageFile(heapBeginSym, magicAddress, cachedOffsetInFile);
             SignedWord previous = ((Pointer) cachedFd).compareAndSwapWord(0, fd, signed(opened), LocationIdentity.ANY_LOCATION);
             if (previous.equal(fd)) {
                 fd = signed(opened);
@@ -221,7 +202,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
         }
 
         // Create memory mappings from the image file.
-        UnsignedWord fileOffset = cachedOffset.read();
+        UnsignedWord fileOffset = cachedOffsetInFile.read();
         imageHeap = VirtualMemoryProvider.get().mapFile(imageHeap, imageHeapSize, fd, fileOffset, Access.READ);
         if (imageHeap.isNull()) {
             return CEntryPointErrors.MAP_HEAP_FAILED;
@@ -232,8 +213,8 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
             ComparableWord mappedValue = imageHeap.readWord(heapAnyRelocPointer.subtract(heapBeginSym));
             if (relocatedValue.notEqual(mappedValue)) {
                 /*
-                 * Addresses were relocated by dynamic linker, so copy them, but first remap the
-                 * pages to avoid swapping them in from disk.
+                 * Addresses were relocated by the dynamic linker, so copy them, but first remap the
+                 * pages as anonymous memory to avoid swapping in part of the image from disk.
                  */
                 Pointer relocsBegin = imageHeap.add(heapRelocsSym.subtract(heapBeginSym));
                 UnsignedWord relocsSize = heapRelocsEndSym.subtract(heapRelocsSym);
@@ -283,27 +264,24 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
 
     /**
      * Locate our image file, containing the image heap. Unfortunately we must open it by its path.
-     *
-     * NOTE: we look for the relocatables partition of the linker-mapped heap because it always
-     * stays mapped, while the rest of the linker-mapped heap can be unmapped after tearing down the
-     * first isolate. We do not use /proc/self/exe because it breaks with some tools like Valgrind.
+     * We do not use /proc/self/exe because it breaks with some tools like Valgrind.
      */
     @Uninterruptible(reason = "Called during isolate initialization.")
-    private static int openImageFile(WordPointer cachedOffset, Word heapBeginSym, Word heapRelocsSym, Pointer magicAddress) {
+    private static int openImageFile(Word heapBeginSym, Pointer magicAddress, WordPointer cachedImageHeapOffsetInFile) {
         final int failfd = (int) CANNOT_OPEN_FD.rawValue();
         int mapfd = Fcntl.NoTransitions.open(PROC_SELF_MAPS.get(), Fcntl.O_RDONLY(), 0);
         if (mapfd == -1) {
             return failfd;
         }
-        final int bufferSize = 4096; // assumed MAX_PATHLEN
+        final int bufferSize = MAX_PATHLEN;
         CCharPointer buffer = StackValue.get(bufferSize);
 
         // The relocatables partition might stretch over two adjacent mappings due to permission
         // differences, so only locate the mapping for the first page of relocatables
         UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
-        WordPointer relocsMappingStart = StackValue.get(WordPointer.class);
-        WordPointer relocsMappingFileOffset = StackValue.get(WordPointer.class);
-        boolean found = findMapping(mapfd, buffer, bufferSize, heapRelocsSym, heapRelocsSym.add(pageSize), relocsMappingStart, relocsMappingFileOffset, true);
+        WordPointer imageHeapMappingStart = StackValue.get(WordPointer.class);
+        WordPointer imageHeapMappingFileOffset = StackValue.get(WordPointer.class);
+        boolean found = findMapping(mapfd, buffer, bufferSize, heapBeginSym, heapBeginSym.add(pageSize), imageHeapMappingStart, imageHeapMappingFileOffset, true);
         if (!found) {
             Unistd.NoTransitions.close(mapfd);
             return failfd;
@@ -321,10 +299,9 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
             return failfd;
         }
 
-        Word imageHeapRelocsOffset = heapRelocsSym.subtract(heapBeginSym);
-        Word imageHeapOffset = heapRelocsSym.subtract(relocsMappingStart.read()).subtract(imageHeapRelocsOffset);
-        UnsignedWord fileOffset = imageHeapOffset.add(relocsMappingFileOffset.read());
-        cachedOffset.write(fileOffset);
+        Word imageHeapOffsetInMapping = heapBeginSym.subtract(imageHeapMappingStart.read());
+        UnsignedWord imageHeapOffsetInFile = imageHeapOffsetInMapping.add(imageHeapMappingFileOffset.read());
+        cachedImageHeapOffsetInFile.write(imageHeapOffsetInFile);
         return opened;
     }
 
@@ -368,17 +345,12 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
         UnsignedWord totalAddressSpaceSize = getTotalRequiredAddressSpaceSize();
         Pointer addressSpaceStart = (Pointer) heapBase;
         if (DynamicMethodAddressResolutionHeapSupport.isEnabled()) {
-            UnsignedWord preHeapRequiredBytes = DynamicMethodAddressResolutionHeapSupport.get().getDynamicMethodAddressResolverPreHeapMemoryBytes();
+            UnsignedWord preHeapRequiredBytes = getPreHeapAlignedSizeForDynamicMethodAddressResolver();
             addressSpaceStart = addressSpaceStart.subtract(preHeapRequiredBytes);
         }
         if (VirtualMemoryProvider.get().free(addressSpaceStart, totalAddressSpaceSize) != 0) {
             return CEntryPointErrors.FREE_IMAGE_HEAP_FAILED;
         }
         return CEntryPointErrors.NO_ERROR;
-    }
-
-    @Override
-    protected UnsignedWord getImageHeapSizeInFile() {
-        throw VMError.shouldNotReachHere("use the variant that takes pointers");
     }
 }
