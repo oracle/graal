@@ -3,3 +3,4 @@ interpreter-iterations = 1
 sync-noinline-iterations = 1
 sync-inline-iterations = 0
 async-iterations = 1050
+wasm.SIMD = true
