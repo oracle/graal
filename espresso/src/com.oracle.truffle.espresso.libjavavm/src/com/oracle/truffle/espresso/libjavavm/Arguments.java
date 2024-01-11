@@ -29,6 +29,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -86,6 +87,8 @@ public final class Arguments {
         List<String> jvmArgs = new ArrayList<>();
 
         boolean ignoreUnrecognized = false;
+        boolean autoAdjustHeapSize = true;
+        List<String> xOptions = new ArrayList<>();
 
         for (int i = 0; i < count; i++) {
             JNIJavaVMOption option = (JNIJavaVMOption) p.add(i * SizeOf.get(JNIJavaVMOption.class));
@@ -176,8 +179,12 @@ public final class Arguments {
                         builder.option(JAVA_PROPS + "jdk.module.limitmods", optionString.substring("--limit-modules=".length()));
                     } else if (optionString.equals("--enable-preview")) {
                         builder.option("java.EnablePreview", "true");
+                    } else if (optionString.equals("-XX:-AutoAdjustHeapSize")) {
+                        autoAdjustHeapSize = false;
+                    } else if (optionString.equals("-XX:+AutoAdjustHeapSize")) {
+                        autoAdjustHeapSize = true;
                     } else if (isXOption(optionString)) {
-                        RuntimeOptions.set(optionString.substring("-X".length()), null);
+                        xOptions.add(optionString);
                     } else if (optionString.equals("-XX:+IgnoreUnrecognizedVMOptions")) {
                         ignoreUnrecognized = true;
                     } else if (optionString.equals("-XX:-IgnoreUnrecognizedVMOptions")) {
@@ -223,6 +230,14 @@ public final class Arguments {
             }
         }
 
+        for (String xOption : xOptions) {
+            var opt = xOption;
+            if (autoAdjustHeapSize) {
+                opt = maybeAdjustMaxHeapSize(xOption);
+            }
+            RuntimeOptions.set(opt.substring(2 /* drop the -X */), null);
+        }
+
         if (bootClasspathPrepend != null) {
             builder.option("java.BootClasspathPrepend", bootClasspathPrepend);
         }
@@ -249,6 +264,45 @@ public final class Arguments {
 
         handler.argumentProcessingDone();
         return JNIErrors.JNI_OK();
+    }
+
+    private static String maybeAdjustMaxHeapSize(String optionString) {
+        // (Jan 2024) Espresso uses more memory than HotSpot does, so if the user has set a very
+        // small heap size that would work on HotSpot then we have to bump it up. 32mb is too small
+        // to run Gradle's JDK version probe program which is required to use Espresso with Gradle,
+        // so, we go to the next power of two beyond that. This number can be reduced in future when
+        // memory efficiency is better.
+        if (!optionString.startsWith("-Xmx")) {
+            return optionString;
+        }
+        long maxHeapSizeBytes = parseLong(optionString.substring(4));
+        final int floorMB = 64;
+        if (maxHeapSizeBytes < floorMB * 1024 * 1024) {
+            return "-Xmx" + floorMB + "m";
+        } else {
+            return optionString;
+        }
+    }
+
+    private static long parseLong(String v) {
+        String valueString = v.trim().toLowerCase(Locale.ROOT);
+        long scale = 1;
+        if (valueString.endsWith("k")) {
+            scale = 1024L;
+        } else if (valueString.endsWith("m")) {
+            scale = 1024L * 1024L;
+        } else if (valueString.endsWith("g")) {
+            scale = 1024L * 1024L * 1024L;
+        } else if (valueString.endsWith("t")) {
+            scale = 1024L * 1024L * 1024L * 1024L;
+        }
+
+        if (scale != 1) {
+            /* Remove trailing scale character. */
+            valueString = valueString.substring(0, valueString.length() - 1);
+        }
+
+        return Long.parseLong(valueString) * scale;
     }
 
     private static void buildJvmArg(List<String> jvmArgs, String optionString) {
