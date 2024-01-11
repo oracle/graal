@@ -32,6 +32,7 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeStack;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.BeginNode;
@@ -103,22 +104,33 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
     }
 
     @SuppressWarnings("try")
-    private static void expandBinary(ShortCircuitOrNode binary) {
-        while (binary.usages().isNotEmpty()) {
-            Node usage = binary.usages().first();
-            try (DebugCloseable nsp = usage.withNodeSourcePosition()) {
-                if (usage instanceof ShortCircuitOrNode) {
-                    expandBinary((ShortCircuitOrNode) usage);
-                } else if (usage instanceof IfNode) {
-                    processIf(binary.getX(), binary.isXNegated(), binary.getY(), binary.isYNegated(), (IfNode) usage, binary.getShortCircuitProbability().getDesignatedSuccessorProbability());
-                } else if (usage instanceof ConditionalNode) {
-                    processConditional(binary.getX(), binary.isXNegated(), binary.getY(), binary.isYNegated(), (ConditionalNode) usage);
-                } else {
-                    throw GraalError.shouldNotReachHereUnexpectedValue(usage); // ExcludeFromJacocoGeneratedReport
+    private static void expandBinary(ShortCircuitOrNode s) {
+        NodeStack toProcess = new NodeStack();
+        toProcess.push(s);
+
+        outer: while (!toProcess.isEmpty()) {
+            ShortCircuitOrNode binary = (ShortCircuitOrNode) toProcess.pop();
+
+            while (binary.usages().isNotEmpty()) {
+                Node usage = binary.usages().first();
+                try (DebugCloseable nsp = usage.withNodeSourcePosition()) {
+                    if (usage instanceof ShortCircuitOrNode) {
+                        toProcess.push(binary);
+                        toProcess.push(usage);
+                        continue outer;
+                    } else if (usage instanceof IfNode) {
+                        processIf(binary.getX(), binary.isXNegated(), binary.getY(), binary.isYNegated(), (IfNode) usage, binary.getShortCircuitProbability().getDesignatedSuccessorProbability());
+                    } else if (usage instanceof ConditionalNode) {
+                        processConditional(binary.getX(), binary.isXNegated(), binary.getY(), binary.isYNegated(), (ConditionalNode) usage);
+                    } else {
+                        throw GraalError.shouldNotReachHereUnexpectedValue(usage); // ExcludeFromJacocoGeneratedReport
+                    }
                 }
             }
+            binary.safeDelete();
+
         }
-        binary.safeDelete();
+
     }
 
     private static void processIf(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, IfNode ifNode, double shortCircuitProbability) {

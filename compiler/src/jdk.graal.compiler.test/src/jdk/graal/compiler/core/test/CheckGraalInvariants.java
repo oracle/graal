@@ -344,6 +344,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyPluginFrameState());
         verifiers.add(new VerifyGraphUniqueUsages());
         verifiers.add(new VerifyEndlessLoops());
+        verifiers.add(new VerifyPhaseNoDirectRecursion());
         VerifyAssertionUsage assertionUsages = null;
         boolean checkAssertions = tool.checkAssertions();
 
