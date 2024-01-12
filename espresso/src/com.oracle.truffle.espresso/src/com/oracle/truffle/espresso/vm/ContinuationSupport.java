@@ -10,14 +10,16 @@ import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
- * Support code used for implementation
- * the {@link com.oracle.truffle.espresso.substitutions.Target_com_oracle_truffle_espresso_continuations_Continuation continuation intrinsics}.
+ * Support code used for implementation the
+ * {@link com.oracle.truffle.espresso.substitutions.Target_com_oracle_truffle_espresso_continuations_Continuation
+ * continuation intrinsics}.
  */
 public class ContinuationSupport {
     /**
-     * A host-side mirror of a guest-side {@code Continuation.FrameRecord} object. The data in a frame record is
-     * trusted but may be accidentally nonsensical in case of user error, for instance resuming a continuation
-     * generated with a different version of the program or VM to what we are running now.
+     * A host-side mirror of a guest-side {@code Continuation.FrameRecord} object. The data in a
+     * frame record is trusted but may be accidentally nonsensical in case of user error, for
+     * instance resuming a continuation generated with a different version of the program or VM to
+     * what we are running now.
      */
     public static final class HostFrameRecord {
         public final StaticObject[] pointers;
@@ -28,8 +30,8 @@ public class ContinuationSupport {
         public HostFrameRecord next;
 
         public HostFrameRecord(StaticObject[] pointers, long[] primitives, byte[] slotTags,
-                               int sp, Method.MethodVersion methodVersion,
-                               HostFrameRecord next) {
+                        int sp, Method.MethodVersion methodVersion,
+                        HostFrameRecord next) {
             this.pointers = pointers;
             this.primitives = primitives;
             this.slotTags = slotTags;
@@ -39,42 +41,40 @@ public class ContinuationSupport {
         }
 
         /**
-         * Copies this single record into a newly allocated guest-side object that the guest can then serialize,
-         * deserialize and resume. Does <i>not</i> set the {@code next} pointer.
+         * Copies this single record into a newly allocated guest-side object that the guest can
+         * then serialize, deserialize and resume. Does <i>not</i> set the {@code next} pointer.
          */
-        public @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation$FrameRecord;") StaticObject
-        copyToGuest(Meta meta) {
-            // We discard frame cookies here. As they are only used for the guest StackWalker API and the obsolete
-            // SecurityManager implementation, this seems OK.
+        public @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation$FrameRecord;") StaticObject copyToGuest(Meta meta) {
+            // We discard frame cookies here. As they are only used for the guest StackWalker API
+            // and the obsolete SecurityManager implementation, this seems OK.
 
-            // ptrs already contains StaticObjects, but we need to fill out the nulls and do the casts ourselves, otherwise
-            // we get ClassCastExceptions.
+            // ptrs already contains StaticObjects, but we need to fill out the nulls and do the
+            // casts ourselves, otherwise we get ClassCastExceptions.
             StaticObject[] convertedPtrs = new StaticObject[pointers.length];
             for (int i = 0; i < convertedPtrs.length; i++)
                 convertedPtrs[i] = pointers[i] != null ? pointers[i] : StaticObject.NULL;
 
             var guestRecord = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.allocateInstance();
             meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_init_.invokeDirect(
-                    guestRecord,
-                    // Host arrays are not guest arrays, so convert.
-                    StaticObject.wrap(convertedPtrs, meta),
-                    StaticObject.wrap(primitives, meta),
-                    methodVersion.getMethod().makeMirror(meta),
-                    sp,
-                    slotTags != null ? StaticObject.wrap(slotTags, meta) : StaticObject.NULL
-            );
+                            guestRecord,
+                            // Host arrays are not guest arrays, so convert.
+                            StaticObject.wrap(convertedPtrs, meta),
+                            StaticObject.wrap(primitives, meta),
+                            methodVersion.getMethod().makeMirror(meta),
+                            sp,
+                            slotTags != null ? StaticObject.wrap(slotTags, meta) : StaticObject.NULL);
             return guestRecord;
         }
 
         /**
-         * Copies the <i>entire</i> linked list of frame records from a guest {@code Continuation} object (which
-         * contains the head frame record pointer) to a linked list of host frame records.
+         * Copies the <i>entire</i> linked list of frame records from a guest {@code Continuation}
+         * object (which contains the head frame record pointer) to a linked list of host frame
+         * records.
          */
         public static HostFrameRecord copyFromGuest(
-                @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject self,
-                Meta meta,
-                @Inject EspressoContext context
-        ) {
+                        @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject self,
+                        Meta meta,
+                        @Inject EspressoContext context) {
             HostFrameRecord hostCursor = null;
             HostFrameRecord hostHead = null;
             StaticObject /* FrameRecord */ cursor = meta.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.getObject(self);
@@ -110,8 +110,8 @@ public class ContinuationSupport {
     }
 
     /**
-     * The exception thrown host-side to unwind the stack when a continuation suspends. Frame info is gathered up into
-     * a linked list.
+     * The exception thrown host-side to unwind the stack when a continuation suspends. Frame info
+     * is gathered up into a linked list.
      */
     public static class Unwind extends ControlFlowException {
         public HostFrameRecord head = null;

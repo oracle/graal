@@ -405,8 +405,11 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         assert Integer.bitCount(REPORT_LOOP_STRIDE) == 1 : "must be a power of 2";
     }
 
-    // Nodes for bytecodes that were replaced with QUICK, indexed by the constant pool index referenced by the bytecode.
-    @Children private BaseQuickNode[] nodes = QuickNode.EMPTY_ARRAY;  // must not be of type QuickNode as it might be wrapped by instrumentation
+    // Nodes for bytecodes that were replaced with QUICK, indexed by the constant pool index
+    // referenced by the bytecode.
+    @Children private BaseQuickNode[] nodes = QuickNode.EMPTY_ARRAY;  // must not be of type
+                                                                      // QuickNode as it might be
+                                                                      // wrapped by instrumentation
     @Children private BaseQuickNode[] sparseNodes = QuickNode.EMPTY_ARRAY;
 
     /**
@@ -451,7 +454,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
     private final MethodVersion methodVersion;
 
-    // Normally null except when resuming a continuation. Points at an object representing the frame we need to resume.
+    // Normally null except when resuming a continuation. Points at an object representing the frame
+    // we need to resume.
     // TODO: As this isn't final nor compilation-final, it's probably the wrong place to be.
     private ContinuationSupport.HostFrameRecord hostFrameRecord;
 
@@ -549,12 +553,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     }
 
     // region Continuations
-    // Possibly initializes the frame from the frame record passed through the continuations-specific calling convention.
+    // Possibly initializes the frame from the frame record passed through the
+    // continuations-specific calling convention.
     private boolean maybePrepareForContinuation(VirtualFrame frame) {
         Object[] arguments = frame.getArguments();
         ContinuationSupport.HostFrameRecord record;
 
-        // Calling convention: arg[0] might be the receiver for a non-static method, the arg after that is the record.
+        // Calling convention: arg[0] might be the receiver for a non-static method, the arg after
+        // that is the record.
         boolean hasReceiver = !getMethod().isStatic();
         if (hasReceiver && arguments.length == 2 && arguments[1] instanceof ContinuationSupport.HostFrameRecord hfr_)
             record = hfr_;
@@ -594,18 +600,20 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         return Bytecodes.isInvoke(opcode) || (opcode == QUICK && nodes[bs.readCPI2(bci)] instanceof InvokeQuickNode);
     }
 
-    // Passes control through to the next method in the call stack by re-running the invoke bytecode.
+    // Passes control through to the next method in the call stack by re-running the invoke
+    // bytecode.
     private int resumeContinuation(VirtualFrame frame, int top, int curBCI, int opcode, int statementIndex) {
         CompilerDirectives.transferToInterpreter();
         assert isPossiblyQuickenedInvoke(curBCI);
 
         InvokeQuickNode invoke;
         if (opcode == QUICK && nodes[bs.readCPI2(curBCI)] instanceof InvokeQuickNode iqn) {
-            // This AST has been executed before we resumed, probably the previous time when we suspended.
+            // This AST has been executed before we resumed, probably the previous time when we
+            // suspended.
             invoke = iqn;
         } else {
-            // This AST has never been executed before, probably resuming a continuation into a fresh JVM.
-            // Quicken the bytecode here.
+            // This AST has never been executed before, probably resuming a continuation into a
+            // fresh JVM. Quicken the bytecode here.
             invoke = (InvokeQuickNode) tryPatchQuick(curBCI, () -> {
                 // During resolution of the symbolic reference to the method, any of the exceptions
                 // pertaining to method resolution (&sect;5.4.3.3) can be thrown.
@@ -615,15 +623,16 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             });
         }
 
-        // Now proceed through to the next frame, which will be resumed in turn unless it's null (end of stack).
+        // Now proceed through to the next frame, which will be resumed in turn unless it's null
+        // (end of stack).
         ContinuationSupport.HostFrameRecord nextFrame = hostFrameRecord.next;
         hostFrameRecord = null;
         int slotsNeededForReturnType;
         if (nextFrame != null) {
             slotsNeededForReturnType = invoke.resumeContinuation(frame, nextFrame);
         } else {
-            // Reached the end of the stack - this is where we suspended, so we want to continue here as if nothing
-            // had happened.
+            // Reached the end of the stack - this is where we suspended, so we want to continue
+            // here as if nothing had happened.
             assert invoke.method.getNameAsString().equals("suspend0");
             slotsNeededForReturnType = 0;   // suspend0 returns void
         }
@@ -740,10 +749,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         if (hostFrameRecord != null) {
             // Resuming a continuation.
             return executeBodyFromBCI(frame,
-                    getBCI(frame),
-                    hostFrameRecord.sp,
-                    0,   // TODO
-                    true  // TODO: Rename this argument.
+                            getBCI(frame),
+                            hostFrameRecord.sp,
+                            0,   // TODO
+                            true  // TODO: Rename this argument.
             );
         } else {
             int startTop = startingStackOffset(getMethodVersion().getMaxLocals());
@@ -764,8 +773,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
         final Counter loopCount = new Counter();
 
-        // The canonical program counter (bci) is in the first slot of the stack frame, but we prefer to work with
-        // a shadow copy in a local variable and only update the frame when needed, because that's faster.
+        // The canonical program counter (bci) is in the first slot of the stack frame, but we
+        // prefer to work with a shadow copy in a local variable and only update the frame when
+        // needed, because that's faster.
         setBCI(frame, startBCI);
         int curBCI = startBCI;
         int top = startTop;
@@ -791,11 +801,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 CompilerAsserts.partialEvaluationConstant(nextStatementIndex);
 
                 if (hostFrameRecord != null) {
-                    // We're in the middle of resuming a continuation so re-perform the invoke we're pointing at, but
-                    // using the special calling sequence that avoids (re)reading the arguments from the interpreter
-                    // stack. The stack frame we're resuming is already in place. The continuation might suspend
-                    // again, in which case the unwind will be processed as normal.
-                    top += resumeContinuation(frame, top, curBCI, curOpcode, statementIndex /* TODO */);
+                    // We're in the middle of resuming a continuation so re-perform the invoke we're
+                    // pointing at, but using the special calling sequence that avoids (re)reading
+                    // the arguments from the interpreter stack. The stack frame we're resuming is
+                    // already in place. The continuation might suspend again, in which case the
+                    // unwind will be processed as normal.
+
+                    // TODO(hearn): statementIndex
+                    top += resumeContinuation(frame, top, curBCI, curOpcode, statementIndex);
                     curBCI = curBCI + Bytecodes.lengthOf(curOpcode);
                     continue;
                 }
@@ -1527,8 +1540,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
                 }
             } catch (ContinuationSupport.Unwind unwindRequest) {
-                // The guest has suspended a continuation. We need to gather the frames as we unwind the stack so the
-                // user can persist them later.
+                // The guest has suspended a continuation. We need to gather the frames as we unwind
+                // the stack so the user can persist them later.
                 CompilerDirectives.transferToInterpreter();   // TODO: Is this right?
 
                 // Get the frame from the stack into the VM heap.
@@ -1537,23 +1550,24 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 // Downcast the frame's guest heap pointers.
                 var localRefsObj = materializedFrame.getIndexedLocals();
                 var localRefsStaticObj = new StaticObject[localRefsObj.length];
-                //noinspection SuspiciousSystemArraycopy
+                // noinspection SuspiciousSystemArraycopy
                 System.arraycopy(localRefsObj, 0, localRefsStaticObj, 0, localRefsObj.length);
 
-                // Slot tags are only used when the VM has assertions enabled. Otherwise they're always just STATIC_TAG
+                // Slot tags are only used when the VM has assertions enabled. Otherwise they're
+                // always just STATIC_TAG.
                 byte[] slotTags = null;
-                //noinspection AssertWithSideEffects
+                // noinspection AssertWithSideEffects
                 assert (slotTags = materializedFrame.getIndexedTags()) != null;
 
                 // Extend the linked list of frame records as we unwind.
+                // TODO(hearn): statement index
                 unwindRequest.head = new ContinuationSupport.HostFrameRecord(
-                        localRefsStaticObj,
-                        materializedFrame.getIndexedPrimitiveLocals(),
-                        slotTags,
-                        top,
-                        methodVersion,
-                        unwindRequest.head
-                        // TODO: statement index
+                                localRefsStaticObj,
+                                materializedFrame.getIndexedPrimitiveLocals(),
+                                slotTags,
+                                top,
+                                methodVersion,
+                                unwindRequest.head
                 );
 
                 throw unwindRequest;
@@ -2199,9 +2213,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             }
         }
         // Perform the call outside of the lock.
-        // We _subtract_ the stack effect here to undo its effect, as the stack effect of the replaced opcode
-        // will be computed by quick.execute(frame), and then re-applied at the bottom of the interpreter loop.
-        // So we have to subtract the stack effect to prevent double counting.
+        // We _subtract_ the stack effect here to undo its effect, as the stack effect of the
+        // replaced opcode will be computed by quick.execute(frame), and then re-applied at
+        // the bottom of the interpreter loop. So we have to subtract the stack effect to
+        // prevent double counting.
         return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
     }
 

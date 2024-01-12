@@ -15,26 +15,26 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
     @Substitution
     @TruffleBoundary
     static void suspend0() {
-        // This internal exception will be caught in BytecodeNode's interpreter loop. Frame records will be added to
-        // the exception object in a linked list until it's caught below.
+        // This internal exception will be caught in BytecodeNode's interpreter loop. Frame records
+        // will be added to the exception object in a linked list until it's caught below.
         throw new ContinuationSupport.Unwind();
     }
 
     @Substitution(hasReceiver = true)
     @TruffleBoundary
     static void resume0(
-            @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject self,
-            @Inject Meta meta,
-            @Inject EspressoContext context
-    ) {
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject self,
+                    @Inject Meta meta,
+                    @Inject EspressoContext context) {
         ContinuationSupport.HostFrameRecord stack = ContinuationSupport.HostFrameRecord.copyFromGuest(self, meta, context);
 
         // This will break if the continuations API is redefined - TODO: find a way to block that.
         var runMethod = meta.com_oracle_truffle_espresso_continuations_Continuation_run.getMethodVersion();
 
-        // The entry node will unpack the head frame record into the stack and then pass the remaining records into the
-        // bytecode interpreter, which will then pass them down the stack until everything is fully unwound.
-        // TODO: Is creating a new node the right way to do it? Probably we should be using an explicit node with cached arguments and stuff?
+        // The entry node will unpack the head frame record into the stack and then pass the
+        // remaining records into the bytecode interpreter, which will then pass them down the stack
+        // until everything is fully unwound. TODO: Is creating a new node the right way to do it?
+        // Probably we should be using an explicit node with cached arguments and stuff?
         try {
             runMethod.getCallTarget().call(self, stack);
         } catch (ContinuationSupport.Unwind unwind) {
@@ -46,16 +46,15 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
     @Substitution(hasReceiver = true)
     @TruffleBoundary
     static void start0(
-            @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject self,
-            @Inject Meta meta
-    ) {
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject self,
+                    @Inject Meta meta) {
         try {
-            // The run method is private in Continuation and is the continuation delimiter. Frames from run onwards will
-            // be unwound on suspend, and rewound on resume.
+            // The run method is private in Continuation and is the continuation delimiter. Frames
+            // from run onwards will be unwound on suspend, and rewound on resume.
             meta.com_oracle_truffle_espresso_continuations_Continuation_run.invokeDirect(self);
         } catch (ContinuationSupport.Unwind unwind) {
-            // Guest called suspend(). By the time we get here the frame info has been gathered up into host-side objects
-            // so we just need to copy the data into the guest world.
+            // Guest called suspend(). By the time we get here the frame info has been gathered up
+            // into host-side objects so we just need to copy the data into the guest world.
             meta.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.setObject(self, unwind.toGuest(meta));
         }
     }

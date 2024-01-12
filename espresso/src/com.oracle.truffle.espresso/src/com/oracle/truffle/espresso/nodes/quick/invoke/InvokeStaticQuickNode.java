@@ -74,8 +74,8 @@ public final class InvokeStaticQuickNode extends InvokeQuickNode {
             }
         }
 
-        // The frame doesn't hold the arguments anymore, they were cleared during the invoke that happened before
-        // the user suspended.
-        return pushResult(frame, invokeStatic.execute(new Object[] { hfr }));
+        // The frame doesn't hold the arguments anymore, they were cleared during the invoke that
+        // happened before the user suspended.
+        return pushResult(frame, invokeStatic.execute(new Object[]{hfr}));
     }
 }

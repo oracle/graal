@@ -1015,9 +1015,9 @@ public final class Symbol<T> extends ByteSequence {
 
         // Continuations
         public static final Symbol<Type> com_oracle_truffle_espresso_continuations_Continuation_FrameRecord = StaticSymbols.putType(
-                "Lcom/oracle/truffle/espresso/continuations/Continuation$FrameRecord;");
+                        "Lcom/oracle/truffle/espresso/continuations/Continuation$FrameRecord;");
         public static final Symbol<Type> com_oracle_truffle_espresso_continuations_Continuation = StaticSymbols.putType(
-                "Lcom/oracle/truffle/espresso/continuations/Continuation;");
+                        "Lcom/oracle/truffle/espresso/continuations/Continuation;");
 
         // Panama
         public static final Symbol<Type> jdk_internal_foreign_abi_VMStorage = StaticSymbols.putType("Ljdk/internal/foreign/abi/VMStorage;");
@@ -1322,13 +1322,12 @@ public final class Symbol<T> extends ByteSequence {
 
         // Continuations
         public static final Symbol<Signature> _void_FrameRecord_Object_array_long_array_Method_int_Object = StaticSymbols.putSignature(
-                Type._void,
-                Type.java_lang_Object_array,
-                Type._long_array,
-                Type.java_lang_reflect_Method,
-                Type._int,
-                Type.java_lang_Object
-        );
+                        Type._void,
+                        Type.java_lang_Object_array,
+                        Type._long_array,
+                        Type.java_lang_reflect_Method,
+                        Type._int,
+                        Type.java_lang_Object);
 
     }
 }
