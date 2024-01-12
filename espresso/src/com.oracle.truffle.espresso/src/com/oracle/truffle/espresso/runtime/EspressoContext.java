@@ -388,6 +388,9 @@ public final class EspressoContext {
                                         vmProperties.javaHome(), vmProperties.bootLibraryPath(), JavaVersion.latestSupported()));
                     }
                 }
+                if (contextJavaVersion.compareTo(JavaVersion.latestSupported()) > 0) {
+                    throw EspressoError.fatal("Unsupported Java version: " + contextJavaVersion);
+                }
                 this.downcallStubs = new DowncallStubs(Platform.getHostPlatform());
                 this.upcallStubs = new UpcallStubs(Platform.getHostPlatform(), nativeAccess, language);
 
