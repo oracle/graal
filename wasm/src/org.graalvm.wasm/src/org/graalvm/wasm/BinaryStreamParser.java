@@ -470,9 +470,8 @@ public abstract class BinaryStreamParser {
      * @param offset The offset in the bytecode.
      * @return The {@link Vector128} value at the given bytecode offset.
      */
-    public static Vector128 rawPeekI128(byte[] bytecode, int offset) {
-        byte[] bytes = Arrays.copyOfRange(bytecode, offset, offset + 16);
-        return Vector128.ofBytes(bytes);
+    public static byte[] rawPeekI128(byte[] bytecode, int offset) {
+        return Arrays.copyOfRange(bytecode, offset, offset + 16);
     }
 
     // endregion
