@@ -321,6 +321,7 @@ public final class Target_java_lang_Thread {
      * underlying mechanisms.
      */
     @Substitute
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     void interrupt0() {
         /*
          * The interrupted flag is maintained by the JDK in Java code, i.e., already set by the
