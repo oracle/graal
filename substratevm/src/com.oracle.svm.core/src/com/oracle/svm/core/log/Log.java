@@ -141,6 +141,12 @@ public abstract class Log implements AutoCloseable {
     public abstract Log string(String str, int fill, int align);
 
     /**
+     * Prints the string characters, up to the given maximum length. Does not do any platform- or
+     * charset-depending conversions.
+     */
+    public abstract Log string(String value, int maxLen);
+
+    /**
      * Prints all characters in the array, without any platform- or charset-depending conversions.
      */
     public abstract Log string(char[] value);
@@ -408,6 +414,11 @@ public abstract class Log implements AutoCloseable {
 
         @Override
         public Log string(String str, int fill, int align) {
+            return this;
+        }
+
+        @Override
+        public Log string(String value, int maxLen) {
             return this;
         }
 

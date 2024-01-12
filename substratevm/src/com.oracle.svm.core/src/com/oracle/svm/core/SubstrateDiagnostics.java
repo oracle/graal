@@ -34,9 +34,11 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.nodes.PauseNode;
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -69,12 +71,17 @@ import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.jdk.Jvm;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.stack.JavaStackWalker;
@@ -92,6 +99,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.core.util.CounterSupport;
 import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.core.util.VMError;
 
 public class SubstrateDiagnostics {
     private static final int MAX_THREADS_TO_PRINT = 100_000;
@@ -146,16 +154,59 @@ public class SubstrateDiagnostics {
         }
     }
 
-    @Uninterruptible(reason = "Called with a raw object pointer.", calleeMustBe = false)
-    public static void printObjectInfo(Log log, Pointer ptr) {
-        DynamicHub objHub = Heap.getHeap().getObjectHeader().readDynamicHubFromPointer(ptr);
-        if (objHub == DynamicHub.fromClass(DynamicHub.class)) {
-            // The pointer is already a hub, so print some information about the hub.
-            DynamicHub hub = (DynamicHub) ptr.toObject();
+    public static void printObjectInfo(Log log, Object obj) {
+        if (obj instanceof DynamicHub hub) {
+            // The object itself is a dynamic hub, so print some information about the hub.
             log.string("is the hub of ").string(hub.getName());
+            return;
+        }
+
+        // Print some information about the object.
+        log.string("is an object of type ");
+
+        if (obj instanceof Throwable e) {
+            log.exception(e, 2);
         } else {
-            // The pointer is an object, so print some information about the object's hub.
-            log.string("is an object of type ").string(objHub.getName());
+            log.string(obj.getClass().getName());
+
+            if (obj instanceof String s) {
+                log.string(": ").string(s, 60);
+            } else {
+                int layoutEncoding = DynamicHub.fromClass(obj.getClass()).getLayoutEncoding();
+
+                if (LayoutEncoding.isArrayLike(layoutEncoding)) {
+                    int length = ArrayLengthNode.arrayLength(obj);
+                    log.string(" with length ").signed(length).string(": ");
+
+                    printSomeArrayData(log, obj, length, layoutEncoding);
+                }
+            }
+        }
+    }
+
+    private static void printSomeArrayData(Log log, Object obj, int length, int layoutEncoding) {
+        int elementSize = LayoutEncoding.getArrayIndexScale(layoutEncoding);
+        int arrayBaseOffset = LayoutEncoding.getArrayBaseOffsetAsInt(layoutEncoding);
+
+        int maxPrintedBytes = elementSize == 1 ? 8 : 16;
+        int printedElements = UninterruptibleUtils.Math.min(length, maxPrintedBytes / elementSize);
+
+        UnsignedWord curOffset = WordFactory.unsigned(arrayBaseOffset);
+        UnsignedWord endOffset = curOffset.add(WordFactory.unsigned(printedElements).multiply(elementSize));
+        while (curOffset.belowThan(endOffset)) {
+            switch (elementSize) {
+                case 1 -> log.zhex(ObjectAccess.readByte(obj, curOffset));
+                case 2 -> log.zhex(ObjectAccess.readShort(obj, curOffset));
+                case 4 -> log.zhex(ObjectAccess.readInt(obj, curOffset));
+                case 8 -> log.zhex(ObjectAccess.readLong(obj, curOffset));
+                default -> throw VMError.shouldNotReachHereAtRuntime();
+            }
+            log.spaces(1);
+            curOffset = curOffset.add(elementSize);
+        }
+
+        if (printedElements < length) {
+            log.string("...");
         }
     }
 
@@ -417,7 +468,7 @@ public class SubstrateDiagnostics {
     }
 
     private static boolean matches(String text, String pattern) {
-        assert pattern.length() > 0;
+        assert pattern.length() > 0 : pattern;
         return matches(text, 0, pattern, 0);
     }
 
@@ -453,6 +504,31 @@ public class SubstrateDiagnostics {
             patternPos++;
         }
         return patternPos == pattern.length();
+    }
+
+    /* Scan the stack until we find a valid return address. We may encounter false-positives. */
+    private static Pointer findPotentialReturnAddressPosition(Pointer originalSp) {
+        UnsignedWord stackBase = VMThreads.StackBase.get();
+        if (stackBase.equal(0)) {
+            /* We don't know the stack boundaries, so only search within 32 bytes. */
+            stackBase = originalSp.add(32);
+        }
+
+        int wordSize = ConfigurationValues.getTarget().wordSize;
+        Pointer pos = originalSp;
+        while (pos.belowThan(stackBase)) {
+            CodePointer possibleIp = pos.readWord(0);
+            if (pointsIntoNativeImageCode(possibleIp)) {
+                return pos;
+            }
+            pos = pos.add(wordSize);
+        }
+        return WordFactory.nullPointer();
+    }
+
+    @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo.")
+    private static boolean pointsIntoNativeImageCode(CodePointer possibleIp) {
+        return CodeInfoTable.lookupCodeInfo(possibleIp).isNonNull();
     }
 
     public static class FatalErrorState {
@@ -542,15 +618,31 @@ public class SubstrateDiagnostics {
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
             CodePointer ip = context.getInstructionPointer();
-            log.string("Printing instructions (ip=").zhex(ip).string("):").indent(true);
-            if (ip.isNull()) {
-                // can't print any instructions
-            } else if (invocationCount < 4) {
-                // print 512, 128, or 32 instruction bytes.
+            log.string("Printing instructions (ip=").zhex(ip).string("):");
+
+            if (((Pointer) ip).belowThan(VirtualMemoryProvider.get().getGranularity())) {
+                /* IP points into the first page of the virtual address space. */
+                Pointer originalSp = context.getStackPointer();
+                log.string(" IP is invalid");
+
+                Pointer returnAddressPos = findPotentialReturnAddressPosition(originalSp);
+                if (returnAddressPos.isNull()) {
+                    log.string(", instructions cannot be printed.").newline();
+                    return;
+                }
+
+                ip = returnAddressPos.readWord(0);
+                Pointer sp = returnAddressPos.add(FrameAccess.returnAddressSize());
+                log.string(", printing instructions (ip=").zhex(ip).string(") of the most likely caller (sp + ").unsigned(sp.subtract(originalSp)).string(") instead");
+            }
+
+            log.indent(true);
+            if (invocationCount < 4) {
+                /* Print 512, 128, or 32 instruction bytes. */
                 int bytesToPrint = 1024 >> (invocationCount * 2);
                 hexDump(log, ip, bytesToPrint, bytesToPrint);
             } else if (invocationCount == 4) {
-                // just print one word starting at the ip
+                /* Just print one word starting at the ip. */
                 hexDump(log, ip, 0, ConfigurationValues.getTarget().wordSize);
             }
             log.indent(false).newline();
@@ -797,7 +889,7 @@ public class SubstrateDiagnostics {
         }
     }
 
-    static class DumpGeneralInfo extends DiagnosticThunk {
+    static class DumpVMInfo extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 1;
@@ -806,15 +898,54 @@ public class SubstrateDiagnostics {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            log.string("General information:").indent(true);
-            log.string("VM version: ").string(ImageSingletons.lookup(VM.class).version);
+            log.string("Build time information:").indent(true);
+
+            VM vm = ImageSingletons.lookup(VM.class);
+            log.string("Version: ").string(vm.version).string(", ").string(vm.info).newline();
 
             Platform platform = ImageSingletons.lookup(Platform.class);
-            log.string(", ").string(platform.getOS()).string("/").string(platform.getArchitecture()).newline();
+            log.string("Platform: ").string(platform.getOS()).string("/").string(platform.getArchitecture()).newline();
+            log.string("Page size: ").unsigned(SubstrateOptions.getPageSize()).newline();
+            log.string("Container support: ").bool(Containers.Options.UseContainerSupport.getValue()).newline();
+            log.string("CPU features used for AOT compiled code: ").string(getBuildTimeCpuFeatures()).newline();
+            log.indent(false);
+        }
 
+        @Fold
+        static String getBuildTimeCpuFeatures() {
+            return String.join(", ", CPUFeatureAccess.singleton().buildtimeCPUFeatures().stream().map(Enum::toString).toList());
+        }
+    }
+
+    public static class DumpMachineInfo extends DiagnosticThunk {
+        @Override
+        public int maxInvocationCount() {
+            return 1;
+        }
+
+        @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
+        public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
+            log.string("Runtime information:").indent(true);
+
+            log.string("CPU cores (OS): ");
+            if (!SubstrateOptions.AsyncSignalSafeDiagnostics.getValue() && SubstrateOptions.JNI.getValue()) {
+                log.signed(Jvm.JVM_ActiveProcessorCount()).newline();
+            } else {
+                log.string("unknown").newline();
+            }
+
+            log.string("Memory: ");
+            if (PhysicalMemory.isInitialized()) {
+                log.rational(PhysicalMemory.getCachedSize(), 1024 * 1024, 0).string("M").newline();
+            } else {
+                log.string("unknown").newline();
+            }
+
+            log.string("Page size: ").unsigned(VirtualMemoryProvider.get().getGranularity()).newline();
             if (!SubstrateOptions.AsyncSignalSafeDiagnostics.getValue()) {
-                log.string("Current timestamp: ").unsigned(System.currentTimeMillis()).newline();
                 log.string("VM uptime: ").rational(Isolates.getCurrentUptimeMillis(), TimeUtils.millisPerSecond, 3).string("s").newline();
+                log.string("Current timestamp: ").unsigned(System.currentTimeMillis()).newline();
             }
 
             CodeInfo info = CodeInfoTable.getImageCodeInfo();
@@ -823,13 +954,7 @@ public class SubstrateDiagnostics {
             Pointer codeEnd = codeStart.add(codeSize).subtract(1);
             log.string("AOT compiled code: ").zhex(codeStart).string(" - ").zhex(codeEnd).newline();
 
-            log.string("CPU features used for AOT compiled code: ").string(getBuildTimeCpuFeatures()).newline();
             log.indent(false);
-        }
-
-        @Fold
-        static String getBuildTimeCpuFeatures() {
-            return String.join(", ", CPUFeatureAccess.singleton().buildtimeCPUFeatures().stream().map(Enum::toString).toList());
         }
     }
 
@@ -902,31 +1027,16 @@ public class SubstrateDiagnostics {
         }
 
         private static void startStackWalkInMostLikelyCaller(Log log, int invocationCount, Pointer originalSp) {
-            UnsignedWord stackBase = VMThreads.StackBase.get();
-            if (stackBase.equal(0)) {
-                /* We don't know the stack boundaries, so only search within 32 bytes. */
-                stackBase = originalSp.add(32);
+            Pointer returnAddressPos = findPotentialReturnAddressPosition(originalSp);
+            if (returnAddressPos.isNull()) {
+                return;
             }
 
-            /* Search until we find a valid return address. We may encounter false-positives. */
-            int wordSize = ConfigurationValues.getTarget().wordSize;
-            Pointer pos = originalSp;
-            while (pos.belowThan(stackBase)) {
-                CodePointer possibleIp = pos.readWord(0);
-                if (pointsIntoNativeImageCode(possibleIp)) {
-                    Pointer sp = pos.add(wordSize);
-                    log.newline();
-                    log.string("Starting the stack walk in a possible caller:").newline();
-                    ThreadStackPrinter.printStacktrace(sp, possibleIp, printVisitors[invocationCount - 1].reset(), log);
-                    break;
-                }
-                pos = pos.add(wordSize);
-            }
-        }
-
-        @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo.")
-        private static boolean pointsIntoNativeImageCode(CodePointer possibleIp) {
-            return CodeInfoTable.lookupCodeInfo(possibleIp).isNonNull();
+            CodePointer possibleIp = returnAddressPos.readWord(0);
+            Pointer sp = returnAddressPos.add(FrameAccess.returnAddressSize());
+            log.newline();
+            log.string("Starting the stack walk in a possible caller (sp + ").unsigned(sp.subtract(originalSp)).string("):").newline();
+            ThreadStackPrinter.printStacktrace(sp, possibleIp, printVisitors[invocationCount - 1].reset(), log);
         }
     }
 
@@ -1146,7 +1256,8 @@ public class SubstrateDiagnostics {
             thunks.add(new DumpCurrentVMOperation());
             thunks.add(new DumpVMOperationHistory());
             thunks.add(new VMLockSupport.DumpVMMutexes());
-            thunks.add(new DumpGeneralInfo());
+            thunks.add(new DumpVMInfo());
+            thunks.add(new DumpMachineInfo());
             if (ImageSingletons.contains(JavaMainWrapper.JavaMainSupport.class)) {
                 thunks.add(new DumpCommandLine());
             }
@@ -1163,9 +1274,6 @@ public class SubstrateDiagnostics {
             Arrays.fill(initialInvocationCount, 1);
         }
 
-        /**
-         * Register a diagnostic thunk to be called after a segfault.
-         */
         @Platforms(Platform.HOSTED_ONLY.class)
         public synchronized void register(DiagnosticThunk diagnosticThunk) {
             diagnosticThunks = Arrays.copyOf(diagnosticThunks, diagnosticThunks.length + 1);
