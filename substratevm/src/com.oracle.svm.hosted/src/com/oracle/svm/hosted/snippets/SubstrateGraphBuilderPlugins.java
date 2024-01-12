@@ -714,12 +714,12 @@ public class SubstrateGraphBuilderPlugins {
             String fieldName = snippetReflection.asObject(String.class, fieldNameNode.asJavaConstant());
             try {
                 Field field = tclass.getDeclaredField(fieldName);
-                // register the holder class and the field for reflection
+                /*
+                 * Register the holder class and the field for reflection. This also registers the
+                 * field for unsafe access.
+                 */
                 RuntimeReflection.register(tclass);
                 RuntimeReflection.register(field);
-
-                // register the field for unsafe access
-                registerAsUnsafeAccessed(b, field);
             } catch (NoSuchFieldException e) {
                 /*
                  * Ignore the exception. If the field does not exist, there will be an error at run
@@ -735,7 +735,6 @@ public class SubstrateGraphBuilderPlugins {
     private static void registerAsUnsafeAccessed(GraphBuilderContext b, Field field) {
         AnalysisField targetField = (AnalysisField) b.getMetaAccess().lookupJavaField(field);
         Object reason = nonNullReason(b.getGraph().currentNodeSourcePosition());
-        targetField.registerAsAccessed(reason);
         targetField.registerAsUnsafeAccessed(reason);
     }
 

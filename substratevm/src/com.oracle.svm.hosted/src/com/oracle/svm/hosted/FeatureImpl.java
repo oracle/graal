@@ -405,7 +405,7 @@ public class FeatureImpl {
 
         public boolean registerAsUnsafeAccessed(AnalysisField aField, UnsafePartitionKind partitionKind, Object reason) {
             assert !AnnotationAccess.isAnnotationPresent(aField, Delete.class);
-            return bb.registerAsUnsafeAccessed(aField, partitionKind, reason);
+            return aField.registerAsUnsafeAccessed(partitionKind, reason);
         }
 
         public void registerAsFrozenUnsafeAccessed(Field field, Object reason) {
@@ -413,7 +413,7 @@ public class FeatureImpl {
         }
 
         public void registerAsFrozenUnsafeAccessed(AnalysisField aField, Object reason) {
-            bb.registerAsFrozenUnsafeAccessed(aField);
+            aField.registerAsFrozenUnsafeAccessed();
             registerAsUnsafeAccessed(aField, reason);
         }
 

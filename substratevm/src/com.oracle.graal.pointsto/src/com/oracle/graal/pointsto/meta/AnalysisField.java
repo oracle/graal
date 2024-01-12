@@ -379,8 +379,8 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         return isJNIAccessed;
     }
 
-    public void setUnsafeFrozenTypeState(boolean value) {
-        unsafeFrozenTypeStateUpdater.set(this, value ? 1 : 0);
+    public void registerAsFrozenUnsafeAccessed() {
+        unsafeFrozenTypeStateUpdater.set(this, 1);
     }
 
     public boolean hasUnsafeFrozenTypeState() {

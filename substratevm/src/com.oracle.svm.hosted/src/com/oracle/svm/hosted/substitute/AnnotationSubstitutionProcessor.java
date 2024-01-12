@@ -313,7 +313,6 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 switch (cvField.getRecomputeValueKind()) {
                     case FieldOffset:
                         AnalysisField targetField = bb.getMetaAccess().lookupJavaField(cvField.getTargetField());
-                        targetField.registerAsAccessed(cvField);
                         assert !AnnotationAccess.isAnnotationPresent(targetField, Delete.class);
                         targetField.registerAsUnsafeAccessed(cvField);
                         break;
