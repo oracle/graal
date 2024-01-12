@@ -58,7 +58,7 @@ public final class Vector128 implements TruffleObject {
 
     public static final Vector128 ZERO = Vector128.ofBytes(new byte[16]);
 
-    private final byte[] bytes;
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private final byte[] bytes;
 
     private Vector128(byte[] bytes) {
         assert bytes.length == 16;
