@@ -55,7 +55,7 @@ public final class JVMCIVersionCheck {
                     "21", Map.of(DEFAULT_VENDOR_ENTRY, new Version(23, 1, 26)),
                     "22", Map.of(
                                     "Oracle Corporation", new Version("22+27", 1),
-                                    DEFAULT_VENDOR_ENTRY, new Version("22+29", 1)));
+                                    DEFAULT_VENDOR_ENTRY, new Version("22+32", 1)));
     private static final int NA = 0;
     /**
      * Minimum Java release supported by Graal.
