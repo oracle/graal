@@ -96,6 +96,8 @@ public class JDKInitializationFeature implements InternalFeature {
          */
         rci.rerunInitialization("java.io.ObjectInputFilter$Config", "Field filter have to be initialized at runtime");
 
+        rci.rerunInitialization("java.util.PropertyResourceBundle", "Changes behavior according to 'java.util.PropertyResourceBundle.encoding' system property");
+
         rci.rerunInitialization("sun.nio.ch.DevPollArrayWrapper", "Calls IOUtil.fdLimit()");
         rci.rerunInitialization("sun.nio.ch.EPoll", "Calls EPoll.eventSize(), EPoll.eventsOffset() and EPoll.dataOffset()");
         rci.rerunInitialization("sun.nio.ch.EPollSelectorImpl", "Calls IOUtil.fdLimit()");
