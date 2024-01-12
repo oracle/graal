@@ -418,6 +418,14 @@ public final class GCUtils {
 
     private static final class HeapDumpAnalyser extends ReachabilityAnalyser<HeapDumpAnalyser.State> {
 
+        /**
+         * The size of the buffer used for copying heap dump files is set at 16KB. This size is
+         * chosen to accommodate the variability in file system block sizes, which can range from
+         * 4KB to 16KB. The upper bound of 16KB is selected, considering that heap dumps are
+         * frequently large in size.
+         */
+        private static final int BLOCK_SIZE = 16384;
+
         private static volatile HotSpotDiagnosticMXBean hotSpotDiagnosticMBean;
         private static volatile Reference<?>[] todo;
 
@@ -472,7 +480,6 @@ public final class GCUtils {
                         delete(tmpDirectory);
                     } else if (copyHeapDump) {
                         compress(heapDumpFile, targetFile);
-                        System.out.println("[DEBUG] HEAP DUMP STORED: " + targetFile);
                         delete(tmpDirectory);
                     }
                 }
@@ -485,7 +492,7 @@ public final class GCUtils {
         private static void compress(Path src, Path target) throws IOException {
             try (BufferedInputStream in = new BufferedInputStream(Files.newInputStream(src));
                             GZIPOutputStream out = new GZIPOutputStream(new BufferedOutputStream(Files.newOutputStream(target)))) {
-                byte[] buffer = new byte[16384];
+                byte[] buffer = new byte[BLOCK_SIZE];
                 while (true) {
                     int count = in.read(buffer, 0, buffer.length);
                     if (count < 0) {
