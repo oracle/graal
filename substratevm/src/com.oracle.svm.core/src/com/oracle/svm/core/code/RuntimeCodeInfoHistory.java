@@ -24,22 +24,25 @@
  */
 package com.oracle.svm.core.code;
 
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.code.CodeInfoAccess.HasInstalledCode;
-import com.oracle.svm.core.deopt.SubstrateInstalledCode;
-import com.oracle.svm.core.thread.Safepoint;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.Isolates;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.code.CodeInfoAccess.HasInstalledCode;
+import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.RingBuffer;
-import org.graalvm.word.UnsignedWord;
+import com.oracle.svm.core.util.TimeUtils;
 
 public class RuntimeCodeInfoHistory {
     private static final RingBuffer.Consumer<CodeCacheLogEntry> PRINT_WITH_JAVA_HEAP_DATA = RuntimeCodeInfoHistory::printEntryWithJavaHeapData;
@@ -49,7 +52,7 @@ public class RuntimeCodeInfoHistory {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     RuntimeCodeInfoHistory() {
-        recentOperations = new RingBuffer<>(20, CodeCacheLogEntry::new);
+        recentOperations = new RingBuffer<>(SubstrateOptions.DiagnosticBufferSize.getValue(), CodeCacheLogEntry::new);
     }
 
     @Fold
@@ -98,7 +101,7 @@ public class RuntimeCodeInfoHistory {
     }
 
     public void printRecentOperations(Log log, boolean allowJavaHeapAccess) {
-        log.string("The ").signed(recentOperations.size()).string(" most recent RuntimeCodeInfo operations (oldest first): ").indent(true);
+        log.string("The ").signed(recentOperations.size()).string(" most recent RuntimeCodeInfo operations: ").indent(true);
         recentOperations.foreach(log, allowJavaHeapAccess ? PRINT_WITH_JAVA_HEAP_DATA : PRINT_WITHOUT_JAVA_HEAP_DATA);
         log.indent(false);
     }
@@ -159,7 +162,8 @@ public class RuntimeCodeInfoHistory {
 
         public void print(Log log, boolean allowJavaHeapAccess) {
             if (kind != null) {
-                log.unsigned(timestamp).string(" - ").string(kind).spaces(1);
+                long uptime = timestamp - Isolates.getCurrentStartTimeMillis();
+                log.rational(uptime, TimeUtils.millisPerSecond, 3).string("s - ").string(kind).spaces(1);
                 String name = allowJavaHeapAccess ? codeName : null;
                 CodeInfoAccess.printCodeInfo(log, codeInfo, codeInfoState, name, codeStart, codeEnd, hasInstalledCode, installedCodeAddress, installedCodeEntryPoint);
                 log.string(", safepointId: ").unsigned(safepointId).newline();

@@ -377,7 +377,7 @@ public class FrameInfoDecoder {
         FrameInfoQueryResult prev = null;
         ValueInfo[][] virtualObjects = null;
 
-        while (true) {
+        while (!state.isDone) {
             long start = readBuffer.getByteIndex();
             int encodedBci = readBuffer.getSVInt();
             if (encodedBci == NO_CALLER_BCI) {
@@ -460,6 +460,8 @@ public class FrameInfoDecoder {
 
             state.isFirstFrame = false;
         }
+
+        return result;
     }
 
     @Uninterruptible(reason = "Some allocators are interruptible.", calleeMustBe = false)

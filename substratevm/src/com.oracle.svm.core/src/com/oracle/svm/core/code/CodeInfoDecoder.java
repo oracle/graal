@@ -515,7 +515,8 @@ public final class CodeInfoDecoder {
     /**
      * This class can be used to iterate the Java-level stack trace information for a given
      * instruction pointer (IP). A single physical stack frame may correspond to multiple Java-level
-     * stack frames.
+     * stack frames. Iteration starts in the deepest inlined method and ends at the compilation
+     * root.
      */
     public static class FrameInfoCursor {
         private final ReusableTypeReader frameInfoReader = new ReusableTypeReader();
@@ -548,6 +549,12 @@ public final class CodeInfoDecoder {
         public boolean advance() {
             decodeNextEntry();
             return result != null;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public boolean hasCaller() {
+            assert result != null;
+            return !state.isDone;
         }
 
         /**

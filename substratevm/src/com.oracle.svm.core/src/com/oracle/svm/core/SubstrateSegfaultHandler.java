@@ -187,6 +187,15 @@ public abstract class SubstrateSegfaultHandler {
         logHandler.fatalError();
     }
 
+    protected static void printSegfaultAddressInfo(Log log, long addr) {
+        log.zhex(addr);
+        if (addr != 0) {
+            long delta = addr - CurrentIsolate.getIsolate().rawValue();
+            String sign = (delta >= 0 ? "+" : "-");
+            log.string(" (heapBase ").string(sign).string(" ").signed(Math.abs(delta)).string(")");
+        }
+    }
+
     static class SingleIsolateSegfaultSetup implements IsolateListener {
 
         /**

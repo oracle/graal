@@ -87,6 +87,14 @@ public class RealLog extends Log {
         return this;
     }
 
+    @Override
+    @NeverInline("Logging is always slow-path code")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
+    public Log string(String value, int maxLen) {
+        rawString(value, maxLen);
+        return this;
+    }
+
     private static final char[] NULL_CHARS = "null".toCharArray();
 
     @Override
@@ -292,6 +300,12 @@ public class RealLog extends Log {
     }
 
     @Override
+    public Log signed(long value, int fill, int align) {
+        number(value, 10, true, fill, align);
+        return this;
+    }
+
+    @Override
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log unsigned(WordBase value) {
         number(value.rawValue(), 10, false);
@@ -371,6 +385,12 @@ public class RealLog extends Log {
             }
         }
         return this;
+    }
+
+    @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
+    public Log rational(UnsignedWord numerator, long denominator, long decimals) {
+        return rational(numerator.rawValue(), denominator, decimals);
     }
 
     @Override
@@ -560,13 +580,19 @@ public class RealLog extends Log {
     }
 
     @Override
-    @NeverInline("Logging is always slow-path code")
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log hexdump(PointerBase from, int wordSize, int numWords) {
+        return hexdump(from, wordSize, numWords, 16);
+    }
+
+    @Override
+    @NeverInline("Logging is always slow-path code")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
+    public Log hexdump(PointerBase from, int wordSize, int numWords, int bytesPerLine) {
         Pointer base = WordFactory.pointer(from.rawValue());
         int sanitizedWordsize = wordSize > 0 ? Integer.highestOneBit(Math.min(wordSize, 8)) : 2;
         for (int offset = 0; offset < sanitizedWordsize * numWords; offset += sanitizedWordsize) {
-            if (offset % 16 == 0) {
+            if (offset % bytesPerLine == 0) {
                 zhex(base.add(offset));
                 string(":");
             }
@@ -585,7 +611,7 @@ public class RealLog extends Log {
                     zhex(base.readLong(offset));
                     break;
             }
-            if ((offset + sanitizedWordsize) % 16 == 0 && (offset + sanitizedWordsize) < sanitizedWordsize * numWords) {
+            if ((offset + sanitizedWordsize) % bytesPerLine == 0 && (offset + sanitizedWordsize) < sanitizedWordsize * numWords) {
                 newline();
             }
         }
@@ -632,7 +658,6 @@ public class RealLog extends Log {
                 newline().string("    ... ").unsigned(remaining).string(" more");
             }
         }
-        newline();
         return this;
     }
 }

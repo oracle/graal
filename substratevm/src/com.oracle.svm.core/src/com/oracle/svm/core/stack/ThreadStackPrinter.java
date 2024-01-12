@@ -27,6 +27,7 @@ package com.oracle.svm.core.stack;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -53,7 +54,7 @@ public class ThreadStackPrinter {
         @Override
         protected void logFrame(Log log, Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptFrame) {
             if (deoptFrame != null) {
-                logVirtualFrames(log, sp, ip, deoptFrame);
+                logVirtualFrames(log, sp, ip, codeInfo, deoptFrame);
                 return;
             }
 
@@ -68,17 +69,21 @@ public class ThreadStackPrinter {
                 if (!isFirst) {
                     log.newline();
                 }
-                logFrameRaw(log, sp, ip);
 
-                FrameInfoQueryResult frame = frameInfoCursor.get();
-                logFrameInfo(log, frame, CodeInfoAccess.getName(codeInfo));
+                boolean compilationRoot = !frameInfoCursor.hasCaller();
+                printFrameIdentifier(log, codeInfo, null, compilationRoot);
+                logFrameRaw(log, sp, ip, codeInfo);
+
+                String codeInfoName = DeoptimizationSupport.enabled() ? CodeInfoAccess.getName(codeInfo) : null;
+                logFrameInfo(log, frameInfoCursor.get(), codeInfoName);
                 isFirst = false;
                 printedFrames++;
             }
 
             if (isFirst) {
-                /* The code above failed, so print less detailed information. */
-                super.logFrame(log, sp, ip, codeInfo, deoptFrame);
+                /* We don't have any metadata, so print less detailed information. */
+                super.logFrame(log, sp, ip, codeInfo, null);
+                log.string("missing metadata");
             }
         }
     }
@@ -111,7 +116,7 @@ public class ThreadStackPrinter {
         @Override
         protected final boolean unknownFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, Object data) {
             Log log = (Log) data;
-            logFrameRaw(log, sp, ip);
+            logFrameRaw(log, sp, ip, WordFactory.nullPointer());
             if (DeoptimizationSupport.enabled()) {
                 log.string("  deoptFrame=").object(deoptimizedFrame);
             }
@@ -122,14 +127,17 @@ public class ThreadStackPrinter {
 
         @SuppressWarnings("unused")
         protected void logFrame(Log log, Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptFrame) {
-            logFrameRaw(log, sp, ip);
-            log.string("  FrameSize ").signed(CodeInfoAccess.lookupTotalFrameSize(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip)));
+            logFrameRaw(log, sp, ip, codeInfo);
             printedFrames++;
         }
 
-        protected static void logFrameRaw(Log log, Pointer sp, CodePointer ip) {
+        protected static void logFrameRaw(Log log, Pointer sp, CodePointer ip, CodeInfo codeInfo) {
             log.string("SP ").zhex(sp);
             log.string(" IP ").zhex(ip);
+            if (codeInfo.isNonNull()) {
+                long frameSize = CodeInfoAccess.lookupTotalFrameSize(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip));
+                log.string(" size=").signed(frameSize, 4, Log.LEFT_ALIGN);
+            }
         }
     }
 
@@ -140,22 +148,24 @@ public class ThreadStackPrinter {
         @Override
         protected void logFrame(Log log, Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptFrame) {
             if (deoptFrame != null) {
-                logVirtualFrames(log, sp, ip, deoptFrame);
+                logVirtualFrames(log, sp, ip, codeInfo, deoptFrame);
             } else {
                 logStackFrame(log, sp, ip, codeInfo);
             }
         }
 
-        protected void logVirtualFrames(Log log, Pointer sp, CodePointer ip, DeoptimizedFrame deoptFrame) {
+        protected void logVirtualFrames(Log log, Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptFrame) {
             for (DeoptimizedFrame.VirtualFrame frame = deoptFrame.getTopFrame(); frame != null; frame = frame.getCaller()) {
                 if (printedFrames >= MAX_STACK_FRAMES_PER_THREAD_TO_PRINT) {
                     log.string("... (truncated)").newline();
                     break;
                 }
 
-                logFrameRaw(log, sp, ip);
+                boolean compilationRoot = frame.getCaller() == null;
+                printFrameIdentifier(log, WordFactory.nullPointer(), deoptFrame, compilationRoot);
+                logFrameRaw(log, sp, ip, codeInfo);
                 logFrameInfo(log, frame.getFrameInfo(), ImageCodeInfo.CODE_INFO_NAME + ", deopt");
-                if (frame.getCaller() != null) {
+                if (!compilationRoot) {
                     log.newline();
                 }
                 printedFrames++;
@@ -163,10 +173,12 @@ public class ThreadStackPrinter {
         }
 
         private void logStackFrame(Log log, Pointer sp, CodePointer ip, CodeInfo codeInfo) {
-            logFrameRaw(log, sp, ip);
+            printFrameIdentifier(log, codeInfo, null, true);
+            logFrameRaw(log, sp, ip, codeInfo);
             log.spaces(2);
-            CodeInfoAccess.log(codeInfo, log);
-            log.string(" name = ").string(CodeInfoAccess.getName(codeInfo));
+            if (DeoptimizationSupport.enabled()) {
+                log.string("[").string(CodeInfoAccess.getName(codeInfo)).string("] ");
+            }
             printedFrames++;
         }
 
@@ -177,9 +189,28 @@ public class ThreadStackPrinter {
             }
             frameInfo.log(log);
         }
+
+        protected static void printFrameIdentifier(Log log, CodeInfo codeInfo, DeoptimizedFrame deoptFrame, boolean isCompilationRoot) {
+            char ch = getFrameIdentifier(codeInfo, deoptFrame, isCompilationRoot);
+            log.character(ch).spaces(2);
+        }
+
+        private static char getFrameIdentifier(CodeInfo codeInfo, DeoptimizedFrame deoptFrame, boolean isCompilationRoot) {
+            if (deoptFrame != null) {
+                return 'D';
+            } else if (!isCompilationRoot) {
+                return 'i';
+            } else if (codeInfo == CodeInfoTable.getImageCodeInfo()) {
+                return 'A';
+            } else {
+                return 'J';
+            }
+        }
     }
 
-    /** Walk the stack printing each frame. */
+    /**
+     * Walk the stack printing each frame.
+     */
     @NeverInline("debugger breakpoint")
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public static void printBacktrace() {
@@ -204,7 +235,7 @@ public class ThreadStackPrinter {
 
     @Uninterruptible(reason = "CodeInfo in JavaStackWalk is currently null, so printing to log is safe right now.", calleeMustBe = false)
     private static void logFrameAnchor(Log log, Pointer startSP, CodePointer startIP) {
-        Stage0StackFramePrintVisitor.logFrameRaw(log, startSP, startIP);
+        Stage0StackFramePrintVisitor.logFrameRaw(log, startSP, startIP, WordFactory.nullPointer());
         log.string("  IP is not within Java code. Trying frame anchor of last Java frame instead.").newline();
     }
 }

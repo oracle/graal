@@ -309,7 +309,7 @@ public final class CodeInfoAccess {
     }
 
     public static Log log(CodeInfo info, Log log) {
-        return info.isNull() ? log.string("null") : log.string(CodeInfo.class.getName()).string("@").hex(info);
+        return info.isNull() ? log.string("null") : log.string("CodeInfo@").hex(info);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

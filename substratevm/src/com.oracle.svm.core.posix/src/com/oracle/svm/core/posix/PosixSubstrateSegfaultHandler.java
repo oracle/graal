@@ -28,6 +28,7 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
@@ -77,7 +78,10 @@ class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
             if (sigInfo.si_errno() != 0) {
                 log.string(", si_errno: ").signed(sigInfo.si_errno());
             }
-            log.string(", si_addr: ").zhex(sigInfo.si_addr());
+
+            VoidPointer addr = sigInfo.si_addr();
+            log.string(", si_addr: ");
+            printSegfaultAddressInfo(log, addr.rawValue());
             log.newline();
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -179,7 +179,7 @@ public interface Platform {
          * @since 21.0
          */
         default String getOS() {
-            return LINUX.class.getSimpleName().toLowerCase();
+            return "linux";
         }
     }
 
@@ -196,7 +196,7 @@ public interface Platform {
          * @since 21.0
          */
         default String getOS() {
-            return ANDROID.class.getSimpleName().toLowerCase();
+            return "android";
         }
     }
 
@@ -221,7 +221,7 @@ public interface Platform {
          * @since 21.0
          */
         default String getOS() {
-            return IOS.class.getSimpleName().toLowerCase();
+            return "ios";
         }
     }
 
@@ -255,7 +255,7 @@ public interface Platform {
          * @since 21.0
          */
         default String getOS() {
-            return WINDOWS.class.getSimpleName().toLowerCase();
+            return "windows";
         }
     }
 

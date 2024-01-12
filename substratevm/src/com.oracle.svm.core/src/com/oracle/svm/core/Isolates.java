@@ -58,6 +58,8 @@ public class Isolates {
     public static final CGlobalData<Word> IMAGE_HEAP_WRITABLE_BEGIN = CGlobalDataFactory.forSymbol(IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME);
     public static final CGlobalData<Word> IMAGE_HEAP_WRITABLE_END = CGlobalDataFactory.forSymbol(IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME);
 
+    private static long startTimeMillis;
+    private static long startNanoTime;
     private static Boolean isCurrentFirst;
 
     /**
@@ -75,6 +77,31 @@ public class Isolates {
     public static void setCurrentIsFirstIsolate(boolean value) {
         VMError.guarantee(isCurrentFirst == null);
         isCurrentFirst = value;
+    }
+
+    public static void assignCurrentStartTime() {
+        assert startTimeMillis == 0 : startTimeMillis;
+        assert startNanoTime == 0 : startNanoTime;
+        startTimeMillis = System.currentTimeMillis();
+        startNanoTime = System.nanoTime();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long getCurrentStartTimeMillis() {
+        assert startTimeMillis != 0;
+        return startTimeMillis;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long getCurrentUptimeMillis() {
+        assert startTimeMillis != 0;
+        return System.currentTimeMillis() - startTimeMillis;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long getCurrentStartNanoTime() {
+        assert startNanoTime != 0;
+        return startNanoTime;
     }
 
     @Uninterruptible(reason = "Thread state not yet set up.")
