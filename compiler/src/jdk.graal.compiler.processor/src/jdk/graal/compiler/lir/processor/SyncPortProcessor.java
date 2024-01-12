@@ -129,15 +129,19 @@ public class SyncPortProcessor extends AbstractProcessor {
             }
 
             String extraMessage = "";
-            if (!isURLOverwritten) {
-                String urlOld = String.format("https://raw.githubusercontent.com/openjdk/jdk/%s/%s", commit, path);
-                String sha1Old = digest(proxy, md, urlOld, lineStart - 1, lineEnd);
-                if (sha1.equals(sha1Old)) {
-                    String latestCommit = getLatestCommit(proxy);
-                    int idx = find(proxy, urlOld, url, lineStart - 1, lineEnd, SEARCH_RANGE);
-                    if (idx != -1) {
-                        int idxInclusive = idx + 1;
-                        kind = NOTE;
+
+            String urlOld = String.format("https://raw.githubusercontent.com/openjdk/jdk/%s/%s", commit, path);
+            String sha1Old = digest(proxy, md, urlOld, lineStart - 1, lineEnd);
+
+            if (sha1.equals(sha1Old)) {
+                String latestCommit = getLatestCommit(proxy);
+                int idx = find(proxy, urlOld, url, lineStart - 1, lineEnd, SEARCH_RANGE);
+                if (idx != -1) {
+                    int idxInclusive = idx + 1;
+                    kind = NOTE;
+                    if (isURLOverwritten) {
+                        extraMessage = " The original code snippet is shifted.";
+                    } else {
                         String urlFormat = "https://github.com/openjdk/jdk/blob/%s/%s#L%d-L%d";
                         String newUrl = String.format(urlFormat, latestCommit, path, idxInclusive, idxInclusive + (lineEnd - lineStart));
                         extraMessage = String.format("""
@@ -153,33 +157,33 @@ public class SyncPortProcessor extends AbstractProcessor {
                             assert !newUrl.contains("+");
                             dumpUpdateCommands.printf("sed -i s+%s+%s+g $(git grep --files-with-matches %s)%n", oldUrl, newUrl, sha1);
                         }
-                    } else {
-                        extraMessage = String.format("""
-                                         See also:
-                                        https://github.com/openjdk/jdk/compare/%s...%s
-                                        https://github.com/openjdk/jdk/commits/%s/%s
-                                        """,
-                                        commit,
-                                        latestCommit,
-                                        latestCommit,
-                                        path);
-                        if (Boolean.parseBoolean(System.getenv(SYNC_DUMP_ENV_VAR))) {
-                            dump(proxy, urlOld, lineStart - 1, lineEnd, element + ".old");
-                            dump(proxy, url, lineStart - 1, lineEnd, element + ".new");
-                        }
                     }
                 } else {
                     extraMessage = String.format("""
-                                     New SyncPort? Then:
-                                    @SyncPort(from = "https://github.com/openjdk/jdk/blob/%s/%s#L%d-L%d",
-                                              sha1 = "%s")
+                                     See also:
+                                    https://github.com/openjdk/jdk/compare/%s...%s
+                                    https://github.com/openjdk/jdk/commits/%s/%s
                                     """,
-                                    getLatestCommit(proxy),
-                                    path,
-                                    lineStart,
-                                    lineEnd,
-                                    sha1Latest);
+                                    commit,
+                                    latestCommit,
+                                    latestCommit,
+                                    path);
+                    if (Boolean.parseBoolean(System.getenv(SYNC_DUMP_ENV_VAR))) {
+                        dump(proxy, urlOld, lineStart - 1, lineEnd, element + ".old");
+                        dump(proxy, url, lineStart - 1, lineEnd, element + ".new");
+                    }
                 }
+            } else {
+                extraMessage = String.format("""
+                                 New SyncPort? Then:
+                                @SyncPort(from = "https://github.com/openjdk/jdk/blob/%s/%s#L%d-L%d",
+                                          sha1 = "%s")
+                                """,
+                                getLatestCommit(proxy),
+                                path,
+                                lineStart,
+                                lineEnd,
+                                sha1Latest);
             }
             env().getMessager().printMessage(kind,
                             String.format("Sha1 digest of %s (ported by %s) does not match %s%s#L%d-L%d : expected %s but was %s.%s",
