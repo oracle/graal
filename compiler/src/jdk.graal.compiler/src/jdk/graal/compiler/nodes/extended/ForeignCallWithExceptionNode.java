@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.nodes;
+package jdk.graal.compiler.nodes.extended;
 
 import static jdk.graal.compiler.nodeinfo.InputType.Memory;
 import static jdk.graal.compiler.nodeinfo.InputType.State;
@@ -32,6 +32,7 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_2;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node.NodeIntrinsicFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeInputList;
@@ -43,8 +44,6 @@ import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.UnreachableBeginNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.WithExceptionNode;
-import jdk.graal.compiler.nodes.extended.ForeignCall;
-import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
@@ -132,7 +131,7 @@ public class ForeignCallWithExceptionNode extends WithExceptionNode implements F
 
     @Override
     public void setBci(int bci) {
-        assert this.bci == BytecodeFrame.UNKNOWN_BCI || this.bci == bci;
+        assert this.bci == BytecodeFrame.UNKNOWN_BCI || this.bci == bci : Assertions.errorMessage("BCI must be unknown or equal", this.bci, bci);
         this.bci = bci;
     }
 

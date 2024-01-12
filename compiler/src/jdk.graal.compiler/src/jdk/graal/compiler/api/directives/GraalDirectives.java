@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.api.directives;
 
+import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
@@ -538,6 +539,39 @@ public final class GraalDirectives {
             deoptimize();
         }
         return value;
+    }
+
+    /**
+     * Ensures that the given object allocation is represented as one that never moves, i.e., is
+     * fixed and has proper exception edges. {@code object} must be an allocation represented by a
+     * {@link AbstractNewObjectNode} in Graal IR. There must not be any statements between the
+     * original allocation bytecode and the call to {@link #ensureAllocatedHere(Object)}.
+     * Additionally, the parameter to the intrinsic must be a fresh allocation and no local variable
+     * because there must not be any references to the allocation before it is marked non-movable.
+     *
+     * Allowed patterns are
+     *
+     * <pre>
+     * Object[] array = GraalDirectives.ensureAllocatedHere(new Object[10]);
+     * </pre>
+     *
+     * but not cases where there are statements between the allocation and the intrinsic
+     *
+     * <pre>
+     * Object[] array = new Object[10];
+     * sideEffect(); // prohibited to have something between allocation and intrinsic
+     * GraalDirectives.ensureAllocatedHere(array);
+     * </pre>
+     *
+     * and patterns where the argument is used as a local variable are also not allowed
+     *
+     * <pre>
+     * Object[] array = new Object[10];// used as a local
+     * GraalDirectives.ensureAllocatedHere(array);
+     * </pre>
+     */
+    public static <T> T ensureAllocatedHere(T object) {
+        return object;
     }
 
     /**

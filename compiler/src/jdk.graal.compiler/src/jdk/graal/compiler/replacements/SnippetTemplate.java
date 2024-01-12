@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -136,6 +136,7 @@ import jdk.graal.compiler.nodes.extended.CaptureStateBeginNode;
 import jdk.graal.compiler.nodes.extended.GuardedNode;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
+import jdk.graal.compiler.nodes.java.ExceptionObjectNode.LoweredExceptionObjectBegin;
 import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
@@ -1780,8 +1781,11 @@ public class SnippetTemplate {
             kills.remove(any());
         }
 
-        // node can only lower to a ANY_LOCATION kill if the replacee also kills ANY_LOCATION
-        assert !kills.contains(any()) : "snippet graph contains a kill to ANY_LOCATION, but replacee (" + replacee + ") doesn't kill ANY_LOCATION.  kills: " + kills;
+        // node can only lower to a ANY_LOCATION kill if the replacee also kills ANY_LOCATION,
+        // except if the replacee is a WithExceptionNode and the kill to any in the snippet itself
+        // is the exception handler
+        assert (replacee instanceof WithExceptionNode && snippetKillAnyIsExceptionHandler(replacee)) ||
+                        !kills.contains(any()) : "snippet graph contains a kill to ANY_LOCATION, but replacee (" + replacee + ") doesn't kill ANY_LOCATION.  kills: " + kills;
 
         /*
          * Kills to private locations are safe, since there can be no floating read to these
@@ -1796,6 +1800,27 @@ public class SnippetTemplate {
 
         assert kills.isEmpty() : "snippet graph kills non-private locations " + kills + " that replacee (" + replacee + ") doesn't kill";
         return true;
+    }
+
+    /**
+     * Determine if this snippet only has a memory kill ANY because it has an exception handler and
+     * is lowered from a {@link WithExceptionNode}.
+     */
+    private boolean snippetKillAnyIsExceptionHandler(Node replacee) {
+        if (replacee instanceof WithExceptionNode && snippet.getNodes(ExceptionObjectNode.LoweredExceptionObjectBegin.TYPE).count() == 1) {
+            for (Node n : snippet.getNodes()) {
+                if (n == snippet.start()) {
+                    continue;
+                }
+                if (MemoryKill.isMemoryKill(n) && MemoryKill.isSingleMemoryKill(n) && MemoryKill.asSingleMemoryKill(n).getKilledLocationIdentity().equals(LocationIdentity.ANY_LOCATION)) {
+                    if (!(n instanceof MemoryAnchorNode)) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+        return false;
     }
 
     private static class MemoryInputMap implements MemoryMap {
@@ -2117,6 +2142,7 @@ public class SnippetTemplate {
                 // replacee exception handler
                 WithExceptionNode replaceeWithExceptionNode = (WithExceptionNode) replacee;
                 AbstractBeginNode exceptionEdge = replaceeWithExceptionNode.exceptionEdge();
+
                 if (exceptionEdge instanceof ExceptionObjectNode) {
                     /*
                      * The exception object node is a begin node, i.e., it can be used as an anchor
@@ -2132,6 +2158,10 @@ public class SnippetTemplate {
                     // replace exceptionEdge with snippetUnwindPath
                     replaceExceptionObjectNode(exceptionEdge, snippetUnwindPath);
                     GraphUtil.killCFG(snippetUnwindDuplicate);
+                    if (args.cacheKey.loweringStage == LoweringTool.StandardLoweringStage.LOW_TIER && exceptionEdge instanceof ExceptionObjectNode && exceptionEdge.hasNoUsages() &&
+                                    walkBackToExceptionEdgeStart(snippetUnwindPath) instanceof LoweredExceptionObjectBegin) {
+                        ((ExceptionObjectNode) exceptionEdge).markForDeletion();
+                    }
                 } else {
                     GraalError.guarantee(exceptionEdge instanceof UnreachableBeginNode, "Unexpected exception edge: %s", exceptionEdge);
                     markExceptionsUnreachable(unwindPath.exception(), duplicates);
@@ -2198,6 +2228,39 @@ public class SnippetTemplate {
         } catch (Throwable e) {
             throw debug.handle(e);
         }
+
+    }
+
+    public static FixedNode walkBackToExceptionEdgeStart(FixedNode start) {
+        StructuredGraph g = start.graph();
+        final FixedNode graphStart = g.start();
+        FixedNode cur = start;
+        FixedNode prev = null;
+        while (cur != null && cur != graphStart) {
+            if (cur instanceof WithExceptionNode we) {
+                /*
+                 * WithExceptionNode in an exception handler: very unlikely to have snippets that
+                 * catch exceptions, still be defensive here.
+                 */
+                if (prev == we.exceptionEdge()) {
+                    return we.exceptionEdge();
+                }
+            }
+            prev = cur;
+            if (cur instanceof MergeNode m) {
+                /*
+                 * We encounter a merge - this can be if the exception handler is non trivial and
+                 * contains control flow. Given we want to try very hard to resolve this lowering we
+                 * still go beyond the merge - we try the first end, if we succeed we are lucky. If
+                 * not we abort. After all, low tier lowered snippets with exception handlers are
+                 * (and should be) rare.
+                 */
+                cur = m.forwardEndAt(0);
+                continue;
+            }
+            cur = (FixedNode) cur.predecessor();
+        }
+        return null;
     }
 
     /**
@@ -2438,7 +2501,7 @@ public class SnippetTemplate {
                  */
                 for (DeoptimizingNode deoptNode : deoptNodes) {
                     DeoptimizingNode deoptDup = (DeoptimizingNode) duplicates.get(deoptNode.asNode());
-                    GraalError.guarantee(!deoptDup.canDeoptimize(), "No FrameState is being transferred to DeoptimizingNode.");
+                    GraalError.guarantee(!deoptDup.canDeoptimize(), "No FrameState is being transferred to DeoptimizingNode %s. ", deoptDup);
                 }
             }
         }
