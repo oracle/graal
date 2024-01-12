@@ -39,6 +39,7 @@ public interface ImageHeapObject {
 
     void setOffsetInPartition(long value);
 
+    /** Returns the heap-base relative offset of this object. */
     long getOffset();
 
     ImageHeapPartition getPartition();

@@ -26,20 +26,12 @@ package com.oracle.svm.core.image;
 
 import java.nio.ByteBuffer;
 
-import com.oracle.svm.core.heap.Heap;
-
 /**
  * This class is responsible for computing and storing the layout of the native image heap. A native
  * image heap consist of multiple {@link ImageHeapPartition}s. Every object in the native image heap
  * is assigned to a position within a {@link ImageHeapPartition}.
  */
 public interface ImageHeapLayouter {
-    /**
-     * The offset of this image heap relative to the start of the first image heap (which itself is
-     * not the same as the heap base, see {@link Heap#getImageHeapOffsetInAddressSpace}).
-     */
-    long getStartOffset();
-
     /**
      * Returns all native image heap partitions.
      */
@@ -51,9 +43,7 @@ public interface ImageHeapLayouter {
     void assignObjectToPartition(ImageHeapObject info, boolean immutable, boolean references, boolean relocatable);
 
     /**
-     * This method places all heap partitions as one contiguous memory block in one section. After
-     * calling that method, all native image heap objects are assigned their final address. This
-     * address must not change anymore.
+     * Places all heap partitions and assigns objects their final offsets.
      */
     ImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize);
 

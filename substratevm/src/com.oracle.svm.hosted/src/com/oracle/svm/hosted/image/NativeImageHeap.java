@@ -59,7 +59,6 @@ import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.FillerObject;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -89,7 +88,6 @@ import com.oracle.svm.hosted.meta.UniverseBuilder;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.CompressEncoding;
-import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -742,8 +740,6 @@ public final class NativeImageHeap implements ImageHeap {
         final Object reason;
     }
 
-    private final int imageHeapOffsetInAddressSpace = Heap.getHeap().getImageHeapOffsetInAddressSpace();
-
     public final class ObjectInfo implements ImageHeapObject {
         private final JavaConstant constant;
         private final HostedClass clazz;
@@ -816,37 +812,6 @@ public final class NativeImageHeap implements ImageHeap {
         public void setHeapPartition(ImageHeapPartition value) {
             assert this.partition == null;
             this.partition = value;
-        }
-
-        /**
-         * Returns the index into the {@link RelocatableBuffer} to which this object is written.
-         */
-        public int getIndexInBuffer(long index) {
-            long result = getOffset() + index;
-            return NumUtil.safeToInt(result);
-        }
-
-        /**
-         * If heap base addressing is enabled, this returns the heap-base relative address of this
-         * object. Otherwise, this returns the offset of the object within a native image section
-         * (e.g., read-only or writable).
-         */
-        public long getAddress() {
-            /*
-             * At run-time, the image heap may be mapped in a way that there is some extra space at
-             * the beginning of the heap. So, all heap-base-relative addresses must be adjusted by
-             * that offset.
-             */
-            return imageHeapOffsetInAddressSpace + getOffset();
-        }
-
-        /**
-         * Similar to {@link #getAddress()} but this method is typically used to get the address of
-         * a field within an object.
-         */
-        public long getAddress(long delta) {
-            assert delta >= 0 && delta < getSize() : "Index: " + delta + " out of bounds: [0 .. " + getSize() + ").";
-            return getAddress() + delta;
         }
 
         @Override
