@@ -255,9 +255,10 @@ local devkits = graal_common.devkits;
       local java_deps(edition) = {
         downloads+: {
           JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-' + java_version],
+          ESPRESSO_JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21'],
         } + (
-          if (os == 'linux' || os == 'darwin') && (arch == 'amd64') && (java_version != 'latest') then {
-            LLVM_JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-' + java_version + '-llvm'],
+          if (os == 'linux' || os == 'darwin') && (arch == 'amd64') then {
+            ESPRESSO_LLVM_JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21-llvm'],
           } else {
           }
         ) + (
