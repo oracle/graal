@@ -41,6 +41,7 @@
 (module
   (type $int_func (func (result i32)))
   (type $proc (func))
+  (type $teardown_func (func (param i32)))
 
   (global $iterations i32 (i32.const 10000000))
 
@@ -48,7 +49,7 @@
 
   (func (export "benchmarkSetupEach") (type $proc))
 
-  (func (export "benchmarkTeardownEach") (type $proc))
+  (func (export "benchmarkTeardownEach") (type $teardown_func))
 
   (func (export "benchmarkRun") (type $int_func)
     (local $i i32)
