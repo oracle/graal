@@ -161,7 +161,6 @@ import jdk.graal.compiler.replacements.nodes.MacroNode.MacroParams;
 import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Architecture;
@@ -778,7 +777,7 @@ public class HotSpotGraphBuilderPlugins {
             }
         });
 
-        if (JavaVersionUtil.JAVA_SPEC >= 22) {
+        if (config.threadIsDisableSuspendOffset != -1) {
             r.register(new InvocationPlugin("notifyJvmtiDisableSuspend", Receiver.class, boolean.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode enter) {
@@ -787,7 +786,6 @@ public class HotSpotGraphBuilderPlugins {
                             receiver.get();
                             // unconditionally update the is_disable_suspend bit in current
                             // JavaThread
-                            GraalError.guarantee(config.threadIsDisableSuspendOffset != -1, "JavaThread::_is_disable_suspend is not exported");
                             CurrentJavaThreadNode javaThread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));
                             OffsetAddressNode address = b.add(new OffsetAddressNode(javaThread, helper.asWord(config.threadIsDisableSuspendOffset)));
                             b.add(new JavaWriteNode(JavaKind.Boolean, address, HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_IS_DISABLE_SUSPEND, enter, BarrierType.NONE, false));
