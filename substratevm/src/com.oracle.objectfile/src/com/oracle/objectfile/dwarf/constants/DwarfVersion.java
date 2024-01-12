@@ -24,30 +24,28 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf.constants;
+package com.oracle.objectfile.dwarf.constants;
 
 /**
- * Various ELF sections created by GraalVM including all debug info sections. The enum sequence
- * starts with the text section (not defined in the DWARF spec and not created by debug info code).
+ * The DWARF version values used by GraalVM.
  */
-public enum DwarfSectionName {
-    TEXT_SECTION(".text"),
-    DW_STR_SECTION(".debug_str"),
-    DW_LINE_SECTION(".debug_line"),
-    DW_FRAME_SECTION(".debug_frame"),
-    DW_ABBREV_SECTION(".debug_abbrev"),
-    DW_INFO_SECTION(".debug_info"),
-    DW_LOC_SECTION(".debug_loc"),
-    DW_ARANGES_SECTION(".debug_aranges"),
-    DW_RANGES_SECTION(".debug_ranges");
+public enum DwarfVersion {
 
-    private final String value;
+    /**
+     * Currently generated debug info relies on DWARF spec version 4. However, some sections may
+     * still need to be generated as version 2.
+     */
+    DW_VERSION_2((short) 2),
+    DW_VERSION_4((short) 4);
 
-    DwarfSectionName(String s) {
+    private final short value;
+
+    DwarfVersion(short s) {
         value = s;
     }
 
-    public String value() {
+    public short value() {
         return value;
     }
+
 }

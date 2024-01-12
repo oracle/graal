@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf;
+package com.oracle.objectfile.dwarf;
 
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.BuildDependency;
@@ -44,14 +44,14 @@ import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
-import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.AbbrevCode;
+import com.oracle.objectfile.dwarf.DwarfDebugInfo.AbbrevCode;
 import com.oracle.objectfile.elf.ELFMachine;
 import com.oracle.objectfile.elf.ELFObjectFile;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfFlag;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfTag;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
+import com.oracle.objectfile.dwarf.constants.DwarfExpressionOpcode;
+import com.oracle.objectfile.dwarf.constants.DwarfFlag;
+import com.oracle.objectfile.dwarf.constants.DwarfSectionName;
+import com.oracle.objectfile.dwarf.constants.DwarfTag;
+import com.oracle.objectfile.dwarf.constants.DwarfVersion;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.graal.compiler.debug.DebugContext;
 

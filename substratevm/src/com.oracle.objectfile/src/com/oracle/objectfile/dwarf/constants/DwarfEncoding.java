@@ -24,28 +24,29 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf.constants;
+package com.oracle.objectfile.dwarf.constants;
 
 /**
- * The DWARF version values used by GraalVM.
+ * DW_AT_encoding attribute values.
  */
-public enum DwarfVersion {
+public enum DwarfEncoding {
+    @SuppressWarnings("unused")
+    DW_ATE_address((byte) 0x1),
+    DW_ATE_boolean((byte) 0x2),
+    DW_ATE_float((byte) 0x4),
+    DW_ATE_signed((byte) 0x5),
+    DW_ATE_signed_char((byte) 0x6),
+    DW_ATE_unsigned((byte) 0x7),
+    @SuppressWarnings("unused")
+    DW_ATE_unsigned_char((byte) 0x8);
 
-    /**
-     * Currently generated debug info relies on DWARF spec version 4. However, some sections may
-     * still need to be generated as version 2.
-     */
-    DW_VERSION_2((short) 2),
-    DW_VERSION_4((short) 4);
+    private final byte value;
 
-    private final short value;
-
-    DwarfVersion(short s) {
-        value = s;
+    DwarfEncoding(byte b) {
+        value = b;
     }
 
-    public short value() {
+    public byte value() {
         return value;
     }
-
 }

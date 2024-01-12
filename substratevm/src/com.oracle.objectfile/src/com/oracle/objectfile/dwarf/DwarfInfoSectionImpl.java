@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf;
+package com.oracle.objectfile.dwarf;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -33,14 +33,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Stream;
 
-import com.oracle.objectfile.elf.dwarf.constants.DwarfAccess;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfEncoding;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfFlag;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfInline;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfLanguage;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
+import com.oracle.objectfile.dwarf.constants.DwarfAccess;
+import com.oracle.objectfile.dwarf.constants.DwarfEncoding;
+import com.oracle.objectfile.dwarf.constants.DwarfExpressionOpcode;
+import com.oracle.objectfile.dwarf.constants.DwarfFlag;
+import com.oracle.objectfile.dwarf.constants.DwarfInline;
+import com.oracle.objectfile.dwarf.constants.DwarfLanguage;
+import com.oracle.objectfile.dwarf.constants.DwarfSectionName;
+import com.oracle.objectfile.dwarf.constants.DwarfVersion;
 import org.graalvm.collections.EconomicSet;
 import jdk.graal.compiler.debug.DebugContext;
 
@@ -61,7 +61,7 @@ import com.oracle.objectfile.debugentry.range.SubRange;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugPrimitiveTypeInfo;
-import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.AbbrevCode;
+import com.oracle.objectfile.dwarf.DwarfDebugInfo.AbbrevCode;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;

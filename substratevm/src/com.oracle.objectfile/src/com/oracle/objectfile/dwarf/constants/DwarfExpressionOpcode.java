@@ -24,18 +24,35 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf.constants;
+package com.oracle.objectfile.dwarf.constants;
 
-/*
- * DW_AT_language attribute has a range of pre-defined values but we
- * are only interested in Java.
+/**
+ * Values used to build DWARF expressions and locations.
  */
-public enum DwarfLanguage {
-    DW_LANG_Java((byte) 0xb);
+public enum DwarfExpressionOpcode {
+    DW_OP_addr((byte) 0x03),
+    @SuppressWarnings("unused")
+    DW_OP_deref((byte) 0x06),
+    DW_OP_dup((byte) 0x12),
+    DW_OP_and((byte) 0x1a),
+    DW_OP_not((byte) 0x20),
+    DW_OP_plus((byte) 0x22),
+    DW_OP_shl((byte) 0x24),
+    DW_OP_shr((byte) 0x25),
+    DW_OP_bra((byte) 0x28),
+    DW_OP_eq((byte) 0x29),
+    DW_OP_lit0((byte) 0x30),
+    DW_OP_reg0((byte) 0x50),
+    DW_OP_breg0((byte) 0x70),
+    DW_OP_regx((byte) 0x90),
+    DW_OP_bregx((byte) 0x92),
+    DW_OP_push_object_address((byte) 0x97),
+    DW_OP_implicit_value((byte) 0x9e),
+    DW_OP_stack_value((byte) 0x9f);
 
     private final byte value;
 
-    DwarfLanguage(byte b) {
+    DwarfExpressionOpcode(byte b) {
         value = b;
     }
 

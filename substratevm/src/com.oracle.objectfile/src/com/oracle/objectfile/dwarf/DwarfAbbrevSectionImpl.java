@@ -24,15 +24,15 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf;
+package com.oracle.objectfile.dwarf;
 
-import com.oracle.objectfile.elf.dwarf.constants.DwarfAttribute;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfForm;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfHasChildren;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfTag;
+import com.oracle.objectfile.dwarf.constants.DwarfForm;
+import com.oracle.objectfile.dwarf.constants.DwarfHasChildren;
+import com.oracle.objectfile.dwarf.constants.DwarfSectionName;
+import com.oracle.objectfile.dwarf.constants.DwarfTag;
+import com.oracle.objectfile.dwarf.constants.DwarfAttribute;
 import jdk.graal.compiler.debug.DebugContext;
-import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.AbbrevCode;
+import com.oracle.objectfile.dwarf.DwarfDebugInfo.AbbrevCode;
 
 /**
  * Section generator for <code>debug_abbrev</code> section. That section defines the layout of the

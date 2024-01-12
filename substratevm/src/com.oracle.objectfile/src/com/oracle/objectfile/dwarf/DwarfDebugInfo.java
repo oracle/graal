@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf;
+package com.oracle.objectfile.dwarf;
 
 import java.nio.ByteOrder;
 
@@ -37,7 +37,7 @@ import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.elf.ELFMachine;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfLanguage;
+import com.oracle.objectfile.dwarf.constants.DwarfLanguage;
 import org.graalvm.collections.EconomicMap;
 
 /**

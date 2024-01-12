@@ -24,13 +24,13 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf;
+package com.oracle.objectfile.dwarf;
 
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.range.Range;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfFrameValue;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
+import com.oracle.objectfile.dwarf.constants.DwarfFrameValue;
+import com.oracle.objectfile.dwarf.constants.DwarfSectionName;
 import jdk.graal.compiler.debug.DebugContext;
 
 import java.util.List;

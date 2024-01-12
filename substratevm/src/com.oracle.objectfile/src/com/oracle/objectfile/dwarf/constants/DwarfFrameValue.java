@@ -24,23 +24,41 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf.constants;
+package com.oracle.objectfile.dwarf.constants;
 
-/*
- * Values for DW_AT_inline attribute.
+/**
+ * Constants that appear in CIE and FDE frame section entries.
  */
-public enum DwarfInline {
+public enum DwarfFrameValue {
+    DW_CFA_CIE_version((byte) 1),
+    /* Values encoded in high 2 bits. */
+    DW_CFA_advance_loc((byte) 0x1),
+    DW_CFA_offset((byte) 0x2),
+    DW_CFA_restore((byte) 0x3),
+    /* Values encoded in low 6 bits. */
+    DW_CFA_nop((byte) 0x0),
     @SuppressWarnings("unused")
-    DW_INL_not_inlined((byte) 0),
-    DW_INL_inlined((byte) 1),
+    DW_CFA_set_loc1((byte) 0x1),
+    DW_CFA_advance_loc1((byte) 0x2),
+    DW_CFA_advance_loc2((byte) 0x3),
+    DW_CFA_advance_loc4((byte) 0x4),
     @SuppressWarnings("unused")
-    DW_INL_declared_not_inlined((byte) 2),
+    DW_CFA_offset_extended((byte) 0x5),
     @SuppressWarnings("unused")
-    DW_INL_declared_inlined((byte) 3);
+    DW_CFA_restore_extended((byte) 0x6),
+    @SuppressWarnings("unused")
+    DW_CFA_undefined((byte) 0x7),
+    @SuppressWarnings("unused")
+    DW_CFA_same_value((byte) 0x8),
+    DW_CFA_register((byte) 0x9),
+    DW_CFA_def_cfa((byte) 0xc),
+    @SuppressWarnings("unused")
+    DW_CFA_def_cfa_register((byte) 0xd),
+    DW_CFA_def_cfa_offset((byte) 0xe);
 
     private final byte value;
 
-    DwarfInline(byte b) {
+    DwarfFrameValue(byte b) {
         value = b;
     }
 

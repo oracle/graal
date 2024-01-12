@@ -35,7 +35,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-import com.oracle.objectfile.elf.dwarf.DwarfLocSectionImpl;
+import com.oracle.objectfile.dwarf.DwarfLocSectionImpl;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -47,14 +47,14 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.StringTable;
 import com.oracle.objectfile.SymbolTable;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
-import com.oracle.objectfile.elf.dwarf.DwarfARangesSectionImpl;
-import com.oracle.objectfile.elf.dwarf.DwarfAbbrevSectionImpl;
-import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
-import com.oracle.objectfile.elf.dwarf.DwarfFrameSectionImpl;
-import com.oracle.objectfile.elf.dwarf.DwarfInfoSectionImpl;
-import com.oracle.objectfile.elf.dwarf.DwarfLineSectionImpl;
-import com.oracle.objectfile.elf.dwarf.DwarfRangesSectionImpl;
-import com.oracle.objectfile.elf.dwarf.DwarfStrSectionImpl;
+import com.oracle.objectfile.dwarf.DwarfARangesSectionImpl;
+import com.oracle.objectfile.dwarf.DwarfAbbrevSectionImpl;
+import com.oracle.objectfile.dwarf.DwarfDebugInfo;
+import com.oracle.objectfile.dwarf.DwarfFrameSectionImpl;
+import com.oracle.objectfile.dwarf.DwarfInfoSectionImpl;
+import com.oracle.objectfile.dwarf.DwarfLineSectionImpl;
+import com.oracle.objectfile.dwarf.DwarfRangesSectionImpl;
+import com.oracle.objectfile.dwarf.DwarfStrSectionImpl;
 import com.oracle.objectfile.io.AssemblyBuffer;
 import com.oracle.objectfile.io.OutputAssembler;
 

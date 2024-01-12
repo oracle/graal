@@ -24,18 +24,19 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf.constants;
+package com.oracle.objectfile.dwarf.constants;
 
-/*
- * Compile unit DIE header has_children attribute values.
+/**
+ * DW_FORM_flag only has two possible attribute values.
  */
-public enum DwarfHasChildren {
-    DW_CHILDREN_no((byte) 0),
-    DW_CHILDREN_yes((byte) 1);
+public enum DwarfFlag {
+    @SuppressWarnings("unused")
+    DW_FLAG_false((byte) 0),
+    DW_FLAG_true((byte) 1);
 
     private final byte value;
 
-    DwarfHasChildren(byte b) {
+    DwarfFlag(byte b) {
         value = b;
     }
 

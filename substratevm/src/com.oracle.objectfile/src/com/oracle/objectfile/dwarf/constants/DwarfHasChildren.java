@@ -24,35 +24,18 @@
  * questions.
  */
 
-package com.oracle.objectfile.elf.dwarf.constants;
+package com.oracle.objectfile.dwarf.constants;
 
-/**
- * Values used to build DWARF expressions and locations.
+/*
+ * Compile unit DIE header has_children attribute values.
  */
-public enum DwarfExpressionOpcode {
-    DW_OP_addr((byte) 0x03),
-    @SuppressWarnings("unused")
-    DW_OP_deref((byte) 0x06),
-    DW_OP_dup((byte) 0x12),
-    DW_OP_and((byte) 0x1a),
-    DW_OP_not((byte) 0x20),
-    DW_OP_plus((byte) 0x22),
-    DW_OP_shl((byte) 0x24),
-    DW_OP_shr((byte) 0x25),
-    DW_OP_bra((byte) 0x28),
-    DW_OP_eq((byte) 0x29),
-    DW_OP_lit0((byte) 0x30),
-    DW_OP_reg0((byte) 0x50),
-    DW_OP_breg0((byte) 0x70),
-    DW_OP_regx((byte) 0x90),
-    DW_OP_bregx((byte) 0x92),
-    DW_OP_push_object_address((byte) 0x97),
-    DW_OP_implicit_value((byte) 0x9e),
-    DW_OP_stack_value((byte) 0x9f);
+public enum DwarfHasChildren {
+    DW_CHILDREN_no((byte) 0),
+    DW_CHILDREN_yes((byte) 1);
 
     private final byte value;
 
-    DwarfExpressionOpcode(byte b) {
+    DwarfHasChildren(byte b) {
         value = b;
     }
 
