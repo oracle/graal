@@ -99,6 +99,7 @@ import java.nio.channels.WritableByteChannel;
 import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -650,7 +651,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
 
         if (TruffleCompilerOptions.DumpRuntimeCompiledMethods.getValue(getOrCreateCompilerOptions(compilable))) {
             try {
-//                dumpASMCompiledCode(compilationResult,installedCode);
                 StringBuilder binName = new StringBuilder();
                 for (var method : compilationResult.getMethods()) {
                     binName.append(method.getName());
@@ -666,8 +666,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
                 } catch (IOException e) {
                     throw new IOException(String.format("Failed to open %s to dump IGV graphs", path), e);
                 }
-
-                channel.write(ByteBuffer.wrap(compilationResult.getTargetCode()));
+                byte[] code = Arrays.copyOf(compilationResult.getTargetCode(), compilationResult.getTargetCodeSize());
+                channel.write(ByteBuffer.wrap(code));
                 channel.close();
             } catch (IOException e) {
                 throw new RuntimeException(e);
