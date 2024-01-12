@@ -7,8 +7,8 @@ import org.graalvm.wasm.constants.Bytecode;
 
 public class Vector128Ops {
 
-    public static Vector128 v128_const(Vector128 vec) {
-        return vec;
+    public static Vector128 v128_const(byte[] vec) {
+        return Vector128.ofBytes(vec);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
