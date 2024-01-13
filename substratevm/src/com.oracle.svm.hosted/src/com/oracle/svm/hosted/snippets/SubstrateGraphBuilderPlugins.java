@@ -1036,7 +1036,7 @@ public class SubstrateGraphBuilderPlugins {
     private static void checkNeverInline(GraphBuilderContext b) {
         if (!AnnotationAccess.isAnnotationPresent(b.getMethod(), NeverInline.class)) {
             throw VMError.shouldNotReachHere("Accessing the stack pointer or instruction pointer of the caller frame is only safe and deterministic if the method is not inlined. " +
-                            "Therefore, the method " + b.getMethod().format("%H.%n(%p)") + " must be annoated with @" + NeverInline.class.getSimpleName());
+                            "Therefore, the method " + b.getMethod().format("%H.%n(%p)") + " must be annotated with @" + NeverInline.class.getSimpleName());
         }
     }
 

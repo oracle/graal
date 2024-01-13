@@ -121,12 +121,6 @@ public abstract class Heap {
 
     /**
      * Get the ObjectHeader implementation that this Heap uses.
-     *
-     * TODO: This is used during native image generation to put appropriate headers on Objects in
-     * the native image heap. Is there any reason to expose the whole ObjectHeader interface, since
-     * only setBootImageOnLong(0L) is used then, to get the native image object header bits?
-     *
-     * TODO: Would an "Unsigned getBootImageObjectHeaderBits()" method be sufficient?
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract ObjectHeader getObjectHeader();
