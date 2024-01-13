@@ -8,7 +8,7 @@
 
   "COMMENT.jdks": "When adding or removing JDKs keep in sync with JDKs in ci/common.jsonnet",
   "jdks": {
-    "galahad-jdk":        {"name": "jpg-jdk",   "version": "22",      "build_id": "jdk-22+25", "platformspecific": true, "extrabundles": ["static-libs"]},
+    "galahad-jdk":        {"name": "jpg-jdk",   "version": "23",      "build_id": "jdk-23+4", "platformspecific": true, "extrabundles": ["static-libs"]},
 
     "oraclejdk11":        {"name": "jpg-jdk",   "version": "11.0.11", "build_id": "9", "release": true, "platformspecific": true, "extrabundles": ["static-libs"] },
 
