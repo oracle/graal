@@ -28,7 +28,6 @@ import static com.oracle.svm.common.meta.MultiMethod.DEOPT_TARGET_METHOD;
 import static com.oracle.svm.common.meta.MultiMethod.ORIGINAL_METHOD;
 import static com.oracle.svm.core.util.VMError.guarantee;
 import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
-import static com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils.Options.InlineBeforeAnalysisAllowedDepth;
 import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsingMaxDepth;
 
 import java.lang.reflect.Executable;
@@ -45,6 +44,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -807,7 +807,6 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
      * {@code RUNTIME_COMPILED_METHOD}s.
      */
     private class RuntimeCompilationInlineBeforeAnalysisPolicy extends InlineBeforeAnalysisPolicy {
-        private final int accumulativeAllowedInliningDepth = InlineBeforeAnalysisAllowedDepth.getValue();
         private final int trivialAllowingInliningDepth = InlineDuringParsingMaxDepth.getValue(HostedOptionValues.singleton());
 
         final SVMHost hostVM;
@@ -839,26 +838,22 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         }
 
         @Override
-        protected boolean shouldInlineInvoke(GraphBuilderContext b, AnalysisMethod method, ValueNode[] args) {
-            if (inliningUtils.alwaysInlineInvoke((AnalysisMetaAccess) b.getMetaAccess(), method)) {
-                return true;
-            }
-            // worse case depth is max trivial, and then max accumulative
-            if (b.getDepth() > trivialAllowingInliningDepth + accumulativeAllowedInliningDepth) {
-                return false;
-            }
-            if (b.recursiveInliningDepth(method) > 0) {
-                /* Prevent recursive inlining. */
+        protected boolean shouldInlineInvoke(GraphBuilderContext b, AbstractPolicyScope policyScope, AnalysisMethod method, ValueNode[] args) {
+            if (allowInliningPredicate.allowInlining(b, method) != AllowInliningPredicate.InlineDecision.INLINE) {
                 return false;
             }
 
-            if (!InlineBeforeAnalysisPolicyUtils.inliningAllowed(hostVM, b, method)) {
-                return false;
+            InlineBeforeAnalysisPolicyUtils.AccumulativeInlineScope accScope;
+            if (policyScope instanceof InlineBeforeAnalysisPolicyUtils.AlwaysInlineScope) {
+                /*
+                 * If we are in "trivial inlining" mode, we make inlining decisions as if we are
+                 * still the root (= null) accumulative inlining scope.
+                 */
+                accScope = null;
+            } else {
+                accScope = (InlineBeforeAnalysisPolicyUtils.AccumulativeInlineScope) policyScope;
             }
-
-            AllowInliningPredicate.InlineDecision result = allowInliningPredicate.allowInlining(b, method);
-
-            return result == AllowInliningPredicate.InlineDecision.INLINE;
+            return inliningUtils.shouldInlineInvoke(b, hostVM, accScope, method);
         }
 
         @Override
@@ -879,26 +874,33 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         }
 
         @Override
-        protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMetaAccess metaAccess,
-                        AnalysisMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle) {
+        protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMethod method) {
             if (outer instanceof InlineBeforeAnalysisPolicyUtils.AccumulativeInlineScope accOuter) {
                 /*
                  * once the accumulative policy is activated, then we cannot return to the trivial
                  * policy
                  */
-                return inliningUtils.createAccumulativeInlineScope(accOuter, metaAccess, method, constArgsWithReceiver, intrinsifiedMethodHandle);
+                return inliningUtils.createAccumulativeInlineScope(accOuter, method);
             }
 
             assert outer == null || outer instanceof InlineBeforeAnalysisPolicyUtils.AlwaysInlineScope : "unexpected outer scope: " + outer;
 
-            // check if trivial is possible
-            boolean trivialInlineAllowed = hostVM.isAnalysisTrivialMethod(method);
+            /*
+             * Check if trivial is possible. We use the graph size as the main criteria, similar to
+             * the trivial inlining for AOT compilation.
+             * 
+             * In addition, we do not allow method handle internals to be processed by the trivial
+             * inlining. The regular accumulative inlining scope has a special mode for method
+             * handle intrinsification with larger thresholds in order to fully inline the method
+             * handle.
+             */
+            boolean trivialInlineAllowed = hostVM.isAnalysisTrivialMethod(method) && !AnnotationAccess.isAnnotationPresent(method, InlineBeforeAnalysisPolicyUtils.COMPILED_LAMBDA_FORM_ANNOTATION);
             int inliningDepth = outer == null ? 1 : outer.inliningDepth + 1;
             if (trivialInlineAllowed && inliningDepth <= trivialAllowingInliningDepth) {
                 return new InlineBeforeAnalysisPolicyUtils.AlwaysInlineScope(inliningDepth);
             } else {
                 // start with a new accumulative inline scope
-                return inliningUtils.createAccumulativeInlineScope(null, metaAccess, method, constArgsWithReceiver, intrinsifiedMethodHandle);
+                return inliningUtils.createAccumulativeInlineScope(null, method);
             }
         }
     }

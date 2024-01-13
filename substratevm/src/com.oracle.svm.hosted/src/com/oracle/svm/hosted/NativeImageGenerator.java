@@ -670,6 +670,7 @@ public class NativeImageGenerator {
 
             /* Re-run shadow heap verification after compilation. */
             aUniverse.getHeapVerifier().checkHeapSnapshot(debug, hMetaAccess, "after compilation", bb.getUniverse().getEmbeddedRoots());
+            bb.getUnsupportedFeatures().report(bb);
 
             CodeCacheProvider codeCacheProvider = runtimeConfiguration.getBackendForNormalMethod().getProviders().getCodeCache();
             reporter.printCreationStart();
@@ -751,6 +752,7 @@ public class NativeImageGenerator {
          */
         Map<Constant, Object> embeddedConstants = codeCache.initAndGetEmbeddedConstants();
         bb.getUniverse().getHeapVerifier().checkHeapSnapshot(debug, heap.hMetaAccess, "before heap layout", embeddedConstants);
+        bb.getUnsupportedFeatures().report(bb);
         /*
          * Seal shadow heap after final verification. Any modification to the shadow heap after this
          * point, i.e., registering a new ImageHeapConstant or materializing the hosted values
