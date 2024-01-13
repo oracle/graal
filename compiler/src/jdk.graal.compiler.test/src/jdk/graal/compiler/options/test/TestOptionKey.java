@@ -28,6 +28,7 @@ import static jdk.graal.compiler.options.OptionValues.asMap;
 import static jdk.graal.compiler.options.OptionValues.newOptionMap;
 import static jdk.graal.compiler.options.OptionsParser.parseOptionValue;
 import static jdk.graal.compiler.options.test.TestOptionKey.Options.MyBooleanOption;
+import static jdk.graal.compiler.options.test.TestOptionKey.Options.MyDebugOption;
 import static jdk.graal.compiler.options.test.TestOptionKey.Options.MyDeprecatedOption;
 import static jdk.graal.compiler.options.test.TestOptionKey.Options.MyDoubleOption;
 import static jdk.graal.compiler.options.test.TestOptionKey.Options.MyFloatOption;
@@ -90,12 +91,14 @@ public class TestOptionKey {
         public static final OptionKey<String> MyOtherOption = new OptionKey<>("original");
         public static final EnumMultiOptionKey<TestEnum> MyMultiEnumOption = new EnumMultiOptionKey<>(TestEnum.class, null);
         public static final OptionKey<String> MyDeprecatedOption = new OptionKey<>("deprecated");
+        public static final OptionKey<String> MyDebugOption = new OptionKey<>("debug");
     }
 
     private static final OptionDescriptors OPTION_DESCRIPTORS;
     static {
         EconomicMap<String, OptionDescriptor> map = EconomicMap.create();
         map.put("MyOption", OptionDescriptor.create("MyOption", OptionType.User, String.class, "", Options.class, "MyOption", MyOption));
+        map.put("MyDebugOption", OptionDescriptor.create("MyDebugOption", OptionType.Debug, String.class, "", Options.class, "MyDebugOption", MyDebugOption));
         map.put("MyIntegerOption", OptionDescriptor.create("MyIntegerOption", OptionType.User, Integer.class, "", Options.class, "MyIntegerOption", MyIntegerOption));
         map.put("MyLongOption", OptionDescriptor.create("MyLongOption", OptionType.User, Long.class, "", Options.class, "MyLongOption", MyLongOption));
         map.put("MyBooleanOption", OptionDescriptor.create("MyBooleanOption", OptionType.User, Boolean.class, "", Options.class, "MyBooleanOption", MyBooleanOption));
@@ -141,10 +144,18 @@ public class TestOptionKey {
 
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             Iterable<OptionDescriptors> loader = List.of(OPTION_DESCRIPTORS);
-            optionsValues.printHelp(loader, new PrintStream(baos), "prefix.");
+            optionsValues.printHelp(loader, new PrintStream(baos), "prefix.", false);
             String help = baos.toString();
             Assert.assertNotEquals(help.length(), 0);
             Assert.assertTrue(help, help.contains("prefix.MyDeprecatedOption = \"deprecated\""));
+        }
+
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            Iterable<OptionDescriptors> loader = List.of(OPTION_DESCRIPTORS);
+            optionsValues.printHelp(loader, new PrintStream(baos), "prefix.", true);
+            String help = baos.toString();
+            Assert.assertNotEquals(help.length(), 0);
+            Assert.assertTrue(help, help.contains("prefix.MyDebugOption = \"debug\""));
         }
     }
 
