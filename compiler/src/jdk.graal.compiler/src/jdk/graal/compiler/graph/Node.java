@@ -1417,7 +1417,7 @@ public abstract class Node implements Cloneable, Formattable {
 
     private void verifyInput(InputEdges inputEdges, int i, Node input) {
         if (input == null) {
-            assertTrue(inputEdges.isOptional(i), "non-optional input list %s cannot be null in %s (fix nullness or use @OptionalInput)", inputEdges.getName(i), this);
+            assertTrue(inputEdges.isOptional(i), "non-optional input %s cannot be null in %s (fix nullness or use @OptionalInput)", inputEdges.getName(i), this);
         } else {
             assertFalse(input.isDeleted(), "input was deleted %s", input);
             assertTrue(input.isAlive(), "input is not alive yet, i.e., it was not yet added to the graph");
