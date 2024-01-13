@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.phases;
 
+import static jdk.graal.compiler.debug.DebugOptions.PrintUnmodifiedGraphs;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -353,18 +355,19 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         return null;
     }
 
-    private boolean dumpBefore(final StructuredGraph graph, final C context, boolean isTopLevel) {
+    private boolean dumpBefore(final StructuredGraph graph, final C context, boolean isTopLevel, boolean applied) {
+        String tag = applied ? "" : " (skipped)";
         DebugContext debug = graph.getDebug();
         if (isTopLevel && (debug.isDumpEnabled(DebugContext.VERBOSE_LEVEL) || shouldDumpBeforeAtBasicLevel() && debug.isDumpEnabled(DebugContext.BASIC_LEVEL))) {
             if (shouldDumpBeforeAtBasicLevel()) {
-                debug.dump(DebugContext.BASIC_LEVEL, graph, "Before phase %s", getName());
+                debug.dump(DebugContext.BASIC_LEVEL, graph, "Before phase %s%s", getName(), tag);
             } else {
-                debug.dump(DebugContext.VERBOSE_LEVEL, graph, "Before phase %s", getName());
+                debug.dump(DebugContext.VERBOSE_LEVEL, graph, "Before phase %s%s", getName(), tag);
             }
         } else if (!isTopLevel && debug.isDumpEnabled(DebugContext.VERBOSE_LEVEL + 1)) {
-            debug.dump(DebugContext.VERBOSE_LEVEL + 1, graph, "Before subphase %s", getName());
+            debug.dump(DebugContext.VERBOSE_LEVEL + 1, graph, "Before subphase %s%s", getName(), tag);
         } else if (debug.isDumpEnabled(DebugContext.ENABLED_LEVEL) && shouldDump(graph, context)) {
-            debug.dump(DebugContext.ENABLED_LEVEL, graph, "Before %s %s", isTopLevel ? "phase" : "subphase", getName());
+            debug.dump(DebugContext.ENABLED_LEVEL, graph, "Before %s %s%s", isTopLevel ? "phase" : "subphase", getName(), tag);
             return true;
         }
         return false;
@@ -398,11 +401,28 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
 
     @SuppressWarnings("try")
     public final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
+        DebugContext debug = graph.getDebug();
+        OptionValues options = graph.getOptions();
+
         if (!shouldApply(graph)) {
+            // Preserve the dumping so the IGV output still includes an entry for the phase even
+            // though it didn't do anything to the graph
+            if (dumpGraph && debug.areScopesEnabled() && !PrintUnmodifiedGraphs.getValue(options)) {
+                try (DebugContext.Scope s = debug.scope(getName(), this)) {
+                    boolean isTopLevel = getEnclosingPhase(debug) == null;
+                    dumpBefore(graph, context, isTopLevel, false);
+                } catch (Throwable t) {
+                    throw debug.handle(t);
+                }
+            }
+
+            try {
+                updateGraphState(graph.getGraphState());
+            } catch (Throwable t) {
+                throw debug.handle(t);
+            }
             return;
         }
-
-        OptionValues options = graph.getOptions();
 
         Optional<NotApplicable> cannotBeApplied = this.notApplicableTo(graph.getGraphState());
         if (cannotBeApplied.isPresent()) {
@@ -419,7 +439,6 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             return;
         }
 
-        DebugContext debug = graph.getDebug();
         try (DebugContext.Scope s = debug.scope(getName(), this);
                         CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName()) : null;
                         DebugCloseable l = graph.getOptimizationLog().enterPhase(getName());
@@ -437,7 +456,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             boolean isTopLevel = getEnclosingPhase(graph.getDebug()) == null;
             boolean dumpedBefore = false;
             if (dumpGraph && debug.areScopesEnabled()) {
-                dumpedBefore = dumpBefore(graph, context, isTopLevel);
+                dumpedBefore = dumpBefore(graph, context, isTopLevel, true);
             }
             inputNodesCount.add(debug, graph.getNodeCount());
 
