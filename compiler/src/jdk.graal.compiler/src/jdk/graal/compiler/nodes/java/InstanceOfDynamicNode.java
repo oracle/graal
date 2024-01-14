@@ -29,17 +29,17 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_32;
 
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.nodes.spi.Canonicalizable;
-import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.BinaryOpLogicNode;
 import jdk.graal.compiler.nodes.LogicConstantNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
+import jdk.graal.compiler.nodes.spi.Canonicalizable;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.Lowerable;
-
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
@@ -113,12 +113,12 @@ public class InstanceOfDynamicNode extends BinaryOpLogicNode implements Canonica
     }
 
     @Override
-    public LogicNode canonical(CanonicalizerTool tool, ValueNode forMirror, ValueNode forObject) {
+    public Node canonical(CanonicalizerTool tool, ValueNode forMirror, ValueNode forObject) {
         LogicNode result = findSynonym(tool.getAssumptions(), tool.getConstantReflection(), forMirror, forObject, allowNull, exact);
         if (result != null) {
             return result;
         }
-        return this;
+        return super.canonical(tool, forMirror, forObject);
     }
 
     public void setMirror(ValueNode newObject) {

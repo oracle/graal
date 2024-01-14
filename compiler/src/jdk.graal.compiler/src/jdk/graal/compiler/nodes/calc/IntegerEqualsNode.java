@@ -89,7 +89,7 @@ public final class IntegerEqualsNode extends CompareNode implements Canonicaliza
         if (value != null) {
             return value;
         }
-        return this;
+        return super.canonical(tool, forX, forY);
     }
 
     public static class IntegerEqualsOp extends CompareOp {
