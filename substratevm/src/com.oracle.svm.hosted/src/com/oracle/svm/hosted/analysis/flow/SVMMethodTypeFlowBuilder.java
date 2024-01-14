@@ -31,7 +31,6 @@ import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.builder.TypeFlowBuilder;
-import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
@@ -46,18 +45,12 @@ import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
-import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.NodeView;
-import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 
 public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
 
@@ -74,41 +67,6 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
 
     protected SVMHost getHostVM() {
         return (SVMHost) bb.getHostVM();
-    }
-
-    public static void registerUsedElements(PointsToAnalysis bb, StructuredGraph graph) {
-        MethodTypeFlowBuilder.registerUsedElements(bb, graph);
-
-        for (Node n : graph.getNodes()) {
-            if (n instanceof ConstantNode) {
-                ConstantNode cn = (ConstantNode) n;
-                JavaConstant constant = cn.asJavaConstant();
-                if (cn.hasUsages() && cn.isJavaConstant() && constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
-                    if (constant instanceof ImageHeapConstant) {
-                        /* No replacement for ImageHeapObject. */
-                    } else if (!ignoreConstant(bb, cn)) {
-                        /*
-                         * Constants that are embedded into graphs via constant folding of static
-                         * fields have already been replaced. But constants embedded manually by
-                         * graph builder plugins, or class constants that come directly from
-                         * constant bytecodes, are not replaced. We verify here that the object
-                         * replacer would not replace such objects.
-                         *
-                         * But more importantly, some object replacers also perform actions like
-                         * forcing eager initialization of fields. We need to make sure that these
-                         * object replacers really see all objects that are embedded into compiled
-                         * code.
-                         */
-                        Object value = bb.getSnippetReflectionProvider().asObject(Object.class, constant);
-                        Object replaced = bb.getUniverse().replaceObject(value);
-                        if (value != replaced) {
-                            throw GraalError.shouldNotReachHere("Missed object replacement during graph building: " +
-                                            value + " (" + value.getClass() + ") != " + replaced + " (" + replaced.getClass() + ")"); // ExcludeFromJacocoGeneratedReport
-                        }
-                    }
-                }
-            }
-        }
     }
 
     @SuppressWarnings("serial")

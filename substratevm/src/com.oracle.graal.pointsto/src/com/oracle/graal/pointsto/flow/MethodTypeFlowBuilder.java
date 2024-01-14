@@ -235,7 +235,7 @@ public class MethodTypeFlowBuilder {
         }
     }
 
-    protected static void registerUsedElements(PointsToAnalysis bb, StructuredGraph graph) {
+    public static void registerUsedElements(PointsToAnalysis bb, StructuredGraph graph) {
         PointsToAnalysisMethod method = (PointsToAnalysisMethod) graph.method();
         HostedProviders providers = bb.getProviders(method);
         for (Node n : graph.getNodes()) {
@@ -307,9 +307,9 @@ public class MethodTypeFlowBuilder {
                 JavaConstant root = cn.asJavaConstant();
                 if (cn.hasUsages() && cn.isJavaConstant() && root.getJavaKind() == JavaKind.Object && root.isNonNull()) {
                     assert StampTool.isExactType(cn) : cn;
-                    AnalysisType type = (AnalysisType) StampTool.typeOrNull(cn, bb.getMetaAccess());
-                    type.registerAsInHeap(new EmbeddedRootScan(AbstractAnalysisEngine.sourcePosition(cn), root));
-                    if (!ignoreConstant(bb, cn)) {
+                    if (!ignoreConstant(cn)) {
+                        AnalysisType type = (AnalysisType) StampTool.typeOrNull(cn, bb.getMetaAccess());
+                        type.registerAsInHeap(new EmbeddedRootScan(AbstractAnalysisEngine.sourcePosition(cn), root));
                         registerEmbeddedRoot(bb, cn);
                     }
                 }
@@ -356,27 +356,28 @@ public class MethodTypeFlowBuilder {
      * to the error message of a {@link ClassCastException}. In {@link StrengthenGraphs} we can
      * re-write the Class constant to a String constant, i.e., only embed the class name and not the
      * full java.lang.Class object in the image.
+     *
+     * {@link FrameState} are only used for debugging. We do not want to have larger images just so
+     * that users can see a constant value in the debugger.
      */
-    protected static boolean ignoreConstant(PointsToAnalysis bb, ConstantNode cn) {
-        if (!ignoreInstanceOfType(bb, (AnalysisType) bb.getConstantReflectionProvider().asJavaType(cn.asConstant()))) {
-            return false;
-        }
-        for (var usage : cn.usages()) {
-            if (usage instanceof ClassIsAssignableFromNode) {
-                if (((ClassIsAssignableFromNode) usage).getThisClass() != cn) {
+    protected static boolean ignoreConstant(ConstantNode node) {
+        for (var u : node.usages()) {
+            if (u instanceof ClassIsAssignableFromNode usage) {
+                if (usage.getOtherClass() == node || usage.getThisClass() != node) {
                     return false;
                 }
-            } else if (usage instanceof BytecodeExceptionNode) {
-                if (((BytecodeExceptionNode) usage).getExceptionKind() != BytecodeExceptionKind.CLASS_CAST) {
+            } else if (u instanceof BytecodeExceptionNode usage) {
+                /* The checked type is the second argument for a CLASS_CAST. */
+                if (usage.getExceptionKind() != BytecodeExceptionKind.CLASS_CAST || usage.getArguments().size() != 2 || usage.getArguments().get(0) == node || usage.getArguments().get(1) != node) {
                     return false;
                 }
-            } else if (usage instanceof FrameState) {
+            } else if (u instanceof FrameState) {
                 /* FrameState usages are only for debugging and not necessary for correctness. */
             } else {
                 return false;
             }
         }
-        /* Success, the ConstantNode do not need to be seen as reachable. */
+        /* Success, the ConstantNode does not need to be seen as reachable. */
         return true;
     }
 
@@ -541,15 +542,10 @@ public class MethodTypeFlowBuilder {
                         });
                         typeFlows.add(node, sourceBuilder);
                     } else if (node.asJavaConstant().getJavaKind() == JavaKind.Object) {
-                        /*
-                         * TODO a SubstrateObjectConstant wrapping a PrimitiveConstant has kind
-                         * equals to Object. Do we care about the effective value of these primitive
-                         * constants in the analysis?
-                         */
                         assert StampTool.isExactType(node) : node;
-                        AnalysisType type = (AnalysisType) StampTool.typeOrNull(node, bb.getMetaAccess());
-                        assert type.isInstantiated() : type;
                         TypeFlowBuilder<ConstantTypeFlow> sourceBuilder = TypeFlowBuilder.create(bb, node, ConstantTypeFlow.class, () -> {
+                            AnalysisType type = (AnalysisType) StampTool.typeOrNull(node, bb.getMetaAccess());
+                            assert type.isInstantiated() : type;
                             JavaConstant constantValue = node.asJavaConstant();
                             BytecodePosition position = AbstractAnalysisEngine.sourcePosition(node);
                             JavaConstant heapConstant = bb.getUniverse().getHeapScanner().toImageHeapObject(constantValue, new EmbeddedRootScan(position, constantValue));

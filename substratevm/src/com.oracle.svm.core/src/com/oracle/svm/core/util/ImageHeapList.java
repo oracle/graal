@@ -38,15 +38,16 @@ import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.Uninterruptible;
 
 /**
- * At list that is filled at image build time while the static analysis running, and then read at
+ * A list that is filled at image build time while the static analysis is running, and then read at
  * run time.
  *
- * Filling the list at image build time is thread safe. Every object to the list is properly added
- * to the shadow heap.
+ * Filling the list at image build time is thread safe. Every object added to the list while the
+ * static analysis is running is properly added to the shadow heap.
  *
  * The list is immutable at run time. The run-time list can optionally be sorted, to make code at
  * run time deterministic regardless of the order in which elements are discovered and added at
- * image build time.
+ * image build time. Sorting happens at image build time, but does not affect the list that users
+ * are adding to at image build time.
  */
 @Platforms(Platform.HOSTED_ONLY.class) //
 public final class ImageHeapList {
