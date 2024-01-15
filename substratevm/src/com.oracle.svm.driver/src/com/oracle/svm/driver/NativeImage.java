@@ -1094,6 +1094,11 @@ public class NativeImage {
                 imageNamePathParent = imagePath.resolve(imageNamePathParent);
             }
             if (!useBundle()) {
+                /*
+                 * In bundle-mode the value of imagePath is purely virtual before it gets
+                 * substituted by substituteImagePath(imagePath) below. Validating the virtual value
+                 * would make no sense (and cause errors if the path does not exist anymore)
+                 */
                 if (!Files.isDirectory(imageNamePathParent)) {
                     throw NativeImage.showError("Writing image to non-existent directory " + imageNamePathParent + " is not allowed. " +
                                     "Create the missing directory if you want the image to be written to that location.");
