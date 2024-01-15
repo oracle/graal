@@ -36,7 +36,7 @@ import static com.oracle.svm.hosted.xml.XMLParsersRegistration.TransformerClasse
 
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 @AutomaticallyRegisteredFeature
@@ -46,13 +46,13 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         /*
          * Ensure that class loading of xml related classes work.
-         * com.sun.org.apache.xerces.internal.impl.XMLDocumentFragmentScannerImpl
-         * implicitly depends on jdk.xml.internal.JdkXmlUtils. So initialization
-         * order needs to happen in the reverse order.
+         * com.sun.org.apache.xerces.internal.impl.XMLDocumentFragmentScannerImpl implicitly depends
+         * on jdk.xml.internal.JdkXmlUtils. So initialization order needs to happen in the reverse
+         * order.
          */
         Class<?> jdkUtil = access.findClassByName("jdk.xml.internal.JdkXmlUtils");
         if (jdkUtil != null) {
-            ReflectionUtil.newInstance(jdkUtil);
+            ClassInitializationSupport.singleton().forceInitializeHosted(jdkUtil, "break circular class initialization in XML code", false);
         }
         access.registerReachabilityHandler(new SAXParserClasses()::registerConfigs,
                         method(access, "javax.xml.parsers.SAXParserFactory", "newInstance"));
