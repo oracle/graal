@@ -37,7 +37,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -46,14 +45,11 @@ import java.util.zip.ZipFile;
 
 import javax.management.MBeanServerConnection;
 
-import org.graalvm.nativeimage.hosted.Feature;
-
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.image.DisallowedImageHeapObjects;
-import com.oracle.svm.core.jdk.management.ManagementFeature;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -72,20 +68,9 @@ public class DisallowedImageHeapObjectFeature implements InternalFeature {
     private Map<byte[], Charset> disallowedByteSubstrings;
 
     @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        /*
-         * Ensure that object replaced registered by ManagementFeature runs before our object
-         * replacer.
-         */
-        return Arrays.asList(ManagementFeature.class);
-    }
-
-    @Override
     public void duringSetup(DuringSetupAccess a) {
         FeatureImpl.DuringSetupAccessImpl access = (FeatureImpl.DuringSetupAccessImpl) a;
         classInitialization = access.getHostVM().getClassInitializationSupport();
-        access.registerObjectReachableCallback(String.class, this::onStringReachable);
-        access.registerObjectReachableCallback(byte[].class, this::onByteArrayReachable);
         access.registerObjectReachableCallback(MBeanServerConnection.class, this::onMBeanServerConnectionReachable);
         access.registerObjectReachableCallback(PlatformManagedObject.class, this::onPlatformManagedObjectReachable);
         access.registerObjectReachableCallback(Random.class, (a1, obj) -> DisallowedImageHeapObjects.onRandomReachable(obj, this::error));
@@ -101,6 +86,9 @@ public class DisallowedImageHeapObjectFeature implements InternalFeature {
         access.registerObjectReachableCallback(CANCELLABLE_CLASS, (a1, obj) -> DisallowedImageHeapObjects.onCancellableReachable(obj, this::error));
 
         if (SubstrateOptions.DetectUserDirectoriesInImageHeap.getValue()) {
+            access.registerObjectReachableCallback(String.class, this::onStringReachable);
+            access.registerObjectReachableCallback(byte[].class, this::onByteArrayReachable);
+
             /*
              * We do not check for the temp directory name and the user name because they have a too
              * high chance of being short or generic terms that appear in valid strings.
