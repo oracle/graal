@@ -68,7 +68,6 @@ import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerPolicy.
 import com.oracle.svm.hosted.fieldfolding.IsStaticFinalFieldInitializedNode;
 import com.oracle.svm.hosted.fieldfolding.MarkStaticFinalFieldInitializedNode;
 
-import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
@@ -305,7 +304,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
 
         if (array != null && value != null && idx >= 0 && idx < array.getLength()) {
             var componentType = array.getType().getComponentType();
-            if (node.elementKind().isPrimitive() || value.isNull() || componentType.isAssignableFrom(((TypedConstant) value).getType(metaAccess))) {
+            if (node.elementKind().isPrimitive() || value.isNull() || componentType.isAssignableFrom(((ImageHeapConstant) value).getType())) {
                 array.setElement(idx, adaptForImageHeap(value, componentType.getStorageKind()));
                 return null;
             }
@@ -348,7 +347,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
             for (int i = 0; i < length; i++) {
                 var elementValue = (JavaConstant) source.getElement(sourcePos + i);
                 if (elementValue.isNonNull()) {
-                    var elementValueType = ((TypedConstant) elementValue).getType(metaAccess);
+                    var elementValueType = ((ImageHeapConstant) elementValue).getType();
                     if (!destComponentType.isAssignableFrom(elementValueType)) {
                         return false;
                     }
