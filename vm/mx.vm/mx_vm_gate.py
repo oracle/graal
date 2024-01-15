@@ -490,6 +490,7 @@ def _test_libgraal_truffle(extra_vm_arguments):
         "-Dpolyglot.engine.CompileImmediately=true",
         "-Dpolyglot.engine.BackgroundCompilation=false",
         "-Dpolyglot.engine.CompilationFailureAction=Throw",
+        "-Djdk.graal.CompilationFailureAction=ExitVM",
         "-Dgraalvm.locatorDisabled=true",
         "truffle", "LibGraalCompilerTest"])
 

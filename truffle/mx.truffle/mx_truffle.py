@@ -846,6 +846,7 @@ def tck(args):
             "-Dpolyglot.engine.AllowExperimentalOptions=true",
             "-Dpolyglot.engine.Mode=latency",
             # "-Dpolyglot.engine.CompilationFailureAction=Throw", GR-49399
+            "-Djdk.graal.CompilationFailureAction=ExitVM",
             "-Dpolyglot.engine.CompileImmediately=true",
             "-Dpolyglot.engine.BackgroundCompilation=false",
             "-Dtck.inlineVerifierInstrument=false",
