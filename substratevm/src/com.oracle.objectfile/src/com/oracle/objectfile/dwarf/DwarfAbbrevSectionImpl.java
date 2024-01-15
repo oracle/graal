@@ -26,13 +26,12 @@
 
 package com.oracle.objectfile.dwarf;
 
-import com.oracle.objectfile.dwarf.constants.DwarfForm;
-import com.oracle.objectfile.dwarf.constants.DwarfHasChildren;
-import com.oracle.objectfile.dwarf.constants.DwarfSectionName;
-import com.oracle.objectfile.dwarf.constants.DwarfTag;
 import com.oracle.objectfile.dwarf.constants.DwarfAttribute;
+import com.oracle.objectfile.dwarf.constants.DwarfForm;
+import com.oracle.objectfile.dwarf.constants.DwarfTag;
+import com.oracle.objectfile.dwarf.constants.DwarfHasChildren;
+import com.oracle.objectfile.dwarf.DwarfDebugInfoBase.AbbrevCode;
 import jdk.graal.compiler.debug.DebugContext;
-import com.oracle.objectfile.dwarf.DwarfDebugInfo.AbbrevCode;
 
 /**
  * Section generator for <code>debug_abbrev</code> section. That section defines the layout of the
@@ -832,9 +831,9 @@ import com.oracle.objectfile.dwarf.DwarfDebugInfo.AbbrevCode;
  */
 public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
 
-    public DwarfAbbrevSectionImpl(DwarfDebugInfo dwarfSections) {
+    public DwarfAbbrevSectionImpl(DwarfDebugInfoBase dwarfSections) {
         // abbrev section depends on ranges section
-        super(dwarfSections, DwarfSectionName.DW_ABBREV_SECTION, DwarfSectionName.DW_RANGES_SECTION);
+        super(dwarfSections, dwarfSections.abbrevSectionName(), dwarfSections.rangesSectionName());
     }
 
     @Override

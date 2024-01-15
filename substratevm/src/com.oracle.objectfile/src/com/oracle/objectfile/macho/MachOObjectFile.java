@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,12 @@
  */
 package com.oracle.objectfile.macho;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.channels.FileChannel;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -42,6 +46,9 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import com.oracle.objectfile.macho.dsym.DSYMDebugInfo;
+import jdk.graal.compiler.debug.DebugContext;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -56,6 +63,8 @@ import com.oracle.objectfile.SymbolTable;
 import com.oracle.objectfile.io.AssemblyBuffer;
 import com.oracle.objectfile.io.OutputAssembler;
 
+import sun.nio.ch.DirectBuffer;
+
 /**
  * Models a Mach-O relocatable object file.
  */
@@ -67,6 +76,8 @@ public final class MachOObjectFile extends ObjectFile {
      */
     private static final int MAGIC = 0xfeedfacf;
     private static final int CIGAM = 0xcffaedfe;
+
+    private static final long PAGEZERO_SIZE = 0x100000000L;
 
     private static final ByteOrder nativeOrder = ByteOrder.nativeOrder();
     private static final ByteOrder oppositeOrder = (nativeOrder == ByteOrder.BIG_ENDIAN) ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN;
@@ -170,7 +181,7 @@ public final class MachOObjectFile extends ObjectFile {
 
     @Override
     public boolean shouldRecordDebugRelocations() {
-        return false;
+        return true;
     }
 
     @Override
@@ -185,9 +196,13 @@ public final class MachOObjectFile extends ObjectFile {
         return symtab.newUndefinedEntry(name, isCode);
     }
 
+    private static final String DWARF_TARGET_SEGMENT_NAME = getUnnamedSegmentName();
+    private static final String DWARF_SEGMENT_NAME = "__DWARF";
+
     @Override
     protected Segment64Command getOrCreateSegment(String segmentNameOrNull, String sectionName, boolean writable, boolean executable) {
-        final String segmentName = (segmentNameOrNull != null) ? segmentNameOrNull : getUnnamedSegmentName();
+        String targetSegmentName = DWARF_SEGMENT_NAME.equals(segmentNameOrNull) ? DWARF_TARGET_SEGMENT_NAME : segmentNameOrNull;
+        final String segmentName = (segmentNameOrNull != null) ? targetSegmentName : getUnnamedSegmentName();
         Segment64Command nonNullSegment = (Segment64Command) findSegmentByName(segmentName);
         if (nonNullSegment != null) {
             // we've found it; make sure it has the permission we need
@@ -201,9 +216,14 @@ public final class MachOObjectFile extends ObjectFile {
             }
         } else {
             // create a segment
-            nonNullSegment = new Segment64Command(sectionName, segmentName);
+            if (DWARF_SEGMENT_NAME.equals(segmentNameOrNull)) {
+                nonNullSegment = new Segment64Command(DWARF_TARGET_SEGMENT_NAME, targetSegmentName);
+                nonNullSegment.setLoadable(true);
+            } else {
+                nonNullSegment = new Segment64Command(sectionName, segmentName);
+            }
             nonNullSegment.initprot = EnumSet.of(VMProt.READ); // always give read permission
-            if (writable) {
+            if (writable || DWARF_SEGMENT_NAME.equals(segmentNameOrNull)) {
                 nonNullSegment.initprot.add(VMProt.WRITE);
             }
             if (executable) {
@@ -1580,15 +1600,11 @@ public final class MachOObjectFile extends ObjectFile {
             if (name.contains("debug")) {
                 destinationSegmentName = "__DWARF";
                 /*
-                 * FIXME: set the DEBUG flag on this section. Unfortunately, this currently breaks
-                 * debugging: on OS X, the linker intentionally strips debug sections because
-                 * debuggers are expected to retrieve them from the original object files or from a
-                 * debug info archive. We should conform to this by creating a debug info archive
-                 * using dsymutil(1), which would also reduce the size of the linked binary.
-                 * However, attempts to implement this as in an extra step after linking has failed,
-                 * which likely means that more other stuff needs to be fixed beforehand.
+                 * Setting debug flag is essential so that linker won't mess with such section and
+                 * won't include it in the final image. There is a transformer in @see
+                 * NativeImageDebugInfoFeature that will put these sections back in the image.
                  */
-                // flags.add(SectionFlag.DEBUG);
+                flags.add(SectionFlag.DEBUG);
             } else if (flags.contains(
                             SectionFlag.SOME_INSTRUCTIONS) /* || name.equals("__rodata") */) {
                 /*
@@ -1822,6 +1838,43 @@ public final class MachOObjectFile extends ObjectFile {
         return super.bake(sortedObjectFileElements);
     }
 
+    public void write(DebugContext context, Path outputFile) throws IOException {
+        try (FileChannel channel = FileChannel.open(outputFile, StandardOpenOption.WRITE, StandardOpenOption.READ, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
+            withDebugContext(context, "ObjectFile.write", () -> {
+                try {
+                    writeDebugSections(outputFile, write(channel));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        }
+    }
+
+    public void writeDebugSections(Path outputFile, List<Element> sortedObjectFileElements) throws IOException {
+        /*
+         * Dump each debug section into temp file so that linker could add them back untouched
+         * during linking stage.
+         *
+         * @see NativeImageDebugInfoFeature for a corresponding LinkInovcation transformer.
+         */
+        for (Element e : sortedObjectFileElements) {
+            if (DSYMDebugInfo.debugSectionList().contains(e.getName())) {
+                Path sectionDump = outputFile.resolveSibling(e.getName());
+                try (FileChannel channel = FileChannel.open(sectionDump, StandardOpenOption.WRITE, StandardOpenOption.READ, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
+                    ByteBuffer out = channel.map(FileChannel.MapMode.READ_WRITE, 0, (int) getLayoutDecisionValue(e, LayoutDecision.Kind.SIZE));
+                    out.position(0);
+                    byte[] content = (byte[]) getLayoutDecisionValue(e, LayoutDecision.Kind.CONTENT);
+                    try {
+                        out.put(content);
+                    } finally {
+                        // unmap immediately
+                        ((DirectBuffer) out).cleaner().clean();
+                    }
+                }
+            }
+        }
+    }
+
     int segmentVaddrGivenFirstSectionVaddr(int sectionVaddr) {
         /*
          * We round down the minVaddr to the next lower page boundary. And the same for the file
@@ -1847,6 +1900,16 @@ public final class MachOObjectFile extends ObjectFile {
                                                                  // protections of this segment
         // int nsects; // number of sections
         int flags;    // flags
+        boolean loadable;
+
+        public void setLoadable(boolean loadable) {
+            this.loadable = loadable;
+        }
+
+        @Override
+        public boolean isLoadable() {
+            return loadable;
+        }
 
         @Override
         public String getName() {
@@ -1872,10 +1935,12 @@ public final class MachOObjectFile extends ObjectFile {
 
         List<SectionInfoStruct> readStructs = new ArrayList<>();
 
+        @SuppressWarnings("this-escape")
         public Segment64Command(String name, String segmentName) {
             super(name, LoadCommandKind.SEGMENT_64);
             // creates a new empty segment
             this.segname = segmentName;
+            setLoadable(false);
         }
 
         @Override
@@ -1995,8 +2060,7 @@ public final class MachOObjectFile extends ObjectFile {
                                 ourRelocs = (MachORelocationElement) e;
                                 continue;
                             }
-                            assert false; // i.e. we should not find *another* RelocationElement
-                                          // also containing relevant relocs
+                            throw new IllegalStateException("Shouldn't get here! " + e);
                         }
                     }
                 }
@@ -2006,6 +2070,7 @@ public final class MachOObjectFile extends ObjectFile {
                  * initial value is guessed in the MachOSection constructor.
                  */
                 assert s.destinationSegmentName != null;
+                boolean noRelocs = ourRelocs == null;
 
                 SectionInfoStruct si = new SectionInfoStruct(
                                 s.getName(),
@@ -2014,8 +2079,8 @@ public final class MachOObjectFile extends ObjectFile {
                                 (int) alreadyDecided.get(s).getDecidedValue(LayoutDecision.Kind.SIZE),
                                 (int) alreadyDecided.get(s).getDecidedValue(LayoutDecision.Kind.OFFSET),
                                 logAlignment,
-                                ourRelocs == null ? 0 : (int) alreadyDecided.get(ourRelocs).getDecidedValue(LayoutDecision.Kind.OFFSET) + ourRelocs.startIndexFor(s) * ourRelocs.encodedEntrySize(),
-                                ourRelocs == null ? 0 : ourRelocs.countFor(s),
+                                noRelocs ? 0 : (int) alreadyDecided.get(ourRelocs).getDecidedValue(LayoutDecision.Kind.OFFSET) + ourRelocs.startIndexFor(s) * ourRelocs.encodedEntrySize(),
+                                noRelocs ? 0 : ourRelocs.countFor(s),
                                 (int) ObjectFile.flagSetAsLong(s.flags) | s.type.getValue(),
                                 /* reserved1 */ 0,
                                 /* reserved2 */ 0);
@@ -2219,11 +2284,13 @@ public final class MachOObjectFile extends ObjectFile {
         private MachOSymtab symtab;
         private MachOStrtab strtab;
 
+        @SuppressWarnings("this-escape")
         public LinkEditSegment64Command() {
             super("LinkEditSegment", "__LINKEDIT");
             initprot = EnumSet.of(VMProt.READ); // always give read permission
             // native tools give maximum maxprot
             maxprot = EnumSet.of(VMProt.READ, VMProt.WRITE, VMProt.EXECUTE);
+            setLoadable(true);
         }
 
         public MachOSymtab getSymtab() {
@@ -2376,5 +2443,31 @@ public final class MachOObjectFile extends ObjectFile {
                 out.writeBlob(bs);
             }
         };
+    }
+
+    @Override
+    public List<String> getDebugSectionNames() {
+        return DSYMDebugInfo.debugSectionList();
+    }
+
+    /*
+     * Used to help correctly determine addresses for debug info sections. Also @see
+     * NativeImageDebugInfoFeature.beforeImageWrite method where we construct corresponding linker
+     * option.
+     */
+    @Override
+    public long getCodeBaseAddress() {
+        return PAGEZERO_SIZE;
+    }
+
+    @Override
+    public void installDebugInfo(DebugInfoProvider debugInfoProvider) {
+        new DSYMDebugInfo(
+                        MachOCpuType.from(ImageSingletons.lookup(Platform.class).getArchitecture()),
+                        getByteOrder(),
+                        s -> {
+                            newDebugSection(DWARF_SEGMENT_NAME, s.getSectionName(), s);
+                            createDefinedSymbol(s.getSectionName(), s.getElement(), 0, 0, false, false);
+                        }).installDebugInfo(debugInfoProvider, getCodeBaseAddress() + getPageSize());
     }
 }

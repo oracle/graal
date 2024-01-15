@@ -27,16 +27,15 @@
 package com.oracle.objectfile.dwarf;
 
 import com.oracle.objectfile.debugentry.StringEntry;
-import com.oracle.objectfile.dwarf.constants.DwarfSectionName;
 import jdk.graal.compiler.debug.DebugContext;
 
 /**
  * Generator for debug_str section.
  */
 public class DwarfStrSectionImpl extends DwarfSectionImpl {
-    public DwarfStrSectionImpl(DwarfDebugInfo dwarfSections) {
+    public DwarfStrSectionImpl(DwarfDebugInfoBase dwarfSections) {
         // debug_str section depends on info section
-        super(dwarfSections, DwarfSectionName.DW_STR_SECTION, DwarfSectionName.DW_INFO_SECTION);
+        super(dwarfSections, dwarfSections.strSectionName(), dwarfSections.infoSectionName());
     }
 
     @Override

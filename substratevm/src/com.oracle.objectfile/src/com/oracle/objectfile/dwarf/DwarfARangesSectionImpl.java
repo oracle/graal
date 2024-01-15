@@ -28,16 +28,15 @@ package com.oracle.objectfile.dwarf;
 
 import java.util.Map;
 
-import com.oracle.objectfile.debugentry.ClassEntry;
-import com.oracle.objectfile.dwarf.constants.DwarfSectionName;
-import com.oracle.objectfile.dwarf.constants.DwarfVersion;
 import jdk.graal.compiler.debug.DebugContext;
 
+import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.debugentry.CompiledMethodEntry;
+import com.oracle.objectfile.debugentry.range.Range;
+import com.oracle.objectfile.dwarf.constants.DwarfVersion;
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
-import com.oracle.objectfile.debugentry.CompiledMethodEntry;
-import com.oracle.objectfile.debugentry.range.Range;
 
 /**
  * Section generator for debug_aranges section.
@@ -47,8 +46,8 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
     private static final int AR_HEADER_SIZE = 12;
     private static final int AR_HEADER_PAD_SIZE = 4;
 
-    public DwarfARangesSectionImpl(DwarfDebugInfo dwarfSections) {
-        super(dwarfSections, DwarfSectionName.DW_ARANGES_SECTION, DwarfSectionName.DW_FRAME_SECTION);
+    public DwarfARangesSectionImpl(DwarfDebugInfoBase dwarfSections) {
+        super(dwarfSections, dwarfSections.arangesSectionName(), dwarfSections.frameSectionName());
     }
 
     @Override
@@ -113,7 +112,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
 
     @Override
     public byte[] getOrDecideContent(Map<ObjectFile.Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint) {
-        ObjectFile.Element textElement = getElement().getOwner().elementForName(".text");
+        ObjectFile.Element textElement = getElement().getOwner().elementForName(dwarfSections.textSectionName().value());
         LayoutDecisionMap decisionMap = alreadyDecided.get(textElement);
         if (decisionMap != null) {
             Object valueObj = decisionMap.getDecidedValue(LayoutDecision.Kind.VADDR);

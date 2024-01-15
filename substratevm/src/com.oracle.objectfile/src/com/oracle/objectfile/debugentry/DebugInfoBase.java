@@ -47,7 +47,6 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFileInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocationInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
-import com.oracle.objectfile.dwarf.DwarfDebugInfo;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -88,6 +87,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * units.
  */
 public abstract class DebugInfoBase {
+    /*
+     * The name of the type for header field hub which needs special case processing to remove tag
+     * bits
+     */
+    public static final String HUB_TYPE_NAME = "java.lang.Class";
     protected ByteOrder byteOrder;
     /**
      * A table listing all known strings, some of which may be marked for insertion into the
@@ -223,13 +227,17 @@ public abstract class DebugInfoBase {
         return compiledCodeMax;
     }
 
+    public void installDebugInfo(DebugInfoProvider debugInfoProvider) {
+        installDebugInfo(debugInfoProvider, 0);
+    }
+
     /**
      * Entry point allowing ELFObjectFile to pass on information about types, code and heap data.
      *
      * @param debugInfoProvider provider instance passed by ObjectFile client.
      */
     @SuppressWarnings("try")
-    public void installDebugInfo(DebugInfoProvider debugInfoProvider) {
+    public void installDebugInfo(DebugInfoProvider debugInfoProvider, long debugAddressOffset) {
         /*
          * This will be needed once we add support for type info:
          *
@@ -332,7 +340,7 @@ public abstract class DebugInfoBase {
             /* Search for a method defining this primary range. */
             ClassEntry classEntry = lookupClassEntry(ownerType);
             MethodEntry methodEntry = classEntry.ensureMethodEntryForDebugRangeInfo(debugCodeInfo, this, debugContext);
-            PrimaryRange primaryRange = Range.createPrimary(methodEntry, lo, hi, primaryLine);
+            PrimaryRange primaryRange = Range.createPrimary(methodEntry, lo + debugAddressOffset, hi + debugAddressOffset, primaryLine);
             if (debugContext.isLogEnabled(DebugContext.INFO_LEVEL)) {
                 debugContext.log(DebugContext.INFO_LEVEL, "PrimaryRange %s.%s %s %s:%d [0x%x, 0x%x]", ownerType.toJavaName(), methodName, filePath, fileName, primaryLine, lo, hi);
             }
@@ -369,7 +377,7 @@ public abstract class DebugInfoBase {
             case INSTANCE: {
                 FileEntry fileEntry = addFileEntry(fileName, filePath);
                 typeEntry = new ClassEntry(typeName, fileEntry, size);
-                if (typeEntry.getTypeName().equals(DwarfDebugInfo.HUB_TYPE_NAME)) {
+                if (typeEntry.getTypeName().equals(HUB_TYPE_NAME)) {
                     hubClassEntry = (ClassEntry) typeEntry;
                 }
                 break;
@@ -735,7 +743,7 @@ public abstract class DebugInfoBase {
     }
 
     public boolean isHubClassEntry(ClassEntry classEntry) {
-        return classEntry.getTypeName().equals(DwarfDebugInfo.HUB_TYPE_NAME);
+        return classEntry.getTypeName().equals(HUB_TYPE_NAME);
     }
 
     public ClassEntry getHubClassEntry() {
@@ -780,7 +788,7 @@ public abstract class DebugInfoBase {
     /**
      * Ensure the supplied file entry and associated directory entry are included, but only once, in
      * a class entry's file and dir list.
-     * 
+     *
      * @param classEntry the class entry whose file and dir list may need to be updated
      * @param fileEntry a file entry which may need to be added to the class entry's file list or
      *            whose dir may need adding to the class entry's dir list

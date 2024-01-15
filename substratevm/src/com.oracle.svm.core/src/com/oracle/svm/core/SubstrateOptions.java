@@ -754,7 +754,7 @@ public class SubstrateOptions {
 
     private static void validateGenerateDebugInfo(HostedOptionKey<Integer> optionKey) {
         if (OS.getCurrent() == OS.DARWIN && optionKey.hasBeenSet() && optionKey.getValue() > 0) {
-            LogUtils.warning("Using %s is not supported on macOS", SubstrateOptionsParser.commandArgument(optionKey, optionKey.getValue().toString()));
+            LogUtils.warning("Using %s is limited and experimental on macOS", SubstrateOptionsParser.commandArgument(optionKey, optionKey.getValue().toString()));
         }
     }
 

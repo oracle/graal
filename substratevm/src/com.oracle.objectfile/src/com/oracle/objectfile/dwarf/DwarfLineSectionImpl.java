@@ -30,9 +30,8 @@ import java.util.Iterator;
 import java.util.Map;
 
 import com.oracle.objectfile.debugentry.ClassEntry;
-import com.oracle.objectfile.dwarf.constants.DwarfLineOpcode;
-import com.oracle.objectfile.dwarf.constants.DwarfSectionName;
 import com.oracle.objectfile.dwarf.constants.DwarfVersion;
+import com.oracle.objectfile.dwarf.constants.DwarfLineOpcode;
 import jdk.graal.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.LayoutDecision;
@@ -69,9 +68,9 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
      */
     private static final int LN_OPCODE_BASE = 13;
 
-    DwarfLineSectionImpl(DwarfDebugInfo dwarfSections) {
+    public DwarfLineSectionImpl(DwarfDebugInfoBase dwarfSections) {
         // line section depends on string section
-        super(dwarfSections, DwarfSectionName.DW_LINE_SECTION, DwarfSectionName.DW_STR_SECTION);
+        super(dwarfSections, dwarfSections.lineSectionName(), dwarfSections.strSectionName());
     }
 
     @Override
@@ -189,7 +188,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     @Override
     public byte[] getOrDecideContent(Map<ObjectFile.Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint) {
-        ObjectFile.Element textElement = getElement().getOwner().elementForName(".text");
+        var textElement = getElement().getOwner().elementForName(dwarfSections.textSectionName().value());
         LayoutDecisionMap decisionMap = alreadyDecided.get(textElement);
         if (decisionMap != null) {
             Object valueObj = decisionMap.getDecidedValue(LayoutDecision.Kind.VADDR);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -139,6 +139,26 @@ class NativeImageDebugInfoFeature implements InternalFeature {
                 objectFile.newUserDefinedSection(".debug.svm.imagebuild.modulepath", makeSectionImpl.apply(DiagnosticUtils.getModulePath(imageClassLoader)));
                 objectFile.newUserDefinedSection(".debug.svm.imagebuild.arguments", makeSectionImpl.apply(DiagnosticUtils.getBuilderArguments(imageClassLoader)));
                 objectFile.newUserDefinedSection(".debug.svm.imagebuild.java.properties", makeSectionImpl.apply(DiagnosticUtils.getBuilderProperties()));
+            }
+
+            /*
+             * On MacOS debug sections were dumped into temporary directory during image generation
+             * so that linker could add them back to the final image without messing with their
+             * content. Lets generate corresponding ld options: -sectreate __DWARF
+             * <debug_section_name> <file> for each dumped debug session.
+             */
+            if (Platform.includedIn(Platform.DARWIN.class) && SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
+                accessImpl.registerLinkerInvocationTransformer(inv -> {
+                    inv.addNativeLinkerOption("-Wl,-pagezero_size");
+                    inv.addNativeLinkerOption("-Wl," + Long.toHexString(objectFile.getCodeBaseAddress()));
+                    for (var sectionName : objectFile.getDebugSectionNames()) {
+                        inv.addNativeLinkerOption("-Wl,-sectcreate");
+                        inv.addNativeLinkerOption("-Wl,__DWARF");
+                        inv.addNativeLinkerOption("-Wl," + sectionName);
+                        inv.addNativeLinkerOption("-Wl," + inv.getTempDirectory().resolve(sectionName));
+                    }
+                    return inv;
+                });
             }
         }
         ProgressReporter.singleton().setDebugInfoTimer(timer);

@@ -44,14 +44,11 @@ import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
-import com.oracle.objectfile.dwarf.DwarfDebugInfo.AbbrevCode;
-import com.oracle.objectfile.elf.ELFMachine;
-import com.oracle.objectfile.elf.ELFObjectFile;
-import com.oracle.objectfile.dwarf.constants.DwarfExpressionOpcode;
-import com.oracle.objectfile.dwarf.constants.DwarfFlag;
-import com.oracle.objectfile.dwarf.constants.DwarfSectionName;
+import com.oracle.objectfile.dwarf.constants.DwarfSectionNameBase;
 import com.oracle.objectfile.dwarf.constants.DwarfTag;
 import com.oracle.objectfile.dwarf.constants.DwarfVersion;
+import com.oracle.objectfile.dwarf.constants.DwarfExpressionOpcode;
+import com.oracle.objectfile.dwarf.constants.DwarfFlag;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.graal.compiler.debug.DebugContext;
 
@@ -94,7 +91,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         }
     }
 
-    protected final DwarfDebugInfo dwarfSections;
+    protected final DwarfDebugInfoBase dwarfSections;
     protected boolean debug = false;
     protected long debugTextBase = 0;
     protected long debugAddress = 0;
@@ -103,12 +100,12 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     /**
      * The name of this section.
      */
-    private final DwarfSectionName sectionName;
+    private final DwarfSectionNameBase sectionName;
 
     /**
      * The name of the section which needs to have been created prior to creating this section.
      */
-    private final DwarfSectionName targetSectionName;
+    private final DwarfSectionNameBase targetSectionName;
 
     /**
      * The layout properties of the target section which need to have been decided before the
@@ -123,11 +120,11 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
                     LayoutDecision.Kind.SIZE
     };
 
-    public DwarfSectionImpl(DwarfDebugInfo dwarfSections, DwarfSectionName name, DwarfSectionName targetName) {
+    public DwarfSectionImpl(DwarfDebugInfoBase dwarfSections, DwarfSectionNameBase name, DwarfSectionNameBase targetName) {
         this(dwarfSections, name, targetName, defaultTargetSectionKinds);
     }
 
-    public DwarfSectionImpl(DwarfDebugInfo dwarfSections, DwarfSectionName sectionName, DwarfSectionName targetSectionName, LayoutDecision.Kind[] targetKinds) {
+    public DwarfSectionImpl(DwarfDebugInfoBase dwarfSections, DwarfSectionNameBase sectionName, DwarfSectionNameBase targetSectionName, LayoutDecision.Kind[] targetKinds) {
         this.dwarfSections = dwarfSections;
         this.sectionName = sectionName;
         this.targetSectionName = targetSectionName;
@@ -135,7 +132,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     public boolean isAArch64() {
-        return dwarfSections.elfMachine == ELFMachine.AArch64;
+        return dwarfSections.isAarch64();
     }
 
     /**
@@ -171,7 +168,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         /*
          * Even though we're a progbits section impl we're not actually loadable.
          */
-        return false;
+        return dwarfSections.layoutDependsOnVaddr();
     }
 
     private String debugSectionLogName() {
@@ -180,7 +177,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
          * context key. For example messages for info section will be keyed using dwarf.debug_info.
          * Other info formats use their own format-specific prefix.
          */
-        assert getSectionName().startsWith(".debug");
+        assert dwarfSections.isDebugSectionName(getSectionName());
         return "dwarf" + getSectionName();
     }
 
@@ -282,8 +279,8 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         /*
          * Mark address so it is relocated relative to the start of the text segment.
          */
-        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, DwarfSectionName.TEXT_SECTION.value(), l);
-        pos = writeLong(0, buffer, pos);
+        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, dwarfSections.textSectionName().value(), l);
+        pos = writeLong(dwarfSections.relocatableLong(l), buffer, pos);
         return pos;
     }
 
@@ -292,8 +289,8 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         /*
          * Mark address so it is relocated relative to the start of the heap.
          */
-        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, DwarfDebugInfo.HEAP_BEGIN_NAME, l);
-        pos = writeLong(0, buffer, pos);
+        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, DwarfDebugInfoBase.HEAP_BEGIN_NAME, l);
+        pos = writeLong(dwarfSections.relocatableLong(l), buffer, pos);
         return pos;
     }
 
@@ -303,7 +300,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
          * Mark address so it is relocated relative to the start of the desired section.
          */
         markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_4, referencedSectionName, offset);
-        pos = writeInt(0, buffer, pos);
+        pos = writeInt(dwarfSections.relocatableInt(offset), buffer, pos);
         return pos;
     }
 
@@ -480,7 +477,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         writeInt(length, buffer, lengthPos);
     }
 
-    protected int writeAbbrevCode(AbbrevCode code, byte[] buffer, int pos) {
+    protected int writeAbbrevCode(DwarfDebugInfoBase.AbbrevCode code, byte[] buffer, int pos) {
         return writeSLEB(code.ordinal(), buffer, pos);
     }
 
@@ -523,19 +520,19 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     protected int writeInfoSectionOffset(int offset, byte[] buffer, int pos) {
-        return writeDwarfSectionOffset(offset, buffer, DwarfSectionName.DW_INFO_SECTION, pos);
+        return writeDwarfSectionOffset(offset, buffer, dwarfSections.infoSectionName(), pos);
     }
 
     protected int writeLineSectionOffset(int offset, byte[] buffer, int pos) {
-        return writeDwarfSectionOffset(offset, buffer, DwarfSectionName.DW_LINE_SECTION, pos);
+        return writeDwarfSectionOffset(offset, buffer, dwarfSections.lineSectionName(), pos);
     }
 
     protected int writeRangesSectionOffset(int offset, byte[] buffer, int pos) {
-        return writeDwarfSectionOffset(offset, buffer, DwarfSectionName.DW_RANGES_SECTION, pos);
+        return writeDwarfSectionOffset(offset, buffer, dwarfSections.rangesSectionName(), pos);
     }
 
     protected int writeAbbrevSectionOffset(int offset, byte[] buffer, int pos) {
-        return writeDwarfSectionOffset(offset, buffer, DwarfSectionName.DW_ABBREV_SECTION, pos);
+        return writeDwarfSectionOffset(offset, buffer, dwarfSections.abbrevSectionName(), pos);
     }
 
     protected int writeStrSectionOffset(String value, byte[] buffer, int p) {
@@ -545,14 +542,14 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     private int writeStrSectionOffset(int offset, byte[] buffer, int pos) {
-        return writeDwarfSectionOffset(offset, buffer, DwarfSectionName.DW_STR_SECTION, pos);
+        return writeDwarfSectionOffset(offset, buffer, dwarfSections.strSectionName(), pos);
     }
 
     protected int writeLocSectionOffset(int offset, byte[] buffer, int pos) {
-        return writeDwarfSectionOffset(offset, buffer, DwarfSectionName.DW_LOC_SECTION, pos);
+        return writeDwarfSectionOffset(offset, buffer, dwarfSections.locSectionName(), pos);
     }
 
-    protected int writeDwarfSectionOffset(int offset, byte[] buffer, DwarfSectionName referencedSectionName, int pos) {
+    protected int writeDwarfSectionOffset(int offset, byte[] buffer, DwarfSectionNameBase referencedSectionName, int pos) {
         // offsets to abbrev section DIEs need a relocation
         // the linker uses this to update the offset when info sections are merged
         if (buffer != null) {
@@ -682,7 +679,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     @Override
     public int getOrDecideSize(Map<ObjectFile.Element, LayoutDecisionMap> alreadyDecided, int sizeHint) {
 
-        if (targetName().startsWith(".debug")) {
+        if (dwarfSections.isDebugSectionName(targetName())) {
             ObjectFile.Element previousElement = this.getElement().getOwner().elementForName(targetName());
             DwarfSectionImpl previousSection = (DwarfSectionImpl) previousElement.getImpl();
             assert previousSection.contentByteArrayCreated();
@@ -710,7 +707,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     public Set<BuildDependency> getDependencies(Map<ObjectFile.Element, LayoutDecisionMap> decisions) {
         Set<BuildDependency> deps = super.getDependencies(decisions);
         String targetName = targetName();
-        ELFObjectFile.ELFSection targetSection = (ELFObjectFile.ELFSection) getElement().getOwner().elementForName(targetName);
+        var targetSection = getElement().getOwner().elementForName(targetName);
         LayoutDecision ourContent = decisions.get(getElement()).getDecision(LayoutDecision.Kind.CONTENT);
         LayoutDecision ourSize = decisions.get(getElement()).getDecision(LayoutDecision.Kind.SIZE);
 
