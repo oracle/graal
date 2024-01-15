@@ -1883,7 +1883,6 @@ public class FlatNodeGenFactory {
                     continue;
                 }
                 expressions.add(fieldName);
-
                 createCachedFieldsImpl(nodeElements, nodeElements, null, null, cache, true);
             }
         }
@@ -2180,6 +2179,11 @@ public class FlatNodeGenFactory {
         }
         CacheExpression sharedCache = lookupSharedCacheKey(cache);
         InlinedNodeData inline = sharedCache.getInlinedNode();
+        /*
+         * Handles corner case where we try to avoid generating shared cached fields if we are
+         * always using parent access cache for a shared cache.
+         */
+        boolean generateCachedFields = specialization != null || !hasCacheParentAccess(cache) || hasSharedCacheDirectAccess(lookupSharedCacheKey(cache));
 
         if (inline != null) {
             Parameter parameter = cache.getParameter();
@@ -2194,14 +2198,16 @@ public class FlatNodeGenFactory {
             for (InlineFieldData field : inline.getFields()) {
                 builder.startGroup();
                 if (field.isState()) {
-                    BitSet specializationBitSet = findInlinedState(specializationState, field);
-                    CodeVariableElement updaterField = createStateUpdaterField(specialization, specializationState, field, specializationClassElements);
-                    String updaterFieldName = updaterField.getName();
-                    builder.startCall(updaterFieldName, "subUpdater");
-                    BitRange range = specializationBitSet.getStates().queryRange(StateQuery.create(InlinedNodeState.class, field));
-                    builder.string(String.valueOf(range.offset));
-                    builder.string(String.valueOf(range.length));
-                    builder.end();
+                    if (generateCachedFields) {
+                        BitSet specializationBitSet = findInlinedState(specializationState, field);
+                        CodeVariableElement updaterField = createStateUpdaterField(specialization, specializationState, field, specializationClassElements);
+                        String updaterFieldName = updaterField.getName();
+                        builder.startCall(updaterFieldName, "subUpdater");
+                        BitRange range = specializationBitSet.getStates().queryRange(StateQuery.create(InlinedNodeState.class, field));
+                        builder.string(String.valueOf(range.offset));
+                        builder.string(String.valueOf(range.length));
+                        builder.end();
+                    }
                 } else {
                     /*
                      * All other fields need fields to get inlined. We do not support specialization
@@ -2265,7 +2271,9 @@ public class FlatNodeGenFactory {
             addSourceDoc(javadoc, specialization, cache, null);
             javadoc.end();
 
-            nodeElements.add(cachedField);
+            if (generateCachedFields) {
+                nodeElements.add(cachedField);
+            }
         } else {
             Parameter parameter = cache.getParameter();
             String fieldName = createFieldName(specialization, cache);
