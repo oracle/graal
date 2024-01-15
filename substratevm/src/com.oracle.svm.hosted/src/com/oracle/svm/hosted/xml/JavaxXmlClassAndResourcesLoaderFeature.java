@@ -44,10 +44,12 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        // Ensure that class loading of xml related classes work
-        // com.sun.org.apache.xerces.internal.impl.XMLDocumentFragmentScannerImpl
-        // implicitly depends on jdk.xml.internal.JdkXmlUtils. So initialization
-        // order needs to happen in the reverse order.
+        /*
+         * Ensure that class loading of xml related classes work.
+         * com.sun.org.apache.xerces.internal.impl.XMLDocumentFragmentScannerImpl
+         * implicitly depends on jdk.xml.internal.JdkXmlUtils. So initialization
+         * order needs to happen in the reverse order.
+         */
         Class<?> jdkUtil = access.findClassByName("jdk.xml.internal.JdkXmlUtils");
         if (jdkUtil != null) {
             ReflectionUtil.newInstance(jdkUtil);
