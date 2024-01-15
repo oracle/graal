@@ -1254,7 +1254,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                         }
                     } else {
                         if (!(bootstrapMethod.isVarArgs() && staticArguments.size() == i - 3) && staticArguments.get(i - 3) instanceof ImageHeapConstant imageHeapConstant) {
-                            Class<?> parameterClass = OriginalClassProvider.getJavaClass(imageHeapConstant.getType(getMetaAccess()));
+                            Class<?> parameterClass = OriginalClassProvider.getJavaClass(imageHeapConstant.getType());
                             /*
                              * Having incompatible types here causes a ClassCastException in
                              * MethodHandle.invoke on the bootstrap method invocation.
