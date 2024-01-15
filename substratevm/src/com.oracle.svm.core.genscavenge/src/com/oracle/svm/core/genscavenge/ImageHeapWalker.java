@@ -33,6 +33,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -93,7 +94,7 @@ public final class ImageHeapWalker {
         Pointer current = firstPointer;
 
         /* Compute the enclosing chunk without assuming that the image heap is aligned. */
-        Pointer base = HeapImpl.getImageHeapStart();
+        Pointer base = Heap.getHeap().getImageHeapStart();
         Pointer offset = current.subtract(base);
         UnsignedWord chunkOffset = alignedChunks ? UnsignedUtils.roundDown(offset, HeapParameters.getAlignedHeapChunkAlignment())
                         : offset.subtract(UnalignedHeapChunk.getObjectStartOffset());

@@ -45,6 +45,7 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.debug.GraalError;
 
 public abstract class Heap {
     @Fold
@@ -142,6 +143,11 @@ public abstract class Heap {
      */
     @Fold
     public abstract int getPreferredAddressSpaceAlignment();
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public Pointer getImageHeapStart() {
+        throw GraalError.unimplemented("Heap.getImageHeapStart not implemented");
+    }
 
     /**
      * Returns an offset relative to the heap base, at which the image heap should be mapped into
