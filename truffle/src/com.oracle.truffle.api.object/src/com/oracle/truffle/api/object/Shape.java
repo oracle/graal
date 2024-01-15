@@ -812,16 +812,6 @@ public abstract class Shape {
     public abstract Shape changeType(@SuppressWarnings("deprecation") ObjectType newOps);
 
     /**
-     * Create a new {@link DynamicObject} instance with this shape.
-     *
-     * @throws UnsupportedOperationException if this layout does not support construction
-     * @since 0.8 or earlier
-     * @deprecated no replacement.
-     */
-    @Deprecated(since = "22.2")
-    public abstract DynamicObject newInstance();
-
-    /**
      * Get mutex object shared by related shapes, i.e. shapes with a common root.
      *
      * @since 0.8 or earlier
