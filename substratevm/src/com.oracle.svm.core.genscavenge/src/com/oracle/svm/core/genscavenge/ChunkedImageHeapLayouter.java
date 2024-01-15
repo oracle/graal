@@ -55,10 +55,7 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
      * image heap during image startup, and it means that less of the image heap has to be
      * copied-on-write if the image heap is relocated in a new process.
      * <p>
-     * A relocated reference is read-only once relocated, e.g., at runtime. The read-only relocation
-     * partition does not exist as a separate partition in the generated image. Instead, the
-     * read-only reference partition is resized to include the read-only relocation partition as
-     * well.
+     * A relocated reference is read-only once relocated, e.g., at runtime.
      */
     private static final int READ_ONLY_RELOCATABLE = READ_ONLY_REGULAR + 1;
     /** A partition holding writable objects. */
@@ -81,12 +78,13 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
     /** @param startOffset Offset relative to the heap base. */
     @SuppressWarnings("this-escape")
     public ChunkedImageHeapLayouter(ImageHeapInfo heapInfo, long startOffset) {
+        int alignment = ConfigurationValues.getObjectLayout().getAlignment();
         this.partitions = new ChunkedImageHeapPartition[PARTITION_COUNT];
-        this.partitions[READ_ONLY_REGULAR] = new ChunkedImageHeapPartition("readOnly", false, false);
-        this.partitions[READ_ONLY_RELOCATABLE] = new ChunkedImageHeapPartition("readOnlyRelocatable", false, false);
-        this.partitions[WRITABLE_REGULAR] = new ChunkedImageHeapPartition("writable", true, false);
-        this.partitions[WRITABLE_HUGE] = new ChunkedImageHeapPartition("writableHuge", true, true);
-        this.partitions[READ_ONLY_HUGE] = new ChunkedImageHeapPartition("readOnlyHuge", false, true);
+        this.partitions[READ_ONLY_REGULAR] = new ChunkedImageHeapPartition("readOnly", false, false, alignment, alignment);
+        this.partitions[READ_ONLY_RELOCATABLE] = new ChunkedImageHeapPartition("readOnlyRelocatable", false, false, alignment, alignment);
+        this.partitions[WRITABLE_REGULAR] = new ChunkedImageHeapPartition("writable", true, false, alignment, alignment);
+        this.partitions[WRITABLE_HUGE] = new ChunkedImageHeapPartition("writableHuge", true, true, alignment, alignment);
+        this.partitions[READ_ONLY_HUGE] = new ChunkedImageHeapPartition("readOnlyHuge", false, true, alignment, alignment);
 
         this.heapInfo = heapInfo;
         this.startOffset = startOffset;
@@ -102,10 +100,6 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
     @Override
     public ChunkedImageHeapPartition[] getPartitions() {
         return partitions;
-    }
-
-    private ChunkedImageHeapPartition getLastPartition() {
-        return partitions[PARTITION_COUNT - 1];
     }
 
     @Override
@@ -140,37 +134,12 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
         int objectAlignment = ConfigurationValues.getObjectLayout().getAlignment();
         assert pageSize % objectAlignment == 0 : "Page size does not match object alignment";
 
-        for (ChunkedImageHeapPartition partition : getPartitions()) {
-            int startAlignment = objectAlignment;
-            int endAlignment = objectAlignment;
-            if (partition == getReadOnlyRelocatable()) {
-                startAlignment = pageSize;
-                endAlignment = pageSize;
-            } else if (partition == getWritableRegular()) {
-                startAlignment = pageSize;
-            } else if (partition == getWritableHuge()) {
-                endAlignment = pageSize;
-            }
-
-            /* Make sure the image heap size is a multiple of the page size. */
-            if (partition == getLastPartition()) {
-                endAlignment = pageSize;
-            }
-
-            partition.setStartAlignment(startAlignment);
-            partition.setEndAlignment(endAlignment);
-        }
-
         ImageHeapLayoutInfo layoutInfo = doLayout(imageHeap);
 
         for (ChunkedImageHeapPartition partition : getPartitions()) {
             assert partition.getStartOffset() % partition.getStartAlignment() == 0 : partition;
             assert (partition.getStartOffset() + partition.getSize()) % partition.getEndAlignment() == 0 : partition;
         }
-
-        assert layoutInfo.getReadOnlyRelocatableOffset() % pageSize == 0 && layoutInfo.getReadOnlyRelocatableSize() % pageSize == 0 : layoutInfo;
-        assert layoutInfo.getWritableOffset() % pageSize == 0 && layoutInfo.getWritableSize() % pageSize == 0 : layoutInfo;
-
         return layoutInfo;
     }
 
