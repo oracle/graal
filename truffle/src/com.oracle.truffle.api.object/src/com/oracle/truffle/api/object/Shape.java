@@ -822,17 +822,6 @@ public abstract class Shape {
     public abstract DynamicObject newInstance();
 
     /**
-     * Create a {@link DynamicObjectFactory} for creating instances of this shape.
-     *
-     * @throws UnsupportedOperationException if this layout does not support construction
-     * @since 0.8 or earlier
-     * @deprecated no replacement.
-     */
-    @SuppressWarnings("deprecation")
-    @Deprecated(since = "22.2")
-    public abstract DynamicObjectFactory createFactory();
-
-    /**
      * Get mutex object shared by related shapes, i.e. shapes with a common root.
      *
      * @since 0.8 or earlier

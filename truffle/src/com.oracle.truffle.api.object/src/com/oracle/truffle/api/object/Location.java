@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -196,8 +196,7 @@ public abstract class Location {
 
     /**
      * Like {@link #set(DynamicObject, Object, Shape)}, but does not invalidate final locations. For
-     * internal use only and subject to change, use {@link DynamicObjectFactory} to create objects
-     * with predefined properties.
+     * internal use only and subject to change.
      *
      * @throws IncompatibleLocationException if value is of non-assignable type
      * @since 0.8 or earlier

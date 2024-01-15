@@ -64,7 +64,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
@@ -1080,12 +1079,6 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.17 or earlier */
     @Override
     public final DynamicObject newInstance() {
-        throw DefaultLayout.unsupported();
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
-    public final DynamicObjectFactory createFactory() {
         throw DefaultLayout.unsupported();
     }
 
