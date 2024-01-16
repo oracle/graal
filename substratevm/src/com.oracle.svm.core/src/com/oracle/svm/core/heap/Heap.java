@@ -43,9 +43,9 @@ import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.debug.GraalError;
 
 public abstract class Heap {
     @Fold
@@ -146,7 +146,7 @@ public abstract class Heap {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer getImageHeapStart() {
-        throw GraalError.unimplemented("Heap.getImageHeapStart not implemented");
+        throw VMError.unimplemented("Heap.getImageHeapStart not implemented");
     }
 
     /**
