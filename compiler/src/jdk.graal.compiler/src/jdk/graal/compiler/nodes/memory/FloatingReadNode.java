@@ -28,6 +28,8 @@ import static jdk.graal.compiler.nodeinfo.InputType.Memory;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
@@ -39,14 +41,13 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.amd64.AMD64LFenceOp;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
+import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import jdk.graal.compiler.nodes.NodeView;
-import jdk.graal.compiler.nodes.ValuePhiNode;
-import jdk.graal.compiler.nodes.memory.address.AddressNode;
-import org.graalvm.word.LocationIdentity;
 
 
 /**
@@ -140,4 +141,5 @@ public final class FloatingReadNode extends FloatingAccessNode implements LIRLow
     public Stamp getAccessStamp(NodeView view) {
         return stamp(view);
     }
+
 }

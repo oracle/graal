@@ -197,9 +197,17 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         if (deleteAnnotations.get(field) != null) {
             return true;
         }
+        return isAnnotationPresent(field, Delete.class);
+    }
+
+    public boolean isAnnotationPresent(Field field, Class<? extends Annotation> annotationClass) {
+        return isAnnotationPresent(metaAccess.lookupJavaField(field), annotationClass);
+    }
+
+    public boolean isAnnotationPresent(ResolvedJavaField field, Class<? extends Annotation> annotationClass) {
         ResolvedJavaField substitutionField = fieldSubstitutions.get(field);
         if (substitutionField != null) {
-            return AnnotationAccess.isAnnotationPresent(substitutionField, Delete.class);
+            return AnnotationAccess.isAnnotationPresent(substitutionField, annotationClass);
         }
         return false;
     }
@@ -305,7 +313,6 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 switch (cvField.getRecomputeValueKind()) {
                     case FieldOffset:
                         AnalysisField targetField = bb.getMetaAccess().lookupJavaField(cvField.getTargetField());
-                        targetField.registerAsAccessed(cvField);
                         assert !AnnotationAccess.isAnnotationPresent(targetField, Delete.class);
                         targetField.registerAsUnsafeAccessed(cvField);
                         break;

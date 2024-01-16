@@ -34,6 +34,7 @@ import java.io.PrintStream;
 
 import jdk.graal.compiler.api.runtime.GraalRuntime;
 import jdk.graal.compiler.debug.MethodFilter;
+import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
@@ -44,6 +45,7 @@ import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.hotspot.HotSpotJVMCICompilerFactory;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
 import jdk.vm.ci.runtime.JVMCIRuntime;
@@ -157,7 +159,8 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
             System.err.printf("Error parsing Graal options: %s%n", optionsFailure.getMessage());
             return;
         }
-        options.printHelp(OptionsParser.getOptionsLoader(), out, GRAAL_OPTION_PROPERTY_PREFIX);
+        boolean all = Options.PrintPropertiesAll.getValue(options);
+        options.printHelp(OptionsParser.getOptionsLoader(), out, GRAAL_OPTION_PROPERTY_PREFIX, all);
     }
 
     static class Options {
@@ -170,6 +173,8 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
                        "A method not matching the filter is redirected to a lower tier compiler. " +
                        "The filter format is the same as for the MethodFilter option.", type = OptionType.Expert)
         public static final OptionKey<String> GraalCompileOnly = new OptionKey<>(null);
+        @Option(help = "Make JVMCIPrintProperties show all Graal options, including debug and internal options.", type = OptionType.Debug)
+        public static final OptionKey<Boolean> PrintPropertiesAll = new OptionKey<>(false);
         // @formatter:on
 
     }
@@ -182,6 +187,14 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
             System.err.printf("Error parsing Graal options: %s%nError: A fatal exception has occurred. Program will exit.%n", optionsFailure.getMessage());
             HotSpotGraalServices.exit(1, hsRuntime);
         }
+
+        if (Options.PrintPropertiesAll.getValue(options)) {
+            HotSpotVMConfigAccess config = new HotSpotVMConfigAccess(hsRuntime.getConfigStore());
+            if (!config.getFlag("JVMCIPrintProperties", Boolean.class)) {
+                TTY.printf("Warning: Ignoring %s since JVMCIPrintProperties is false%n", Options.PrintPropertiesAll.getName());
+            }
+        }
+
         CompilerConfigurationFactory factory = CompilerConfigurationFactory.selectFactory(null, options, hsRuntime);
         if (isGraalPredicate != null) {
             isGraalPredicate.onCompilerConfigurationFactorySelection(hsRuntime, factory);

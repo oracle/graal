@@ -27,6 +27,7 @@
 package com.oracle.graal.pointsto.api;
 
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -311,6 +312,10 @@ public abstract class HostVM {
     @SuppressWarnings("unused")
     public HostedProviders getProviders(MultiMethod.MultiMethodKey key) {
         return providers;
+    }
+
+    public boolean isFieldIncluded(BigBang bb, Field field) {
+        return true;
     }
 
     /**

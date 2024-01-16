@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -347,11 +347,6 @@ public final class InspectorTester {
                 // To cleanup any references to the closed context, we need to set a new instance
                 // of ProxyLanguage.
                 ProxyLanguage.setDelegate(new ProxyLanguage());
-                try {
-                    inspect.sendClose();
-                } catch (IOException e) {
-                    fail(e.getLocalizedMessage());
-                }
                 inspect = null;
                 inspectorContext = null;
                 evalValue = null;

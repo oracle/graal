@@ -62,14 +62,14 @@ public class SVMImageHeapVerifier extends HeapSnapshotVerifier {
      * - an image heap map, e.g., via an object replacer like
      * com.oracle.svm.enterprise.core.stringformat.StringFormatFeature.collectZeroDigits(). Signal
      * this by returning true to make sure that
-     * com.oracle.graal.pointsto.heap.ImageHeapMapFeature.duringAnalysis() is run to properly patch
-     * all ImageHeapMaps.
+     * com.oracle.graal.pointsto.heap.ImageHeapCollectionFeature.duringAnalysis() is run to properly
+     * patch all ImageHeapMaps.
      * 
      * - runtime reflection registration.
      * 
      */
     private static boolean imageStateModified() {
-        return ImageSingletons.lookup(ImageHeapMapFeature.class).imageHeapMapNeedsUpdate();
+        return ImageSingletons.lookup(ImageHeapCollectionFeature.class).needsUpdate();
     }
 
     @Override

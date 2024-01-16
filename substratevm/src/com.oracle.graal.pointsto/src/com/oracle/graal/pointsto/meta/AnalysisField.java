@@ -379,8 +379,8 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         return isJNIAccessed;
     }
 
-    public void setUnsafeFrozenTypeState(boolean value) {
-        unsafeFrozenTypeStateUpdater.set(this, value ? 1 : 0);
+    public void registerAsFrozenUnsafeAccessed() {
+        unsafeFrozenTypeStateUpdater.set(this, 1);
     }
 
     public boolean hasUnsafeFrozenTypeState() {
@@ -544,16 +544,21 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
      */
     public void beforeFieldValueAccess() {
         declaringClass.registerAsReachable(this);
-        declaringClass.ensureOnTypeReachableTaskDone();
 
-        List<AnalysisFuture<Void>> notifications = declaringClass.scheduledTypeReachableNotifications;
-        if (notifications != null) {
-            for (var notification : notifications) {
-                notification.ensureDone();
+        declaringClass.forAllSuperTypes(type -> {
+            type.ensureOnTypeReachableTaskDone();
+
+            List<AnalysisFuture<Void>> notifications = type.scheduledTypeReachableNotifications;
+            if (notifications != null) {
+                for (var notification : notifications) {
+                    notification.ensureDone();
+                }
+                /*
+                 * Now we know all the handlers have been executed, no checks are necessary anymore.
+                 */
+                type.scheduledTypeReachableNotifications = null;
             }
-            /* Now we know all the handlers have been executed, no checks are necessary anymore. */
-            declaringClass.scheduledTypeReachableNotifications = null;
-        }
+        });
     }
 
     public void addAnalysisFieldObserver(AnalysisFieldObserver observer) {

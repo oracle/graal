@@ -38,12 +38,13 @@ import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.GraphState.StageFlag;
+import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.memory.MemoryAccess;
 import jdk.graal.compiler.nodes.spi.ArrayLengthProvider;
@@ -113,15 +114,15 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
          * explode loop we run a limited form for constants before. This is needed for unrolling for
          * example that uses #canonical instead of #simplify to not recompute the cfg all the time.
          */
-        ValueNode len = searchForConstantLength(tool.getConstantReflection());
+        ValueNode len = searchForConstantLength(tool.getConstantReflection(), forValue);
         if (len != null) {
             return len;
         }
         return this;
     }
 
-    private ValueNode searchForConstantLength(ConstantReflectionProvider constantReflection) {
-        ValueNode len = GraphUtil.arrayLength(getValue(), ArrayLengthProvider.FindLengthMode.SEARCH_ONLY, constantReflection);
+    private static ValueNode searchForConstantLength(ConstantReflectionProvider constantReflection, ValueNode forValue) {
+        ValueNode len = GraphUtil.arrayLength(forValue, ArrayLengthProvider.FindLengthMode.SEARCH_ONLY, constantReflection);
         return len != null && len.isConstant() ? len : null;
     }
 
@@ -132,7 +133,7 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
          * guarded pi can be done in multiple places and we only want to do it once for all users,
          * so we let it be done after lowering to catch all users at once.
          */
-        ValueNode constantLength = searchForConstantLength(tool.getConstantReflection());
+        ValueNode constantLength = searchForConstantLength(tool.getConstantReflection(), getValue());
         if (constantLength == null && !graph().isAfterStage(StageFlag.HIGH_TIER_LOWERING)) {
             return;
         }
@@ -171,7 +172,7 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
             StructuredGraph graph = graph();
             ValueNode replacement = length;
             if (!length.isConstant() && length.stamp(NodeView.DEFAULT).canBeImprovedWith(StampFactory.positiveInt())) {
-                BeginNode guard = graph.add(new BeginNode());
+                ValueAnchorNode guard = graph.add(new ValueAnchorNode());
                 graph.addAfterFixed(this, guard);
                 replacement = graph.addWithoutUnique(new PiNode(length, StampFactory.positiveInt(), guard));
             }

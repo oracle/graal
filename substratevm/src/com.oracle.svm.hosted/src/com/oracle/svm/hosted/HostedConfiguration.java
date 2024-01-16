@@ -77,7 +77,6 @@ import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.internal.ValueBased;
 import jdk.vm.ci.meta.JavaKind;
@@ -209,10 +208,6 @@ public class HostedConfiguration {
 
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
         return new SVMMethodTypeFlowBuilder(bb, method, flowsGraph, graphKind);
-    }
-
-    public void registerUsedElements(PointsToAnalysis bb, StructuredGraph graph) {
-        SVMMethodTypeFlowBuilder.registerUsedElements(bb, graph);
     }
 
     public MetaAccessExtensionProvider createAnalysisMetaAccessExtensionProvider() {

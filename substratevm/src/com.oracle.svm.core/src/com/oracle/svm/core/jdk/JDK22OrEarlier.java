@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.phases;
+package com.oracle.svm.core.jdk;
 
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import java.util.function.BooleanSupplier;
 
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
-final class InlineBeforeAnalysisInlineInvokePlugin implements InlineInvokePlugin {
-
-    private final InlineBeforeAnalysisPolicy policy;
-
-    InlineBeforeAnalysisInlineInvokePlugin(InlineBeforeAnalysisPolicy policy) {
-        this.policy = policy;
-    }
-
+public class JDK22OrEarlier implements BooleanSupplier {
     @Override
-    public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod m, ValueNode[] args) {
-        AnalysisMethod method = (AnalysisMethod) m;
-        if (policy.shouldInlineInvoke(b, method, args)) {
-            return policy.createInvokeInfo(method);
-        } else {
-            return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
-        }
+    public boolean getAsBoolean() {
+        return JavaVersionUtil.JAVA_SPEC <= 22;
     }
 }

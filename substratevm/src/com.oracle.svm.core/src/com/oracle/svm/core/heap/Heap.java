@@ -36,7 +36,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
@@ -122,12 +121,6 @@ public abstract class Heap {
 
     /**
      * Get the ObjectHeader implementation that this Heap uses.
-     *
-     * TODO: This is used during native image generation to put appropriate headers on Objects in
-     * the native image heap. Is there any reason to expose the whole ObjectHeader interface, since
-     * only setBootImageOnLong(0L) is used then, to get the native image object header bits?
-     *
-     * TODO: Would an "Unsigned getBootImageObjectHeaderBits()" method be sufficient?
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract ObjectHeader getObjectHeader();
@@ -156,14 +149,6 @@ public abstract class Heap {
      */
     @Fold
     public abstract int getImageHeapOffsetInAddressSpace();
-
-    /**
-     * Returns whether the runtime page size doesn't have to match the page size set at image
-     * creation ({@link SubstrateOptions#getPageSize()}). If there is a mismatch, then the page size
-     * set at image creation must be a multiple of the runtime page size.
-     */
-    @Fold
-    public abstract boolean allowPageSizeMismatch();
 
     /**
      * Returns true if the given object is located in the image heap.

@@ -24,68 +24,26 @@
  */
 package com.oracle.svm.core.posix.linux;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
-
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CIsolateData;
 import com.oracle.svm.core.c.CIsolateDataFactory;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.heap.UnknownObjectField;
-import com.oracle.svm.core.locks.ClassInstanceReplacer;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.locks.VMSemaphore;
-import com.oracle.svm.core.posix.PosixVMSemaphoreSupport;
 import com.oracle.svm.core.posix.headers.Semaphore;
 import com.oracle.svm.core.posix.pthread.PthreadVMLockSupport;
 
-/**
- * Support of unnamed {@link VMSemaphore} in multithreaded environments on LINUX.
- */
-@AutomaticallyRegisteredFeature
-final class LinuxVMSemaphoreFeature implements InternalFeature {
-
-    private final ClassInstanceReplacer<VMSemaphore, VMSemaphore> semaphoreReplacer = new ClassInstanceReplacer<>(VMSemaphore.class) {
-        @Override
-        protected VMSemaphore createReplacement(VMSemaphore source) {
-            return new LinuxVMSemaphore(source.getName());
-        }
-    };
+@AutomaticallyRegisteredImageSingleton(VMLockSupport.class)
+final class LinuxVMLockSupport extends PthreadVMLockSupport {
 
     @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.MultiThreaded.getValue();
-    }
-
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.add(PosixVMSemaphoreSupport.class, new LinuxVMSemaphoreSupport());
-        access.registerObjectReplacer(semaphoreReplacer);
-    }
-
-    @Override
-    public void beforeCompilation(BeforeCompilationAccess access) {
-        LinuxVMSemaphoreSupport semaphoreSupport = (LinuxVMSemaphoreSupport) PosixVMSemaphoreSupport.singleton();
-        semaphoreSupport.semaphores = semaphoreReplacer.getReplacements().toArray(new LinuxVMSemaphore[0]);
-    }
-}
-
-final class LinuxVMSemaphoreSupport extends PosixVMSemaphoreSupport {
-
-    /** All semaphores, so that we can initialize them at run time when the VM starts. */
-    @UnknownObjectField(availability = ReadyForCompilation.class) //
-    LinuxVMSemaphore[] semaphores;
-
-    @Override
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public VMSemaphore[] getSemaphores() {
-        return semaphores;
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected VMSemaphore replaceSemaphore(VMSemaphore source) {
+        return new LinuxVMSemaphore(source.getName());
     }
 }
 

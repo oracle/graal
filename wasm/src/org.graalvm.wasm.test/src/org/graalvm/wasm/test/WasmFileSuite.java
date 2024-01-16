@@ -571,7 +571,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
 
     private static ContextState saveContext(WasmContext context) {
         final MemoryRegistry memories = context.memories().duplicate();
-        final GlobalRegistry globals = context.globals().duplicate(context.getContextOptions().supportBulkMemoryAndRefTypes());
+        final GlobalRegistry globals = context.globals().duplicate();
         return new ContextState(memories, globals, context.fdManager().size());
     }
 

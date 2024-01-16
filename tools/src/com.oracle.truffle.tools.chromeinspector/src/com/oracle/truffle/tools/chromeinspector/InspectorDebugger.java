@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,8 @@ package com.oracle.truffle.tools.chromeinspector;
 
 import java.io.File;
 import java.io.PrintWriter;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -1064,6 +1066,7 @@ public final class InspectorDebugger extends DebuggerDomain {
         private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1, new SchedulerThreadFactory());
         private final AtomicReference<ScheduledFuture<?>> future = new AtomicReference<>();
         private Thread locked = null;
+        private volatile Reference<Thread> schedulerThread;
 
         @Override
         public void onSuspend(SuspendedEvent se) {
@@ -1266,27 +1269,27 @@ public final class InspectorDebugger extends DebuggerDomain {
             scheduler.shutdown();
             try {
                 scheduler.awaitTermination(30, TimeUnit.SECONDS);
+                Thread t = (schedulerThread != null) ? schedulerThread.get() : null;
+                if (t != null) {
+                    t.join();
+                }
             } catch (InterruptedException e) {
+                // Interrupted
             }
         }
-    }
 
-    private static class SchedulerThreadFactory implements ThreadFactory {
+        private class SchedulerThreadFactory implements ThreadFactory {
 
-        private final ThreadGroup group;
+            SchedulerThreadFactory() {
+            }
 
-        @SuppressWarnings("deprecation")
-        SchedulerThreadFactory() {
-            SecurityManager s = System.getSecurityManager();
-            this.group = (s != null) ? s.getThreadGroup() : Thread.currentThread().getThreadGroup();
-        }
-
-        @Override
-        public Thread newThread(Runnable r) {
-            Thread t = new Thread(group, r, "Suspend Unlocking Scheduler");
-            t.setDaemon(true);
-            t.setPriority(Thread.NORM_PRIORITY);
-            return t;
+            @Override
+            public Thread newThread(Runnable r) {
+                Thread t = context.getEnv().createSystemThread(r);
+                t.setName("chromeinspector.server.Suspend_Unlocking_Scheduler");
+                schedulerThread = new WeakReference<>(t);
+                return t;
+            }
         }
     }
 

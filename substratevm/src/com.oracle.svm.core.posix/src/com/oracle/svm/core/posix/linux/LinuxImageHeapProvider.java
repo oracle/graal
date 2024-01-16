@@ -42,7 +42,6 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.ComparableWord;
-import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
@@ -64,8 +63,8 @@ import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Unistd;
-import com.oracle.svm.core.util.PointerUtils;
 
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.word.Word;
 
 /**
@@ -88,10 +87,9 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
 
     private static final CGlobalData<CCharPointer> PROC_SELF_MAPS = CGlobalDataFactory.createCString("/proc/self/maps");
 
-    private static final SignedWord FIRST_ISOLATE_FD = signed(-1);
-    private static final SignedWord UNASSIGNED_FD = signed(-2);
-    private static final SignedWord CANNOT_OPEN_FD = signed(-3);
-    private static final CGlobalData<WordPointer> CACHED_IMAGE_FD = CGlobalDataFactory.createWord(FIRST_ISOLATE_FD);
+    private static final SignedWord UNASSIGNED_FD = signed(-1);
+    private static final SignedWord CANNOT_OPEN_FD = signed(-2);
+    private static final CGlobalData<WordPointer> CACHED_IMAGE_FD = CGlobalDataFactory.createWord(UNASSIGNED_FD);
     private static final CGlobalData<WordPointer> CACHED_IMAGE_HEAP_OFFSET = CGlobalDataFactory.createWord();
 
     private static final int MAX_PATHLEN = 4096;
@@ -106,29 +104,15 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
     @Override
     @Uninterruptible(reason = "Called during isolate initialization.")
     public int initialize(Pointer reservedAddressSpace, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer) {
-        // If we are the first isolate, we might be able to use the existing image heap (see below)
-        SignedWord fd = CACHED_IMAGE_FD.get().read();
-        boolean firstIsolate = false;
-        if (fd.equal(FIRST_ISOLATE_FD)) {
-            SignedWord previous = ((Pointer) CACHED_IMAGE_FD.get()).compareAndSwapWord(0, FIRST_ISOLATE_FD, UNASSIGNED_FD, LocationIdentity.ANY_LOCATION);
-            firstIsolate = previous.equal(FIRST_ISOLATE_FD);
-            fd = firstIsolate ? UNASSIGNED_FD : previous;
-        }
-
         /*
-         * If we haven't already, find and open the image file. Even if we are the first isolate,
-         * this is necessary because if we fail, we need to leave the loaded image heap in pristine
-         * condition so we can use it to spawn isolates by copying it.
-         *
-         * We cache the file descriptor and the determined offset in the file for subsequent isolate
-         * initializations. We intentionally allow racing in this step to avoid stalling threads.
+         * Find and open the image file. We cache the file descriptor and the determined offset in
+         * the file for subsequent isolate initializations. We intentionally allow racing in this
+         * step to avoid stalling threads.
          */
-        if (fd.equal(UNASSIGNED_FD) || firstIsolate) {
+        SignedWord fd = CACHED_IMAGE_FD.get().read();
+        if (fd.equal(UNASSIGNED_FD)) {
             int opened = openImageFile();
-            /*
-             * Pointer cas operations are volatile accesses and prevent code reorderings.
-             */
-            SignedWord previous = ((Pointer) CACHED_IMAGE_FD.get()).compareAndSwapWord(0, fd, signed(opened), LocationIdentity.ANY_LOCATION);
+            SignedWord previous = ((Pointer) CACHED_IMAGE_FD.get()).compareAndSwapWord(0, fd, signed(opened), NamedLocationIdentity.OFF_HEAP_LOCATION);
             if (previous.equal(fd)) {
                 fd = signed(opened);
             } else {
@@ -139,13 +123,15 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
             }
         }
 
-        // If we cannot find or open the image file, fall back to copy it from memory.
+        /*
+         * If we cannot find or open the image file, fall back to copy it from memory (the image
+         * heap must be in pristine condition for that).
+         */
         if (fd.equal(CANNOT_OPEN_FD)) {
             return fallbackCopyingProvider.initialize(reservedAddressSpace, reservedSize, basePointer, endPointer);
         }
 
         boolean haveDynamicMethodResolution = DynamicMethodAddressResolutionHeapSupport.isEnabled();
-
         if (haveDynamicMethodResolution) {
             int res = DynamicMethodAddressResolutionHeapSupport.get().initialize();
             if (res != CEntryPointErrors.NO_ERROR) {
@@ -153,31 +139,8 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
             }
         }
 
-        // If we are the first isolate and can use the existing image heap, do it.
         UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
-        Word imageHeapBegin = IMAGE_HEAP_BEGIN.get();
         UnsignedWord imageHeapSizeInFile = getImageHeapSizeInFile();
-        int imageHeapOffsetInAddressSpace = Heap.getHeap().getImageHeapOffsetInAddressSpace();
-        UnsignedWord alignment = WordFactory.unsigned(Heap.getHeap().getPreferredAddressSpaceAlignment());
-        if (firstIsolate && reservedAddressSpace.isNull() && PointerUtils.isAMultiple(imageHeapBegin, alignment) && imageHeapOffsetInAddressSpace == 0 && !haveDynamicMethodResolution) {
-            // Mark the whole image heap as read only.
-            if (VirtualMemoryProvider.get().protect(imageHeapBegin, imageHeapSizeInFile, Access.READ) != 0) {
-                return CEntryPointErrors.PROTECT_HEAP_FAILED;
-            }
-
-            // Unprotect writable pages.
-            Pointer writableBegin = IMAGE_HEAP_WRITABLE_BEGIN.get();
-            UnsignedWord writableSize = IMAGE_HEAP_WRITABLE_END.get().subtract(writableBegin);
-            if (VirtualMemoryProvider.get().protect(writableBegin, writableSize, Access.READ | Access.WRITE) != 0) {
-                return CEntryPointErrors.PROTECT_HEAP_FAILED;
-            }
-
-            basePointer.write(imageHeapBegin);
-            if (endPointer.isNonNull()) {
-                endPointer.write(IMAGE_HEAP_END.get());
-            }
-            return CEntryPointErrors.NO_ERROR;
-        }
 
         UnsignedWord preHeapRequiredBytes = WordFactory.zero();
         if (haveDynamicMethodResolution) {
@@ -191,6 +154,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
         Pointer heapBase;
         Pointer allocatedMemory = WordFactory.nullPointer();
         if (reservedAddressSpace.isNull()) {
+            UnsignedWord alignment = WordFactory.unsigned(Heap.getHeap().getPreferredAddressSpaceAlignment());
             heapBase = allocatedMemory = VirtualMemoryProvider.get().reserve(totalAddressSpaceSize, alignment, false);
             if (allocatedMemory.isNull()) {
                 return CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED;
@@ -218,22 +182,21 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
 
         // Create memory mappings from the image file.
         UnsignedWord fileOffset = CACHED_IMAGE_HEAP_OFFSET.get().read();
-        Pointer imageHeap = heapBase.add(imageHeapOffsetInAddressSpace);
+        Pointer imageHeap = getImageHeapBegin(heapBase);
         imageHeap = VirtualMemoryProvider.get().mapFile(imageHeap, imageHeapSizeInFile, fd, fileOffset, Access.READ);
         if (imageHeap.isNull()) {
             freeImageHeap(allocatedMemory);
             return CEntryPointErrors.MAP_HEAP_FAILED;
         }
 
-        Pointer relocPointer = IMAGE_HEAP_A_RELOCATABLE_POINTER.get();
-        ComparableWord relocatedValue = relocPointer.readWord(0);
-        ComparableWord mappedValue = imageHeap.readWord(relocPointer.subtract(imageHeapBegin));
+        Pointer relocsBegin = imageHeap.add(IMAGE_HEAP_RELOCATABLE_BEGIN.get().subtract(IMAGE_HEAP_BEGIN.get()));
+        ComparableWord relocatedValue = IMAGE_HEAP_A_RELOCATABLE_POINTER.get().readWord(0);
+        ComparableWord mappedValue = relocsBegin.readWord(0);
         if (relocatedValue.notEqual(mappedValue)) {
             /*
              * Addresses were relocated by dynamic linker, so copy them, but first remap the pages
              * to avoid swapping them in from disk.
              */
-            Pointer relocsBegin = imageHeap.add(IMAGE_HEAP_RELOCATABLE_BEGIN.get().subtract(imageHeapBegin));
             UnsignedWord relocsSize = IMAGE_HEAP_RELOCATABLE_END.get().subtract(IMAGE_HEAP_RELOCATABLE_BEGIN.get());
             if (!isAMultiple(relocsSize, pageSize)) {
                 freeImageHeap(allocatedMemory);
@@ -252,7 +215,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
         }
 
         // Unprotect writable pages.
-        Pointer writableBegin = imageHeap.add(IMAGE_HEAP_WRITABLE_BEGIN.get().subtract(imageHeapBegin));
+        Pointer writableBegin = imageHeap.add(IMAGE_HEAP_WRITABLE_BEGIN.get().subtract(IMAGE_HEAP_BEGIN.get()));
         UnsignedWord writableSize = IMAGE_HEAP_WRITABLE_END.get().subtract(IMAGE_HEAP_WRITABLE_BEGIN.get());
         if (VirtualMemoryProvider.get().protect(writableBegin, writableSize, Access.READ | Access.WRITE) != 0) {
             freeImageHeap(allocatedMemory);

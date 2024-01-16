@@ -2890,7 +2890,8 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                         'path': None,
                     })
                     # additional JDK libraries need to be in the launcher's directory
-                    layout.setdefault(dirname(launcher_dest) + '/', []).append({
+                    destination = path_prefix + '/bin/' if mx.is_windows() else dirname(launcher_dest) + '/'
+                    layout.setdefault(destination, []).append({
                         'source_type': 'dependency',
                         'dependency': dependency,
                         'exclude': [],
@@ -2938,7 +2939,8 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                         })
                         if not _skip_libraries(library_config):
                             # additional JDK libraries need to be in the library's directory
-                            layout.setdefault(dirname(library_dest) + '/', []).append({
+                            destination = path_prefix + '/bin/' if mx.is_windows() else dirname(library_dest) + '/'
+                            layout.setdefault(destination, []).append({
                                 'source_type': 'dependency',
                                 'dependency': dependency,
                                 'exclude': [],
@@ -3598,6 +3600,13 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 main_dists[label].append(debuginfo_dist.name)
 
     _final_graalvm_distribution = get_final_graalvm_distribution()
+
+    from mx_native import TargetSelection
+    for c in _final_graalvm_distribution.components:
+        if c.extra_native_targets:
+            for t in c.extra_native_targets:
+                mx.logv(f"Selecting extra target '{t}' from GraalVM component '{c.short_name}'.")
+                TargetSelection.add_extra(t)
 
     # Add the macros if SubstrateVM is in stage1, as images could be created later with an installable Native Image
     with_svm = has_component('svm', stage1=True)

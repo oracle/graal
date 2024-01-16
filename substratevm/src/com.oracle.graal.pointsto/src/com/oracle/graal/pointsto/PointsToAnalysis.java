@@ -52,6 +52,7 @@ import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraphInfo;
+import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.AbstractUnsafeLoadTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.AbstractUnsafeStoreTypeFlow;
@@ -120,8 +121,9 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     @SuppressWarnings("this-escape")
     public PointsToAnalysis(OptionValues options, AnalysisUniverse universe, HostVM hostVM, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
-                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, UnsupportedFeatures unsupportedFeatures, DebugContext debugContext, TimerCollection timerCollection) {
-        super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, unsupportedFeatures, debugContext, timerCollection);
+                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, UnsupportedFeatures unsupportedFeatures, DebugContext debugContext, TimerCollection timerCollection,
+                    ClassInclusionPolicy classInclusionPolicy) {
+        super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, unsupportedFeatures, debugContext, timerCollection, classInclusionPolicy);
         this.typeFlowTimer = timerCollection.createTimer("(typeflow)");
         this.trackPrimitiveValues = PointstoOptions.TrackPrimitiveValues.getValue(options);
         this.anyPrimitiveSourceTypeFlow = new AnyPrimitiveSourceTypeFlow(null, null);
@@ -182,7 +184,13 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         unsafeStores.putIfAbsent(unsafeStore, true);
     }
 
-    @Override
+    /**
+     * Force update of the unsafe loads and unsafe store type flows when a field is registered as
+     * unsafe accessed 'on the fly', i.e., during the analysis.
+     *
+     * @param field the newly unsafe registered field. We use its declaring type to filter the
+     *            unsafe access flows that need to be updated.
+     */
     public void forceUnsafeUpdate(AnalysisField field) {
         /*
          * It is cheaper to post the flows of all loads and stores even if they are not related to
@@ -313,6 +321,26 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     @Override
     public AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
         return addRootMethod(metaAccess.lookupJavaMethod(method), invokeSpecial, reason, otherRoots);
+    }
+
+    @Override
+    public AnalysisMethod forcedAddRootMethod(Executable method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
+        AnalysisError.guarantee(isBaseLayerAnalysisEnabled());
+        PointsToAnalysisMethod analysisMethod = assertPointsToAnalysisMethod(metaAccess.lookupJavaMethod(method));
+        postTask(ignore -> {
+            MethodTypeFlow typeFlow = analysisMethod.getTypeFlow();
+            /*
+             * Calling MethodTypeFlow#ensureFlowsGraphCreated ensures that the method is not
+             * optimized away by the analysis.
+             */
+            typeFlow.ensureFlowsGraphCreated(this, null);
+            /*
+             * Saturating all the parameters of the method allows to enforce that no optimization is
+             * performed using the types of the parameters of the methods.
+             */
+            typeFlow.getMethodFlowsGraph().saturateAllParameters(this);
+        });
+        return addRootMethod(analysisMethod, invokeSpecial, reason, otherRoots);
     }
 
     @Override
@@ -455,12 +483,27 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         for (ResolvedJavaField javaField : type.getInstanceFields(true)) {
             AnalysisField field = (AnalysisField) javaField;
             if (field.getName().equals(fieldName)) {
-                field.registerAsAccessed("root field");
-                processRootField(type, field);
-                return field.getType();
+                return addRootField(type, field);
             }
         }
         throw shouldNotReachHere("field not found: " + fieldName);
+    }
+
+    @Override
+    public AnalysisType addRootField(Field field) {
+        AnalysisField analysisField = getMetaAccess().lookupJavaField(field);
+        if (analysisField.isStatic()) {
+            return addRootStaticField(analysisField);
+        } else {
+            AnalysisType analysisType = getMetaAccess().lookupJavaType(field.getDeclaringClass());
+            return addRootField(analysisType, analysisField);
+        }
+    }
+
+    private AnalysisType addRootField(AnalysisType type, AnalysisField field) {
+        field.registerAsAccessed("root field");
+        processRootField(type, field);
+        return field.getType();
     }
 
     private void processRootField(AnalysisType type, AnalysisField field) {
@@ -487,21 +530,25 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         try {
             reflectField = clazz.getField(fieldName);
             AnalysisField field = metaAccess.lookupJavaField(reflectField);
-            field.registerAsAccessed("static root field");
-            JavaKind storageKind = field.getStorageKind();
-            if (isSupportedJavaKind(storageKind)) {
-                if (storageKind.isObject()) {
-                    TypeFlow<?> fieldFlow = field.getType().getTypeFlow(this, true);
-                    fieldFlow.addUse(this, field.getStaticFieldFlow());
-                } else {
-                    field.getStaticFieldFlow().addState(this, TypeState.anyPrimitiveState());
-                }
-            }
-            return field.getType();
+            return addRootStaticField(field);
 
         } catch (NoSuchFieldException e) {
             throw shouldNotReachHere("field not found: " + fieldName);
         }
+    }
+
+    private AnalysisType addRootStaticField(AnalysisField field) {
+        field.registerAsAccessed("static root field");
+        JavaKind storageKind = field.getStorageKind();
+        if (isSupportedJavaKind(storageKind)) {
+            if (storageKind.isObject()) {
+                TypeFlow<?> fieldFlow = field.getType().getTypeFlow(this, true);
+                fieldFlow.addUse(this, field.getStaticFieldFlow());
+            } else {
+                field.getStaticFieldFlow().addState(this, TypeState.anyPrimitiveState());
+            }
+        }
+        return field.getType();
     }
 
     @Override

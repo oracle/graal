@@ -1057,6 +1057,18 @@ public class NativeImage {
         }
     }
 
+    private Stream<Path> resolveTargetSpecificPaths(Path base) {
+        Stream.Builder<Path> builder = Stream.builder();
+        String clibrariesPath = (targetPlatform != null) ? targetPlatform : platform;
+        Path osArch = base.resolve(clibrariesPath);
+        if (targetLibC != null) {
+            builder.add(osArch.resolve(targetLibC));
+        }
+        builder.add(osArch);
+        builder.add(base);
+        return builder.build();
+    }
+
     private int completeImageBuild() {
         List<String> leftoverArgs = processNativeImageArgs();
         apiOptionHandler.validateExperimentalOptions();
@@ -1078,9 +1090,12 @@ public class NativeImage {
         completeOptionArgs();
         addTargetArguments();
 
-        String clibrariesPath = (targetPlatform != null) ? targetPlatform : platform;
+        String defaultLibC = OS.getCurrent() == OS.LINUX ? "glibc" : null;
+        targetLibC = getHostedOptionFinalArgument(imageBuilderArgs, oHUseLibC).map(ArgumentEntry::value).orElse(System.getProperty("substratevm.HostLibC", defaultLibC));
+
         String clibrariesBuilderArg = config.getBuilderCLibrariesPaths().stream()
-                        .map(path -> canonicalize(path.resolve(clibrariesPath)).toString())
+                        .flatMap(this::resolveTargetSpecificPaths)
+                        .map(Path::toString)
                         .collect(Collectors.joining(",", oHCLibraryPath, ""));
         imageBuilderArgs.add(0, clibrariesBuilderArg);
 
@@ -1115,12 +1130,21 @@ public class NativeImage {
         imageBuilderJavaArgs.add("-Djava.lang.invoke.InnerClassLambdaMetafactory.initializeLambdas=false");
         /*
          * DONT_INLINE_THRESHOLD is used to set a profiling threshold for certain method handles and
-         * only allow inlining after n invocations. This is used for example in the implementation
-         * of record equals methods. We disable this behavior in the image builder because it can
-         * prevent optimizing the method handles for AOT compilation if the threshold is not
-         * reached.
+         * only allow inlining when JIT compiling after n invocations. PROFILE_GWT is used to
+         * profile "guard with test" method handles and speculate on a constant guard value, making
+         * the other branch statically unreachable for JIT compilation.
+         * 
+         * Both are used for example in the implementation of record hashCode/equals methods. We
+         * disable this behavior in the image builder because for AOT compilation, profiling and
+         * speculation are never useful. Instead, it prevents optimizing the method handles for AOT
+         * compilation if the threshold is not already reached at image build time.
+         *
+         * As a side effect, the profiling is also disabled when using such method handles in the
+         * image generator itself. If that turns out to be a performance problem, we need to
+         * investigate at different solution that disables the profiling only for AOT compilation.
          */
         imageBuilderJavaArgs.add("-Djava.lang.invoke.MethodHandle.DONT_INLINE_THRESHOLD=-1");
+        imageBuilderJavaArgs.add("-Djava.lang.invoke.MethodHandle.PROFILE_GWT=false");
 
         /* After JavaArgs consolidation add the user provided JavaArgs */
         boolean afterOption = false;
@@ -1145,7 +1169,6 @@ public class NativeImage {
         mainClass = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHClass);
         buildExecutable = imageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHEnableSharedLibraryFlagPrefix));
         staticExecutable = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(oHEnableStaticExecutable));
-        libC = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHUseLibC);
         boolean listModules = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(oH + "+" + "ListModules"));
         printFlags |= imageBuilderArgs.stream().anyMatch(arg -> arg.matches("-H:MicroArchitecture(@[^=]*)?=list"));
 
@@ -1225,13 +1248,20 @@ public class NativeImage {
             if (!imageNamePathParent.isAbsolute()) {
                 imageNamePathParent = imagePath.resolve(imageNamePathParent);
             }
-            if (!Files.isDirectory(imageNamePathParent)) {
-                throw NativeImage.showError("Writing image to non-existent directory " + imageNamePathParent + " is not allowed. " +
-                                "Create the missing directory if you want the image to be written to that location.");
-            }
-            if (!Files.isWritable(imageNamePathParent)) {
-                throw NativeImage.showError("Writing image to directory without write access " + imageNamePathParent + " is not possible. " +
-                                "Ensure the directory has write access or specify image path with write access.");
+            if (!useBundle()) {
+                /*
+                 * In bundle-mode the value of imagePath is purely virtual before it gets
+                 * substituted by substituteImagePath(imagePath) below. Validating the virtual value
+                 * would make no sense (and cause errors if the path does not exist anymore)
+                 */
+                if (!Files.isDirectory(imageNamePathParent)) {
+                    throw NativeImage.showError("Writing image to non-existent directory " + imageNamePathParent + " is not allowed. " +
+                                    "Create the missing directory if you want the image to be written to that location.");
+                }
+                if (!Files.isWritable(imageNamePathParent)) {
+                    throw NativeImage.showError("Writing image to directory without write access " + imageNamePathParent + " is not possible. " +
+                                    "Ensure the directory has write access or specify image path with write access.");
+                }
             }
             imagePath = imageNamePathParent;
             /* Update arguments passed to builder */
@@ -1440,7 +1470,7 @@ public class NativeImage {
 
     boolean buildExecutable;
     boolean staticExecutable;
-    String libC;
+    String targetLibC;
     String mainClass;
     String mainClassModule;
     String imageName;
@@ -1611,7 +1641,7 @@ public class NativeImage {
                     /* Exit, builder has handled error reporting. */
                     throw NativeImage.showError(null, null, exitStatusCode);
                 }
-                case OUT_OF_MEMORY -> {
+                case OUT_OF_MEMORY, OUT_OF_MEMORY_KILLED -> {
                     showOutOfMemoryWarning();
                     throw NativeImage.showError(null, null, exitStatusCode);
                 }
@@ -1859,7 +1889,7 @@ public class NativeImage {
                         LogUtils.warning("Image '" + nativeImage.imageName + "' is a fallback image that requires a JDK for execution (use --" + SubstrateOptions.OptionNameNoFallback +
                                         " to suppress fallback image generation and to print more detailed information why a fallback image was necessary).");
                         break;
-                    case OUT_OF_MEMORY:
+                    case OUT_OF_MEMORY, OUT_OF_MEMORY_KILLED:
                         nativeImage.showOutOfMemoryWarning();
                         throw showError(null, null, exitStatusCode);
                     default:

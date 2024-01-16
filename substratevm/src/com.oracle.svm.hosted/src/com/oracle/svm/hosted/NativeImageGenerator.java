@@ -54,7 +54,6 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
-import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -86,9 +85,11 @@ import org.graalvm.word.PointerBase;
 import com.oracle.graal.pointsto.AnalysisObjectScanningObserver;
 import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.ClassInclusionPolicy;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.flow.context.bytecode.BytecodeSensitiveAnalysisPolicy;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.ImageHeap;
@@ -670,6 +671,7 @@ public class NativeImageGenerator {
 
             /* Re-run shadow heap verification after compilation. */
             aUniverse.getHeapVerifier().checkHeapSnapshot(debug, hMetaAccess, "after compilation", bb.getUniverse().getEmbeddedRoots());
+            bb.getUnsupportedFeatures().report(bb);
 
             CodeCacheProvider codeCacheProvider = runtimeConfiguration.getBackendForNormalMethod().getProviders().getCodeCache();
             reporter.printCreationStart();
@@ -751,6 +753,7 @@ public class NativeImageGenerator {
          */
         Map<Constant, Object> embeddedConstants = codeCache.initAndGetEmbeddedConstants();
         bb.getUniverse().getHeapVerifier().checkHeapSnapshot(debug, heap.hMetaAccess, "before heap layout", embeddedConstants);
+        bb.getUnsupportedFeatures().report(bb);
         /*
          * Seal shadow heap after final verification. Any modification to the shadow heap after this
          * point, i.e., registering a new ImageHeapConstant or materializing the hosted values
@@ -984,23 +987,13 @@ public class NativeImageGenerator {
                 initializeBigBang(bb, options, featureHandler, nativeLibraries, debug, aMetaAccess, aUniverse.getSubstitutions(), loader, true,
                                 new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM()), this.isStubBasedPluginsSupported(), aProviders);
 
-                loader.classLoaderSupport.getClassesToIncludeUnconditionally().forEach(this::registerTypeForBaseImage);
+                loader.classLoaderSupport.getClassesToIncludeUnconditionally().forEach(cls -> bb.registerTypeForBaseImage(cls));
 
                 registerEntryPointStubs(entryPoints);
             }
 
             ProgressReporter.singleton().printInitializeEnd(featureHandler.getUserSpecificFeatures(), loader);
         }
-    }
-
-    private void registerTypeForBaseImage(Class<?> cls) {
-        String reason = "Included in the base image";
-        if (!(Modifier.isAbstract(cls.getModifiers()) || cls.isInterface() || cls.isPrimitive())) {
-            bb.getMetaAccess().lookupJavaType(cls).registerAsAllocated(reason);
-        }
-        Stream<Method> methods = Arrays.stream(cls.getDeclaredMethods()).filter(method -> bb.getMetaAccess().lookupJavaMethod(method).getAnnotation(Fold.class) == null);
-        Stream.concat(Arrays.stream(cls.getDeclaredConstructors()), methods)
-                        .forEach(mthd -> bb.addRootMethod(mthd, false, reason));
     }
 
     protected void registerEntryPointStubs(Map<Method, CEntryPointData> entryPoints) {
@@ -1163,7 +1156,7 @@ public class NativeImageGenerator {
         Collection<StructuredGraph> snippetGraphs = replacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options);
         if (bb instanceof NativeImagePointsToAnalysis pointsToAnalysis) {
             for (StructuredGraph graph : snippetGraphs) {
-                HostedConfiguration.instance().registerUsedElements(pointsToAnalysis, graph);
+                MethodTypeFlowBuilder.registerUsedElements(pointsToAnalysis, graph);
             }
         } else if (bb instanceof NativeImageReachabilityAnalysisEngine reachabilityAnalysis) {
             for (StructuredGraph graph : snippetGraphs) {
@@ -1209,6 +1202,9 @@ public class NativeImageGenerator {
         SnippetReflectionProvider snippetReflectionProvider = aProviders.getSnippetReflection();
         ConstantReflectionProvider constantReflectionProvider = aProviders.getConstantReflection();
         WordTypes wordTypes = aProviders.getWordTypes();
+        String reason = "Included in the base image";
+        ClassInclusionPolicy classInclusionPolicy = SubstrateOptions.LayeredBaseImageAnalysis.getValue(options) ? new ClassInclusionPolicy.LayeredBaseImageInclusionPolicy(reason)
+                        : new ClassInclusionPolicy.DefaultAllInclusionPolicy(reason);
         if (PointstoOptions.UseExperimentalReachabilityAnalysis.getValue(options)) {
             ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler;
             if (PointstoOptions.UseReachabilityMethodSummaries.getValue(options)) {
@@ -1219,10 +1215,10 @@ public class NativeImageGenerator {
                 reachabilityMethodProcessingHandler = new DirectMethodProcessingHandler();
             }
             return new NativeImageReachabilityAnalysisEngine(options, aUniverse, aMetaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, annotationSubstitutionProcessor, debug,
-                            ImageSingletons.lookup(TimerCollection.class), reachabilityMethodProcessingHandler);
+                            ImageSingletons.lookup(TimerCollection.class), reachabilityMethodProcessingHandler, classInclusionPolicy);
         }
         return new NativeImagePointsToAnalysis(options, aUniverse, aMetaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, annotationSubstitutionProcessor,
-                        new SubstrateUnsupportedFeatures(), debug, ImageSingletons.lookup(TimerCollection.class));
+                        new SubstrateUnsupportedFeatures(), debug, ImageSingletons.lookup(TimerCollection.class), classInclusionPolicy);
     }
 
     @SuppressWarnings("try")
@@ -1716,13 +1712,7 @@ public class NativeImageGenerator {
          * The same holds for "hotspot" elements, which come from the hosting HotSpot VM, unless
          * they are JDK internal types.
          */
-        String lname = name.toLowerCase();
-        String message = null;
-        if (lname.contains("hosted")) {
-            message = "Hosted element used at run time: " + name;
-        } else if (!name.startsWith("jdk.internal") && lname.contains("hotspot")) {
-            message = "HotSpot element used at run time: " + name;
-        }
+        String message = checkName(name);
 
         if (message != null) {
             if (bb != null) {
@@ -1731,6 +1721,17 @@ public class NativeImageGenerator {
                 throw new UnsupportedFeatureException(message);
             }
         }
+    }
+
+    public static String checkName(String name) {
+        String lname = name.toLowerCase();
+        String message = null;
+        if (lname.contains("hosted")) {
+            message = "Hosted element used at run time: " + name;
+        } else if (!name.startsWith("jdk.internal") && lname.contains("hotspot")) {
+            message = "HotSpot element used at run time: " + name;
+        }
+        return message;
     }
 
     @SuppressWarnings("try")

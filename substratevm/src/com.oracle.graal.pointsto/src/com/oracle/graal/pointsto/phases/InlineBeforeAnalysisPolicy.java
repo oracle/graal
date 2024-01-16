@@ -30,11 +30,13 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 
 /**
  * Provides the policy which methods are inlined by {@link InlineBeforeAnalysis}. If
@@ -77,6 +79,8 @@ public abstract class InlineBeforeAnalysisPolicy {
          * decision on the current list of usages. The list of usages is often but not always empty.
          */
         public abstract boolean processNode(AnalysisMetaAccess metaAccess, AnalysisMethod method, Node node);
+
+        public abstract boolean processNonInlinedInvoke(CoreProviders providers, CallTargetNode node);
     }
 
     protected final NodePlugin[] nodePlugins;
@@ -85,7 +89,7 @@ public abstract class InlineBeforeAnalysisPolicy {
         this.nodePlugins = nodePlugins;
     }
 
-    protected abstract boolean shouldInlineInvoke(GraphBuilderContext b, AnalysisMethod method, ValueNode[] args);
+    protected abstract boolean shouldInlineInvoke(GraphBuilderContext b, AbstractPolicyScope policyScope, AnalysisMethod method, ValueNode[] args);
 
     protected abstract InlineInfo createInvokeInfo(AnalysisMethod method);
 
@@ -97,8 +101,7 @@ public abstract class InlineBeforeAnalysisPolicy {
 
     protected abstract AbstractPolicyScope createRootScope();
 
-    protected abstract AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMetaAccess metaAccess,
-                    AnalysisMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle);
+    protected abstract AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMethod method);
 
     /** @see InlineBeforeAnalysisGraphDecoder#shouldOmitIntermediateMethodInStates */
     protected boolean shouldOmitIntermediateMethodInState(AnalysisMethod method) {
@@ -108,7 +111,7 @@ public abstract class InlineBeforeAnalysisPolicy {
     public static final InlineBeforeAnalysisPolicy NO_INLINING = new InlineBeforeAnalysisPolicy(new NodePlugin[0]) {
 
         @Override
-        protected boolean shouldInlineInvoke(GraphBuilderContext b, AnalysisMethod method, ValueNode[] args) {
+        protected boolean shouldInlineInvoke(GraphBuilderContext b, AbstractPolicyScope policyScope, AnalysisMethod method, ValueNode[] args) {
             return false;
         }
 
@@ -143,8 +146,7 @@ public abstract class InlineBeforeAnalysisPolicy {
         }
 
         @Override
-        protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMetaAccess metaAccess,
-                        AnalysisMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle) {
+        protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMethod method) {
             throw AnalysisError.shouldNotReachHere("NO_INLINING policy should not try to inline");
         }
     };

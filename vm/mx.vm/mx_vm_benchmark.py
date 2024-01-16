@@ -148,7 +148,6 @@ class NativeImageVM(GraalVm):
             self.extra_profile_run_args = bm_suite.extra_profile_run_arg(self.benchmark_name, args, list(image_run_args), not vm.safepoint_sampler)
             self.extra_agent_profile_run_args = bm_suite.extra_agent_profile_run_arg(self.benchmark_name, args, list(image_run_args))
             self.benchmark_output_dir = bm_suite.benchmark_output_dir(self.benchmark_name, args)
-            self.pgo_iteration_num = bm_suite.pgo_iteration_num(self.benchmark_name, args)
             self.params = ['extra-image-build-argument', 'extra-jvm-arg', 'extra-run-arg', 'extra-agent-run-arg', 'extra-profile-run-arg',
                            'extra-agent-profile-run-arg', 'benchmark-output-dir', 'stages', 'skip-agent-assertions']
 
@@ -265,7 +264,7 @@ class NativeImageVM(GraalVm):
             mx.warn(f"Ignoring: {kwargs}")
 
         self.vm_args = None
-        self.pgo_instrumented_iterations = 0
+        self.pgo_instrumentation = False
         self.pgo_context_sensitive = True
         self.is_gate = False
         self.is_quickbuild = False
@@ -302,7 +301,7 @@ class NativeImageVM(GraalVm):
             return
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
-        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-)?(?P<inliner>inline-|iterative-|inline-explored-)?' \
+        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-)?(?P<inliner>inline-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<jdk_profiles>jdk-profiles-collect-|adopted-jdk-pgo-)?' \
                r'(?P<profile_inference>profile-inference-feature-extraction-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-)?(?P<edition>ce-|ee-)?$'
 
@@ -348,32 +347,19 @@ class NativeImageVM(GraalVm):
             pgo_mode = matching.group("pgo")[:-1]
             if pgo_mode == "pgo":
                 mx.logv(f"'pgo' is enabled for {config_name}")
-                self.pgo_instrumented_iterations = 1
+                self.pgo_instrumentation = True
             elif pgo_mode == "pgo-ctx-insens":
                 mx.logv(f"'pgo-ctx-insens' is enabled for {config_name}")
-                self.pgo_instrumented_iterations = 1
+                self.pgo_instrumentation = True
                 self.pgo_context_sensitive = False
             else:
                 mx.abort(f"Unknown pgo mode: {pgo_mode}")
-
-        if matching.group("inliner") is not None:
-            inliner = matching.group("inliner")[:-1]
-            if self.pgo_instrumented_iterations < 1:
-                mx.abort(f"The selected inliner require PGO! Invalid configuration: {config_name}")
-            elif inliner == "iterative":
-                mx.logv(f"'iterative' inliner is enabled for {config_name}")
-                self.pgo_instrumented_iterations = 3
-            elif inliner == "inline-explored":
-                mx.logv(f"'inline-explored' is enabled for {config_name}")
-                self.pgo_instrumented_iterations = 3
-            else:
-                mx.abort(f"Unknown inliner configuration: {inliner}")
 
         if matching.group("jdk_profiles") is not None:
             config = matching.group("jdk_profiles")[:-1]
             if config == 'jdk-profiles-collect':
                 self.jdk_profiles_collect = True
-                self.pgo_instrumented_iterations = 1
+                self.pgo_instrumentation = True
 
                 def generate_profiling_package_prefixes():
                     # run the native-image-configure tool to gather the jdk package prefixes
@@ -407,7 +393,7 @@ class NativeImageVM(GraalVm):
             profile_inference_config = matching.group("profile_inference")[:-1]
             if profile_inference_config == 'profile-inference-feature-extraction':
                 self.profile_inference_feature_extraction = True
-                self.pgo_instrumented_iterations = 1  # extract code features
+                self.pgo_instrumentation = True # extract code features
             else:
                 mx.abort('Unknown profile inference configuration: {}.'.format(profile_inference_config))
 
@@ -415,7 +401,7 @@ class NativeImageVM(GraalVm):
             config = matching.group("sampler")[:-1]
             if config == 'safepoint-sampler':
                 self.safepoint_sampler = True
-                self.pgo_instrumented_iterations = 1
+                self.pgo_instrumentation = True
             elif config == 'async-sampler':
                 self.async_sampler = True
             else:
@@ -933,11 +919,9 @@ class NativeImageVM(GraalVm):
                     if file.endswith(".json"):
                         zipf.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), os.path.join(path, '..')))
 
-    def run_stage_instrument_image(self, config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations, profile_path):
+    def run_stage_instrument_image(self, config, stages, out, instrumentation_image_name, image_path, profile_path):
         executable_name_args = ['-o', instrumentation_image_name]
-        pgo_args = ['--pgo=' + config.latest_profile_path]
-        pgo_args += svm_experimental_options(['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled'])
-        instrument_args = ['--pgo-instrument', '-R:ProfilesDumpFile=' + profile_path] + ([] if i == 0 else pgo_args)
+        instrument_args = ['--pgo-instrument', '-R:ProfilesDumpFile=' + profile_path]
         if self.jdk_profiles_collect:
             instrument_args += svm_experimental_options(['-H:+AOTPriorityInline', '-H:-SamplingCollect', f'-H:ProfilingPackagePrefixes={self.generate_profiling_package_prefixes()}'])
 
@@ -946,8 +930,6 @@ class NativeImageVM(GraalVm):
             if config.bundle_path is not None:
                 NativeImageVM.copy_bundle_output(config)
             if s.exit_code == 0:
-                mx.copyfile(image_path, image_path_latest)
-            if i + 1 == instrumented_iterations and s.exit_code == 0:
                 image_size = os.stat(image_path).st_size
                 out('Instrumented image size: ' + str(image_size) + ' B')
 
@@ -992,7 +974,6 @@ class NativeImageVM(GraalVm):
         executable_name_args = ['-o', config.final_image_name]
         pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += svm_experimental_options(['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled'])
-        instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
         if self.adopted_jdk_pgo:
             # choose appropriate profiles
             jdk_version = mx.get_jdk().javaCompliance
@@ -1014,7 +995,7 @@ class NativeImageVM(GraalVm):
                 mx.warn("To dump the profile inference features to a specific location, please set the '{}' flag.".format(dump_file_flag))
         else:
             ml_args = []
-        final_image_command = config.base_image_build_args + executable_name_args + (pgo_args if instrumented_iterations > 0 else []) + jdk_profiles_args + ml_args
+        final_image_command = config.base_image_build_args + executable_name_args + (pgo_args if self.pgo_instrumentation else []) + jdk_profiles_args + ml_args
         with stages.set_command(final_image_command) as s:
             s.execute_command()
             if config.bundle_path is not None:
@@ -1060,7 +1041,6 @@ class NativeImageVM(GraalVm):
         self.config = config
         stages = NativeImageVM.Stages(config, out, err, self.is_gate, True if self.is_gate else nonZeroIsFatal, os.path.abspath(cwd if cwd else os.getcwd()))
         self.stages = stages
-        instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
 
         if not os.path.exists(config.output_dir):
             os.makedirs(config.output_dir)
@@ -1069,22 +1049,18 @@ class NativeImageVM(GraalVm):
             os.makedirs(config.config_dir)
 
         if stages.change_stage('agent'):
-            if instrumented_iterations == 0 and config.last_stage.startswith('instrument-'):
-                config.last_stage = 'agent'
             self.run_stage_agent(config, stages)
 
         # Native Image profile collection
-        for i in range(instrumented_iterations):
-            profile_path = config.profile_path_no_extension + '-' + str(i) + config.profile_file_extension
-            instrumentation_image_name = config.executable_name + '-instrument-' + str(i)
-            instrumentation_image_latest = config.executable_name + '-instrument-latest'
+        profile_path = config.profile_path_no_extension + config.profile_file_extension
+        instrumentation_image_name = config.executable_name + '-instrument'
 
+        if self.pgo_instrumentation:
             image_path = os.path.join(config.output_dir, instrumentation_image_name)
-            image_path_latest = os.path.join(config.output_dir, instrumentation_image_latest)
-            if stages.change_stage('instrument-image', str(i)):
-                self.run_stage_instrument_image(config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations, profile_path)
+            if stages.change_stage('instrument-image'):
+                self.run_stage_instrument_image(config, stages, out, instrumentation_image_name, image_path, profile_path)
 
-            if stages.change_stage('instrument-run', str(i)):
+            if stages.change_stage('instrument-run'):
                 self.run_stage_instrument_run(config, stages, image_path, profile_path)
 
         # Build the final image

@@ -316,11 +316,19 @@ public class ContextPolicyTest {
         remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
         context0.close();
 
-        Context.newBuilder().engine(engine).build().initialize(REUSE0);
-        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
+        try (Context ctx1 = Context.newBuilder().engine(engine).build()) {
+            ctx1.initialize(REUSE0);
+            remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
 
-        Context.newBuilder().engine(engine).build().initialize(REUSE0);
-        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 2);
+            /*
+             * Nesting the try-with-resources makes sure ctx1 is not collected by the garbage
+             * collector before ctx2 is created.
+             */
+            try (Context ctx2 = Context.newBuilder().engine(engine).build()) {
+                ctx2.initialize(REUSE0);
+                remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 2);
+            }
+        }
 
         engine.close();
 

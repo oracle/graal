@@ -33,9 +33,13 @@
     ]
   },
 
-  latest_jdk:: common["labsjdk-ee-21"],
-  bench_jdks:: [
-    self.latest_jdk
+  product_jdks:: [
+     common["labsjdk-ee-latest"],
+  ],
+
+  jdks_of_interest:: [
+     common["labsjdk-ee-21"],
+     common["labsjdk-ee-latest"],
   ],
 
   compiler_benchmarks_notifications:: {
@@ -66,7 +70,7 @@
       "--results-file",
       "${BENCH_RESULTS_FILE_PATH}",
       "--machine-name=${MACHINE_NAME}"] +
-      (if std.objectHasAll(self.environment, 'MX_TRACKER') then ["--tracker=" + self.environment['MX_TRACKER']] else ["--tracker=rss"]),
+      (if std.objectHasAll(self.environment, 'MX_TRACKER') then ["--tracker=" + self.environment['MX_TRACKER']] else ["--tracker=rsspercentiles+maxrss"]),
     benchmark_cmd:: bench_common.hwlocIfNuma(self.should_use_hwloc, self.plain_benchmark_cmd, node=self.default_numa_node),
     min_heap_size:: if std.objectHasAll(self.environment, 'XMS') then ["-Xms${XMS}"] else [],
     max_heap_size:: if std.objectHasAll(self.environment, 'XMX') then ["-Xmx${XMX}"] else [],

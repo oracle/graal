@@ -28,12 +28,6 @@ import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
-import jdk.graal.compiler.core.common.PermanentBailoutException;
-import jdk.graal.compiler.core.test.SubprocessTest;
-import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-import jdk.graal.compiler.test.AddExports;
-import jdk.graal.compiler.test.SubprocessUtil;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -42,6 +36,11 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
+import jdk.graal.compiler.core.common.PermanentBailoutException;
+import jdk.graal.compiler.core.test.SubprocessTest;
+import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.test.AddExports;
+import jdk.graal.compiler.test.SubprocessUtil;
 import jdk.jfr.Event;
 import jdk.jfr.Recording;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -61,7 +60,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class TestGetEventWriter extends SubprocessTest {
 
     private static void initializeJFR() {
-        Assume.assumeTrue("JDK-8282420 came in JDK 19", JavaVersionUtil.JAVA_SPEC >= 19);
         Assume.assumeTrue("Requires JDK-8290075", GraalServices.hasLookupMethodWithCaller());
         try (Recording r = new Recording()) {
             r.start();
@@ -82,7 +80,6 @@ public class TestGetEventWriter extends SubprocessTest {
 
     @Test
     public void test() throws IOException, InterruptedException {
-        Assume.assumeTrue("JDK-8282420 came in JDK 19", JavaVersionUtil.JAVA_SPEC >= 19);
         launchSubprocess(() -> {
             try {
                 initializeJFR();

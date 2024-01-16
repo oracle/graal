@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -470,6 +470,7 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
             if (iws != null) {
                 iws.connection.close(1001 /* Going Away */);
             }
+            sps.dispose();
         }
         if (sessions.isEmpty()) {
             try {
@@ -525,6 +526,18 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
 
         ConnectionWatcher getConnectionWatcher() {
             return connectionWatcher;
+        }
+
+        void dispose() {
+            InspectServerSession iss = serverSession.getAndSet(null);
+            if (iss != null) {
+                iss.dispose();
+            } else {
+                InspectWebSocketHandler iws = activeWS;
+                if (iws != null) {
+                    iws.disposeSession();
+                }
+            }
         }
     }
 
@@ -611,6 +624,10 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
 
         void onPong() {
             iss.context.logMessage("CLIENT: ", "PONG");
+        }
+
+        void disposeSession() {
+            iss.dispose();
         }
     }
 

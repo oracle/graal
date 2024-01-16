@@ -103,7 +103,7 @@ public final class FloatEqualsNode extends CompareNode implements Canonicalizabl
         if (value != null) {
             return value;
         }
-        return this;
+        return super.canonical(tool, forX, forY);
     }
 
     public static class FloatEqualsOp extends CompareOp {

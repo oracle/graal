@@ -38,19 +38,11 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.Indent;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
-import jdk.graal.compiler.word.WordTypes;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.AnalysisObjectScanningObserver;
 import com.oracle.graal.pointsto.AnalysisPolicy;
+import com.oracle.graal.pointsto.ClassInclusionPolicy;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.bytecode.BytecodeSensitiveAnalysisPolicy;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
@@ -79,6 +71,15 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.Indent;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.JavaKind;
@@ -151,8 +152,9 @@ public final class PointsToAnalyzer {
                         originalProviders.getPlatformConfigurationProvider(), aMetaAccessExtensionProvider, originalProviders.getLoopsDataProvider());
         standaloneHost.initializeProviders(aProviders);
         analysisName = getAnalysisName(mainEntryClass);
+        ClassInclusionPolicy classInclusionPolicy = new ClassInclusionPolicy.DefaultAllInclusionPolicy("Included in the base image");
         bigbang = new StandalonePointsToAnalysis(options, aUniverse, standaloneHost, aMetaAccess, snippetReflection, aConstantReflection, aProviders.getWordTypes(), debugContext,
-                        new TimerCollection());
+                        new TimerCollection(), classInclusionPolicy);
         standaloneHost.setImageName(analysisName);
         aUniverse.setBigBang(bigbang);
         ImageHeap heap = new ImageHeap();

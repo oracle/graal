@@ -5,9 +5,17 @@ local galahad_jdk = common_json.jdks["galahad-jdk"];
 local utils = import "common-utils.libsonnet";
 {
   local GALAHAD_PROPERTY = "_galahad_include",
+  local arrContains(arr, needle) =
+    std.find(needle, arr) != []
+  ,
   # Return true if this is a gate job.
   local is_gate(b) =
     std.find("gate", b.targets) != []
+  ,
+  local gate_or_postmerge_targets = ["gate", "post-merge", "deploy"],
+  # Return true if this is a gate or post-merge/deployment job.
+  local is_gate_or_postmerge(b) =
+    std.setInter(gate_or_postmerge_targets, b.targets) != []
   ,
   local finalize(b) = std.parseJson(std.manifestJson(b)),
   # Converts a gate job into an ondemand job.
@@ -28,10 +36,13 @@ local utils = import "common-utils.libsonnet";
       else
         {}
       ;
-    assert is_gate(b) : "Not a gate job: " + b.name;
+    assert is_gate_or_postmerge(b) : "Not a gate or postmerge job: " + b.name;
     b + {
-      name: std.strReplace(b.name, "gate", "ondemand"),
-      targets: [if t == "gate" then "ondemand" else t for t in b.targets],
+      name: "non-galahad-" + b.name,
+      # replace gate or postmerge targets with ondemand
+      targets: std.set(std.setDiff(b.targets, gate_or_postmerge_targets) + ["ondemand"]),
+      # remove runAfter
+      runAfter: [],
     }
   ,
   # Replaces labsjdk-ce-latest and labsjdk-ee-latest with galahad-jdk
@@ -51,7 +62,7 @@ local utils = import "common-utils.libsonnet";
   # This is preferred over removing irrelevant jobs because it does not introduce problems
   # with respect to dependent jobs (artifacts).
   local transform_galahad_job(b) =
-    if !is_gate(b) then
+    if !is_gate_or_postmerge(b) then
       b
     else
       local include = std.foldr(function(x, y) x && y, utils.std_get(b, GALAHAD_PROPERTY, [false]), true);
@@ -63,7 +74,7 @@ local utils = import "common-utils.libsonnet";
   ,
   # Verify that a job really makes sense for galahad
   local verify_galahad_job(b) =
-    if !is_gate(b) then
+    if !is_gate_or_postmerge(b) then
       # we only care about gate jobs
       b
     else
@@ -86,11 +97,6 @@ local utils = import "common-utils.libsonnet";
   ,
 
   ####### Public API
-
-  # Return true if this is a gate job.
-  is_gate(b):: is_gate(b),
-  # Converts a gate job into an ondemand job.
-  convert_gate_to_ondemand(b):: convert_gate_to_ondemand(b),
 
   # Include a jobs in the galahad gate
   include:: {
