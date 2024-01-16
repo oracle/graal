@@ -31,8 +31,6 @@ import java.security.AccessControlContext;
 import java.util.Map;
 import java.util.Objects;
 
-import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.replacements.ReplacementsUtil;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -49,9 +47,14 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
+import com.oracle.svm.core.jdk.JDK22OrEarlier;
 import com.oracle.svm.core.jdk.JDK22OrLater;
+import com.oracle.svm.core.jdk.JDK23OrLater;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.replacements.ReplacementsUtil;
 
 @TargetClass(Thread.class)
 @SuppressWarnings({"unused"})
@@ -505,7 +508,14 @@ public final class Target_java_lang_Thread {
     static native Object findScopedValueBindings();
 
     @Substitute
-    static void blockedOn(Target_sun_nio_ch_Interruptible b) {
+    @TargetElement(name = "blockedOn", onlyWith = JDK22OrEarlier.class)
+    static void blockedOnJDK22(Target_sun_nio_ch_Interruptible b) {
+        JavaThreads.blockedOn(b);
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK23OrLater.class)
+    void blockedOn(Target_sun_nio_ch_Interruptible b) {
         JavaThreads.blockedOn(b);
     }
 

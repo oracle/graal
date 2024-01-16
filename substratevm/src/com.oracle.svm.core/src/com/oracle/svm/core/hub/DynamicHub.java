@@ -102,6 +102,7 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDK22OrLater;
+import com.oracle.svm.core.jdk.JDK23OrLater;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
@@ -1445,6 +1446,14 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @KeepOriginal
     public native String toGenericString();
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK23OrLater.class)
+    private native void addSealingInfo(int modifiers, StringBuilder sb);
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK23OrLater.class)
+    private native boolean hasSealedAncestor(Class<?> clazz);
 
     @KeepOriginal
     public native boolean isSynthetic();
