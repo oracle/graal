@@ -122,9 +122,9 @@ public abstract class ImageHeapScanner {
     public void onFieldRead(AnalysisField field) {
         assert field.isRead() : field;
         /* Check if the value is available before accessing it. */
-        FieldScan reason = new FieldScan(field);
         AnalysisType declaringClass = field.getDeclaringClass();
         if (field.isStatic()) {
+            FieldScan reason = new FieldScan(field);
             if (isValueAvailable(field)) {
                 JavaConstant fieldValue = readStaticFieldValue(field);
                 markReachable(fieldValue, reason);
@@ -134,19 +134,20 @@ public abstract class ImageHeapScanner {
             }
         } else {
             /* Trigger field scanning for the already processed objects. */
-            postTask(() -> onInstanceFieldRead(field, declaringClass, reason));
+            postTask(() -> onInstanceFieldRead(field, declaringClass));
         }
     }
 
-    private void onInstanceFieldRead(AnalysisField field, AnalysisType type, FieldScan reason) {
+    private void onInstanceFieldRead(AnalysisField field, AnalysisType type) {
         for (AnalysisType subtype : type.getSubTypes()) {
             for (ImageHeapConstant imageHeapConstant : imageHeap.getReachableObjects(subtype)) {
+                FieldScan reason = new FieldScan(field, imageHeapConstant);
                 ImageHeapInstance imageHeapInstance = (ImageHeapInstance) imageHeapConstant;
                 updateInstanceField(field, imageHeapInstance, reason, null);
             }
             /* Subtypes include this type itself. */
             if (!subtype.equals(type)) {
-                onInstanceFieldRead(field, subtype, reason);
+                onInstanceFieldRead(field, subtype);
             }
         }
     }
@@ -517,7 +518,17 @@ public abstract class ImageHeapScanner {
 
         AnalysisType type = imageHeapConstant.getType(metaAccess);
         Object object = bb.getSnippetReflectionProvider().asObject(Object.class, imageHeapConstant);
-        type.notifyObjectReachable(universe.getConcurrentAnalysisAccess(), object);
+        /* Simulated constants don't have a backing object and don't need to be processed. */
+        if (object != null) {
+            try {
+                type.notifyObjectReachable(universe.getConcurrentAnalysisAccess(), object);
+            } catch (UnsupportedFeatureException e) {
+                /* Enhance the unsupported feature message with the object trace and rethrow. */
+                StringBuilder backtrace = new StringBuilder();
+                ObjectScanner.buildObjectBacktrace(bb, reason, backtrace);
+                throw new UnsupportedFeatureException(e.getMessage() + System.lineSeparator() + backtrace);
+            }
+        }
 
         markTypeInstantiated(objectType, reason);
         if (imageHeapConstant instanceof ImageHeapObjectArray imageHeapArray) {

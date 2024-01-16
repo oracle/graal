@@ -552,20 +552,37 @@ public class ObjectScanner {
     public static class FieldScan extends ScanReason {
         final AnalysisField field;
 
-        private static ScanReason previous(AnalysisField field) {
-            Object readBy = field.getReadBy();
-            if (readBy instanceof BytecodePosition) {
-                ResolvedJavaMethod readingMethod = ((BytecodePosition) readBy).getMethod();
-                return new MethodParsing((AnalysisMethod) readingMethod);
-            } else if (readBy instanceof AnalysisMethod) {
-                return new MethodParsing((AnalysisMethod) readBy);
+        private static ScanReason previous(AnalysisField field, JavaConstant receiver) {
+            /*
+             * Since there is no previous reason we try to infer one either from the receiver
+             * constant or from the field read-by reason.
+             */
+            Object reason;
+            if (receiver instanceof ImageHeapConstant heapConstant) {
+                AnalysisError.guarantee(heapConstant.isReachable());
+                reason = heapConstant.getReachableReason();
             } else {
-                return new OtherReason("registered as read because: " + readBy);
+                reason = field.getReadBy();
             }
+            if (reason instanceof ScanReason scanReason) {
+                return scanReason;
+            } else if (reason instanceof BytecodePosition position) {
+                ResolvedJavaMethod readingMethod = position.getMethod();
+                return new MethodParsing((AnalysisMethod) readingMethod);
+            } else if (reason instanceof AnalysisMethod method) {
+                return new MethodParsing(method);
+            } else if (reason != null) {
+                return new OtherReason("registered as read because: " + reason);
+            }
+            return null;
         }
 
         public FieldScan(AnalysisField field) {
-            this(field, null, previous(field));
+            this(field, null, previous(field, null));
+        }
+
+        public FieldScan(AnalysisField field, JavaConstant receiver) {
+            this(field, receiver, previous(field, receiver));
         }
 
         public FieldScan(AnalysisField field, JavaConstant receiver, ScanReason previous) {
@@ -718,7 +735,7 @@ public class ObjectScanner {
 
         @Override
         public String toString(BigBang bb) {
-            return "scanning root " + asString(bb, constant) + " embedded in " + System.lineSeparator() + INDENTATION_AFTER_NEWLINE + asStackTraceElement();
+            return "scanning root " + asString(bb, constant) + " embedded in" + System.lineSeparator() + INDENTATION_AFTER_NEWLINE + asStackTraceElement();
         }
 
         @Override
