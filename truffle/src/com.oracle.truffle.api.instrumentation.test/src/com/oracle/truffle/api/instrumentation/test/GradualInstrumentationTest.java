@@ -204,7 +204,7 @@ public class GradualInstrumentationTest {
      * new materialized subtree are not present when the subtree is cloned during materialization.
      */
     @Test
-    public void testRepeatedInstrumentationDoesNotChangeParentsInMaterializedTree() {
+    public void testSubTreeClonedForMaterialization() {
         Source source = Source.create(ID, "ROOT(MATERIALIZE_CHILD_STMT_AND_EXPR(EXPRESSION(EXPRESSION)))");
         // execute first so that the next execution cannot take advantage of the "onFirstExecution"
         // optimization
@@ -231,7 +231,7 @@ public class GradualInstrumentationTest {
      * subtree can lead to some nodes in the new tree not be materialized.
      */
     @Test
-    public void testRepeatedInstrumentationChangesParentsInMaterializedTreeIfSubtreesAreNotCloned() {
+    public void testSubTreeNotClonedForMaterialization() {
         Source source = Source.create(ID, "ROOT(MATERIALIZE_CHILD_STMT_AND_EXPR_NC(EXPRESSION(EXPRESSION)))");
         // execute first so that the next execution cannot take advantage of the "onFirstExecution"
         // optimization
