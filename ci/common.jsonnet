@@ -320,7 +320,7 @@ local common_json = import "../common.json";
   bare:: {
     local ol7 = {
       docker+: {
-        image: "buildslave_ol7",
+        image: "buildslave_ol7", # Notify #ol-graal-ci when this image changes as further CI adjustments might be required
         mount_modules: true,
       },
     },
