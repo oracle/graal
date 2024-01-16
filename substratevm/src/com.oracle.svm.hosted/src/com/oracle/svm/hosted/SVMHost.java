@@ -550,6 +550,10 @@ public class SVMHost extends HostVM {
             }
 
             if (parseOnce) {
+                if (parsingSupport != null) {
+                    parsingSupport.afterParsingHook(method, graph);
+                }
+
                 if (!SubstrateCompilationDirectives.isRuntimeCompiledMethod(method)) {
                     /*
                      * Runtime compiled methods should not have assertions. If they do, then they

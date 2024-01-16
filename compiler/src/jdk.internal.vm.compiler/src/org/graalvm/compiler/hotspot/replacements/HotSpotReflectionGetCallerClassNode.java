@@ -26,6 +26,7 @@ package org.graalvm.compiler.hotspot.replacements;
 
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.replacements.nodes.ReflectionGetCallerClassNode;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;

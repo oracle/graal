@@ -24,12 +24,14 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.aarch64.AArch64;
@@ -43,7 +45,7 @@ import jdk.vm.ci.code.Architecture;
  * {@code AMD64CalcStringAttributesOp} for details.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128)
-public final class CalcStringAttributesMacroNode extends MacroNode {
+public final class CalcStringAttributesMacroNode extends MacroWithExceptionNode implements Canonicalizable {
 
     public static final NodeClass<CalcStringAttributesMacroNode> TYPE = NodeClass.create(CalcStringAttributesMacroNode.class);
 
@@ -51,11 +53,11 @@ public final class CalcStringAttributesMacroNode extends MacroNode {
     private final boolean assumeValid;
     private final LocationIdentity locationIdentity;
 
-    public CalcStringAttributesMacroNode(MacroParams p, LIRGeneratorTool.CalcStringAttributesEncoding encoding, boolean assumeValid, LocationIdentity locationIdentity) {
+    public CalcStringAttributesMacroNode(MacroNode.MacroParams p, LIRGeneratorTool.CalcStringAttributesEncoding encoding, boolean assumeValid, LocationIdentity locationIdentity) {
         this(TYPE, p, encoding, assumeValid, locationIdentity);
     }
 
-    public CalcStringAttributesMacroNode(NodeClass<? extends MacroNode> c, MacroParams p, LIRGeneratorTool.CalcStringAttributesEncoding encoding, boolean assumeValid,
+    public CalcStringAttributesMacroNode(NodeClass<? extends MacroWithExceptionNode> c, MacroNode.MacroParams p, LIRGeneratorTool.CalcStringAttributesEncoding encoding, boolean assumeValid,
                     LocationIdentity locationIdentity) {
         super(c, p);
         this.encoding = encoding;
@@ -64,14 +66,20 @@ public final class CalcStringAttributesMacroNode extends MacroNode {
     }
 
     @Override
-    public void lower(LoweringTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
+        /*
+         * This node has architecture-specific feature checks. However, since all logic besides the
+         * feature check is shared, we have deliberately decided avoid code duplication and not to
+         * make architecture-specific nodes.
+         */
         Architecture arch = tool.getLowerer().getTarget().arch;
-        if (arch instanceof AMD64 && ((AMD64) arch).getFeatures().containsAll(CalcStringAttributesNode.minFeaturesAMD64()) ||
-                        arch instanceof AArch64 && ((AArch64) arch).getFeatures().containsAll(CalcStringAttributesNode.minFeaturesAARCH64())) {
-            CalcStringAttributesNode replacement = graph().addOrUnique(new CalcStringAttributesNode(getArgument(1), getArgument(2), getArgument(3), encoding, assumeValid, locationIdentity));
-            graph().replaceFixedWithFixed(this, replacement);
-        } else {
-            super.lower(tool);
+        boolean intrinsifiable = (arch instanceof AMD64 && ((AMD64) arch).getFeatures().containsAll(CalcStringAttributesNode.minFeaturesAMD64())) ||
+                        (arch instanceof AArch64 && ((AArch64) arch).getFeatures().containsAll(CalcStringAttributesNode.minFeaturesAARCH64()));
+        if (intrinsifiable) {
+            return new CalcStringAttributesNode(getArgument(1), getArgument(2), getArgument(3), encoding, assumeValid, locationIdentity);
+
         }
+
+        return this;
     }
 }

@@ -64,6 +64,7 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
+import org.graalvm.compiler.replacements.nodes.MacroInvokable;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
 
@@ -424,12 +425,12 @@ public class DeoptimizationUtils {
                      * disappears. Therefore, this frame state cannot be a deoptimization target.
                      */
                     continue;
-                } else if (usage instanceof Invoke && ((Invoke) usage).stateAfter() == frameState) {
+                } else if (usage instanceof Invoke invoke && invoke.stateAfter() == frameState) {
                     /*
                      * If the FrameState is followed immediately by a dead end, then this state can
                      * never be reached and does not need to be registered.
                      */
-                    FixedNode next = ((Invoke) usage).next();
+                    FixedNode next = invoke.next();
                     while (next instanceof AbstractBeginNode) {
                         next = ((AbstractBeginNode) next).next();
                     }
@@ -457,19 +458,27 @@ public class DeoptimizationUtils {
             /*
              * graph.getInvokes() only iterates invokes that have a MethodCallTarget, so by using it
              * we would miss invocations that are already intrinsified to an indirect call.
+             *
+             * The FrameState for the invoke (which is visited by the above loop) is the state after
+             * the call (where deoptimization that happens after the call has returned will continue
+             * execution). We also need to register the state during the call (where deoptimization
+             * while the call is on the stack will continue execution).
+             *
+             * MacroInvokable nodes may revert back to an invoke; therefore we must also register
+             * the state during the reverted call.
+             *
+             * Note that the bci of the Invoke and the bci of the FrameState of the Invoke are
+             * different: the Invoke has the bci of the invocation bytecode, the FrameState has the
+             * bci of the next bytecode after the invoke.
              */
+            FrameState stateDuring = null;
             if (n instanceof Invoke invoke) {
-                /*
-                 * The FrameState for the invoke (which is visited by the above loop) is the state
-                 * after the call (where deoptimization that happens after the call has returned
-                 * will continue execution). We also need to register the state during the call
-                 * (where deoptimization while the call is on the stack will continue execution).
-                 *
-                 * Note that the bci of the Invoke and the bci of the FrameState of the Invoke are
-                 * different: the Invoke has the bci of the invocation bytecode, the FrameState has
-                 * the bci of the next bytecode after the invoke.
-                 */
-                FrameState stateDuring = invoke.stateAfter().duplicateModifiedDuringCall(invoke.bci(), invoke.asNode().getStackKind());
+                stateDuring = invoke.stateAfter().duplicateModifiedDuringCall(invoke.bci(), invoke.asNode().getStackKind());
+            } else if (n instanceof MacroInvokable macro) {
+                stateDuring = macro.stateAfter().duplicateModifiedDuringCall(macro.bci(), macro.asNode().getStackKind());
+            }
+
+            if (stateDuring != null) {
                 assert stateDuring.duringCall() && !stateDuring.rethrowException();
                 ResolvedJavaMethod method = deoptRetriever.getDeoptTarget(stateDuring.getMethod());
                 if (SubstrateCompilationDirectives.singleton().registerDeoptEntry(stateDuring, method)) {
