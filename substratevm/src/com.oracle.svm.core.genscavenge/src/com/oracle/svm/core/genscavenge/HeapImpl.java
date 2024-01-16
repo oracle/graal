@@ -364,7 +364,7 @@ public final class HeapImpl extends Heap {
 
         @Override
         public <T> boolean visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access) {
-            if (!access.isWritable(region)) {
+            if (!access.isWritable(region) && !access.consistsOfHugeObjects(region)) {
                 access.visitObjects(region, this);
             }
             return true;

@@ -137,13 +137,13 @@ public final class ImageHeapWalker {
 abstract class MemoryWalkerAccessBase implements MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> {
     private final String regionName;
     private final boolean isWritable;
-    private final boolean hasHugeObjects;
+    private final boolean consistsOfHugeObjects;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    MemoryWalkerAccessBase(String regionName, boolean isWritable, boolean hasHugeObjects) {
+    MemoryWalkerAccessBase(String regionName, boolean isWritable, boolean consistsOfHugeObjects) {
         this.regionName = regionName;
         this.isWritable = isWritable;
-        this.hasHugeObjects = hasHugeObjects;
+        this.consistsOfHugeObjects = consistsOfHugeObjects;
     }
 
     @Override
@@ -172,9 +172,14 @@ abstract class MemoryWalkerAccessBase implements MemoryWalker.NativeImageHeapReg
     }
 
     @Override
+    public boolean consistsOfHugeObjects(ImageHeapInfo region) {
+        return consistsOfHugeObjects;
+    }
+
+    @Override
     @AlwaysInline("GC performance")
     public final boolean visitObjects(ImageHeapInfo region, ObjectVisitor visitor) {
-        boolean alignedChunks = !hasHugeObjects;
+        boolean alignedChunks = !consistsOfHugeObjects;
         return ImageHeapWalker.walkPartitionInline(getFirstObject(region), getLastObject(region), visitor, alignedChunks);
     }
 

@@ -48,6 +48,8 @@ public final class MemoryWalker {
 
         boolean isWritable(T region);
 
+        boolean consistsOfHugeObjects(T region);
+
         boolean visitObjects(T region, ObjectVisitor visitor);
     }
 
