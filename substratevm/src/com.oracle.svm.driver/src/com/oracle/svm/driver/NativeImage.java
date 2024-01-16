@@ -1248,13 +1248,20 @@ public class NativeImage {
             if (!imageNamePathParent.isAbsolute()) {
                 imageNamePathParent = imagePath.resolve(imageNamePathParent);
             }
-            if (!Files.isDirectory(imageNamePathParent)) {
-                throw NativeImage.showError("Writing image to non-existent directory " + imageNamePathParent + " is not allowed. " +
-                                "Create the missing directory if you want the image to be written to that location.");
-            }
-            if (!Files.isWritable(imageNamePathParent)) {
-                throw NativeImage.showError("Writing image to directory without write access " + imageNamePathParent + " is not possible. " +
-                                "Ensure the directory has write access or specify image path with write access.");
+            if (!useBundle()) {
+                /*
+                 * In bundle-mode the value of imagePath is purely virtual before it gets
+                 * substituted by substituteImagePath(imagePath) below. Validating the virtual value
+                 * would make no sense (and cause errors if the path does not exist anymore)
+                 */
+                if (!Files.isDirectory(imageNamePathParent)) {
+                    throw NativeImage.showError("Writing image to non-existent directory " + imageNamePathParent + " is not allowed. " +
+                                    "Create the missing directory if you want the image to be written to that location.");
+                }
+                if (!Files.isWritable(imageNamePathParent)) {
+                    throw NativeImage.showError("Writing image to directory without write access " + imageNamePathParent + " is not possible. " +
+                                    "Ensure the directory has write access or specify image path with write access.");
+                }
             }
             imagePath = imageNamePathParent;
             /* Update arguments passed to builder */
