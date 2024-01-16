@@ -290,7 +290,7 @@ meth public void suspend(java.lang.Thread)
 meth public void suspendAll()
 meth public void suspendNextExecution()
 supr java.lang.Object
-hfds ANCHOR_SET_AFTER,ANCHOR_SET_ALL,ANCHOR_SET_BEFORE,SESSIONS,allBindings,alwaysHaltBreakpointsActive,breakpoints,callback,closed,currentSuspendedEventMap,debugger,exceptionBreakpointsActive,executionLifecycle,hasExpressionElement,hasRootElement,ignoreLanguageContextInitialization,inEvalInContext,includeInternal,locationBreakpointsActive,sessionId,showHostStackFrames,sourceElements,sourceFilter,sources,stepping,steppingEnabledSlots,strategyMap,suspendAll,suspendNext,suspensionFilterUnchanged,syntaxElementsBinding,threadSuspensions
+hfds ANCHOR_SET_AFTER,ANCHOR_SET_ALL,ANCHOR_SET_BEFORE,SESSIONS,allBindings,alwaysHaltBreakpointsActive,breakpoints,callback,closed,currentSuspendedEventMap,debugger,exceptionBreakpointsActive,executionLifecycle,hasExpressionElement,hasRootElement,ignoreLanguageContextInitialization,inEvalInContext,includeAvailableSourceSectionsOnly,includeInternal,locationBreakpointsActive,sessionId,showHostStackFrames,sourceElements,sourceFilter,sources,stepping,steppingEnabledSlots,strategyMap,suspendAll,suspendNext,suspensionFilterUnchanged,syntaxElementsBinding,threadSuspensions
 hcls Caller,RootSteppingDepthNode,StableBoolean,SteppingNode,SuspendContextAndFrame,ThreadSuspension
 
 CLSS public final com.oracle.truffle.api.debug.DebuggerTags
@@ -370,7 +370,7 @@ innr public final Builder
 meth public boolean isIgnoreLanguageContextInitialization()
 meth public static com.oracle.truffle.api.debug.SuspensionFilter$Builder newBuilder()
 supr java.lang.Object
-hfds ignoreLanguageContextInitialization,includeInternal,sourcePredicate
+hfds ignoreLanguageContextInitialization,includeAvailableSourceSectionsOnly,includeInternal,sourcePredicate
 
 CLSS public final com.oracle.truffle.api.debug.SuspensionFilter$Builder
  outer com.oracle.truffle.api.debug.SuspensionFilter
@@ -378,8 +378,9 @@ meth public com.oracle.truffle.api.debug.SuspensionFilter build()
 meth public com.oracle.truffle.api.debug.SuspensionFilter$Builder ignoreLanguageContextInitialization(boolean)
 meth public com.oracle.truffle.api.debug.SuspensionFilter$Builder includeInternal(boolean)
 meth public com.oracle.truffle.api.debug.SuspensionFilter$Builder sourceIs(java.util.function.Predicate<com.oracle.truffle.api.source.Source>)
+meth public com.oracle.truffle.api.debug.SuspensionFilter$Builder sourceSectionAvailableOnly(boolean)
 supr java.lang.Object
-hfds ignoreLanguageContextInitialization,includeInternal,sourcePredicate
+hfds ignoreLanguageContextInitialization,includeAvailableSourceSectionsOnly,includeInternal,sourcePredicate
 
 CLSS public abstract com.oracle.truffle.api.instrumentation.Tag
 cons protected init()

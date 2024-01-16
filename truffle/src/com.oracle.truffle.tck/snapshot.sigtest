@@ -112,6 +112,7 @@ meth public void close()
 meth public void closeEngine()
 meth public void expectKilled()
 meth public void expectSuspended(com.oracle.truffle.api.debug.SuspendedCallback)
+meth public void expectSuspended(com.oracle.truffle.api.debug.SuspendedCallback,java.util.function.Function<java.lang.String,java.lang.Boolean>)
 meth public void startEval(org.graalvm.polyglot.Source)
 meth public void startExecute(java.util.function.Function<org.graalvm.polyglot.Context,org.graalvm.polyglot.Value>)
 supr java.lang.Object

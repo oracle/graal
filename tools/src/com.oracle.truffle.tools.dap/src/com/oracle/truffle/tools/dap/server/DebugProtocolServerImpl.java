@@ -699,7 +699,10 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
         Debugger tdbg = context.getEnv().lookup(context.getEnv().getInstruments().get("debugger"), Debugger.class);
         DebuggerSession session = tdbg.startSession(new SuspendedCallbackImpl(), SourceElement.ROOT, SourceElement.STATEMENT);
         session.setSourcePath(sourcePath);
-        session.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(!context.isInspectInitialization()).includeInternal(context.isInspectInternal()).build());
+        session.setSteppingFilter(SuspensionFilter.newBuilder() //
+                        .ignoreLanguageContextInitialization(!context.isInspectInitialization()) //
+                        .includeInternal(context.isInspectInternal()) //
+                        .sourceSectionAvailableOnly(true).build());
         return session;
     }
 

@@ -216,8 +216,12 @@ final class DefaultNodeExports {
 
         @ExportMessage
         @TruffleBoundary
-        SourceSection getSourceLocation() {
-            return root.getSourceSection();
+        SourceSection getSourceLocation() throws UnsupportedMessageException {
+            SourceSection section = root.getSourceSection();
+            if (section == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return section;
         }
 
         @ExportMessage
