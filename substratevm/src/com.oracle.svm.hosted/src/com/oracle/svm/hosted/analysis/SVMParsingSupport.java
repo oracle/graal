@@ -53,6 +53,8 @@ public interface SVMParsingSupport {
 
     boolean validateGraph(PointsToAnalysis bb, StructuredGraph graph);
 
+    void afterParsingHook(AnalysisMethod method, StructuredGraph graph);
+
     boolean allowAssumptions(AnalysisMethod method);
 
     boolean recordInlinedMethods(AnalysisMethod method);

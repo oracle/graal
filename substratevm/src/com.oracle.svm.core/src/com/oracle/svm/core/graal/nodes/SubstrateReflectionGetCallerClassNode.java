@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.replacements.nodes.ReflectionGetCallerClassNode;
-
 import com.oracle.svm.core.jdk.StackTraceUtils;
 
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.replacements.nodes.MacroNode.MacroParams;
+import jdk.graal.compiler.replacements.nodes.ReflectionGetCallerClassNode;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
