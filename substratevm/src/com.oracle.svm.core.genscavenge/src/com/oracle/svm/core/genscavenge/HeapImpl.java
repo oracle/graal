@@ -691,7 +691,7 @@ public final class HeapImpl extends Heap {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer getImageHeapStart() {
         Pointer heapBase = (Pointer) Isolates.getHeapBase(CurrentIsolate.getIsolate());
-        return heapBase.add(getImageHeapOffsetInAddressSpace());
+        return heapBase.add(Heap.getHeap().getImageHeapOffsetInAddressSpace());
     }
 
     private boolean printLocationInfo(Log log, Pointer ptr, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
