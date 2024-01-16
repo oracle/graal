@@ -1234,13 +1234,20 @@ public class NativeImage {
             if (!imageNamePathParent.isAbsolute()) {
                 imageNamePathParent = imagePath.resolve(imageNamePathParent);
             }
-            if (!Files.isDirectory(imageNamePathParent)) {
-                throw NativeImage.showError("Writing image to non-existent directory " + imageNamePathParent + " is not allowed. " +
-                                "Create the missing directory if you want the image to be written to that location.");
-            }
-            if (!Files.isWritable(imageNamePathParent)) {
-                throw NativeImage.showError("Writing image to directory without write access " + imageNamePathParent + " is not possible. " +
-                                "Ensure the directory has write access or specify image path with write access.");
+            if (!useBundle()) {
+                /*
+                 * In bundle-mode the value of imagePath is purely virtual before it gets
+                 * substituted by substituteImagePath(imagePath) below. Validating the virtual value
+                 * would make no sense (and cause errors if the path does not exist anymore)
+                 */
+                if (!Files.isDirectory(imageNamePathParent)) {
+                    throw NativeImage.showError("Writing image to non-existent directory " + imageNamePathParent + " is not allowed. " +
+                                    "Create the missing directory if you want the image to be written to that location.");
+                }
+                if (!Files.isWritable(imageNamePathParent)) {
+                    throw NativeImage.showError("Writing image to directory without write access " + imageNamePathParent + " is not possible. " +
+                                    "Ensure the directory has write access or specify image path with write access.");
+                }
             }
             imagePath = imageNamePathParent;
             /* Update arguments passed to builder */
@@ -1620,7 +1627,7 @@ public class NativeImage {
                     /* Exit, builder has handled error reporting. */
                     throw NativeImage.showError(null, null, exitStatusCode);
                 }
-                case OUT_OF_MEMORY -> {
+                case OUT_OF_MEMORY, OUT_OF_MEMORY_KILLED -> {
                     showOutOfMemoryWarning();
                     throw NativeImage.showError(null, null, exitStatusCode);
                 }
@@ -1868,7 +1875,7 @@ public class NativeImage {
                         LogUtils.warning("Image '" + nativeImage.imageName + "' is a fallback image that requires a JDK for execution (use --" + SubstrateOptions.OptionNameNoFallback +
                                         " to suppress fallback image generation and to print more detailed information why a fallback image was necessary).");
                         break;
-                    case OUT_OF_MEMORY:
+                    case OUT_OF_MEMORY, OUT_OF_MEMORY_KILLED:
                         nativeImage.showOutOfMemoryWarning();
                         throw showError(null, null, exitStatusCode);
                     default:

@@ -45,6 +45,7 @@ import com.oracle.svm.hosted.util.CPUTypeAArch64;
 import com.oracle.svm.hosted.util.CPUTypeAMD64;
 import com.oracle.svm.hosted.util.CPUTypeRISCV64;
 import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticallyRegisteredFeature
 public class ProgressReporterFeature implements InternalFeature {
@@ -60,6 +61,15 @@ public class ProgressReporterFeature implements InternalFeature {
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         reporter.reportStageProgress();
+    }
+
+    @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        var vectorSpeciesClass = ReflectionUtil.lookupClass(true, "jdk.incubator.vector.VectorSpecies");
+        if (vectorSpeciesClass != null && access.isReachable(vectorSpeciesClass)) {
+            LogUtils.warning(
+                            "This application uses a preview of the Vector API, which is functional but slow on Native Image because it is not yet optimized by the Graal compiler. Please keep this in mind when evaluating performance.");
+        }
     }
 
     @Override
