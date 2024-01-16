@@ -91,8 +91,7 @@ public final class WindowsPlatformThreads extends PlatformThreads {
             WinBase.CloseHandle(osThreadHandle);
             return true;
         } catch (Throwable e) {
-            undoPrepareStartOnError(thread, startData);
-            throw e;
+            throw VMError.shouldNotReachHere("No exception must be thrown after creating the thread start data.", e);
         }
     }
 

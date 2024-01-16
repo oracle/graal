@@ -463,10 +463,15 @@ public abstract class PlatformThreads {
         return toTarget(thread).vthread;
     }
 
-    @Uninterruptible(reason = "Called during isolate initialization")
-    public void initializeIsolate() {
+    @Uninterruptible(reason = "Called during isolate creation.")
+    public void assignMainThread() {
         /* The thread that creates the isolate is considered the "main" thread. */
         assignCurrent0(mainThread);
+
+        /*
+         * Note that we can't call ThreadListenerSupport.beforeThreadRun() because the isolate is
+         * not fully initialized yet. This is done later on, during isolate initialization.
+         */
     }
 
     /**
@@ -728,17 +733,39 @@ public abstract class PlatformThreads {
     }
 
     protected <T extends ThreadStartData> T prepareStart(Thread thread, int startDataSize) {
-        T startData = UnmanagedMemory.malloc(startDataSize);
-        startData.setIsolate(CurrentIsolate.getIsolate());
-        startData.setThreadHandle(ObjectHandles.getGlobal().create(thread));
+        T startData = WordFactory.nullPointer();
+        ObjectHandle threadHandle = WordFactory.zero();
+        try {
+            startData = UnmanagedMemory.malloc(startDataSize);
+            threadHandle = ObjectHandles.getGlobal().create(thread);
 
-        int numThreads = unattachedStartedThreads.incrementAndGet();
-        assert numThreads > 0;
-
-        if (!thread.isDaemon()) {
-            incrementNonDaemonThreads();
+            startData.setIsolate(CurrentIsolate.getIsolate());
+            startData.setThreadHandle(threadHandle);
+        } catch (Throwable e) {
+            if (startData.isNonNull()) {
+                UnmanagedMemory.free(startData);
+            }
+            if (threadHandle.equal(WordFactory.zero())) {
+                ObjectHandles.getGlobal().destroy(threadHandle);
+            }
+            throw e;
         }
-        return startData;
+
+        /*
+         * From this point onwards, no exceptions must be thrown (otherwise, we would need to
+         * partially undo the increment operations below).
+         */
+        try {
+            int numThreads = unattachedStartedThreads.incrementAndGet();
+            assert numThreads > 0;
+
+            if (!thread.isDaemon()) {
+                incrementNonDaemonThreads();
+            }
+            return startData;
+        } catch (Throwable e) {
+            throw VMError.shouldNotReachHere("No exception must be thrown after creating the thread start data.", e);
+        }
     }
 
     protected void undoPrepareStartOnError(Thread thread, ThreadStartData startData) {

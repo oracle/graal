@@ -88,6 +88,7 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.Safepoint;
+import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
@@ -201,7 +202,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             writeCurrentVMThread(WordFactory.nullPointer());
         }
         int result = runtimeCall(CREATE_ISOLATE, parameters);
-
         if (result != CEntryPointErrors.NO_ERROR) {
             return result;
         }
@@ -268,8 +268,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
-
-        PlatformThreads.singleton().initializeIsolate();
+        PlatformThreads.singleton().assignMainThread();
         return CEntryPointErrors.NO_ERROR;
     }
 
@@ -404,6 +403,14 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
         }
 
+        /* The isolate is now initialized, so we can finally finish initializing the main thread. */
+        try {
+            ThreadListenerSupport.get().beforeThreadRun();
+        } catch (Throwable t) {
+            System.err.println("Uncaught exception in beforeThreadRun():");
+            t.printStackTrace();
+            return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
+        }
         return CEntryPointErrors.NO_ERROR;
     }
 
