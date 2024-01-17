@@ -43,16 +43,12 @@ import mx_sdk_vm_impl
 _suite = mx.suite('java-benchmarks')
 
 
-if sys.version_info[0] < 3:
-    from ConfigParser import ConfigParser
-    from StringIO import StringIO
-    def _configparser_read_file(configp, fp):
-        configp.readfp(fp)
-else:
-    from configparser import ConfigParser
-    from io import StringIO
-    def _configparser_read_file(configp, fp):
-        configp.read_file(fp)
+from configparser import ConfigParser
+from io import StringIO
+
+
+def _configparser_read_file(configp, fp):
+    configp.read_file(fp)
 
 
 # Short-hand commands used to quickly run common benchmarks.
