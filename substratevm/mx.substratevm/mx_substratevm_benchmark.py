@@ -35,7 +35,6 @@ import mx
 import mx_benchmark
 import mx_java_benchmarks
 import mx_sdk_benchmark
-import mx_sdk_vm_impl
 
 _suite = mx.suite("substratevm")
 _successful_stage_pattern = re.compile(r'Successfully finished the last specified stage:.*$', re.MULTILINE)
@@ -115,9 +114,9 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
                             force_buildtime_init_slf4j_1_7_73,
                             force_runtime_init_netty_4_1_72
                           ],
-    'dotty'             : mx_sdk_vm_impl.svm_experimental_options([
-                            '-H:+AllowJRTFileSystem'
-                          ])
+    'dotty'             : [
+                            '-H:+AllowJRTFileSystem' # Don't wrap the option with `mx_sdk_vm_impl.svm_experimental_options`, as all args are wrapped already.
+                          ]
 }
 
 class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
