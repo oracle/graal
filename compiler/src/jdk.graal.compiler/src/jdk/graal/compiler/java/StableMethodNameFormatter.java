@@ -92,8 +92,6 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
 
     private final Providers providers;
 
-    protected final GraphBuilderConfiguration config;
-
     private final DebugContext debug;
 
     private final boolean considerMH;
@@ -103,20 +101,24 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
      */
     private final EconomicMap<ResolvedJavaMethod, String> methodName = EconomicMap.create(Equivalence.IDENTITY);
 
-    public StableMethodNameFormatter(Providers providers, DebugContext debug) {
-        this(providers, debug, false);
+    private final GraphBuilderPhase graphBuilderPhase;
+
+    public StableMethodNameFormatter(GraphBuilderPhase graphBuilderPhase, Providers providers, DebugContext debug) {
+        this(graphBuilderPhase, providers, debug, false);
     }
 
-    public StableMethodNameFormatter(Providers providers, DebugContext debug, boolean considerMH) {
+    public StableMethodNameFormatter(GraphBuilderPhase graphBuilderPhase, Providers providers, DebugContext debug, boolean considerMH) {
         this.providers = providers;
-        GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
-        this.config = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
+        final GraphBuilderConfiguration config;
+        config = getGraphBuilderConfiguration();
+        this.graphBuilderPhase = graphBuilderPhase.copyWithConfig(config);
         this.debug = debug;
         this.considerMH = considerMH;
     }
 
-    protected GraphBuilderPhase createGraphBuilderPhase() {
-        return new DefaultGraphBuilderPhase(config);
+    protected static GraphBuilderConfiguration getGraphBuilderConfiguration() {
+        GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
+        return GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
     }
 
     /**
@@ -172,7 +174,7 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
         StructuredGraph methodGraph = new StructuredGraph.Builder(debug.getOptions(), debug).method(method).build();
         try (DebugContext.Scope ignored = debug.scope("Lambda method analysis", methodGraph, method, this)) {
             HighTierContext context = new HighTierContext(providers, null, OptimisticOptimizations.NONE);
-            createGraphBuilderPhase().apply(methodGraph, context);
+            graphBuilderPhase.apply(methodGraph, context);
         } catch (Throwable e) {
             throw debug.handle(e);
         }
@@ -196,7 +198,7 @@ public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, S
         StructuredGraph methodGraph = new StructuredGraph.Builder(debug.getOptions(), debug).method(method).build();
         try (DebugContext.Scope ignored = debug.scope("Lambda method analysis", methodGraph, method, this)) {
             HighTierContext context = new HighTierContext(providers, null, OptimisticOptimizations.NONE);
-            createGraphBuilderPhase().apply(methodGraph, context);
+            graphBuilderPhase.apply(methodGraph, context);
         } catch (Throwable e) {
             throw debug.handle(e);
         }

@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.replacements.test;
 
-import jdk.graal.compiler.java.DefaultGraphBuilderPhase;
+import jdk.graal.compiler.core.test.DefaultGraphBuilderPhase;
 import jdk.graal.compiler.java.GraphBuilderPhase.Instance;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.Builder;

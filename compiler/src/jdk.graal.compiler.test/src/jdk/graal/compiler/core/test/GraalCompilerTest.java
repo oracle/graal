@@ -503,7 +503,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                     boolean checkConstants,
                     boolean addGaphsToDebugContext) {
         DebugContext debug = actual.getDebug();
-        actual.getOptimizationLog().emit(new StableMethodNameFormatter(getProviders(), debug));
+        actual.getOptimizationLog().emit(new StableMethodNameFormatter(getDefaultGraphBuilderPhase(), getProviders(), debug));
 
         String expectedString = getCanonicalGraphString(expected, excludeVirtual, checkConstants);
         String actualString = getCanonicalGraphString(actual, excludeVirtual, checkConstants);
@@ -1263,7 +1263,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             Request<CompilationResult> request = new Request<>(graphToCompile, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), getOptimisticOptimizations(),
                             graphToCompile.getProfilingInfo(), suites, createLIRSuites(options), compilationResult, CompilationResultBuilderFactory.Default, null, true);
             CompilationResult result = GraalCompiler.compile(request);
-            graphToCompile.getOptimizationLog().emit(new StableMethodNameFormatter(getProviders(), graphToCompile.getDebug()));
+            graphToCompile.getOptimizationLog().emit(new StableMethodNameFormatter(getDefaultGraphBuilderPhase(), getProviders(), graphToCompile.getDebug()));
             return result;
         } catch (Throwable e) {
             throw debug.handle(e);
@@ -1608,6 +1608,14 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected PhaseSuite<HighTierContext> getDefaultGraphBuilderSuite() {
         // defensive copying
         return backend.getSuites().getDefaultGraphBuilderSuite().copy();
+    }
+
+    protected GraphBuilderPhase getDefaultGraphBuilderPhase() {
+        return (GraphBuilderPhase) getDefaultGraphBuilderSuite().findPhase(GraphBuilderPhase.class).previous();
+    }
+
+    protected GraphBuilderPhase getDefaultGraphBuilderPhase(GraphBuilderConfiguration config) {
+        return getDefaultGraphBuilderPhase().copyWithConfig(config);
     }
 
     /**

@@ -27,8 +27,8 @@ package jdk.graal.compiler.microbenchmarks.graal.util;
 import java.lang.reflect.Method;
 import java.util.List;
 
+import jdk.graal.compiler.core.test.DefaultGraphBuilderPhase;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.java.DefaultGraphBuilderPhase;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;

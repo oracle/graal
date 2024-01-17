@@ -32,7 +32,6 @@ import java.lang.reflect.Constructor;
 import org.junit.Assert;
 import org.junit.Test;
 
-import jdk.graal.compiler.java.DefaultGraphBuilderPhase;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;

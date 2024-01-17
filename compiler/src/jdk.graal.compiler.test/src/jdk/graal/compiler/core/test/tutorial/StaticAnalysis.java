@@ -34,12 +34,12 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import jdk.graal.compiler.core.test.DefaultGraphBuilderPhase;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeMap;
-import jdk.graal.compiler.java.DefaultGraphBuilderPhase;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
 import jdk.graal.compiler.nodes.ConstantNode;

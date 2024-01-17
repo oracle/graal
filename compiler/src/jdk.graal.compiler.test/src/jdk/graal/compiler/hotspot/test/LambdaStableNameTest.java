@@ -37,10 +37,10 @@ import org.junit.Test;
 import org.objectweb.asm.Type;
 
 import jdk.graal.compiler.api.runtime.GraalJVMCICompiler;
+import jdk.graal.compiler.core.test.DefaultGraphBuilderPhase;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.hotspot.meta.HotSpotJITClassInitializationPlugin;
-import jdk.graal.compiler.java.DefaultGraphBuilderPhase;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;

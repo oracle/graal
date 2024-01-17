@@ -34,7 +34,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.java.DefaultGraphBuilderPhase;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.extended.LoadHubNode;

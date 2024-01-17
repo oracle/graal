@@ -39,11 +39,6 @@ public class HotSpotStableMethodNameFormatter extends StableMethodNameFormatter 
     }
 
     public HotSpotStableMethodNameFormatter(Providers providers, DebugContext debug, boolean considerMH) {
-        super(providers, debug, considerMH);
-    }
-
-    @Override
-    protected GraphBuilderPhase createGraphBuilderPhase() {
-        return new HotSpotGraphBuilderPhase(config);
+        super(new HotSpotGraphBuilderPhase(getGraphBuilderConfiguration()), providers, debug, considerMH);
     }
 }

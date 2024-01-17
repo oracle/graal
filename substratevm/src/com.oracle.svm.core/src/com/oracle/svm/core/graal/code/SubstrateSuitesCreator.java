@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.code;
 
-import jdk.graal.compiler.java.DefaultGraphBuilderPhase;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.java.DefaultSuitesCreator;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -38,7 +38,7 @@ public class SubstrateSuitesCreator extends DefaultSuitesCreator {
 
     @Override
     protected GraphBuilderPhase createGraphBuilderPhase(GraphBuilderConfiguration graphBuilderConfiguration) {
-        return new DefaultGraphBuilderPhase(graphBuilderConfiguration);
+        throw GraalError.shouldNotReachHere("this path is unused");
     }
 
 }

@@ -34,8 +34,8 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.truffle.compiler.ConstantFieldInfo;
 import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
 
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.SourceLanguagePositionProvider;
-import jdk.graal.compiler.java.DefaultGraphBuilderPhase;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -79,7 +79,7 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
 
     @Override
     protected GraphBuilderPhase.Instance createGraphBuilderPhaseInstance(CoreProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
-        return new DefaultGraphBuilderPhase.Instance(providers, graphBuilderConfig, optimisticOpts, null);
+        throw GraalError.shouldNotReachHere("this path is unused");
     }
 
     @Override

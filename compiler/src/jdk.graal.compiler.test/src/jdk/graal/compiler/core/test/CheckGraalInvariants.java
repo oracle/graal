@@ -73,7 +73,6 @@ import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.java.DefaultGraphBuilderPhase;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.PhiNode;
@@ -140,6 +139,10 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         }
 
         return true;
+    }
+
+    public static void main(String[] args) {
+
     }
 
     public static String relativeFileName(String absolutePath) {
