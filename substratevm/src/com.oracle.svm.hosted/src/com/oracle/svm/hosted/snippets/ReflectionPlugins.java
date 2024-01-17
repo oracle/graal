@@ -207,7 +207,7 @@ public final class ReflectionPlugins {
         dmh.register(new RequiredInvocationPlugin("getDeclaringClass", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                JavaConstant constReceiver = receiver.get().asJavaConstant();
+                JavaConstant constReceiver = receiver.get(false).asJavaConstant();
                 if (constReceiver == null || constReceiver.isNull()) {
                     return false;
                 }
