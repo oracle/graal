@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -108,10 +108,10 @@ public final class AMD64FloatConvertNode extends UnaryArithmeticNode<FloatConver
          *
          * We must ensure during stamp folding the special cases are considered and accounted for.
          */
-        if (resultStamp instanceof IntegerStamp && newStamp instanceof FloatStamp inputStamp) {
+        if (resultStamp instanceof IntegerStamp integerStamp && newStamp instanceof FloatStamp inputStamp) {
             final boolean canBeNan = inputStamp.canBeNaN();
             final boolean canBeInfinity = Double.isInfinite(inputStamp.lowerBound()) || Double.isInfinite(inputStamp.upperBound());
-            final boolean conversionCanOverflow = integralPartLargerMaxValue(inputStamp) || integralPartSmallerMinValue(inputStamp);
+            final boolean conversionCanOverflow = integralPartLargerMaxValue(inputStamp, integerStamp) || integralPartSmallerMinValue(inputStamp, integerStamp);
             final boolean canGenerateSpecialValue = canBeNan || canBeInfinity || conversionCanOverflow;
             if (canGenerateSpecialValue) {
                 return resultStamp.meet(createInexactCaseStamp());
@@ -123,12 +123,12 @@ public final class AMD64FloatConvertNode extends UnaryArithmeticNode<FloatConver
         }
     }
 
-    private static boolean integralPartLargerMaxValue(FloatStamp stamp) {
+    private static boolean integralPartLargerMaxValue(FloatStamp stamp, IntegerStamp integerStamp) {
         double upperBound = stamp.upperBound();
         if (Double.isInfinite(upperBound) || Double.isNaN(upperBound)) {
             return true;
         }
-        int bits = stamp.getBits();
+        int bits = integerStamp.getBits();
         assert bits == 32 || bits == 64 : "Must be int or long " + Assertions.errorMessage(stamp, upperBound);
         long maxValue = NumUtil.maxValue(bits);
         /*
@@ -146,12 +146,12 @@ public final class AMD64FloatConvertNode extends UnaryArithmeticNode<FloatConver
         return upperBound >= maxValue;
     }
 
-    private static boolean integralPartSmallerMinValue(FloatStamp stamp) {
+    private static boolean integralPartSmallerMinValue(FloatStamp stamp, IntegerStamp integerStamp) {
         double lowerBound = stamp.lowerBound();
         if (Double.isInfinite(lowerBound) || Double.isNaN(lowerBound)) {
             return true;
         }
-        int bits = stamp.getBits();
+        int bits = integerStamp.getBits();
         assert bits == 32 || bits == 64 : "Must be int or long " + Assertions.errorMessage(stamp, lowerBound);
         long minValue = NumUtil.minValue(bits);
         return lowerBound <= minValue;
