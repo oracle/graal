@@ -117,7 +117,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
              * Unbox by reading the known single field "value", which is a primitive field of the
              * correct unboxed type.
              */
-            AnalysisType type = imageHeapConstant.getType(metaAccess);
+            AnalysisType type = imageHeapConstant.getType();
             if (BOXING_CLASSES.contains(type.getJavaClass())) {
                 imageHeapConstant.ensureReaderInstalled();
                 ResolvedJavaField[] fields = type.getInstanceFields(true);

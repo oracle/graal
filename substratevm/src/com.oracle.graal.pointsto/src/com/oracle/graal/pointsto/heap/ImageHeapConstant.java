@@ -201,7 +201,12 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
     }
 
     @Override
+    @Deprecated
     public AnalysisType getType(MetaAccessProvider provider) {
+        return constantData.type;
+    }
+
+    public AnalysisType getType() {
         return constantData.type;
     }
 
