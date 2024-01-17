@@ -26,14 +26,13 @@ package com.oracle.svm.hosted.classinitialization;
 
 import java.lang.reflect.Proxy;
 
-import jdk.graal.compiler.java.LambdaUtils;
-
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 
+import jdk.graal.compiler.java.LambdaUtils;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 class AllowAllHostedUsagesClassInitializationSupport extends ClassInitializationSupport {
@@ -51,6 +50,7 @@ class AllowAllHostedUsagesClassInitializationSupport extends ClassInitialization
             initializeInterfacesAtBuildTime(cur.getInterfaces(), "interface of " + aClass.getTypeName());
             cur = cur.getSuperclass();
         } while (cur != null);
+        forceInitializeHosted(aClass, reason, false);
     }
 
     private void initializeInterfacesAtBuildTime(Class<?>[] interfaces, String reason) {
