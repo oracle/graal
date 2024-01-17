@@ -271,12 +271,8 @@ class NativeImageVM(GraalVm):
 
             return None
 
-    def __init__(self, name, config_name, extra_java_args=None, extra_launcher_args=None, **kwargs):
-        super(NativeImageVM, self).__init__(name, config_name, extra_java_args, extra_launcher_args)
-        if len(kwargs) > 0:
-            mx.log_deprecation("Ignoring NativeImageVM custom configuration! Use named configuration instead.")
-            mx.warn(f"Ignoring: {kwargs}")
-
+    def __init__(self, name, config_name, extra_java_args=None, extra_launcher_args=None):
+        super().__init__(name, config_name, extra_java_args, extra_launcher_args)
         self.vm_args = None
         self.pgo_instrumentation = False
         self.pgo_context_sensitive = True
