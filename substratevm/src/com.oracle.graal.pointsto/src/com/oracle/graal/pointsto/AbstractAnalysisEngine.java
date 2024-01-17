@@ -186,7 +186,6 @@ public abstract class AbstractAnalysisEngine implements BigBang {
                      */
                     boolean pendingOperations = executor.getPostedOperations() > 0;
                     if (pendingOperations) {
-                        System.out.println("Found pending operations, continuing analysis.");
                         continue;
                     }
                     /* Outer analysis loop is done. Check if heap verification modifies analysis. */
