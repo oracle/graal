@@ -669,48 +669,6 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
                 self.vmArgs(bmSuiteArgs) + ["-jar"] + [self.daCapoPath()] +
                 [benchmarks[0]] + runArgs)
 
-    def repairDatapoints(self, benchmarks, bmSuiteArgs, partialResults):
-        parser = argparse.ArgumentParser(add_help=False)
-        parser.add_argument("-n", "--iterations", default=None)
-        args, _ = parser.parse_known_args(self.runArgs(bmSuiteArgs))
-        if args.iterations and args.iterations.isdigit():
-            iterations = int(args.iterations)
-        else:
-            iterations = self.daCapoIterations()[benchmarks[0]]
-            iterations = iterations + self.getExtraIterationCount(iterations)
-        for i in range(0, iterations):
-            if next((p for p in partialResults if p["metric.iteration"] == i), None) is None:
-                datapoint = {
-                    "benchmark": benchmarks[0],
-                    "bench-suite": self.benchSuiteName(),
-                    "vm": "jvmci",
-                    "config.name": "default",
-                    "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
-                    "metric.name": "warmup",
-                    "metric.value": -1,
-                    "metric.unit": "ms",
-                    "metric.type": "numeric",
-                    "metric.score-function":  "id",
-                    "metric.better": "lower",
-                    "metric.iteration": i
-                }
-                partialResults.append(datapoint)
-        datapoint = {
-            "benchmark": benchmarks[0],
-            "bench-suite": self.benchSuiteName(),
-            "vm": "jvmci",
-            "config.name": "default",
-            "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
-            "metric.name": "time",
-            "metric.value": -1,
-            "metric.unit": "ms",
-            "metric.type": "numeric",
-            "metric.score-function": "id",
-            "metric.better": "lower",
-            "metric.iteration": 0
-        }
-        partialResults.append(datapoint)
-
     def benchmarkList(self, bmSuiteArgs):
         missing_sizes = set(self.daCapoIterations().keys()).difference(set(self.daCapoSizes().keys()))
         if len(missing_sizes) > 0:
