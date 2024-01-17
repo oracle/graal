@@ -1,17 +1,63 @@
-# Bytecode DSL
+- [Introduction to the Bytecode DSL](#introduction-to-the-bytecode-dsl)
+  - [Why a bytecode interpreter?](#why-a-bytecode-interpreter)
+  - [Operations](#operations)
+    - [Built-in vs custom operations](#built-in-vs-custom-operations)
+  - [Simple example](#simple-example)
+    - [Defining the Bytecode class](#defining-the-bytecode-class)
+    - [Converting a program to bytecode](#converting-a-program-to-bytecode)
+- [Usage details](#usage-details)
+  - [Built-in operations](#built-in-operations)
+    - [Basic operations](#basic-operations)
+    - [Control flow operations](#control-flow-operations)
+    - [Metadata operations](#metadata-operations)
+  - [Defining custom operations](#defining-custom-operations)
+    - [Specialization parameters](#specialization-parameters)
+    - [Variadic operations](#variadic-operations)
+    - [Multiple results with LocalSetter](#multiple-results-with-localsetter)
+  - [Defining short-circuiting custom operations](#defining-short-circuiting-custom-operations)
+  - [Defining locals and labels](#defining-locals-and-labels)
+    - [Using materialized local reads and writes](#using-materialized-local-reads-and-writes)
+  - [Translating your language into operations](#translating-your-language-into-operations)
+  - [Features](#features)
+    - [Source information](#source-information)
+    - [Instrumentation](#instrumentation)
+    - [Bytecode index introspection](#bytecode-index-introspection)
+    - [Reparsing](#reparsing)
+    - [Continuations](#continuations)
+  - [Tracing and optimizations](#tracing-and-optimizations)
+    - [Preparing the interpreter](#preparing-the-interpreter)
+    - [Creating the corpus](#creating-the-corpus)
+    - [Running the corpus](#running-the-corpus)
+    - [Applying the decisions](#applying-the-decisions)
+    - [Manually overriding the decisions](#manually-overriding-the-decisions)
+    - [Decisions file format](#decisions-file-format)
+    - [Yielding and coroutines](#yielding-and-coroutines)
 
-Bytecode DSL is a DSL and runtime support component of Truffle that makes it easier to implement bytecode-based interpreters in Truffle. Just as Truffle DSL abstracts away the messy details of AST interpreters (e.g., specialization, caching, boxing elimination), the goal of Bytecode DSL is to abstract away the messy details of a bytecode interpreter --- the bytecode format, control flow, quickening, and so on --- leaving only the language-specific semantics for the language to implement.
+# Introduction to the Bytecode DSL
 
-[ bytecode vs AST pros and cons ]
+Bytecode DSL is a DSL and runtime support component of Truffle that makes it easier to implement bytecode-based interpreters in Truffle. Just as Truffle DSL abstracts away the tricky and tedious details of AST interpreters (e.g., specialization, caching, boxing elimination), the goal of Bytecode DSL is to abstract away the tricky and tedious details of a bytecode interpreter – the bytecode format, control flow, quickening, and so on – leaving only the language-specific semantics for the language to implement.
 
-## What is an Operation?
+Note: At the moment, Bytecode DSL is an **experimental feature**. We encourage you to give it a try, but be forewarned that its APIs are susceptible to change.
+
+
+
+## Why a bytecode interpreter?
+
+Though Truffle AST interpreters enjoy excellent peak performance, they can struggle in terms of:
+
+- *Memory footprint*. Trees are not compact data structures. A root node's entire AST, with all of its state (e.g., `@Cached` parameters) must be allocated before it can execute. This allocation is especially detrimental for code that is only executed a handful of times (e.g., bootstrap code).
+- *Interpreted performance*. AST interpreters contain many highly polymorphic `execute` call sites that are difficult for the JVM to optimize. These sites pose no problem for runtime-compiled code (where partial evaluation can eliminate the polymorphism), but cold code that runs in the interpreter suffers from poor performance.
+
+Bytecode interpreters enjoy the same peak performance as ASTs, but they can also be encoded with less memory and are more amenable to optimization (e.g., via [host compilation](HostCompilation.md)). Unfortunately, these benefits come at a cost: bytecode interpreters are more difficult and tedious to implement properly. The Bytecode DSL simplifies the implementation effort for bytecode interpreters by generating them automatically from AST node-like specifications called "operations".
+
+## Operations
 
 An operation in Bytecode DSL is an atomic unit of language semantics. Each operation can be executed, performing some computation and optionally returning a value. Operations can be nested together to form a program. As an example, the following pseudocode
 ```python
 if 1 == 2:
     print("what")
 ```
-could be represented as an `if-then` operation that has two nested "children": an `equals` operation and a `call function` operation. The `equals` operation would have as children two `load constant` operations, with different constant values attributed to each. If we represent our operations as S-expressions, the program can be translated fully:
+could be represented as an `IfThen` operation with two nested "children": an `Equals` operation and a `CallFunction` operation. The `Equals` operation would have two `LoadConstant` child operations, with different constant values attributed to each. If we represent our operations as S-expressions, the whole program might look something like:
 ```lisp
 (IfThen
     (Equals
@@ -22,17 +68,17 @@ could be represented as an `if-then` operation that has two nested "children": a
         (LoadConstant "what")))
 ```
 
-Each of these operations has its own execution semantics. For example, the `if-then` operation simply executes its first child, and if the result is `true`, it executes its second child.
+Each of these operations has its own execution semantics. For example, the `IfThen` operation executes its first child, and if the result is `true`, it executes its second child.
 
-## Built-in vs custom operations
+### Built-in vs custom operations
 
 The operations in Bytecode DSL are divided into two groups: built-in and custom.
 
-- Built-in operations come with the DSL itself, and their semantics cannot be changed. They model behaviour that is common across languages, such as control flow (`IfThen`, `While`, etc.), constants (`LoadConstant`) and local variable manipulation (`LoadLocal`, `StoreLocal`). We describe the precise semantics of the built-in operations later.
+- Built-in operations come with the DSL itself, and their semantics cannot be changed. They model behaviour that is common across languages, such as control flow (`IfThen`, `While`, etc.), constant accesses (`LoadConstant`) and local variable manipulation (`LoadLocal`, `StoreLocal`). We describe the precise semantics of the built-in operations later in [Built-in Operations](#built-in-operations).
 
 - Custom operations are provided by the language. They model language-specific behaviour, such as the semantics of operators, value conversions, calls, etc. In our previous example, `Equals`, `CallFunction` and `LoadGlobal` are custom operations. There are two kinds of custom operations: regular (eager) operations and short-circuiting operations.
 
-## Bytecode DSL walkthrough
+## Simple example
 
 As an example, let us implement a Bytecode DSL interpreter for a simple language that can only add integers and concatenate strings using its singular operator `+`. Some code examples and their results are given below:
 
@@ -58,10 +104,10 @@ public abstract class ExampleBytecodeRootNode extends RootNode implements Byteco
         ...
     }
 }
-``
+``````
 The class must have a two-argument constructor that takes a `TruffleLanguage<?>` and a `FrameDescriptor` (or `FrameDescriptor.Builder`). This constructor is used by the generated code to instantiate root nodes, so any other instance fields must be initialized separately.
 
-Inside this class we define custom operations. Each operation is structured similarly to a Truffle DSL Node, except it does not need to be a subclass of `Node` and all of its specializations should be `static`. In our example language, the `+` operator can be expressed with its own operation:
+Inside the bytecode class we define custom operations. Each operation is structured similarly to a Truffle DSL node, except it does not need to be a subclass of `Node` and all of its specializations should be `static`. In our example language, the `+` operator can be expressed with its own operation:
 
 ```java
 // place inside ExampleBytecodeRootNode
@@ -76,20 +122,28 @@ public static final class Add {
     public static String doString(String lhs, String rhs) {
         return lhs.toString() + rhs.toString();
     }
-    
+
     // fallback omitted
 }
 ```
 
-Within operations, we can use most of the Truffle DSL, including `@Cached` and `@Bind` parameters, guards, specialization limits, etc. We cannot use features that require node instances, such as `@NodeChild`, `@NodeField`, nor any instance fields or methods.
+Within operations, we can use most of the Truffle DSL, including `@Cached` and `@Bind` parameters, guards, and specialization limits. We cannot use features that require node instances, such as `@NodeChild`, `@NodeField`, nor any instance fields or methods.
 
 One limitation of custom operations is that they eagerly evaluate all of their operands. They cannot perform conditional execution, loops, etc. For those use-cases, we have to use the built-in operations or define custom short-circuiting operations.
 
-From this simple description, the DSL will generate a `ExampleBytecodeRootNodeGen` class, that will contain a full bytecode interpreter definition.
+From this simple description, the DSL will generate a `ExampleBytecodeRootNodeGen` class that contains a full bytecode interpreter definition.
 
-### Converting our program to bytecode
+### Converting a program to bytecode
 
-For this example, let's assume our program is in a parsed AST structure as follows:
+In order to execute a guest program, we need to convert it to the bytecode defined by the generated interpreter.
+We refer to this process as "parsing" the bytecode root node.
+<!-- We refer to the process of converting a guest program to bytecode (and thereby creating a `BytecodeRootNode`) as parsing. -->
+
+To parse a program to a bytecode root node, we encode the program in terms of operations.
+We invoke methods on the generated `Builder` class to construct these operations; the builder translates these method calls to a sequence of bytecodes that can be executed by the generated interpreter.
+
+
+For this example, let's assume the guest program has already been parsed to an AST as follows:
 
 ```java
 class Expr { }
@@ -99,7 +153,7 @@ class StringExpr extends Expr { String value; }
 ```
 Let's also assume there is a simple visitor pattern implemented over the AST.
 
-The process of converting a program to bytecode (and thereby creating a `BytecodeRootNode`) is referred to as "parsing". Parsing is performed by invoking functions on the generated `Builder` class that describe the structure of the program when represented in terms of operations. For example, the program `1 + 2` can be expressed as operations `(Add (LoadConstant 1) (LoadConstant 2))`. It can be parsed using the following sequence of builder calls:
+The expression `1 + 2` can be expressed as operations `(Add (LoadConstant 1) (LoadConstant 2))`. It can be parsed using the following sequence of builder calls:
 
 ```java
 b.beginAdd();
@@ -108,15 +162,15 @@ b.emitLoadConstant(2);
 b.endAdd();
 ```
 
-You can think of the `beginX` and `endX` as opening and closing `<X>` and `</X>` XML tags, while the `emitX` are the empty tag `<X />` used when the operation does not take children (all operations have either the begin/end calls, or the emit call).
+You can think of the `beginX` and `endX` as opening and closing `<X>` and `</X>` XML tags, while `emitX` is the empty tag `<X/>` used when the operation does not take children. Each operation has either `beginX` and `endX` methods or an `emitX` method.
 
 We can then write a visitor to construct bytecode from the AST representation:
 
 ```java
-class ExprBytecodeVisitor implements ExprVisitor {
-    ExprBytecodeRootNodeGen.Builder b;
+class ExampleBytecodeVisitor implements ExprVisitor {
+    ExampleBytecodeRootNodeGen.Builder b;
 
-    public ExprBytecodeVisitor(ExprBytecodeRootNodeGen.Builder b) {
+    public ExampleBytecodeVisitor(ExampleBytecodeRootNodeGen.Builder b) {
         this.b = b;
     }
 
@@ -137,329 +191,203 @@ class ExprBytecodeVisitor implements ExprVisitor {
 }
 ```
 
-Now that we have a visitor, we can define a `parse` method. This method converts an AST to a `ExprBytecodeRootNode`, which can then be executed by the language runtime:
+Now that we have a visitor, we can define a `parse` method. This method converts an AST to a `ExampleBytecodeRootNode`, which can then be executed by the language runtime:
 
 ```java
-public static ExprBytecodeRootNode parseExample(ExampleLanguage language, Expr program) {
-    var nodes = ExprBytecodeRootNodeGen.create(
+public static ExampleBytecodeRootNode parseExample(ExampleLanguage language, Expr program) {
+    var nodes = ExampleBytecodeRootNodeGen.create(
         BytecodeConfig.DEFAULT,
         builder -> {
             // Root operation must enclose each function. It is further explained later.
             builder.beginRoot(language);
-            
+
             // This root node returns the result of executing the expression,
             // so wrap the result in a Return operation.
             builder.beginReturn();
-            
+
             // Invoke the visitor
-            program.accept(new ExprBytecodeVisitor(builder));
-            
+            program.accept(new ExampleBytecodeVisitor(builder));
+
             // End the Return and Root operations
             builder.endReturn();
             builder.endRoot();
         }
     );
 
-    // Return the first and only Node. If there were multiple Root operations, each would result in one Node here.
-    return nodes.getNodes().get(0);
+    // Return the root node. If there were multiple Root operations, there would be multiple root nodes.
+    return nodes.getNode(0);
 }
 ```
 
-We first invoke the `ExprBytecodeRootNodeGen#create` function, which is the entry-point for parsing. Its first argument is a `BytecodeConfig`, which defines a parsing mode. `BytecodeConfig.DEFAULT` will suffice for our purposes (there are other modes that include source positions and/or instrumentation info; see "Reparsing").
+We first invoke the `ExampleBytecodeRootNodeGen#create` function, which is the entry-point for parsing. Its first argument is a `BytecodeConfig`, which defines a parsing mode. `BytecodeConfig.DEFAULT` will suffice for our purposes (there are other modes that include source positions and/or instrumentation info; see [Reparsing](#reparsing)).
 
-The second argument is the parser. The parser is an implementation of the `BytecodeParser<>` functional interface, which is responsible for parsing a program using a given `Builder` parameter. The parser must be deterministic (i.e., if invoked multiple times, it should invoke the same sequence of `Builder` methods), since it may be called more than once to implement reparsing (see "Reparsing").
-In this example, the parser uses the visitor to parse `program`, wrapping the operations within a `Root` and `Return` operation.
+The second argument is the parser. The parser is an implementation of the `BytecodeParser` functional interface, which is responsible for parsing a program using a given `Builder` parameter.
+In this example, the parser uses the visitor to parse `program`, wrapping the operations within `Root` and `Return` operations.
+The parser must be deterministic (i.e., if invoked multiple times, it should invoke the same sequence of `Builder` methods), since it may be called more than once to implement reparsing (see [Reparsing](#reparsing)).
 
-The result is a `BytecodeNodes<>` instance, which acts as a wrapper class for the `BytecodeRootNode`s produced by the parse (along with other shared information). The nodes can be extracted using the `getNodes()` method.
+The result is a `BytecodeNodes` instance, which acts as a wrapper class for the `BytecodeRootNode`s produced by the parse (along with other shared information). The nodes can be extracted using the `getNode()` or `getNodes()`.
 
-## The Built-in operations explained
+And that's it! During parsing, the builder generates a sequence of bytecode for each root node. The generated bytecode interpreter executes this bytecode sequence when a root node is executed.
 
-In this section, all the built-in operations are explained. Each operation has its arity (how many child operations it must have), and if it returns a value as result.
+# Usage details
 
-**Root**
-* Arity: 0+
-* Returns value: N/A
-* `begin` arguments: (TruffleLanguage<?>)
+This section is a user manual for the Bytecode DSL. It should be consulted in combination with the Javadoc when implementing a Bytecode DSL interpreter.
 
-Each Root operation defines one function (i.e. a RootNode). All other operations must be enclosed inside a Root operation. The control flow must never reach the end of the Root operation. The `beginRoot` function takes the language instance as a parameter, which will be used when constructing the RootNode. The `endRoot` function returns the resulting RootNode instance, for use in e.g. nested functions.
+## Built-in operations
 
-**Block**
-* Arity: 0+
-* Returns value: Only if the last child returns a value itself.
+The DSL defines several built-in operations. Each operation takes a certain number of child operations (e.g., `Op(child1, child2)`), or takes a variadic number of arguments (e.g., `Op(children*)`). Some operations may produce a value.
 
-Block is a utility operation that executes all of its children in order, returning the result of the last child (if any). It can be used to group multiple operations together in order to count them as one child, both in value-returning, and non-value-returning contexts. It has a similar role to brace blocks `{ ... }` in Java, but with the addition that they can appear inside "expressions".
 
-**IfThen**
-* Arity: 2
-* Returns value: no
-* First child must return a value
+### Basic operations
 
-IfThen implements the `if (x) { y }` Java language construct. On execution, it evaluates the first child, and if it results in a `true`, it executes the second child. It does not return a result. Note that only Java booleans are accepted as results of the first operation, and all other values have undefined results.
+`Root(children*)`
+* Produces value: N/A
+* `beginRoot` arguments: (`TruffleLanguage<?>`)
 
-**IfThenElse**
-* Arity: 3
-* Returns value: no
-* First child must return a value
+Each Root operation defines one function (i.e. a `RootNode`). Its children define the body of the function. Root is the only permitted top-level operation; all others must be enclosed inside a Root operation. The control flow must never reach the end of the Root operation (i.e., it should return). The `beginRoot` function takes the language instance as a parameter, which is used to construct the `RootNode`. The `endRoot` function returns the resulting `RootNode`.
 
-IfThenElse implements the `if (x) { y } else { z }` Java language construct. On execution, it evaluates the first child, and if it results in `true` it executes the second child, otherwise it executes the third. No value is returned in either case. Note that only Java booleans are accepted as results of the first operation, and all other values have undefined results.
+To simplify parsing, root operations can be nested. However, the generated nodes are independent (a nested root node does not have access to the outer node's locals).
 
-**Conditional**
-* Arity: 3
-* Returns value: yes
-* All children must return a value
+`Block(children*)`
+* Produces value: Only if the last child produces a value.
 
-Conditional implements the `x ? y : z` Java language construct. On execution, it evaluates the first child, and if it results in `true` it executes the second child and returns its result, otherwise it executes the third child and returns its result. Note that only Java booleans are accepted as results of the first operation, and all other values have undefined results.
+Block is a grouping operation that executes its children sequentially, producing the result of the last child (if any). It can be used to group multiple operations together in a single operation. It has a similar role to a block `{ ... }` in Java, but it can also produce a value (i.e., blocks can be expressions).
 
-**While**
-* Arity: 2
-* Returns value: no
-* First child must return a value
+`Return(value)`
+* Produces value: N/A
+* `value` must produce a value
 
-While implements the `while (x) { y }` Java language construct. On execution it evaluates the first child, and if that results in `true` it evaluates the second child and starts from the beginning. No value is returned as the result of the operation. Note that only Java booleans are accepted as results of the first operation, and all other values have undefined results.
+Return executes `value` and returns the result (ending execution).
 
-**Label**
-* Arity: 0
-* Returns value: no
-* `emit` arguments: (BytecodeLabel)
+`LoadConstant`
+* Produces value: yes
+* `emitLoadConstant` arguments: (`Object`)
 
-Label operation defines the location referenced to by the passed label (see "Defining locals and labels"). It serves a smilar purpose to the label statement in C and similar languages. Each BytecodeLabel instance must be passed to a Label operation exactly once. The Label operation must be scoped directly inside the same operation the label is created in.
+LoadConstant produces the given constant value. The argument must be immutable, since it may be shared across multiple LoadConstant operations.
 
-**Branch**
-* Arity: 0
-* Returns value: no (but N/A)
-* `emit` arguments: (BytecodeLabel)
+`LoadArgument`
+* Produces value: yes
+* `emitLoadArgument` arguments: (`int`)
 
-Branch operation performs an unconditional branch to the passed label. It serves a similar purpose to a `goto` statement in C and similar languages. It is treated as not returning a value, but it does not conform to the regular control-flow rules.
+LoadArgument reads an argument from the frame using the given index and produces its value.
 
-**LoadConstant**
-* Arity: 0
-* Returns value: yes
-* `emit` arguments: (Object)
+`LoadLocal`
+* Produces value: yes
+* `emitLoadLocal` arguments: (`BytecodeLocal`)
 
-LoadConstant operation returns the runtime constant value that is provided as its build-time argument. The argument must be immutable, as the value may be shared. On execution, it returns the value provided.
+LoadLocal reads the given local from the frame and produces the current value (see [Defining locals and labels](#defining-locals-and-labels)). If a value has not been written to the local, LoadLocal produces the default value as defined by the `FrameDescriptor` (`null` by default).
 
-**LoadArgument**
-* Arity: 0
-* Returns value: yes
-* `emit` arguments: (int)
+`StoreLocal(value)`
+* Produces value: no
+* `value` must produce a value
+* `beginStoreLocal` arguments: (`BytecodeLocal`)
 
-LoadArgument returns the indexed argument from the arguments passed to current Truffle function.
+StoreLocal executes `value` and then overwrites the given local with the result.
 
-**LoadLocal**
-* Arity: 0
-* Returns value: yes
-* `emit` arguments: (BytecodeLocal)
+`LoadLocalMaterialized(frame)`
+* Produces value: yes
+* `frame` must produce a `Frame` value
+* `beginLoadLocalMaterialized` arguments: (`BytecodeLocal`)
 
-LoadLocal reads from the supplied local (see "Defining locals and labels") and returns the currently stored value. Reading from a local that has not been written to yet results in the frame default value being read (which by default is `null`).
+LoadLocalMaterialized has the same semantics as LoadLocal, except its `frame` child is executed to produce the frame to use for the load. This can be used to read locals from materialized frames, including from frames of enclosing functions (e.g., in nested functions or lambdas).
 
-**StoreLocal**
-* Arity: 1
-* Returns value: no
-* `begin` arguments: (BytecodeLocal)
+`StoreLocalMaterialized(frame, value)`
+* Produces value: no
+* `frame` must produce a `Frame` value
+* `value` must produce a value
+* `beginStoreLocalMaterialized` arguments: (`BytecodeLocal`)
 
-StoreLocal executes its child operation, and stores the resulting value in the provided local. During the child execution, the previous value of the local is still available.
+StoreLocalMaterialized has the same semantics as StoreLocal, except its `frame` child is executed to produce the frame to use for the store. This can be used to store locals into materialized frames, including from frames of enclosing functions (e.g., in nested functions or lambdas).
 
-**LoadLocalMaterialized**
-* Arity: 1
-* Returns value: yes
-* Child must return value
-* `begin` arguments: (BytecodeLocal)
 
-LoadLocalMaterialized executes its first child, and then performs the similar operation to LoadLocal, except it reads the value from the frame instance that is the result of executing the child, instead from the current frame. This can be used to read locals from materialized frames, including from frames of enclosing functions (e.g. in nested functions / lambdas).
+### Control flow operations
 
-**StoreLocalMaterialized**
-* Arity: 2
-* Returns value: no
-* All children must return values
-* `begin` arguments: (BytecodeLocal)
+`IfThen(cond, thens)`
 
-StoreLocalMaterialized executes its first and second child, and then performs the similar operation to StoreLocal, except it stores the result of the second child to the frame instance that is the result of the first child. This can be used to store locals to materialized frames, including to frames of enclosing functions (e.g. in nested functions / lambdas).
+* Produces value: no
+* `cond` must produce a `boolean` value
 
-**Return**
-* Arity: 1
-* Returns value: yes (but N/A)
-* Child must return value
+IfThen implements the `if (cond) thens` Java language construct. It evaluates `cond`, and if it produces `true`, it executes `thens`. It does not produce a result. Note that only Java booleans are accepted as results of the first operation, and all other values produce undefined behaviour.
 
-Return operation executes its child, and then returns from the currently executing function with that value as the result. It is treated as returning a value, but it does not conform to the regular control-flow rules.
+`IfThenElse(cond, thens, elses)`
+* Produces value: no
+* `cond` must produce a `boolean` value
 
-**Yield**
-* Arity: 1
-* Returns value: yes
-* Child must return value
+IfThenElse implements the `if (cond) thens else elses` Java language construct. It evaluates `cond`, and if it produces `true`, it executes `thens`; otherwise, it executes `elses`. No value is produced in either case.
+
+`Conditional(cond, thens, elses)`
+* Produces value: yes
+* `cond` must produce a `boolean` value
+* `thens` and `elses` must produce a value
+
+Conditional implements the `cond ? thens : elses` Java language construct. It has the same semantics as IfThenElse, except it produces the value produced by the child that was conditionally executed.
+
+`While(cond, body)`
+* Produces value: no
+* `cond` must produce a `boolean` value
+
+While implements the `while (cond) body` Java language construct. It evaluates `cond`, and if it produces `true`, it executes `body` and then repeats.
+
+`Yield(value)`
+* Produces value: yes
+* `value` must produce a value
 * Requires `enableYield` feature
 
-Yield operation executes its child, and then returns from the currently executing function with a ContinuationResult containing that value as the result. Upon continuing the continuation, the control continues from Yield operation, with the Yield returning the value passed to the continuation (see "Yielding and coroutines")
+Yield executes `value`, suspends execution at the given point, and returns a `ContinuationResult` containing the result. At a later time, a caller can resume a `ContinuationResult`, continuing execution after the Yield (see [Yielding and coroutines](#yielding-and-coroutines)). When resuming, the caller passes a value that becomes the value produced by the Yield.
 
-**TryExcept**
-* Arity: 2
-* Returns value: no
-* `begin` arguments: (BytecodeLocal)
+`TryCatch(body, handler)`
+* Produces value: no
+* `beginTryCatch` arguments: (`BytecodeLocal`)
 
-TryExcept executes its first child. If any Truffle exception occurrs during that execution, the exception is stored in the local provided, and the second child is executed. This operation models the behavior of `try ... catch` construct in the Java language, but without the option to filter exceptions based on type. It does not return a value in either case.
+TryCatch executes its `body`. If any Truffle exception occurs during the execution, the exception is stored in the given local and `handler` is executed. This operation models the behavior of the `try ... catch ...` construct in the Java language, but without filtering exceptions based on type. It does not produce a value, regardless of whether an exception is caught.
 
-**FinallyTry**
-* Arity: 2
-* Returns value: no
+`FinallyTry(handler, body)`
+* Produces value: no
+* `beginFinallyTry` arguments: (`BytecodeLocal`)
 
-FinallyTry executes its second child. When that execution finished (either normally, through an explicit control flow transfer (Return, Branch, ...), or an exception), the first child is executed. This operation models the `try ... finally` construct in the Java language, but the order of children is flipped. If the first child finishes execution normally, the control flow resumes where it would after executing the second child. Otherwise, the control flow continues where it would continue after executing the first child.
+FinallyTry executes its `body`. After the execution finishes (either normally, exceptionally, or via a control flow operation like Return or Branch), the `handler` is executed. If the `body` finished exceptionally, the Truffle exception is stored in the given local; otherwise, the value of the local is null when the `handler` executes. After executing the `handler`, if the `body` finished normally or exceptionally, control flow continues after the FinallyTry; otherwise, it continues where the control flow operation would have taken it (e.g., to a label that was branched to).
+This operation models the `try ... finally` construct in the Java language, but the user provides the finally handler as the first operation in order to simplify and speed up bytecode generation.
 
-**FinallyTryNoExcept**
-* Arity: 2
-* Returns value: no
+`FinallyTryNoExcept(handler, body)`
+* Produces value: no
 
-FinallyTryNoExcept executes its second child. If that execution finished without an exception (either normally, or through an explicit control flow transfer (Return, Branch, ...)), the first child is executed. This is similar to FinallyTry, but does not handle exceptions.
+FinallyTryNoExcept has the same semantics as FinallyTry, except the `handler` is not executed if an exception is thrown.
 
-**Source**
-* Arity: 1
-* Returns value: Only if the child returns a value
-* `begin` arguments: (Source)
+`Label`
+* Produces value: no
+* `emitLabel` arguments: (`BytecodeLabel`)
 
-Source is the operation used to declare that the enclosed operation is found in the given Source (see "Source information"). Together with SourceSection, it allows for source locations to be preserved in Bytecode DSL. On execution it just executes its child and returns the result (if any).
+Label defines a location in the bytecode that can be used as a forward branch target. Its argument is a `BytecodeLabel` allocated by the builder (see [Defining locals and labels](#defining-locals-and-labels)). Each `BytecodeLabel` must be defined exactly once, and it should be defined directly inside the same operation in which it is created.
 
-**SourceSection**
-* Arity: 1
-* Returns value: Only if the child returns a value
-* `begin` arguments: (int, int)
+`Branch`
+* Produces value: N/A
+* `emitBranch` arguments: (`BytecodeLabel`)
 
-SourceSection is the operation used to declare that the enclosed operation is found at given offset, and has the given length in the source code. It must be (directly or indirectly) enclosed within the Source operation. On execution it just executes its child and returns the result (if any).
+Branch performs an unconditional forward branch to a label (for conditional and backwards branches, use IfThen and While operations).
 
-**Tag**
-* Arity: 1
-* Returns value: Only if the child returns a value
-* `begin` arguments: (Class<? extends Tag>)
 
-Tag is the operation used to declare that the enclosed operation should be represented as having the given tag when instrumented (see "Instrumentation"). On execution it just executes its child and returns the result (if any).
+### Metadata operations
 
-## Defining locals and labels
+The following operations are "transparent". They statically encode metadata (e.g., source information) about the program, but have no run time effect; at run time, they execute their `children` operations in sequence.
 
-Locals and labels are the abstractions that encapsulate the data storage and control-flow locations. Apart from operations that manipulate them, additional `createLocal` and `createLabel` operations are exposed on the builder that provide you with a unique `BytecodeLocal` and `BytecodeLabel` instance.
+`Source(children*)`
+* Produces value: Only if the last child produces a value.
+* `beginSource` arguments: (`Source`)
 
-The location where you call the `create` functions is important, as the construct is considered to be scoped to the operation it is created in. For labels, that operation is further required to be either a Root or a Block operation.
+Source associates the enclosed `children` operations with the given `Source` object (see [Source information](#source-information)). Together with SourceSection, it encodes source locations for a program.
 
-For locals, all loads and stores must be (directly or indirectly) nested within the same operation the local is declared in. Few examples (indented for readability):
+`SourceSection(children*)`
+* Produces value: Only if the last child produces a value.
+* `beginSourceSection` arguments: (`int, int`)
 
-```java
-// this is allowed
-b.beginBlock();
-  var local = b.createLocal();
-  b.beginStoreLocal(local);
-    /* ... */
-  b.endStoreLocal();
+SourceSection associates the enclosed `children` operations with the given source character offset and length (see [Source information](#source-information)). It must be (directly or indirectly) enclosed within a Source operation.
 
-  b.emitLoadLocal(local); 
-b.endBlock();
+`Tag(children*)`
+* Produces value: Only if the last child produces a value.
+* `beginTag` arguments: (`Class<? extends Tag>`)
 
-// this is also allowed (arbitrarily nesting)
-b.beginSomeOperation();
-  var local = b.createLocal();
-  b.beginOtherOperation();
-    b.emitLoadLocal(local); // or StoreLocal
-  b.endOtherOperation();
-b.endSomeOperation();
+Tag associates the enclosed `children` operations with the given tag for instrumentation (see [Instrumentation](#instrumentation)).
 
-// this is not allowed
-b.beginSomething();
-  var local = b.createLocal();
-b.endSomething();
-b.emitLoadLocal(local);
-```
-
-In order to use the local with Load/StoreLocalMaterialized operations, the local must be created directly scoped to the Root operation of the function.
-
-For labels, similar rules apply for Branch operations. The Branch must be (directly or indirectly) nested in the same Block or Root operation. However the Label operation must be directly nested. For eample:
-
-```java
-// this is allowed
-b.beginBlock();
-  var label = b.createLabel();
-  b.emitLabel(label);
-b.endBlock();
-
-// this is not allowed (nested Label operation)
-b.beginBlock();
-  var label = b.createLabel();
-  b.beginSomething();
-    b.emitLabel(label);
-  b.endSomething();
-b.endBlock();
-
-// this is not allowed (multiple Label operations for same BytecodeLabel)
-b.beginBlock();
-  var label = b.createLabel();
-  b.emitLabel(label);
-  // ...
-  b.emitLabel(label);
-b.endBlock();
-```
-
-Furthermore, reading/writing to locals, as well as branching to labels defined within other RootNodes is not allowed:
-
-```java
-b.beginRoot(/* ... */);
-  var local = b.createLocal();
-  // ...
-  
-  b.beginRoot(/* ... */);
-    b.emitLoadLocal(local); // not allowed
-  b.endRoot();
-b.endRoot();
-```
-
-### Using materialized local reads and writes
-
-If you need to read/write to locals of other functions, Load/StoreLocalMaterialized can be used. Still, nesting must be respected, and the local must be directly nested inside the Root operation.
-
-```java
-b.beginRoot(/* ... */);
-  var topLevelLocal = b.createLocal();
-  // ...
-  
-  b.beginBlock();
-    var nonTopLevelLocal = b.createLocal();
-
-    b.beginRoot(/* ... */);
-      // allowed
-      b.beginLoadLocalMaterialized(topLevelLocal);
-        b.emitProvideMaterializedFrame(); // custom operation
-      b.endLoadLocalMaterialized();
-      
-      // not allowed, the local is not top-level, even if it is in scope
-      b.beginLoadLocalMaterialized(nonTopLevelLocal);
-        b.emitProvideMaterializedFrame();
-      b.endLoadLocalMaterialized();
-    b.endRoot();
-  b.endBlock();
-b.endRoot();
-
-b.beginRoot();
-  // not allowed, not in scope
-  b.beginLoadLocalMaterialized(topLevelLocal);
-    b.emitProvideMaterializedFrame();
-  b.endLoadLocalMaterialized();
-b.endRoot();
-```
-
-In order to properly implement this, your language needs to implement closure calls, which materialize and pass the caller function Frame into the callee (e.g. by passing it as an additional argument), and the operation that returns that materialized frame for use with the materialized load and store operations (here named `ProvideMaterializedFrame`, e.g. by extracting it from the arguments array).
-
-## Source information
-
-The Bytecode DSL has the option of keeping track of source locations within the code. This is done using Source and SourceSection operations. Source operation defines the source in which the nested operations are found, while the SourceSection, toghether with the nearest enclosing Source operation defines the exact source location.
-
-The source information will only be kept if the BytecodeConfig includes the corresponding option. This can be achieved by passing the `BytecodeConfig` that contains `withSource` feature to the initial `create` call, or later by calling `BytecodeNodes#updateConfiguration`.
-
-The RootNode itself will report as its location the first largest enclosing SourceSection that is defined within it. The source location at any particular point in the code can be extracted by calling the `getSourceSectionAtBci(int)` function of the root node, which for a given bytecode index returns the nearest enclosing source section. The bytecode index can be obtained using the `$bci` pseudovariable in DSL expressions, e.g. by adding a `@Bind("$bci") int bci` parameter to a specialization.
-
-## Instrumentation
-
-The Bytecode DSL has the option of creating instrumentable nodes, with arbitrary instrumentation tags attached. This is achieved using the Tag operations. Each Tag operation will appear in the instrumentation framework as an instrumentable node, and will properly emit instruemntation events when executed.
-
-Instrumentation can be enabled eagerly by passing an `BytecodeConfig` that contains the `withInstrumentation` feature to the initial `create` call, or later by calling `BytecodeNodes#updateConfiguration`. It will otherwise be automatically enabled if requested by the Truffle instrumentation framework.
-
-## Reparsing
-
-In order to lower the memory footprint and speed up parsing, certain features of the Bytecode DSL (e.g source information and instrumentation) are not eagerly enabled. Instead, they can be *reparsed* when needed. This can be done automatically (e.g. on instrumentation), or manually by calling `BytecodeNodes#updateConfiguration` with the new expected configuration. The method will then optionally perform the parsing process again, adding all the missing data into the node instances. In order to support this, the parser function must be deterministic, and callable multiple times.
-
-Since parsing and reparsing is slower than just parsing once, features to be included in the initial parse can also be specified. For example, the language may eagerly choose to enable source information for its functions by passing `BytecodeConfig.WITH_SOURCE` to the `create` call.
 
 ## Defining custom operations
 
@@ -533,7 +461,7 @@ With this, we can define some common short-circuiting operations:
 ```java
 @ShortCircuitOperation(
     name = "BoolAnd",
-    booleanConverter = ToBoolean.class, 
+    booleanConverter = ToBoolean.class,
     continueWhen = true)
 @ShortCircuitOperation(
     name = "BoolOr",
@@ -543,6 +471,111 @@ With this, we can define some common short-circuiting operations:
     name = "NullCoalesce",
     booleanConverter = IsNull.class,
     continueWhen = true)
+```
+
+## Defining locals and labels
+
+Locals and labels are important abstractions that encapsulate local variables and branch targets. The builder defines `createLocal` and `createLabel` methods that can be used to obtain unique `BytecodeLocal` and `BytecodeLabel` instances.
+
+The location where you call the `create` functions is important, as the abstractions are scoped to the operation they are created in. For labels, that operation is further required to be either a Root or a Block operation.
+
+All local accesses must be (directly or indirectly) nested within the local's creating operation. It is undefined behaviour to access a local outside of its creating operation (**the builder does not validate this**). For example:
+
+```java
+// allowed
+b.beginBlock();
+  var local = b.createLocal();
+  b.beginStoreLocal(local);
+    /* ... */
+  b.endStoreLocal();
+
+  b.emitLoadLocal(local);
+b.endBlock();
+
+// allowed (arbitrary nesting)
+b.beginSomeOperation();
+  var local = b.createLocal();
+  b.beginOtherOperation();
+    b.emitLoadLocal(local); // or StoreLocal
+  b.endOtherOperation();
+b.endSomeOperation();
+
+// undefined behaviour
+b.beginSomething();
+  var local = b.createLocal();
+b.endSomething();
+b.emitLoadLocal(local);
+```
+
+Every label must be declared directly in its creating operation; this operation must be a Block or Root. Any branch to a label must be (directly or indirectly) nested in the label's creating operation. For example:
+
+```java
+// allowed
+b.beginBlock();
+  var label = b.createLabel();
+  b.emitLabel(label);
+b.endBlock();
+
+// not allowed (nested Label operation)
+b.beginBlock();
+  var label = b.createLabel();
+  b.beginSomething();
+    b.emitLabel(label);
+  b.endSomething();
+b.endBlock();
+
+// not allowed (multiple Label declarations)
+b.beginBlock();
+  var label = b.createLabel();
+  b.emitLabel(label);
+  // ...
+  b.emitLabel(label);
+b.endBlock();
+```
+
+Furthermore, reading/writing to locals defined by other RootNodes is undefined behaviour; branching to labels within other RootNodes is not allowed.
+
+```java
+b.beginRoot(/* ... */);
+  var local = b.createLocal();
+  var label = b.createLabel();
+  // ...
+
+  b.emitLabel(label);
+
+  b.beginRoot(/* ... */);
+    b.emitLoadLocal(local); // undefined behaviour
+    b.emitBranch(label); // not allowed
+  b.endRoot();
+b.endRoot();
+```
+
+### Using materialized local reads and writes
+
+Load/StoreLocalMaterialized can be used to access the locals of other functions (e.g., to implement lexical scoping).
+It is undefined behaviour to access a local using a materialized frame that it does not belong to; be careful to avoid this situation.
+
+```java
+b.beginRoot(/* ... */);
+  var topLevelLocal = b.createLocal();
+  // ...
+
+  b.beginBlock();
+    var nonTopLevelLocal = b.createLocal();
+
+    b.beginRoot(/* ... */);
+      // correct usage
+      b.beginLoadLocalMaterialized(topLevelLocal);
+        b.emitProvideTopLevelFrame(); // custom operation
+      b.endLoadLocalMaterialized();
+
+      // undefined behaviour
+      b.beginLoadLocalMaterialized(nonTopLevelLocal);
+        b.emitProvideTopLevelFrame();
+      b.endLoadLocalMaterialized();
+    b.endRoot();
+  b.endBlock();
+b.endRoot();
 ```
 
 ## Translating your language into operations
@@ -566,7 +599,7 @@ Now we need to express this in terms of operations. In general, you can think of
   * Short-circuiting operations are the exception, as different execution order rules apply to them.
 * Blocks can appear anywhere in the expression, allowing you to insert statements in the middle of otherwise "expression" contexts (similar to blocks in Rust).
 * Currently there are no static types - everything is an `Object`.
-* TryExcept does not allow filtering exceptions based on type.
+* TryCatch does not allow filtering exceptions based on type.
 
 Now we can write the previous semantics in this pseudo-Java language. To help us, we will introduce a temporary local, `tmpIterator`.
 
@@ -617,18 +650,18 @@ Then, we need to transform the previously written "desugared" form into individu
 // in our ast visitor
 public void visit(ForNode node) {
   BytecodeLocal tmpIterator = b.createLocal();
-  
+
   b.beginStoreLocal(tmpIterator);
     b.beginGetIterator();
       node.iterator.accept(this);
     b.endGetIterator();
   b.endStoreLocal();
-  
+
   b.beginWhile();
     b.beginGetNextFromIterator(valueLocal);
       b.emitLoadLocal(tmpIterator);
     b.endGetNextFromIterator();
-    
+
     b.beginBlock();
       // if your language supports destructuring (e.g. `for x, y in ...`)
       // you would do that here as well
@@ -637,6 +670,46 @@ public void visit(ForNode node) {
   b.endWhile();
 }
 ```
+
+
+
+## Features
+
+This section describes some of the features supported by the Bytecode DSL.
+
+### Source information
+
+The Bytecode DSL keeps track of source locations using Source and SourceSection operations. The Source operation defines the `Source` of its enclosed operations. The SourceSection operation (together with the nearest enclosing Source operation) defines the precise source location of its enclosed operations.
+
+The RootNode itself will report as its location (via `getSourceSection()`) the first SourceSection defined within it. The source location at any particular point in the code can be extracted by calling the `getSourceSectionAtBci(int)` method with a given bytecode index (see [Bytecode index introspection](#bytecode-index-introspection) for ways to obtain the bytecode index).
+
+### Instrumentation
+
+The Bytecode DSL also associates `Tag`s with operations to support instrumentation using the Tag operation.
+
+TODO
+
+### Bytecode index introspection
+TODO
+
+ (One way to obtain the bytecode index is to bind the the `$bci` pseudovariable as a parameter to an operation specialization).
+
+### Reparsing
+
+When a bytecode node is parsed, the default `BytecodeConfig` excludes source information and instrumentation tags from the parsed result.
+This metadata can contribute significantly to the interpreter footprint, so it is often preferable to lazily compute this information instead of storing it eagerly.
+
+Bytecode DSL intepreters achieve this lazy computation using *reparsing*.
+When metadata is required (e.g., the source section is requested) or the `BytecodeConfig` changes (via `BytecodeNodes#updateConfiguration`), the generated interpreter will invoke the same parser used to `create` the nodes, except it will retain the additional metadata (i.e., source or instrumentation information) that was requested.
+
+In order to support reparsing, the `BytecodeParser` used to `create` nodes must be deterministic and idempotent.
+The parser will be retained in a field, so languages should be considerate of the memory occupied by objects reachable from their parsers (e.g., source file contents or ASTs).
+
+A language may choose to eagerly include some metadata it knows it will always need instead of reparsing; for example, it can use `BytecodeConfig.WITH_SOURCE` to eagerly compute source information.
+
+### Continuations
+TODO
+
 
 ## Tracing and optimizations
 
@@ -692,5 +765,7 @@ This will regenerate the interpreter without the tracing calls, including taking
 If you want to manually modify the decisions generated by the Bytecode DSL, **do not edit the generated file**. Instead, write a second `json` file in the same format, and reference it in the `decisionOverrideFiles` annotation attribute.
 
 ### Decisions file format
+
+### Yielding and coroutines
 
 TODO
