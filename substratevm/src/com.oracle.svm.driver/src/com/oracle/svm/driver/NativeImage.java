@@ -2007,11 +2007,36 @@ public class NativeImage {
     }
 
     void addPlainImageBuilderArg(String plainArg, String origin) {
-        addPlainImageBuilderArg(injectHostedOptionOrigin(plainArg, origin));
+        addPlainImageBuilderArg(plainArg, origin, true);
+    }
+
+    void addPlainImageBuilderArg(String plainArg, String origin, boolean override) {
+        addPlainImageBuilderArg(injectHostedOptionOrigin(plainArg, origin), override);
     }
 
     void addPlainImageBuilderArg(String plainArg) {
+        addPlainImageBuilderArg(plainArg, true);
+    }
+
+    void addPlainImageBuilderArg(String plainArg, boolean override) {
         assert plainArg.startsWith(NativeImage.oH) || plainArg.startsWith(NativeImage.oR);
+        if (!override) {
+            int posValueSeparator = plainArg.indexOf('=');
+            if (posValueSeparator > 0) {
+                String argPrefix = plainArg.substring(0, posValueSeparator);
+                int posOriginSeparator = plainArg.indexOf('@');
+                if (posOriginSeparator > 0) {
+                    argPrefix = argPrefix.substring(0, posOriginSeparator);
+                }
+                String existingValue = getHostedOptionFinalArgumentValue(imageBuilderArgs, argPrefix + '=');
+                if (existingValue != null) {
+                    /* Respect the existing value. Do not append overriding value. */
+                    return;
+                }
+            } else {
+                VMError.shouldNotReachHere("override=false currently only works for non-boolean options");
+            }
+        }
         imageBuilderArgs.add(plainArg);
     }
 

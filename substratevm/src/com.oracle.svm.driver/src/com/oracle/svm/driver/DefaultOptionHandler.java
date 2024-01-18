@@ -251,7 +251,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
         if (!jarFileNameBase.isEmpty()) {
             String origin = "manifest from " + jarFilePath.toUri();
-            nativeImage.addPlainImageBuilderArg(nativeImage.oHName + jarFileNameBase, origin);
+            nativeImage.addPlainImageBuilderArg(nativeImage.oHName + jarFileNameBase, origin, false);
         }
         Path finalFilePath = nativeImage.useBundle() ? nativeImage.bundleSupport.substituteClassPath(jarFilePath) : jarFilePath;
         if (!NativeImage.processJarManifestMainAttributes(finalFilePath, nativeImage::handleManifestFileAttributes)) {
