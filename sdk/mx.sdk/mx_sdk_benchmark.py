@@ -57,6 +57,7 @@ import copy
 import urllib.request
 
 import mx_sdk_vm_impl
+from mx_benchmark import DataPoints
 
 
 def parse_prefixed_args(prefix, args):
@@ -648,7 +649,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         else:
             return None
 
-    def validateStdoutWithDimensions(self, out, benchmarks, bmSuiteArgs, retcode=None, dims=None, extraRules=None):
+    def validateStdoutWithDimensions(self, out, benchmarks, bmSuiteArgs, retcode=None, dims=None, extraRules=None) -> DataPoints:
         datapoints = super(BaseMicroserviceBenchmarkSuite, self).validateStdoutWithDimensions(
             out=out, benchmarks=benchmarks, bmSuiteArgs=bmSuiteArgs, retcode=retcode, dims=dims, extraRules=extraRules)
 
@@ -658,7 +659,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
 
         return datapoints
 
-    def run(self, benchmarks, bmSuiteArgs):
+    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
         if len(benchmarks) > 1:
             mx.abort("A single benchmark should be specified for {0}.".format(BaseMicroserviceBenchmarkSuite.__name__))
         self.bmSuiteArgs = bmSuiteArgs
@@ -853,7 +854,7 @@ class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.Aver
     def tailDatapointsToSkip(self, results):
         return int(len(results) * .10)
 
-    def run(self, benchmarks, bmSuiteArgs):
+    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
         results = super(BaseJMeterBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
         results = results[:len(results) - self.tailDatapointsToSkip(results)]
         self.addAverageAcrossLatestResults(results, "throughput")

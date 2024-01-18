@@ -35,12 +35,14 @@ from traceback import print_tb
 import inspect
 import subprocess
 import zipfile
+from typing import Iterable
 
 import mx
 import mx_benchmark
 import mx_sdk_vm
 import mx_sdk_vm_impl
 from mx_sdk_vm_impl import svm_experimental_options
+from mx_benchmark import DataPoint, DataPoints
 
 _suite = mx.suite('vm')
 _polybench_vm_registry = mx_benchmark.VmRegistry('PolyBench', 'polybench-vm')
@@ -1184,7 +1186,7 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite, mx_benchmark.Av
     def get_vm_registry(self):
         return mx_benchmark.js_vm_registry
 
-    def run(self, benchmarks, bmSuiteArgs):
+    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
         results = super(AgentScriptJsBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
         self.addAverageAcrossLatestResults(results)
         return results
@@ -1197,7 +1199,7 @@ class ExcludeWarmupRule(mx_benchmark.StdOutRule):
         self.startPattern = re.compile(kwargs.pop('startPattern'))
         super(ExcludeWarmupRule, self).__init__(*args, **kwargs)
 
-    def parse(self, text):
+    def parse(self, text) -> Iterable[DataPoint]:
         m = self.startPattern.search(text)
         if m:
             return super(ExcludeWarmupRule, self).parse(text[m.end()+1:])

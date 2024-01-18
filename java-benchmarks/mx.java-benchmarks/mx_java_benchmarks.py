@@ -35,7 +35,7 @@ from tempfile import mkdtemp, mkstemp
 
 import mx
 import mx_benchmark
-from mx_benchmark import ParserEntry
+from mx_benchmark import ParserEntry, DataPoints
 import mx_sdk_benchmark
 from mx_sdk_benchmark import NativeImageBundleBasedBenchmarkMixin
 import mx_sdk_vm_impl
@@ -1947,7 +1947,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             )
         ]
 
-    def run(self, benchmarks, bmSuiteArgs):
+    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
         results = super(RenaissanceBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
         self.addAverageAcrossLatestResults(results)
         return results
@@ -2024,7 +2024,7 @@ class SparkSqlPerfBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.A
         # We average over the last 2 out of 3 total iterations done by this suite.
         return 2
 
-    def run(self, benchmarks, bmSuiteArgs):
+    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
         runretval = self.runAndReturnStdOut(benchmarks, bmSuiteArgs)
         retcode, out, dims = runretval
         self.validateStdoutWithDimensions(
@@ -2159,7 +2159,7 @@ class AWFYBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Averaging
             )
         ]
 
-    def run(self, benchmarks, bmSuiteArgs):
+    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
         results = super(AWFYBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
         self.addAverageAcrossLatestResults(results)
         return results
