@@ -34,7 +34,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import jdk.graal.compiler.core.test.DefaultGraphBuilderPhase;
+import jdk.graal.compiler.core.test.TestGraphBuilderPhase;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.debug.GraalError;
@@ -275,7 +275,7 @@ public class StaticAnalysis {
                      */
                     OptimisticOptimizations optimisticOpts = OptimisticOptimizations.NONE;
 
-                    GraphBuilderPhase.Instance graphBuilder = new DefaultGraphBuilderPhase.Instance(providers, graphBuilderConfig, optimisticOpts, null);
+                    GraphBuilderPhase.Instance graphBuilder = new TestGraphBuilderPhase.Instance(providers, graphBuilderConfig, optimisticOpts, null);
                     graphBuilder.apply(graph);
                 } catch (Throwable ex) {
                     debug.handle(ex);

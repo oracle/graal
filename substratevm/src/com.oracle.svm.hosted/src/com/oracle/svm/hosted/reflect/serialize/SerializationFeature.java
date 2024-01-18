@@ -214,7 +214,7 @@ public class SerializationFeature implements InternalFeature {
     }
 
     static class LambdaGraphBuilderPhase extends GraphBuilderPhase {
-        public LambdaGraphBuilderPhase(GraphBuilderConfiguration config) {
+        LambdaGraphBuilderPhase(GraphBuilderConfiguration config) {
             super(config);
         }
 

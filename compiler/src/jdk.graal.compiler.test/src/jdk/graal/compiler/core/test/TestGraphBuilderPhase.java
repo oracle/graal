@@ -37,14 +37,14 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * This is used when a platform independent instance of {@link BytecodeParser} is needed. In normal
  * usage the proper parser from the platform suites should be used instead.
  */
-public class DefaultGraphBuilderPhase extends GraphBuilderPhase {
-    public DefaultGraphBuilderPhase(GraphBuilderConfiguration config) {
+public class TestGraphBuilderPhase extends GraphBuilderPhase {
+    public TestGraphBuilderPhase(GraphBuilderConfiguration config) {
         super(config);
     }
 
     @Override
     public GraphBuilderPhase copyWithConfig(GraphBuilderConfiguration config) {
-        return new DefaultGraphBuilderPhase(config);
+        return new TestGraphBuilderPhase(config);
     }
 
     @Override
@@ -65,8 +65,7 @@ public class DefaultGraphBuilderPhase extends GraphBuilderPhase {
     }
 
     /**
-     * A non-abstract subclass of {@link BytecodeParser}. This exists mainly the use of non-platform
-     * specific {@link BytecodeParser} can be audited.
+     * A non-abstract subclass of {@link BytecodeParser}
      */
     static class DefaultBytecodeParser extends BytecodeParser {
         protected DefaultBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,

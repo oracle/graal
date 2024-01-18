@@ -75,7 +75,7 @@ public class NewInstanceTest extends GraalCompilerTest {
         StructuredGraph graph = new StructuredGraph.Builder(options, getDebugContext(options, null, javaMethod), AllowAssumptions.YES).method(javaMethod).build();
 
         GraphBuilderConfiguration conf = GraphBuilderConfiguration.getSnippetDefault(getDefaultGraphBuilderPlugins()).withUnresolvedIsError(false);
-        new DefaultGraphBuilderPhase.Instance(getProviders(), conf, OptimisticOptimizations.ALL, null).apply(graph);
+        new TestGraphBuilderPhase.Instance(getProviders(), conf, OptimisticOptimizations.ALL, null).apply(graph);
         return graph;
     }
 

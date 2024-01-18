@@ -80,7 +80,7 @@ public class FinalizableSubclassTest extends GraalCompilerTest {
         StructuredGraph graph = new StructuredGraph.Builder(options, debug, allowAssumptions).method(javaMethod).build();
         try (DebugContext.Scope s = debug.scope("FinalizableSubclassTest", graph)) {
             GraphBuilderConfiguration conf = GraphBuilderConfiguration.getSnippetDefault(getDefaultGraphBuilderPlugins());
-            new DefaultGraphBuilderPhase.Instance(getProviders(), conf, OptimisticOptimizations.ALL, null).apply(graph);
+            new TestGraphBuilderPhase.Instance(getProviders(), conf, OptimisticOptimizations.ALL, null).apply(graph);
 
             HighTierContext context = new HighTierContext(getProviders(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
             createInliningPhase().apply(graph, context);

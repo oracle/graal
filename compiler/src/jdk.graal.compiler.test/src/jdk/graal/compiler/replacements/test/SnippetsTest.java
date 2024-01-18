@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.replacements.test;
 
-import jdk.graal.compiler.core.test.DefaultGraphBuilderPhase;
+import jdk.graal.compiler.core.test.TestGraphBuilderPhase;
 import jdk.graal.compiler.java.GraphBuilderPhase.Instance;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.Builder;
@@ -56,7 +56,7 @@ public abstract class SnippetsTest extends ReplacementsTest {
                     @Override
                     protected Instance createGraphBuilder(Providers providers1, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
                                     IntrinsicContext initialIntrinsicContext) {
-                        return new DefaultGraphBuilderPhase.Instance(providers1, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
+                        return new TestGraphBuilderPhase.Instance(providers1, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
                     }
                 };
             }

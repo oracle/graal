@@ -37,7 +37,7 @@ import org.junit.Test;
 import org.objectweb.asm.Type;
 
 import jdk.graal.compiler.api.runtime.GraalJVMCICompiler;
-import jdk.graal.compiler.core.test.DefaultGraphBuilderPhase;
+import jdk.graal.compiler.core.test.TestGraphBuilderPhase;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.hotspot.meta.HotSpotJITClassInitializationPlugin;
@@ -57,7 +57,7 @@ public class LambdaStableNameTest {
         Providers providers = compiler.getGraalRuntime().getCapability(RuntimeProvider.class).getHostBackend().getProviders();
         final HotSpotJITClassInitializationPlugin initializationPlugin = new HotSpotJITClassInitializationPlugin();
         return LambdaUtils.findStableLambdaName(initializationPlugin, providers, type, options, debug, this,
-                        config -> new DefaultGraphBuilderPhase.Instance(providers, config, OptimisticOptimizations.NONE, null));
+                        config -> new TestGraphBuilderPhase.Instance(providers, config, OptimisticOptimizations.NONE, null));
     }
 
     @Test

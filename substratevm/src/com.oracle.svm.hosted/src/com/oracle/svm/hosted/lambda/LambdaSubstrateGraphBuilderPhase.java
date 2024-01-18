@@ -54,7 +54,7 @@ public class LambdaSubstrateGraphBuilderPhase extends GraphBuilderPhase {
     }
 
     public static class LambdaSubstrateGraphBuilderInstance extends GraphBuilderPhase.Instance {
-        LambdaSubstrateGraphBuilderInstance(CoreProviders theProviders, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
+        public LambdaSubstrateGraphBuilderInstance(CoreProviders theProviders, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
                         IntrinsicContext initialIntrinsicContext) {
             super(theProviders, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
         }
