@@ -142,13 +142,13 @@ class GenScavengeGCFeature implements InternalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        ImageHeapLayouter heapLayouter = new ChunkedImageHeapLayouter(HeapImpl.getImageHeapInfo(), 0);
+        ImageHeapLayouter heapLayouter = new ChunkedImageHeapLayouter(HeapImpl.getFirstImageHeapInfo(), Heap.getHeap().getImageHeapOffsetInAddressSpace());
         ImageSingletons.add(ImageHeapLayouter.class, heapLayouter);
     }
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
-        ImageHeapInfo imageHeapInfo = HeapImpl.getImageHeapInfo();
+        ImageHeapInfo imageHeapInfo = HeapImpl.getFirstImageHeapInfo();
         access.registerAsImmutable(imageHeapInfo);
     }
 

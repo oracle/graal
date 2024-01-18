@@ -912,8 +912,9 @@ public final class GCImpl implements GC {
 
         Timer blackenImageHeapRootsTimer = timers.blackenImageHeapRoots.open();
         try {
-            ImageHeapInfo info = HeapImpl.getImageHeapInfo();
-            blackenDirtyImageHeapChunkRoots(info.getFirstWritableAlignedChunk(), info.getFirstWritableUnalignedChunk());
+            for (ImageHeapInfo info = HeapImpl.getFirstImageHeapInfo(); info != null; info = info.next) {
+                blackenDirtyImageHeapChunkRoots(info.getFirstWritableAlignedChunk(), info.getFirstWritableUnalignedChunk());
+            }
 
             if (AuxiliaryImageHeap.isPresent()) {
                 ImageHeapInfo auxInfo = AuxiliaryImageHeap.singleton().getImageHeapInfo();
@@ -959,7 +960,10 @@ public final class GCImpl implements GC {
 
         Timer blackenImageHeapRootsTimer = timers.blackenImageHeapRoots.open();
         try {
-            blackenImageHeapRoots(HeapImpl.getImageHeapInfo());
+            for (ImageHeapInfo info = HeapImpl.getFirstImageHeapInfo(); info != null; info = info.next) {
+                blackenImageHeapRoots(info);
+            }
+
             if (AuxiliaryImageHeap.isPresent()) {
                 ImageHeapInfo auxImageHeapInfo = AuxiliaryImageHeap.singleton().getImageHeapInfo();
                 if (auxImageHeapInfo != null) {

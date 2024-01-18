@@ -35,7 +35,6 @@ import com.oracle.svm.core.genscavenge.ChunkedImageHeapAllocator.AlignedChunk;
 import com.oracle.svm.core.genscavenge.ChunkedImageHeapAllocator.Chunk;
 import com.oracle.svm.core.genscavenge.ChunkedImageHeapAllocator.UnalignedChunk;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
@@ -83,10 +82,9 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
     private final long hugeObjectThreshold;
     private ChunkedImageHeapAllocator allocator;
 
+    /** @param startOffset Offset relative to the heap base. */
     @SuppressWarnings("this-escape")
     public ChunkedImageHeapLayouter(ImageHeapInfo heapInfo, long startOffset) {
-        assert startOffset == 0 || startOffset >= Heap.getHeap().getImageHeapOffsetInAddressSpace() : "must be relative to the heap base";
-
         this.partitions = new ChunkedImageHeapPartition[PARTITION_COUNT];
         this.partitions[READ_ONLY_PRIMITIVE] = new ChunkedImageHeapPartition("readOnlyPrimitive", false, false);
         this.partitions[READ_ONLY_REFERENCE] = new ChunkedImageHeapPartition("readOnlyReference", false, false);
@@ -209,34 +207,15 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
             break;
         }
 
-        initializeHeapInfo(dynamicHubCount, offsetOfFirstWritableAlignedChunk, offsetOfFirstWritableUnalignedChunk);
-        return createLayoutInfo(startOffset, offsetOfFirstWritableAlignedChunk);
-    }
-
-    private void initializeHeapInfo(int dynamicHubCount, long offsetOfFirstWritableAlignedChunk, long offsetOfFirstWritableUnalignedChunk) {
-        long writableAligned = offsetOfFirstWritableAlignedChunk;
-        long writableUnaligned = offsetOfFirstWritableUnalignedChunk;
-
-        if (startOffset == 0) {
-            // Adjust all offsets by the offset of the image heap in the address space.
-            int imageHeapOffsetInAddressSpace = Heap.getHeap().getImageHeapOffsetInAddressSpace();
-            writableAligned += imageHeapOffsetInAddressSpace;
-            if (writableUnaligned >= 0) {
-                writableUnaligned += imageHeapOffsetInAddressSpace;
-            }
-        }
-
         heapInfo.initialize(getReadOnlyPrimitive().firstObject, getReadOnlyPrimitive().lastObject, getReadOnlyReference().firstObject, getReadOnlyReference().lastObject,
                         getReadOnlyRelocatable().firstObject, getReadOnlyRelocatable().lastObject, getWritablePrimitive().firstObject, getWritablePrimitive().lastObject,
                         getWritableReference().firstObject, getWritableReference().lastObject, getWritableHuge().firstObject, getWritableHuge().lastObject,
-                        getReadOnlyHuge().firstObject, getReadOnlyHuge().lastObject, writableAligned, writableUnaligned, dynamicHubCount);
-    }
+                        getReadOnlyHuge().firstObject, getReadOnlyHuge().lastObject, offsetOfFirstWritableAlignedChunk, offsetOfFirstWritableUnalignedChunk, dynamicHubCount);
 
-    private ImageHeapLayoutInfo createLayoutInfo(long heapStartOffset, long writableBeginOffset) {
         long writableEnd = getWritableHuge().getStartOffset() + getWritableHuge().getSize();
-        long writableSize = writableEnd - writableBeginOffset;
-        long imageHeapSize = getReadOnlyHuge().getStartOffset() + getReadOnlyHuge().getSize() - heapStartOffset;
-        return new ImageHeapLayoutInfo(writableBeginOffset, writableSize, getReadOnlyRelocatable().getStartOffset(), getReadOnlyRelocatable().getSize(), imageHeapSize);
+        long writableSize = writableEnd - offsetOfFirstWritableAlignedChunk;
+        long imageHeapSize = getReadOnlyHuge().getStartOffset() + getReadOnlyHuge().getSize() - startOffset;
+        return new ImageHeapLayoutInfo(startOffset, offsetOfFirstWritableAlignedChunk, writableSize, getReadOnlyRelocatable().getStartOffset(), getReadOnlyRelocatable().getSize(), imageHeapSize);
     }
 
     @Override

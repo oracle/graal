@@ -36,8 +36,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionStability;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -57,6 +55,9 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
+
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionStability;
 
 public abstract class CCLinkerInvocation implements LinkerInvocation {
 
@@ -279,9 +280,11 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 StringBuilder exportedSymbols = new StringBuilder();
                 exportedSymbols.append("{\n");
                 /* Only exported symbols are global ... */
-                exportedSymbols.append("global:\n");
-                Stream.concat(getImageSymbols(true).stream(), JNIRegistrationSupport.getShimLibrarySymbols())
-                                .forEach(symbol -> exportedSymbols.append('\"').append(symbol).append("\";\n"));
+                Set<String> globalSymbols = Stream.concat(getImageSymbols(true).stream(), JNIRegistrationSupport.getShimLibrarySymbols()).collect(Collectors.toSet());
+                if (!globalSymbols.isEmpty()) {
+                    exportedSymbols.append("global:\n");
+                    globalSymbols.forEach(symbol -> exportedSymbols.append('\"').append(symbol).append("\";\n"));
+                }
                 /* ... everything else is local. */
                 exportedSymbols.append("local: *;\n");
                 exportedSymbols.append("};");

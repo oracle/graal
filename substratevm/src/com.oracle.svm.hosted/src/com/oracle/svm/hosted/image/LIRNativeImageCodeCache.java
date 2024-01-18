@@ -34,11 +34,6 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.Pair;
-import jdk.graal.compiler.code.CompilationResult;
-import jdk.graal.compiler.code.CompilationResult.CodeAnnotation;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.Indent;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.objectfile.ObjectFile;
@@ -52,6 +47,11 @@ import com.oracle.svm.hosted.code.HostedPatcher;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.code.CompilationResult.CodeAnnotation;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.Indent;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.ConstantReference;
@@ -356,7 +356,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                     HostedImageHeapConstantPatch patch = (HostedImageHeapConstantPatch) codeAnnotation;
 
                     ObjectInfo objectInfo = imageHeap.getConstantInfo(patch.constant);
-                    long objectAddress = objectInfo.getAddress();
+                    long objectAddress = objectInfo.getOffset();
 
                     if (targetCode == null) {
                         targetCode = ByteBuffer.wrap(compilation.getTargetCode()).order(target.arch.getByteOrder());

@@ -470,16 +470,17 @@ public abstract class NativeImage extends AbstractImage {
             heapSection = objectFile.newProgbitsSection(SectionName.SVM_HEAP.getFormatDependentName(objectFile.getFormat()), alignment, writable, false, heapSectionImpl);
             objectFile.createDefinedSymbol(heapSection.getName(), heapSection, 0, 0, false, false);
 
-            long offsetOfARelocatablePointer = writer.writeHeap(debug, heapSectionBuffer);
-            assert !SubstrateOptions.SpawnIsolates.getValue() || heapSectionBuffer.getByteBuffer().getLong((int) offsetOfARelocatablePointer) == 0L;
+            long sectionOffsetOfARelocatablePointer = writer.writeHeap(debug, heapSectionBuffer);
+            assert !SubstrateOptions.SpawnIsolates.getValue() || heapSectionBuffer.getByteBuffer().getLong((int) sectionOffsetOfARelocatablePointer) == 0L;
 
             defineDataSymbol(Isolates.IMAGE_HEAP_BEGIN_SYMBOL_NAME, heapSection, 0);
             defineDataSymbol(Isolates.IMAGE_HEAP_END_SYMBOL_NAME, heapSection, imageHeapSize);
-            defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getReadOnlyRelocatableOffset());
-            defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_END_SYMBOL_NAME, heapSection, heapLayout.getReadOnlyRelocatableOffset() + heapLayout.getReadOnlyRelocatableSize());
-            defineDataSymbol(Isolates.IMAGE_HEAP_A_RELOCATABLE_POINTER_SYMBOL_NAME, heapSection, offsetOfARelocatablePointer);
-            defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getWritableOffset());
-            defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME, heapSection, heapLayout.getWritableOffset() + heapLayout.getWritableSize());
+            defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getReadOnlyRelocatableOffset() - heapLayout.getStartOffset());
+            defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_END_SYMBOL_NAME, heapSection,
+                            heapLayout.getReadOnlyRelocatableOffset() + heapLayout.getReadOnlyRelocatableSize() - heapLayout.getStartOffset());
+            defineDataSymbol(Isolates.IMAGE_HEAP_A_RELOCATABLE_POINTER_SYMBOL_NAME, heapSection, sectionOffsetOfARelocatablePointer);
+            defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getWritableOffset() - heapLayout.getStartOffset());
+            defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME, heapSection, heapLayout.getWritableOffset() + heapLayout.getWritableSize() - heapLayout.getStartOffset());
 
             // Mark the sections with the relocations from the maps.
             markRelocationSitesFromBuffer(textBuffer, textImpl);
@@ -625,8 +626,7 @@ public abstract class NativeImage extends AbstractImage {
         assert ConfigurationValues.getTarget().arch instanceof AArch64 || info.getRelocationSize() == 4 || info.getRelocationSize() == 8 : "AMD64 Data relocation size should be 4 or 8 bytes.";
         assert targetObjectInfo != null;
         String targetSectionName = heapSection.getName();
-        long address = targetObjectInfo.getAddress();
-        long relocationAddend = address + info.getAddend();
+        long relocationAddend = targetObjectInfo.getOffset() + info.getAddend();
         sectionImpl.markRelocationSite(offset, info.getRelocationKind(), targetSectionName, relocationAddend);
     }
 
@@ -661,7 +661,7 @@ public abstract class NativeImage extends AbstractImage {
         } else if (target instanceof ConstantReference) {
             // Direct object reference in code that must be patched (not a linker relocation)
             JavaConstant constant = (JavaConstant) ((ConstantReference) target).getConstant();
-            long address = heap.getConstantInfo(constant).getAddress();
+            long address = heap.getConstantInfo(constant).getOffset();
             int encShift = ImageSingletons.lookup(CompressEncoding.class).getShift();
             long targetValue = address >>> encShift;
             assert (targetValue << encShift) == address : "Reference compression shift discards non-zero bits: " + Long.toHexString(address);

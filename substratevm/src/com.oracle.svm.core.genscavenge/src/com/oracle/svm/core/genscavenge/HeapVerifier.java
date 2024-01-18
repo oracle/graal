@@ -68,9 +68,10 @@ public final class HeapVerifier {
 
     private static boolean verifyImageHeap() {
         boolean success = true;
-        ImageHeapInfo info = HeapImpl.getImageHeapInfo();
-        success &= verifyAlignedChunks(null, info.getFirstWritableAlignedChunk());
-        success &= verifyUnalignedChunks(null, info.getFirstWritableUnalignedChunk());
+        for (ImageHeapInfo info = HeapImpl.getFirstImageHeapInfo(); info != null; info = info.next) {
+            success &= verifyAlignedChunks(null, info.getFirstWritableAlignedChunk());
+            success &= verifyUnalignedChunks(null, info.getFirstWritableUnalignedChunk());
+        }
         return success;
     }
 
@@ -145,9 +146,10 @@ public final class HeapVerifier {
          * For the image heap, we can't verify that all cards are clean after a GC because the GC
          * itself may result in dirty cards.
          */
-        ImageHeapInfo info = HeapImpl.getImageHeapInfo();
-        success &= rememberedSet.verify(info.getFirstWritableAlignedChunk());
-        success &= rememberedSet.verify(info.getFirstWritableUnalignedChunk());
+        for (ImageHeapInfo info = HeapImpl.getFirstImageHeapInfo(); info != null; info = info.next) {
+            success &= rememberedSet.verify(info.getFirstWritableAlignedChunk());
+            success &= rememberedSet.verify(info.getFirstWritableUnalignedChunk());
+        }
 
         OldGeneration oldGeneration = HeapImpl.getHeapImpl().getOldGeneration();
         Space toSpace = oldGeneration.getToSpace();
