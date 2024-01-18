@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -104,12 +104,6 @@ public abstract class LocationImpl extends Location {
         }
     }
 
-    /** @since 0.17 or earlier */
-    @Override
-    protected final Object getInternal(DynamicObject store) {
-        throw new UnsupportedOperationException();
-    }
-
     /**
      * Get object value as object at this location in store. For internal use only.
      *
@@ -194,7 +188,6 @@ public abstract class LocationImpl extends Location {
     }
 
     /** @since 0.17 or earlier */
-    @Override
     protected final void setInternal(DynamicObject store, Object value) throws com.oracle.truffle.api.object.IncompatibleLocationException {
         set(store, value, false, true);
     }

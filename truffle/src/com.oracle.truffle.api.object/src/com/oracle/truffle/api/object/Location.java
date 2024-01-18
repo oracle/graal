@@ -94,13 +94,14 @@ public abstract class Location {
      * Get object value as object at this location in store. For internal use only and subject to
      * change, use {@link #get(DynamicObject, Shape)} instead.
      *
+     * @param store storage object
      * @param condition the result of a shape check or {@code false}
      * @see #get(DynamicObject, Shape)
      * @since 0.8 or earlier
      */
     @Deprecated(since = "22.2")
     public Object get(DynamicObject store, boolean condition) {
-        return getInternal(store);
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     /**
@@ -152,6 +153,8 @@ public abstract class Location {
     /**
      * Set object value at this location in store.
      *
+     * @param store storage object
+     * @param value the value to set
      * @param shape the current shape of the storage object
      * @throws IncompatibleLocationException for storage type invalidations
      * @throws FinalLocationException for effectively final fields
@@ -160,7 +163,7 @@ public abstract class Location {
     @SuppressWarnings("deprecation")
     @Deprecated(since = "22.2")
     public void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException {
-        setInternal(store, value);
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     /**
@@ -189,21 +192,6 @@ public abstract class Location {
     public final void set(DynamicObject store, Object value) throws IncompatibleLocationException, FinalLocationException {
         set(store, value, null);
     }
-
-    /** @since 0.8 or earlier */
-    @Deprecated(since = "22.2")
-    protected abstract Object getInternal(DynamicObject store);
-
-    /**
-     * Like {@link #set(DynamicObject, Object, Shape)}, but does not invalidate final locations. For
-     * internal use only and subject to change.
-     *
-     * @throws IncompatibleLocationException if value is of non-assignable type
-     * @since 0.8 or earlier
-     */
-    @SuppressWarnings("deprecation")
-    @Deprecated(since = "22.2")
-    protected abstract void setInternal(DynamicObject store, Object value) throws IncompatibleLocationException;
 
     /**
      * Returns {@code true} if the location can be set to the given value.
