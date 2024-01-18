@@ -167,4 +167,9 @@ public final class NoRememberedSet implements RememberedSet {
     public boolean verify(UnalignedHeader firstUnalignedHeapChunk) {
         return true;
     }
+
+    @Override
+    public boolean verify(UnalignedHeader firstUnalignedHeapChunk, UnalignedHeader lastUnalignedHeapChunk) {
+        return true;
+    }
 }
