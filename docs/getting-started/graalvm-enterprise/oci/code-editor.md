@@ -96,14 +96,20 @@ This Java application incorporates the [Maven plugin for GraalVM Native Image](h
 
 ### Quick Build Mode Enabled
 
-1. Build a native executable using the `native` Maven profile. The quick build mode is enabled for this run: notice the `<buildArg>-Ob</buildArg>` option in the plugin's configuration in _pom.xml_.
+1. To enable the quick build mode, uncomment this line in _pom.xml_, as follows:
+ 
+    ```xml
+    <quickBuild>true</quickBuild>
+    ```
+    
+2. Build a native executable using the `native` Maven profile:
 
     ```shell
     mvn clean -Pnative -DskipTests package
     ```
     This will generate a native executable for Linux in the _target_ directory, named _my-app_.
 
-2. Run the app native executable in the background:
+3. Run the app native executable in the background:
 
     ```shell
     ./target/my-app
@@ -114,8 +120,9 @@ This Java application incorporates the [Maven plugin for GraalVM Native Image](h
 1. To disable the quick build mode, comment out this line in _pom.xml_, as follows:
  
     ```xml
-    <!-- <buildArg>-Ob</buildArg> -->
+    <!-- <quickBuild>true</quickBuild> -->
     ```
+    
 2. Build a native executable again:
 
     ```shell
