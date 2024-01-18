@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node.NodeIntrinsicFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -170,17 +171,30 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
              * </pre>
              */
             StructuredGraph graph = graph();
-            ValueNode replacement = length;
-            if (!length.isConstant() && length.stamp(NodeView.DEFAULT).canBeImprovedWith(StampFactory.positiveInt())) {
-                ValueAnchorNode guard = graph.add(new ValueAnchorNode());
-                graph.addAfterFixed(this, guard);
-                replacement = graph.addWithoutUnique(new PiNode(length, StampFactory.positiveInt(), guard));
-            }
-            if (!replacement.isAlive()) {
-                replacement = graph.addOrUnique(replacement);
-            }
+            ValueNode replacement = maybeAddPositivePi(length, this);
             graph.replaceFixedWithFloating(this, replacement);
         }
+    }
+
+    /**
+     * If necessary, improves the {@code length}'s stamp to a positive value by adding a
+     * {@link PiNode} for it. The pi will be attached to a new {@link ValueAnchorNode} after the
+     * {@code insertionPosition}.
+     *
+     * @return the {@code length} or its {@linkplain Graph#addOrUnique unique representative} if the
+     *         length's stamp is already positive; otherwise, a new {@link PiNode} proving a
+     *         positive stamp for the length
+     */
+    public static ValueNode maybeAddPositivePi(ValueNode length, FixedWithNextNode insertionPosition) {
+        StructuredGraph graph = insertionPosition.graph();
+        length = graph.addOrUnique(length);
+        ValueNode replacement = length;
+        if (!length.isConstant() && length.stamp(NodeView.DEFAULT).canBeImprovedWith(StampFactory.positiveInt())) {
+            ValueAnchorNode g = graph.add(new ValueAnchorNode());
+            graph.addAfterFixed(insertionPosition, g);
+            replacement = graph.addWithoutUnique(new PiNode(length, StampFactory.positiveInt(), g));
+        }
+        return replacement;
     }
 
     /**

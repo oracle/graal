@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1340,7 +1340,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             if ((myMask & LIST_MASK) == 0) {
                 Node curNode = Edges.getNodeUnsafe(node, offset);
                 if (curNode != null) {
-                    assert curNode.isAlive() : "Successor not alive";
+                    GraalError.guarantee(curNode.isAlive(), "Adding %s to the graph but its successor %s is not alive", node, curNode);
                     node.updatePredecessor(null, curNode);
                 }
             } else {
@@ -1356,7 +1356,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             for (int i = 0; i < list.size(); ++i) {
                 Node curNode = list.get(i);
                 if (curNode != null) {
-                    assert curNode.isAlive() : "Successor not alive";
+                    GraalError.guarantee(curNode.isAlive(), "Adding %s to the graph but its successor %s is not alive", node, curNode);
                     node.updatePredecessor(null, curNode);
                 }
             }
@@ -1419,7 +1419,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             if ((myMask & LIST_MASK) == 0) {
                 Node curNode = Edges.getNodeUnsafe(node, offset);
                 if (curNode != null) {
-                    assert curNode.isAlive() : "Input " + curNode + " of node " + node + " is not alive";
+                    GraalError.guarantee(curNode.isAlive(), "Adding %s to the graph but its input %s is not alive", node, curNode);
                     curNode.addUsage(node);
                 }
             } else {
@@ -1435,7 +1435,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             for (int i = 0; i < list.size(); ++i) {
                 Node curNode = list.get(i);
                 if (curNode != null) {
-                    assert curNode.isAlive() : "Input not alive " + curNode;
+                    GraalError.guarantee(curNode.isAlive(), "Adding %s to the graph but its input %s is not alive", node, curNode);
                     curNode.addUsage(node);
                 }
             }
