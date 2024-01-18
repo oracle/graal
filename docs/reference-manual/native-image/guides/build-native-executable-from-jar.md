@@ -71,7 +71,8 @@ For other installation options, visit the [Downloads section](https://www.graalv
     native-image -jar App.jar
     ```
 
-    It will produce a native executable in the project root directory.
+    It will produce a native executable in the project root directory. The default name of the image will be the basename of the jarfile (`App` in our example).
+    This can be customized by either providing a custom image name as last argument or by using `-o imagename` before or after `-jar jarfile`.
 
 6. Run the native executable:
     ```shell
