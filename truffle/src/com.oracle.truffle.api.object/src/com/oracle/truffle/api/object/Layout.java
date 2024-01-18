@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -288,15 +288,6 @@ public abstract class Layout {
         /** @since 20.2.0 */
         public final Shape getShape(DynamicObject object) {
             return object.getShape();
-        }
-
-        /** @since 20.2.0 */
-        public final DynamicObject objectClone(DynamicObject object) {
-            try {
-                return object.objectClone();
-            } catch (CloneNotSupportedException e) {
-                throw CompilerDirectives.shouldNotReachHere(e);
-            }
         }
 
         /** @since 20.2.0 */
