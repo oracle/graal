@@ -1173,4 +1173,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private static String nullErrorMessage(String kind) {
         return "Cannot register null value as " + kind + " for reflection. Please ensure that all values you register are not null.";
     }
+
+    public static class TestBackdoor {
+        public static void registerField(ReflectionDataBuilder reflectionDataBuilder, boolean queriedOnly, Field field) {
+            reflectionDataBuilder.registerInternal(ConfigurationCondition.alwaysTrue(), queriedOnly, field);
+        }
+    }
 }
