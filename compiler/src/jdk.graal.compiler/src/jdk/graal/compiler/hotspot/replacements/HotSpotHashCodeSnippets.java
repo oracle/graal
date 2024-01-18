@@ -31,19 +31,22 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.id
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadWordFromObject;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.lockMaskInPlace;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.markOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.monitorMask;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.uninitializedIdentityHashCodeValue;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.unlockedMask;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.useLightweightLocking;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
+
+import org.graalvm.word.WordFactory;
 
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.replacements.IdentityHashCodeSnippets;
 import jdk.graal.compiler.word.Word;
-import org.graalvm.word.WordFactory;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/ce8399fd6071766114f5f201b6e44a7abdba9f5a/src/hotspot/share/opto/library_call.cpp#L4485-L4609",
-          sha1 = "34281fb78c4f0657a704dbda3e3cc85ed56dd2ad")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/c5e72450966ad50d57a8d22e9d634bfcb319aee9/src/hotspot/share/opto/library_call.cpp#L4511-L4643",
+          sha1 = "9776f1621d6e2daecd17acf0cd89039339b28a1d")
 // @formatter:on
 public class HotSpotHashCodeSnippets extends IdentityHashCodeSnippets {
 
@@ -51,19 +54,26 @@ public class HotSpotHashCodeSnippets extends IdentityHashCodeSnippets {
     protected int computeIdentityHashCode(final Object x) {
         Word mark = loadWordFromObject(x, markOffset(INJECTED_VMCONFIG));
 
-        // When the object is unlocked, HotSpot reuses upper bits (e.g., [38:8] in 64-bits VM) of
-        // the mark word in object header for caching identity hash code. The same bits are part of
-        // the thread pointer in the case of biased locking, pointer to the displaced mark in a
-        // thread's stack in the case of stack locking, or pointer to the monitor object in the case
-        // of inflated lock.
+        // In HotSpot, the upper bits (i.e., [63:2] in 64-bits VM) of the mark word in object header
+        // are
+        // 1) not used with lightweight locking;
+        // 2) pointer to the displaced mark in a thread's stack with stack locking; or
+        // 3) pointer to the monitor object with heavy monitor locking.
         //
-        // To test if an object is unlocked, we simply need to compare the lock bits against the
-        // constant unlocked value. The lock bits are the least significant 3 bits prior to Java 18
-        // (1 bit for biased locking and 2 bits for stack locking or heavy locking), and 2 bits
-        // afterwards due to elimination of the biased locking. The unlocked values are 001 and 01
-        // respectively. See src/hotspot/share/oops/markWord.hpp for more details.
+        // When these upper bits are not used, i.e., when an object is either unlocked or locked
+        // with lightweight locking, HotSpot reuses fraction of the upper bits (e.g., [38:8] in
+        // 64-bits VM) for caching the identity hash code. Therefore,
+        // 1) when lightweight locking is employed as fast locking scheme (-XX:LockingMode=2), we
+        // only need to test if the object is NOT in a monitor-locked state, i.e., lock bits not
+        // equals to 0b10;
+        // 2) when stack locking is employed as fast locking scheme (-XX:LockingMode=1) or no fast
+        // locking scheme is employed (-XX:LockingMode=0), we need to test if the object is
+        // unlocked, i.e., lock bits equals to 0b01.
+        //
+        // See src/hotspot/share/oops/markWord.hpp for more details.
         final Word lockBits = mark.and(lockMaskInPlace(INJECTED_VMCONFIG));
-        if (probability(FAST_PATH_PROBABILITY, lockBits.equal(WordFactory.unsigned(unlockedMask(INJECTED_VMCONFIG))))) {
+        if (probability(FAST_PATH_PROBABILITY, useLightweightLocking(INJECTED_VMCONFIG) ? lockBits.notEqual(WordFactory.unsigned(monitorMask(INJECTED_VMCONFIG)))
+                        : lockBits.equal(WordFactory.unsigned(unlockedMask(INJECTED_VMCONFIG))))) {
             int hash = (int) mark.unsignedShiftRight(identityHashCodeShift(INJECTED_VMCONFIG)).rawValue();
             if (probability(FAST_PATH_PROBABILITY, hash != uninitializedIdentityHashCodeValue(INJECTED_VMCONFIG))) {
                 return hash;
