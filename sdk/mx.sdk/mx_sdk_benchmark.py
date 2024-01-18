@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,8 @@ import signal
 import threading
 import json
 import argparse
+from typing import List
+
 import mx
 import mx_benchmark
 import datetime
@@ -255,7 +257,11 @@ class NativeImageBenchmarkMixin(object):
 
     def stages(self, args):
         parsed_arg = parse_prefixed_arg('-Dnative-image.benchmark.stages=', args, 'Native Image benchmark stages should only be specified once.')
-        return parsed_arg.split(',') if parsed_arg else ['agent', 'instrument-image', 'instrument-run', 'image', 'run']
+        return parsed_arg.split(',') if parsed_arg else self.default_stages()
+
+    def default_stages(self) -> List[str]:
+        """Default list of stages to run if none have been specified."""
+        return ["agent", "instrument-image", "instrument-run", "image", "run"]
 
     def skip_agent_assertions(self, _, args):
         parsed_args = parse_prefixed_args('-Dnative-image.benchmark.skip-agent-assertions=', args)

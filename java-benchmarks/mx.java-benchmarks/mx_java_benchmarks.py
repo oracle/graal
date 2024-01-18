@@ -161,12 +161,8 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.BenchmarkSuite):
         else:
             return []
 
-    def stages(self, args):
-        # This method overrides NativeImageMixin.stages
-        parsed_arg = mx_sdk_benchmark.parse_prefixed_arg('-Dnative-image.benchmark.stages=', args, 'Native Image benchmark stages should only be specified once.')
-        return parsed_arg.split(',') if parsed_arg else self.default_stages()
-
     def default_stages(self):
+        # This method is used by NativeImageMixin.stages
         raise NotImplementedError()
 
 
@@ -186,7 +182,6 @@ class BaseSpringBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBundle
         return 's'
 
     def default_stages(self):
-        # This method overrides NativeImageMixin.stages
         return ['instrument-image', 'instrument-run', 'image', 'run']
 
     def uses_bundles(self):
