@@ -81,15 +81,17 @@ import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.core.test.DefaultGraphBuilderPhase;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
+import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
@@ -211,9 +213,36 @@ public class SerializationFeature implements InternalFeature {
         }
     }
 
+    static class LambdaGraphBuilderPhase extends GraphBuilderPhase {
+        public LambdaGraphBuilderPhase(GraphBuilderConfiguration config) {
+            super(config);
+        }
+
+        @Override
+        public GraphBuilderPhase copyWithConfig(GraphBuilderConfiguration config) {
+            return new LambdaGraphBuilderPhase(config);
+        }
+
+        static class LambdaBytecodeParser extends BytecodeParser {
+            protected LambdaBytecodeParser(Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
+                super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext);
+            }
+        }
+
+        @Override
+        protected Instance createInstance(CoreProviders providers, GraphBuilderConfiguration instanceGBConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
+            return new Instance(providers, instanceGBConfig, optimisticOpts, initialIntrinsicContext) {
+                @Override
+                protected BytecodeParser createBytecodeParser(StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
+                    return new LambdaBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext);
+                }
+            };
+        }
+    }
+
     @SuppressWarnings("try")
     private static void registerLambdasFromMethod(ResolvedJavaMethod method, SerializationBuilder serializationBuilder, OptionValues options) {
-        GraphBuilderPhase lambdaParserPhase = new DefaultGraphBuilderPhase(buildLambdaParserConfig());
+        GraphBuilderPhase lambdaParserPhase = new LambdaGraphBuilderPhase(buildLambdaParserConfig());
         StructuredGraph graph = createMethodGraph(method, lambdaParserPhase, options);
         registerLambdasFromConstantNodesInGraph(graph, serializationBuilder);
     }
