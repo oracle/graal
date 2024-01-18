@@ -212,7 +212,6 @@ Once this run has finished we have a run-time profile of our application contain
 This enables us to finally build the optimized build of the application, 
 by providing the run-time profile of the application using the `--pgo` flag as shown bellow.
 
-
 ```
 $ $GRAALVM_HOME/bin/native-image -cp . GameOfLife -o gameoflife-pgo --pgo=gameoflife.iprof
 	========================================================================================================================
@@ -229,7 +228,6 @@ $ $GRAALVM_HOME/bin/native-image -cp . GameOfLife -o gameoflife-pgo --pgo=gameof
 
 With all this in place we can finally move on the evaluating the run-time metrics of our application running in the different modes.
 
-
 ## Evaluation
 
 We will run our application in all three ways (JVM, no PGO native image, PGO native image) using the same inputs.
@@ -238,7 +236,6 @@ This also ensures that the application runs fully single-threaded allowing us to
 We will also increase the order of magnitude for the number of iterations to get a feel of how the length of the run time impacts the strengths and weaknesses of each execution mode.
 We measure all 3 of our metrics using the Linux `time` command with a custom output format (`--format=>> Elapsed: %es, CPU Usage: %P, MAX RSS: %MkB`).
 Note: We fixed the CPU clock 2.5GHz during all the measurements in an attempt to minimize noise.
-
 
 ## 1 iteration
 
@@ -319,7 +316,6 @@ The amount of improvement that PGO provides in this case is offcourse not repres
 since our Game Of Life application is small and does exactly one thing so the profiles provded are based on the exact same workload we are measuring.
 But it illustrates the general point - 
 profile guided optimizations allow AOT compilers to perform similar tricks that JIT compilers can do in order to improve the performance of the code they generate.
-
 
 ## Image size
 
