@@ -91,7 +91,7 @@ public class ConstantLocationTest extends AbstractParametrizedLibraryTest {
         Property property = object.getShape().getProperty("constant");
         Assert.assertEquals(true, property.getLocation().canStore(value));
         try {
-            property.set(object, value, shapeWithConstant);
+            property.getLocation().set(object, value, shapeWithConstant);
         } catch (com.oracle.truffle.api.object.IncompatibleLocationException | com.oracle.truffle.api.object.FinalLocationException e) {
             Assert.fail(e.getMessage());
         }
@@ -99,7 +99,7 @@ public class ConstantLocationTest extends AbstractParametrizedLibraryTest {
         Object newValue = new Object();
         Assert.assertEquals(false, property.getLocation().canStore(newValue));
         try {
-            property.set(object, newValue, shapeWithConstant);
+            property.getLocation().set(object, newValue, shapeWithConstant);
             Assert.fail();
         } catch (com.oracle.truffle.api.object.IncompatibleLocationException | com.oracle.truffle.api.object.FinalLocationException e) {
             Assert.assertThat(e, CoreMatchers.instanceOf(com.oracle.truffle.api.object.IncompatibleLocationException.class));
@@ -125,14 +125,14 @@ public class ConstantLocationTest extends AbstractParametrizedLibraryTest {
 
     @SuppressWarnings("deprecation")
     @Test
-    public void testAddConstantLocation() {
+    public void testAddConstantLocation() throws com.oracle.truffle.api.object.IncompatibleLocationException {
         Property property = shapeWithConstant.getProperty("constant");
 
         DynamicObject object = newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
-        property.setSafe(object, value, rootShape, shapeWithConstant);
+        property.getLocation().set(object, value, rootShape, shapeWithConstant);
         Assert.assertSame(shapeWithConstant, object.getShape());
         Assert.assertSame(value, library.getOrDefault(object, "constant", null));
 

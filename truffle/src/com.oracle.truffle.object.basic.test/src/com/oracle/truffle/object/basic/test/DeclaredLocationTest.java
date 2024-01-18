@@ -93,7 +93,7 @@ public class DeclaredLocationTest extends AbstractParametrizedLibraryTest {
         Property property = object.getShape().getProperty("declared");
         Assert.assertEquals(true, property.getLocation().canStore(value));
         try {
-            property.set(object, value, shapeWithDeclared);
+            property.getLocation().set(object, value, shapeWithDeclared);
         } catch (com.oracle.truffle.api.object.IncompatibleLocationException | com.oracle.truffle.api.object.FinalLocationException e) {
             Assert.fail(e.getMessage());
         }
@@ -101,7 +101,7 @@ public class DeclaredLocationTest extends AbstractParametrizedLibraryTest {
         Object newValue = new Object();
         Assert.assertEquals(false, property.getLocation().canStore(newValue));
         try {
-            property.set(object, newValue, shapeWithDeclared);
+            property.getLocation().set(object, newValue, shapeWithDeclared);
             Assert.fail();
         } catch (com.oracle.truffle.api.object.IncompatibleLocationException | com.oracle.truffle.api.object.FinalLocationException e) {
             Assert.assertThat(e, CoreMatchers.instanceOf(com.oracle.truffle.api.object.IncompatibleLocationException.class));
@@ -127,14 +127,14 @@ public class DeclaredLocationTest extends AbstractParametrizedLibraryTest {
 
     @SuppressWarnings("deprecation")
     @Test
-    public void testAddDeclaredLocation() {
+    public void testAddDeclaredLocation() throws com.oracle.truffle.api.object.IncompatibleLocationException {
         Property property = shapeWithDeclared.getProperty("declared");
 
         DynamicObject object = newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
-        property.setSafe(object, value, rootShape, shapeWithDeclared);
+        property.getLocation().set(object, value, rootShape, shapeWithDeclared);
         Assert.assertSame(shapeWithDeclared, object.getShape());
         Assert.assertSame(value, library.getOrDefault(object, "declared", null));
 
