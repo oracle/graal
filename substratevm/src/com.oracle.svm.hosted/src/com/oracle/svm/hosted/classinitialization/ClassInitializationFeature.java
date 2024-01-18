@@ -39,10 +39,6 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.Pair;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.java.LambdaUtils;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -67,6 +63,11 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.java.LambdaUtils;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
 
 @AutomaticallyRegisteredFeature
 public class ClassInitializationFeature implements InternalFeature {
@@ -173,10 +174,8 @@ public class ClassInitializationFeature implements InternalFeature {
                                 To fix this, include %s in your configuration. If the classes do not originate from your code, it is advised to update all library or framework dependencies to the latest version before addressing this error.
                                 """
                                 .replaceAll("\n", System.lineSeparator())
-                                .formatted(
-                                                SubstrateOptionsParser.commandArgument(ClassInitializationOptions.StrictImageHeap, "+", true, false),
-                                                SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, proxyOrLambda ? proxyLambdaInterfaceCSV : typeName,
-                                                                "initialize-at-build-time", true, false));
+                                .formatted(SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, proxyOrLambda ? proxyLambdaInterfaceCSV : typeName,
+                                                "initialize-at-build-time", true, false));
             }
 
             msg += System.lineSeparator() + "The following detailed trace displays from which field in the code the object was reached.";
