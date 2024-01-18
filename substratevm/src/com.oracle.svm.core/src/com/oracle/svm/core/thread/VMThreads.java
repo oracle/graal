@@ -338,9 +338,11 @@ public abstract class VMThreads {
         assert thread.equal(CurrentIsolate.getCurrentThread()) : "Cannot detach different thread with this method";
 
         // read thread local data (can't be accessed further below as the IsolateThread is freed)
+        OSThreadHandle threadHandle = OSThreadHandleTL.get(thread);
         OSThreadHandle nextOsThreadToCleanup = WordFactory.nullPointer();
-        if (wasStartedByCurrentIsolate(thread)) {
-            nextOsThreadToCleanup = OSThreadHandleTL.get(thread);
+        boolean wasStartedByCurrentIsolate = wasStartedByCurrentIsolate(thread);
+        if (wasStartedByCurrentIsolate) {
+            nextOsThreadToCleanup = threadHandle;
         }
 
         threadExit(thread);
@@ -374,6 +376,10 @@ public abstract class VMThreads {
             THREAD_MUTEX.unlock();
         }
 
+        if (!wasStartedByCurrentIsolate) {
+            /* If a thread was attached, we need to free its thread handle. */
+            PlatformThreads.singleton().closeOSThreadHandle(threadHandle);
+        }
         cleanupExitedOsThread(threadToCleanup);
     }
 
