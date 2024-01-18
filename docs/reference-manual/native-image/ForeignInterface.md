@@ -24,7 +24,7 @@ Shared arenas are currently not supported.
 The FFM API enables Java code to call _down_ to native functions, and conversely allows native code to call _up_ to invoke Java code via method handles.
 These two kinds of calls are referred to as "downcalls" and "upcalls" respectively, and are collectively referred to as "foreign calls".
 
-> Note: Currently, only downcalls are supported, and only on the AMD64 architecture.
+> Note: Currently, only downcalls are supported, and only on the x64 architecture.
 
 ### Looking Up Native Functions
 
