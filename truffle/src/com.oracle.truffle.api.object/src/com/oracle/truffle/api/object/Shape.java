@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.object;
 
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
@@ -957,22 +956,6 @@ public abstract class Shape {
             return locationForValue(value, false, value != null);
         }
 
-        /**
-         * Create a new location compatible with the given initial value.
-         *
-         * @param value the initial value this location is going to be assigned
-         * @param modifiers additional restrictions and semantics
-         * @since 0.8 or earlier
-         * @deprecated use {@link #locationForType(Class, EnumSet)} or
-         *             {@link Shape#defineProperty(Object, Object, int)} instead
-         */
-        @SuppressWarnings("deprecation")
-        @Deprecated(since = "19.3")
-        public final Location locationForValue(Object value, EnumSet<LocationModifier> modifiers) {
-            assert value != null || !modifiers.contains(LocationModifier.NonNull);
-            return locationForValue(value, modifiers.contains(LocationModifier.Final), modifiers.contains(LocationModifier.NonNull));
-        }
-
         /** @since 0.8 or earlier */
         @Deprecated(since = "22.2")
         protected abstract Location locationForType(Class<?> type, boolean useFinal, boolean nonNull);
@@ -986,19 +969,6 @@ public abstract class Shape {
         @Deprecated(since = "22.2")
         public final Location locationForType(Class<?> type) {
             return locationForType(type, false, false);
-        }
-
-        /**
-         * Create a new location for a fixed type.
-         *
-         * @param type the Java type this location must be compatible with (may be primitive)
-         * @param modifiers additional restrictions and semantics
-         * @since 0.8 or earlier
-         */
-        @SuppressWarnings("deprecation")
-        @Deprecated(since = "22.2")
-        public final Location locationForType(Class<?> type, EnumSet<LocationModifier> modifiers) {
-            return locationForType(type, modifiers.contains(LocationModifier.Final), modifiers.contains(LocationModifier.NonNull));
         }
 
         /**
