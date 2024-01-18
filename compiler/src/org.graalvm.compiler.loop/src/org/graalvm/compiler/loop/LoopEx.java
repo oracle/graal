@@ -31,6 +31,7 @@ import java.util.Queue;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
@@ -309,7 +310,7 @@ public class LoopEx {
                             // signed: i < MAX_INT
                         } else if (limitStamp.asConstant() != null && limitStamp.asConstant().asLong() == counterStamp.unsignedUpperBound()) {
                             unsigned = true;
-                        } else if (!iv.isConstantStride() || Math.abs(iv.constantStride()) != 1 || initStamp.upperBound() > limitStamp.lowerBound()) {
+                        } else if (!iv.isConstantStride() || !absStrideIsOne(iv) || initStamp.upperBound() > limitStamp.lowerBound()) {
                             return false;
                         }
                     } else if (iv.direction() == Direction.Down) {
@@ -317,7 +318,7 @@ public class LoopEx {
                             // signed: MIN_INT > i
                         } else if (limitStamp.asConstant() != null && limitStamp.asConstant().asLong() == counterStamp.unsignedLowerBound()) {
                             unsigned = true;
-                        } else if (!iv.isConstantStride() || Math.abs(iv.constantStride()) != 1 || initStamp.lowerBound() < limitStamp.upperBound()) {
+                        } else if (!iv.isConstantStride() || !absStrideIsOne(iv) || initStamp.lowerBound() < limitStamp.upperBound()) {
                             return false;
                         }
                     } else {
@@ -367,6 +368,15 @@ public class LoopEx {
     private boolean isCfgLoopExit(AbstractBeginNode begin) {
         Block block = data.getCFG().blockFor(begin);
         return loop.getDepth() > block.getLoopDepth() || loop.isNaturalExit(block);
+    }
+
+    public static boolean absStrideIsOne(InductionVariable limitCheckedIV) {
+        /*
+         * While Math.abs can overflow for MIN_VALUE it is fine here. In case of overflow we still
+         * get a value != 1 (namely MIN_VALUE again). Overflow handling for the limit checked IV is
+         * done in CountedLoopInfo and is an orthogonal issue.
+         */
+        return Math.abs(limitCheckedIV.constantStride()) == 1;
     }
 
     public LoopsData loopsData() {
