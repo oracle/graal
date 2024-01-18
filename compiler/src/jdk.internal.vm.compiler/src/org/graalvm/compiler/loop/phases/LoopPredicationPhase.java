@@ -114,6 +114,8 @@ public class LoopPredicationPhase extends PostRunCanonicalizationPhase<MidTierCo
                         final boolean inverted = loop.counted().isInverted();
                         if ((((IntegerStamp) counter.valueNode().stamp(NodeView.DEFAULT)).getBits() == 32) &&
                                         !counted.isUnsignedCheck() &&
+                                        // math.abs can overflow here but only to min again which is
+                                        // never == 1
                                         ((condition != NE && condition != EQ) || (counter.isConstantStride() && Math.abs(counter.constantStride()) == 1)) &&
                                         (loop.loopBegin().isMainLoop() || loop.loopBegin().isSimpleLoop())) {
                             NodeIterable<GuardNode> guards = loop.whole().nodes().filter(GuardNode.class);
