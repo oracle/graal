@@ -720,17 +720,6 @@ public abstract class Shape {
     public abstract int getPropertyCount();
 
     /**
-     * Get the shape's object type info.
-     *
-     * @since 0.8 or earlier
-     * @see #getDynamicType()
-     * @deprecated Deprecated since 20.3.0. Replaced by {@link #getDynamicType()}.
-     */
-    @Deprecated(since = "20.3")
-    @SuppressWarnings("deprecation")
-    public abstract ObjectType getObjectType();
-
-    /**
      * Get the shape's dynamic object type identifier.
      *
      * @since 20.2.0
@@ -800,15 +789,6 @@ public abstract class Shape {
      * @since 0.8 or earlier
      */
     public abstract Object getSharedData();
-
-    /**
-     * Change the shape's type, yielding a new shape.
-     *
-     * @since 0.8 or earlier
-     * @deprecated No replacement. Use {@link DynamicObjectLibrary#setDynamicType} instead.
-     */
-    @Deprecated(since = "22.2")
-    public abstract Shape changeType(@SuppressWarnings("deprecation") ObjectType newOps);
 
     /**
      * Get mutex object shared by related shapes, i.e. shapes with a common root.

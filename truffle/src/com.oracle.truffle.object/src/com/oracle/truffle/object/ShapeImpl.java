@@ -929,12 +929,6 @@ public abstract class ShapeImpl extends Shape {
         return diff;
     }
 
-    /** @since 0.17 or earlier */
-    @Override
-    public com.oracle.truffle.api.object.ObjectType getObjectType() {
-        return (com.oracle.truffle.api.object.ObjectType) objectType;
-    }
-
     @Override
     public Object getDynamicType() {
         return objectType;
@@ -1042,13 +1036,6 @@ public abstract class ShapeImpl extends Shape {
         } else {
             return this.cloneOnto(parent.createSeparateShape(newSharedData));
         }
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
-    @TruffleBoundary
-    public final ShapeImpl changeType(com.oracle.truffle.api.object.ObjectType newObjectType) {
-        return setDynamicType(newObjectType);
     }
 
     @TruffleBoundary
