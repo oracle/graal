@@ -77,6 +77,7 @@ import org.graalvm.compiler.nodes.debug.NeverWriteSinkNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.phases.common.util.LoopUtility;
 
 public class LoopEx {
     protected final Loop<HIRBlock> loop;
@@ -332,7 +333,7 @@ public class LoopEx {
                             // signed: i < MAX_INT
                         } else if (limitStamp.asConstant() != null && limitStamp.asConstant().asLong() == counterStamp.unsignedUpperBound()) {
                             unsigned = true;
-                        } else if (!iv.isConstantStride() || Math.abs(iv.constantStride()) != 1 || initStamp.upperBound() > limitStamp.lowerBound()) {
+                        } else if (!iv.isConstantStride() || !absStrideIsOne(iv) || initStamp.upperBound() > limitStamp.lowerBound()) {
                             return false;
                         }
                     } else if (iv.direction() == Direction.Down) {
@@ -340,7 +341,7 @@ public class LoopEx {
                             // signed: MIN_INT > i
                         } else if (limitStamp.asConstant() != null && limitStamp.asConstant().asLong() == counterStamp.unsignedLowerBound()) {
                             unsigned = true;
-                        } else if (!iv.isConstantStride() || Math.abs(iv.constantStride()) != 1 || initStamp.lowerBound() < limitStamp.upperBound()) {
+                        } else if (!iv.isConstantStride() || !absStrideIsOne(iv) || initStamp.lowerBound() < limitStamp.upperBound()) {
                             return false;
                         }
                     } else {
@@ -385,6 +386,16 @@ public class LoopEx {
             return true;
         }
         return false;
+    }
+
+    public static boolean absStrideIsOne(InductionVariable limitCheckedIV) {
+        final long absStride;
+        try {
+            absStride = LoopUtility.abs(limitCheckedIV.constantStride(), IntegerStamp.getBits(limitCheckedIV.strideNode().stamp(NodeView.DEFAULT)));
+        } catch (ArithmeticException e) {
+            return false;
+        }
+        return absStride == 1;
     }
 
     public boolean isCfgLoopExit(AbstractBeginNode begin) {
