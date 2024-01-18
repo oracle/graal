@@ -9,7 +9,7 @@ This guide shows you how to get started with Oracle GraalVM in Oracle Cloud Infr
 
 [OCI Code Editor](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/code_editor_intro.htm) provides a rich, in-console editing environment that enables you to edit code without having to switch between the Oracle Cloud Console and your local development environment. The Code Editor enables you to edit and deploy code for OCI services directly from the OCI Console.
 
-Oracle GraalVM JDK 17 with Native Image is preinstalled in Cloud Shell, so you do not have to install and configure a development machine. Code Editor's integration with Cloud Shell gives you direct access to it.
+Oracle GraalVM for JDK 17 is preinstalled in Cloud Shell, so you do not have to install and configure a development machine. Code Editor's integration with Cloud Shell gives you direct access to it.
 
 > Note: Oracle GraalVM license and support are included in the Oracle Cloud Infrastructure subscription at no additional cost.
 
@@ -27,14 +27,14 @@ Oracle GraalVM JDK 17 with Native Image is preinstalled in Cloud Shell, so you d
     ```shell
     csruntimectl java list
     ```
-    The output lists the JDKs preinstalled in Cloud Shell: GraalVM for JDK 17, Oracle JDK 11, and Oracle JDK 8. The JDK marked with an asterisk is the current JDK.
+    The output lists the JDKs preinstalled in Cloud Shell: Oracle GraalVM for JDK 17, Oracle JDK 11, and Oracle JDK 8. The JDK marked with an asterisk is the current JDK.
 
-2. Select GraalVM for JDK 17 as the current JDK:
+2. Select Oracle GraalVM for JDK 17 as the current JDK:
 
     ```shell
-    csruntimectl java set graalvmeejdk-17
+    csruntimectl java set graalvmjdk-17
     ```
-    You will see the confirmation message printed `The current managed java version is set to graalvmeejdk-17`.
+    You will see the confirmation message printed `The current managed java version is set to graalvmjdk-17`.
 
 3. Now confirm the values of the environment variables `PATH` and `JAVA_HOME`, and the version of `java`, the `native-image` generator:
     ```shell
@@ -86,7 +86,7 @@ Oracle GraalVM JDK 17 with Native Image is preinstalled in Cloud Shell, so you d
 3. Run the JAR:
 
     ```shell
-    java -jar target/my-app-1.0-SNAPSHOT.jar 
+    java -jar target/my-app-1.0-SNAPSHOT.jar
     ```
     It prints out “Hello World!”.
 
