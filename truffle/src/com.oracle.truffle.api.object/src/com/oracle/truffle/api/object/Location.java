@@ -194,19 +194,6 @@ public abstract class Location {
     }
 
     /**
-     * Returns {@code true} if the location can be set to the given value.
-     *
-     * @param store the receiver object
-     * @param value the value in question
-     * @since 0.8 or earlier
-     * @deprecated Equivalent to {@link #canStore(Object)}.
-     */
-    @Deprecated(since = "22.2")
-    public boolean canSet(DynamicObject store, Object value) {
-        return canStore(value);
-    }
-
-    /**
      * Returns {@code true} if the location can be set to the value.
      *
      * @param value the value in question

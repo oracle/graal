@@ -194,18 +194,6 @@ public abstract class LocationImpl extends Location {
 
     /** @since 0.17 or earlier */
     @Override
-    public boolean canSet(DynamicObject store, Object value) {
-        return canStore(value) && canStoreFinal(store, value);
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
-    public boolean canSet(Object value) {
-        return canSet(null, value);
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
     public boolean canStore(Object value) {
         return true;
     }

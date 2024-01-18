@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -90,7 +90,6 @@ public class ConstantLocationTest extends AbstractParametrizedLibraryTest {
 
         Property property = object.getShape().getProperty("constant");
         Assert.assertEquals(true, property.getLocation().canStore(value));
-        Assert.assertEquals(true, property.getLocation().canSet(value));
         try {
             property.set(object, value, shapeWithConstant);
         } catch (com.oracle.truffle.api.object.IncompatibleLocationException | com.oracle.truffle.api.object.FinalLocationException e) {
@@ -99,7 +98,6 @@ public class ConstantLocationTest extends AbstractParametrizedLibraryTest {
 
         Object newValue = new Object();
         Assert.assertEquals(false, property.getLocation().canStore(newValue));
-        Assert.assertEquals(false, property.getLocation().canSet(newValue));
         try {
             property.set(object, newValue, shapeWithConstant);
             Assert.fail();
@@ -141,7 +139,6 @@ public class ConstantLocationTest extends AbstractParametrizedLibraryTest {
         DynamicObject object2 = newInstance();
         Object newValue = new Object();
         Assert.assertEquals(false, property.getLocation().canStore(newValue));
-        Assert.assertEquals(false, property.getLocation().canSet(newValue));
         try {
             property.getLocation().set(object2, newValue, rootShape, shapeWithConstant);
             Assert.fail();
