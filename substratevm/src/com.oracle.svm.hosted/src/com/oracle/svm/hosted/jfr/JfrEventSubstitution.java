@@ -35,7 +35,6 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
-import com.oracle.svm.core.jfr.JfrEventWriterAccess;
 import com.oracle.svm.core.jfr.JfrJavaEvents;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -63,7 +62,6 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
 
     JfrEventSubstitution(MetaAccessProvider metaAccess) {
         baseEventType = metaAccess.lookupJavaType(jdk.internal.event.Event.class);
-        ResolvedJavaType jdkJfrEventWriter = metaAccess.lookupJavaType(JfrEventWriterAccess.getEventWriterClass());
         typeSubstitution = new ConcurrentHashMap<>();
         methodSubstitutions = new ConcurrentHashMap<>();
         fieldSubstitutions = new ConcurrentHashMap<>();
