@@ -639,7 +639,7 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
         if not preserve_image:
             mx.rmtree(junit_test_dir)
 
-_mask_str = '#'
+_mask_str = '$mask$'
 
 
 def _mask(arg, arg_list):

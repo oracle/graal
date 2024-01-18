@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk.localization;
+package com.oracle.svm.core.configure;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
-import com.oracle.svm.core.configure.ResourcesRegistry;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.TypeResult;
 
-/**
- * This class is just a delegate. The real LocalizationFeature is now in
- * com.oracle.svm.hosted.jdk.localization. It was created in order to ensure backwards compatibility
- * for code depending on the location of the feature.
- */
-@AutomaticallyRegisteredFeature
-public class LocalizationFeature implements InternalFeature {
+public interface ConfigurationConditionResolver<T> {
 
-    /**
-     * @deprecated Use {@link ResourcesRegistry#addResourceBundles(ConfigurationCondition, String)}
-     *             instead.
-     */
-    @Deprecated
-    public void prepareBundle(String baseName) {
-        ImageSingletons.lookup(ResourcesRegistry.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), baseName);
+    static ConfigurationConditionResolver<UnresolvedConfigurationCondition> identityResolver() {
+        return new ConfigurationConditionResolver<>() {
+            @Override
+            public TypeResult<UnresolvedConfigurationCondition> resolveCondition(UnresolvedConfigurationCondition unresolvedCondition) {
+                return TypeResult.forType(unresolvedCondition.getTypeName(), unresolvedCondition);
+            }
+
+            @Override
+            public UnresolvedConfigurationCondition alwaysTrue() {
+                return UnresolvedConfigurationCondition.create("java.lang.Object");
+            }
+        };
     }
+
+    TypeResult<T> resolveCondition(UnresolvedConfigurationCondition unresolvedCondition);
+
+    T alwaysTrue();
 }

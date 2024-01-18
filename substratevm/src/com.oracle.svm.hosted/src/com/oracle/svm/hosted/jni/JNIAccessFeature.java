@@ -59,7 +59,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.configure.ConditionalElement;
+import com.oracle.svm.core.configure.ConfigurationConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
@@ -83,6 +83,7 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.ProgressReporter;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
@@ -95,6 +96,7 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.KnownOffsetsFeature;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
+import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -194,7 +196,9 @@ public class JNIAccessFeature implements Feature {
         runtimeSupport = new JNIRuntimeAccessibilitySupportImpl();
         ImageSingletons.add(RuntimeJNIAccessSupport.class, runtimeSupport);
 
-        ReflectionConfigurationParser<ConditionalElement<Class<?>>> parser = ConfigurationParserUtils.create(runtimeSupport, access.getImageClassLoader());
+        ConfigurationConditionResolver<ConfigurationCondition> conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(),
+                        ClassInitializationSupport.singleton());
+        ReflectionConfigurationParser<ConfigurationCondition, Class<?>> parser = ConfigurationParserUtils.create(conditionResolver, runtimeSupport, access.getImageClassLoader());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "JNI",
                         ConfigurationFiles.Options.JNIConfigurationFiles, ConfigurationFiles.Options.JNIConfigurationResources, ConfigurationFile.JNI.getFileName());
     }
@@ -207,21 +211,21 @@ public class JNIAccessFeature implements Feature {
             assert !unsafeAllocated : "unsafeAllocated can be only set via Unsafe.allocateInstance, not via JNI.";
             Objects.requireNonNull(clazz, () -> nullErrorMessage("class"));
             abortIfSealed();
-            registerConditionalConfiguration(condition, () -> newClasses.add(clazz));
+            registerConditionalConfiguration(condition, (cnd) -> newClasses.add(clazz));
         }
 
         @Override
         public void register(ConfigurationCondition condition, boolean queriedOnly, Executable... executables) {
             requireNonNull(executables, "executable");
             abortIfSealed();
-            registerConditionalConfiguration(condition, () -> newMethods.addAll(Arrays.asList(executables)));
+            registerConditionalConfiguration(condition, (cnd) -> newMethods.addAll(Arrays.asList(executables)));
         }
 
         @Override
         public void register(ConfigurationCondition condition, boolean finalIsWritable, Field... fields) {
             requireNonNull(fields, "field");
             abortIfSealed();
-            registerConditionalConfiguration(condition, () -> registerFields(finalIsWritable, fields));
+            registerConditionalConfiguration(condition, (cnd) -> registerFields(finalIsWritable, fields));
         }
 
         private void registerFields(boolean finalIsWritable, Field[] fields) {

@@ -40,14 +40,15 @@ import java.util.Map;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import jdk.graal.compiler.util.json.JSONParser;
-import jdk.graal.compiler.util.json.JSONParserException;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.JavaNetSubstitutions;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
+
+import jdk.graal.compiler.util.json.JSONParser;
+import jdk.graal.compiler.util.json.JSONParserException;
 
 public abstract class ConfigurationParser {
     public static InputStream openStream(URI uri) throws IOException {
@@ -61,6 +62,8 @@ public abstract class ConfigurationParser {
 
     public static final String CONDITIONAL_KEY = "condition";
     public static final String TYPE_REACHABLE_KEY = "typeReachable";
+
+    public static final String TYPE_REACHED_KEY = "typeReached";
     private final Map<String, Set<String>> seenUnknownAttributesByType = new HashMap<>();
     private final boolean strictSchema;
 
@@ -180,18 +183,19 @@ public abstract class ConfigurationParser {
         throw new JSONParserException("Invalid long value '" + value + "' for element '" + propertyName + "'");
     }
 
-    protected ConfigurationCondition parseCondition(EconomicMap<String, Object> data) {
+    protected UnresolvedConfigurationCondition parseCondition(EconomicMap<String, Object> data) {
         Object conditionData = data.get(CONDITIONAL_KEY);
         if (conditionData != null) {
             EconomicMap<String, Object> conditionObject = asMap(conditionData, "Attribute 'condition' must be an object");
+
             Object conditionType = conditionObject.get(TYPE_REACHABLE_KEY);
             if (conditionType instanceof String) {
-                return ConfigurationCondition.create((String) conditionType);
+                return UnresolvedConfigurationCondition.create((String) conditionType);
             } else {
                 warnOrFailOnSchemaError("'" + TYPE_REACHABLE_KEY + "' should be of type string");
             }
         }
-        return ConfigurationCondition.alwaysTrue();
+        return UnresolvedConfigurationCondition.alwaysTrue();
     }
 
 }

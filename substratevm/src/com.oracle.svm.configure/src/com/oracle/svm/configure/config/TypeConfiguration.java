@@ -32,14 +32,15 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.configure.ReflectionConfigurationParser;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.ConfigurationBase;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.ConditionalElement;
+import com.oracle.svm.core.configure.ConfigurationConditionResolver;
+import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.util.json.JsonWriter;
 
 public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration, TypeConfiguration.Predicate> {
 
@@ -93,7 +94,7 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
         types.entrySet().removeIf(entry -> predicate.testIncludedType(entry.getKey(), entry.getValue()));
     }
 
-    public ConfigurationType get(ConfigurationCondition condition, String qualifiedJavaName) {
+    public ConfigurationType get(UnresolvedConfigurationCondition condition, String qualifiedJavaName) {
         return types.get(new ConditionalElement<>(condition, qualifiedJavaName));
     }
 
@@ -115,12 +116,12 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
         });
     }
 
-    public ConfigurationType getOrCreateType(ConfigurationCondition condition, String qualifiedForNameString) {
-        return types.computeIfAbsent(new ConditionalElement<>(condition, qualifiedForNameString), p -> new ConfigurationType(p.getCondition(), p.getElement()));
+    public ConfigurationType getOrCreateType(UnresolvedConfigurationCondition condition, String qualifiedForNameString) {
+        return types.computeIfAbsent(new ConditionalElement<>(condition, qualifiedForNameString), p -> new ConfigurationType(p.condition(), p.element()));
     }
 
     @Override
-    public void mergeConditional(ConfigurationCondition condition, TypeConfiguration other) {
+    public void mergeConditional(UnresolvedConfigurationCondition condition, TypeConfiguration other) {
         other.types.forEach((key, value) -> {
             addOrMerge(new ConfigurationType(value, condition));
         });
@@ -143,7 +144,7 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
 
     @Override
     public ConfigurationParser createParser() {
-        return new ReflectionConfigurationParser<>(new ParserConfigurationAdapter(this), true, false);
+        return new ReflectionConfigurationParser<>(ConfigurationConditionResolver.identityResolver(), new ParserConfigurationAdapter(this), true, false);
     }
 
     @Override
